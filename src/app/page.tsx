@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from "react";
 import { PillButton, PillInput, GlassCard } from "@/components/ui/Base";
 import { Cpu, Lock, Mail, ArrowRight, Loader2 } from "lucide-react";
@@ -56,9 +57,9 @@ export default function LoginPage() {
               <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-4">USER IDENTIFIER (EMAIL)</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
-                <PillInput 
-                  type="email" 
-                  placeholder="name@nexus-erp.com" 
+                <PillInput
+                  type="email"
+                  placeholder="name@nexus-erp.com"
                   className="w-full pl-12 h-12 bg-white/[0.03]"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -71,9 +72,9 @@ export default function LoginPage() {
               <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-4">SECURITY ACCESS CODE</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
-                <PillInput 
-                  type="password" 
-                  placeholder="••••••••" 
+                <PillInput
+                  type="password"
+                  placeholder="••••••••"
                   className="w-full pl-12 h-12 bg-white/[0.03]"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -87,8 +88,8 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <PillButton 
-              type="submit" 
+            <PillButton
+              type="submit"
               disabled={loading}
               className="w-full h-12 text-lg gap-3 shadow-nexus-glow mt-4"
             >

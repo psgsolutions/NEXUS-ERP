@@ -10,21 +10,15 @@ import {
   MoreHorizontal,
   LayoutGrid,
   List,
-  Cpu
+  Cpu,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/components/ui/Base";
 import { AddProductSheet } from "@/components/inventory/AddProductSheet";
-
-// Mock Data for UI ready state
-const MOCK_INVENTORY = [
-  { id: "SKU-24-001", name: "Cisco Catalyst 9200L", category: "Network Switch", qty: 15, unit: "Unit", status: "In Stock", cost: 125000 },
-  { id: "SKU-24-002", name: "Ubiquiti UniFi 6 Pro", category: "Access Point", qty: 42, unit: "Unit", status: "In Stock", cost: 5800 },
-  { id: "SKU-24-003", name: "MikroTik CCR2004", category: "Router", qty: 5, unit: "Unit", status: "Low Stock", cost: 18500 },
-  { id: "SKU-24-004", name: "Fiber Optic Patch Cord", category: "Cabling", qty: 120, unit: "Pcs", status: "In Stock", cost: 150 },
-  { id: "SKU-24-005", name: "Dell PowerEdge R750", category: "Server", qty: 2, unit: "Unit", status: "Reserved", cost: 450000 },
-];
+import { useInventory } from "@/hooks/useInventory";
 
 export default function InventoryPage() {
+  const { products, loading } = useInventory();
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
 
@@ -114,48 +108,61 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {MOCK_INVENTORY.map((item, idx) => (
-                <tr 
-                  key={item.id} 
-                  style={{ animationDelay: `${idx * 50}ms` }}
-                  className="hover:bg-white/[0.03] transition-all group cursor-pointer animate-in fade-in slide-in-from-left-4 duration-500 fill-mode-both"
-                >
-                  <td className="p-4 font-mono text-sm text-nexus-blue tracking-tighter group-hover:drop-shadow-[0_0_8px_rgba(20,163,204,0.4)] transition-all">
-                    {item.id}
-                  </td>
-                  <td className="p-4">
-                    <div className="font-medium text-white group-hover:text-nexus-blue transition-colors">{item.name}</div>
-                  </td>
-                  <td className="p-4">
-                    <span className="px-2 py-1 rounded-md bg-white/5 text-[10px] text-white/50 border border-white/10 uppercase">
-                      {item.category}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right font-bold mono-numbers text-white">{item.qty}</td>
-                  <td className="p-4 text-white/40 text-sm">{item.unit}</td>
-                  <td className="p-4">
-                    <div className={cn(
-                      "flex items-center gap-1.5 text-[10px] font-bold uppercase",
-                      item.status === 'In Stock' ? "text-nexus-teal" : 
-                      item.status === 'Low Stock' ? "text-warning" : "text-white/30"
-                    )}>
-                      <div className={cn("w-1.5 h-1.5 rounded-full", 
-                        item.status === 'In Stock' ? "bg-nexus-teal shadow-[0_0_8px_rgba(16,187,168,0.5)]" : 
-                        item.status === 'Low Stock' ? "bg-warning" : "bg-white/30"
-                      )} />
-                      {item.status}
-                    </div>
-                  </td>
-                  <td className="p-4 text-right mono-numbers text-white/70">
-                    {item.cost.toLocaleString()}
-                  </td>
-                  <td className="p-4">
-                    <button className="text-white/20 hover:text-white transition-colors">
-                      <MoreHorizontal size={16} />
-                    </button>
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="p-20 text-center text-white/20">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+                    กำลังดึงข้อมูลพัสดุ...
                   </td>
                 </tr>
-              ))}
+              ) : products.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-20 text-center text-white/20">
+                    ไม่พบรายการพัสดุในระบบ
+                  </td>
+                </tr>
+              ) : (
+                products.map((item, idx) => (
+                  <tr 
+                    key={item.id} 
+                    style={{ animationDelay: `${idx * 50}ms` }}
+                    className="hover:bg-white/[0.03] transition-all group cursor-pointer animate-in fade-in slide-in-from-left-4 duration-500 fill-mode-both"
+                  >
+                    <td className="p-4 font-mono text-sm text-nexus-blue tracking-tighter group-hover:drop-shadow-[0_0_8px_rgba(20,163,204,0.4)] transition-all">
+                      {item.sku}
+                    </td>
+                    <td className="p-4">
+                      <div className="font-medium text-white group-hover:text-nexus-blue transition-colors">{item.name}</div>
+                    </td>
+                    <td className="p-4">
+                      <span className="px-2 py-1 rounded-md bg-white/5 text-[10px] text-white/50 border border-white/10 uppercase">
+                        {item.category_id}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right font-bold mono-numbers text-white">{item.currentQty}</td>
+                    <td className="p-4 text-white/40 text-sm">{item.unit}</td>
+                    <td className="p-4">
+                      <div className={cn(
+                        "flex items-center gap-1.5 text-[10px] font-bold uppercase",
+                        item.currentQty > 0 ? "text-nexus-teal" : "text-danger"
+                      )}>
+                        <div className={cn("w-1.5 h-1.5 rounded-full", 
+                          item.currentQty > 0 ? "bg-nexus-teal shadow-[0_0_8px_rgba(16,187,168,0.5)]" : "bg-danger shadow-[0_0_8px_rgba(239,68,68,0.5)]"
+                        )} />
+                        {item.currentQty > 0 ? 'In Stock' : 'Out of Stock'}
+                      </div>
+                    </td>
+                    <td className="p-4 text-right mono-numbers text-white/70">
+                      {item.pricing?.avg_cost?.toLocaleString() ?? 0}
+                    </td>
+                    <td className="p-4">
+                      <button className="text-white/20 hover:text-white transition-colors">
+                        <MoreHorizontal size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </GlassCard>

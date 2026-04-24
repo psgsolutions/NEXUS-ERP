@@ -36,7 +36,7 @@ export default function RootLayout({
           {/* Background Ambient Glows */}
           <div className="fixed top-0 left-1/4 w-[500px] h-[500px] bg-nexus-blue/5 blur-[120px] rounded-full -z-10" />
           <div className="fixed bottom-0 right-1/4 w-[600px] h-[600px] bg-nexus-teal/5 blur-[120px] rounded-full -z-10" />
-          
+
           <main className="relative min-h-screen flex flex-col">
             {children}
           </main>

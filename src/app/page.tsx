@@ -24,7 +24,8 @@ export default function LoginPage() {
       router.push("/"); // Redirect to Dashboard on success
     } catch (err: any) {
       console.error("Login Error:", err.code);
-      setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง");
+      // Detailed error message for debugging on production
+      setError(`Login Failed: ${err.code || "Unknown Error"}`);
     } finally {
       setLoading(false);
     }

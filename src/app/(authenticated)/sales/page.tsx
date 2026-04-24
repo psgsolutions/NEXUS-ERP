@@ -1,192 +1,119 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { PillButton, PillInput, GlassCard } from "@/components/ui/Base";
+import React from "react";
 import { 
-  ShoppingCart, 
-  Search, 
-  Plus, 
-  Minus, 
-  Trash2, 
-  CreditCard, 
-  User, 
-  ArrowRight,
-  Package
+  Receipt, 
+  TrendingUp, 
+  Users, 
+  CreditCard,
+  Plus,
+  Search,
+  Filter,
+  ArrowUpRight,
+  Monitor
 } from "lucide-react";
-import { cn } from "@/components/ui/Base";
+import { GlassCard, PillButton, PillInput, cn } from "@/components/ui/Base";
 
-// Mock Items for POS Demo
-const MOCK_ITEMS = [
-  { id: "p1", sku: "SKU-24-001", name: "Cisco Catalyst 9200L", price: 125000, stock: 15 },
-  { id: "p2", sku: "SKU-24-002", name: "Ubiquiti UniFi 6 Pro", price: 5800, stock: 42 },
-  { id: "p3", sku: "SKU-24-003", name: "MikroTik CCR2004", price: 18500, stock: 5 },
-  { id: "p4", sku: "SKU-24-004", name: "Fiber Optic Patch Cord", price: 150, stock: 120 },
-];
-
-interface CartItem {
-  id: string;
-  sku: string;
-  name: string;
-  price: number;
-  qty: number;
-}
-
-export default function POSPage() {
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [search, setSearch] = useState("");
-
-  const addToCart = (product: any) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
-      if (existing) {
-        return prev.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item);
-      }
-      return [...prev, { ...product, qty: 1 }];
-    });
-  };
-
-  const updateQty = (id: string, delta: number) => {
-    setCart(prev => prev.map(item => {
-      if (item.id === id) {
-        const newQty = Math.max(1, item.qty + delta);
-        return { ...item, qty: newQty };
-      }
-      return item;
-    }));
-  };
-
-  const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(item => item.id !== id));
-  };
-
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  const vat = subtotal * 0.07;
-  const total = subtotal + vat;
-
+export default function SalesPage() {
   return (
-    <div className="flex h-full overflow-hidden bg-transparent">
-      {/* Product Selection Area */}
-      <div className="flex-1 flex flex-col p-6 overflow-hidden">
-        <header className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
-              <ShoppingCart className="text-nexus-blue" />
-              NEXUS POS Terminal
-            </h1>
-            <p className="text-xs text-white/40 uppercase tracking-widest font-bold">Commerce Hub v2.9</p>
-          </div>
-          <div className="relative w-72">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-            <PillInput 
-              placeholder="ค้นหาพัสดุ / SKU..." 
-              className="w-full pl-11"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-        </header>
-
-        <div className="flex-1 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-6">
-          {MOCK_ITEMS.filter(item => item.name.toLowerCase().includes(search.toLowerCase()) || item.sku.includes(search)).map((item) => (
-            <GlassCard 
-              key={item.id} 
-              className="p-4 flex flex-col justify-between hover:border-nexus-blue/50 cursor-pointer transition-all active:scale-95 group"
-              onClick={() => addToCart(item)}
-            >
-              <div>
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-[10px] font-mono text-nexus-blue bg-nexus-blue/10 px-2 py-0.5 rounded-full border border-nexus-blue/20">
-                    {item.sku}
-                  </span>
-                  <span className="text-[10px] text-white/30 uppercase font-bold">Stock: {item.stock}</span>
-                </div>
-                <h3 className="text-white font-medium group-hover:text-nexus-blue transition-colors leading-tight mb-4">{item.name}</h3>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-bold mono-numbers text-white">{item.price.toLocaleString()}</span>
-                <div className="w-8 h-8 rounded-full bg-nexus-blue/10 flex items-center justify-center text-nexus-blue group-hover:bg-nexus-blue group-hover:text-black transition-all">
-                  <Plus size={18} />
-                </div>
-              </div>
-            </GlassCard>
-          ))}
+    <div className="p-8 space-y-8 animate-in fade-in duration-700">
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-white mb-2">งานขายและลูกค้า (Sales Hub)</h1>
+          <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">Commerce Control Center</p>
+        </div>
+        <div className="flex gap-4">
+          <PillButton variant="glass" className="gap-2">
+            <Monitor size={18} />
+            เปิดเครื่อง POS
+          </PillButton>
+          <PillButton className="gap-2">
+            <Plus size={18} />
+            สร้างใบเสนอราคา
+          </PillButton>
         </div>
       </div>
 
-      {/* Cart / Checkout Sidebar */}
-      <aside className="w-96 border-l border-white/5 bg-black/40 backdrop-blur-xl flex flex-col">
-        <header className="p-6 border-b border-white/5 bg-white/5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-white uppercase tracking-widest text-sm">รายการสั่งซื้อ</h2>
-            <PillButton variant="ghost" className="h-7 px-3 text-[10px]" onClick={() => setCart([])}>ล้างตะกร้า</PillButton>
-          </div>
-          <div className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-white/10">
-            <User className="text-white/30" size={18} />
-            <div className="flex-1">
-              <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">ลูกค้า</p>
-              <p className="text-sm text-white">เงินสดหน้าร้าน (Walk-in)</p>
-            </div>
-            <ArrowRight className="text-white/20" size={16} />
-          </div>
-        </header>
+      {/* Metrics Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <SalesMetric icon={<TrendingUp size={20} />} label="ยอดขายวันนี้" value="฿45,200.00" growth="+12%" />
+        <SalesMetric icon={<Receipt size={20} />} label="จำนวนบิล" value="24" growth="+5%" />
+        <SalesMetric icon={<Users size={20} />} label="ลูกค้าใหม่" value="3" growth="0%" />
+      </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {cart.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-white/10 space-y-4">
-              <ShoppingCart size={48} strokeWidth={1} />
-              <p className="text-sm">ไม่มีรายการในตะกร้า</p>
-            </div>
-          ) : (
-            cart.map((item) => (
-              <div key={item.id} className="p-3 bg-white/5 rounded-2xl border border-white/5 flex gap-3">
-                <div className="flex-1">
-                  <p className="text-xs text-white font-medium line-clamp-1">{item.name}</p>
-                  <p className="text-[10px] mono-numbers text-white/40 mt-1">{item.price.toLocaleString()} x {item.qty}</p>
-                </div>
-                <div className="flex flex-col items-end justify-between">
-                  <button onClick={() => removeFromCart(item.id)} className="text-white/20 hover:text-danger transition-colors">
-                    <Trash2 size={14} />
-                  </button>
-                  <div className="flex items-center gap-2 bg-black/40 rounded-full border border-white/10 p-0.5">
-                    <button onClick={() => updateQty(item.id, -1)} className="w-5 h-5 rounded-full hover:bg-white/10 flex items-center justify-center text-white/60"><Minus size={10} /></button>
-                    <span className="text-[10px] font-bold text-white w-4 text-center">{item.qty}</span>
-                    <button onClick={() => updateQty(item.id, 1)} className="w-5 h-5 rounded-full hover:bg-white/10 flex items-center justify-center text-white/60"><Plus size={10} /></button>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
+      {/* Search & Filter Bar */}
+      <div className="flex gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
+          <PillInput placeholder="ค้นหาเลขอ้างอิง, ชื่อลูกค้า, หรือเบอร์โทร..." className="w-full pl-12 h-12 bg-white/[0.03]" />
         </div>
+        <PillButton variant="glass" className="h-12 px-6 border-white/5">
+          <Filter size={18} className="mr-2 opacity-50" />
+          ตัวกรอง
+        </PillButton>
+      </div>
 
-        <footer className="p-6 bg-zinc-900/60 border-t border-white/10 space-y-4">
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs text-white/40 font-bold uppercase tracking-widest">
-              <span>รวมเงิน</span>
-              <span className="mono-numbers">{subtotal.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between text-xs text-white/40 font-bold uppercase tracking-widest">
-              <span>ภาษี (VAT 7%)</span>
-              <span className="mono-numbers">{vat.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between text-lg font-bold text-white pt-2 border-t border-white/5">
-              <span>ยอดสุทธิ</span>
-              <span className="text-nexus-blue mono-numbers">{total.toLocaleString()}</span>
-            </div>
-          </div>
-
-          <PillButton 
-            disabled={cart.length === 0}
-            className="w-full h-12 text-lg gap-3 shadow-nexus-glow bg-nexus-blue"
-          >
-            <CreditCard size={20} />
-            ชำระเงินและตัดสต็อก
-          </PillButton>
-          
-          <p className="text-[10px] text-center text-white/20 uppercase font-bold tracking-widest">
-            Automatic GL Posting Enabled
-          </p>
-        </footer>
-      </aside>
+      {/* Sales Table Section */}
+      <GlassCard className="p-0 overflow-hidden border-white/5">
+        <div className="p-6 border-b border-white/5 flex items-center justify-between">
+          <h3 className="text-xs font-black text-white/60 uppercase tracking-widest">ประวัติการขายล่าสุด</h3>
+          <button className="text-[10px] font-black text-nexus-teal uppercase tracking-widest hover:underline">ดูทั้งหมด</button>
+        </div>
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-white/[0.02]">
+              <th className="p-4 text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">เลขอ้างอิง</th>
+              <th className="p-4 text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">ชื่อลูกค้า</th>
+              <th className="p-4 text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">ช่องทาง</th>
+              <th className="p-4 text-[10px] font-black text-white/20 uppercase tracking-[0.2em] text-right">ยอดสุทธิ</th>
+              <th className="p-4 text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">สถานะ</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            <SalesRow id="SO-24-001" customer="บริษัท ทดสอบ จำกัด" channel="POS" amount="฿12,500.00" status="Paid" />
+            <SalesRow id="SO-24-002" customer="คุณสมศักดิ์ รักดี" channel="Online" amount="฿3,200.00" status="Pending" />
+            <SalesRow id="SO-24-003" customer="PSG Solutions" channel="Direct" amount="฿250,000.00" status="Quoted" />
+          </tbody>
+        </table>
+      </GlassCard>
     </div>
+  );
+}
+
+function SalesMetric({ icon, label, value, growth }: { icon: any, label: string, value: string, growth: string }) {
+  return (
+    <GlassCard className="p-6 border-white/5 hover:border-nexus-teal/30 transition-all group">
+      <div className="flex items-center justify-between mb-4">
+        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-nexus-teal border border-white/10 group-hover:bg-nexus-teal group-hover:text-black transition-all">
+          {icon}
+        </div>
+        <span className="text-[10px] font-black text-nexus-teal bg-nexus-teal/10 px-2 py-1 rounded-full">{growth}</span>
+      </div>
+      <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">{label}</p>
+      <h4 className="text-2xl font-black text-white tracking-tighter mono-numbers">{value}</h4>
+    </GlassCard>
+  );
+}
+
+function SalesRow({ id, customer, channel, amount, status }: { id: string, customer: string, channel: string, amount: string, status: string }) {
+  const statusColors: any = {
+    Paid: "text-nexus-teal bg-nexus-teal/10 border-nexus-teal/20",
+    Pending: "text-warning bg-warning/10 border-warning/20",
+    Quoted: "text-nexus-blue bg-nexus-blue/10 border-nexus-blue/20",
+  };
+
+  return (
+    <tr className="hover:bg-white/[0.02] transition-colors group cursor-pointer">
+      <td className="p-4 font-mono text-xs text-nexus-blue">{id}</td>
+      <td className="p-4 text-xs font-bold text-white/80">{customer}</td>
+      <td className="p-4 text-xs text-white/40">{channel}</td>
+      <td className="p-4 text-right font-black text-white mono-numbers">{amount}</td>
+      <td className="p-4">
+        <span className={cn("px-3 py-1 rounded-full text-[9px] font-black uppercase border", statusColors[status])}>
+          {status}
+        </span>
+      </td>
+    </tr>
   );
 }

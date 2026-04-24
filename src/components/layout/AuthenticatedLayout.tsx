@@ -51,12 +51,12 @@ export default function AuthenticatedLayout({
         <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
           {/* Logo Section */}
           <div className="flex items-center gap-3 mb-10">
-            <div className="w-11 h-11 bg-nexus-teal rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(16,187,168,0.3)] animate-pulse">
+            <div className="w-11 h-11 bg-nexus-teal rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(16,187,168,0.3)] animate-pulse-glow">
               <Cpu size={26} className="text-black" />
             </div>
             <div>
-              <h2 className="font-black text-sm tracking-tighter leading-none">STOCKPILOT</h2>
-              <p className="text-[10px] text-nexus-teal font-black uppercase tracking-[0.2em] mt-1">V2.9 CORE</p>
+              <h2 className="font-black text-sm tracking-tighter leading-none">NEXUS ERP</h2>
+              <p className="text-[10px] text-nexus-teal font-black uppercase tracking-[0.2em] mt-1">INTELLIGENCE OS</p>
             </div>
           </div>
 
@@ -65,7 +65,7 @@ export default function AuthenticatedLayout({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 group-hover:text-nexus-teal transition-colors" size={14} />
             <input 
               placeholder="COMMAND (CTRL+K)" 
-              className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-9 pr-4 text-[10px] font-bold tracking-widest focus:outline-none focus:border-nexus-teal/40 focus:bg-white/10 transition-all uppercase"
+              className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-9 pr-4 text-[10px] font-bold tracking-[0.3em] focus:outline-none focus:border-nexus-teal/40 focus:bg-white/10 transition-all uppercase"
             />
           </div>
 

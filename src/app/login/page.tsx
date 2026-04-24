@@ -46,7 +46,7 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md z-10 animate-in fade-in zoom-in duration-700">
         <div className="flex flex-col items-center mb-10">
-          <div className="w-16 h-16 bg-nexus-blue rounded-3xl flex items-center justify-center shadow-nexus-glow mb-6 rotate-12">
+          <div className="w-16 h-16 bg-nexus-blue rounded-3xl flex items-center justify-center shadow-nexus-glow mb-6 rotate-12 transition-transform hover:rotate-0 duration-500 animate-pulse-glow">
             <Cpu className="w-10 h-10 text-black" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">NEXUS <span className="text-nexus-blue">ERP</span></h1>

@@ -3,21 +3,21 @@
 @tailwind utilities;
 
 :root {
-  --background: #09090b; /* Zinc-950 Tactical Dark [Blueprint] */
+  --background: #020203;
   --foreground: #ffffff;
   --font-roboto: 'Roboto', sans-serif;
   --font-mono: 'JetBrains Mono', 'Roboto Mono', monospace;
 }
 
-/* [TYP-01] กฎตัวตรง (Non-italic Rule) 100% Global Coverage */
+/* [TYP-01] กฎตัวตรง (Strict Non-italic Rule) - บังคับทั่วทั้งระบบ */
 * {
   font-style: normal !important;
   font-family: var(--font-roboto);
 }
 
-/* [TYP-03] มิติตัวเลขแม่นยำ */
+/* [TYP-03] มิติตัวเลขแม่นยำ (Technical Numbers) */
 .mono-numbers {
-  font-family: var(--font-mono);
+  font-family: var(--font-mono) !important;
   letter-spacing: -0.02em;
 }
 
@@ -29,53 +29,48 @@ body {
     radial-gradient(circle at 100% 100%, rgba(16, 187, 168, 0.05) 0%, transparent 50%);
   background-attachment: fixed;
   min-height: 100vh;
-  /* [TYP-02] ระยะห่างตัวอักษรปกติ */
   @apply tracking-normal;
 }
 
-/* [UI-04] สุนทรียภาพแห่งนีออน (Neon-Glass) - Zinc-900 Version [Blueprint] */
+/* [UI-04] Premium Glassmorphism V2.9 */
 .glass-card {
-  background: rgba(24, 24, 27, 0.6); /* Zinc-900 with 60% opacity */
-  backdrop-filter: blur(12px); /* backdrop-blur-md */
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
-  box-shadow: 
-    0 8px 32px 0 rgba(0, 0, 0, 0.6),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.05);
-  transition: all 0.3s ease;
+  background: rgba(10, 10, 12, 0.6);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-card:hover {
-  background: rgba(24, 24, 27, 0.7);
-  border: 1px solid rgba(20, 163, 204, 0.3); /* Azure Blue Border */
+  background: rgba(10, 10, 12, 0.8);
+  border: 1px solid rgba(20, 163, 204, 0.2);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
 }
 
-/* [UI-02] Pill-shaped elements */
-.pill-action {
-  @apply h-9 px-6 rounded-full flex items-center justify-center transition-all duration-200;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+/* Custom Scrollbar for Tactical Feel */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
 }
 
-.pill-action:hover {
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(0, 242, 255, 0.5);
-  box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+  border-radius: 10px;
 }
 
-/* [UI-03] Textarea exception */
-textarea.nexus-input {
-  @apply rounded-[2rem] p-5;
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #14a3cc;
 }
 
-/* Sci-Fi Loading Shimmer */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+/* Global Animations */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 5px rgba(16, 187, 168, 0.5)); }
+  50% { opacity: 0.8; filter: drop-shadow(0 0 15px rgba(16, 187, 168, 0.8)); }
 }
 
-.shimmer {
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
+.animate-pulse-glow {
+  animation: pulse-glow 3s infinite;
 }

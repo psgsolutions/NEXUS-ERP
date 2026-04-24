@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #09090b; /* Zinc-950 Tactical Dark [Blueprint] */
+  --foreground: #ffffff;
+  --font-roboto: 'Roboto', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Roboto Mono', monospace;
+}
+
+/* [TYP-01] กฎตัวตรง (Non-italic Rule) 100% Global Coverage */
+* {
+  font-style: normal !important;
+  font-family: var(--font-roboto);
+}
+
+/* [TYP-03] มิติตัวเลขแม่นยำ */
+.mono-numbers {
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(20, 163, 204, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(16, 187, 168, 0.05) 0%, transparent 50%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  /* [TYP-02] ระยะห่างตัวอักษรปกติ */
+  @apply tracking-normal;
+}
+
+/* [UI-04] สุนทรียภาพแห่งนีออน (Neon-Glass) - Zinc-900 Version [Blueprint] */
+.glass-card {
+  background: rgba(24, 24, 27, 0.6); /* Zinc-900 with 60% opacity */
+  backdrop-filter: blur(12px); /* backdrop-blur-md */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  box-shadow: 
+    0 8px 32px 0 rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  background: rgba(24, 24, 27, 0.7);
+  border: 1px solid rgba(20, 163, 204, 0.3); /* Azure Blue Border */
+}
+
+/* [UI-02] Pill-shaped elements */
+.pill-action {
+  @apply h-9 px-6 rounded-full flex items-center justify-center transition-all duration-200;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pill-action:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(0, 242, 255, 0.5);
+  box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+}
+
+/* [UI-03] Textarea exception */
+textarea.nexus-input {
+  @apply rounded-[2rem] p-5;
+}
+
+/* Sci-Fi Loading Shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}

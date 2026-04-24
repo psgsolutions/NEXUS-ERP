@@ -17,7 +17,7 @@ export default function ProtectedLayout({
   useEffect(() => {
     // [SEC-01] Route Protection: Redirect to login if not authenticated
     if (!loading && !user) {
-      router.push("/");
+      router.push("/login");
     }
   }, [user, loading, router]);
 

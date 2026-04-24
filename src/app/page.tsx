@@ -26,7 +26,8 @@ export default function RootSwitch() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // State will update via AuthContext
+      // [FORCE] Hard reload to ensure AuthContext catches the new session immediately
+      window.location.reload();
     } catch (err: any) {
       console.error("Login Error:", err.code);
       setError(`Login Failed: ${err.code || "Unknown Error"}`);

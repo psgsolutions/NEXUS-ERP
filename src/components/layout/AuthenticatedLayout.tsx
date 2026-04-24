@@ -1,25 +1,26 @@
 "use client";
 
-import { cn } from "@/components/ui/Base";
-import { PillInput } from "@/components/ui/Base";
+import React from "react";
 import { 
   LayoutDashboard, 
-  Package, 
   ShoppingCart, 
-  Briefcase, 
+  Wrench, 
   Users, 
-  Wallet, 
-  BrainCircuit,
+  Package, 
+  FileText, 
+  BarChart3, 
+  Settings,
+  Database,
   Search,
   Bell,
-  Settings,
   Cpu,
   LogOut,
-  Beaker
+  Plus
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cn } from "@/components/ui/Base";
 
 export default function AuthenticatedLayout({
   children,
@@ -29,122 +30,117 @@ export default function AuthenticatedLayout({
   const pathname = usePathname();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#09090b]">
+    <div className="flex h-screen overflow-hidden bg-[#020203] text-white">
       <CommandPalette />
-      {/* Sidebar - Tactical & Precise [Blueprint] */}
-      <aside className="w-64 border-r border-white/5 bg-black/40 backdrop-blur-xl flex flex-col p-4 z-20">
-        <div className="flex items-center gap-3 px-2 mb-10 mt-2">
-          <div className="w-8 h-8 bg-nexus-blue rounded-full flex items-center justify-center shadow-nexus-glow">
-            <Cpu className="w-5 h-5 text-black" />
+      
+      {/* Sidebar - Tactical Dark V2.7 */}
+      <aside className="w-[260px] flex flex-col border-r border-white/5 bg-[#0a0a0c] z-30">
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 bg-nexus-teal rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(20,163,204,0.3)]">
+              <Cpu size={24} className="text-black" />
+            </div>
+            <div>
+              <h2 className="font-black text-sm tracking-tighter">STOCKPILOT V2.7</h2>
+              <p className="text-[10px] text-nexus-teal font-bold uppercase tracking-widest">• ADMIN</p>
+            </div>
           </div>
-          <span className="text-xl font-bold tracking-wider text-white">NEXUS <span className="text-nexus-blue">ERP</span></span>
+
+          <div className="relative mb-6">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" size={14} />
+            <input 
+              placeholder="ค้นหาฟังก์ชัน..." 
+              className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs focus:outline-none focus:border-nexus-teal/50 transition-all"
+            />
+          </div>
+
+          <nav className="space-y-6">
+            <div>
+              <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-4 ml-2">การปฏิบัติงาน (OPERATIONS)</p>
+              <div className="space-y-1">
+                <SideLink href="/" icon={<LayoutDashboard size={18} />} label="หน้าหลัก" active={pathname === "/"} />
+                <SideLink href="/sales" icon={<ShoppingCart size={18} />} label="งานขายและลูกค้า" />
+                <SideLink href="/projects" icon={<FileText size={18} />} label="บริหารโครงการ" />
+                <SideLink href="/hr" icon={<Users size={18} />} label="ทรัพยากรบุคคล" />
+                <SideLink href="/inventory" icon={<Package size={18} />} label="บริหารคลังสินค้า" />
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-4 ml-2">การบริหาร (MANAGEMENT)</p>
+              <div className="space-y-1">
+                <SideLink href="/finance" icon={<BarChart3 size={18} />} label="รายงานบัญชีและงบ" />
+                <SideLink href="/ai" icon={<Database size={18} />} label="วิเคราะห์และตั้งค่า" />
+                <SideLink href="/settings" icon={<Settings size={18} />} label="จัดการนิติบุคคล" />
+              </div>
+            </div>
+          </nav>
         </div>
 
-        <nav className="flex-1 space-y-1">
-          <NavItem 
-            href="/" 
-            icon={<LayoutDashboard size={18} />} 
-            label="ภาพรวมระบบ" 
-            active={pathname === "/"} 
-          />
-          <NavItem 
-            href="/inventory" 
-            icon={<Package size={18} />} 
-            label="คลังสินค้าและพัสดุ" 
-            active={pathname === "/inventory"} 
-          />
-          <NavItem href="/sales" icon={<ShoppingCart size={18} />} label="งานขาย (POS)" />
-          <NavItem href="/projects" icon={<Briefcase size={18} />} label="บริหารโครงการ" />
-          <NavItem href="/finance" icon={<Wallet size={18} />} label="การเงินและบัญชี" />
-          <NavItem href="/hr" icon={<Users size={18} />} label="ทรัพยากรบุคคล" />
-          <NavItem 
-            href="/simulation" 
-            icon={<Beaker size={18} />} 
-            label="Simulation Lab" 
-            active={pathname === "/simulation"} 
-            className="mt-4 border border-white/5 bg-white/5"
-          />
-        </nav>
-
-        <div className="mt-auto pt-4 border-t border-white/5 space-y-1">
-          <NavItem 
-            href="/ai" 
-            icon={<BrainCircuit size={18} />} 
-            label="NEXUS Brain (AI)" 
-            className="text-nexus-teal border border-nexus-teal/20 bg-nexus-teal/5" 
-          />
-          <NavItem href="/settings" icon={<Settings size={18} />} label="ตั้งค่าระบบ" />
-          <button className="w-full h-9 px-3 rounded-full flex items-center gap-3 text-danger/60 hover:text-danger hover:bg-danger/10 transition-all text-sm mt-4">
-            <LogOut size={18} />
+        <div className="mt-auto p-6 border-t border-white/5">
+          <button className="flex items-center gap-3 text-white/40 hover:text-danger transition-colors text-xs font-bold uppercase tracking-widest">
+            <LogOut size={16} />
             ออกจากระบบ
           </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header Actions - Standard for all pages */}
-        <header className="h-16 flex items-center justify-between px-8 border-b border-white/5 bg-black/20 z-10">
-          <div className="relative w-96">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-            <PillInput placeholder="ค้นหาด่วน (Ctrl+K)..." className="w-full pl-11" />
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Top Header - Unified Build */}
+        <header className="h-16 border-b border-white/5 bg-[#0a0a0c]/80 backdrop-blur-xl flex items-center justify-between px-8 z-20">
+          <div className="flex items-center gap-4">
+            <div className="p-2 bg-white/5 rounded-lg border border-white/10 text-white/40">
+              <LayoutDashboard size={18} />
+            </div>
+            <h1 className="text-sm font-bold text-white/60">หน้าหลัก</h1>
           </div>
 
-          <div className="flex items-center gap-4">
-            <button className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition-colors border border-white/10">
-              <Bell size={18} />
-            </button>
-            <div className="flex items-center gap-3 pl-4 border-l border-white/10">
-              <div className="text-right">
-                <p className="text-sm font-medium text-white">ADMIN USER</p>
-                <p className="text-xs text-white/40">NEXUS ENTERPRISE</p>
-              </div>
-              <div className="w-9 h-9 rounded-full bg-nexus-blue p-[1px]">
-                <div className="w-full h-full rounded-full bg-[#09090b] flex items-center justify-center overflow-hidden text-nexus-blue font-bold text-xs">
-                  NX
-                </div>
-              </div>
+          <div className="flex items-center gap-6">
+            <div className="text-right">
+              <p className="text-xs font-bold text-white">admin@admin.com</p>
+              <p className="text-[10px] text-nexus-teal font-black uppercase tracking-widest">ADMIN</p>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 overflow-hidden">
+              <div className="w-full h-full bg-gradient-to-br from-nexus-blue to-nexus-teal opacity-50" />
             </div>
           </div>
         </header>
 
-        {/* Dynamic Content */}
-        <main className="flex-1 overflow-hidden relative">
+        <main className="flex-1 overflow-y-auto bg-[#020203] relative">
           {children}
         </main>
+
+        {/* Floating Command Button */}
+        <button className="absolute bottom-8 right-8 w-14 h-14 bg-nexus-teal rounded-2xl flex items-center justify-center text-black shadow-[0_0_20px_rgba(20,163,204,0.4)] hover:scale-110 transition-all z-50">
+          <Cpu size={28} />
+        </button>
       </div>
     </div>
   );
 }
 
-function NavItem({ 
-  href, 
-  icon, 
-  label, 
-  active = false, 
-  className 
-}: { 
-  href: string;
-  icon: React.ReactNode; 
-  label: string; 
-  active?: boolean;
-  className?: string;
-}) {
+function SideLink({ href, icon, label, active }: { href: string; icon: any; label: string; active?: boolean }) {
   return (
-    <Link
+    <Link 
       href={href}
       className={cn(
-        "w-full h-9 px-3 rounded-full flex items-center gap-3 transition-all duration-200 group text-sm tracking-normal",
+        "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group",
         active 
-          ? "bg-nexus-blue text-black font-bold shadow-nexus-glow" 
-          : "text-white/60 hover:text-white hover:bg-white/5",
-        className
+          ? "bg-white/5 text-white border border-white/10" 
+          : "text-white/40 hover:text-white hover:bg-white/5"
       )}
     >
-      <span className={active ? "text-black" : "text-white/40 group-hover:text-nexus-blue transition-colors"}>
+      <div className={cn(
+        "transition-colors",
+        active ? "text-nexus-teal" : "group-hover:text-nexus-teal"
+      )}>
         {icon}
-      </span>
-      {label}
+      </div>
+      <span className="text-xs font-medium">{label}</span>
+      {active && (
+        <div className="ml-auto w-1 h-4 bg-nexus-teal rounded-full shadow-[0_0_8px_rgba(20,163,204,1)]" />
+      )}
     </Link>
   );
 }

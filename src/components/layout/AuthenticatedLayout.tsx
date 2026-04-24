@@ -22,12 +22,25 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/components/ui/Base";
 
+import { useAuth } from "@/context/AuthContext";
+import { auth as firebaseAuth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+
 export default function AuthenticatedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { user } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await signOut(firebaseAuth);
+    } catch (error) {
+      console.error("Logout Error:", error);
+    }
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#020203] text-white">
@@ -35,7 +48,7 @@ export default function AuthenticatedLayout({
       
       {/* Sidebar - Tactical Dark V2.7 */}
       <aside className="w-[260px] flex flex-col border-r border-white/5 bg-[#0a0a0c] z-30">
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 bg-nexus-teal rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(20,163,204,0.3)]">
               <Cpu size={24} className="text-black" />
@@ -77,8 +90,11 @@ export default function AuthenticatedLayout({
           </nav>
         </div>
 
-        <div className="mt-auto p-6 border-t border-white/5">
-          <button className="flex items-center gap-3 text-white/40 hover:text-danger transition-colors text-xs font-bold uppercase tracking-widest">
+        <div className="p-6 border-t border-white/5">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-3 text-white/40 hover:text-danger transition-colors text-xs font-bold uppercase tracking-widest w-full"
+          >
             <LogOut size={16} />
             ออกจากระบบ
           </button>
@@ -98,11 +114,14 @@ export default function AuthenticatedLayout({
 
           <div className="flex items-center gap-6">
             <div className="text-right">
-              <p className="text-xs font-bold text-white">admin@admin.com</p>
-              <p className="text-[10px] text-nexus-teal font-black uppercase tracking-widest">ADMIN</p>
+              <p className="text-xs font-bold text-white">{user?.email || "กำลังโหลด..."}</p>
+              <p className="text-[10px] text-nexus-teal font-black uppercase tracking-widest">
+                {user ? "ADMIN" : "PENDING"}
+              </p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 overflow-hidden">
-              <div className="w-full h-full bg-gradient-to-br from-nexus-blue to-nexus-teal opacity-50" />
+            <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 overflow-hidden relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-nexus-blue to-nexus-teal opacity-50" />
+              {user?.photoURL && <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover relative z-10" />}
             </div>
           </div>
         </header>

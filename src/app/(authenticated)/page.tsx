@@ -8,9 +8,11 @@ import {
 
 export default function DashboardPage() {
   return (
-    <div className="flex-1 overflow-y-auto p-8 bg-[#09090b]/40 backdrop-blur-sm h-full">
-      {/* Dashboard Content - L1 Real-time Metrics [Blueprint] */}
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="flex-1 overflow-y-auto p-8 relative h-full">
+      {/* Tactical Background Grid */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto space-y-10 relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
         <header className="mb-8">
           <h1 className="text-2xl font-bold text-white">แผงควบคุมอัจฉริยะ</h1>
           <p className="text-white/40 text-sm">ข้อมูลสรุปการปฏิบัติงานแบบ Real-time</p>

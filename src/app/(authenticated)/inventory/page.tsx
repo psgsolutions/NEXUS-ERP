@@ -96,25 +96,33 @@ export default function InventoryPage() {
       </section>
 
       {/* Content Area */}
-      <main className="flex-1 overflow-auto p-6">
-        <GlassCard className="p-0 overflow-hidden border-white/5">
+      <main className="flex-1 overflow-auto p-6 relative">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(20,163,204,0.05)_0%,transparent_50%)] pointer-events-none" />
+        
+        <GlassCard className="p-0 overflow-hidden border-white/5 relative z-10 animate-in fade-in zoom-in-95 duration-500">
           <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-zinc-900/90 backdrop-blur-md z-10 border-b border-white/10">
+            <thead className="sticky top-0 bg-zinc-900/90 backdrop-blur-md z-20 border-b border-white/10">
               <tr>
-                <th className="p-4 text-xs font-bold text-white/40 uppercase tracking-widest w-40">รหัส SKU</th>
-                <th className="p-4 text-xs font-bold text-white/40 uppercase tracking-widest">รายการพัสดุ</th>
-                <th className="p-4 text-xs font-bold text-white/40 uppercase tracking-widest">หมวดหมู่</th>
-                <th className="p-4 text-xs font-bold text-white/40 uppercase tracking-widest text-right">จำนวน</th>
-                <th className="p-4 text-xs font-bold text-white/40 uppercase tracking-widest">หน่วย</th>
-                <th className="p-4 text-xs font-bold text-white/40 uppercase tracking-widest">สถานะ</th>
-                <th className="p-4 text-xs font-bold text-white/40 uppercase tracking-widest text-right">ต้นทุนเฉลี่ย</th>
-                <th className="p-4 text-xs font-bold text-white/40 uppercase tracking-widest w-10"></th>
+                <th className="p-4 text-[10px] font-black text-white/30 uppercase tracking-[0.2em] w-40">SKU IDENTIFIER</th>
+                <th className="p-4 text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">RESOURCE NAME</th>
+                <th className="p-4 text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">CATEGORY</th>
+                <th className="p-4 text-[10px] font-black text-white/30 uppercase tracking-[0.2em] text-right">QUANTITY</th>
+                <th className="p-4 text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">UNIT</th>
+                <th className="p-4 text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">AVAILABILITY</th>
+                <th className="p-4 text-[10px] font-black text-white/30 uppercase tracking-[0.2em] text-right">AVG COST (WAC)</th>
+                <th className="p-4 text-[10px] font-black text-white/30 uppercase tracking-[0.2em] w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {MOCK_INVENTORY.map((item) => (
-                <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group cursor-pointer">
-                  <td className="p-4 font-mono text-sm text-nexus-blue tracking-tighter">{item.id}</td>
+              {MOCK_INVENTORY.map((item, idx) => (
+                <tr 
+                  key={item.id} 
+                  style={{ animationDelay: `${idx * 50}ms` }}
+                  className="hover:bg-white/[0.03] transition-all group cursor-pointer animate-in fade-in slide-in-from-left-4 duration-500 fill-mode-both"
+                >
+                  <td className="p-4 font-mono text-sm text-nexus-blue tracking-tighter group-hover:drop-shadow-[0_0_8px_rgba(20,163,204,0.4)] transition-all">
+                    {item.id}
+                  </td>
                   <td className="p-4">
                     <div className="font-medium text-white group-hover:text-nexus-blue transition-colors">{item.name}</div>
                   </td>

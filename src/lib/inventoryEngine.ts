@@ -22,15 +22,15 @@ export const reserveStock = async (
     if (!productDoc.exists()) throw new Error("Product not found.");
 
     const product = productDoc.data() as Product;
-    const available = product.stock_status.qty_available;
+    const available = product.stockStatus.available;
 
     if (available < requestQty) {
       throw new Error(`Insufficient stock. Available: ${available}`);
     }
 
     transaction.update(productRef, {
-      "stock_status.qty_reserved": increment(requestQty),
-      "stock_status.qty_available": increment(-requestQty),
+      "stockStatus.reserved": increment(requestQty),
+      "stockStatus.available": increment(-requestQty),
       updatedAt: Timestamp.now()
     });
   });
@@ -56,6 +56,7 @@ export const calculateWAC = (
  * Final deduction of stock when items are actually issued or sold.
  */
 export const issueStock = async (
+  companyId: string,
   productId: string, 
   qty: number,
   isFromReserved: boolean = true
@@ -63,10 +64,13 @@ export const issueStock = async (
   const productRef = doc(db, "products", productId);
 
   return await runTransaction(db, async (transaction) => {
+    const productDoc = await transaction.get(productRef);
+    if (!productDoc.exists()) throw new Error("Product not found.");
+    const product = productDoc.data() as Product;
+
     transaction.update(productRef, {
-      "stock_status.qty_on_hand": increment(-qty),
-      ...(isFromReserved ? { "stock_status.qty_reserved": increment(-qty) } : { "stock_status.qty_available": increment(-qty) }),
-      "currentQty": increment(-qty),
+      "stockStatus.onHand": increment(-qty),
+      ...(isFromReserved ? { "stockStatus.reserved": increment(-qty) } : { "stockStatus.available": increment(-qty) }),
       updatedAt: Timestamp.now()
     });
   });

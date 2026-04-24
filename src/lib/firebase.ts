@@ -1,11 +1,13 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getAuth, Auth } from "firebase/auth";
+import { getFirestore, Firestore } from "firebase/firestore";
 
 /**
- * [DEP-01] Vercel Serverless Safe Configuration
- * Singleton pattern to prevent re-initialization in Serverless environments.
+ * PSG-Firebase Bootloader V10.5 (Internal Assertion Guard Active)
+ * ⚙️ SOLID SINGLETON: ป้องกันการเกิด Assertion Failed (ID: ca9) 
+ * ⚙️ โดยการล็อคการ Initialize ไว้ในตัวแปร Global ที่ไม่สามารถเปลี่ยนแปลงได้
  */
+
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -15,10 +17,41 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// Initialize Firebase only once
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+let firebaseAppInstance: FirebaseApp | null = null;
+let firestoreInstance: Firestore | null = null;
+let authInstance: Auth | null = null;
 
-// Export instances
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+export function initializeFirebase() {
+  if (typeof window === 'undefined') return { app: null as any, auth: null as any, db: null as any };
+
+  // 🔥 CRITICAL: Prevent re-initialization which causes ca9 error
+  if (firebaseAppInstance && firestoreInstance && authInstance) {
+    return {
+      app: firebaseAppInstance,
+      auth: authInstance,
+      db: firestoreInstance
+    };
+  }
+
+  const apps = getApps();
+  firebaseAppInstance = apps.length > 0 ? getApp() : initializeApp(firebaseConfig);
+
+  if (!firestoreInstance) {
+    firestoreInstance = getFirestore(firebaseAppInstance);
+  }
+
+  if (!authInstance) {
+    authInstance = getAuth(firebaseAppInstance);
+  }
+
+  return {
+    app: firebaseAppInstance,
+    auth: authInstance,
+    db: firestoreInstance
+  };
+}
+
+// Legacy exports for backward compatibility
+const { app, auth, db } = initializeFirebase();
+export { app, auth, db };
 export default app;

@@ -27,13 +27,14 @@ export default function LoginPage() {
     setError("");
 
     try {
+
       await signInWithEmailAndPassword(auth, email, password);
       // [REDIRECT] Go to root Dashboard after success
       router.push("/"); 
       router.refresh();
     } catch (err: any) {
       console.error("Login Error:", err.code);
-      setError(`Login Failed: ${err.code || "Unknown Error"}`);
+      setError(`ไม่สามารถเข้าสู่ระบบได้: ${err.code === 'auth/invalid-credential' ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' : 'เกิดข้อผิดพลาดในการเชื่อมต่อ'}`);
     } finally {
       setLoading(false);
     }
@@ -46,7 +47,7 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md z-10 animate-in fade-in zoom-in duration-700">
         <div className="flex flex-col items-center mb-10">
-          <div className="w-16 h-16 bg-nexus-blue rounded-3xl flex items-center justify-center shadow-nexus-glow mb-6 rotate-12">
+          <div className="w-16 h-16 bg-nexus-blue rounded-3xl flex items-center justify-center shadow-nexus-glow mb-6 rotate-12 transition-transform hover:rotate-0 duration-500 animate-pulse-glow">
             <Cpu className="w-10 h-10 text-black" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white mb-2">NEXUS <span className="text-nexus-blue">ERP</span></h1>
@@ -62,7 +63,7 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-4">Identifier</label>
+              <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-4">ชื่อผู้ใช้งานหรืออีเมล</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
                 <PillInput 
@@ -77,7 +78,7 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-4">Security Code</label>
+              <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-4">รหัสผ่านนิรภัย</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
                 <PillInput 
@@ -91,7 +92,7 @@ export default function LoginPage() {
               </div>
               <div className="flex justify-end pr-4 pt-1">
                 <button type="button" className="text-[10px] font-bold text-nexus-blue uppercase tracking-widest hover:text-white transition-colors">
-                  Forgot Password?
+                  ลืมรหัสผ่าน?
                 </button>
               </div>
             </div>
@@ -103,7 +104,7 @@ export default function LoginPage() {
             >
               {loading ? <Loader2 className="animate-spin" /> : (
                 <>
-                  AUTHENTICATE ACCESS
+                  ยืนยันสิทธิ์เข้าถึงระบบ
                   <ArrowRight size={18} />
                 </>
               )}

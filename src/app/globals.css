@@ -3,79 +3,137 @@
 @tailwind utilities;
 
 :root {
-  --background: #09090b; /* Zinc-950 Tactical Dark [Blueprint] */
+  --background: #0D0D0D;
   --foreground: #ffffff;
-  --font-roboto: 'Roboto', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Roboto Mono', monospace;
+  --nexus-teal: #00FFD1;
+  --nexus-blue: #0090FF;
+  --danger: #FF3B30;
+  --warning: #FFCC00;
+  --glass-bg: rgba(10, 10, 12, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --card-radius: 0.5rem;
 }
 
-/* [TYP-01] กฎตัวตรง (Non-italic Rule) 100% Global Coverage */
+/* [STRICT-MASTER-01] บังคับระยะห่างเป็นปกติและตัวตรง 100% ทั่วทั้งระบบ */
 * {
   font-style: normal !important;
-  font-family: var(--font-roboto);
+  font-family: var(--font-sarabun), sans-serif !important;
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* [TYP-03] มิติตัวเลขแม่นยำ */
+/* [STRICT-MASTER-02] ตัวเลขปกติ ไม่มีการเว้นระยะ */
 .mono-numbers {
-  font-family: var(--font-mono);
-  letter-spacing: -0.02em;
+  font-family: var(--font-mono), monospace !important;
+  letter-spacing: normal !important;
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
-  background-image: 
-    radial-gradient(circle at 50% 0%, rgba(20, 163, 204, 0.05) 0%, transparent 50%),
-    radial-gradient(circle at 100% 100%, rgba(16, 187, 168, 0.05) 0%, transparent 50%);
-  background-attachment: fixed;
+  background: 
+    radial-gradient(circle at 50% 50%, rgba(0, 255, 209, 0.03) 0%, transparent 80%),
+    var(--background);
   min-height: 100vh;
-  /* [TYP-02] ระยะห่างตัวอักษรปกติ */
-  @apply tracking-normal;
+  /* [STRICT-MASTER-03] ขนาดตัวอักษรพื้นฐานมาตรฐาน Master */
+  @apply text-sm antialiased;
 }
 
-/* [UI-04] สุนทรียภาพแห่งนีออน (Neon-Glass) - Zinc-900 Version [Blueprint] */
+/* [STRICT-MASTER-OVERLAY] Scanline artifacts removed per user request */
+
+/* Grid Background - REMOVED per user request */
+.bg-nexus-grid {
+}
+
+/* [STRICT-MASTER-04] การ์ดมาตรฐาน Master V2.7 */
 .glass-card {
-  background: rgba(24, 24, 27, 0.6); /* Zinc-900 with 60% opacity */
-  backdrop-filter: blur(12px); /* backdrop-blur-md */
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--card-radius);
+  box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.9);
+}
+
+.sidebar-card {
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
-  box-shadow: 
-    0 8px 32px 0 rgba(0, 0, 0, 0.6),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.05);
+  border-radius: 0.5rem;
   transition: all 0.3s ease;
 }
 
-.glass-card:hover {
-  background: rgba(24, 24, 27, 0.7);
-  border: 1px solid rgba(20, 163, 204, 0.3); /* Azure Blue Border */
+.sidebar-card:hover {
+  background: rgba(255, 255, 255, 0.06);
 }
 
-/* [UI-02] Pill-shaped elements */
-.pill-action {
-  @apply h-9 px-6 rounded-full flex items-center justify-center transition-all duration-200;
+/* Neon & Glow Utilities */
+.shadow-neon-teal {
+  box-shadow: 0 0 20px rgba(16, 187, 168, 0.3), 0 0 40px rgba(16, 187, 168, 0.1);
+}
+
+.shadow-neon-blue {
+  box-shadow: 0 0 20px rgba(0, 119, 255, 0.3), 0 0 40px rgba(0, 119, 255, 0.1);
+}
+
+.drop-shadow-neon {
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+/* Tactical Labels */
+.tactical-label {
+  font-size: 13px !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: normal !important;
+}
+
+/* Animations Disabled [USER-REQUEST] - Keeping animations none to stop movement */
+.animate-neon, 
+.animate-shimmer, 
+.animate-fade-in-up, 
+.animate-draw, 
+.animate-pulse-glow,
+.animate-pulse,
+.animate-in,
+.animate-spin-slow,
+.animate-bounce,
+.animate-wave,
+.animate-float,
+.animate-pulse-slow {
+  animation: none !important;
+  stroke-dashoffset: 0 !important;
+}
+
+/* Override Tailwind Animate-in utilities - Stop entry movement but allow layout visibility */
+[class*="animate-in"], 
+[class*="fade-in"], 
+[class*="slide-in"], 
+[class*="zoom-in"] {
+  animation: none !important;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
 }
-
-.pill-action:hover {
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(0, 242, 255, 0.5);
-  box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
 }
 
-/* [UI-03] Textarea exception */
-textarea.nexus-input {
-  @apply rounded-[2rem] p-5;
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
-
-/* Sci-Fi Loading Shimmer */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-.shimmer {
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }

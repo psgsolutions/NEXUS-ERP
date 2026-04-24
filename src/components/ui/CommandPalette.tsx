@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Search, Package, ShoppingCart, Briefcase, Users, Wallet, BrainCircuit, X } from "lucide-react";
+import { Search, Package, ShoppingCart, Briefcase, Users, Wallet, BrainCircuit, X, PlusCircle, ScanBarcode, Sparkles } from "lucide-react";
 import { cn } from "@/components/ui/Base";
 import { useRouter } from "next/navigation";
 
@@ -32,17 +32,21 @@ export const CommandPalette = () => {
   if (!isOpen) return null;
 
   const results = [
-    { id: "nav-1", label: "ภาพรวมระบบ", icon: <LayoutDashboard size={16} />, path: "/" },
-    { id: "nav-2", label: "คลังสินค้าและพัสดุ", icon: <Package size={16} />, path: "/inventory" },
-    { id: "nav-3", label: "งานขาย (POS)", icon: <ShoppingCart size={16} />, path: "/sales" },
-    { id: "nav-4", label: "บริหารโครงการ", icon: <Briefcase size={16} />, path: "/projects" },
-    { id: "nav-5", label: "การเงินและบัญชี", icon: <Wallet size={16} />, path: "/finance" },
-    { id: "ai-1", label: "NEXUS Brain (AI วิเคราะห์)", icon: <BrainCircuit size={16} />, path: "/ai" },
+    { id: "nav-1", label: "ภาพรวมระบบ", icon: <LayoutDashboard size={16} />, path: "/", type: "NAV" },
+    { id: "nav-2", label: "คลังสินค้าและพัสดุ", icon: <Package size={16} />, path: "/inventory", type: "NAV" },
+    { id: "nav-3", label: "งานขาย (POS)", icon: <ShoppingCart size={16} />, path: "/sales", type: "NAV" },
+    { id: "nav-4", label: "บริหารโครงการ", icon: <Briefcase size={16} />, path: "/projects", type: "NAV" },
+    { id: "nav-5", label: "การเงินและบัญชี", icon: <Wallet size={16} />, path: "/finance", type: "NAV" },
+    { id: "ai-1", label: "NEXUS Brain (AI วิเคราะห์)", icon: <BrainCircuit size={16} />, path: "/ai", type: "NAV" },
+    // Actions
+    { id: "act-1", label: "สร้างใบเสนอราคาใหม่", icon: <PlusCircle size={16} />, action: () => router.push("/sales?new=true"), type: "ACT" },
+    { id: "act-2", label: "สแกน Serial Number", icon: <ScanBarcode size={16} />, action: () => router.push("/inventory?scan=true"), type: "ACT" },
+    { id: "act-3", label: "AI: ตรวจสอบความเสี่ยงโครงการ", icon: <Sparkles size={16} />, action: () => router.push("/projects?ai=risk"), type: "ACT" },
   ].filter(item => item.label.includes(search));
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] px-4">
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
+    <div className="fixed inset-0 z-[2000] flex items-start justify-center pt-[12vh] px-4">
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-md" onClick={() => setIsOpen(false)} />
       
       <div className="w-full max-w-2xl glass-card bg-zinc-900/90 border-white/10 overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
         <div className="p-4 border-b border-white/5 flex items-center gap-3">
@@ -50,11 +54,11 @@ export const CommandPalette = () => {
           <input 
             autoFocus
             placeholder="พิมพ์เพื่อค้นหาหรือสั่งการ..." 
-            className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-white/20 text-lg"
+            className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-white/20 text-xl font-bold"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <div className="px-2 py-1 bg-white/5 rounded border border-white/10 text-[10px] text-white/40 font-mono">ESC</div>
+          <div className="px-2 py-1 bg-white/5 rounded border border-white/10 text-[11px] text-white/40 font-mono">ESC</div>
         </div>
 
         <div className="p-2 max-h-[400px] overflow-y-auto">
@@ -64,14 +68,23 @@ export const CommandPalette = () => {
                 <button
                   key={item.id}
                   onClick={() => {
-                    router.push(item.path);
+                    if (item.action) {
+                      item.action();
+                    } else if (item.path) {
+                      router.push(item.path);
+                    }
                     setIsOpen(false);
                   }}
                   className="w-full p-3 rounded-xl flex items-center gap-3 text-white/60 hover:text-white hover:bg-nexus-blue/10 hover:border-nexus-blue/20 border border-transparent transition-all group"
                 >
                   <span className="text-white/20 group-hover:text-nexus-blue">{item.icon}</span>
-                  <span className="text-sm font-medium">{item.label}</span>
-                  <span className="ml-auto text-[10px] text-white/20 uppercase tracking-widest font-bold">นำทางไป</span>
+                  <div className="flex flex-col items-start">
+                    <span className="text-[13px] font-bold">{item.label}</span>
+                    <span className="text-[11px] text-white/20 uppercase font-bold tracking-widest">{item.type === "NAV" ? "Navigation" : "Action"}</span>
+                  </div>
+                  <span className="ml-auto text-[11px] text-white/20 uppercase tracking-[0.2em] font-bold">
+                    {item.type === "NAV" ? "GO TO" : "RUN"}
+                  </span>
                 </button>
               ))}
             </div>
@@ -82,12 +95,12 @@ export const CommandPalette = () => {
           )}
         </div>
 
-        <div className="p-3 bg-black/40 border-t border-white/5 flex items-center justify-between">
-          <div className="flex gap-4">
+        <div className="p-4 bg-black/40 border-t border-white/5 flex items-center justify-between">
+          <div className="flex gap-6">
             <Hint label="Enter" action="เพื่อเลือก" />
             <Hint label="↑↓" action="เพื่อย้าย" />
           </div>
-          <span className="text-[10px] text-white/20 font-bold uppercase tracking-widest">NEXUS Quick Access</span>
+          <span className="text-[11px] text-white/20 font-bold uppercase tracking-[0.2em]">NEXUS Intelligence Command</span>
         </div>
       </div>
     </div>
@@ -95,8 +108,8 @@ export const CommandPalette = () => {
 };
 
 const Hint = ({ label, action }: { label: string, action: string }) => (
-  <div className="flex items-center gap-1.5 text-[10px] text-white/40">
-    <span className="px-1.5 py-0.5 bg-white/5 rounded border border-white/10 font-mono text-white/60">{label}</span>
+  <div className="flex items-center gap-2 text-[11px] text-white/40 font-bold">
+    <span className="px-2 py-0.5 bg-white/5 rounded border border-white/10 font-mono text-white/60">{label}</span>
     <span>{action}</span>
   </div>
 );

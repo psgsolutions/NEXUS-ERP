@@ -25,12 +25,16 @@ export default function ProtectedLayout({
     return (
       <div className="h-screen w-full bg-[#09090b] flex flex-col items-center justify-center gap-4 text-nexus-blue">
         <Loader2 className="w-12 h-12 animate-spin" />
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Initializing Security Protocol...</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">กำลังตรวจสอบสิทธิ์การเข้าถึง...</p>
       </div>
     );
   }
 
   if (!user) return null;
 
-  return <AuthenticatedLayout>{children}</AuthenticatedLayout>;
+  return (
+    <AuthenticatedLayout>
+      {children}
+    </AuthenticatedLayout>
+  );
 }

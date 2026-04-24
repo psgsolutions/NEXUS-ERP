@@ -1,146 +1,766 @@
 "use client";
 
-import React, { useState } from "react";
-import { Sheet } from "@/components/ui/Sheet";
-import { PillButton, PillInput } from "@/components/ui/Base";
-import { Package, Hash, Tag, DollarSign, Layers } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { 
+  Package, 
+  ShieldCheck, 
+  Truck,
+  Plus, 
+  Trash2, 
+  ChevronDown, 
+  MapPin,
+  Sparkles,
+  RefreshCw,
+  FileText,
+  Search
+} from "lucide-react";
+import { 
+  PillButton, 
+  PillInput, 
+  PillSelect, 
+  Modal, 
+  PillTabs,
+  NexusDataField,
+  cn
+} from "@/components/ui/Base";
+import { useInventory } from "@/hooks/useInventory";
+import { useAuth } from "@/context/AuthContext";
+import { db } from "@/lib/firebase";
+import { doc, setDoc, collection } from "firebase/firestore";
+import { Warehouse3D, mockWarehouses } from "./Warehouse3D";
 
-export const AddProductSheet = ({ 
-  isOpen, 
-  onClose 
-}: { 
-  isOpen: boolean; 
+interface AddProductSheetProps {
+  isOpen: boolean;
   onClose: () => void;
-}) => {
+}
+
+export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
+  const { products } = useInventory();
+  const { user, companyId } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+  const [sourceMode, setSourceMode] = useState("manual");
+  const [poItems, setPoItems] = useState<any[]>([]);
+
   const [formData, setFormData] = useState({
-    name: "",
-    category: "",
+    supplierId: "SUPP-001",
+    poRef: "",
+    warehouseId: "WH-01",
     sku: "",
-    initialQty: 0,
-    unit: "Unit",
-    avgCost: 0,
-    pricePos: 0
+    name: "",
+    barcode: "",
+    category: "general",
+    rackLocation: "",
+    qty: 1,
+    cost: 0,
+    price: 0,
+    packageUnit: "ชิ้น (EA)",
+    baseUnit: "ชิ้น (EA)",
+    conversionRate: 1,
+    sns: "",
+    imageUrl: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const mockSuppliers = [
+    { id: "SUPP-001", name: "Cisco Thailand (IT)" },
+    { id: "SUPP-002", name: "Dell Technologies (IT)" },
+    { id: "SUPP-003", name: "Synnex (Thailand) PCL. (IT)" },
+    { id: "SUPP-004", name: "Schneider Electric (Electrical)" },
+    { id: "SUPP-005", name: "Panasonic (Thailand) (Electrical)" },
+    { id: "SUPP-006", name: "Phelps Dodge (Cables)" },
+  ];
+
+  const [categoriesList, setCategoriesList] = useState([
+    { id: "general", label: "ทั่วไป (General)", isSystem: true },
+    { id: "network-server", label: "ระบบเครือข่ายและเซิร์ฟเวอร์ (Network & Server)", isSystem: true },
+    { id: "computer", label: "คอมพิวเตอร์และอุปกรณ์ (Computer & Peripherals)", isSystem: true },
+    { id: "wires-cables", label: "สายไฟและสายสัญญาณ (Wires & Cables)", isSystem: true },
+    { id: "switches", label: "สวิตช์และเต้ารับ (Switches & Receptacles)", isSystem: true },
+    { id: "breakers", label: "เบรกเกอร์และตู้ไฟ (Breakers & Load Centers)", isSystem: true },
+    { id: "lighting", label: "หลอดไฟและโคมไฟ (Lighting & Fixtures)", isSystem: true },
+    { id: "conduits", label: "ท่อร้อยสายไฟและข้อต่อ (Conduits & Fittings)", isSystem: true },
+    { id: "cctv", label: "กล้องวงจรปิดและกันขโมย (CCTV & Security)", isSystem: true },
+    { id: "audio", label: "เครื่องเสียงและระบบประกาศ (PA & Audio)", isSystem: true },
+    { id: "ups", label: "เครื่องสำรองไฟ (UPS & Stabilizers)", isSystem: true },
+    { id: "tools", label: "เครื่องมือช่างและฮาร์ดแวร์ (Tools & Hardware)", isSystem: true },
+    { id: "software", label: "ซอฟต์แวร์ (Software & Licenses)", isSystem: true },
+    { id: "service", label: "บริการและซ่อมบำรุง (Services & Maintenance)", isSystem: true },
+    { id: "kit", label: "ชุดงานติดตั้ง (Kit)", isSystem: true },
+  ]);
+
+  const uomOptions = [
+    "ชิ้น (EA)",
+    "เครื่อง (Unit)",
+    "กล่อง (Box)",
+    "ลัง (Carton)",
+    "แพ็ค (Pack)",
+    "ม้วน (Roll)",
+    "ขด (Coil)",
+    "เมตร (Meter)",
+    "เส้น (Piece/Cable)",
+    "หลอด (Tube)",
+    "โคม (Fixture)",
+    "ใบ (License)",
+    "ชุด (Set)",
+    "งาน (Job)",
+    "ชั่วโมง (Hour)",
+    "วัน (Day)",
+  ];
+
+  const [catSearch, setCatSearch] = useState("ทั่วไป (General)");
+  const [isCatFocused, setIsCatFocused] = useState(false);
+  const [isPriceManuallyEdited, setIsPriceManuallyEdited] = useState(false);
+  const [show3DPicker, setShow3DPicker] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setFormData({ ...formData, imageUrl: url });
+    }
+  };
+
+  const filteredCats = categoriesList.filter(c => c.label.toLowerCase().includes(catSearch.toLowerCase()));
+
+  const handleSelectCat = (id: string, label: string) => {
+    const updatedForm = { ...formData, category: id };
+    if (id === "kit") {
+      updatedForm.packageUnit = "ชุด (Set)";
+      updatedForm.baseUnit = "ชุด (Set)";
+      if (!updatedForm.sku.startsWith("PKG-LAB-")) {
+        updatedForm.sku = `PKG-LAB-${Math.floor(1000 + Math.random() * 9000)}`;
+      }
+    }
+    setFormData(updatedForm);
+    setCatSearch(label);
+    setIsCatFocused(false);
+  };
+
+  const handleCreateCat = () => {
+    if (!catSearch.trim()) return;
+    const newId = catSearch.toLowerCase().replace(/\s+/g, '-');
+    setCategoriesList([...categoriesList, { id: newId, label: catSearch, isSystem: false }]);
+    setFormData({...formData, category: newId});
+    setIsCatFocused(false);
+  };
+
+  const handleDeleteCategory = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     e.preventDefault();
-    // TODO: Integrate with idService and Firebase
-    console.log("Saving product:", formData);
-    onClose();
+    setCategoriesList(categoriesList.filter(c => c.id !== id));
+    if (formData.category === id) setFormData({...formData, category: "general"});
+  };
+
+  const handleCostChange = (val: number) => {
+    setFormData(prev => {
+      const newData = { ...prev, cost: val };
+      if (!isPriceManuallyEdited) {
+        newData.price = Number((val / 0.8).toFixed(2));
+      }
+      return newData;
+    });
+  };
+
+  const handlePriceChange = (val: number) => {
+    setIsPriceManuallyEdited(true);
+    setFormData(prev => ({ ...prev, price: val }));
+  };
+
+  // Reset/generate SKU when opened
+  useEffect(() => {
+    if (isOpen) {
+      const now = new Date();
+      const yy = now.getFullYear().toString().slice(-2);
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const prefix = `PRD-${yy}${mm}-`;
+
+      let nextNum = 1;
+      if (products && products.length > 0) {
+        const matches = products
+          .map(p => p.sku)
+          .filter(sku => sku && sku.startsWith(prefix));
+        
+        if (matches.length > 0) {
+          const numbers = matches.map(sku => {
+            const parts = sku.split("-");
+            const lastPart = parts[parts.length - 1];
+            const num = parseInt(lastPart, 10);
+            return isNaN(num) ? 0 : num;
+          });
+          const maxNum = Math.max(...numbers);
+          nextNum = maxNum + 1;
+        }
+      }
+
+      const generatedSku = `${prefix}${String(nextNum).padStart(3, "0")}`;
+
+      setFormData({
+        supplierId: "SUPP-001",
+        poRef: "",
+        warehouseId: "WH-01",
+        sku: generatedSku,
+        name: "",
+        barcode: "",
+        category: "general",
+        rackLocation: "",
+        qty: 1,
+        cost: 0,
+        price: 0,
+        packageUnit: "ชิ้น (EA)",
+        baseUnit: "ชิ้น (EA)",
+        conversionRate: 1,
+        sns: "",
+        imageUrl: ""
+      });
+      setCatSearch("ทั่วไป (General)");
+      setIsPriceManuallyEdited(false);
+      setSourceMode("manual");
+      setPoItems([]);
+    }
+  }, [isOpen, products]);
+
+  const profit = formData.price - formData.cost;
+  const profitMargin = formData.price > 0 ? ((profit / formData.price) * 100).toFixed(1) : "0.0";
+  const totalCost = sourceMode === "manual" 
+    ? (formData.qty * formData.cost)
+    : poItems.reduce((acc, item) => acc + (item.qtyReceived * (item.cost || 0)), 0);
+
+  const fetchPOItems = () => {
+    if (!formData.poRef) return alert("กรุณาระบุเลขที่ใบสั่งซื้อ");
+    // Mock PO Data
+    setPoItems([
+      { id: "ITEM-001", name: "Aruba AP-505", sku: "AP-505-RW", qtyOrdered: 10, qtyReceived: 10, cost: 4500, sns: "" },
+      { id: "ITEM-002", name: "CAT6 Cable 305m", sku: "CBL-CAT6-305", qtyOrdered: 5, qtyReceived: 5, cost: 2800, sns: "" }
+    ]);
+    setFormData(prev => ({ ...prev, supplierId: "SUPP-001" }));
+  };
+
+  const updatePoItem = (id: string, field: string, value: any) => {
+    setPoItems(poItems.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
+
+  const tabs = [
+    { id: "manual", label: "คีย์สินค้าเข้าระบบ (DIRECT ENTRY)" },
+    { id: "po", label: "รับจากคำสั่งซื้อ (RECEIVE FROM PO)" }
+  ];
+
+  const handleSubmit = async () => {
+    if (!companyId || !user) return;
+
+    setSubmitting(true);
+    
+    try {
+      if (sourceMode === "manual") {
+        if (!formData.name.trim()) {
+          setSubmitting(false);
+          return alert("กรุณาระบุชื่อสินค้า");
+        }
+        if (formData.qty <= 0) {
+          setSubmitting(false);
+          return alert("จำนวนเริ่มต้นต้องมากกว่า 0");
+        }
+        if (formData.cost < 0) {
+          setSubmitting(false);
+          return alert("ราคาต้นทุนต้องไม่ต่ำกว่า 0");
+        }
+        if (formData.price < 0) {
+          setSubmitting(false);
+          return alert("ราคาขายต้องไม่ต่ำกว่า 0");
+        }
+
+        const prodId = `PROD-${Date.now()}`;
+        const productRef = doc(db, "products", prodId);
+        
+        const totalQty = formData.qty * formData.conversionRate;
+        
+        // Save/merge the new item in products collection
+        await setDoc(productRef, {
+          companyId,
+          sku: formData.sku,
+          barcode: formData.barcode,
+          name: formData.name,
+          category: formData.category,
+          brand: "NEXUS",
+          unit: formData.baseUnit, // Base unit stored as main product unit
+          packageUnit: formData.packageUnit,
+          conversionRate: formData.conversionRate,
+          warehouseId: formData.warehouseId,
+          rackLocation: formData.rackLocation || "WH-01-A1",
+          supplierId: formData.supplierId,
+          imageUrl: formData.imageUrl || "",
+          stockStatus: {
+            onHand: totalQty,
+            reserved: 0,
+            available: totalQty
+          },
+          pricing: {
+            costWAC: formData.cost,
+            pricePOS: formData.price,
+            priceProject: formData.price * 1.2
+          },
+          updatedAt: new Date(),
+          isDeleted: false
+        }, { merge: true });
+
+        // Save/record a corresponding inbound transaction in stockMovements
+        const logRef = doc(collection(db, "stockMovements"));
+        await setDoc(logRef, {
+          companyId,
+          transactionId: `TX-GRN-${Date.now().toString().slice(-4)}`,
+          type: "IN",
+          productId: prodId,
+          quantity: totalQty,
+          fromLocation: "EXTERNAL",
+          toLocation: formData.rackLocation || "WH-01-A1",
+          userId: user.displayName || "system",
+          createdAt: new Date()
+        });
+
+      } else {
+        // PO mode
+        if (poItems.length === 0) {
+          setSubmitting(false);
+          return alert("กรุณาดึงข้อมูล PO และตรวจสอบรายการก่อนยืนยัน");
+        }
+
+        // Loop through each item in the PO
+        for (const item of poItems) {
+          if (item.qtyReceived <= 0) continue; // Skip non-received items
+          
+          // Check if this product already exists by matching SKU or name
+          let existingProd = products.find(p => p.sku === item.sku || p.name.toLowerCase() === item.name.toLowerCase());
+          const prodId = existingProd?.id || `PROD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+          const productRef = doc(db, "products", prodId);
+          
+          let currentOnHand = existingProd?.stockStatus?.onHand || 0;
+          let currentCostWAC = existingProd?.pricing?.costWAC || 0;
+          
+          // Calculate WAC: (currentVal + newVal) / (currentQty + newQty)
+          const newQty = currentOnHand + item.qtyReceived;
+          const newCostWAC = (currentOnHand + item.qtyReceived > 0)
+            ? ((currentOnHand * currentCostWAC) + (item.qtyReceived * (item.cost || 0))) / newQty
+            : (item.cost || 0);
+
+          await setDoc(productRef, {
+            companyId,
+            sku: item.sku || existingProd?.sku || `SKU-${Date.now().toString().slice(-4)}`,
+            name: item.name || existingProd?.name || "Unnamed Product from PO",
+            category: existingProd?.category || "general",
+            brand: existingProd?.brand || "NEXUS",
+            unit: existingProd?.unit || "ชิ้น (EA)",
+            stockStatus: {
+              onHand: newQty,
+              reserved: existingProd?.stockStatus?.reserved || 0,
+              available: newQty - (existingProd?.stockStatus?.reserved || 0)
+            },
+            pricing: {
+              costWAC: newCostWAC,
+              pricePOS: existingProd?.pricing?.pricePOS || Number(((item.cost || 0) / 0.8).toFixed(2)),
+              priceProject: existingProd?.pricing?.priceProject || Number(((item.cost || 0) / 0.8).toFixed(2)) * 1.2
+            },
+            warehouseId: formData.warehouseId || (existingProd as any)?.warehouseId || "WH-01",
+            rackLocation: formData.rackLocation || (existingProd as any)?.rackLocation || "WH-01-A1",
+            supplierId: formData.supplierId,
+            updatedAt: new Date(),
+            isDeleted: false
+          }, { merge: true });
+
+          // Stock log entry
+          const logRef = doc(collection(db, "stockMovements"));
+          await setDoc(logRef, {
+            companyId,
+            transactionId: `TX-GRN-${Date.now().toString().slice(-4)}`,
+            type: "IN",
+            productId: prodId,
+            quantity: item.qtyReceived,
+            fromLocation: "EXTERNAL",
+            toLocation: formData.rackLocation || "WH-01-A1",
+            userId: user.displayName || "system",
+            createdAt: new Date()
+          });
+        }
+      }
+
+      onClose();
+    } catch (error) {
+      console.error("APO Product Save Alert: Failed to write to Firestore,", error);
+      alert("ล้มเหลวในการบันทึกข้อมูลสินค้า");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <Sheet 
+    <>
+    <Modal 
       isOpen={isOpen} 
       onClose={onClose} 
-      title="เพิ่มรายการพัสดุใหม่" 
-      description="ระบุข้อมูลพื้นฐานเพื่อสร้างรหัสพิกัดพัสดุ (SKU) ใหม่ในระบบ"
+      title="เพิ่มสินค้า (CREATE PRODUCT / STOCKS IN)"
+      maxWidth="max-w-[1600px]"
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-4">
-          <SectionTitle icon={<Package size={14} />} title="ข้อมูลพื้นฐาน" />
-          
-          <div className="space-y-1">
-            <Label>ชื่อพัสดุ / สินค้า</Label>
-            <PillInput 
-              placeholder="ระบุชื่อพัสดุ" 
-              className="w-full h-10" 
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
+      <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
+        {/* Left main form pane */}
+        <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
+          <div className="max-w-4xl mx-auto space-y-12">
+            <div className="flex justify-between items-end border-b border-white/5 pb-8">
+               <div className="space-y-1">
+                  <p className="text-[12px] font-black text-nexus-teal uppercase tracking-[0.2em]">Inbound Logistics Operation / New Product Registration</p>
+                  <h4 className="text-xl font-black text-white uppercase tracking-tight">ระบุข้อมูลพื้นฐานและพิกัดจัดเก็บสินค้า</h4>
+               </div>
+               <PillTabs tabs={tabs} activeTab={sourceMode} onTabChange={setSourceMode} />
+            </div>
+
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+               {sourceMode === "manual" ? (
+                 <div className="grid grid-cols-2 gap-10">
+                    <div className="space-y-8">
+                       <div className="flex items-center gap-3 text-nexus-teal">
+                          <Package size={18} />
+                          <h5 className="text-[13px] font-black uppercase tracking-widest">ข้อมูลสินค้า (Product Details)</h5>
+                       </div>
+                       <div className="space-y-6">
+                          <div className="flex gap-4">
+                             {/* Image Upload */}
+                             <div 
+                                onClick={() => fileInputRef.current?.click()}
+                                className="w-24 h-24 rounded-2xl bg-white/[0.02] border border-dashed border-white/20 flex flex-col items-center justify-center text-white/30 hover:border-nexus-teal hover:text-nexus-teal cursor-pointer transition-colors shrink-0 overflow-hidden relative group"
+                             >
+                                {formData.imageUrl ? (
+                                   <>
+                                      <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                         <span className="text-[9px] font-black uppercase text-white">Change</span>
+                                      </div>
+                                   </>
+                                ) : (
+                                   <>
+                                      <Plus size={20} className="mb-1" />
+                                      <span className="text-[9px] font-black uppercase">Upload</span>
+                                   </>
+                                )}
+                             </div>
+                             <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+                             <div className="flex-1 space-y-4">
+                                <Field label="รหัสสินค้า (Auto-Generated SKU)">
+                                   <div className="flex gap-2 relative group">
+                                      <PillInput 
+                                        value={formData.sku} 
+                                        readOnly 
+                                        disabled
+                                        className="flex-1 bg-white/5 border-white/5 text-nexus-teal/70 font-black cursor-not-allowed opacity-70" 
+                                      />
+                                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-50">
+                                         <ShieldCheck size={14} className="text-nexus-teal" />
+                                         <span className="text-[9px] font-black uppercase text-nexus-teal">System Locked</span>
+                                      </div>
+                                   </div>
+                                </Field>
+                                <Field label="บาร์โค้ด (Barcode)">
+                                   <PillInput value={formData.barcode} onChange={(e) => setFormData({...formData, barcode: e.target.value})} className="w-full" placeholder="Scan barcode..." />
+                                </Field>
+                             </div>
+                          </div>
+                          
+                          <Field label="ชื่อสินค้า (Product Name) *">
+                             <PillInput value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full" placeholder="ระบุชื่อพัสดุ / สินค้าใหม่..." />
+                          </Field>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                             <Field label="หมวดหมู่ (Category) *">
+                                <div className="relative">
+                                  <div className="relative">
+                                    <PillInput
+                                      value={catSearch}
+                                      onChange={(e) => {
+                                        setCatSearch(e.target.value);
+                                        setIsCatFocused(true);
+                                      }}
+                                      onFocus={() => {
+                                         setIsCatFocused(true);
+                                         setCatSearch("");
+                                      }}
+                                      onBlur={() => {
+                                         setTimeout(() => {
+                                            setIsCatFocused(false);
+                                            setCatSearch(categoriesList.find(c => c.id === formData.category)?.label || "");
+                                         }, 200);
+                                      }}
+                                      placeholder="เลือกหรือพิมพ์ใหม่..."
+                                      className="w-full pr-10"
+                                    />
+                                    <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                                  </div>
+                                  
+                                  {isCatFocused && (
+                                    <div className="absolute top-full left-0 mt-2 w-full bg-[#0F0F12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden flex flex-col py-2 max-h-48 overflow-y-auto custom-scrollbar">
+                                       {filteredCats.map(c => (
+                                          <div 
+                                             key={c.id} 
+                                             className="flex items-center justify-between px-4 py-2 hover:bg-white/5 cursor-pointer group transition-colors"
+                                             onClick={() => handleSelectCat(c.id, c.label)}
+                                          >
+                                             <span className={cn("text-xs font-black uppercase", formData.category === c.id ? "text-nexus-teal" : "text-white/70")}>{c.label}</span>
+                                             {!c.isSystem && (
+                                                <button 
+                                                   onClick={(e) => handleDeleteCategory(c.id, e)}
+                                                   className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-danger p-1 transition-all"
+                                                   title="ลบหมวดหมู่นี้"
+                                                >
+                                                   <Trash2 size={14} />
+                                                </button>
+                                             )}
+                                          </div>
+                                       ))}
+                                       {catSearch.trim() && !categoriesList.find(c => c.label.toLowerCase() === catSearch.toLowerCase()) && (
+                                          <div 
+                                             className="flex items-center px-4 py-2 hover:bg-nexus-teal/10 cursor-pointer text-nexus-teal text-xs font-black"
+                                             onClick={handleCreateCat}
+                                          >
+                                             <Plus size={14} className="mr-2" /> เพิ่ม "{catSearch}"
+                                          </div>
+                                       )}
+                                    </div>
+                                  )}
+                                </div>
+                             </Field>
+                             <Field label="คลังสินค้า (Warehouse)">
+                                <PillSelect value={formData.warehouseId} onChange={(e) => setFormData({...formData, warehouseId: e.target.value, rackLocation: ""})} className="w-full font-bold">
+                                   {mockWarehouses.map(wh => <option key={wh.id} value={wh.id}>{wh.name}</option>)}
+                                </PillSelect>
+                             </Field>
+                          </div>
+                          
+                          <Field label="พิกัดจัดเก็บ (Location Barcode)">
+                             <div className="flex gap-2">
+                                <PillInput value={formData.rackLocation} onChange={(e) => setFormData({...formData, rackLocation: e.target.value})} placeholder="สแกนบาร์โค้ดพิกัด หรือ เลือกจากแผนผัง 3D..." className="flex-1 font-mono font-bold text-nexus-teal" />
+                                <PillButton variant="glass" onClick={() => setShow3DPicker(true)} className="px-6 hover:text-nexus-teal hover:border-nexus-teal/30 flex items-center gap-2">
+                                   <MapPin size={16} className="text-nexus-teal" />
+                                   <span>เลือกพิกัด 3D</span>
+                                </PillButton>
+                             </div>
+                          </Field>
+                           
+                           <div className="pt-2 border-t border-white/5 space-y-4 mt-2">
+                              <h6 className="text-[10px] font-black uppercase text-nexus-teal tracking-widest">หน่วยและขนาดบรรจุภัณฑ์ (UOM & Packaging)</h6>
+                              <div className="grid grid-cols-3 gap-4 bg-black/40 p-4 rounded-xl border border-white/5 items-end">
+                                 <Field label="หน่วยจัดเก็บ (Package)">
+                                    <PillSelect value={formData.packageUnit} onChange={(e) => setFormData({...formData, packageUnit: e.target.value})} className="w-full text-center">
+                                       {uomOptions.map(uom => <option key={uom} value={uom}>{uom}</option>)}
+                                    </PillSelect>
+                                 </Field>
+                                 <Field label={`1 ${formData.packageUnit?.split(' ')[0] || "หน่วยใหญ่"} บรรจุ (Qty)`}>
+                                    <StepperInput value={formData.conversionRate} onChange={(val) => setFormData({...formData, conversionRate: val})} className="text-center text-nexus-teal font-black" />
+                                 </Field>
+                                 <Field label="หน่วยขาย (Base Unit)">
+                                    <PillSelect value={formData.baseUnit} onChange={(e) => setFormData({...formData, baseUnit: e.target.value})} className="w-full text-center">
+                                       {uomOptions.map(uom => <option key={uom} value={uom}>{uom}</option>)}
+                                    </PillSelect>
+                                 </Field>
+                              </div>
+                           </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-8">
+                       <div className="flex items-center gap-3 text-white">
+                          <Truck size={18} />
+                          <h5 className="text-[13px] font-black uppercase tracking-widest">รับเข้า & การเงิน (Inbound & Financials)</h5>
+                       </div>
+                       <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-6">
+                          <div className="grid grid-cols-2 gap-4">
+                             <Field label="ผู้จำหน่าย (Supplier)">
+                                <PillSelect value={formData.supplierId} onChange={(e) => setFormData({...formData, supplierId: e.target.value})} className="w-full">
+                                   {mockSuppliers.map(s => (
+                                      <option key={s.id} value={s.id}>{s.name}</option>
+                                   ))}
+                                </PillSelect>
+                             </Field>
+                             <Field label={`จำนวนรับเข้า (Qty in ${formData.packageUnit}) *`}>
+                                <div className="space-y-1.5">
+                                   <StepperInput value={formData.qty} onChange={(val) => setFormData({...formData, qty: val})} className="font-black text-nexus-teal" />
+                                   {formData.conversionRate > 1 && (
+                                      <div className="flex items-center gap-1.5 text-[9px] font-black text-white/40 uppercase tracking-widest pl-1">
+                                         <Package size={10} className="text-nexus-teal" /> สต๊อกสุทธิ: <span className="text-nexus-teal">{formData.qty * formData.conversionRate} {formData.baseUnit}</span>
+                                      </div>
+                                   )}
+                                </div>
+                             </Field>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4 bg-black/40 p-4 rounded-xl border border-white/5">
+                             <Field label="ราคาต้นทุน (Cost) *">
+                                <StepperInput value={formData.cost} onChange={handleCostChange} className="text-danger font-black" />
+                             </Field>
+                             <Field label="ราคาขาย (Selling Price) *">
+                                <div className="space-y-1.5">
+                                   <StepperInput value={formData.price} onChange={handlePriceChange} className="text-nexus-teal font-black" />
+                                   <div className="flex items-center gap-1.5 text-[9px] font-black text-white/30 uppercase tracking-widest pl-1">
+                                      <span className="text-nexus-teal/60">💡</span> ราคาแนะนำ (Margin 20%): ฿{(formData.cost / 0.8).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                   </div>
+                                </div>
+                             </Field>
+                             <div className="col-span-2 flex justify-between items-center pt-2 border-t border-white/5">
+                                <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">กำไรคาดการณ์ (Estimated Profit)</span>
+                                <span className={cn("text-sm font-black mono-numbers", profit > 0 ? "text-nexus-teal" : "text-white/40")}>
+                                   ฿{profit.toLocaleString()} <span className="text-xs">({profitMargin}%)</span>
+                               </span>
+                             </div>
+                          </div>
+
+                          <Field label="Serial Numbers (แยกด้วยบรรทัด)">
+                             <textarea value={formData.sns} onChange={(e) => setFormData({...formData, sns: e.target.value})} placeholder="Scan or type serial numbers here..." className="w-full h-20 rounded-2xl bg-black/40 border border-white/10 text-white text-[12px] font-mono p-4 custom-scrollbar" />
+                          </Field>
+                       </div>
+                    </div>
+                 </div>
+               ) : (
+                 <div className="space-y-10">
+                    <div className="flex items-end gap-4 bg-white/[0.02] p-8 rounded-2xl border border-white/5">
+                       <div className="flex-1">
+                          <Field label="ค้นหาเลขที่คำสั่งซื้อ (PO Reference) *">
+                             <div className="relative">
+                                <FileText className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
+                                <PillInput value={formData.poRef} onChange={(e) => setFormData({...formData, poRef: e.target.value})} placeholder="ระบุ PO-XXXXX..." className="w-full pl-12" />
+                             </div>
+                          </Field>
+                       </div>
+                       <PillButton onClick={fetchPOItems} className="px-8 shadow-neon-teal">
+                          <Search size={18} />
+                          ดึงรายการ
+                       </PillButton>
+                    </div>
+
+                    <div className="space-y-6">
+                       <div className="flex justify-between items-center px-2">
+                          <h5 className="text-[11px] font-black text-white/40 uppercase tracking-widest">รายการที่รอการรับเข้า ({poItems.length})</h5>
+                       </div>
+                       {poItems.length === 0 ? (
+                          <div className="p-20 border border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center text-center space-y-4">
+                             <Package size={48} className="text-white/5" />
+                             <p className="text-[11px] text-white/20 font-black uppercase tracking-widest">ยังไม่มีรายการ (กรุณาระบุเลขที่ PO)</p>
+                          </div>
+                       ) : (
+                          <div className="space-y-4">
+                             {poItems.map((item) => (
+                               <div key={item.id} className="bg-white/[0.02] border border-white/5 p-6 rounded-xl flex items-center gap-8 group hover:bg-white/[0.04] transition-all">
+                                  <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/20 group-hover:text-nexus-teal transition-colors">
+                                     <Package size={24} />
+                                  </div>
+                                  <div className="flex-1">
+                                     <p className="text-sm font-black text-white uppercase">{item.name}</p>
+                                     <p className="text-[10px] text-white/30 font-bold uppercase mt-0.5">{item.sku} • สั่งซื้อ: {item.qtyOrdered}</p>
+                                  </div>
+                                  <div className="w-24">
+                                     <p className="text-[9px] font-black text-white/20 uppercase mb-1">รับจริง</p>
+                                     <PillInput type="number" value={item.qtyReceived} onChange={(e) => updatePoItem(item.id, "qtyReceived", Number(e.target.value))} className="w-full text-center h-9 font-black text-nexus-teal" />
+                                  </div>
+                                  <div className="w-32">
+                                     <p className="text-[9px] font-black text-white/20 uppercase mb-1">ต้นทุน/หน่วย</p>
+                                     <PillInput type="number" value={item.cost} onChange={(e) => updatePoItem(item.id, "cost", Number(e.target.value))} className="w-full text-center h-9 font-black" />
+                                  </div>
+                               </div>
+                             ))}
+                          </div>
+                       )}
+                    </div>
+                 </div>
+               )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right validation & summary sidebar */}
+        <div className="w-[380px] bg-[#0F0F12] p-12 flex flex-col overflow-y-auto custom-scrollbar shrink-0">
+           <div className="flex-1 space-y-10">
+              <div className="space-y-1">
+                <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">Validation Briefing</p>
+                <h5 className="text-sm font-black text-white uppercase tracking-tight">Stock Integrity</h5>
+              </div>
+
+              <div className="p-8 rounded-2xl bg-nexus-teal/5 border border-nexus-teal/10 space-y-6">
+                 {sourceMode === "manual" ? (
+                   <NexusDataField label="สถานะรหัส SKU" value={formData.sku ? "PASS" : "WAITING"} highlight={!!formData.sku} />
+                 ) : (
+                   <NexusDataField label="สถานะการตรวจสอบ PO" value={poItems.length > 0 ? "PASS" : "WAITING"} highlight={poItems.length > 0} />
+                 )}
+                 <NexusDataField label="มูลค่าต้นทุนรวม" value={`฿${totalCost.toLocaleString()}`} highlight />
+              </div>
+
+              <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-4">
+                 <p className="text-[11px] text-white/40 font-bold leading-relaxed uppercase tracking-widest">
+                    * ข้อมูลสินค้าใหม่จะได้รับการจัดสรรพิกัดและประทับตาเวลาเคลื่อนย้ายของคลังสินค้า (TX-GRN) โดยทันทีหลังจากกดยืนยัน
+                 </p>
+              </div>
+           </div>
+
+           <div className="space-y-4">
+              <PillButton className="w-full px-8 shadow-neon-blue uppercase tracking-[0.2em]" onClick={handleSubmit} disabled={submitting}>
+                 {submitting ? <RefreshCw size={18} className="animate-spin" /> : <ShieldCheck size={22} />}
+                 {submitting ? "กำลังบันทึก..." : sourceMode === "manual" ? "ยืนยันเพิ่มสินค้า" : "ยืนยันรับจาก PO"}
+              </PillButton>
+              <PillButton variant="glass" className="w-full text-white/20 hover:text-white uppercase tracking-widest" onClick={onClose} disabled={submitting}>
+                 ยกเลิก
+              </PillButton>
+           </div>
+        </div>
+      </div>
+    </Modal>
+
+    <Modal isOpen={show3DPicker} onClose={() => setShow3DPicker(false)} title="เครื่องมือเลือกพิกัด 3 มิติ (3D LOCATION PICKER)" maxWidth="max-w-[1400px]">
+      <div className="w-full h-[85vh] bg-[#0A0A0C] flex flex-col overflow-hidden p-6">
+         <div className="flex-1 overflow-hidden relative rounded-2xl border border-white/5 bg-black/40">
+            <Warehouse3D 
+               pickerMode={true} 
+               initialWarehouseId={formData.warehouseId} 
+               onSelectLocation={(loc, whId) => {
+                  setFormData({...formData, rackLocation: loc, warehouseId: whId});
+                  setShow3DPicker(false);
+               }} 
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label>หมวดหมู่</Label>
-              <PillInput 
-                placeholder="เช่น Network" 
-                className="w-full h-10"
-                value={formData.category}
-                onChange={(e) => setFormData({...formData, category: e.target.value})}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>รหัส SKU (เว้นว่างเพื่อรันออโต้)</Label>
-              <PillInput 
-                placeholder="SKU-24-XXXX" 
-                className="w-full h-10 font-mono text-nexus-blue"
-                value={formData.sku}
-                onChange={(e) => setFormData({...formData, sku: e.target.value})}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <SectionTitle icon={<Layers size={14} />} title="สต็อกและหน่วยนับ" />
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label>จำนวนเริ่มต้น</Label>
-              <PillInput 
-                type="number"
-                placeholder="0" 
-                className="w-full h-10 mono-numbers"
-                value={formData.initialQty}
-                onChange={(e) => setFormData({...formData, initialQty: Number(e.target.value)})}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>หน่วยนับ</Label>
-              <PillInput 
-                placeholder="Unit / Pcs" 
-                className="w-full h-10"
-                value={formData.unit}
-                onChange={(e) => setFormData({...formData, unit: e.target.value})}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <SectionTitle icon={<DollarSign size={14} />} title="การเงินและต้นทุน" />
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label>ต้นทุนต่อหน่วย (WAC)</Label>
-              <PillInput 
-                type="number"
-                placeholder="0.00" 
-                className="w-full h-10 mono-numbers"
-                value={formData.avgCost}
-                onChange={(e) => setFormData({...formData, avgCost: Number(e.target.value)})}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>ราคาขายหน้าร้าน (POS)</Label>
-              <PillInput 
-                type="number"
-                placeholder="0.00" 
-                className="w-full h-10 mono-numbers text-nexus-teal"
-                value={formData.pricePos}
-                onChange={(e) => setFormData({...formData, pricePos: Number(e.target.value)})}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="pt-6 flex gap-3">
-          <PillButton type="button" variant="ghost" className="flex-1" onClick={onClose}>ยกเลิก</PillButton>
-          <PillButton type="submit" className="flex-1 shadow-nexus-glow">บันทึกข้อมูล</PillButton>
-        </div>
-      </form>
-    </Sheet>
+         </div>
+      </div>
+    </Modal>
+    </>
   );
-};
+}
 
-const SectionTitle = ({ icon, title }: { icon: React.ReactNode, title: string }) => (
-  <div className="flex items-center gap-2 text-nexus-blue border-b border-white/5 pb-2 mb-4">
-    {icon}
-    <span className="text-xs font-bold uppercase tracking-widest">{title}</span>
-  </div>
-);
+function Field({ label, children }: { label: string, children: React.ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">{label}</label>
+      {children}
+    </div>
+  );
+}
 
-const Label = ({ children }: { children: React.ReactNode }) => (
-  <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-4">
-    {children}
-  </label>
-);
+function StepperInput({ value, onChange, className = "" }: { value: number, onChange: (v: number) => void, className?: string }) {
+  return (
+    <div className="relative flex items-center group">
+      <PillInput 
+        type="number" 
+        value={value === 0 ? "" : value} 
+        onChange={(e) => onChange(Number(e.target.value))} 
+        onFocus={(e) => e.target.select()}
+        className={cn("w-full pr-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", className)} 
+      />
+      <div className="absolute right-1.5 top-1.5 bottom-1.5 flex flex-col justify-between w-5 rounded-md overflow-hidden bg-white/[0.03] border border-white/5 opacity-50 group-hover:opacity-100 transition-opacity">
+        <button 
+          onClick={() => onChange((Number(value) || 0) + 1)} 
+          className="flex-1 flex items-center justify-center hover:bg-nexus-teal hover:text-black text-white/40 transition-colors"
+          tabIndex={-1}
+        >
+          <div className="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-b-[4px] border-b-current" />
+        </button>
+        <div className="h-[1px] w-full bg-white/10" />
+        <button 
+          onClick={() => onChange(Math.max(0, (Number(value) || 0) - 1))} 
+          className="flex-1 flex items-center justify-center hover:bg-danger hover:text-white text-white/40 transition-colors"
+          tabIndex={-1}
+        >
+          <div className="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-t-[4px] border-t-current" />
+        </button>
+      </div>
+    </div>
+  );
+}

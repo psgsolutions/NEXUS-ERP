@@ -8,11 +8,14 @@ import {
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
+import { can, Permission } from "@/lib/permissions";
+
 interface AuthContextType {
   user: FirebaseUser | null;
   loading: boolean;
   companyId: string | null;
   role: string | null;
+  checkPermission: (permission: Permission) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -20,6 +23,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   companyId: null,
   role: null,
+  checkPermission: () => false,
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -28,19 +32,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const checkPermission = (permission: Permission) => {
+    return can(role, permission);
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       
       if (user) {
-        // Fetch User Profile & Company Metadata
-        // [DAT-01] Multi-tenancy Isolation:ดึงข้อมูลบริษัทของผู้ใช้งาน
         try {
           const userDoc = await getDoc(doc(db, "users", user.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
-            setCompanyId(data.company_id || null);
-            setRole(data.role || "USER");
+            setCompanyId(data.companyId || null);
+            setRole(data.role?.toUpperCase() || "ENGINEER");
           }
         } catch (error) {
           console.error("Error fetching user profile:", error);
@@ -57,7 +63,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, companyId, role }}>
+    <AuthContext.Provider value={{ user, loading, companyId, role, checkPermission }}>
       {children}
     </AuthContext.Provider>
   );

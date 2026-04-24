@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { Roboto, JetBrains_Mono } from "next/font/google";
-import { AuthProvider } from "@/context/AuthContext";
+import { Sarabun, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
 
-const roboto = Roboto({
-  weight: ["400", "500", "700"],
-  subsets: ["latin", "thai"],
+const sarabun = Sarabun({
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800"],
+  subsets: ["thai", "latin"],
   display: "swap",
-  variable: "--font-roboto",
+  variable: "--font-sarabun",
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -18,7 +18,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "NEXUS ERP | Intelligence OS",
-  description: "Enterprise Strategic ERP for the Intelligence Era",
+  description: "Next-Generation Enterprise Strategic System",
 };
 
 export default function RootLayout({
@@ -27,19 +27,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th">
-      <body
-        className={`${roboto.variable} ${jetbrainsMono.variable} antialiased`}
-      >
+    <html lang="th" className={`${sarabun.variable} ${jetbrainsMono.variable}`}>
+      <body className="antialiased selection:bg-nexus-blue/30 overflow-hidden">
         <AuthProvider>
-          <div className="fixed inset-0 -z-10 bg-[#09090b]" />
-          {/* Background Ambient Glows */}
-          <div className="fixed top-0 left-1/4 w-[500px] h-[500px] bg-nexus-blue/5 blur-[120px] rounded-full -z-10" />
-          <div className="fixed bottom-0 right-1/4 w-[600px] h-[600px] bg-nexus-teal/5 blur-[120px] rounded-full -z-10" />
-
-          <main className="relative min-h-screen flex flex-col">
-            {children}
-          </main>
+          <div className="relative h-screen w-full bg-[#020203] overflow-hidden">
+            {/* Unified Ambient Background */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(20,163,204,0.08)_0%,transparent_50%)] pointer-events-none" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_100%,rgba(16,187,168,0.05)_0%,transparent_50%)] pointer-events-none" />
+            
+            <div className="relative z-10 h-full w-full">
+              {children}
+            </div>
+          </div>
         </AuthProvider>
       </body>
     </html>

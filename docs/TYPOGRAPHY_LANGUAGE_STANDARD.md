@@ -1,4 +1,4 @@
-# 🔠 NEXUS ERP: Typography & Language Master Standard (V2.9)
+# 🔠 NEXUS ERP: Typography & Language Master Standard (V3.0)
 
 เอกสารฉบับนี้ระบุมาตรฐานการแสดงผลตัวอักษรและการใช้ภาษาไทยเพื่อให้ระบบมีความเป็นทางการ ชัดเจน และสื่อสารได้อย่างแม่นยำสูงสุด
 
@@ -49,4 +49,4 @@
 - **นิติบุคคล (Company/Node)**: บริษัทปฏิบัติการที่ใช้งานในระบบ
 
 ---
-*Status: LOCKED | PSG Master Typography Engine V2.9 Active*
+*Status: LOCKED | PSG Master Typography Engine V3.0 Active*

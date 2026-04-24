@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { PillButton, GlassCard } from "@/components/ui/Base";
-import { generateNextId } from "@/lib/idService";
+import { idService } from "@/lib/idService";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, Timestamp } from "firebase/firestore";
 import { postToGL, ACCOUNTS } from "@/lib/financeEngine";
@@ -23,7 +23,8 @@ export default function SimulationPage() {
     try {
       // 1. Generate Atomic ID
       addLog("กำลังรันเลข SKU อัตโนมัติผ่าน idService...");
-      const nextSku = await generateNextId(companyId, "SKU");
+      const seq = await idService.getNextSequence(db, "SKU", companyId);
+      const nextSku = idService.formatId("SKU", seq);
       setResultId(nextSku);
       addLog(`ได้รับรหัสพัสดุ: ${nextSku}`);
 
@@ -76,14 +77,19 @@ export default function SimulationPage() {
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto h-full overflow-y-auto">
-      <header className="mb-10 text-center">
-        <div className="w-16 h-16 bg-nexus-blue/10 rounded-3xl flex items-center justify-center text-nexus-blue mx-auto mb-4 border border-nexus-blue/20">
+    <div className="p-10 space-y-10 max-w-4xl mx-auto h-full overflow-y-auto animate-in fade-in duration-700">
+      
+      {/* Header Section */}
+      <div className="text-center space-y-4">
+        <div className="w-16 h-16 bg-nexus-blue/10 rounded-xl flex items-center justify-center text-nexus-blue mx-auto mb-6 border border-nexus-blue/20 shadow-neon-blue animate-pulse">
           <Beaker size={32} />
         </div>
-        <h1 className="text-3xl font-bold text-white tracking-tight">NEXUS Simulation Lab</h1>
-        <p className="text-white/40 mt-2">ทดสอบความเสถียรของระบบ ID Service, Inventory และ Finance Engine</p>
-      </header>
+        <h1 className="text-2xl font-black text-white tracking-tighter uppercase leading-none">ห้องทดลองจำลองสถานการณ์ (SIMULATION HUB)</h1>
+        <p className="text-[13px] text-white/40 font-bold max-w-2xl mx-auto leading-relaxed">
+          ทดสอบความเสถียรและความแม่นยำของระบบ ID Service, การจัดการคลังพัสดุ และ Finance Engine 
+          <span className="text-white"> "ตรวจสอบความสอดคล้องของข้อมูลก่อนใช้งานจริง"</span>
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <GlassCard className="md:col-span-1 flex flex-col items-center justify-center p-8 space-y-6">
@@ -91,9 +97,9 @@ export default function SimulationPage() {
           <PillButton 
             onClick={runSimulation} 
             disabled={status === "running"}
-            className="w-full h-12 text-lg shadow-nexus-glow"
+            className="w-full h-14 text-lg shadow-neon-blue font-black uppercase tracking-widest"
           >
-            {status === "running" ? <Loader2 className="animate-spin" /> : "Start Simulation"}
+            {status === "running" ? <Loader2 className="animate-spin" /> : "เริ่มการจำลองสถานการณ์"}
           </PillButton>
           
           {status === "success" && (
@@ -106,9 +112,9 @@ export default function SimulationPage() {
         </GlassCard>
 
         <GlassCard className="md:col-span-2 bg-black/60 p-0 overflow-hidden flex flex-col h-[400px]">
-          <div className="p-3 bg-white/5 border-b border-white/5 text-[10px] font-bold uppercase tracking-widest text-white/40 flex justify-between">
-            <span>System Console Output</span>
-            <span>NEXUS-OS v2.9</span>
+          <div className="p-4 bg-white/5 border-b border-white/5 text-[13px] font-bold uppercase tracking-[0.2em] text-white/40 flex justify-between">
+            <span>ประวัติการประมวลผลระบบ (System Console)</span>
+            <span className="text-nexus-blue shadow-neon-blue">NEXUS-OS v3.2 ONLINE</span>
           </div>
           <div className="flex-1 p-4 font-mono text-xs space-y-2 overflow-y-auto">
             {log.length === 0 && <p className="text-white/10 italic">Ready to simulate...</p>}

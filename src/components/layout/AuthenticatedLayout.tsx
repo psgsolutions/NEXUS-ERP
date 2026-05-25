@@ -57,6 +57,7 @@ export default function AuthenticatedLayout({
     <div className="flex h-screen overflow-hidden bg-[#0D0D0D] text-white selection:bg-nexus-teal/30">
       <CommandPalette />
       
+<<<<<<< HEAD
       {/* [1] Sidebar - Full Intelligence OS Structure */}
       <aside className="w-[280px] hidden lg:flex flex-col border-r border-white/5 bg-[#0a0a0c] relative flex-shrink-0">
         <div className="p-5 overflow-y-auto flex-1 custom-scrollbar">
@@ -72,6 +73,30 @@ export default function AuthenticatedLayout({
           </div>
 
           <EntitySelector />
+=======
+      {/* Sidebar - Tactical Intelligence V2.9 */}
+      <aside className="w-[280px] flex flex-col border-r border-white/5 bg-[#0a0a0c] z-30">
+        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+          {/* Logo Section */}
+          <div className="flex items-center gap-3 mb-10">
+            <div className="w-11 h-11 bg-nexus-teal rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(16,187,168,0.3)] animate-pulse-glow">
+              <Cpu size={26} className="text-black" />
+            </div>
+            <div>
+              <h2 className="font-black text-sm tracking-tighter leading-none">NEXUS ERP</h2>
+              <p className="text-[10px] text-nexus-teal font-black uppercase tracking-[0.2em] mt-1">INTELLIGENCE OS</p>
+            </div>
+          </div>
+
+          {/* Quick Search */}
+          <div className="relative mb-8 group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 group-hover:text-nexus-teal transition-colors" size={14} />
+            <input 
+              placeholder="COMMAND (CTRL+K)" 
+              className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-9 pr-4 text-[10px] font-bold tracking-[0.3em] focus:outline-none focus:border-nexus-teal/40 focus:bg-white/10 transition-all uppercase"
+            />
+          </div>
+>>>>>>> e3043f99d23bda02971284e389327f5248699605
 
           {/* Navigation Matrix */}
           <nav className="space-y-6">

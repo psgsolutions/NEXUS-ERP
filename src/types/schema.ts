@@ -175,3 +175,17 @@ export interface Ticket extends BaseDocument {
   resolutionTime?: number; // minutes
   status: 'open' | 'pending' | 'closed';
 }
+
+// 11. Internal Expense Claims
+export interface ExpenseClaim extends BaseDocument {
+  claimId: string; // EX-YYMM-XXXX
+  employeeId: string;
+  expenseAccountCode: string;
+  description: string;
+  hasVat: boolean;
+  vatAmount: number;
+  subtotal: number;
+  grandTotal: number;
+  receiptUrls: string[]; // for attaching multiple receipt images
+  status: 'draft' | 'submitted' | 'approved' | 'paid' | 'rejected';
+}

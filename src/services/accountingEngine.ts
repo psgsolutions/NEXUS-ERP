@@ -402,6 +402,54 @@ export const AccountingEngine = {
     };
 
     return await addDoc(collection(db, "journal_entries"), journalEntry);
+  },
+
+  /**
+   * Generates General Journal Entry for Internal Expense Claim (PV)
+   */
+  async postExpenseClaimJournal(companyId: string, claimData: any) {
+    const lines = [];
+    
+    // Dr. Expense Account
+    lines.push({
+      accountCode: claimData.expenseAccountCode || '53000-00',
+      accountName: 'ค่าใช้จ่ายเบ็ดเตล็ด (General Expense)',
+      debit: claimData.subtotal,
+      credit: 0
+    });
+
+    // Dr. Input VAT (if hasVat)
+    if (claimData.hasVat && claimData.vatAmount > 0) {
+      lines.push({
+        accountCode: '1151-00',
+        accountName: 'ภาษีซื้อ (Input VAT)',
+        debit: claimData.vatAmount,
+        credit: 0
+      });
+    }
+
+    // Cr. Petty Cash / Bank
+    lines.push({
+      accountCode: '11000-00',
+      accountName: 'เงินสดย่อย / เงินฝากธนาคาร (Petty Cash/Bank)',
+      debit: 0,
+      credit: claimData.grandTotal
+    });
+
+    const journalEntry = {
+      companyId,
+      bookType: 'PV', // Payment Voucher / สมุดรายวันจ่าย
+      date: serverTimestamp(),
+      description: `เบิกเงินภายใน/สดย่อย: ${claimData.description}`,
+      referenceId: claimData.claimId,
+      status: 'posted',
+      isOfficialTax: claimData.hasVat, // Map to Tax Engine
+      items: lines, // Compatible with existing items/lines schema
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    return await addDoc(collection(db, "journal_entries"), journalEntry);
   }
 };
 

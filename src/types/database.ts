@@ -790,3 +790,20 @@ export interface FormSubmission extends BaseDocument {
   values: Record<string, any>; // Dynamic key-values matching FormField ids
 }
 
+// ---------------------------------------------------------
+// 11. Internal Expense Claims (Petty Cash)
+// ---------------------------------------------------------
+
+export interface ExpenseClaim extends BaseDocument {
+  claimId: string; // EX-YYMM-XXXX
+  employeeId: string;
+  expenseAccountCode: string; // Mapping to GL Expense Code
+  description: string;
+  hasVat: boolean;
+  vatAmount: number;
+  subtotal: number;
+  grandTotal: number;
+  receiptUrls: string[]; // For receipt images
+  status: 'draft' | 'submitted' | 'approved' | 'paid' | 'rejected';
+}
+

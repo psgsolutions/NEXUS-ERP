@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useSystemDialog } from "@/context/DialogContext";
 import { 
   Clock, 
   MapPin, 
@@ -24,24 +25,32 @@ import {
 interface AttendanceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (data: any) => void;
+  onConfirm: (data: any) => Promise<void> | void;
 }
 
 export function AttendanceModal({ isOpen, onClose, onConfirm }: AttendanceModalProps) {
+  const { showAlert, showConfirm } = useSystemDialog();
+
   const [currentTime, setCurrentTime] = useState(new Date());
   const [attendanceType, setAttendanceType] = useState<"IN" | "OUT">("IN");
   const [employee, setEmployee] = useState("");
   const [site, setSite] = useState("สำนักงานใหญ่");
   const [note, setNote] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const handleConfirm = () => {
-    if (!employee) return alert("กรุณาเลือกชื่อพนักงาน");
-    onConfirm({ employee, type: attendanceType, time: currentTime, site, note });
+  const handleConfirm = async () => {
+    if (!employee) return void showAlert("กรุณาเลือกชื่อพนักงาน", "System Notification", "warning");
+    setIsSaving(true);
+    try {
+      await onConfirm({ employee, type: attendanceType, time: currentTime, site, note });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -74,7 +83,7 @@ export function AttendanceModal({ isOpen, onClose, onConfirm }: AttendanceModalP
                     onClick={() => setAttendanceType("IN")}
                     className={cn(
                       "flex-1 py-4 rounded-xl text-sm font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3",
-                      attendanceType === "IN" ? "bg-nexus-teal text-white shadow-neon-teal" : "text-white/20 hover:text-white/40"
+                      attendanceType === "IN" ? "bg-nexus-teal text-black shadow-neon-teal" : "text-white/20 hover:text-white/40"
                     )}
                   >
                      <CheckCircle2 size={18} /> เข้างาน (Check-In)
@@ -142,11 +151,20 @@ export function AttendanceModal({ isOpen, onClose, onConfirm }: AttendanceModalP
           </div>
 
           <div className="space-y-4 pt-10 border-t border-white/5">
-            <PillButton className={cn("w-full px-8 uppercase tracking-[0.2em]", attendanceType === "IN" ? "shadow-neon-teal" : "shadow-neon-danger bg-danger/20 border-danger/40 text-danger")} onClick={handleConfirm}>
-              <ShieldCheck size={22} />
-              บันทึกข้อมูล (SUBMIT)
+            <PillButton 
+              className={cn("w-full px-8 uppercase tracking-[0.2em]", attendanceType === "IN" ? "shadow-neon-teal" : "shadow-neon-danger bg-danger/20 border-danger/40 text-danger", isSaving && "opacity-50 pointer-events-none")} 
+              onClick={handleConfirm}
+              disabled={isSaving}
+            >
+              <ShieldCheck size={22} className={isSaving ? "animate-pulse" : ""} />
+              {isSaving ? "กำลังบันทึก..." : "บันทึกข้อมูล (SUBMIT)"}
             </PillButton>
-            <PillButton variant="glass" className="w-full text-white/20 hover:text-white uppercase tracking-widest" onClick={onClose}>
+            <PillButton 
+              variant="glass" 
+              className={cn("w-full text-white/20 hover:text-white uppercase tracking-widest", isSaving && "opacity-50 pointer-events-none")} 
+              onClick={onClose}
+              disabled={isSaving}
+            >
               ยกเลิก
             </PillButton>
           </div>

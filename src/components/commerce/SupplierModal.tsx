@@ -20,6 +20,7 @@ import {
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { SmartAddressPicker, ThaiAddress } from "@/components/ui/SmartAddressPicker";
 import { formatCurrency } from "@/lib/erp-logic";
+import { useSystemDialog } from "@/context/DialogContext";
 
 interface SupplierModalProps {
   isOpen: boolean;
@@ -60,6 +61,8 @@ const BANKS = [
 ];
 
 export function SupplierModal({ isOpen, onClose, onSave, initialData }: SupplierModalProps) {
+  const { showAlert, showConfirm } = useSystemDialog();
+
   const [activeTab, setActiveTab] = useState("profile");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
@@ -85,34 +88,34 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
 
   const handleCommit = async () => {
     // 1. Validate all fields (ให้เช็คการบันทึกทุกช่อง)
-    if (!form.name.trim()) return alert("กรุณาระบุชื่อคู่ค้า");
+    if (!form.name.trim()) return void showAlert("กรุณาระบุชื่อคู่ค้า");
     
     // Tax ID check: Only digits, exactly 13 characters
-    if (!form.tax_id) return alert("กรุณาระบุเลขประจำตัวผู้เสียภาษี (Tax ID)");
-    if (form.tax_id.length !== 13) return alert("เลขประจำตัวผู้เสียภาษี (Tax ID) ต้องมีครบ 13 หลักตามกฎหมายกำหนด");
-    if (!/^\d{13}$/.test(form.tax_id)) return alert("เลขประจำตัวผู้เสียภาษี (Tax ID) ต้องเป็นตัวเลขเท่านั้น");
+    if (!form.tax_id) return void showAlert("กรุณาระบุเลขประจำตัวผู้เสียภาษี (Tax ID)");
+    if (form.tax_id.length !== 13) return void showAlert("เลขประจำตัวผู้เสียภาษี (Tax ID) ต้องมีครบ 13 หลักตามกฎหมายกำหนด");
+    if (!/^\d{13}$/.test(form.tax_id)) return void showAlert("เลขประจำตัวผู้เสียภาษี (Tax ID) ต้องเป็นตัวเลขเท่านั้น");
 
     // Contact info check
-    if (!form.phone.trim()) return alert("กรุณาระบุเบอร์โทรศัพท์ติดต่อ");
-    if (!/^\d{9,10}$/.test(form.phone.replace(/[-+\s]/g, ""))) return alert("เบอร์โทรศัพท์ไม่ถูกต้อง (ต้องเป็นตัวเลข 9-10 หลัก)");
-    if (!form.email.trim()) return alert("กรุณาระบุอีเมล");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return alert("รูปแบบอีเมลไม่ถูกต้อง");
+    if (!form.phone.trim()) return void showAlert("กรุณาระบุเบอร์โทรศัพท์ติดต่อ");
+    if (!/^\d{9,10}$/.test(form.phone.replace(/[-+\s]/g, ""))) return void showAlert("เบอร์โทรศัพท์ไม่ถูกต้อง (ต้องเป็นตัวเลข 9-10 หลัก)");
+    if (!form.email.trim()) return void showAlert("กรุณาระบุอีเมล");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return void showAlert("รูปแบบอีเมลไม่ถูกต้อง");
 
     // Address check
     if (!form.province || !form.zipCode) {
-      return alert("กรุณาค้นหาที่อยู่ผ่าน Smart Address Picker และระบุให้ครบถ้วน");
+      return void showAlert("กรุณาค้นหาที่อยู่ผ่าน Smart Address Picker และระบุให้ครบถ้วน");
     }
 
     // Financial check based on payment method
     if (form.payment_method === "TRANSFER") {
-      if (!form.bank_name) return alert("กรุณาเลือกธนาคารของคู่ค้า");
-      if (!form.account_number.trim()) return alert("กรุณาระบุเลขที่บัญชีธนาคาร");
-      if (!/^\d+$/.test(form.account_number.replace(/[-+\s]/g, ""))) return alert("เลขที่บัญชีธนาคารต้องเป็นตัวเลขเท่านั้น");
-      if (!form.account_name.trim()) return alert("กรุณาระบุชื่อบัญชีธนาคาร");
+      if (!form.bank_name) return void showAlert("กรุณาเลือกธนาคารของคู่ค้า");
+      if (!form.account_number.trim()) return void showAlert("กรุณาระบุเลขที่บัญชีธนาคาร");
+      if (!/^\d+$/.test(form.account_number.replace(/[-+\s]/g, ""))) return void showAlert("เลขที่บัญชีธนาคารต้องเป็นตัวเลขเท่านั้น");
+      if (!form.account_name.trim()) return void showAlert("กรุณาระบุชื่อบัญชีธนาคาร");
     } else if (form.payment_method === "CHEQUE") {
-      if (!form.cheque_documents.trim()) return alert("กรุณาระบุเอกสารที่ต้องเตรียมในการรับเช็ค");
-      if (!form.cheque_pickup_day.trim()) return alert("กรุณาระบุวันที่รับเช็ค (เช่น ทุกวันศุกร์)");
-      if (!form.cheque_pickup_time.trim()) return alert("กรุณาระบุช่วงเวลารับเช็ค");
+      if (!form.cheque_documents.trim()) return void showAlert("กรุณาระบุเอกสารที่ต้องเตรียมในการรับเช็ค");
+      if (!form.cheque_pickup_day.trim()) return void showAlert("กรุณาระบุวันที่รับเช็ค (เช่น ทุกวันศุกร์)");
+      if (!form.cheque_pickup_time.trim()) return void showAlert("กรุณาระบุช่วงเวลารับเช็ค");
     }
 
     setIsSubmitting(true);

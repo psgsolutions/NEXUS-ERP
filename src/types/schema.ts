@@ -78,35 +78,51 @@ export interface Customer extends BaseDocument {
 }
 
 export interface Quotation extends BaseDocument {
-  quotationId: string; // QT-YYMM-XXXX
+  documentNo: string; // QT-YYMM-XXXX
   items: {
-    productId: string;
-    qty: number;
+    itemCode: string; // บังคับดึงรหัสสินค้าจากระบบ
+    description: string;
+    quantity: number;
     unitPrice: number;
     discount: number;
+    totalAmount: number;
   }[];
-  totalAmount: number;
+  subTotal: number;
   vatAmount: number;
   grandTotal: number;
 }
 
 // 5. Procurement & Supply Chain
-export interface PurchaseOrder extends BaseDocument {
-  poId: string; // PO-YYMM-XXXX
-  supplierId: string;
+export interface PurchaseDocument extends BaseDocument {
+  documentNo: string; // PO-YYMM-XXXX
+  supplierInfo: {
+    supplierId: string;
+    name: string;
+  };
   items: any[];
-  status: 'draft' | 'pending' | 'ordered' | 'received';
-  leadTime?: number; // Days
+  status: 'draft' | 'pending' | 'ordered' | 'received' | 'cancelled';
 }
 
 // 6. Financial & Accounting
-export interface Transaction extends BaseDocument {
-  txId: string;
-  refId: string; // INV-XXX, PO-XXX
-  accountCode: string; // COA
-  debit: number;
-  credit: number;
-  isAdjusted: boolean;
+export interface AccountingDocument extends BaseDocument {
+  documentNo: string;
+  transactionDate: any;
+  entityInfo: {
+    entityId: string;
+    name: string;
+  };
+  referenceDocNo?: string;
+  paymentMethod: 'cash' | 'transfer' | 'cheque';
+  entries: {
+    accountCode: string;
+    accountName: string;
+    debitAmount: number;
+    creditAmount: number;
+  }[];
+  totalDebit: number;
+  totalCredit: number;
+  netAmount: number;
+  status: 'draft' | 'posted' | 'voided';
 }
 
 // 7. AI Intelligence Center

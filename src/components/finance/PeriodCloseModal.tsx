@@ -23,7 +23,7 @@ import {
 interface PeriodCloseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (data: any) => void;
+  onConfirm: (data: any) => Promise<void> | void;
 }
 
 export function PeriodCloseModal({ isOpen, onClose, onConfirm }: PeriodCloseModalProps) {
@@ -38,10 +38,21 @@ export function PeriodCloseModal({ isOpen, onClose, onConfirm }: PeriodCloseModa
     unbalancedAccounts: 0,
     pendingTax: true
   });
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleClose = () => {
+    if (isSaving) return;
     onClose();
     setStep(1);
+  };
+
+  const handleConfirm = async () => {
+    setIsSaving(true);
+    try {
+      await onConfirm(period);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -112,11 +123,20 @@ export function PeriodCloseModal({ isOpen, onClose, onConfirm }: PeriodCloseModa
                     </p>
                  </div>
                  <div className="flex flex-col gap-3 max-w-sm mx-auto pt-6">
-                    <PillButton className="w-full px-8 shadow-neon-teal" onClick={() => onConfirm(period)}>
-                       <ShieldCheck size={20} />
-                       ยืนยันและล็อกงวดบัญชี
+                    <PillButton 
+                      className={cn("w-full px-8 shadow-neon-teal", isSaving && "opacity-50 pointer-events-none")} 
+                      onClick={handleConfirm}
+                      disabled={isSaving}
+                    >
+                       <ShieldCheck size={20} className={isSaving ? "animate-pulse" : ""} />
+                       {isSaving ? "กำลังล็อกงวดบัญชี..." : "ยืนยันและล็อกงวดบัญชี"}
                     </PillButton>
-                    <PillButton variant="glass" className="w-full text-white/20" onClick={() => setStep(1)}>
+                    <PillButton 
+                      variant="glass" 
+                      className={cn("w-full text-white/20", isSaving && "opacity-50 pointer-events-none")} 
+                      onClick={() => setStep(1)}
+                      disabled={isSaving}
+                    >
                        ย้อนกลับไปตรวจสอบ
                     </PillButton>
                  </div>

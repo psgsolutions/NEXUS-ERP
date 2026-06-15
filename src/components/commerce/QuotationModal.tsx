@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/Base";
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { calculateFinancials, formatCurrency, getProfitRainbowColor, VatType } from "@/lib/erp-logic";
+import { useSystemDialog } from "@/context/DialogContext";
 
 interface QuotationModalProps {
   isOpen: boolean;
@@ -55,6 +56,8 @@ const INITIAL_FORM = {
 };
 
 export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData }: QuotationModalProps) {
+  const { showAlert, showConfirm } = useSystemDialog();
+
   const [activeTab, setActiveTab] = useState("header");
   const [expandedItems, setExpandedItems] = useState<number[]>([]);
   const [isLocked, setIsLocked] = useState(false);
@@ -153,7 +156,7 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
   };
 
   const handleSave = async () => {
-    if (!form.customer && !form.subject) return alert("กรุณาระบุข้อมูลหัวข้อโครงการและลูกค้า");
+    if (!form.customer && !form.subject) return void showAlert("กรุณาระบุข้อมูลหัวข้อโครงการและลูกค้า");
     setIsSubmitting(true);
     try {
       await onSave({ ...form, financials });

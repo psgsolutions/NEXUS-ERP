@@ -1,15 +1,10 @@
 "use client";
 
-<<<<<<< HEAD
 import React, { useState } from "react";
-=======
-import React from "react";
->>>>>>> e3043f99d23bda02971284e389327f5248699605
 import { 
   Wallet, 
   TrendingUp, 
   TrendingDown, 
-<<<<<<< HEAD
   FileText, 
   BarChart3, 
   PieChart, 
@@ -53,18 +48,14 @@ import { TaxFilingModal } from "@/components/finance/TaxFilingModal";
 import { AssetDepreciationModal } from "@/components/finance/AssetDepreciationModal";
 import { useAuth } from "@/context/AuthContext";
 import { auditService } from "@/services/audit.service";
+import { db } from "@/lib/firebase";
+import { collection, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { saveToFirestore } from "@/lib/firebaseUtils";
+import { useSystemDialog } from "@/context/DialogContext";
 import Link from "next/link";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 
 type FinanceSubModule = "overview" | "ar" | "ap" | "gl" | "tax" | "assets";
-=======
-  PieChart,
-  ArrowUpRight,
-  ArrowDownRight,
-  FileSpreadsheet,
-  Download
-} from "lucide-react";
-import { GlassCard, PillButton, cn } from "@/components/ui/Base";
->>>>>>> e3043f99d23bda02971284e389327f5248699605
 
 export default function FinancePage() {
   const { user, companyId } = useAuth();
@@ -75,54 +66,77 @@ export default function FinancePage() {
   const [isTaxModalOpen, setIsTaxModalOpen] = useState(false);
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
   const [modalActiveTab, setModalActiveTab] = useState("basic");
+  const { showAlert } = useSystemDialog();
   const [toast, setToast] = useState({ message: "", isVisible: false });
 
-  const initialFinancials = [
-    { id: "FIN-JV-26001", date: "26/04/2026", desc: "รับชำระค่าสินค้า QT-2604-0042", dr: "450,000.00", cr: "450,000.00", status: "active" as const },
-    { id: "FIN-IV-26012", date: "24/04/2026", desc: "ขายสินค้าให้ Hospital A (INV)", dr: "12,500.00", cr: "-", status: "active" as const },
-    { id: "FIN-PV-26008", date: "22/04/2026", desc: "ชำระค่าสินค้า PO-2604-0012", dr: "-", cr: "125,000.00", status: "active" as const },
-  ];
+  const { data: dbFinancials, loading: glLoading } = useRealtimeCollection<any>('journalEntries');
+  const { data: dbARs, loading: arLoading } = useRealtimeCollection<any>('receivables');
+  const { data: dbAPs, loading: apLoading } = useRealtimeCollection<any>('payables');
+  const { data: dbTaxes, loading: taxLoading } = useRealtimeCollection<any>('taxFilings');
+  const { data: dbAssets, loading: assetsLoading } = useRealtimeCollection<any>('assets');
 
-  const initialARs = [
-    { customer: "Hospital A", inv: "INV-2604-001", due: "15/05/2026", amount: "฿450,000", status: "pending" as const },
-    { customer: "Site X", inv: "INV-2604-042", due: "20/04/2026", amount: "฿12,500", status: "danger" as const },
-  ];
+  const financialsList = dbFinancials.map(f => ({
+    id: f.id || f.journalId || "JV-UNKNOWN",
+    date: f.date ? new Date(f.date.seconds ? f.date.seconds * 1000 : f.date).toLocaleDateString('th-TH') : "-",
+    desc: f.description || "-",
+    dr: f.totalDebit?.toLocaleString() || "-",
+    cr: f.totalCredit?.toLocaleString() || "-",
+    status: f.status || "active"
+  }));
 
-  const initialAPs = [
-    { supplier: "CommScope Thailand", po: "PO-2604-012", payDate: "30/04/2026", amount: "฿125,000", status: "active" as const },
-    { supplier: "Aruba Networks", po: "PO-2604-088", payDate: "05/05/2026", amount: "฿42,000", status: "pending" as const },
-  ];
+  const arList = dbARs.map(ar => ({
+    customer: ar.customerName || ar.customerId || "Unknown",
+    inv: ar.invoiceId || ar.id || "-",
+    due: ar.dueDate ? new Date(ar.dueDate.seconds ? ar.dueDate.seconds * 1000 : ar.dueDate).toLocaleDateString('th-TH') : "-",
+    amount: ar.amount ? `฿${ar.amount.toLocaleString()}` : "-",
+    status: ar.status || "pending"
+  }));
 
-  const initialTaxes = [
-    { type: "ภาษีขาย (Output VAT)", month: "เมษายน 2569", base: "฿2,035,000", tax: "฿142,450", status: "active" as const },
-    { type: "ภาษีซื้อ (Input VAT)", month: "เมษายน 2569", base: "฿1,174,000", tax: "฿82,180", status: "active" as const },
-  ];
+  const apList = dbAPs.map(ap => ({
+    supplier: ap.supplierName || ap.supplierId || "Unknown",
+    po: ap.poId || ap.id || "-",
+    payDate: ap.payDate ? new Date(ap.payDate.seconds ? ap.payDate.seconds * 1000 : ap.payDate).toLocaleDateString('th-TH') : "-",
+    amount: ap.amount ? `฿${ap.amount.toLocaleString()}` : "-",
+    status: ap.status || "active"
+  }));
 
-  const initialAssets = [
-    { id: "AST-2604-001", name: "LED Display Wall", cat: "EQUIPMENT", purchase: "฿4,200,000", bookValue: "฿3,850,000", status: "active" as const },
-    { id: "AST-2604-042", name: "MacBook Pro M3 Max", cat: "IT_HARDWARE", purchase: "฿125,000", bookValue: "฿112,000", status: "active" as const },
-  ];
+  const taxList = dbTaxes.map(t => ({
+    type: t.type || "Unknown",
+    month: `${t.month || 1}/${t.year || 2026}`,
+    base: t.revenue ? `฿${t.revenue.toLocaleString()}` : "-",
+    tax: t.taxAmount ? `฿${t.taxAmount.toLocaleString()}` : "-",
+    status: t.status || "active"
+  }));
 
-  const filteredFinancials = initialFinancials.filter(f => 
+  const assetsList = dbAssets.map(a => ({
+    id: a.id || "AST-UNKNOWN",
+    name: a.name || "Unknown Asset",
+    cat: a.category || "UNKNOWN",
+    purchase: a.purchaseValue ? `฿${a.purchaseValue.toLocaleString()}` : "-",
+    bookValue: a.bookValue ? `฿${a.bookValue.toLocaleString()}` : "-",
+    status: a.status || "active"
+  }));
+
+  const filteredFinancials = financialsList.filter(f => 
     f.desc.toLowerCase().includes(searchQuery.toLowerCase()) || 
     f.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredARs = initialARs.filter(ar => 
+  const filteredARs = arList.filter(ar => 
     ar.customer.toLowerCase().includes(searchQuery.toLowerCase()) || 
     ar.inv.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredAPs = initialAPs.filter(ap => 
+  const filteredAPs = apList.filter(ap => 
     ap.supplier.toLowerCase().includes(searchQuery.toLowerCase()) || 
     ap.po.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredTaxes = initialTaxes.filter(t => 
+  const filteredTaxes = taxList.filter(t => 
     t.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredAssets = initialAssets.filter(a => 
+  const filteredAssets = assetsList.filter(a => 
     a.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     a.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -142,7 +156,6 @@ export default function FinancePage() {
   ];
 
   return (
-<<<<<<< HEAD
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
 
       {/* Compact Module Header — icon + title + inline metric chips on same plane */}
@@ -273,8 +286,16 @@ export default function FinancePage() {
                 {(activeTab === "overview" || activeTab === "gl") && (
                   <div className="animate-in fade-in duration-500">
                     <NexusTable headers={["เลขที่เอกสาร", "วันที่", "รายการ", "เดบิต (DR)", "เครดิต (CR)", "สถานะ"]}>
-                      {filteredFinancials.map(f => (
-                        <FinancialRow key={f.id} {...f} />
+                      {glLoading ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredFinancials.length === 0 ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">ไม่พบข้อมูลในระบบ</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredFinancials.map((f, i) => (
+                        <FinancialRow key={i} {...f} />
                       ))}
                     </NexusTable>
                   </div>
@@ -283,7 +304,15 @@ export default function FinancePage() {
                 {activeTab === "ar" && (
                   <div className="animate-in fade-in duration-500">
                     <NexusTable headers={["ลูกหนี้ (Customer)", "เลขที่ INV", "ครบกำหนด", "ยอดค้างชำระ", "สถานะ"]}>
-                      {filteredARs.map((ar, i) => (
+                      {arLoading ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredARs.length === 0 ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">ไม่พบข้อมูลในระบบ</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredARs.map((ar, i) => (
                         <ARRow key={i} {...ar} />
                       ))}
                     </NexusTable>
@@ -293,7 +322,15 @@ export default function FinancePage() {
                 {activeTab === "ap" && (
                   <div className="animate-in fade-in duration-500">
                     <NexusTable headers={["เจ้าหนี้ (Supplier)", "เลขที่ PO", "กำหนดชำระ", "ยอดต้องจ่าย", "สถานะ"]}>
-                      {filteredAPs.map((ap, i) => (
+                      {apLoading ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredAPs.length === 0 ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">ไม่พบข้อมูลในระบบ</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredAPs.map((ap, i) => (
                         <APRow key={i} {...ap} />
                       ))}
                     </NexusTable>
@@ -303,7 +340,15 @@ export default function FinancePage() {
                 {activeTab === "tax" && (
                   <div className="animate-in fade-in duration-500">
                     <NexusTable headers={["ประเภทภาษี", "งวดเดือน", "ยอดฐานภาษี", "ยอดภาษี", "สถานะ"]}>
-                      {filteredTaxes.map((tax, i) => (
+                      {taxLoading ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredTaxes.length === 0 ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">ไม่พบข้อมูลในระบบ</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredTaxes.map((tax, i) => (
                         <TaxRow key={i} {...tax} />
                       ))}
                     </NexusTable>
@@ -313,8 +358,16 @@ export default function FinancePage() {
                 {activeTab === "assets" && (
                   <div className="animate-in fade-in duration-500">
                     <NexusTable headers={["Asset ID / ชื่อสินทรัพย์", "หมวดหมู่", "มูลค่าซื้อ", "มูลค่าทางบัญชี", "สถานะ"]}>
-                      {filteredAssets.map(asset => (
-                        <AssetRow key={asset.id} {...asset} />
+                      {assetsLoading ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredAssets.length === 0 ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">ไม่พบข้อมูลในระบบ</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredAssets.map((asset, i) => (
+                        <AssetRow key={i} {...asset} />
                       ))}
                     </NexusTable>
                   </div>
@@ -344,80 +397,6 @@ export default function FinancePage() {
               </p>
            </GlassCard>
         </div>
-=======
-    <div className="p-8 space-y-8 animate-in fade-in duration-700">
-      {/* Header Section */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-white mb-2">การเงินและบัญชี (Finance Center)</h1>
-          <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">General Ledger & Cash Flow Strategy</p>
-        </div>
-        <div className="flex gap-4">
-          <PillButton variant="glass" className="gap-2 border-white/5">
-            <Download size={18} />
-            Export Report
-          </PillButton>
-          <PillButton className="gap-2 shadow-nexus-glow">
-            <FileSpreadsheet size={18} />
-            ลงบัญชีใหม่ (GL)
-          </PillButton>
-        </div>
-      </div>
-
-      {/* Financial Health Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <FinanceCard 
-          label="กระแสเงินสดสุทธิ" 
-          value="฿2,450,000.00" 
-          change="+฿125,000" 
-          isPositive={true} 
-          icon={<Wallet className="text-nexus-teal" />} 
-        />
-        <FinanceCard 
-          label="รายได้รวม (Revenue)" 
-          value="฿8,120,500.00" 
-          change="+15.2%" 
-          isPositive={true} 
-          icon={<TrendingUp className="text-nexus-blue" />} 
-        />
-        <FinanceCard 
-          label="ค่าใช้จ่ายรวม (Expense)" 
-          value="฿5,670,500.00" 
-          change="+8.4%" 
-          isPositive={false} 
-          icon={<TrendingDown className="text-danger" />} 
-        />
-      </div>
-
-      {/* Chart & Breakdowns */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        <GlassCard className="p-8 border-white/5 bg-[#0a0a0c] h-[400px] relative overflow-hidden">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xs font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
-              <Activity className="w-4 h-4 text-nexus-teal" />
-              Cash Flow Trend
-            </h3>
-          </div>
-          {/* Mock Visualization Placeholder */}
-          <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-nexus-blue/5 to-transparent" />
-          <div className="w-full h-full flex items-center justify-center border border-white/5 border-dashed rounded-2xl">
-             <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em]">Real-time Visualization Engine</p>
-          </div>
-        </GlassCard>
-
-        <GlassCard className="p-8 border-white/5 bg-[#0a0a0c]">
-          <h3 className="text-xs font-black text-white/60 uppercase tracking-widest mb-8 flex items-center gap-2">
-            <PieChart className="w-4 h-4 text-nexus-blue" />
-            Expense Breakdown
-          </h3>
-          <div className="space-y-6">
-            <ExpenseItem label="ต้นทุนขาย (COGS)" value="฿4,100,000" percent={72} color="bg-nexus-blue" />
-            <ExpenseItem label="เงินเดือนพนักงาน" value="฿850,000" percent={15} color="bg-nexus-teal" />
-            <ExpenseItem label="ค่าเช่าและสาธารณูปโภค" value="฿420,000" percent={7} color="bg-warning" />
-            <ExpenseItem label="ค่าใช้จ่ายเบ็ดเตล็ด" value="฿300,500" percent={6} color="bg-white/20" />
-          </div>
-        </GlassCard>
->>>>>>> e3043f99d23bda02971284e389327f5248699605
       </div>
       </div>
       </div>
@@ -427,12 +406,29 @@ export default function FinancePage() {
         isOpen={activeModal === "gl"} 
         onClose={() => setActiveModal(null)}
         onSave={async (data) => {
-          console.log("Saving JV:", data);
-          if (user && companyId) {
-            await auditService.logCreate(user.uid, companyId, "FINANCE_GL", "NEW", data);
+          if (!user || !companyId) return;
+          try {
+            const saveOp = async () => {
+              const jvRef = doc(collection(db, "journalEntries"));
+              await setDoc(jvRef, {
+                ...data.header,
+                companyId,
+                totalDebit: data.totals.dr,
+                totalCredit: data.totals.cr,
+                entries: data.entries,
+                status: "active",
+                createdAt: serverTimestamp()
+              });
+              await auditService.logCreate(user.uid, companyId, "FINANCE_GL", "NEW", data);
+            };
+            
+            await saveToFirestore(saveOp());
+            setActiveModal(null);
+            showAlert("บันทึกรายการรายวันสำเร็จ", "System Notification", "info");
+          } catch (err: any) {
+            console.error(err);
+            showAlert(`ซิงค์ข้อมูลล้มเหลว: ${err.message}`, "System Notification", "error");
           }
-          setActiveModal(null);
-          showToast("บันทึกรายการรายวันสำเร็จ (JV-2604-XXXX)");
         }}
       />
 
@@ -440,12 +436,25 @@ export default function FinancePage() {
         isOpen={isCloseOpen}
         onClose={() => setIsCloseOpen(false)}
         onConfirm={async (data) => {
-          console.log("Closing Period:", data);
-          if (user && companyId) {
-            await auditService.logCreate(user.uid, companyId, "FINANCE_CLOSE", "NEW", data);
+          if (!user || !companyId) return;
+          try {
+            const saveOp = async () => {
+              const closeRef = doc(collection(db, "periodClosings"));
+              await setDoc(closeRef, {
+                ...data,
+                companyId,
+                status: "closed",
+                createdAt: serverTimestamp()
+              });
+              await auditService.logCreate(user.uid, companyId, "FINANCE_CLOSE", "NEW", data);
+            };
+            await saveToFirestore(saveOp());
+            setIsCloseOpen(false);
+            showAlert(`ปิดงวดบัญชี ${data.month} ${data.year} สำเร็จและล็อกข้อมูลแล้ว`, "System Notification", "info");
+          } catch (err: any) {
+            console.error(err);
+            showAlert(`ซิงค์ข้อมูลล้มเหลว: ${err.message}`, "System Notification", "error");
           }
-          setIsCloseOpen(false);
-          showToast(`ปิดงวดบัญชี ${data.month} ${data.year} สำเร็จและล็อกข้อมูลแล้ว`);
         }}
       />
 
@@ -453,12 +462,26 @@ export default function FinancePage() {
         isOpen={activeModal === "ar"} 
         onClose={() => setActiveModal(null)}
         onSave={async (data) => {
-          console.log("Saving RV:", data);
-          if (user && companyId) {
-            await auditService.logCreate(user.uid, companyId, "FINANCE_AR", "NEW", data);
+          if (!user || !companyId) return;
+          try {
+            const saveOp = async () => {
+              const rvRef = doc(collection(db, "receivables"));
+              await setDoc(rvRef, {
+                ...data,
+                companyId,
+                status: "completed",
+                createdAt: serverTimestamp()
+              });
+              await auditService.logCreate(user.uid, companyId, "FINANCE_AR", "NEW", data);
+            };
+            
+            await saveToFirestore(saveOp());
+            setActiveModal(null);
+            showAlert("บันทึกรับชำระเงินสำเร็จ", "System Notification", "info");
+          } catch (err: any) {
+            console.error(err);
+            showAlert(`ซิงค์ข้อมูลล้มเหลว: ${err.message}`, "System Notification", "error");
           }
-          setActiveModal(null);
-          showToast("บันทึกรับชำระเงินสำเร็จ (RV-2604-XXXX)");
         }}
       />
 
@@ -466,12 +489,25 @@ export default function FinancePage() {
         isOpen={activeModal === "ap"} 
         onClose={() => setActiveModal(null)}
         onSave={async (data) => {
-          console.log("Saving PV:", data);
-          if (user && companyId) {
-            await auditService.logCreate(user.uid, companyId, "FINANCE_AP", "NEW", data);
+          if (!user || !companyId) return;
+          try {
+            const saveOp = async () => {
+              const pvRef = doc(collection(db, "payables"));
+              await setDoc(pvRef, {
+                ...data,
+                companyId,
+                status: "paid",
+                createdAt: serverTimestamp()
+              });
+              await auditService.logCreate(user.uid, companyId, "FINANCE_AP", "NEW", data);
+            };
+            await saveToFirestore(saveOp());
+            setActiveModal(null);
+            showAlert("บันทึกการจ่ายชำระเงินสำเร็จ", "System Notification", "info");
+          } catch (err: any) {
+            console.error(err);
+            showAlert(`ซิงค์ข้อมูลล้มเหลว: ${err.message}`, "System Notification", "error");
           }
-          setActiveModal(null);
-          showToast("บันทึกการจ่ายชำระเงินสำเร็จ (PV-2604-XXXX)");
         }}
       />
 
@@ -479,12 +515,25 @@ export default function FinancePage() {
         isOpen={isTaxModalOpen}
         onClose={() => setIsTaxModalOpen(false)}
         onConfirm={async (data) => {
-          console.log("Filing Tax:", data);
-          if (user && companyId) {
-            await auditService.logCreate(user.uid, companyId, "FINANCE_TAX", "NEW", data);
+          if (!user || !companyId) return;
+          try {
+            const saveOp = async () => {
+              const taxRef = doc(collection(db, "taxFilings"));
+              await setDoc(taxRef, {
+                ...data,
+                companyId,
+                status: "filed",
+                createdAt: serverTimestamp()
+              });
+              await auditService.logCreate(user.uid, companyId, "FINANCE_TAX", "NEW", data);
+            };
+            await saveToFirestore(saveOp());
+            setIsTaxModalOpen(false);
+            showAlert(`ยื่นแบบ ${data.type} งวด ${data.month || 'เดือนนี้'} สำเร็จ`, "System Notification", "info");
+          } catch (err: any) {
+            console.error(err);
+            showAlert(`ซิงค์ข้อมูลล้มเหลว: ${err.message}`, "System Notification", "error");
           }
-          setIsTaxModalOpen(false);
-          showToast(`ยื่นแบบ ${data.type} งวดเมษายน 2569 สำเร็จ`);
         }}
       />
 
@@ -492,12 +541,25 @@ export default function FinancePage() {
         isOpen={isAssetModalOpen}
         onClose={() => setIsAssetModalOpen(false)}
         onConfirm={async (data) => {
-          console.log("Depreciation Posted:", data);
-          if (user && companyId) {
-            await auditService.logCreate(user.uid, companyId, "FINANCE_ASSETS", "NEW", data);
+          if (!user || !companyId) return;
+          try {
+            const saveOp = async () => {
+              const depRef = doc(collection(db, "assetDepreciations"));
+              await setDoc(depRef, {
+                ...data,
+                companyId,
+                status: "posted",
+                createdAt: serverTimestamp()
+              });
+              await auditService.logCreate(user.uid, companyId, "FINANCE_ASSETS", "NEW", data);
+            };
+            await saveToFirestore(saveOp());
+            setIsAssetModalOpen(false);
+            showAlert(`ประมวลผลค่าเสื่อมราคาสำเร็จ`, "System Notification", "info");
+          } catch (err: any) {
+            console.error(err);
+            showAlert(`ซิงค์ข้อมูลล้มเหลว: ${err.message}`, "System Notification", "error");
           }
-          setIsAssetModalOpen(false);
-          showToast(`ประมวลผลค่าเสื่อมราคาสำหรับงวด ${data.period} สำเร็จ (JV Posted)`);
         }}
       />
 
@@ -506,7 +568,6 @@ export default function FinancePage() {
   );
 }
 
-<<<<<<< HEAD
 function AssetRow({ id, name, cat, purchase, bookValue, status }: { id: string, name: string, cat: string, purchase: string, bookValue: string, status: any }) {
   return (
     <NexusTableRow>
@@ -598,38 +659,6 @@ function VatItem({ label, amount, color }: { label: string, amount: string, colo
     <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
        <span className="text-white/20">{label}</span>
        <span className={cn("text-white/80", color)}>{amount}</span>
-=======
-function FinanceCard({ label, value, change, isPositive, icon }: { label: string, value: string, change: string, isPositive: boolean, icon: any }) {
-  return (
-    <GlassCard className="p-8 border-white/5 hover:border-white/20 transition-all">
-      <div className="flex justify-between items-start mb-6">
-        <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-          {icon}
-        </div>
-        <div className={cn("flex items-center gap-1 text-[10px] font-black", isPositive ? "text-nexus-teal" : "text-danger")}>
-          {isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-          {change}
-        </div>
-      </div>
-      <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-2">{label}</p>
-      <h4 className="text-3xl font-black text-white mono-numbers tracking-tighter">{value}</h4>
-    </GlassCard>
-  );
-}
-
-function ExpenseItem({ label, value, percent, color }: { label: string, value: string, percent: number, color: string }) {
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-end">
-        <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">{label}</p>
-        <p className="text-xs font-bold text-white mono-numbers">{value} <span className="text-white/20 ml-2">({percent}%)</span></p>
-      </div>
-      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-        <div className={cn("h-full", color)} style={{ width: `${percent}%` }} />
-      </div>
->>>>>>> e3043f99d23bda02971284e389327f5248699605
     </div>
   );
 }
-
-import { Activity } from "lucide-react";

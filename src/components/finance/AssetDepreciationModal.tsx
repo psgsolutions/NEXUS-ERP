@@ -22,7 +22,7 @@ import {
 interface AssetDepreciationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (data: any) => void;
+  onConfirm: (data: any) => Promise<void> | void;
 }
 
 export function AssetDepreciationModal({ isOpen, onClose, onConfirm }: AssetDepreciationModalProps) {
@@ -35,10 +35,21 @@ export function AssetDepreciationModal({ isOpen, onClose, onConfirm }: AssetDepr
     depreciationAmount: 142500,
     accountsAffected: 2
   };
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleClose = () => {
+    if (isSaving) return;
     onClose();
     setStep(1);
+  };
+
+  const handleConfirm = async () => {
+    setIsSaving(true);
+    try {
+      await onConfirm({ period });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -116,11 +127,20 @@ export function AssetDepreciationModal({ isOpen, onClose, onConfirm }: AssetDepr
                     </p>
                  </div>
                  <div className="flex flex-col gap-3 max-w-sm mx-auto pt-6">
-                    <PillButton className="w-full px-8 shadow-neon-warning bg-warning/20 hover:bg-warning/40 border-warning/40 text-warning" onClick={() => onConfirm({ period })}>
-                       <ShieldCheck size={20} />
-                       ยืนยันการประมวลผล (POST DEPRECIATION)
+                    <PillButton 
+                      className={cn("w-full px-8 shadow-neon-warning bg-warning/20 hover:bg-warning/40 border-warning/40 text-warning", isSaving && "opacity-50 pointer-events-none")} 
+                      onClick={handleConfirm}
+                      disabled={isSaving}
+                    >
+                       <ShieldCheck size={20} className={isSaving ? "animate-pulse" : ""} />
+                       {isSaving ? "กำลังประมวลผล..." : "ยืนยันการประมวลผล (POST DEPRECIATION)"}
                     </PillButton>
-                    <PillButton variant="glass" className="w-full text-white/20" onClick={() => setStep(1)}>
+                    <PillButton 
+                      variant="glass" 
+                      className={cn("w-full text-white/20", isSaving && "opacity-50 pointer-events-none")} 
+                      onClick={() => setStep(1)}
+                      disabled={isSaving}
+                    >
                        ย้อนกลับไปตรวจสอบ
                     </PillButton>
                  </div>

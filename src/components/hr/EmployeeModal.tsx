@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useSystemDialog } from "@/context/DialogContext";
 import { 
   UserPlus, 
   Briefcase, 
@@ -20,17 +21,21 @@ import {
   Modal, 
   PillTabs, 
   NexusDataField,
-  cn 
+  cn,
+  Toast
 } from "@/components/ui/Base";
 
 interface EmployeeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: any) => Promise<void> | void;
 }
 
 export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
+  const { showAlert, showConfirm } = useSystemDialog();
+
   const [activeTab, setActiveTab] = useState("basic");
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     prefix: "Mr.",
     firstName: "",
@@ -41,15 +46,36 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
     employmentType: "permanent",
     joinDate: new Date().toISOString().split('T')[0],
     salary: "",
+    taxId: "",
     bankName: "KBank",
     bankAccount: ""
   });
 
+  React.useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        prefix: "Mr.",
+        firstName: "",
+        lastName: "",
+        nickname: "",
+        position: "",
+        department: "ENGINEERING",
+        employmentType: "permanent",
+        joinDate: new Date().toISOString().split('T')[0],
+        salary: "",
+        taxId: "",
+        bankName: "KBank",
+        bankAccount: ""
+      });
+      setActiveTab("basic");
+    }
+  }, [isOpen]);
+
   const isDirty = formData.firstName !== "" || formData.lastName !== "";
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (isDirty) {
-      if (window.confirm("คุณมีการกรอกข้อมูลค้างไว้ ต้องการปิดโดยไม่บันทึกใช่หรือไม่?")) {
+      if (await showConfirm("คุณมีการกรอกข้อมูลค้างไว้ ต้องการปิดโดยไม่บันทึกใช่หรือไม่?")) {
         onClose();
       }
     } else {
@@ -57,11 +83,49 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
     }
   };
 
-  const handleSave = () => {
-    if (!formData.firstName || !formData.lastName || !formData.position) {
-      return alert("กรุณากรอกข้อมูลพื้นฐานและตำแหน่งงานให้ครบถ้วน");
+  const handleSalaryChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVal = e.target.value;
+    const oldVal = formData.salary;
+    
+    // Allow empty string
+    if (newVal === "") {
+      setFormData({...formData, salary: newVal});
+      return;
     }
-    onSave(formData);
+
+    // Allow only digits
+    if (!/^\d*$/.test(newVal)) return;
+    
+    if (newVal.length >= 6 && oldVal.length < 6) {
+      const confirm = await showConfirm("เงินเดือนเกินแสน แน่ใจว่าจะใช้ฐานเงินเดือนนี้?");
+      if (confirm) {
+        setFormData({...formData, salary: newVal});
+      }
+    } else {
+      setFormData({...formData, salary: newVal});
+    }
+  };
+
+  const handleTaxIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only digits, max 13
+    const val = e.target.value.replace(/\D/g, '').slice(0, 13);
+    setFormData({...formData, taxId: val});
+  };
+
+  // Removed local Toast state
+
+
+  const handleSave = async () => {
+    if (!formData.firstName || !formData.lastName || !formData.position) {
+      await showAlert("กรุณากรอกข้อมูลพื้นฐาน (ชื่อ, นามสกุล, ตำแหน่ง) ให้ครบถ้วน", "System Notification", "warning");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await onSave(formData);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -79,11 +143,15 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
                 <p className="text-[12px] font-black text-nexus-teal uppercase tracking-[0.2em]">โหมดจัดการบุคลากร (HR_CORE_V3.0)</p>
                 <h4 className="text-xl font-black text-white uppercase tracking-tight">ข้อมูลพนักงาน (Employee Profile)</h4>
               </div>
-              <div className="flex items-center gap-4 bg-white/[0.02] border border-white/5 p-2 rounded-2xl">
-                 <button onClick={() => setActiveTab("basic")} className={cn("px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === "basic" ? "bg-nexus-teal text-white shadow-neon-teal" : "text-white/20 hover:text-white/40")}>Basic Info</button>
-                 <button onClick={() => setActiveTab("job")} className={cn("px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === "job" ? "bg-nexus-teal text-white shadow-neon-teal" : "text-white/20 hover:text-white/40")}>Job & Contract</button>
-                 <button onClick={() => setActiveTab("payroll")} className={cn("px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === "payroll" ? "bg-nexus-teal text-white shadow-neon-teal" : "text-white/20 hover:text-white/40")}>Financial</button>
-              </div>
+              <PillTabs 
+                 tabs={[
+                   { id: "basic", label: "Basic Info" },
+                   { id: "job", label: "Job & Contract" },
+                   { id: "payroll", label: "Financial" }
+                 ]}
+                 activeTab={activeTab}
+                 onTabChange={setActiveTab}
+              />
             </div>
 
             <div className="space-y-10 animate-in fade-in slide-in-from-left-4 duration-500">
@@ -152,15 +220,20 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
                 </div>
               )}
 
-              {activeTab === "payroll" && (
+               {activeTab === "payroll" && (
                 <div className="space-y-10">
                    <div className="grid grid-cols-2 gap-8">
+                      <Field label="เลขประจำตัวผู้เสียภาษี (TAX ID)">
+                         <PillInput value={formData.taxId} onChange={handleTaxIdChange} placeholder="เลขประจำตัวผู้เสียภาษี 13 หลัก" className="w-full" />
+                      </Field>
                       <Field label="เงินเดือนฐาน (Base Salary)">
                          <div className="relative">
-                            <PillInput type="number" value={formData.salary} onChange={(e) => setFormData({...formData, salary: e.target.value})} placeholder="0.00" className="w-full pl-10" />
+                            <PillInput type="text" inputMode="numeric" value={formData.salary} onChange={handleSalaryChange} placeholder="0" className="w-full pl-10" />
                             <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={16} />
                          </div>
                       </Field>
+                   </div>
+                   <div className="grid grid-cols-2 gap-8">
                       <Field label="ธนาคารที่รับเงิน">
                          <PillSelect value={formData.bankName} onChange={(e) => setFormData({...formData, bankName: e.target.value})} className="w-full">
                             <option>KBank</option>
@@ -168,10 +241,10 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
                             <option>BBL</option>
                          </PillSelect>
                       </Field>
+                      <Field label="เลขที่บัญชีธนาคาร">
+                         <PillInput value={formData.bankAccount} onChange={(e) => setFormData({...formData, bankAccount: e.target.value})} placeholder="XXX-X-XXXXX-X" className="w-full" />
+                      </Field>
                    </div>
-                   <Field label="เลขที่บัญชีธนาคาร">
-                      <PillInput value={formData.bankAccount} onChange={(e) => setFormData({...formData, bankAccount: e.target.value})} placeholder="XXX-X-XXXXX-X" className="w-full" />
-                   </Field>
                 </div>
               )}
             </div>
@@ -200,16 +273,26 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
           </div>
 
           <div className="space-y-4 pt-12 border-t border-white/5">
-            <PillButton className="w-full px-8 shadow-neon-teal uppercase tracking-[0.2em]" onClick={handleSave}>
-              <ShieldCheck size={22} />
-              บันทึกรายชื่อ (ENROLL EMP)
+            <PillButton 
+              className={cn("w-full px-8 shadow-neon-teal uppercase tracking-[0.2em]", isSaving && "opacity-50 pointer-events-none")} 
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              <ShieldCheck size={22} className={isSaving ? "animate-pulse" : ""} />
+              {isSaving ? "กำลังบันทึกข้อมูล (SAVING...)" : "บันทึกรายชื่อ (ENROLL EMP)"}
             </PillButton>
-            <PillButton variant="glass" className="w-full text-white/20 hover:text-white uppercase tracking-widest" onClick={handleClose}>
+            <PillButton 
+              variant="glass" 
+              className={cn("w-full text-white/20 hover:text-white uppercase tracking-widest", isSaving && "opacity-50 pointer-events-none")} 
+              onClick={handleClose}
+              disabled={isSaving}
+            >
               ยกเลิก
             </PillButton>
           </div>
         </div>
       </div>
+      {/* Toast removed in favor of System Dialog */}
     </Modal>
   );
 }

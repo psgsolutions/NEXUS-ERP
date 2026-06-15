@@ -173,7 +173,10 @@ export default function ProductDetailPage() {
   const totalValue = useMemo(() => form.onHand * form.costWAC, [form.onHand, form.costWAC]);
 
   const handleSave = async () => {
-    if (!user || !companyId || !productId) return;
+    if (!user || !companyId || !productId) {
+      setToast({ message: "ระบบขัดข้อง: ไม่พบข้อมูลผู้ใช้งานหรือรหัสองค์กร กรุณาเข้าสู่ระบบใหม่", isVisible: true, type: "error" });
+      return;
+    }
     if (!form.sku.trim() || !form.name.trim()) {
       setToast({ message: "กรุณาระบุรหัส SKU และชื่อพัสดุ", isVisible: true, type: "warning" });
       return;

@@ -51,7 +51,7 @@ type ProcSubModule = "suppliers" | "pr" | "po" | "receipt";
 
 export default function ProcurementPage() {
   const { user, companyId } = useAuth();
-  const [activeTab, setActiveTab] = useState<ProcSubModule>("po");
+  const [activeTab, setActiveTab] = useState<ProcSubModule>("pr");
   const [modalActiveTab, setModalActiveTab] = useState("header");
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -109,12 +109,11 @@ export default function ProcurementPage() {
     setToast({ message, isVisible: true });
   };
 
-
   const tabs = [
-    { id: "suppliers", label: "ข้อมูลคู่ค้า (VENDORS)", icon: <Building2 size={14} /> },
     { id: "pr", label: "ใบขอซื้อ (REQUISITION)", icon: <ClipboardList size={14} /> },
     { id: "po", label: "ใบสั่งซื้อ (ORDERS)", icon: <ShoppingCart size={14} /> },
     { id: "receipt", label: "รับสินค้า (RECEIVING)", icon: <Truck size={14} /> },
+    { id: "suppliers", label: "ข้อมูลคู่ค้า (VENDORS)", icon: <Building2 size={14} /> },
   ];
 
   return (

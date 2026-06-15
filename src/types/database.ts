@@ -30,8 +30,8 @@ export interface UserProfile extends BaseDocument {
 
 export interface CompanyConfig extends BaseDocument {
   name: string;
-  taxId: string;
-  address: string;
+  taxId?: string;
+  address: any;
   phone: string;
   website?: string;
   logoUrl?: string;
@@ -44,6 +44,12 @@ export interface CompanyConfig extends BaseDocument {
       purchaseOrder: string;
       project: string;
       invoice: string;
+    };
+    focAccounts?: {
+      marketing: string;
+      compensation: string;
+      crm: string;
+      other: string;
     };
   };
 }
@@ -65,29 +71,51 @@ export interface Customer extends BaseDocument {
   };
 }
 
-export interface Quotation extends BaseDocument {
-  quotationId: string;
+// 1. โครงสร้าง Snapshot ข้อมูลลูกค้าสำหรับเอกสาร
+export interface DocumentCustomerInfo {
   customerId: string;
-  items: QuotationItem[];
-  subTotal: number;
-  vatRate: number; // e.g., 0.07
-  vatAmount: number;
-  grandTotal: number;
+  name: string;
+  taxId?: string;
+  branch?: string; // สาขา
+  address: string;
+}
+
+// 2. ข้อมูลรายการสินค้า (Line Items)
+export interface UniversalLineItem {
+  id: string; // สำหรับทำ Key ตอนลากวาง
+  itemCode: string; // รหัสสินค้า (บังคับดึงจากระบบ)
+  description: string; // รายละเอียด/ชื่อสินค้า
+  quantity: number; // จำนวน
+  unitPrice: number; // ราคาต่อหน่วย
+  discount: number; // ส่วนลดต่อรายการ
+  totalAmount: number; // ยอดรวมของบรรทัดนั้น
+  isFOC?: boolean; // เป็นของแถมหรือไม่
+  focReason?: 'marketing' | 'compensation' | 'crm' | 'other'; // เหตุผลการแถม
+}
+
+// 3. ข้อมูลสรุปยอดและเอกสารใบเสนอราคา (Document Header & Summary)
+export interface Quotation extends BaseDocument {
+  // Document Header
+  documentNo: string; // รหัสเอกสาร (เช่น QU-2605-0001)
+  issueDate: any; // วันที่ออกเอกสาร (Firestore Timestamp)
+  dueDate: any; // วันที่ครบกำหนดชำระ
+  customerInfo: DocumentCustomerInfo;
+  
+  // Line Items
+  items: UniversalLineItem[];
+  
+  // Document Summary
+  subTotal: number; // ยอดรวมทั้งหมดก่อนหักส่วนลด
+  totalDiscount: number; // ส่วนลดท้ายบิล
+  vatAmount: number; // ยอดภาษีมูลค่าเพิ่ม (VAT 7%)
+  grandTotal: number; // ยอดเงินสุทธิรวมทั้งสิ้น
+  remarks: string; // หมายเหตุท้ายเอกสาร
+
+  // Status & Logic Specific
   status: 'draft' | 'pending' | 'approved' | 'rejected' | 'expired';
-  expiryDate: any;
   paymentTermDays: number; // For Cash Flow Forecasting
   probability: number; // 0.0 to 1.0 (AI Prediction)
   expectedRevenue: number; // grandTotal * probability
-}
-
-export interface QuotationItem {
-  productId: string;
-  name: string;
-  qty: number;
-  unit: string;
-  pricePerUnit: number;
-  discount: number;
-  total: number;
 }
 
 // ---------------------------------------------------------
@@ -105,7 +133,7 @@ export interface Project extends BaseDocument {
   startDate: any;
   endDate: any;
   location: {
-    address: string;
+    address: any;
     coordinates?: { lat: number; lng: number };
   };
   siteContact: {
@@ -215,12 +243,12 @@ export interface PMPlan extends BaseDocument {
 // 4. พาณิชย์และลูกค้าสัมพันธ์ (Commerce & CRM)
 // ---------------------------------------------------------
 
-export interface Customer extends BaseDocument {
+export interface CRMCustomer extends BaseDocument {
   customerId: string;
   name: string;
-  taxId: string;
+  taxId?: string;
   type: 'GOVERNMENT' | 'PRIVATE' | 'INTERNAL';
-  address: string;
+  address: any;
   contacts: {
     name: string;
     position?: string;
@@ -254,9 +282,9 @@ export interface PurchaseRequest extends BaseDocument {
 export interface Supplier extends BaseDocument {
   supplierId: string;
   name: string;
-  taxId: string;
+  taxId?: string;
   category: string; // e.g., Hardware, Software, Service
-  address: string;
+  address: any;
   contacts: {
     name: string;
     position?: string;
@@ -291,6 +319,8 @@ export interface PurchaseOrder extends BaseDocument {
   subtotal: number;
   taxAmount: number;
   totalAmount: number;
+  vat_type?: 'Inclusive' | 'Exclusive' | 'Non-VAT';
+  isOfficialTax?: boolean;
   status: 'draft' | 'issued' | 'received' | 'cancelled';
 }
 
@@ -315,7 +345,7 @@ export interface GoodsReceipt extends BaseDocument {
 export interface JournalEntry extends BaseDocument {
   journalId: string;
   date: any;
-  bookType: 'JV' | 'RV' | 'PV' | 'SV';
+  bookType: 'JV' | 'RV' | 'PV' | 'SV' | 'PV_INTERNAL';
   description: string;
   reference?: string;
   lines: {
@@ -327,6 +357,7 @@ export interface JournalEntry extends BaseDocument {
   }[];
   totalDebit: number;
   totalCredit: number;
+  isOfficialTax?: boolean;
   status: 'draft' | 'posted' | 'cancelled';
 }
 
@@ -459,8 +490,8 @@ export interface PaymentVoucher extends BaseDocument {
   status: 'draft' | 'posted' | 'cancelled';
 }
 
-export interface Quotation extends BaseDocument {
-  quotationId: string;
+export interface CRMQuotation extends BaseDocument {
+  documentNo: string;
   customerId: string;
   projectName: string;
   date: any;
@@ -480,7 +511,7 @@ export interface Quotation extends BaseDocument {
 
 export interface SalesOrder extends BaseDocument {
   orderId: string;
-  quotationId?: string; // Linked Quotation
+  quotationRefNo?: string; // Linked Quotation documentNo
   customerId: string;
   projectId?: string;
   orderDate: any;
@@ -514,6 +545,7 @@ export interface Product extends BaseDocument {
   category: string;
   brand: string;
   unit: string;
+  allowFOC?: boolean; // อนุญาตให้ใช้เป็นของแถมได้หรือไม่
   stockStatus: {
     onHand: number;
     reserved: number;
@@ -550,45 +582,111 @@ export interface SerialNumber extends BaseDocument {
   lastMaintenanceDate?: any;
 }
 
+export interface InventoryLineItem {
+  id: string;
+  itemCode: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  lotNumber?: string;
+  serialNumber?: string;
+  isFOC?: boolean;
+  focReason?: string;
+}
+
+export interface InventoryDocument extends BaseDocument {
+  // Document Header
+  documentNo: string;
+  movementDate: any;
+  sourceLocation: string;
+  destinationLocation?: string; // Optional (สำหรับรับ/เบิก ที่ไม่ใช่โอนย้าย)
+  referenceNo?: string;
+  
+  // Line Items
+  items: InventoryLineItem[];
+  
+  // Document Summary
+  totalQuantity: number;
+  approvedBy?: string;
+  remarks: string;
+
+  // Domain Specific
+  type: 'RECEIPT' | 'ISSUE' | 'TRANSFER' | 'ADJUSTMENT';
+}
+
 // ---------------------------------------------------------
 // 5. ระบบจัดซื้อ (Procurement)
 // ---------------------------------------------------------
 
-export interface PurchaseOrder extends BaseDocument {
-  poId: string;
+export interface DocumentSupplierInfo {
   supplierId: string;
-  items: POItem[];
-  totalAmount: number;
-  status: 'draft' | 'pending' | 'ordered' | 'received' | 'cancelled';
+  name: string;
+  taxId?: string;
+  branch?: string;
+  address: string;
 }
 
-export interface POItem {
-  productId: string;
-  qty: number;
-  pricePerUnit: number;
-  total: number;
+export interface PurchaseDocument extends BaseDocument {
+  // Document Header
+  documentNo: string;
+  issueDate: any;
+  expectedDate: any;
+  supplierInfo: DocumentSupplierInfo;
+  
+  // Line Items
+  items: UniversalLineItem[];
+  
+  // Document Summary
+  subTotal: number;
+  vatAmount: number;
+  grandTotal: number;
+  remarks: string;
+
+  // Domain Specific
+  status: 'draft' | 'pending' | 'ordered' | 'received' | 'cancelled';
 }
 
 // ---------------------------------------------------------
 // 6. บัญชีและการเงิน (Finance)
 // ---------------------------------------------------------
 
-export interface JournalEntry extends BaseDocument {
-  entryId: string;
-  date: any;
-  description: string;
-  referenceId: string; // Link to SO, PO, Invoice
-  items: LedgerItem[];
-  totalAmount: number;
-  isAdjustment: boolean;
-  adjustmentRef?: string; // Link to original entry being adjusted
+export interface AccountingEntityInfo {
+  entityId: string;
+  name: string;
+  taxId?: string;
+  address?: string;
 }
 
-export interface LedgerItem {
+export interface AccountingLineItem {
+  id: string;
   accountCode: string;
   accountName: string;
-  debit: number;
-  credit: number;
+  description: string;
+  debitAmount: number;
+  creditAmount: number;
+  whtRate?: number;
+}
+
+export interface AccountingDocument extends BaseDocument {
+  // Document Header
+  documentNo: string;
+  transactionDate: any;
+  entityInfo: AccountingEntityInfo;
+  referenceDocNo?: string;
+  paymentMethod: 'cash' | 'transfer' | 'cheque';
+  
+  // Line Items
+  entries: AccountingLineItem[];
+  
+  // Document Summary
+  totalDebit: number;
+  totalCredit: number;
+  netAmount: number;
+  totalWhtAmount: number;
+  remarks?: string;
+
+  // Domain Specific
+  status: 'draft' | 'posted' | 'voided';
 }
 
 // ---------------------------------------------------------

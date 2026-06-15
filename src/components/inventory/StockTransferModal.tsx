@@ -17,15 +17,20 @@ import {
   NexusDataField,
 } from "@/components/ui/Base";
 import { useInventory } from "@/hooks/useInventory";
+import { useSystemDialog } from "@/context/DialogContext";
+import { cn } from "@/lib/utils";
 
 interface StockTransferModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (data: any) => void;
+  onConfirm: (data: any) => Promise<void> | void;
 }
 
 export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransferModalProps) {
+  const { showAlert, showConfirm } = useSystemDialog();
+
   const { products } = useInventory();
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     fromWarehouse: "MAIN",
     toWarehouse: "RAYONG",
@@ -46,16 +51,21 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
     }
   }, [isOpen, products]);
 
-  const handleConfirm = () => {
-    if (!formData.productId) return alert("กรุณาเลือกพัสดุ");
-    if (formData.qty <= 0) return alert("จำนวนต้องมากกว่า 0");
-    if (formData.fromWarehouse === formData.toWarehouse) return alert("คลังต้นทางและปลายทางต้องไม่เหมือนกัน");
+  const handleConfirm = async () => {
+    if (!formData.productId) return void showAlert("กรุณาเลือกพัสดุ");
+    if (formData.qty <= 0) return void showAlert("จำนวนต้องมากกว่า 0");
+    if (formData.fromWarehouse === formData.toWarehouse) return void showAlert("คลังต้นทางและปลายทางต้องไม่เหมือนกัน");
     
     if (selectedProduct && (selectedProduct.stockStatus?.onHand || 0) < formData.qty) {
-      return alert(`สต็อกไม่เพียงพอในคลังต้นทาง (คงเหลือ: ${selectedProduct.stockStatus?.onHand || 0})`);
+      return void showAlert(`สต็อกไม่เพียงพอในคลังต้นทาง (คงเหลือ: ${selectedProduct.stockStatus?.onHand || 0})`);
     }
 
-    onConfirm(formData);
+    setIsSaving(true);
+    try {
+      await onConfirm(formData);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -195,11 +205,20 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
            </div>
 
            <div className="space-y-4">
-              <PillButton className="w-full px-8 shadow-neon-blue uppercase tracking-[0.2em]" onClick={handleConfirm}>
-                 <ShieldCheck size={22} />
-                 ยืนยันการโอน (INITIATE)
+              <PillButton 
+                className={cn("w-full px-8 shadow-neon-blue uppercase tracking-[0.2em]", isSaving && "opacity-50 pointer-events-none")} 
+                onClick={handleConfirm}
+                disabled={isSaving}
+              >
+                 <ShieldCheck size={22} className={isSaving ? "animate-pulse" : ""} />
+                 {isSaving ? "กำลังบันทึก..." : "ยืนยันการโอน (INITIATE)"}
               </PillButton>
-              <PillButton variant="glass" className="w-full text-white/20 hover:text-white uppercase tracking-widest" onClick={onClose}>
+              <PillButton 
+                variant="glass" 
+                className={cn("w-full text-white/20 hover:text-white uppercase tracking-widest", isSaving && "opacity-50 pointer-events-none")} 
+                onClick={onClose}
+                disabled={isSaving}
+              >
                  ยกเลิก
               </PillButton>
            </div>

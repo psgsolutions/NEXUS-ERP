@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useSystemDialog } from "@/context/DialogContext";
 import { 
   DollarSign, 
   Plus, 
@@ -26,10 +27,12 @@ import {
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: any) => Promise<void> | void;
 }
 
 export function PaymentModal({ isOpen, onClose, onSave }: PaymentModalProps) {
+  const { showAlert, showConfirm } = useSystemDialog();
+
   const [activeTab, setActiveTab] = useState("header");
   const [orders, setOrders] = useState<any[]>([]);
   const [header, setHeader] = useState({
@@ -39,6 +42,7 @@ export function PaymentModal({ isOpen, onClose, onSave }: PaymentModalProps) {
     paymentMethod: "transfer",
     reference: ""
   });
+  const [isSaving, setIsSaving] = useState(false);
 
   const [summary, setSummary] = useState({
     subtotal: 0,
@@ -53,7 +57,7 @@ export function PaymentModal({ isOpen, onClose, onSave }: PaymentModalProps) {
   }, [orders]);
 
   const loadSupplierOrders = () => {
-    if (!header.supplier) return alert("กรุณาเลือกชื่อเจ้าหนี้");
+    if (!header.supplier) return void showAlert("กรุณาเลือกชื่อเจ้าหนี้");
     setOrders([
       { id: 1, orderNo: "PO-2604-012", total: 125000, balance: 125000, amountToPay: 125000, whtRate: 0, whtAmount: 0 },
       { id: 2, orderNo: "PO-2604-088", total: 42000, balance: 42000, amountToPay: 42000, whtRate: 3, whtAmount: 1177 }
@@ -75,9 +79,9 @@ export function PaymentModal({ isOpen, onClose, onSave }: PaymentModalProps) {
 
   const isDirty = orders.length > 0 || header.supplier !== "";
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (isDirty) {
-      if (window.confirm("คุณมีการกรอกข้อมูลค้างไว้ ต้องการปิดโดยไม่บันทึกใช่หรือไม่?")) {
+      if (await showConfirm("คุณมีการกรอกข้อมูลค้างไว้ ต้องการปิดโดยไม่บันทึกใช่หรือไม่?")) {
         onClose();
       }
     } else {
@@ -85,9 +89,14 @@ export function PaymentModal({ isOpen, onClose, onSave }: PaymentModalProps) {
     }
   };
 
-  const handleSave = () => {
-    if (orders.length === 0) return alert("กรุณาเลือกรายการที่ต้องการจ่ายชำระ");
-    onSave({ header, orders, summary });
+  const handleSave = async () => {
+    if (orders.length === 0) return void showAlert("กรุณาเลือกรายการที่ต้องการชำระเงิน", "System Notification", "warning");
+    setIsSaving(true);
+    try {
+      await onSave({ header, orders, summary });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -105,10 +114,14 @@ export function PaymentModal({ isOpen, onClose, onSave }: PaymentModalProps) {
                 <p className="text-[12px] font-black text-nexus-blue uppercase tracking-[0.2em]">โหมดเจ้าหนี้ (AP_PAYMENT_V3.0)</p>
                 <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกจ่ายเงิน (Payment Voucher)</h4>
               </div>
-              <div className="flex items-center gap-4 bg-white/[0.02] border border-white/5 p-2 rounded-2xl">
-                 <button onClick={() => setActiveTab("header")} className={cn("px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === "header" ? "bg-nexus-blue text-white shadow-neon-blue" : "text-white/20 hover:text-white/40")}>Header Data</button>
-                 <button onClick={() => setActiveTab("orders")} className={cn("px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === "orders" ? "bg-nexus-blue text-white shadow-neon-blue" : "text-white/20 hover:text-white/40")}>Order Allocation</button>
-              </div>
+              <PillTabs 
+                 tabs={[
+                   { id: "header", label: "Header Data" },
+                   { id: "orders", label: "Order Allocation" }
+                 ]}
+                 activeTab={activeTab}
+                 onTabChange={setActiveTab}
+              />
             </div>
 
             <div className="space-y-10 animate-in fade-in slide-in-from-left-4 duration-500">
@@ -262,11 +275,20 @@ export function PaymentModal({ isOpen, onClose, onSave }: PaymentModalProps) {
           </div>
 
           <div className="space-y-4 pt-12 border-t border-white/5">
-            <PillButton className="w-full shadow-neon-blue uppercase tracking-[0.2em]" onClick={handleSave}>
-              <ShieldCheck size={22} />
-              ยืนยันการจ่ายเงิน (POST PV)
+            <PillButton 
+              className={cn("w-full shadow-neon-blue uppercase tracking-[0.2em]", isSaving && "opacity-50 pointer-events-none")} 
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              <ShieldCheck size={22} className={isSaving ? "animate-pulse" : ""} />
+              {isSaving ? "กำลังบันทึก..." : "ยืนยันจ่ายชำระ (POST PV)"}
             </PillButton>
-            <PillButton variant="glass" className="w-full text-white/20 hover:text-white uppercase tracking-widest" onClick={handleClose}>
+            <PillButton 
+              variant="glass" 
+              className={cn("w-full text-white/20 hover:text-white uppercase tracking-widest", isSaving && "opacity-50 pointer-events-none")} 
+              onClick={handleClose}
+              disabled={isSaving}
+            >
               ยกเลิก
             </PillButton>
           </div>

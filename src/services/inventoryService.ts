@@ -88,5 +88,29 @@ export const InventoryService = {
      }
      
      return prEntries;
+  },
+
+  /**
+   * Issues Free of Charge (FOC) items permanently from stock.
+   */
+  async issueFOCItems(productId: string, qty: number, orderId: string, focReason: string) {
+    const productRef = doc(db, "products", productId);
+    
+    // Decrement stock status
+    await updateDoc(productRef, {
+      'stockStatus.onHand': increment(-qty),
+      updatedAt: serverTimestamp()
+    });
+
+    // Log the movement as an FOC ISSUE
+    return await addDoc(collection(db, "stock_movements"), {
+      productId,
+      referenceNo: orderId,
+      type: 'FOC_ISSUE',
+      qty,
+      isFOC: true,
+      focReason: focReason,
+      timestamp: serverTimestamp()
+    });
   }
 };

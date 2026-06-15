@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useSystemDialog } from "@/context/DialogContext";
 import { 
   ShoppingBag, 
   Plus, 
@@ -29,6 +30,8 @@ interface PurchaseRequestModalProps {
 }
 
 export function PurchaseRequestModal({ isOpen, onClose, onSave }: PurchaseRequestModalProps) {
+  const { showAlert, showConfirm } = useSystemDialog();
+
   const [activeTab, setActiveTab] = useState("header");
   const [items, setItems] = useState<any[]>([]);
   const [header, setHeader] = useState({
@@ -48,9 +51,9 @@ export function PurchaseRequestModal({ isOpen, onClose, onSave }: PurchaseReques
 
   const isDirty = items.length > 0 || header.requiredDate !== "" || header.reason !== "";
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (isDirty) {
-      if (window.confirm("คุณมีการกรอกข้อมูลค้างไว้ ต้องการปิดโดยไม่บันทึกใช่หรือไม่?")) {
+      if (await showConfirm("คุณมีการกรอกข้อมูลค้างไว้ ต้องการปิดโดยไม่บันทึกใช่หรือไม่?")) {
         onClose();
       }
     } else {
@@ -71,7 +74,7 @@ export function PurchaseRequestModal({ isOpen, onClose, onSave }: PurchaseReques
   };
 
   const handleSave = () => {
-    if (items.length === 0) return alert("กรุณาเพิ่มรายการที่ต้องการขอซื้อ");
+    if (items.length === 0) return void showAlert("กรุณาเพิ่มรายการที่ต้องการขอซื้อ");
     onSave({ header, items });
   };
 

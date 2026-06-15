@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/Base";
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { formatCurrency } from "@/lib/erp-logic";
+import { useSystemDialog } from "@/context/DialogContext";
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -52,6 +53,8 @@ const INITIAL_FORM = {
 const CATEGORIES = ["ทั่วไป", "วัสดุสิ้นเปลือง", "เครื่องมือแพทย์", "อิเล็กทรอนิกส์", "อะไหล่"];
 
 export function ProductModal({ isOpen, onClose, onSave, initialData }: ProductModalProps) {
+  const { showAlert, showConfirm } = useSystemDialog();
+
   const [activeTab, setActiveTab] = useState("info");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
@@ -77,7 +80,7 @@ export function ProductModal({ isOpen, onClose, onSave, initialData }: ProductMo
   ];
 
   const handleCommit = async () => {
-    if (!form.sku || !form.name) return alert("กรุณาระบุรหัส SKU และชื่อพัสดุ");
+    if (!form.sku || !form.name) return void showAlert("กรุณาระบุรหัส SKU และชื่อพัสดุ");
     setIsSubmitting(true);
     try {
       await onSave(form);

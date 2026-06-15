@@ -33,6 +33,7 @@ import {
   NexusDataField
 } from "@/components/ui/Base";
 import { useParams, useRouter } from "next/navigation";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 
 export default function EmployeeDetailPage() {
   const params = useParams();
@@ -46,6 +47,31 @@ export default function EmployeeDetailPage() {
     { id: "payroll", label: "เงินเดือน (PAYROLL)", icon: <DollarSign size={14} /> },
   ];
 
+  const { data: dbEmployees, loading } = useRealtimeCollection<any>('employees');
+  
+  // Find employee by ID, or use a placeholder if loading/not found
+  const employee = dbEmployees.find((e: any) => e.id === params.id) || null;
+  const isNotFound = !loading && !employee;
+
+  if (loading) {
+    return (
+      <div className="p-10 flex items-center justify-center min-h-[500px]">
+        <p className="text-white/50 animate-pulse">กำลังโหลดข้อมูลบุคลากร...</p>
+      </div>
+    );
+  }
+
+  if (isNotFound) {
+    return (
+      <div className="p-10 flex flex-col items-center justify-center min-h-[500px]">
+        <p className="text-danger mb-4">ไม่พบข้อมูลพนักงานรหัส {params.id}</p>
+        <PillButton onClick={() => router.back()}>กลับไปหน้าก่อนหน้า</PillButton>
+      </div>
+    );
+  }
+
+  const fullName = `${employee.prefix === 'Mr.' ? 'นาย' : employee.prefix === 'Mrs.' ? 'นาง' : 'คุณ'}${employee.firstName || ''} ${employee.lastName || ''}`;
+
   return (
     <div className="p-10 space-y-10 max-w-[1600px] mx-auto animate-in fade-in duration-700">
       
@@ -55,10 +81,10 @@ export default function EmployeeDetailPage() {
           <PillBackButton onClick={() => router.back()} />
           <div className="space-y-1">
             <div className="flex items-center gap-3">
-               <StatusBadge status="active" label="SENIOR LEVEL" />
-               <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">Employee ID: {params.id || 'EMP-001'}</p>
+               <StatusBadge status={employee.status || 'active'} label="EMPLOYEE" />
+               <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">Employee ID: {params.id}</p>
             </div>
-            <h1 className="text-3xl font-black text-white tracking-tight uppercase">คุณสมชาย ใจดี (SOMCHAI JAIDEE)</h1>
+            <h1 className="text-3xl font-black text-white tracking-tight uppercase">{fullName}</h1>
           </div>
         </div>
         <div className="flex gap-3">
@@ -94,10 +120,10 @@ export default function EmployeeDetailPage() {
                       ข้อมูลตำแหน่งงาน
                    </h3>
                    <div className="space-y-4">
-                        <NexusDataField label="ตำแหน่งปัจจุบัน" value="วิศวกรเครือข่ายอาวุโส" />
-                        <NexusDataField label="แผนก" value="โครงสร้างพื้นฐานและการติดตั้ง" />
-                        <NexusDataField label="สาขาที่สังกัด" value="PSG HQ (กรุงเทพฯ)" />
-                        <NexusDataField label="ผู้บังคับบัญชา" value="คุณวิชัย (ผู้อำนวยการ)" highlight />
+                        <NexusDataField label="ตำแหน่งปัจจุบัน" value={employee.position || '-'} />
+                        <NexusDataField label="แผนก" value={employee.department || '-'} />
+                        <NexusDataField label="สาขาที่สังกัด" value={employee.location || 'สำนักงานใหญ่'} />
+                        <NexusDataField label="สถานะ" value={employee.status === 'active' ? 'กำลังปฏิบัติงาน' : employee.status} highlight />
                    </div>
                 </GlassCard>
 
@@ -107,10 +133,10 @@ export default function EmployeeDetailPage() {
                       ข้อมูลสัญญาและสวัสดิการ
                    </h3>
                    <div className="space-y-4">
-                        <NexusDataField label="ประเภทพนักงาน" value="พนักงานประจำ" />
-                        <NexusDataField label="ประกันสังคม" value="จดทะเบียน (ม.33)" />
-                        <NexusDataField label="ประกันสุขภาพ" value="ประกันกลุ่มระดับมาตรฐาน" />
-                        <NexusDataField label="สิทธิเบิกจ่าย" value="Zone A (พรีเมียม)" highlight />
+                        <NexusDataField label="ประเภทพนักงาน" value={employee.employeeType || 'พนักงานประจำ'} />
+                        <NexusDataField label="อีเมลเข้าระบบ" value={employee.email || '-'} />
+                        <NexusDataField label="ระดับการเข้าถึง" value={employee.role || '-'} />
+                        <NexusDataField label="วันที่เริ่มงาน" value={employee.createdAt ? new Date(employee.createdAt.seconds * 1000).toLocaleDateString('th-TH') : '-'} highlight />
                    </div>
                 </GlassCard>
               </div>
@@ -122,9 +148,9 @@ export default function EmployeeDetailPage() {
                     ช่องทางการติดต่อ & ที่อยู่
                  </h3>
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <ContactItem icon={<Mail />} label="Email" value="somchai@psg-solution.com" />
-                    <ContactItem icon={<Phone />} label="Phone" value="081-234-5678" />
-                    <ContactItem icon={<MapPin />} label="Address" value="เขตบางกะปิ กรุงเทพฯ" />
+                    <ContactItem icon={<Mail />} label="Email" value={employee.email || '-'} />
+                    <ContactItem icon={<Phone />} label="Phone" value={employee.phone || '-'} />
+                    <ContactItem icon={<MapPin />} label="Address" value={employee.address || '-'} />
                  </div>
               </GlassCard>
             </div>

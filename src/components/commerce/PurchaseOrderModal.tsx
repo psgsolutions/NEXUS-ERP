@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/Base";
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { calculateFinancials, formatCurrency, POType, VatType } from "@/lib/erp-logic";
+import { useSystemDialog } from "@/context/DialogContext";
 
 interface PurchaseOrderModalProps {
   isOpen: boolean;
@@ -78,6 +79,8 @@ function generatePONumber(): string {
 }
 
 export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: PurchaseOrderModalProps) {
+  const { showAlert, showConfirm } = useSystemDialog();
+
   const [activeTab, setActiveTab] = useState("general");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
@@ -143,10 +146,11 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
   };
 
   const handleCommit = async () => {
-    if (!form.supplier || form.items.length === 0) return alert("กรุณาระบุคู่ค้าและรายการสั่งซื้อ");
+    if (!form.supplier || form.items.length === 0) return void showAlert("กรุณาระบุคู่ค้าและรายการสั่งซื้อ");
     setIsSubmitting(true);
     try {
-      await onSave({ ...form, financials, financialsTHB });
+      const isOfficialTax = form.vat_type !== 'Non-VAT';
+      await onSave({ ...form, financials, financialsTHB, isOfficialTax });
       setIsLocked(true);
     } finally {
       setIsSubmitting(false);

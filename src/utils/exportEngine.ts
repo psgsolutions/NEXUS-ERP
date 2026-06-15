@@ -13,14 +13,7 @@ const styles = StyleSheet.create({
   monospace: { fontFamily: 'Courier' }, // สำหรับตัวเลขและรหัสเอกสาร
 });
 
-// โครงสร้าง PDF Document
-export const ExportPDF = () => (
-  <Document>
-    <Page size="A4" style={styles.page}>
-      {/* TODO: Content implementation */}
-    </Page>
-  </Document>
-);
+export const ExportPDF = () => null;
 
 // ฟังก์ชันสำหรับ Export Excel
 export const exportToExcel = (data: any[], filename: string) => {

@@ -1,6 +1,5 @@
 "use client";
 
-<<<<<<< HEAD
 import React, { useState } from "react";
 import { 
   UserCog, 
@@ -43,7 +42,12 @@ import { AttendanceModal } from "@/components/hr/AttendanceModal";
 import { PayrollModal } from "@/components/hr/PayrollModal";
 import { useAuth } from "@/context/AuthContext";
 import { auditService } from "@/services/audit.service";
+import { db } from "@/lib/firebase";
+import { collection, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { saveToFirestore } from "@/lib/firebaseUtils";
 import Link from "next/link";
+import { useSystemDialog } from "@/context/DialogContext";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 
 type HRSubModule = "profiles" | "attendance" | "payroll";
 
@@ -53,43 +57,54 @@ export default function HRPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [modalActiveTab, setModalActiveTab] = useState("basic");
-  const [toast, setToast] = useState({ message: "", isVisible: false });
+  const { showAlert } = useSystemDialog();
 
-  const initialEmployees = [
-    { id: "EMP-001", name: "คุณสมชาย ใจดี", role: "วิศวกรเครือข่ายอาวุโส", dept: "ENGINEERING", location: "SITE-A", status: "active" as const },
-    { id: "EMP-042", name: "คุณวิภาวดี รักงาน", role: "พนักงานบัญชี", dept: "FINANCE", location: "สำนักงาน", status: "active" as const },
-    { id: "EMP-088", name: "คุณเกรียงไกร มั่นคง", role: "ช่างเทคนิคสนาม", dept: "SERVICE", location: "SITE-B", status: "active" as const },
-  ];
+  const { data: dbEmployees, loading: employeesLoading } = useRealtimeCollection<any>('employees');
+  const { data: dbAttendance, loading: attendanceLoading } = useRealtimeCollection<any>('attendance');
+  const { data: dbPayrolls, loading: payrollsLoading } = useRealtimeCollection<any>('payrolls');
 
-  const initialAttendance = [
-    { name: "Somchai J.", time: "26/04 08:15", loc: "13.75, 100.52", type: "IN", status: "active" as const },
-    { name: "Wipawadee R.", time: "26/04 08:30", loc: "สำนักงาน", type: "IN", status: "active" as const },
-    { name: "Kriangkrai M.", time: "26/04 09:12", loc: "13.82, 100.60", type: "IN", status: "active" as const },
-  ];
+  const employeesList = dbEmployees.map(e => ({
+    id: e.id,
+    name: `${e.prefix === 'Mr.' ? 'นาย' : e.prefix === 'Mrs.' ? 'นาง' : 'คุณ'}${e.firstName || ''} ${e.lastName || ''}`,
+    role: e.position || 'Unknown',
+    dept: e.department || 'Unknown',
+    location: e.location || 'สำนักงาน',
+    status: e.status || 'active'
+  }));
 
-  const initialPayrolls = [
-    { period: "เมษายน 2569", count: 48, total: "฿1,420,000", status: "pending" as const },
-    { period: "มีนาคม 2569", count: 46, total: "฿1,380,000", status: "active" as const },
-  ];
+  const attendanceList = dbAttendance.map(a => ({
+    name: a.name || 'Unknown',
+    time: a.time || '-',
+    loc: a.loc || 'สำนักงาน',
+    type: a.type || 'IN',
+    status: a.status || 'active'
+  }));
 
-  const filteredEmployees = initialEmployees.filter(e => 
+  const payrollsList = dbPayrolls.map(p => ({
+    period: p.period || '-',
+    count: p.count || 0,
+    total: p.total || '฿0',
+    status: p.status || 'pending'
+  }));
+
+  const filteredEmployees = employeesList.filter(e => 
     e.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     e.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
     e.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredAttendance = initialAttendance.filter(a => 
+  const filteredAttendance = attendanceList.filter(a => 
     a.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     a.loc.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredPayrolls = initialPayrolls.filter(p => 
+  const filteredPayrolls = payrollsList.filter(p => 
     p.period.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
 
   const showToast = (message: string) => {
-    setToast({ message, isVisible: true });
+    showAlert(message, "System Notification", "info");
   };
 
   const tabs = [
@@ -178,28 +193,32 @@ export default function HRPage() {
                  </div>
               </div>
               <div className="flex gap-3">
-                 <PillButton variant="glass" className="px-8" onClick={() => showToast("กำลังดึงข้อมูลสลิปเงินเดือนระบบ Digital...")}>
+                 <PillButton variant="glass" className="h-9 px-6 rounded-full" onClick={() => showToast("กำลังดึงข้อมูลสลิปเงินเดือนระบบ Digital...")}>
                    <ClipboardList size={18} />
                    สลิปเงินเดือน
                  </PillButton>
-                   {activeTab === "profiles" && (
-                     <PillButton onClick={() => setActiveModal("employee")} className="px-8 shadow-neon-teal">
-                       <Plus size={18} />
-                       เพิ่มพนักงานใหม่
-                     </PillButton>
-                   )}
-                   {activeTab === "attendance" && (
-                     <PillButton onClick={() => setActiveModal("clock")} className="px-8 shadow-neon-teal">
-                       <MapIcon size={18} />
-                       บันทึกเวลาเข้า/ออก
-                     </PillButton>
-                   )}
-                   {activeTab === "payroll" && (
-                     <PillButton onClick={() => setActiveModal("payroll")} className="px-8 shadow-neon-teal">
-                       <Wallet size={18} />
-                       ประมวลผลเงินเดือน
-                     </PillButton>
-                   )}
+                 <PillButton 
+                    onClick={() => {
+                       if (activeTab === "profiles") setActiveModal("employee");
+                       else if (activeTab === "attendance") setActiveModal("clock");
+                       else if (activeTab === "payroll") setActiveModal("payroll");
+                    }} 
+                    className={cn(
+                       "h-9 px-6 font-black uppercase tracking-[0.15em] transition-all active:scale-95 flex items-center gap-3 rounded-full", 
+                       activeTab === "profiles" && "shadow-neon-blue bg-nexus-blue border-nexus-blue text-white",
+                       activeTab === "attendance" && "shadow-neon-teal bg-nexus-teal border-nexus-teal text-black",
+                       activeTab === "payroll" && "shadow-neon-purple bg-purple-500 border-purple-500 text-white"
+                    )}
+                 >
+                    {activeTab === "profiles" ? <Plus size={18} /> : 
+                     activeTab === "attendance" ? <MapIcon size={18} /> : 
+                     <Wallet size={18} />}
+                    {
+                       activeTab === "profiles" ? "เพิ่มพนักงานใหม่" : 
+                       activeTab === "attendance" ? "บันทึกเวลาเข้า/ออก" : 
+                       "ประมวลผลเงินเดือน"
+                    }
+                 </PillButton>
               </div>
             </div>
 
@@ -225,7 +244,15 @@ export default function HRPage() {
                 {activeTab === "profiles" && (
                   <div className="animate-in fade-in duration-500">
                     <NexusTable headers={["ID / ชื่อพนักงาน", "ตำแหน่ง", "แผนก", "การเข้างาน", "สถานะ"]}>
-                      {filteredEmployees.map(e => (
+                      {employeesLoading ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredEmployees.length === 0 ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">ไม่พบข้อมูลในระบบ</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredEmployees.map(e => (
                         <EmployeeRow key={e.id} {...e} />
                       ))}
                     </NexusTable>
@@ -235,7 +262,15 @@ export default function HRPage() {
                 {activeTab === "attendance" && (
                   <div className="animate-in fade-in duration-500">
                     <NexusTable headers={["พนักงาน", "วัน/เวลา", "พิกัด GPS", "ประเภท", "สถานะ"]}>
-                      {filteredAttendance.map((a, i) => (
+                      {attendanceLoading ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredAttendance.length === 0 ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">ไม่พบข้อมูลในระบบ</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredAttendance.map((a, i) => (
                         <AttendanceRow key={i} {...a} />
                       ))}
                     </NexusTable>
@@ -245,7 +280,15 @@ export default function HRPage() {
                 {activeTab === "payroll" && (
                   <div className="animate-in fade-in duration-500">
                     <NexusTable headers={["งวดเดือน", "จำนวนพนักงาน", "ยอดจ่ายสุทธิ", "สถานะการโอน", "เอกสาร"]}>
-                      {filteredPayrolls.map((p, i) => (
+                      {payrollsLoading ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredPayrolls.length === 0 ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">ไม่พบข้อมูลในระบบ</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredPayrolls.map((p, i) => (
                         <PayrollRow key={i} {...p} />
                       ))}
                     </NexusTable>
@@ -290,12 +333,32 @@ export default function HRPage() {
         isOpen={activeModal === "employee"} 
         onClose={() => setActiveModal(null)}
         onSave={async (data) => {
-          console.log("Saving Employee:", data);
-          if (user && companyId) {
-            await auditService.logCreate(user.uid, companyId, "HR_PROFILES", "NEW", data);
+          if (!user || !companyId) {
+            showToast("ไม่พบข้อมูลผู้ใช้งาน หรือเซสชันหมดอายุ");
+            return;
           }
-          setActiveModal(null);
-          showToast(`ลงทะเบียนพนักงาน ${data.firstName} สำเร็จ`);
+          const empId = `EMP-${Date.now().toString().slice(-4)}`;
+          
+          try {
+            const empRef = doc(collection(db, "employees"), empId);
+            const saveOp = async () => {
+              await setDoc(empRef, {
+                ...data,
+                companyId,
+                status: "active",
+                createdAt: serverTimestamp()
+              });
+              await auditService.logCreate(user?.uid || "system", companyId, "HR_PROFILES", empId, data);
+            };
+            
+            await saveToFirestore(saveOp());
+            
+            setActiveModal(null);
+            showToast(`เพิ่มบุคลากรใหม่ ${data.firstName} ${data.lastName} เรียบร้อยแล้ว`);
+          } catch (err: any) {
+            console.error("Save error:", err);
+            showToast(`ไม่สามารถบันทึกข้อมูลได้: ${err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ'}`);
+          }
         }}
       />
 
@@ -303,12 +366,30 @@ export default function HRPage() {
         isOpen={activeModal === "clock"} 
         onClose={() => setActiveModal(null)}
         onConfirm={async (data) => {
-          console.log("Saving Attendance:", data);
-          if (user && companyId) {
-            await auditService.logCreate(user.uid, companyId, "HR_ATTENDANCE", "NEW", data);
+          if (!user || !companyId) return;
+          try {
+            const attRef = doc(collection(db, "attendance"));
+            const saveOp = async () => {
+              await setDoc(attRef, {
+                ...data,
+                companyId,
+                name: data.employeeName || user.displayName || "คุณ",
+                time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+                loc: data.site || 'สำนักงาน',
+                status: "active",
+                createdAt: serverTimestamp()
+              });
+              await auditService.logCreate(user.uid, companyId, "HR_ATTENDANCE", "NEW", data);
+            };
+            
+            await saveToFirestore(saveOp());
+            
+            setActiveModal(null);
+            showToast(`บันทึกเวลา ${data.type === "IN" ? "เข้างาน" : "ออกงาน"} สำเร็จ`);
+          } catch (err: any) {
+            console.error(err);
+            showToast(`ไม่สามารถบันทึกได้: ${err.message}`);
           }
-          setActiveModal(null);
-          showToast(`บันทึกเวลา ${data.type === "IN" ? "เข้างาน" : "ออกงาน"} สำเร็จ`);
         }}
       />
 
@@ -316,16 +397,32 @@ export default function HRPage() {
         isOpen={activeModal === "payroll"} 
         onClose={() => setActiveModal(null)}
         onConfirm={async (data) => {
-          console.log("Confirming Payroll:", data);
-          if (user && companyId) {
-            await auditService.logCreate(user.uid, companyId, "HR_PAYROLL", "NEW", data);
+          if (!user || !companyId) return;
+          try {
+            const payrollRef = doc(collection(db, "payrolls"));
+            const saveOp = async () => {
+              await setDoc(payrollRef, {
+                ...data,
+                companyId,
+                period: data.period || "งวดใหม่",
+                count: data.employeeCount || 0,
+                total: `฿${(data.netPayout || 0).toLocaleString()}`,
+                status: "pending",
+                createdAt: serverTimestamp()
+              });
+              await auditService.logCreate(user.uid, companyId, "HR_PAYROLL", "NEW", data);
+            };
+            
+            await saveToFirestore(saveOp());
+            
+            setActiveModal(null);
+            showToast(`ประมวลผลเงินเดือนสำเร็จ (Total: ฿${data.netPayout?.toLocaleString() || '0'})`);
+          } catch (err: any) {
+            console.error(err);
+            showToast(`ไม่สามารถบันทึกได้: ${err.message}`);
           }
-          setActiveModal(null);
-          showToast(`ประมวลผลเงินเดือนสำเร็จ (Total: ฿${data.netPayout?.toLocaleString() || '0'})`);
         }}
       />
-
-      <Toast message={toast.message} isVisible={toast.isVisible} onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} />
     </div>
   );
 }
@@ -403,113 +500,5 @@ function AttendanceFeedItem({ name, location, time }: { name: string, location: 
           <p className="text-[10px] text-white/30 uppercase font-black tracking-[0.1em] mt-0.5">{location} • {time}</p>
        </div>
     </div>
-=======
-import React from "react";
-import { 
-  UserCog, 
-  UserPlus, 
-  ShieldCheck, 
-  Activity,
-  Search,
-  MoreHorizontal,
-  Mail,
-  Phone
-} from "lucide-react";
-import { GlassCard, PillButton, PillInput, cn } from "@/components/ui/Base";
-
-export default function HRPage() {
-  return (
-    <div className="p-8 space-y-8 animate-in fade-in duration-700">
-      {/* Header Section */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-white mb-2">ทรัพยากรบุคคล (HR & Access)</h1>
-          <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em]">Personnel & Security Management</p>
-        </div>
-        <PillButton className="gap-2 shadow-nexus-glow">
-          <UserPlus size={18} />
-          เพิ่มบุคลากร
-        </PillButton>
-      </div>
-
-      {/* HR Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <HRStat label="บุคลากรทั้งหมด" value="28" sub="Active Employees" />
-        <HRStat label="ฝ่ายปฏิบัติการ" value="15" sub="Field Engineers" />
-        <HRStat label="ฝ่ายบริหาร/บัญชี" value="5" sub="Office Staff" />
-        <HRStat label="สิทธิ์ Superadmin" value="2" sub="Security Level 10" />
-      </div>
-
-      {/* Controls */}
-      <div className="flex gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
-          <PillInput placeholder="ค้นหาชื่อ, แผนก, หรืออีเมล..." className="w-full pl-12 h-12 bg-white/[0.03]" />
-        </div>
-      </div>
-
-      {/* Employee List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        <EmployeeCard name="admin@admin.com" role="Superadmin" dept="Executive" status="Online" />
-        <EmployeeCard name="Somsak Lovegood" role="Senior Engineer" dept="Operations" status="Field" />
-        <EmployeeCard name="Wichai Network" role="Technician" dept="Operations" status="Offline" />
-        <EmployeeCard name="Kanya Finance" role="Accountant" dept="Finance" status="Online" />
-        <EmployeeCard name="Piti Project" role="Project Manager" dept="Management" status="Online" />
-      </div>
-    </div>
-  );
-}
-
-function HRStat({ label, value, sub }: { label: string, value: string, sub: string }) {
-  return (
-    <GlassCard className="p-6 border-white/5 bg-[#0a0a0c]">
-      <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">{label}</p>
-      <h4 className="text-3xl font-black text-white mb-1">{value}</h4>
-      <p className="text-[10px] text-nexus-teal font-bold uppercase tracking-widest">{sub}</p>
-    </GlassCard>
-  );
-}
-
-function EmployeeCard({ name, role, dept, status }: { name: string, role: string, dept: string, status: string }) {
-  const statusConfig: any = {
-    Online: "bg-nexus-teal shadow-[0_0_8px_rgba(16,187,168,0.5)]",
-    Field: "bg-nexus-blue shadow-[0_0_8px_rgba(20,163,204,0.5)]",
-    Offline: "bg-white/10",
-  };
-
-  return (
-    <GlassCard className="p-6 border-white/5 hover:border-nexus-teal/20 transition-all group">
-      <div className="flex justify-between items-start mb-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/20 group-hover:text-nexus-teal transition-colors">
-            <UserCog size={24} />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-white truncate w-32 group-hover:text-nexus-teal transition-colors">{name}</h3>
-            <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">{role}</p>
-          </div>
-        </div>
-        <div className={cn("w-2 h-2 rounded-full", statusConfig[status])} />
-      </div>
-
-      <div className="space-y-3 mb-6">
-        <div className="flex items-center gap-3 text-[10px] text-white/40 font-bold uppercase tracking-widest">
-          <ShieldCheck size={14} className="text-nexus-teal" />
-          Dept: {dept}
-        </div>
-        <div className="flex items-center gap-3 text-[10px] text-white/40 font-bold uppercase tracking-widest">
-          <Mail size={14} />
-          {name.toLowerCase()}
-        </div>
-      </div>
-
-      <div className="flex gap-2">
-        <PillButton variant="glass" className="flex-1 h-8 text-[9px] font-black uppercase tracking-widest">Edit Profile</PillButton>
-        <button className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/20 hover:text-white transition-colors">
-          <MoreHorizontal size={16} />
-        </button>
-      </div>
-    </GlassCard>
->>>>>>> e3043f99d23bda02971284e389327f5248699605
   );
 }

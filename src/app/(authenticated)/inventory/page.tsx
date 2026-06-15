@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { 
   Package, 
   Plus, 
@@ -29,7 +29,8 @@ import {
   Activity,
   Warehouse,
   MapPin,
-  Sparkles
+  Sparkles,
+  Trash2
 } from "lucide-react";
 import { 
   PillButton, 
@@ -55,24 +56,38 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, orderBy, limit, doc, setDoc } from "firebase/firestore";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { saveToFirestore } from "@/lib/firebaseUtils";
+import { auditService } from "@/services/audit.service";
 
 interface CreateKitModalProps {
   isOpen: boolean;
   onClose: () => void;
   products: any[];
-  onSave: (kit: any) => void;
+  onSave: (kit: any) => Promise<void> | void;
 }
 
 function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [selectedItems, setSelectedItems] = useState<{[key: string]: number}>({});
+  const [productSearch, setProductSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState("ทั้งหมด");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const categories = useMemo(() => {
+    if (!products) return ["ทั้งหมด"];
+    const cats = new Set<string>();
+    products.forEach(p => { if (p.category_id || p.category) cats.add(p.category_id || p.category); });
+    return ["ทั้งหมด", ...Array.from(cats)].slice(0, 8);
+  }, [products]);
 
   if (!isOpen) return null;
 
   let aggregateCost = 0;
   let aggregatePrice = 0;
   const componentsList: any[] = [];
+  const selectedProducts: any[] = [];
 
   Object.entries(selectedItems).forEach(([prodId, qty]) => {
     if (qty <= 0) return;
@@ -89,6 +104,7 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
         cost: cost,
         price: price
       });
+      selectedProducts.push({ ...prod, qty });
     }
   });
 
@@ -100,126 +116,217 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name) return;
-    onSave({
-      id: `KIT-${Date.now().toString().slice(-4)}`,
-      name,
-      description,
-      components: componentsList.length > 0 ? componentsList : [
-        { name: "กล้อง CCTV High-Definition 4MP", qty: 4, type: "hardware", cost: 4500, price: 6500 },
-        { name: "งานติดตั้งและเดินสายสัญญาณพร้อม Calibrate", qty: 1, type: "service", cost: 15000, price: 25000 }
-      ],
-      aggregateCost: aggregateCost > 0 ? aggregateCost : 33000,
-      aggregatePrice: aggregatePrice > 0 ? aggregatePrice : 51000,
-      status: "active"
-    });
-    setName("");
-    setDescription("");
-    setSelectedItems({});
+    setIsSaving(true);
+    try {
+      await onSave({
+        id: `KIT-${Date.now().toString().slice(-4)}`,
+        name,
+        description,
+        components: componentsList.length > 0 ? componentsList : [
+          { name: "กล้อง CCTV High-Definition 4MP", qty: 4, type: "hardware", cost: 4500, price: 6500 },
+          { name: "งานติดตั้งและเดินสายสัญญาณพร้อม Calibrate", qty: 1, type: "service", cost: 15000, price: 25000 }
+        ],
+        aggregateCost: aggregateCost > 0 ? aggregateCost : 33000,
+        aggregatePrice: aggregatePrice > 0 ? aggregatePrice : 51000,
+        status: "active"
+      });
+      setName("");
+      setDescription("");
+      setSelectedItems({});
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  const filteredProducts = products.filter(p => {
+    const matchSearch = (p.name || "").toLowerCase().includes(productSearch.toLowerCase()) || 
+                        (p.sku || "").toLowerCase().includes(productSearch.toLowerCase());
+    const matchCat = activeCategory === "ทั้งหมด" || (p.category_id === activeCategory || p.category === activeCategory);
+    return matchSearch && matchCat;
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
-      <GlassCard className="w-full max-w-2xl border-nexus-teal/20 shadow-2xl flex flex-col max-h-[85vh] bg-black/80">
-        <div className="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
+      <GlassCard className="w-full max-w-[1200px] border-nexus-teal/20 shadow-2xl flex flex-col h-[90vh] bg-[#09090b]/95 p-0 overflow-hidden">
+        {/* Header */}
+        <div className="p-6 border-b border-white/5 flex justify-between items-center shrink-0 bg-black/40">
           <div>
             <h3 className="text-lg font-black text-white tracking-tight">สร้างชุดอุปกรณ์สำเร็จรูป (Create BOM Kit)</h3>
             <p className="text-[10px] text-white/30 uppercase mt-0.5 tracking-widest font-black">e-Bidding Package Configuration</p>
           </div>
-          <button onClick={onClose} className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-colors">
-            <ChevronLeft className="rotate-180" size={18} />
+          <button onClick={onClose} className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-colors">
+            <ChevronLeft className="rotate-180" size={20} />
           </button>
         </div>
 
-        <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
-          <div className="space-y-4">
-            <div className="space-y-2">
+        {/* Content */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-6 space-y-6">
+          
+          {/* Top Form Fields */}
+          <div className="flex flex-col md:flex-row gap-6 shrink-0">
+            <div className="flex-1 space-y-2">
               <label className="text-[10px] font-black text-white/30 uppercase tracking-widest">ชื่อชุดอุปกรณ์ BOM *</label>
               <PillInput 
                 placeholder="เช่น ชุดกล้องวงจรปิดพร้อมเครื่องบันทึก 8 จุด..." 
                 value={name}
                 onChange={e => setName(e.target.value)}
-                className="w-full h-10 bg-white/5 border-white/10 text-white placeholder-white/20"
+                className="w-full h-10 bg-black/40 border-white/10 text-white focus:border-nexus-teal/50"
               />
             </div>
-
-            <div className="space-y-2">
+            <div className="flex-1 space-y-2">
               <label className="text-[10px] font-black text-white/30 uppercase tracking-widest">คำอธิบายรายละเอียด</label>
               <PillInput 
                 placeholder="รายละเอียดเพิ่มเติมสำหรับประมูลงานและติดตั้ง..." 
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                className="w-full h-10 bg-white/5 border-white/10 text-white placeholder-white/20"
+                className="w-full h-10 bg-black/40 border-white/10 text-white focus:border-nexus-teal/50"
               />
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex justify-between items-center border-b border-white/5 pb-2">
-              <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">เลือกพัสดุและบริการประกอบชุด (Hardware & Materials & Services)</span>
-              <span className="text-[10px] text-nexus-teal font-black uppercase tracking-widest">พัสดุที่มีในคลัง</span>
+          {/* Dual Pane Layout */}
+          <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
+            
+            {/* Left Pane: Catalog (65%) */}
+            <div className="w-full lg:w-[65%] flex flex-col bg-black/40 border border-white/5 rounded-[2.5rem] p-5 space-y-4 shadow-inner min-h-0">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shrink-0">
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 md:pb-0 w-full md:w-auto">
+                  {categories.map(cat => (
+                    <button 
+                      key={cat}
+                      onClick={() => setActiveCategory(cat)}
+                      className={cn(
+                        "px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border shrink-0",
+                        activeCategory === cat 
+                          ? "bg-nexus-teal/20 text-nexus-teal border-nexus-teal/50 shadow-[0_0_15px_rgba(0,255,209,0.15)]" 
+                          : "bg-white/[0.02] text-white/40 border-white/5 hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative w-full md:w-64 shrink-0">
+                  <PillInput 
+                    placeholder="ค้นหาสินค้า / SKU..." 
+                    className="w-full pl-10 bg-[#0a0a0c] text-xs border-white/5 focus:border-nexus-teal/30" 
+                    value={productSearch} 
+                    onChange={(e) => setProductSearch(e.target.value)} 
+                  />
+                  <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar rounded-2xl border border-white/5 bg-[#09090b]/80 relative">
+                <NexusTable headers={["รูปภาพ", "รหัสสินค้า", "ชื่อสินค้า", "ราคา", "สต็อก", "จัดการ"]}>
+                  {filteredProducts.length === 0 ? (
+                    <NexusTableRow>
+                      <NexusTableCell colSpan={6} className="text-center py-16 text-white/20 text-xs">ไม่พบพัสดุ</NexusTableCell>
+                    </NexusTableRow>
+                  ) : (
+                    filteredProducts.map(p => (
+                      <NexusTableRow key={p.id} className="hover:bg-white/[0.02] transition-colors">
+                        <NexusTableCell className="w-[10%]">
+                          <div className="w-8 h-8 rounded-lg bg-black/60 border border-white/5 overflow-hidden flex items-center justify-center">
+                            {p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover p-0.5" /> : <Package size={14} className="text-nexus-blue" />}
+                          </div>
+                        </NexusTableCell>
+                        <NexusTableCell className="w-[20%] text-[10px] text-nexus-teal font-mono font-bold tracking-tighter">
+                          {p.sku}
+                        </NexusTableCell>
+                        <NexusTableCell className="w-[35%] font-black text-white/85 text-[11px] truncate max-w-[150px]">
+                          {p.name}
+                        </NexusTableCell>
+                        <NexusTableCell className="w-[15%] font-mono font-black text-nexus-teal/80 text-[11px] text-right">
+                          ฿{(p.pricing?.costWAC || 0).toLocaleString()}
+                        </NexusTableCell>
+                        <NexusTableCell className="w-[10%]">
+                          <div className="bg-nexus-teal/10 text-nexus-teal text-[10px] font-mono font-black py-1 px-2 rounded text-center">
+                            {p.stockStatus?.onHand || 0}
+                          </div>
+                        </NexusTableCell>
+                        <NexusTableCell className="w-[10%] text-center">
+                          <button onClick={() => handleQtyChange(p.id, 1)} className="p-1.5 bg-white/5 hover:bg-nexus-teal hover:text-black text-white/50 rounded-lg transition-all">
+                            <Plus size={14} />
+                          </button>
+                        </NexusTableCell>
+                      </NexusTableRow>
+                    ))
+                  )}
+                </NexusTable>
+              </div>
             </div>
 
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
-              {products.length === 0 ? (
-                <div className="p-6 text-center text-white/20 text-xs font-bold uppercase tracking-wider">
-                  ไม่มีสินค้าในคลังสำหรับเลือกประกอบ
-                </div>
-              ) : (
-                products.map((prod) => {
-                  const qty = selectedItems[prod.id] || 0;
-                  return (
-                    <div key={prod.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between hover:bg-white/[0.04] transition-all">
-                      <div>
-                        <p className="text-xs font-bold text-white">{prod.name}</p>
-                        <p className="text-[9px] text-white/25 font-black uppercase tracking-widest mt-0.5">
-                          {prod.sku} • Cost WAC: ฿{prod.pricing?.costWAC?.toLocaleString()}
-                        </p>
+            {/* Right Pane: Cart (35%) */}
+            <div className="w-full lg:w-[35%] flex flex-col bg-[#09090b]/40 border border-white/5 rounded-[2.5rem] shadow-inner min-h-0 relative">
+              <div className="p-5 border-b border-white/5 shrink-0 flex items-center justify-between">
+                <h3 className="text-[13px] font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  พัสดุที่เลือก (BOM) <span className="bg-nexus-teal text-black px-2 py-0.5 rounded-full text-[10px]">{selectedProducts.length}</span>
+                </h3>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3 relative">
+                {selectedProducts.length === 0 ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white/20">
+                    <Box size={48} className="mb-4 opacity-50" />
+                    <p className="text-xs font-bold uppercase tracking-wider">ยังไม่มีรายการสินค้า</p>
+                  </div>
+                ) : (
+                  selectedProducts.map((item) => (
+                    <div key={item.id} className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 flex flex-col gap-3 relative group hover:border-white/10 transition-colors">
+                      <button 
+                        onClick={() => setSelectedItems(prev => { const n = {...prev}; delete n[item.id]; return n; })} 
+                        className="absolute top-3 right-3 text-white/20 hover:text-danger p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                      
+                      <div className="pr-6">
+                        <div className="font-bold text-white/90 text-xs mb-1 line-clamp-2 leading-tight">{item.name}</div>
+                        <div className="text-[10px] text-nexus-blue font-mono">SKU: {item.sku}</div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <button 
-                          onClick={() => handleQtyChange(prod.id, -1)}
-                          className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center text-xs font-black transition-colors"
-                        >
-                          -
-                        </button>
-                        <span className="w-8 text-center text-xs font-black text-white font-mono">{qty}</span>
-                        <button 
-                          onClick={() => handleQtyChange(prod.id, 1)}
-                          className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center text-xs font-black transition-colors"
-                        >
-                          +
-                        </button>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => handleQtyChange(item.id, -1)} className="w-6 h-6 rounded bg-white/5 hover:bg-white/10 text-white flex items-center justify-center text-xs font-black">-</button>
+                          <span className="w-8 text-center text-xs font-black text-white font-mono">{item.qty}</span>
+                          <button onClick={() => handleQtyChange(item.id, 1)} className="w-6 h-6 rounded bg-white/5 hover:bg-white/10 text-white flex items-center justify-center text-xs font-black">+</button>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[9px] text-white/40 uppercase mb-0.5">รวมทุน (WAC)</div>
+                          <div className="font-mono font-black text-white text-xs not-italic">฿{((item.pricing?.costWAC || 0) * item.qty).toLocaleString()}</div>
+                        </div>
                       </div>
                     </div>
-                  );
-                })
-              )}
+                  ))
+                )}
+              </div>
+
+              <div className="p-5 bg-black/40 border-t border-white/5 shrink-0 rounded-b-[2.5rem] space-y-2">
+                <div className="flex justify-between text-[11px] font-bold text-white/50">
+                  <span>ราคาทุนสะสม WAC</span>
+                  <span className="font-mono text-white/80 not-italic">฿{aggregateCost.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-[11px] font-bold text-white/50">
+                  <span>ราคาขายรวมแนะนำ</span>
+                  <span className="font-mono text-white/80 not-italic">฿{aggregatePrice.toLocaleString()}</span>
+                </div>
+              </div>
             </div>
+
           </div>
         </div>
 
-        <div className="p-6 border-t border-white/5 bg-black/40 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
-          <div className="flex gap-6 text-xs font-bold text-white/50">
-            <div>
-              <span className="text-[8px] font-black text-white/30 uppercase tracking-widest block">ราคาทุนสะสม WAC</span>
-              <span className="text-sm font-black text-nexus-teal mt-0.5 block font-mono">฿{aggregateCost.toLocaleString()}</span>
-            </div>
-            <div>
-              <span className="text-[8px] font-black text-white/30 uppercase tracking-widest block">ราคาขายรวมแนะนำ</span>
-              <span className="text-sm font-black text-white mt-0.5 block font-mono">฿{aggregatePrice.toLocaleString()}</span>
-            </div>
-          </div>
-
-          <div className="flex gap-2 w-full sm:w-auto">
-            <PillButton variant="glass" onClick={onClose} className="flex-1 sm:flex-initial h-9 text-xs border-white/10 text-white/60 hover:text-white">
-              ยกเลิก
-            </PillButton>
-            <PillButton onClick={handleSave} className="flex-1 sm:flex-initial h-9 text-xs shadow-neon-teal">
-              สร้างสูตรจัดชุด (BOM Kit)
-            </PillButton>
-          </div>
+        {/* Bottom Bar */}
+        <div className="p-6 border-t border-white/5 bg-black/80 flex items-center justify-end gap-4 shrink-0">
+          <PillButton variant="glass" onClick={onClose} className="h-10 px-8 text-xs border-white/10 text-white/60 hover:text-white">
+            ยกเลิก
+          </PillButton>
+          <PillButton onClick={handleSave} className="h-10 px-8 text-xs shadow-neon-teal">
+            สร้างสูตรจัดชุด (BOM Kit)
+          </PillButton>
         </div>
       </GlassCard>
     </div>
@@ -288,21 +395,20 @@ export default function InventoryPage() {
   const lowStockCount = products.filter(p => (p.stockStatus?.onHand || 0) <= ((p as any).minStock || 0)).length;
 
   const handleInventoryIn = async (data: any) => {
-    try {
-      if (data.mode === "MANUAL") {
-        const prodId = data.productId || `PROD-${Date.now().toString().slice(-4)}`;
-        const productRef = doc(db, "products", prodId);
+    if (data.mode === "MANUAL") {
+      const prodId = data.productId || `PROD-${Date.now().toString().slice(-4)}`;
+      const productRef = doc(db, "products", prodId);
+      
+      let existingProd = products.find(p => p.id === prodId);
+      let currentOnHand = existingProd?.stockStatus?.onHand || 0;
+      let currentCostWAC = existingProd?.pricing?.costWAC || 0;
+      
+      let newQty = currentOnHand + data.qty;
+      let newCostWAC = currentOnHand + data.qty > 0 
+        ? ((currentOnHand * currentCostWAC) + (data.qty * data.cost)) / newQty
+        : data.cost;
         
-        let existingProd = products.find(p => p.id === prodId);
-        let currentOnHand = existingProd?.stockStatus?.onHand || 0;
-        let currentCostWAC = existingProd?.pricing?.costWAC || 0;
-        
-        // Calculate WAC: (currentVal + newVal) / (currentQty + newQty)
-        let newQty = currentOnHand + data.qty;
-        let newCostWAC = currentOnHand + data.qty > 0 
-          ? ((currentOnHand * currentCostWAC) + (data.qty * data.cost)) / newQty
-          : data.cost;
-          
+      const saveOp = async () => {
         await setDoc(productRef, {
           companyId,
           sku: data.sku || existingProd?.sku || `SKU-${Date.now().toString().slice(-4)}`,
@@ -322,7 +428,6 @@ export default function InventoryPage() {
           isDeleted: false
         }, { merge: true });
         
-        // Stock log entry
         const logRef = doc(collection(db, "stockMovements"));
         await setDoc(logRef, {
           companyId,
@@ -335,42 +440,45 @@ export default function InventoryPage() {
           userId: user?.displayName || "system",
           createdAt: new Date()
         });
-      }
+      };
       
-      setToast({
-        message: "บันทึกรับเข้าพัสดุเรียบร้อยแล้ว",
-        isVisible: true,
-        type: "success"
-      });
-      setActiveModal(null);
-    } catch (error) {
-      console.error(error);
-      setToast({
-        message: "เกิดข้อผิดพลาดในการบันทึกข้อมูล",
-        isVisible: true,
-        type: "error"
-      });
+      try {
+        await saveToFirestore(saveOp());
+        setToast({
+          message: "บันทึกรับเข้าพัสดุเรียบร้อยแล้ว",
+          isVisible: true,
+          type: "success"
+        });
+        setActiveModal(null);
+      } catch (error: any) {
+        console.error(error);
+        setToast({
+          message: `แจ้งเตือน: ข้อมูลไม่สามารถซิงค์ขึ้นเซิร์ฟเวอร์ได้ (${error.message})`,
+          isVisible: true,
+          type: "error"
+        });
+      }
     }
   };
 
   const handleStockTransfer = async (data: any) => {
-    try {
-      const prodId = data.productId;
-      const productRef = doc(db, "products", prodId);
-      let existingProd = products.find(p => p.id === prodId);
-      
-      if (!existingProd) return;
-      
-      let currentOnHand = existingProd.stockStatus?.onHand || 0;
-      if (currentOnHand < data.qty) {
-        setToast({
-          message: "สต็อกไม่เพียงพอสำหรับการโอนย้าย",
-          isVisible: true,
-          type: "error"
-        });
-        return;
-      }
-      
+    const prodId = data.productId;
+    const productRef = doc(db, "products", prodId);
+    let existingProd = products.find(p => p.id === prodId);
+    
+    if (!existingProd) return;
+    
+    let currentOnHand = existingProd.stockStatus?.onHand || 0;
+    if (currentOnHand < data.qty) {
+      setToast({
+        message: "สต็อกไม่เพียงพอสำหรับการโอนย้าย",
+        isVisible: true,
+        type: "error"
+      });
+      return;
+    }
+    
+    const saveOp = async () => {
       await setDoc(productRef, {
         stockStatus: {
           onHand: currentOnHand - data.qty,
@@ -380,7 +488,6 @@ export default function InventoryPage() {
         updatedAt: new Date()
       }, { merge: true });
 
-      // Add movement log
       const logRef = doc(collection(db, "stockMovements"));
       await setDoc(logRef, {
         companyId,
@@ -393,93 +500,41 @@ export default function InventoryPage() {
         userId: user?.displayName || "system",
         createdAt: new Date()
       });
-      
+    };
+    
+    try {
+      await saveToFirestore(saveOp());
       setToast({
         message: `โอนย้ายพัสดุสำเร็จ: ${data.qty} Units`,
         isVisible: true,
         type: "success"
       });
       setActiveModal(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       setToast({
-        message: "เกิดข้อผิดพลาดในการทำรายการ",
+        message: `แจ้งเตือน: ไม่สามารถโอนย้ายได้ (${error.message})`,
         isVisible: true,
         type: "error"
       });
     }
   };
 
-  // High fidelity mock datasets
-  const [mockKits, setMockKits] = useState<any[]>([
-    {
-      id: "KIT-CCTV-01",
-      name: "ชุดกล้อง CCTV e-Bidding ภาครัฐ (CCTV e-Bidding Set)",
-      description: "ชุดระบบกล้องวงจรปิดความปลอดภัยสูงสำหรับหน่วยงานราชการ พร้อมเครื่องบันทึกและระบบสำรองไฟ",
-      components: [
-        { name: "กล้อง CCTV High-Definition 4MP", qty: 8, type: "hardware", cost: 4500, price: 6500 },
-        { name: "เครื่องบันทึก NVR Enterprise 16Ch", qty: 1, type: "hardware", cost: 18000, price: 25000 },
-        { name: "สายสัญญาณ UTP CAT6 (305m)", qty: 2, type: "material", cost: 4200, price: 5500 },
-        { name: "เครื่องสำรองไฟ UPS 1000VA", qty: 1, type: "hardware", cost: 6500, price: 9500 },
-        { name: "งานติดตั้งและเดินสายสัญญาณพร้อม Calibrate", qty: 1, type: "service", cost: 15000, price: 25000 }
-      ],
-      aggregateCost: 83900,
-      aggregatePrice: 119500,
-      status: "active"
-    },
-    {
-      id: "KIT-AP-SCH",
-      name: "ชุดขยาย Access Point อาคารเรียน (School Network AP Kit)",
-      description: "ชุดเครือข่ายไร้สายมาตรฐาน Enterprise สำหรับสถาบันการศึกษา พร้อมตู้ Rack และสายสัญญาณ",
-      components: [
-        { name: "Aruba AP-505 Enterprise Access Point", qty: 6, type: "hardware", cost: 15000, price: 22000 },
-        { name: "Link CAT6 UTP Cable Box", qty: 3, type: "material", cost: 4200, price: 5500 },
-        { name: "ตู้ Wall Rack 6U 60cm", qty: 1, type: "material", cost: 3500, price: 5000 },
-        { name: "งานติดตั้ง Config AP & SSID Authentication", qty: 1, type: "service", cost: 20000, price: 30000 }
-      ],
-      aggregateCost: 126100,
-      aggregatePrice: 183500,
-      status: "active"
-    },
-    {
-      id: "KIT-RACK-03",
-      name: "ชุดตู้ Rack สำหรับหน่วยงานสาขา (Branch Server Rack Set)",
-      description: "ชุดตู้เซิร์ฟเวอร์ย่อยพร้อมสวิตช์หลัก และระบบจัดเก็บสาย LAN สำหรับไซต์ขนาดกลาง",
-      components: [
-        { name: "Cisco Catalyst C9200L Switch 24Port", qty: 1, type: "hardware", cost: 75000, price: 98000 },
-        { name: "Cabinet Rack 42U Deep 100cm", qty: 1, type: "material", cost: 22000, price: 29000 },
-        { name: "สายสัญญาณ UTP CAT6 (305m)", qty: 2, type: "material", cost: 4200, price: 5500 },
-        { name: "งานจัดสายตู้แลนและ Setup Network Routing", qty: 1, type: "service", cost: 18000, price: 25000 }
-      ],
-      aggregateCost: 123400,
-      aggregatePrice: 163000,
-      status: "active"
-    }
-  ]);
+  const { data: dbKits, loading: kitsLoading } = useRealtimeCollection<any>('kits');
+  const { data: dbAssets, loading: assetsLoading } = useRealtimeCollection<any>('assets');
+  const { data: dbSerials, loading: serialsLoading } = useRealtimeCollection<any>('serials');
 
-  const filteredKits = mockKits.filter(k =>
-    k.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    k.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    k.description.toLowerCase().includes(searchQuery.toLowerCase())
+  const mockKits = dbKits.length > 0 ? dbKits : [];
+  const mockAssets = dbAssets.length > 0 ? dbAssets : [];
+  const mockSerials = dbSerials.length > 0 ? dbSerials : [];
+
+  const filteredKits = mockKits.filter((k: any) =>
+    (k.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (k.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (k.description || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const selectedKit = mockKits.find(k => k.id === selectedKitId);
-
-  const mockAssets = [
-    { id: "AST-2605-0012", name: "High-Performance Workstation CAD", category: "Computing Hardware", custodian: "Thanakorn P.", value: 45000, location: "HQ-B1-R2", status: "active" as const },
-    { id: "AST-2605-0013", name: "Dell PowerEdge R750 Virtual Host", category: "Datacenter Enterprise", custodian: "Wichai S.", value: 180000, location: "Rayong-A2-R4", status: "active" as const },
-    { id: "AST-2605-0014", name: "Fluke Networks DSX-8000 CableAnalyzer", category: "Engineering Testing Tools", custodian: "Nattawut J.", value: 320000, location: "Mobile Kit A", status: "active" as const },
-    { id: "AST-2605-0015", name: "Fujikura 90S+ Fusion Splicer", category: "Fiber Splicing Tools", custodian: "Somchai K.", value: 240000, location: "Mobile Kit B", status: "inactive" as const },
-    { id: "AST-2605-0016", name: "APC Smart-UPS SRT 10kVA", category: "Power Infrastructure", custodian: "Wichai S.", value: 115000, location: "HQ-ServerRoom", status: "active" as const }
-  ];
-
-  const mockSerials = [
-    { sn: "SN-APC-881273", name: "Aruba AP-505 RW Access Point", status: "available" as const, location: "MAIN-WH-A1-L4", expiry: "24/08/2028" },
-    { sn: "SN-APC-881274", name: "Aruba AP-505 RW Access Point", status: "reserved" as const, location: "PROJECT-PRJ-26-0012", expiry: "24/08/2028" },
-    { sn: "SN-CSCO-992182", name: "Cisco Catalyst C9200L Switch", status: "deployed" as const, location: "RAYONG-WH-A2-L2", expiry: "12/03/2029" },
-    { sn: "SN-CSCO-992183", name: "Cisco Catalyst C9200L Switch", status: "rma" as const, location: "RMA-Supplier-Synnex", expiry: "12/03/2029" },
-    { sn: "SN-APC-118274", name: "APC Smart-UPS SRT 3kVA", status: "available" as const, location: "MAIN-WH-B1-L2", expiry: "05/11/2027" }
-  ];
+  const selectedKit = mockKits.find((k: any) => k.id === selectedKitId);
 
   // Filtering calculations
   const filteredProducts = products.filter(p => 
@@ -488,16 +543,16 @@ export default function InventoryPage() {
     (p.category && p.category.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const filteredAssets = mockAssets.filter(a => 
-    a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    a.custodian.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    a.location.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredAssets = mockAssets.filter((a: any) => 
+    (a.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (a.custodian || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (a.location || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredSerials = mockSerials.filter(s => 
-    s.sn.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.location.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredSerials = mockSerials.filter((s: any) => 
+    (s.sn || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.location || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredMovements = movements.filter(m => {
@@ -1320,14 +1375,35 @@ export default function InventoryPage() {
         isOpen={isAddKitOpen}
         onClose={() => setIsAddKitOpen(false)}
         products={products}
-        onSave={(newKit) => {
-          setMockKits([...mockKits, newKit]);
-          setIsAddKitOpen(false);
-          setToast({
-            message: "สร้างชุดอุปกรณ์สำเร็จรูป (BOM Kit) สำเร็จ",
-            isVisible: true,
-            type: "success"
-          });
+        onSave={async (newKit) => {
+          try {
+            const saveOp = async () => {
+              const kitRef = doc(collection(db, "kits"));
+              await setDoc(kitRef, {
+                ...newKit,
+                id: kitRef.id,
+                companyId,
+                createdAt: new Date()
+              });
+              await auditService.logCreate(user?.uid || "system", companyId || "UNKNOWN", "INVENTORY_KIT", "NEW", newKit);
+            };
+            
+            await saveToFirestore(saveOp());
+            
+            setIsAddKitOpen(false);
+            setToast({
+              message: "สร้างชุดอุปกรณ์สำเร็จรูป (BOM Kit) สำเร็จ",
+              isVisible: true,
+              type: "success"
+            });
+          } catch (error: any) {
+            console.error(error);
+            setToast({
+              message: `สร้างไม่สำเร็จ: ${error.message}`,
+              isVisible: true,
+              type: "error"
+            });
+          }
         }}
       />
     </div>

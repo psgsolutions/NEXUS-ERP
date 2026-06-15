@@ -18,16 +18,20 @@ import {
 import { useInventory } from "@/hooks/useInventory";
 import { Plus, Trash2, FileText, Search, ChevronDown, MapPin } from "lucide-react";
 import { Warehouse3D, mockWarehouses } from "./Warehouse3D";
+import { useSystemDialog } from "@/context/DialogContext";
 
 interface InventoryInModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (data: any) => void;
+  onConfirm: (data: any) => Promise<void> | void;
 }
 
 export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModalProps) {
+  const { showAlert, showConfirm } = useSystemDialog();
+
   const { products } = useInventory();
   const [sourceMode, setSourceMode] = useState("manual");
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     supplierId: "SUPP-001",
     poRef: "",
@@ -226,7 +230,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
   }, [isOpen, products]);
 
   const fetchPOItems = () => {
-    if (!formData.poRef) return alert("กรุณาระบุเลขที่ใบสั่งซื้อ");
+    if (!formData.poRef) return void showAlert("กรุณาระบุเลขที่ใบสั่งซื้อ");
     // Mock PO Data
     setPoItems([
       { id: "ITEM-001", name: "Aruba AP-505", sku: "AP-505-RW", qtyOrdered: 10, qtyReceived: 10, cost: 4500, sns: "" },
@@ -239,16 +243,21 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
     setPoItems(poItems.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
 
-  const handleConfirm = () => {
-    if (sourceMode === "manual") {
-      if (!formData.name && !formData.productId) return alert("กรุณาระบุชื่อสินค้าหรือเลือกพัสดุ");
-      if (formData.qty <= 0) return alert("จำนวนต้องมากกว่า 0");
-      
-      const snList = formData.sns.split("\n").map(s => s.trim()).filter(s => s !== "");
-      onConfirm({ ...formData, snList, mode: "MANUAL" });
-    } else {
-      if (poItems.length === 0) return alert("กรุณาดึงข้อมูล PO และตรวจสอบรายการ");
-      onConfirm({ ...formData, items: poItems, mode: "PO" });
+  const handleConfirm = async () => {
+    setIsSaving(true);
+    try {
+      if (sourceMode === "manual") {
+        if (!formData.name && !formData.productId) return void showAlert("กรุณาระบุชื่อสินค้าหรือเลือกพัสดุ");
+        if (formData.qty <= 0) return void showAlert("จำนวนต้องมากกว่า 0");
+        
+        const snList = formData.sns.split("\n").map(s => s.trim()).filter(s => s !== "");
+        await onConfirm({ ...formData, snList, mode: "MANUAL" });
+      } else {
+        if (poItems.length === 0) return void showAlert("กรุณาดึงข้อมูล PO และตรวจสอบรายการ");
+        await onConfirm({ ...formData, items: poItems, mode: "PO" });
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -550,11 +559,20 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
            </div>
 
            <div className="space-y-4">
-              <PillButton className="w-full px-8 shadow-neon-blue uppercase tracking-[0.2em]" onClick={handleConfirm}>
-                 <ShieldCheck size={22} />
-                 ยืนยันรับของ (POST GRN)
+              <PillButton 
+                className={cn("w-full px-8 shadow-neon-blue uppercase tracking-[0.2em]", isSaving && "opacity-50 pointer-events-none")} 
+                onClick={handleConfirm}
+                disabled={isSaving}
+              >
+                 <ShieldCheck size={22} className={isSaving ? "animate-pulse" : ""} />
+                 {isSaving ? "กำลังบันทึก..." : "ยืนยันรับของ (POST GRN)"}
               </PillButton>
-              <PillButton variant="glass" className="w-full text-white/20 hover:text-white uppercase tracking-widest" onClick={onClose}>
+              <PillButton 
+                variant="glass" 
+                className={cn("w-full text-white/20 hover:text-white uppercase tracking-widest", isSaving && "opacity-50 pointer-events-none")} 
+                onClick={onClose}
+                disabled={isSaving}
+              >
                  ยกเลิก
               </PillButton>
            </div>

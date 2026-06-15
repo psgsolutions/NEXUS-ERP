@@ -3,13 +3,16 @@
 import React from "react";
 import { 
   PieChart,
+  CircleDollarSign,
   Briefcase, 
   Wrench,
   Users,
   Store,
   Package,
+  Layers,
   ShoppingCart,
   Banknote,
+  Library,
   UserCircle2,
   Sparkles,
   Settings,
@@ -33,6 +36,7 @@ import { auth as firebaseAuth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { EntitySelector } from "@/components/layout/EntitySelector";
 import { TacticalQuickAction } from "@/components/shared/TacticalQuickAction";
+import { FirebaseConnectionStatus } from "@/components/ui/FirebaseConnectionStatus";
 
 export default function AuthenticatedLayout({
   children,
@@ -57,7 +61,6 @@ export default function AuthenticatedLayout({
     <div className="flex h-screen overflow-hidden bg-[#0D0D0D] text-white selection:bg-nexus-teal/30">
       <CommandPalette />
       
-<<<<<<< HEAD
       {/* [1] Sidebar - Full Intelligence OS Structure */}
       <aside className="w-[280px] hidden lg:flex flex-col border-r border-white/5 bg-[#0a0a0c] relative flex-shrink-0">
         <div className="p-5 overflow-y-auto flex-1 custom-scrollbar">
@@ -73,59 +76,35 @@ export default function AuthenticatedLayout({
           </div>
 
           <EntitySelector />
-=======
-      {/* Sidebar - Tactical Intelligence V2.9 */}
-      <aside className="w-[280px] flex flex-col border-r border-white/5 bg-[#0a0a0c] z-30">
-        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
-          {/* Logo Section */}
-          <div className="flex items-center gap-3 mb-10">
-            <div className="w-11 h-11 bg-nexus-teal rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(16,187,168,0.3)] animate-pulse-glow">
-              <Cpu size={26} className="text-black" />
-            </div>
-            <div>
-              <h2 className="font-black text-sm tracking-tighter leading-none">NEXUS ERP</h2>
-              <p className="text-[10px] text-nexus-teal font-black uppercase tracking-[0.2em] mt-1">INTELLIGENCE OS</p>
-            </div>
-          </div>
-
-          {/* Quick Search */}
-          <div className="relative mb-8 group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 group-hover:text-nexus-teal transition-colors" size={14} />
-            <input 
-              placeholder="COMMAND (CTRL+K)" 
-              className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-9 pr-4 text-[10px] font-bold tracking-[0.3em] focus:outline-none focus:border-nexus-teal/40 focus:bg-white/10 transition-all uppercase"
-            />
-          </div>
->>>>>>> e3043f99d23bda02971284e389327f5248699605
 
           {/* Navigation Matrix */}
           <nav className="space-y-6">
             {/* SERVICE TIER */}
             <NavGroup title="บริการ (SERVICE)">
-              <SideLink href="/dashboard" icon={<PieChart size={20} />} label="ภาพรวม" active={pathname === "/dashboard"} title="แดชบอร์ดแสดงสถานะภาพรวมของระบบ" />
-              <SideLink href="/projects" icon={<Briefcase size={20} />} label="โครงการ" active={pathname === "/projects"} title="ระบบบริหารจัดการโครงการและไซต์งาน" />
+              <SideLink href="/pos" icon={<Store size={20} />} label="POS" active={pathname === "/pos"} title="ระบบขายหน้าร้านอัจฉริยะ" />
               <SideLink href="/support" icon={<Wrench size={20} />} label="แจ้งซ่อม" active={pathname === "/support"} title="ระบบแจ้งซ่อมและงานบริการเทคนิค" />
             </NavGroup>
 
             {/* OPERATIONS TIER */}
-            <NavGroup title="ปฏิบัติการ (OPERATIONS)">
-              <SideLink href="/sales" icon={<Users size={20} />} label="งานขาย" active={pathname === "/sales"} title="ระบบใบเสนอราคาและบริหารลูกค้าสัมพันธ์" />
-              <SideLink href="/pos" icon={<Store size={20} />} label="จุดขาย" active={pathname === "/pos"} title="ระบบขายหน้าร้านอัจฉริยะ" />
-              <SideLink href="/inventory" icon={<Package size={20} />} label="คลังพัสดุ" active={pathname === "/inventory"} title="ระบบบริหารคลังสินค้าและพัสดุคงคลัง" />
-              <SideLink href="/procurement" icon={<ShoppingCart size={20} />} label="จัดซื้อ" active={pathname === "/procurement"} title="ระบบสั่งซื้อสินค้าและบริหารคู่ค้า" />
+            <NavGroup title="การปฏิบัติงาน (OPERATIONS)">
+              <SideLink href="/dashboard" icon={<LayoutGrid size={20} />} label="หน้าหลัก" active={pathname === "/dashboard"} title="แดชบอร์ดแสดงสถานะภาพรวมของระบบ" />
+              <SideLink href="/sales" icon={<CircleDollarSign size={20} />} label="งานขายและลูกค้า" active={pathname === "/sales"} title="ระบบใบเสนอราคาและบริหารลูกค้าสัมพันธ์" />
+              <SideLink href="/projects" icon={<Briefcase size={20} />} label="บริหารโครงการ" active={pathname === "/projects" || pathname === "/projects/subcontractors"} title="ระบบบริหารจัดการโครงการและไซต์งาน" />
+              <SideLink href="/hr" icon={<Users size={20} />} label="ทรัพยากรบุคคล" active={pathname === "/hr"} title="ระบบบริหารทรัพยากรบุคคลและเงินเดือน" />
+              <SideLink href="/inventory" icon={<Layers size={20} />} label="บริหารคลังสินค้า" active={pathname === "/inventory"} title="ระบบบริหารคลังสินค้าและพัสดุคงคลัง" />
+              <SideLink href="/procurement" icon={<ShoppingCart size={20} />} label="บัญชีและจัดซื้อ" active={pathname === "/procurement"} title="ระบบสั่งซื้อสินค้าและบริหารคู่ค้า" />
+              <SideLink href="/projects/subcontractors" icon={<Wrench size={20} />} label="ค่าแรงช่าง" active={pathname === "/projects/subcontractors"} title="จัดการการจ่ายเงินค่าแรงทีมช่าง" />
             </NavGroup>
 
             {/* MANAGEMENT TIER */}
-            <NavGroup title="บริหาร (MANAGEMENT)">
-              <SideLink href="/finance" icon={<Banknote size={20} />} label="การเงิน" active={pathname === "/finance"} title="ระบบบัญชีและการเงินภาพรวม" />
-              <SideLink href="/hr" icon={<UserCircle2 size={20} />} label="บุคคล" active={pathname === "/hr"} title="ระบบบริหารทรัพยากรบุคคลและเงินเดือน" />
-              <SideLink href="/reports" icon={<FileText size={20} />} label="รายงาน & ฟอร์ม" active={pathname?.startsWith("/reports")} title="ระบบจัดการรายงานและแบบฟอร์มเอกสารไดนามิก" />
-              <SideLink href="/ai" icon={<Sparkles size={20} />} label="NEXUS AI" active={pathname === "/ai"} title="ศูนย์รวมปัญญาประดิษฐ์ช่วยวิเคราะห์ข้อมูล" />
+            <NavGroup title="การบริหาร (MANAGEMENT)">
+              <SideLink href="/finance" icon={<Library size={20} />} label="ระบบบัญชีแยกประเภท" active={pathname === "/finance"} title="ระบบบัญชีและการเงินภาพรวม" />
+              <SideLink href="/ai" icon={<Sparkles size={20} />} label="ศูนย์วิเคราะห์ AI" active={pathname === "/ai"} title="ศูนย์รวมปัญญาประดิษฐ์" />
             </NavGroup>
 
-            <NavGroup title="ระบบ (ADMIN)">
-              <SideLink href="/settings" icon={<Settings size={20} />} label="ตั้งค่า" active={pathname === "/settings"} title="กำหนดค่าการทำงานของระบบทั้งหมด" />
-              <SideLink href="/logs" icon={<History size={20} />} label="ประวัติ" active={pathname === "/logs"} title="ตรวจสอบบันทึกการใช้งานย้อนหลัง" />
+            {/* SYSTEM TIER */}
+            <NavGroup title="ระบบ (SYSTEM)">
+              <SideLink href="/settings" icon={<Settings size={20} />} label="ตั้งค่าระบบ" active={pathname?.startsWith("/settings")} title="จัดการการตั้งค่าและผู้ใช้งาน" />
             </NavGroup>
           </nav>
         </div>
@@ -170,9 +149,11 @@ export default function AuthenticatedLayout({
             
             <NexusSearchInput 
               placeholder="ค้นหาคำสั่ง (CTRL+K)..." 
-              className="w-80"
+              className="w-80 hidden md:block"
               kbd="CTRL+K"
             />
+            
+            <FirebaseConnectionStatus />
           </div>
 
           <div className="flex items-center gap-4">

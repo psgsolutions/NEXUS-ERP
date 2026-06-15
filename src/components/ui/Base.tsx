@@ -17,6 +17,7 @@ export { cn };
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "glass" | "danger" | "ghost";
+  size?: number | string;
 }
 
 export function PillButton({ className, variant = "primary", ...props }: ButtonProps) {
@@ -43,7 +44,7 @@ export function PillInput({ className, ...props }: React.InputHTMLAttributes<HTM
   return (
     <input
       className={cn(
-        "h-9 px-5 rounded-full bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all placeholder:text-white/10 backdrop-blur-sm",
+        "h-9 px-5 rounded-full bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all placeholder:text-white/10 backdrop-blur-sm truncate w-full",
         className
       )}
       {...props}
@@ -132,7 +133,7 @@ export function PillSelect({ className, children, value, onChange, ...props }: R
           className
         )}
       >
-        <span className="whitespace-nowrap">{selectedOption?.label || "เลือกรายการ..."}</span>
+        <span className="truncate pr-2">{selectedOption?.label || "เลือกรายการ..."}</span>
         <ChevronDown 
           className={cn(
             "absolute right-4 top-1/2 -translate-y-1/2 text-white/20 transition-all pointer-events-none",
@@ -157,12 +158,12 @@ export function PillSelect({ className, children, value, onChange, ...props }: R
               className={cn(
                 "w-full px-4 py-2.5 rounded-xl text-left text-[13px] font-bold transition-all cursor-pointer flex items-center justify-between group",
                 opt.value === value 
-                  ? "bg-nexus-teal/10 text-nexus-teal" 
-                  : "text-white/60 hover:bg-white/5 hover:text-white"
+                  ? "bg-nexus-teal/20 text-nexus-teal font-black" 
+                  : "text-white/90 hover:bg-white/10 hover:text-white"
               )}
             >
-              <span className="whitespace-nowrap">{opt.label}</span>
-              {opt.value === value && <div className="w-1.5 h-1.5 rounded-full bg-nexus-teal shadow-neon-teal" />}
+              <span className="truncate pr-2">{opt.label}</span>
+              {opt.value === value && <div className="w-1.5 h-1.5 rounded-full bg-nexus-teal shadow-neon-teal shrink-0" />}
             </div>
           ))}
         </div>
@@ -359,7 +360,7 @@ export function PillTabs({
 }) {
   return (
     <div className={cn(
-      "flex items-center gap-0.5 p-0.5 bg-white/[0.02] border border-white/5 rounded-full w-fit max-w-full overflow-x-auto no-scrollbar backdrop-blur-md shadow-inner h-10 flex-nowrap",
+      "flex items-center gap-1 p-1 bg-white/[0.02] border border-white/5 rounded-full w-fit max-w-full overflow-x-auto no-scrollbar backdrop-blur-md shadow-inner flex-nowrap",
       className
     )}>
       {tabs.map((tab) => {
@@ -370,7 +371,7 @@ export function PillTabs({
             onClick={() => onTabChange(tab.id)}
             title={desc ? desc : undefined}
             className={cn(
-              "h-full px-6 rounded-full text-[13px] font-black transition-all duration-300 flex items-center gap-2.5 uppercase tracking-wider whitespace-nowrap flex-shrink-0",
+              "h-9 px-5 rounded-full text-[13px] font-black transition-all duration-300 flex items-center gap-2.5 uppercase tracking-wider whitespace-nowrap flex-shrink-0",
               activeTab === tab.id 
                 ? "bg-nexus-teal text-black shadow-[0_0_20px_rgba(0,255,209,0.3)] border border-white/10" 
                 : "text-white/30 hover:text-white/60 hover:bg-white/[0.03] border border-transparent"
@@ -839,11 +840,11 @@ export function PillBackButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-export function NexusDataField({ label, value, highlight = false, className }: { label: string, value: string, highlight?: boolean, className?: string }) {
+export function NexusDataField({ label, value, highlight = false, className, color }: { label: string, value: string, highlight?: boolean, className?: string, color?: string }) {
   return (
     <div className={cn("flex justify-between items-center py-3 border-b border-white/5 last:border-0", className)}>
        <span className="text-[12px] font-black text-white/20 uppercase tracking-widest">{label}</span>
-       <span className={cn("text-[14px] font-black", highlight ? "text-nexus-teal drop-shadow-neon" : "text-white/80")}>{value}</span>
+       <span className={cn("text-[14px] font-black", highlight ? "text-nexus-teal drop-shadow-neon" : "text-white/80", color)}>{value}</span>
     </div>
   );
 }

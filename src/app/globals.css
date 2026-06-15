@@ -3,11 +3,7 @@
 @tailwind utilities;
 
 :root {
-<<<<<<< HEAD
   --background: #0D0D0D;
-=======
-  --background: #020203;
->>>>>>> e3043f99d23bda02971284e389327f5248699605
   --foreground: #ffffff;
   --nexus-teal: #00FFD1;
   --nexus-blue: #0090FF;
@@ -18,11 +14,7 @@
   --card-radius: 0.5rem;
 }
 
-<<<<<<< HEAD
 /* [STRICT-MASTER-01] บังคับระยะห่างเป็นปกติและตัวตรง 100% ทั่วทั้งระบบ */
-=======
-/* [TYP-01] กฎตัวตรง (Strict Non-italic Rule) - บังคับทั่วทั้งระบบ */
->>>>>>> e3043f99d23bda02971284e389327f5248699605
 * {
   font-style: normal !important;
   font-family: var(--font-sarabun), sans-serif !important;
@@ -32,17 +24,10 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-<<<<<<< HEAD
 /* [STRICT-MASTER-02] ตัวเลขปกติ ไม่มีการเว้นระยะ */
 .mono-numbers {
   font-family: var(--font-mono), monospace !important;
   letter-spacing: normal !important;
-=======
-/* [TYP-03] มิติตัวเลขแม่นยำ (Technical Numbers) */
-.mono-numbers {
-  font-family: var(--font-mono) !important;
-  letter-spacing: -0.02em;
->>>>>>> e3043f99d23bda02971284e389327f5248699605
 }
 
 body {
@@ -51,7 +36,6 @@ body {
     radial-gradient(circle at 50% 50%, rgba(0, 255, 209, 0.03) 0%, transparent 80%),
     var(--background);
   min-height: 100vh;
-<<<<<<< HEAD
   /* [STRICT-MASTER-03] ขนาดตัวอักษรพื้นฐานมาตรฐาน Master */
   @apply text-sm antialiased;
 }
@@ -152,50 +136,4 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
-=======
-  @apply tracking-normal;
-}
-
-/* [UI-04] Premium Glassmorphism V2.9 */
-.glass-card {
-  background: rgba(10, 10, 12, 0.6);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.glass-card:hover {
-  background: rgba(10, 10, 12, 0.8);
-  border: 1px solid rgba(20, 163, 204, 0.2);
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
-}
-
-/* Custom Scrollbar for Tactical Feel */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #14a3cc;
-}
-
-/* Global Animations */
-@keyframes pulse-glow {
-  0%, 100% { opacity: 1; filter: drop-shadow(0 0 5px rgba(16, 187, 168, 0.5)); }
-  50% { opacity: 0.8; filter: drop-shadow(0 0 15px rgba(16, 187, 168, 0.8)); }
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 3s infinite;
->>>>>>> e3043f99d23bda02971284e389327f5248699605
 }

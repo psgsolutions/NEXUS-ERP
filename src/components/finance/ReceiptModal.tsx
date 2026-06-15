@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useSystemDialog } from "@/context/DialogContext";
 import { 
   DollarSign, 
   Plus, 
@@ -26,10 +27,12 @@ import {
 interface ReceiptModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: any) => Promise<void> | void;
 }
 
 export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
+  const { showAlert, showConfirm } = useSystemDialog();
+
   const [activeTab, setActiveTab] = useState("header");
   const [invoices, setInvoices] = useState<any[]>([]);
   const [header, setHeader] = useState({
@@ -39,6 +42,7 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
     paymentMethod: "transfer",
     reference: ""
   });
+  const [isSaving, setIsSaving] = useState(false);
 
   const [summary, setSummary] = useState({
     subtotal: 0,
@@ -53,7 +57,7 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
   }, [invoices]);
 
   const loadCustomerInvoices = () => {
-    if (!header.customer) return alert("กรุณาเลือกชื่อลูกค้า");
+    if (!header.customer) return void showAlert("กรุณาเลือกชื่อลูกค้า");
     setInvoices([
       { id: 1, invNo: "INV-2604-001", total: 107000, balance: 107000, amountToPay: 107000, whtRate: 0, whtAmount: 0 },
       { id: 2, invNo: "INV-2604-042", total: 5350, balance: 5350, amountToPay: 5350, whtRate: 3, whtAmount: 150 }
@@ -76,9 +80,9 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
 
   const isDirty = invoices.length > 0 || header.customer !== "";
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (isDirty) {
-      if (window.confirm("คุณมีการกรอกข้อมูลค้างไว้ ต้องการปิดโดยไม่บันทึกใช่หรือไม่?")) {
+      if (await showConfirm("คุณมีการกรอกข้อมูลค้างไว้ ต้องการปิดโดยไม่บันทึกใช่หรือไม่?")) {
         onClose();
       }
     } else {
@@ -86,9 +90,14 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
     }
   };
 
-  const handleSave = () => {
-    if (invoices.length === 0) return alert("กรุณาเลือกอินวอยซ์ที่ต้องการรับชำระ");
-    onSave({ header, invoices, summary });
+  const handleSave = async () => {
+    if (invoices.length === 0) return void showAlert("กรุณาเลือกอินวอยซ์ที่ต้องการรับชำระ", "System Notification", "warning");
+    setIsSaving(true);
+    try {
+      await onSave({ header, invoices, summary });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -106,10 +115,14 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
                 <p className="text-[12px] font-black text-nexus-teal uppercase tracking-[0.2em]">โหมดลูกหนี้ (AR_COLLECT_V3.0)</p>
                 <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกรับเงิน (Receipt Voucher)</h4>
               </div>
-              <div className="flex items-center gap-4 bg-white/[0.02] border border-white/5 p-2 rounded-2xl">
-                 <button onClick={() => setActiveTab("header")} className={cn("px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === "header" ? "bg-nexus-teal text-white shadow-neon-teal" : "text-white/20 hover:text-white/40")}>Header Data</button>
-                 <button onClick={() => setActiveTab("invoices")} className={cn("px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === "invoices" ? "bg-nexus-teal text-white shadow-neon-teal" : "text-white/20 hover:text-white/40")}>Invoice Allocation</button>
-              </div>
+              <PillTabs 
+                 tabs={[
+                   { id: "header", label: "Header Data" },
+                   { id: "invoices", label: "Invoice Allocation" }
+                 ]}
+                 activeTab={activeTab}
+                 onTabChange={setActiveTab}
+              />
             </div>
 
             <div className="space-y-10 animate-in fade-in slide-in-from-left-4 duration-500">
@@ -264,11 +277,20 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
           </div>
 
           <div className="space-y-4 pt-12 border-t border-white/5">
-            <PillButton className="w-full shadow-neon-teal uppercase tracking-[0.2em]" onClick={handleSave}>
-              <ShieldCheck size={22} />
-              ยืนยันรับชำระ (POST RV)
+            <PillButton 
+              className={cn("w-full shadow-neon-teal uppercase tracking-[0.2em]", isSaving && "opacity-50 pointer-events-none")} 
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              <ShieldCheck size={22} className={isSaving ? "animate-pulse" : ""} />
+              {isSaving ? "กำลังบันทึก..." : "ยืนยันรับชำระ (POST RV)"}
             </PillButton>
-            <PillButton variant="glass" className="w-full text-white/20 hover:text-white uppercase tracking-widest" onClick={handleClose}>
+            <PillButton 
+              variant="glass" 
+              className={cn("w-full text-white/20 hover:text-white uppercase tracking-widest", isSaving && "opacity-50 pointer-events-none")} 
+              onClick={handleClose}
+              disabled={isSaving}
+            >
               ยกเลิก
             </PillButton>
           </div>

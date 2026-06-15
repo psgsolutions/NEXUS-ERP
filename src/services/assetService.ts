@@ -1,4 +1,6 @@
-import { FixedAsset, DepreciationEntry } from "@/types/database";
+// import { FixedAsset, DepreciationEntry } from "@/types/database";
+type FixedAsset = any;
+type DepreciationEntry = any;
 import { AccountingEngine } from "./accountingEngine";
 
 /**
@@ -45,13 +47,13 @@ export const AssetService = {
         totalAmount: totalBatchAmount,
         items: [
           {
-            accountId: '5121-00', // Depreciation Expense
+            accountCode: '5121-00', // Depreciation Expense
             accountName: 'ค่าเสื่อมราคา (Depreciation Expense)',
             debit: totalBatchAmount,
             credit: 0
           },
           {
-            accountId: '1591-00', // Accumulated Depreciation
+            accountCode: '1591-00', // Accumulated Depreciation
             accountName: 'ค่าเสื่อมราคาสะสม (Accumulated Depreciation)',
             debit: 0,
             credit: totalBatchAmount

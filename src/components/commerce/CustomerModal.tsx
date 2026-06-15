@@ -21,6 +21,7 @@ import {
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { SmartAddressPicker, ThaiAddress } from "@/components/ui/SmartAddressPicker";
 import { CustomerType, CustomerStatus } from "@/lib/erp-logic";
+import { useSystemDialog } from "@/context/DialogContext";
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -48,11 +49,16 @@ const INITIAL_FORM = {
   industry: "ทั่วไป",
   credit_term_days: 30,
   credit_limit: 0,
+  billing_cycle: "",
+  bank_name: "",
+  bank_account: "",
   addresses: [] as any[],
   contacts: [] as any[]
 };
 
 export function CustomerModal({ isOpen, onClose, onSave, initialData }: CustomerModalProps) {
+  const { showAlert, showConfirm } = useSystemDialog();
+
   const [activeTab, setActiveTab] = useState("legal");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
@@ -78,7 +84,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
   ];
 
   const handleCommit = async () => {
-    if (!form.name) return alert("กรุณาระบุชื่อลูกค้า");
+    if (!form.name) return void showAlert("กรุณาระบุชื่อลูกค้า");
     setIsSubmitting(true);
     try {
       await onSave(form);
@@ -157,13 +163,22 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
                   </section>
 
                   <section className="space-y-6 pt-6 border-t border-white/5">
-                    <h3 className="text-[12px] font-black text-white/40 uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><Wallet size={16} /> 2. นโยบายสินเชื่อ</h3>
+                    <h3 className="text-[12px] font-black text-white/40 uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><Wallet size={16} /> 2. นโยบายสินเชื่อและการเงิน</h3>
                     <div className="grid grid-cols-2 gap-8 bg-white/[0.02] p-8 rounded-[2rem] border border-white/5">
                       <Field label="เครดิตเทอม (วัน)">
                         <NumberStepper value={form.credit_term_days} onChange={(v) => setForm({...form, credit_term_days: v})} unit="วัน" />
                       </Field>
                       <Field label="วงเงินสินเชื่อ (Credit Limit)">
                         <NumberStepper value={form.credit_limit} onChange={(v) => setForm({...form, credit_limit: v})} unit="฿" step={10000} />
+                      </Field>
+                      <Field label="รอบวางบิล">
+                        <PillInput value={form.billing_cycle || ""} onChange={(e) => setForm({...form, billing_cycle: e.target.value})} placeholder="เช่น ทุกวันที่ 25 ของเดือน" className="w-full" />
+                      </Field>
+                      <Field label="ธนาคารที่ใช้ / เลขที่บัญชี">
+                        <div className="flex gap-2">
+                          <PillInput value={form.bank_name || ""} onChange={(e) => setForm({...form, bank_name: e.target.value})} placeholder="ธนาคาร..." className="w-1/3" />
+                          <PillInput value={form.bank_account || ""} onChange={(e) => setForm({...form, bank_account: e.target.value})} placeholder="เลขที่บัญชี..." className="flex-1 font-mono" />
+                        </div>
                       </Field>
                     </div>
                   </section>

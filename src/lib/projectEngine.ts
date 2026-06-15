@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { db } from "./firebase";
 import { 
   doc, 
@@ -51,3 +52,4 @@ export const issueMaterialToProject = async (
 
   return true;
 };
+

@@ -22,7 +22,7 @@ import {
 interface TaxFilingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (data: any) => void;
+  onConfirm: (data: any) => Promise<void> | void;
 }
 
 export function TaxFilingModal({ isOpen, onClose, onConfirm }: TaxFilingModalProps) {
@@ -37,8 +37,18 @@ export function TaxFilingModal({ isOpen, onClose, onConfirm }: TaxFilingModalPro
   };
 
   const handleClose = () => {
+    if (isSaving) return;
     onClose();
     setStep(1);
+  };
+
+  const handleConfirm = async () => {
+    setIsSaving(true);
+    try {
+      await onConfirm(filing);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -117,11 +127,20 @@ export function TaxFilingModal({ isOpen, onClose, onConfirm }: TaxFilingModalPro
                     </p>
                  </div>
                  <div className="flex flex-col gap-3 max-w-sm mx-auto pt-6">
-                    <PillButton className="w-full shadow-neon-blue" onClick={() => onConfirm({ type: taxType })}>
-                       <ShieldCheck size={20} />
-                       ยืนยันการยื่นแบบ (SUBMIT FILING)
+                    <PillButton 
+                      className={cn("w-full px-8 shadow-neon-blue", isSaving && "opacity-50 pointer-events-none")} 
+                      onClick={handleConfirm}
+                      disabled={isSaving}
+                    >
+                       <ShieldCheck size={20} className={isSaving ? "animate-pulse" : ""} />
+                       {isSaving ? "กำลังยื่นแบบ..." : "ยืนยันและส่งแบบ (E-Filing)"}
                     </PillButton>
-                    <PillButton variant="glass" className="w-full text-white/20" onClick={() => setStep(1)}>
+                    <PillButton 
+                      variant="glass" 
+                      className={cn("w-full text-white/20", isSaving && "opacity-50 pointer-events-none")} 
+                      onClick={() => setStep(1)}
+                      disabled={isSaving}
+                    >
                        ย้อนกลับไปตรวจสอบ
                     </PillButton>
                  </div>

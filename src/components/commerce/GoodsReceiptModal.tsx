@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useSystemDialog } from "@/context/DialogContext";
 import { 
   Truck, 
   Plus, 
@@ -31,6 +32,8 @@ interface GoodsReceiptModalProps {
 }
 
 export function GoodsReceiptModal({ isOpen, onClose, onSave }: GoodsReceiptModalProps) {
+  const { showAlert, showConfirm } = useSystemDialog();
+
   const [activeTab, setActiveTab] = useState("header");
   const [items, setItems] = useState<any[]>([]);
   const [header, setHeader] = useState({
@@ -49,9 +52,9 @@ export function GoodsReceiptModal({ isOpen, onClose, onSave }: GoodsReceiptModal
 
   const isDirty = items.length > 0 || header.poRef !== "" || header.deliveryNote !== "";
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (isDirty) {
-      if (window.confirm("คุณมีการกรอกข้อมูลค้างไว้ ต้องการปิดโดยไม่บันทึกใช่หรือไม่?")) {
+      if (await showConfirm("คุณมีการกรอกข้อมูลค้างไว้ ต้องการปิดโดยไม่บันทึกใช่หรือไม่?")) {
         onClose();
       }
     } else {
@@ -61,7 +64,7 @@ export function GoodsReceiptModal({ isOpen, onClose, onSave }: GoodsReceiptModal
 
   // Mock loading items from PO
   const loadPOItems = () => {
-    if (!header.poRef) return alert("กรุณาระบุเลขที่ใบสั่งซื้อ");
+    if (!header.poRef) return void showAlert("กรุณาระบุเลขที่ใบสั่งซื้อ");
     setItems([
       { id: 1, name: "Aruba AP-505", qtyOrdered: 10, qtyReceived: 10, unit: "Unit", warehouse: "Main", serials: "" },
       { id: 2, name: "CAT6 Cable 305m", qtyOrdered: 5, qtyReceived: 5, unit: "Roll", warehouse: "Main", serials: "" }
@@ -74,7 +77,7 @@ export function GoodsReceiptModal({ isOpen, onClose, onSave }: GoodsReceiptModal
   };
 
   const handleSave = () => {
-    if (items.length === 0) return alert("กรุณาระบุเลขที่ใบสั่งซื้อและตรวจสอบรายการ");
+    if (items.length === 0) return void showAlert("กรุณาระบุเลขที่ใบสั่งซื้อและตรวจสอบรายการ");
     onSave({ header, items });
   };
 

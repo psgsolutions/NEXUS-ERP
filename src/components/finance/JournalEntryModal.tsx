@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useSystemDialog } from "@/context/DialogContext";
 import { 
   FileText, 
   Plus, 
@@ -25,10 +26,12 @@ import {
 interface JournalEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: any) => Promise<void> | void;
 }
 
 export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModalProps) {
+  const { showAlert, showConfirm } = useSystemDialog();
+
   const [activeTab, setActiveTab] = useState("header");
   const [entries, setEntries] = useState<any[]>([
     { id: 1, accountCode: "", accountName: "เลือกบัญชี...", debit: 0, credit: 0, desc: "" },
@@ -42,6 +45,7 @@ export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModal
   });
 
   const [totals, setTotals] = useState({ dr: 0, cr: 0, diff: 0 });
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const dr = entries.reduce((acc, e) => acc + (e.debit || 0), 0);
@@ -51,9 +55,9 @@ export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModal
 
   const isDirty = entries.some(e => e.debit > 0 || e.credit > 0) || header.description !== "";
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (isDirty) {
-      if (window.confirm("คุณมีการกรอกข้อมูลค้างไว้ ต้องการปิดโดยไม่บันทึกใช่หรือไม่?")) {
+      if (await showConfirm("คุณมีการกรอกข้อมูลค้างไว้ ต้องการปิดโดยไม่บันทึกใช่หรือไม่?")) {
         onClose();
       }
     } else {
@@ -82,10 +86,16 @@ export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModal
     }));
   };
 
-  const handleSave = () => {
-    if (totals.diff !== 0) return alert("ยอดเดบิตและเครดิตต้องสมดุลกัน (DR must equal CR)");
-    if (entries.length < 2) return alert("กรุณาระบุรายการบัญชีอย่างน้อย 2 รายการ");
-    onSave({ header, entries, totals });
+  const handleSave = async () => {
+    if (totals.diff !== 0) return void showAlert("ยอดเดบิตและเครดิตต้องสมดุลกัน (DR must equal CR)", "System Notification", "warning");
+    if (entries.length < 2) return void showAlert("กรุณาระบุรายการบัญชีอย่างน้อย 2 รายการ", "System Notification", "warning");
+    
+    setIsSaving(true);
+    try {
+      await onSave({ header, entries, totals });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -103,10 +113,14 @@ export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModal
                 <p className="text-[12px] font-black text-nexus-blue uppercase tracking-[0.2em]">โหมดบัญชีแยกประเภท (GL_PROT_V3.0)</p>
                 <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกรายวัน (General Journal)</h4>
               </div>
-              <div className="flex items-center gap-4 bg-white/[0.02] border border-white/5 p-2 rounded-2xl">
-                 <button onClick={() => setActiveTab("header")} className={cn("px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === "header" ? "bg-nexus-blue text-white shadow-neon-blue" : "text-white/20 hover:text-white/40")}>Header</button>
-                 <button onClick={() => setActiveTab("entries")} className={cn("px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === "entries" ? "bg-nexus-blue text-white shadow-neon-blue" : "text-white/20 hover:text-white/40")}>Accounting Lines</button>
-              </div>
+              <PillTabs 
+                 tabs={[
+                   { id: "header", label: "Header" },
+                   { id: "entries", label: "Accounting Lines" }
+                 ]}
+                 activeTab={activeTab}
+                 onTabChange={setActiveTab}
+              />
             </div>
 
             <div className="space-y-10 animate-in fade-in slide-in-from-left-4 duration-500">
@@ -249,13 +263,19 @@ export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModal
 
           <div className="space-y-4 pt-12 border-t border-white/5">
             <PillButton 
-              className={cn("w-full px-8 shadow-neon-blue uppercase tracking-[0.2em]", totals.diff !== 0 && "opacity-50 pointer-events-none grayscale")} 
+              className={cn("w-full px-8 shadow-neon-blue uppercase tracking-[0.2em]", (totals.diff !== 0 || isSaving) && "opacity-50 pointer-events-none grayscale")} 
               onClick={handleSave}
+              disabled={isSaving}
             >
-              <ShieldCheck size={22} />
-              บันทึกรายการ (POST JV)
+              <ShieldCheck size={22} className={isSaving ? "animate-pulse" : ""} />
+              {isSaving ? "กำลังบันทึก..." : "บันทึกรายการ (POST JV)"}
             </PillButton>
-            <PillButton variant="glass" className="w-full text-white/20 hover:text-white uppercase tracking-widest" onClick={handleClose}>
+            <PillButton 
+              variant="glass" 
+              className={cn("w-full text-white/20 hover:text-white uppercase tracking-widest", isSaving && "opacity-50 pointer-events-none")} 
+              onClick={handleClose}
+              disabled={isSaving}
+            >
               ยกเลิก
             </PillButton>
           </div>

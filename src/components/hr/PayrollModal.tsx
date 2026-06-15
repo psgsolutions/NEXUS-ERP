@@ -24,12 +24,13 @@ import {
 interface PayrollModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (data: any) => void;
+  onConfirm: (data: any) => Promise<void> | void;
 }
 
 export function PayrollModal({ isOpen, onClose, onConfirm }: PayrollModalProps) {
   const [step, setStep] = useState(1);
   const [period, setPeriod] = useState("เมษายน 2569");
+  const [isSaving, setIsSaving] = useState(false);
   
   const mockPayrollData = {
     employeeCount: 48,
@@ -43,6 +44,15 @@ export function PayrollModal({ isOpen, onClose, onConfirm }: PayrollModalProps) 
   const handleClose = () => {
     onClose();
     setStep(1);
+  };
+
+  const handleConfirm = async () => {
+    setIsSaving(true);
+    try {
+      await onConfirm(mockPayrollData);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -174,12 +184,21 @@ export function PayrollModal({ isOpen, onClose, onConfirm }: PayrollModalProps) 
                    ตรวจสอบความถูกต้อง <ArrowRight size={18} />
                 </PillButton>
              ) : (
-                <PillButton className="w-full shadow-neon-teal uppercase tracking-[0.2em]" onClick={() => onConfirm(mockPayrollData)}>
-                   <ShieldCheck size={22} />
-                   ยืนยันโอนเงิน (RELEASE PAYROLL)
+                <PillButton 
+                  className={cn("w-full shadow-neon-teal uppercase tracking-[0.2em]", isSaving && "opacity-50 pointer-events-none")} 
+                  onClick={handleConfirm}
+                  disabled={isSaving}
+                >
+                   <ShieldCheck size={22} className={isSaving ? "animate-pulse" : ""} />
+                   {isSaving ? "กำลังประมวลผล..." : "ยืนยันโอนเงิน (RELEASE PAYROLL)"}
                 </PillButton>
              )}
-             <PillButton variant="glass" className="w-full text-white/20 hover:text-white uppercase tracking-widest" onClick={handleClose}>
+             <PillButton 
+               variant="glass" 
+               className={cn("w-full text-white/20 hover:text-white uppercase tracking-widest", isSaving && "opacity-50 pointer-events-none")} 
+               onClick={handleClose}
+               disabled={isSaving}
+             >
                 ยกเลิก
              </PillButton>
            </div>

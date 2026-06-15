@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { cn, PillButton, PillInput, PillSelect } from "@/components/ui/Base";
+import { useSystemDialog } from "@/context/DialogContext";
 import { 
   Box, 
   Layers, 
@@ -170,7 +171,7 @@ export function Warehouse3D({
     const lvl = editingRack.level || 1;
 
     if (x + w - 1 > activeWh.gridCols || y + h - 1 > activeWh.gridRows) {
-      alert("ชั้นวางเกินขอบเขตแผนผังคลังสินค้า!");
+      showAlert("ชั้นวางเกินขอบเขตแผนผังคลังสินค้า!");
       return;
     }
 

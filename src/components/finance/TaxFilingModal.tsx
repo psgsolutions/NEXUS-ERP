@@ -28,6 +28,7 @@ interface TaxFilingModalProps {
 export function TaxFilingModal({ isOpen, onClose, onConfirm }: TaxFilingModalProps) {
   const [step, setStep] = useState(1);
   const [taxType, setTaxType] = useState("VAT30");
+  const [isSaving, setIsSaving] = useState(false);
   
   const mockTaxData = {
     revenue: 2035000,
@@ -45,6 +46,11 @@ export function TaxFilingModal({ isOpen, onClose, onConfirm }: TaxFilingModalPro
   const handleConfirm = async () => {
     setIsSaving(true);
     try {
+      const filing = {
+        type: taxType,
+        month: new Date().toISOString().slice(0, 7),
+        data: mockTaxData
+      };
       await onConfirm(filing);
     } finally {
       setIsSaving(false);

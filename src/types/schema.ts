@@ -79,6 +79,8 @@ export interface Customer extends BaseDocument {
 
 export interface Quotation extends BaseDocument {
   documentNo: string; // QT-YYMM-XXXX
+  isVatRegistered: boolean;
+  vatType: 'Include VAT' | 'Exclude VAT' | 'Non-VAT';
   items: {
     itemCode: string; // บังคับดึงรหัสสินค้าจากระบบ
     description: string;
@@ -99,7 +101,19 @@ export interface PurchaseDocument extends BaseDocument {
     supplierId: string;
     name: string;
   };
-  items: any[];
+  items: {
+    itemCode: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    totalAmount: number;
+    accountCode?: string; // Expense Account Mapping
+  }[];
+  subTotal: number;
+  vatAmount: number;
+  whtAmount?: number; // WHT Engine calculation
+  whtRate?: number; // 1, 3, 5
+  grandTotal: number;
   status: 'draft' | 'pending' | 'ordered' | 'received' | 'cancelled';
 }
 

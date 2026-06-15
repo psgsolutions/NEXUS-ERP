@@ -176,7 +176,7 @@ export default function FinancePage() {
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[10px] font-black text-white/30 uppercase tracking-widest leading-none">กระแสเงินสดสุทธิ</span>
-              <span className="text-[17px] font-black text-nexus-teal mt-1 mono-numbers leading-none">฿4.2M</span>
+              <span className="text-[17px] font-black text-nexus-teal mt-1 font-mono leading-none">฿4.2M</span>
             </div>
           </div>
           <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
@@ -185,7 +185,7 @@ export default function FinancePage() {
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[10px] font-black text-white/30 uppercase tracking-widest leading-none">กำไร (P&amp;L)</span>
-              <span className="text-[17px] font-black text-nexus-blue mt-1 mono-numbers leading-none">+฿842k</span>
+              <span className="text-[17px] font-black text-nexus-blue mt-1 font-mono leading-none">+฿842k</span>
             </div>
           </div>
           <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-danger/30 hover:bg-white/[0.03]">
@@ -194,7 +194,7 @@ export default function FinancePage() {
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[10px] font-black text-white/30 uppercase tracking-widest leading-none">ลูกหนี้ค้างชำระ</span>
-              <span className="text-[17px] font-black text-danger mt-1 mono-numbers leading-none">฿2.1M</span>
+              <span className="text-[17px] font-black text-danger mt-1 font-mono leading-none">฿2.1M</span>
             </div>
           </div>
         </div>
@@ -593,8 +593,8 @@ function FinancialRow({ id, date, desc, dr, cr, status }: { id: string, date: st
       </NexusTableCell>
       <NexusTableCell className="w-[180px] text-[11px] font-black text-white/40 uppercase tracking-widest">{date}</NexusTableCell>
       <NexusTableCell className="font-black text-white/80 group-hover:text-white transition-colors whitespace-nowrap">{desc}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-black text-white/60 mono-numbers">{dr}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-black text-white/60 mono-numbers">{cr}</NexusTableCell>
+      <NexusTableCell className="w-[150px] text-right font-black text-white/60 font-mono">{dr}</NexusTableCell>
+      <NexusTableCell className="w-[150px] text-right font-black text-white/60 font-mono">{cr}</NexusTableCell>
       <NexusTableCell className="w-[180px]">
         <StatusBadge status={status} label="บันทึกแล้ว" />
       </NexusTableCell>

@@ -101,6 +101,9 @@ export interface Quotation extends BaseDocument {
   dueDate: any; // วันที่ครบกำหนดชำระ
   customerInfo: DocumentCustomerInfo;
   
+  isVatRegistered: boolean;
+  vatType: 'Include VAT' | 'Exclude VAT' | 'Non-VAT';
+
   // Line Items
   items: UniversalLineItem[];
   
@@ -533,6 +536,30 @@ export interface SalesOrder extends BaseDocument {
   status: 'draft' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 }
 
+export interface Invoice extends BaseDocument {
+  invoiceId: string;
+  orderRefNo?: string; // Linked SalesOrder orderId
+  customerId: string;
+  projectId?: string;
+  issueDate: any;
+  dueDate: any;
+  items: {
+    productId: string;
+    name: string;
+    qty: number;
+    unit: string;
+    price: number;
+    discount?: number;
+  }[];
+  isVatRegistered: boolean;
+  vatType: 'Include VAT' | 'Exclude VAT' | 'Non-VAT';
+  subTotal: number;
+  vatAmount: number;
+  grandTotal: number;
+  paymentStatus: 'unpaid' | 'partial' | 'paid';
+  status: 'draft' | 'issued' | 'cancelled';
+}
+
 // ---------------------------------------------------------
 // 5. คลังพัสดุและ SN (Inventory)
 // ---------------------------------------------------------
@@ -633,12 +660,14 @@ export interface PurchaseDocument extends BaseDocument {
   expectedDate: any;
   supplierInfo: DocumentSupplierInfo;
   
-  // Line Items
-  items: UniversalLineItem[];
+  // Line Items (Expense Account Mapping support)
+  items: (UniversalLineItem & { accountCode?: string })[];
   
   // Document Summary
   subTotal: number;
   vatAmount: number;
+  whtAmount?: number;
+  whtRate?: number;
   grandTotal: number;
   remarks: string;
 

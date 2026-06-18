@@ -1,4 +1,4 @@
-import { db } from "./firebase";
+import { db } from "./firebase-client";
 import { doc, runTransaction, getDoc } from "firebase/firestore";
 
 /**
@@ -7,7 +7,7 @@ import { doc, runTransaction, getDoc } from "firebase/firestore";
  * ระบบรันเลขเอกสารอัจฉริยะสำหรับ Enterprise ERP
  */
 
-export type SequencePrefix = "NXI" | "POS" | "QT" | "PRJ" | "SO" | "PO" | "FIN" | "EXP";
+export type SequencePrefix = "NXI" | "POS" | "QT" | "PRJ" | "SO" | "PO" | "FIN" | "EXP" | "CUS" | "EMP" | "SUP" | "PRD" | "WO" | "DN" | "PR";
 
 export async function nexusSequenceEngine(
   prefix: SequencePrefix, 

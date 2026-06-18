@@ -1,4 +1,4 @@
-import { db } from "./firebase";
+import { db } from "./firebase-client";
 import { 
   collection, 
   doc, 
@@ -147,3 +147,110 @@ export async function convertToSalesOrder(quoteId: string, companyId: string) {
 
   return soId;
 }
+
+/**
+ * [SALES-STRATEGY-V2.1]
+ * Automated Procurement & Operations Generation from Sales Order
+ * Step 8: SO -> PO & WO
+ */
+export async function autoGenerateOrdersFromSO(soId: string, companyId: string) {
+  const soRef = doc(db, `companies/${companyId}/sales_orders`, soId);
+  
+  await runTransaction(db, async (transaction) => {
+    const soSnap = await transaction.get(soRef);
+    if (!soSnap.exists()) throw new Error("ไม่พบใบสั่งขาย");
+    
+    const soData = soSnap.data();
+    if (soData.companyId !== companyId) {
+      throw new Error("SECURITY_BREACH: Access to unauthorized company records.");
+    }
+
+    const items = soData.items || [];
+    if (items.length === 0) return; // No items to process
+
+    // 1. Generate Work Order (WO) for installation/services
+    const woId = await nexusSequenceEngine("WO", companyId);
+    const woRef = doc(db, `companies/${companyId}/work_orders`, woId);
+    
+    transaction.set(woRef, {
+      woId,
+      soRef: soId,
+      projectId: soData.projectId || null,
+      assignedTeam: [], // To be assigned later
+      scheduledDate: soData.deliveryDate || serverTimestamp(),
+      status: "draft",
+      tasks: items.map((item: any) => ({
+        description: `ติดตั้ง/ดำเนินงาน: ${item.name}`,
+        isCompleted: false
+      })),
+      companyId,
+      createdAt: serverTimestamp(),
+      createdBy: "SYSTEM_AUTO"
+    });
+
+    // 2. Generate Purchase Orders (PO) grouped by Supplier (using Exclude VAT as default)
+    // For simplicity, we create one draft PO. In reality, we'd group by primarySupplierId.
+    const poId = await nexusSequenceEngine("PO", companyId);
+    const poRef = doc(db, `companies/${companyId}/purchase_orders`, poId);
+    
+    let poSubTotal = 0;
+    const poItems = items.map((item: any) => {
+      // Use Exclude VAT logic: price is considered base cost
+      const cost = item.price * 0.7; // Estimated cost if not provided
+      const totalAmount = cost * item.quantity;
+      poSubTotal += totalAmount;
+      return {
+        itemCode: item.productId,
+        description: item.name,
+        quantity: item.quantity,
+        unitPrice: cost,
+        totalAmount
+      };
+    });
+
+    const vatAmount = poSubTotal * 0.07;
+    const grandTotal = poSubTotal + vatAmount;
+
+    transaction.set(poRef, {
+      documentNo: poId,
+      poId,
+      soRef: soId,
+      supplierInfo: {
+        supplierId: "SUP-AUTO", // To be filled by purchasing team
+        name: "Auto-Generated Supplier"
+      },
+      items: poItems,
+      subTotal: poSubTotal,
+      vatAmount,
+      grandTotal,
+      status: "draft",
+      companyId,
+      createdAt: serverTimestamp(),
+      createdBy: "SYSTEM_AUTO"
+    });
+
+    // 3. Generate Delivery Note (DN)
+    const dnId = await nexusSequenceEngine("DN", companyId);
+    const dnRef = doc(db, `companies/${companyId}/delivery_notes`, dnId);
+
+    transaction.set(dnRef, {
+      dnId,
+      soRef: soId,
+      customerId: soData.customerId,
+      deliveryDate: soData.deliveryDate || serverTimestamp(),
+      shippingAddress: soData.shippingAddress || "",
+      items: items.map((item: any) => ({
+        itemCode: item.productId,
+        description: item.name,
+        quantityDelivered: item.quantity
+      })),
+      status: "draft",
+      companyId,
+      createdAt: serverTimestamp(),
+      createdBy: "SYSTEM_AUTO"
+    });
+  });
+
+  return true;
+}
+

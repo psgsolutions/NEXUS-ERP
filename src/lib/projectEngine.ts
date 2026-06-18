@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { db } from "./firebase";
+import { db } from "./firebase-client";
 import { 
   doc, 
   runTransaction, 
@@ -52,4 +52,67 @@ export const issueMaterialToProject = async (
 
   return true;
 };
+
+/**
+ * [LOG-03] Auto-Bidding Engine
+ * Evaluates Project BOQ to determine if it exceeds bidding threshold
+ */
+export const evaluateAutoBidding = async (
+  companyId: string,
+  projectId: string,
+  boqTotal: number
+) => {
+  const companyRef = doc(db, "companies", companyId);
+  const projectRef = doc(db, "projects", projectId);
+
+  await runTransaction(db, async (transaction) => {
+    const companySnap = await transaction.get(companyRef);
+    if (!companySnap.exists()) throw new Error("Company not found");
+    const companyData = companySnap.data();
+    
+    // Default threshold is 500,000 if not set in config
+    const threshold = companyData.settings?.biddingThreshold || 500000;
+
+    if (boqTotal > threshold) {
+      transaction.update(projectRef, {
+        isBidding: true,
+        biddingStatus: 'preparing_tor',
+        updatedAt: Timestamp.now()
+      });
+    } else {
+      transaction.update(projectRef, {
+        isBidding: false,
+        updatedAt: Timestamp.now()
+      });
+    }
+  });
+
+  return true;
+};
+
+/**
+ * [LOG-04] Mobile Survey Wishlist
+ * Adds items to project survey wishlist
+ */
+export const addSurveyWishlist = async (
+  projectId: string,
+  items: { itemDescription: string; quantity: number; estimatedPrice?: number }[]
+) => {
+  const projectRef = doc(db, "projects", projectId);
+  
+  await runTransaction(db, async (transaction) => {
+    const projectSnap = await transaction.get(projectRef);
+    if (!projectSnap.exists()) throw new Error("Project not found");
+    
+    const existingWishlist = projectSnap.data().surveyWishlist || [];
+    
+    transaction.update(projectRef, {
+      surveyWishlist: [...existingWishlist, ...items],
+      updatedAt: Timestamp.now()
+    });
+  });
+
+  return true;
+};
+
 

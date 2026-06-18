@@ -38,6 +38,7 @@ export interface CompanyConfig extends BaseDocument {
   settings: {
     currency: string;
     timezone: string;
+    biddingThreshold?: number; // Auto-Bidding Threshold
     idFormats: {
       quotation: string; // e.g., QT-YYMM-XXXX
       salesOrder: string;
@@ -133,6 +134,13 @@ export interface Project extends BaseDocument {
   projectType: 'infrastructure' | 'software' | 'consulting' | 'maintenance';
   status: 'planning' | 'in-progress' | 'on-hold' | 'completed' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'critical';
+  isBidding?: boolean;
+  biddingStatus?: 'preparing_tor' | 'submitted' | 'won' | 'lost';
+  surveyWishlist?: {
+    itemDescription: string;
+    quantity: number;
+    estimatedPrice?: number;
+  }[];
   startDate: any;
   endDate: any;
   location: {
@@ -183,6 +191,8 @@ export interface ProjectBOQ extends BaseDocument {
   projectId: string;
   version: number; // เลขที่เวอร์ชันของ BOQ (Rev 1, Rev 2, Rev 3)
   status: 'draft' | 'approved';
+  grandTotal?: number;
+  source?: 'survey_wishlist' | 'manual' | 'template';
   items: ProjectBOQItem[];
 }
 
@@ -305,6 +315,7 @@ export interface Supplier extends BaseDocument {
 
 export interface PurchaseOrder extends BaseDocument {
   poId: string;
+  soRef?: string; // Auto-generated from Sales Order
   supplierId: string;
   prRef?: string;
   orderDate: any;
@@ -517,6 +528,8 @@ export interface SalesOrder extends BaseDocument {
   quotationRefNo?: string; // Linked Quotation documentNo
   customerId: string;
   projectId?: string;
+  aiGenerated?: boolean;
+  sourceDocumentUrl?: string; // For OCR tracking
   orderDate: any;
   deliveryDate: any;
   items: {
@@ -571,6 +584,7 @@ export interface Product extends BaseDocument {
   description: string;
   category: string;
   brand: string;
+  primarySupplierId?: string;
   unit: string;
   allowFOC?: boolean; // อนุญาตให้ใช้เป็นของแถมได้หรือไม่
   stockStatus: {
@@ -603,7 +617,10 @@ export interface SerialNumber extends BaseDocument {
   productId: string;
   status: 'available' | 'reserved' | 'deployed' | 'rma' | 'lost';
   location: string;
-  warrantyExpiry?: any;
+  customerId?: string;
+  warrantyStartDate?: any;
+  warrantyEndDate?: any;
+  warrantyStatus?: 'active' | 'expired' | 'void';
   currentProjectId?: string;
   pmFrequency: number; // Periodic Maintenance frequency in days (e.g., 90, 180)
   lastMaintenanceDate?: any;
@@ -797,6 +814,9 @@ export interface FormSubmission extends BaseDocument {
 export interface ExpenseClaim extends BaseDocument {
   claimId: string; // EX-YYMM-XXXX
   employeeId: string;
+  expenseType: 'COMPANY' | 'PROJECT';
+  projectId?: string;
+  surveyRef?: string;
   expenseAccountCode: string; // Mapping to GL Expense Code
   description: string;
   hasVat: boolean;
@@ -805,5 +825,40 @@ export interface ExpenseClaim extends BaseDocument {
   grandTotal: number;
   receiptUrls: string[]; // For receipt images
   status: 'draft' | 'submitted' | 'approved' | 'paid' | 'rejected';
+}
+
+// ---------------------------------------------------------
+// 12. Operations & Delivery
+// ---------------------------------------------------------
+
+export interface WorkOrder extends BaseDocument {
+  woId: string; // WO-YYMM-XXXX
+  soRef: string; // Link to Sales Order
+  projectId?: string;
+  assignedTeam: string[];
+  scheduledDate: any;
+  status: 'draft' | 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
+  tasks: {
+    description: string;
+    isCompleted: boolean;
+  }[];
+}
+
+export interface DeliveryNote extends BaseDocument {
+  dnId: string; // DN-YYMM-XXXX
+  soRef: string; // Link to Sales Order
+  customerId: string;
+  deliveryDate: any;
+  shippingAddress: string;
+  driverName?: string;
+  trackingNumber?: string;
+  items: {
+    itemCode: string;
+    description: string;
+    quantityDelivered: number;
+    serialNumbers?: string[];
+  }[];
+  status: 'draft' | 'in-transit' | 'delivered' | 'cancelled';
+  recipientSignatureUrl?: string;
 }
 

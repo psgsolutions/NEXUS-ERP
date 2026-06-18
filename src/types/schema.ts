@@ -28,6 +28,7 @@ export interface Company {
     currency: string;
     timezone: string;
     idFormats: Record<string, string>;
+    biddingThreshold?: number; // Auto-Bidding Threshold
   };
 }
 
@@ -46,7 +47,10 @@ export interface SerialNumber extends BaseDocument {
   sn: string;
   productId: string;
   status: 'available' | 'reserved' | 'deployed' | 'rma';
-  warrantyExpiry: Date;
+  customerId?: string;
+  warrantyStartDate?: Date;
+  warrantyEndDate?: Date;
+  warrantyStatus?: 'active' | 'expired' | 'void';
 }
 
 // 3. Project & Service Management
@@ -57,6 +61,13 @@ export interface Project extends BaseDocument {
   budget: number;
   status: 'planning' | 'in-progress' | 'completed' | 'on-hold';
   projectCosts: number; // Derived
+  isBidding?: boolean;
+  biddingStatus?: 'preparing_tor' | 'submitted' | 'won' | 'lost';
+  surveyWishlist?: {
+    itemDescription: string;
+    quantity: number;
+    estimatedPrice?: number;
+  }[];
 }
 
 export interface ServiceReport extends BaseDocument {
@@ -97,6 +108,7 @@ export interface Quotation extends BaseDocument {
 // 5. Procurement & Supply Chain
 export interface PurchaseDocument extends BaseDocument {
   documentNo: string; // PO-YYMM-XXXX
+  soRef?: string; // Auto-generated from Sales Order
   supplierInfo: {
     supplierId: string;
     name: string;
@@ -180,6 +192,9 @@ export interface Ticket extends BaseDocument {
 export interface ExpenseClaim extends BaseDocument {
   claimId: string; // EX-YYMM-XXXX
   employeeId: string;
+  expenseType: 'COMPANY' | 'PROJECT';
+  projectId?: string;
+  surveyRef?: string;
   expenseAccountCode: string;
   description: string;
   hasVat: boolean;
@@ -188,4 +203,36 @@ export interface ExpenseClaim extends BaseDocument {
   grandTotal: number;
   receiptUrls: string[]; // for attaching multiple receipt images
   status: 'draft' | 'submitted' | 'approved' | 'paid' | 'rejected';
+}
+
+// 12. Operations & Delivery
+export interface WorkOrder extends BaseDocument {
+  woId: string; // WO-YYMM-XXXX
+  soRef: string; // Link to Sales Order
+  projectId?: string;
+  assignedTeam: string[];
+  scheduledDate: Date;
+  status: 'draft' | 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
+  tasks: {
+    description: string;
+    isCompleted: boolean;
+  }[];
+}
+
+export interface DeliveryNote extends BaseDocument {
+  dnId: string; // DN-YYMM-XXXX
+  soRef: string; // Link to Sales Order
+  customerId: string;
+  deliveryDate: Date;
+  shippingAddress: string;
+  driverName?: string;
+  trackingNumber?: string;
+  items: {
+    itemCode: string;
+    description: string;
+    quantityDelivered: number;
+    serialNumbers?: string[];
+  }[];
+  status: 'draft' | 'in-transit' | 'delivered' | 'cancelled';
+  recipientSignatureUrl?: string;
 }

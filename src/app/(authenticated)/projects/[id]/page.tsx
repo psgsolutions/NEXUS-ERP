@@ -71,6 +71,7 @@ export default function ProjectDetailPage() {
 
   const tabs = [
     { id: "timeline", label: "แผนงาน (TIMELINE)", icon: <Target size={14} /> },
+    { id: "survey", label: "สำรวจหน้างาน (MOBILE SURVEY)", icon: <MapPin size={14} /> },
     { id: "resources", label: "พัสดุ & อุปกรณ์", icon: <Package size={14} /> },
     { id: "team", label: "ทีมงาน & ค่าแรง", icon: <Users size={14} /> },
     { id: "reports", label: "SERVICE REPORTS", icon: <ClipboardList size={14} /> },
@@ -225,6 +226,72 @@ export default function ProjectDetailPage() {
                       ]}
                     />
                  </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "survey" && (
+            <div className="space-y-6 animate-in slide-in-from-bottom duration-500">
+              <div className="flex justify-between items-center px-4">
+                <div>
+                  <h3 className="text-sm font-black text-white/80 uppercase tracking-tight">แบบฟอร์มสำรวจหน้างานและร่างจัดเตรียมอุปกรณ์ (Survey Wishlist)</h3>
+                  <p className="text-[9px] text-white/30 uppercase mt-0.5 tracking-wider font-black">Mobile-Friendly Interface สำหรับช่าง/เซลล์</p>
+                </div>
+                <PillButton className="h-9 px-6 rounded-full shadow-neon-teal" onClick={() => showToast("บันทึกรายการสำรวจลงระบบ และพร้อมดึงเข้า BOQ แล้ว!")}>
+                  <UploadCloud size={16} />
+                  บันทึกแบบสำรวจ
+                </PillButton>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <GlassCard className="p-6 border-white/5 space-y-6">
+                  <h4 className="text-xs font-black text-nexus-teal uppercase">เพิ่มรายการเบื้องต้น</h4>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-white/50 uppercase">ชื่ออุปกรณ์ / รายละเอียด (Specifier)</label>
+                      <PillInput className="w-full" placeholder="เช่น กล้องวงจรปิด PTZ 4MP, สายไฟ..." />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-white/50 uppercase">จำนวน (Qty)</label>
+                        <PillInput className="w-full text-center" type="number" placeholder="1" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-white/50 uppercase">หน่วย (Unit)</label>
+                        <PillInput className="w-full text-center" placeholder="ตัว, เมตร, จุด..." />
+                      </div>
+                    </div>
+                    <PillButton variant="glass" className="w-full text-xs font-black h-10 border-white/10 hover:border-nexus-blue hover:text-nexus-blue transition-colors">
+                      <Plus size={16} /> หยิบใส่ตะกร้า Survey
+                    </PillButton>
+                  </div>
+                </GlassCard>
+
+                <div className="space-y-4">
+                  <h4 className="text-xs font-black text-white/70 uppercase px-2">รายการที่เลือกไว้ (Wishlist Basket)</h4>
+                  <div className="space-y-2">
+                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex justify-between items-center group hover:bg-white/[0.04] transition-colors">
+                      <div className="space-y-1">
+                        <h5 className="text-sm font-black text-white">กล้องวงจรปิด Bullet 4MP IP67</h5>
+                        <p className="text-[10px] text-white/40">หมวดหมู่: Hardware (ประมาณการ)</p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="font-mono text-nexus-blue font-black bg-nexus-blue/10 px-3 py-1 rounded-lg">12 ตัว</span>
+                        <button className="text-white/20 hover:text-danger"><Trash2 size={16}/></button>
+                      </div>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex justify-between items-center group hover:bg-white/[0.04] transition-colors">
+                      <div className="space-y-1">
+                        <h5 className="text-sm font-black text-white">สาย LAN CAT6 UTP (กล่อง)</h5>
+                        <p className="text-[10px] text-white/40">หมวดหมู่: Materials (ประมาณการ)</p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="font-mono text-nexus-blue font-black bg-nexus-blue/10 px-3 py-1 rounded-lg">4 กล่อง</span>
+                        <button className="text-white/20 hover:text-danger"><Trash2 size={16}/></button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -400,6 +467,29 @@ export default function ProjectDetailPage() {
                   <span className="text-[8px] font-black text-white/30 uppercase tracking-widest block">งบประมาณคงเหลือ (Variance)</span>
                   <span className="text-xl font-black text-white/80 font-mono block">฿650,000.00</span>
                 </div>
+              </div>
+
+              {/* Auto-Bidding Alert System */}
+              <div className="p-4 rounded-3xl bg-warning/10 border border-warning/30 flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_20px_rgba(245,158,11,0.1)] animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-warning/10 flex items-center justify-center text-warning shrink-0">
+                    <AlertTriangle size={18} />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-black text-warning uppercase tracking-tight">เข้าเกณฑ์การประมูล (Auto-Bidding Detected)</h5>
+                    <p className="text-[10px] text-white/60 mt-0.5">ยอดรวม BOQ ทะลุเกณฑ์ 500,000 บาท ระบบทำการล็อกสถานะเป็น IsBidding เพื่อรอการประกวดราคา</p>
+                  </div>
+                </div>
+                <PillButton
+                  variant="glass"
+                  className="h-8 text-[10px] uppercase font-black tracking-widest border-warning/30 text-warning hover:bg-warning/20 hover:text-white"
+                  onClick={() => {
+                    setActiveTab("documents");
+                    showToast("พาไปยังหน้าเตรียมเอกสาร TOR แล้ว");
+                  }}
+                >
+                  <FileText size={12} /> เตรียมเอกสาร TOR
+                </PillButton>
               </div>
 
               {/* Budget Alarm Neon indicator */}

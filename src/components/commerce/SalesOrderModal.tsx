@@ -23,8 +23,10 @@ import {
   Modal, 
   PillTabs, 
   NexusDataField,
+  SearchablePillSelect,
   cn 
 } from "@/components/ui/Base";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 
 interface SalesOrderModalProps {
   isOpen: boolean;
@@ -34,6 +36,7 @@ interface SalesOrderModalProps {
 
 export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProps) {
   const { showAlert, showConfirm } = useSystemDialog();
+  const { data: customers } = useRealtimeCollection("customers");
 
   const [activeTab, setActiveTab] = useState("header");
   const [items, setItems] = useState<any[]>([]);
@@ -56,6 +59,8 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
     total: 0,
     balance: 0
   });
+
+  const [autoGenerate, setAutoGenerate] = useState(true);
 
   const tabs = [
     { id: "header", label: "ข้อมูลพื้นฐานใบสั่งขาย (HEADER)" },
@@ -100,7 +105,11 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
 
   const handleSave = () => {
     if (!header.customer || items.length === 0) return void showAlert("กรุณาระบุลูกค้าและรายการสินค้า");
-    onSave({ header, items, summary });
+    
+    if (autoGenerate) {
+      showAlert("✅ ยืนยันใบสั่งขายสำเร็จ!\n\nระบบ Master Blueprint ได้ทำการสร้าง:\n1. ใบสั่งจ้าง (WO)\n2. ใบสั่งซื้อ (PO)\n3. ใบส่งของ (DN)\n\nให้อัตโนมัติเรียบร้อยแล้ว!");
+    }
+    onSave({ header, items, summary, autoGenerate });
   };
 
   return (
@@ -130,15 +139,13 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
                 <div className="space-y-10">
                   <div className="grid grid-cols-2 gap-8">
                     <Field label="ชื่อลูกค้า / นิติบุคคล (CUSTOMER) *">
-                      <PillSelect 
+                      <SearchablePillSelect 
                         value={header.customer}
-                        onChange={(e) => setHeader({...header, customer: e.target.value})}
-                        className="w-full px-6"
-                      >
-                        <option value="">เลือกรายชื่อลูกค้า...</option>
-                        <option>Hospital A</option>
-                        <option>PSG Solutions</option>
-                      </PillSelect>
+                        onChange={(val) => setHeader({...header, customer: val})}
+                        options={customers?.map((c: any) => ({ value: c.id, label: c.name })) || []}
+                        placeholder="เลือกจากฐานข้อมูล..."
+                        className="w-full"
+                      />
                     </Field>
                     <Field label="อ้างอิงใบเสนอราคา (QT REFERENCE)">
                       <div className="relative">
@@ -324,6 +331,23 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
           </div>
 
           <div className="space-y-4 pt-12 border-t border-white/5">
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-nexus-teal/5 border border-nexus-teal/20">
+               <input 
+                 type="checkbox" 
+                 checked={autoGenerate} 
+                 onChange={(e) => setAutoGenerate(e.target.checked)}
+                 className="mt-1 w-4 h-4 rounded border-nexus-teal/30 bg-black/50 text-nexus-teal accent-nexus-teal focus:ring-nexus-teal"
+               />
+               <div className="space-y-1">
+                 <label className="text-xs font-black text-white uppercase tracking-tight cursor-pointer" onClick={() => setAutoGenerate(!autoGenerate)}>
+                   เปิดระบบอัตโนมัติ (Auto-Generate)
+                 </label>
+                 <p className="text-[9px] text-white/50 leading-relaxed">
+                   เมื่อยืนยัน SO ระบบจะสร้างใบสั่งซื้อ (PO) แบบ Exclude VAT, ใบสั่งจ้าง (WO) และใบส่งของ (DN) ให้อัตโนมัติทันที
+                 </p>
+               </div>
+            </div>
+
             <PillButton className="w-full shadow-neon-teal uppercase tracking-[0.2em]" onClick={handleSave}>
               <ShieldCheck size={22} />
               ยืนยันการสั่งขาย (CONFIRM SO)

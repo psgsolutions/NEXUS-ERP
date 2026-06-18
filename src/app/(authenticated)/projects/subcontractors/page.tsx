@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { db } from "@/lib/firebase-client";
 import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, updateDoc } from "firebase/firestore";
 import { 
   Wrench, 
@@ -27,7 +28,8 @@ import {
   NexusTableCell, 
   StatusBadge, 
   Toast, 
-  Modal 
+  Modal,
+  SearchablePillSelect
 } from "@/components/ui/Base";
 
 // Type Definitions
@@ -59,6 +61,9 @@ export default function SubcontractorsPayoutPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Realtime Data
+  const { data: contractors } = useRealtimeCollection("contractors");
   
   // Form State
   const [newWOForm, setNewWOForm] = useState({
@@ -376,7 +381,13 @@ export default function SubcontractorsPayoutPage() {
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-3">
                     <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ชื่อผู้รับเหมา / บริษัทช่าง <span className="text-nexus-teal">*</span></label>
-                    <PillInput name="contractorName" required placeholder="เช่น บจก. นีออน ซิสเต็มส์" className="w-full text-white font-bold bg-white/[0.02]" value={newWOForm.contractorName} onChange={(e) => setNewWOForm({...newWOForm, contractorName: e.target.value})} />
+                    <SearchablePillSelect 
+                      options={contractors?.map((c: any) => ({ value: c.name, label: c.name })) || []}
+                      placeholder="ค้นหาจากฐานข้อมูลช่างรับเหมา..." 
+                      className="w-full text-white font-bold bg-white/[0.02]" 
+                      value={newWOForm.contractorName} 
+                      onChange={(val) => setNewWOForm({...newWOForm, contractorName: val})} 
+                    />
                   </div>
                   <div className="space-y-3">
                     <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ชื่อโครงการ (Project Ref.) <span className="text-nexus-teal">*</span></label>

@@ -16,16 +16,7 @@ import {
   Package,
   X
 } from "lucide-react";
-import { 
-  PillButton, 
-  PillInput, 
-  PillSelect, 
-  Modal, 
-  PillTabs, 
-  NexusDataField,
-  SearchablePillSelect,
-  cn 
-} from "@/components/ui/Base";
+import { PillButton, PillInput, PillSelect, Modal, PillTabs, NexusDataField, CreatableCombobox, cn, NexusDatePicker } from "@/components/ui/Base";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 
 interface SalesOrderModalProps {
@@ -63,9 +54,9 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
   const [autoGenerate, setAutoGenerate] = useState(true);
 
   const tabs = [
-    { id: "header", label: "ข้อมูลพื้นฐานใบสั่งขาย (HEADER)" },
-    { id: "items", label: "รายการสินค้าและบริการ (ITEMS)" },
-    { id: "logistics", label: "การขนส่งและสถานที่จัดส่ง (LOGISTICS)" }
+    { id: "header", label: "ข้อมูลพื้นฐานใบสั่งขาย" },
+    { id: "items", label: "รายการสินค้าและบริการ" },
+    { id: "logistics", label: "การขนส่งและสถานที่จัดส่ง" }
   ];
 
   useEffect(() => {
@@ -107,7 +98,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
     if (!header.customer || items.length === 0) return void showAlert("กรุณาระบุลูกค้าและรายการสินค้า");
     
     if (autoGenerate) {
-      showAlert("✅ ยืนยันใบสั่งขายสำเร็จ!\n\nระบบ Master Blueprint ได้ทำการสร้าง:\n1. ใบสั่งจ้าง (WO)\n2. ใบสั่งซื้อ (PO)\n3. ใบส่งของ (DN)\n\nให้อัตโนมัติเรียบร้อยแล้ว!");
+      showAlert("✅ ยืนยันใบสั่งขายสำเร็จ!\n\nระบบ Master Blueprint ได้ทำการสร้าง:\n1. ใบสั่งจ้าง\n2. ใบสั่งซื้อ\n3. ใบส่งของ\n\nให้อัตโนมัติเรียบร้อยแล้ว!");
     }
     onSave({ header, items, summary, autoGenerate });
   };
@@ -116,7 +107,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
     <Modal 
       isOpen={isOpen} 
       onClose={handleClose} 
-      title="เปิดใบสั่งขาย (NEW SALES ORDER ENTRY)"
+      title="เปิดใบสั่งขาย"
       maxWidth="max-w-[1600px]"
     >
       <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
@@ -125,7 +116,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
               <div className="space-y-1">
                 <p className="text-[12px] font-black text-nexus-blue uppercase tracking-[0.2em]">โหมดพาณิชย์ (COMMERCE_PROT_V3.1)</p>
-                <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกใบสั่งขาย (SALES ORDER)</h4>
+                <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกใบสั่งขาย</h4>
               </div>
               <PillTabs 
                 tabs={tabs}
@@ -138,8 +129,8 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
               {activeTab === "header" && (
                 <div className="space-y-10">
                   <div className="grid grid-cols-2 gap-8">
-                    <Field label="ชื่อลูกค้า / นิติบุคคล (CUSTOMER) *">
-                      <SearchablePillSelect 
+                    <Field label="ชื่อลูกค้า / นิติบุคคล *">
+                      <CreatableCombobox 
                         value={header.customer}
                         onChange={(val) => setHeader({...header, customer: val})}
                         options={customers?.map((c: any) => ({ value: c.id, label: c.name })) || []}
@@ -147,7 +138,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
                         className="w-full"
                       />
                     </Field>
-                    <Field label="อ้างอิงใบเสนอราคา (QT REFERENCE)">
+                    <Field label="อ้างอิงใบเสนอราคา">
                       <div className="relative">
                          <FileText className="absolute left-4 top-1/2 -translate-y-1/2 text-white/10" size={18} />
                          <PillInput 
@@ -161,18 +152,14 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
                   </div>
 
                   <div className="grid grid-cols-2 gap-8">
-                    <Field label="วันที่สั่งซื้อ (ORDER DATE)">
-                      <PillInput 
-                        type="date"
-                        value={header.orderDate}
+                    <Field label="วันที่สั่งซื้อ">
+                      <NexusDatePicker value={header.orderDate}
                         onChange={(e) => setHeader({...header, orderDate: e.target.value})}
                         className="w-full" 
                       />
                     </Field>
-                    <Field label="วันที่กำหนดส่งมอบ (DELIVERY DATE)">
-                      <PillInput 
-                        type="date"
-                        value={header.deliveryDate}
+                    <Field label="วันที่กำหนดส่งมอบ">
+                      <NexusDatePicker value={header.deliveryDate}
                         onChange={(e) => setHeader({...header, deliveryDate: e.target.value})}
                         className="w-full text-nexus-blue" 
                       />
@@ -180,7 +167,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
                   </div>
 
                   <div className="grid grid-cols-2 gap-8 p-8 rounded-xl bg-white/[0.02] border border-white/5">
-                    <Field label="จำนวนเงินมัดจำ (DEPOSIT)">
+                    <Field label="จำนวนเงินมัดจำ">
                       <PillInput 
                         type="number"
                         value={header.depositAmount}
@@ -188,7 +175,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
                         className="w-full text-nexus-teal font-black" 
                       />
                     </Field>
-                    <Field label="สถานะการชำระเงิน (PAYMENT STATUS)">
+                    <Field label="สถานะการชำระเงิน">
                       <PillSelect 
                         value={header.paymentStatus}
                         onChange={(e) => setHeader({...header, paymentStatus: e.target.value})}
@@ -206,7 +193,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
               {activeTab === "items" && (
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-[12px] font-black text-white/30 uppercase tracking-[0.2em]">รายการสินค้าที่สั่งซื้อ (ORDER ITEMS)</h4>
+                    <h4 className="text-[12px] font-black text-white/30 uppercase tracking-[0.2em]">รายการสินค้าที่สั่งซื้อ</h4>
                     <PillButton variant="glass" onClick={addItem}>
                       <Plus size={14} /> เพิ่มรายการ
                     </PillButton>
@@ -271,22 +258,22 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
               {activeTab === "logistics" && (
                 <div className="space-y-10">
                   <div className="space-y-6">
-                    <div className="flex items-center gap-3 text-nexus-blue"><Truck size={18} /><h4 className="text-[13px] font-black uppercase tracking-widest">ข้อมูลการจัดส่งสินค้า (Logistics)</h4></div>
+                    <div className="flex items-center gap-3 text-nexus-blue"><Truck size={18} /><h4 className="text-[13px] font-black uppercase tracking-widest">ข้อมูลการจัดส่งสินค้า</h4></div>
                     <div className="space-y-6">
-                       <Field label="วิธีการจัดส่ง (Shipping Method)">
+                       <Field label="วิธีการจัดส่ง">
                           <PillSelect 
                             value={header.shippingMethod}
                             onChange={(e) => setHeader({...header, shippingMethod: e.target.value})}
                             className="w-full px-6"
                           >
-                             <option>ขนส่งบริษัท (Internal Fleet)</option>
+                             <option>ขนส่งบริษัท</option>
                              <option>Messenger / Lalamove</option>
                              <option>EMS / Kerry / Flash</option>
-                             <option>ลูกค้ามารับเอง (Self-Pickup)</option>
+                             <option>ลูกค้ามารับเอง</option>
                           </PillSelect>
                        </Field>
                        <div className="grid grid-cols-2 gap-8">
-                          <Field label="ที่อยู่ในการจัดส่ง (Shipping Address)">
+                          <Field label="ที่อยู่ในการจัดส่ง">
                              <textarea 
                                className="w-full h-32 rounded-xl bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold p-6 focus:outline-none focus:border-nexus-blue/40"
                                value={header.shippingAddress}
@@ -294,7 +281,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
                                placeholder="ระบุสถานที่ส่งสินค้า..."
                              />
                           </Field>
-                          <Field label="ที่อยู่ในการออกใบเสร็จ (Billing Address)">
+                          <Field label="ที่อยู่ในการออกใบเสร็จ">
                              <textarea 
                                className="w-full h-32 rounded-xl bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold p-6 focus:outline-none focus:border-nexus-blue/40"
                                value={header.billingAddress}
@@ -340,19 +327,19 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
                />
                <div className="space-y-1">
                  <label className="text-xs font-black text-white uppercase tracking-tight cursor-pointer" onClick={() => setAutoGenerate(!autoGenerate)}>
-                   เปิดระบบอัตโนมัติ (Auto-Generate)
+                   เปิดระบบอัตโนมัติ
                  </label>
                  <p className="text-[9px] text-white/50 leading-relaxed">
-                   เมื่อยืนยัน SO ระบบจะสร้างใบสั่งซื้อ (PO) แบบ Exclude VAT, ใบสั่งจ้าง (WO) และใบส่งของ (DN) ให้อัตโนมัติทันที
+                   เมื่อยืนยัน SO ระบบจะสร้างใบสั่งซื้อ แบบ Exclude VAT, ใบสั่งจ้าง และใบส่งของ ให้อัตโนมัติทันที
                  </p>
                </div>
             </div>
 
             <PillButton className="w-full shadow-neon-teal uppercase tracking-[0.2em]" onClick={handleSave}>
               <ShieldCheck size={22} />
-              ยืนยันการสั่งขาย (CONFIRM SO)
+              ยืนยันการสั่งขาย
             </PillButton>
-            <PillButton variant="glass" className="w-full text-white/20 hover:text-white uppercase tracking-widest" onClick={onClose}>
+            <PillButton variant="ghost" className="w-full hover: uppercase tracking-widest" onClick={onClose}>
               ยกเลิก
             </PillButton>
           </div>

@@ -17,13 +17,13 @@ import { SecurityGuard } from "@/components/shared/SecurityGuard";
 
 export default function UsersPage() {
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-700 max-w-[1600px] mx-auto">
+    <div className="p-5 space-y-3 animate-in fade-in duration-700 max-w-[1600px] mx-auto">
       
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <p className="tactical-label !text-nexus-teal drop-shadow-neon">Team & Security Access</p>
-          <h1 className="text-3xl font-black text-white tracking-tight">จัดการผู้ใช้งานและสิทธิ์</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">จัดการผู้ใช้งานและสิทธิ์</h1>
         </div>
         <PillButton className="px-6 shadow-neon-teal">
           <UserPlus size={18} />
@@ -33,22 +33,22 @@ export default function UsersPage() {
 
       {/* Internal Navigation Tabs (Settings context) */}
       <div className="flex gap-2 p-1 bg-white/5 rounded-full w-fit border border-white/5 shadow-inner h-11">
-         <button className="flex items-center gap-2 px-6 h-full rounded-full text-xs font-black uppercase bg-nexus-teal text-black shadow-neon-teal">
+         <button className="flex items-center gap-2 px-6 h-full rounded-full text-sm font-medium uppercase bg-nexus-teal text-black shadow-neon-teal">
             <Users size={16} /> ผู้ใช้งานทั้งหมด
          </button>
-         <button className="flex items-center gap-2 px-6 h-full rounded-full text-xs font-black uppercase text-white/40 hover:text-white hover:bg-white/5">
-            <ShieldCheck size={16} /> บทบาทและสิทธิ์ (Roles)
+         <button className="flex items-center gap-2 px-6 h-full rounded-full text-sm font-medium uppercase text-white/40 hover:text-white hover:bg-white/5">
+            <ShieldCheck size={16} /> บทบาทและสิทธิ์
          </button>
       </div>
 
-      <div className="space-y-4 animate-in slide-in-from-bottom duration-500">
+      <div className="space-y-3 animate-in slide-in-from-bottom duration-500">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white/[0.01] p-1.5 rounded-full border border-white/5 backdrop-blur-md">
            <div className="pl-6">
               <h3 className="tactical-label !mb-0">Active Intelligence Profiles</h3>
            </div>
            <div className="flex items-center gap-2 flex-1 md:flex-none">
               <NexusSearchInput 
-                placeholder="ค้นหารายชื่อทีมงาน..." 
+                placeholder="พิมพ์เพื่อค้นหา..." 
                 className="w-full md:w-80" 
                 kbd="F"
               />
@@ -61,7 +61,7 @@ export default function UsersPage() {
         </div>
         
         <NexusTable 
-          headers={["ผู้ใช้งาน", "อีเมล", "บทบาท (Role)", "แผนก", "สถานะ", ""]}
+          headers={["ผู้ใช้งาน", "อีเมล", "บทบาท", "แผนก", "สถานะ", ""]}
           minWidth="min-w-[900px]"
         >
            <UserRow 
@@ -110,7 +110,7 @@ function UserRow({ name, email, role, dept, status }: { name: string, email: str
     <NexusTableRow>
        <NexusTableCell>
           <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10 flex items-center justify-center text-sm font-black text-white/40 animate-pulse">
+             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10 flex items-center justify-center text-sm font-bold text-white/40 animate-pulse">
                 {name[0]}
              </div>
              <span className="text-sm font-bold text-white group-hover:text-nexus-teal transition-colors">{name}</span>
@@ -118,7 +118,7 @@ function UserRow({ name, email, role, dept, status }: { name: string, email: str
        </NexusTableCell>
        <NexusTableCell className="text-sm text-white/40 font-mono italic">{email}</NexusTableCell>
        <NexusTableCell>
-          <span className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase border drop-shadow-neon", roleColors[role])}>
+          <span className={cn("px-3 py-1 rounded-full text-[11px] font-medium uppercase border drop-shadow-neon", roleColors[role])}>
              {role}
           </span>
        </NexusTableCell>

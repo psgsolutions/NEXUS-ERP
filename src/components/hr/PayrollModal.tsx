@@ -20,6 +20,7 @@ import {
   NexusDataField,
   cn 
 } from "@/components/ui/Base";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 
 interface PayrollModalProps {
   isOpen: boolean;
@@ -32,13 +33,25 @@ export function PayrollModal({ isOpen, onClose, onConfirm }: PayrollModalProps) 
   const [period, setPeriod] = useState("เมษายน 2569");
   const [isSaving, setIsSaving] = useState(false);
   
-  const mockPayrollData = {
-    employeeCount: 48,
-    baseSalary: 1250000,
-    overtime: 85000,
-    socialSecurity: 36000,
-    tax: 42500,
-    netPayout: 1256500
+  const { data: employees } = useRealtimeCollection("employees");
+
+  const employeeCount = employees?.length || 0;
+  const baseSalary = employees?.reduce((sum, emp) => sum + (emp.salary || 0), 0) || 0;
+  const overtime = 0; // Requires attendance logic, keeping 0 for now
+  
+  // Basic Thai payroll calculation
+  const socialSecurity = employees?.reduce((sum, emp) => sum + Math.min((emp.salary || 0) * 0.05, 750), 0) || 0;
+  const tax = baseSalary * 0.03; // Mock flat 3% tax
+  
+  const netPayout = baseSalary + overtime - socialSecurity - tax;
+
+  const payrollData = {
+    employeeCount,
+    baseSalary,
+    overtime,
+    socialSecurity,
+    tax,
+    netPayout
   };
 
   const handleClose = () => {
@@ -49,7 +62,7 @@ export function PayrollModal({ isOpen, onClose, onConfirm }: PayrollModalProps) 
   const handleConfirm = async () => {
     setIsSaving(true);
     try {
-      await onConfirm(mockPayrollData);
+      await onConfirm(payrollData);
     } finally {
       setIsSaving(false);
     }
@@ -59,7 +72,7 @@ export function PayrollModal({ isOpen, onClose, onConfirm }: PayrollModalProps) 
     <Modal 
       isOpen={isOpen} 
       onClose={handleClose} 
-      title="ประมวลผลเงินเดือนดิจิทัล (DIGITAL PAYROLL PROCESSING)"
+      title="ประมวลผลเงินเดือนดิจิทัล"
       maxWidth="max-w-[1600px]"
     >
       <div className="flex h-full bg-[#0D0D0D]">
@@ -81,7 +94,7 @@ export function PayrollModal({ isOpen, onClose, onConfirm }: PayrollModalProps) 
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="grid grid-cols-2 gap-8 p-8 rounded-2xl bg-white/[0.02] border border-white/5">
                    <div className="space-y-3">
-                      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">งวดการจ่าย (Payroll Period)</label>
+                      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">งวดการจ่าย</label>
                       <PillSelect value={period} onChange={(e) => setPeriod(e.target.value)} className="w-full px-6">
                         <option>เมษายน 2569</option>
                         <option>พฤษภาคม 2569</option>
@@ -90,28 +103,28 @@ export function PayrollModal({ isOpen, onClose, onConfirm }: PayrollModalProps) 
                    <div className="space-y-3">
                       <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">จำนวนพนักงานที่ร่วมรายการ</label>
                       <div className="h-11 px-6 rounded-2xl bg-white/5 border border-white/10 flex items-center text-sm font-bold text-white">
-                         {mockPayrollData.employeeCount} คน (ทั้งหมด)
+                         {payrollData.employeeCount} คน (ทั้งหมด)
                       </div>
                    </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-6">
-                   <SummaryCard icon={<Users size={18} />} label="พนักงาน" value={`${mockPayrollData.employeeCount} คน`} />
-                   <SummaryCard icon={<TrendingUp size={18} />} label="เงินเดือนฐานรวม" value={`฿${mockPayrollData.baseSalary.toLocaleString()}`} />
-                   <SummaryCard icon={<TrendingUp size={18} />} label="OT รวม" value={`฿${mockPayrollData.overtime.toLocaleString()}`} color="text-nexus-blue" />
+                   <SummaryCard icon={<Users size={18} />} label="พนักงาน" value={`${payrollData.employeeCount} คน`} />
+                   <SummaryCard icon={<TrendingUp size={18} />} label="เงินเดือนฐานรวม" value={`฿${payrollData.baseSalary.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} />
+                   <SummaryCard icon={<TrendingUp size={18} />} label="OT รวม" value={`฿${payrollData.overtime.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} color="text-nexus-blue" />
                 </div>
 
                 <div className="space-y-6">
-                   <h5 className="text-[12px] font-black text-white/20 uppercase tracking-widest ml-1">รายการหัก (Deductions Summary)</h5>
+                   <h5 className="text-[12px] font-black text-white/20 uppercase tracking-widest ml-1">รายการหัก</h5>
                    <div className="grid grid-cols-2 gap-6">
-                      <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
-                         <span className="text-[12px] font-bold text-white/40">ประกันสังคม (Social Security)</span>
-                         <span className="text-sm font-black text-danger">-฿{mockPayrollData.socialSecurity.toLocaleString()}</span>
-                      </div>
-                      <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
-                         <span className="text-[12px] font-bold text-white/40">ภาษีหัก ณ ที่จ่าย (PND1)</span>
-                         <span className="text-sm font-black text-danger">-฿{mockPayrollData.tax.toLocaleString()}</span>
-                      </div>
+                       <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+                          <span className="text-[12px] font-bold text-white/40">ประกันสังคม</span>
+                          <span className="text-sm font-black text-danger">-฿{payrollData.socialSecurity.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                       </div>
+                       <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+                          <span className="text-[12px] font-bold text-white/40">ภาษีหัก ณ ที่จ่าย (PND1)</span>
+                          <span className="text-sm font-black text-danger">-฿{payrollData.tax.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                       </div>
                    </div>
                 </div>
               </div>
@@ -125,9 +138,9 @@ export function PayrollModal({ isOpen, onClose, onConfirm }: PayrollModalProps) 
                     </div>
                     <div className="space-y-2">
                        <h4 className="text-2xl font-black text-white uppercase tracking-tight">ยืนยันยอดจ่ายสุทธิประจำงวด</h4>
-                       <p className="text-4xl font-black text-nexus-teal mono-numbers drop-shadow-neon mt-4">
-                          ฿{mockPayrollData.netPayout.toLocaleString()}
-                       </p>
+                        <p className="text-4xl font-black text-nexus-teal mono-numbers drop-shadow-neon mt-4">
+                           ฿{payrollData.netPayout.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </p>
                     </div>
                  </div>
 
@@ -145,7 +158,7 @@ export function PayrollModal({ isOpen, onClose, onConfirm }: PayrollModalProps) 
                        <ul className="space-y-2 text-[12px] text-white/40 font-bold">
                           <li className="flex items-center gap-2"><ArrowRight size={14} className="text-nexus-teal" /> สร้างไฟล์ K-Cash Connect / SMART</li>
                           <li className="flex items-center gap-2"><ArrowRight size={14} className="text-nexus-teal" /> ส่งสลิปเงินเดือนเข้า Mobile App</li>
-                          <li className="flex items-center gap-2"><ArrowRight size={14} className="text-nexus-teal" /> บันทึกสมุดรายวันจ่าย (PV) อัตโนมัติ</li>
+                          <li className="flex items-center gap-2"><ArrowRight size={14} className="text-nexus-teal" /> บันทึกสมุดรายวันจ่าย อัตโนมัติ</li>
                        </ul>
                     </div>
                  </div>
@@ -163,18 +176,18 @@ export function PayrollModal({ isOpen, onClose, onConfirm }: PayrollModalProps) 
               <div className="space-y-4">
                  <div className={cn("p-4 rounded-2xl border transition-all", step === 1 ? "bg-nexus-teal/10 border-nexus-teal/20" : "bg-white/[0.02] border-white/5 opacity-40")}>
                     <p className="text-[10px] font-black text-nexus-teal uppercase tracking-widest mb-1">Step 1</p>
-                    <p className="text-xs font-bold text-white">คำนวณยอดดิบ (Calculation)</p>
+                    <p className="text-xs font-bold text-white">คำนวณยอดดิบ</p>
                  </div>
                  <div className={cn("p-4 rounded-2xl border transition-all", step === 2 ? "bg-nexus-teal/10 border-nexus-teal/20" : "bg-white/[0.02] border-white/5 opacity-40")}>
                     <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Step 2</p>
-                    <p className="text-xs font-bold text-white">ตรวจสอบและยืนยัน (Finalize)</p>
+                    <p className="text-xs font-bold text-white">ตรวจสอบและยืนยัน</p>
                  </div>
               </div>
 
               <div className="pt-8 border-t border-white/5 space-y-4">
                  <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">ข้อมูลสรุปผู้บริหาร</p>
-                 <NexusDataField label="ยอดจ่ายทั้งหมด" value={`฿${mockPayrollData.netPayout.toLocaleString()}`} highlight />
-                 <NexusDataField label="ภาษีนำส่ง" value={`฿${mockPayrollData.tax.toLocaleString()}`} />
+                 <NexusDataField label="ยอดจ่ายทั้งหมด" value={`฿${payrollData.netPayout.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} highlight />
+                 <NexusDataField label="ภาษีนำส่ง" value={`฿${payrollData.tax.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} />
               </div>
            </div>
 
@@ -190,11 +203,11 @@ export function PayrollModal({ isOpen, onClose, onConfirm }: PayrollModalProps) 
                   disabled={isSaving}
                 >
                    <ShieldCheck size={22} className={isSaving ? "animate-pulse" : ""} />
-                   {isSaving ? "กำลังประมวลผล..." : "ยืนยันโอนเงิน (RELEASE PAYROLL)"}
+                   {isSaving ? "กำลังประมวลผล..." : "ยืนยันโอนเงิน"}
                 </PillButton>
              )}
              <PillButton 
-               variant="glass" 
+               variant="ghost" 
                className={cn("w-full text-white/20 hover:text-white uppercase tracking-widest", isSaving && "opacity-50 pointer-events-none")} 
                onClick={handleClose}
                disabled={isSaving}

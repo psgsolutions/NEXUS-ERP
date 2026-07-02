@@ -74,9 +74,9 @@ export function ProductModal({ isOpen, onClose, onSave, initialData }: ProductMo
   }, [isOpen, initialData]);
 
   const tabs = [
-    { id: "info", label: "ข้อมูลพื้นฐาน (IDENTITY)", icon: <Info size={14} /> },
-    { id: "pricing", label: "ต้นทุนและราคา (FINANCIAL)", icon: <DollarSign size={14} /> },
-    { id: "stock", label: "การควบคุมสต็อก (LOGISTICS)", icon: <Box size={14} /> }
+    { id: "info", label: "ข้อมูลพื้นฐาน", icon: <Info size={14} /> },
+    { id: "pricing", label: "ต้นทุนและราคา", icon: <DollarSign size={14} /> },
+    { id: "stock", label: "การควบคุมสต็อก", icon: <Box size={14} /> }
   ];
 
   const handleCommit = async () => {
@@ -136,7 +136,7 @@ export function ProductModal({ isOpen, onClose, onSave, initialData }: ProductMo
                       </div>
 
                       <div className="flex-1 space-y-8">
-                        <Field label="รหัสสินค้า (SKU CODE) *">
+                        <Field label="รหัสสินค้า *">
                           <PillInput value={form.sku} onChange={(e) => setForm({...form, sku: e.target.value})} placeholder="ระบุรหัส SKU..." className="w-full font-mono font-black" />
                         </Field>
                         <Field label="ชื่อพัสดุ / บริการ *">
@@ -150,7 +150,7 @@ export function ProductModal({ isOpen, onClose, onSave, initialData }: ProductMo
                           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                         </PillSelect>
                       </Field>
-                      <Field label="หน่วยนับ (UNIT)">
+                      <Field label="หน่วยนับ">
                         <PillInput value={form.unit} onChange={(e) => setForm({...form, unit: e.target.value})} placeholder="เช่น ชิ้น, กล่อง, ชุด" className="w-full" />
                       </Field>
                     </div>
@@ -163,15 +163,15 @@ export function ProductModal({ isOpen, onClose, onSave, initialData }: ProductMo
                   <section className="space-y-6">
                     <h3 className="text-[12px] font-black text-warning uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><DollarSign size={16} /> โครงสร้างราคาและต้นทุน</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-white/[0.02] p-8 rounded-[2rem] border border-white/5">
-                      <Field label="ราคาเสนอโครงการ (PROJECT PRICE)">
+                      <Field label="ราคาเสนอโครงการ">
                         <NumberStepper value={form.price_project} onChange={(v) => setForm({...form, price_project: v})} unit="฿" step={100} />
                       </Field>
-                      <Field label="ราคาขายปลีก (RETAIL PRICE)">
+                      <Field label="ราคาขายปลีก">
                         <NumberStepper value={form.price_retail} onChange={(v) => setForm({...form, price_retail: v})} unit="฿" step={100} />
                       </Field>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <Field label="ต้นทุนเฉลี่ย (WAC COST)">
+                      <Field label="ต้นทุนเฉลี่ย">
                         <NumberStepper value={form.cost_avg} onChange={(v) => setForm({...form, cost_avg: v})} unit="฿" step={100} />
                       </Field>
                       <div className="flex flex-col justify-end p-6 bg-nexus-teal/5 border border-nexus-teal/10 rounded-[2rem] items-center gap-2">
@@ -188,10 +188,10 @@ export function ProductModal({ isOpen, onClose, onSave, initialData }: ProductMo
                   <section className="space-y-6">
                     <h3 className="text-[12px] font-black text-nexus-teal uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><Box size={16} /> การควบคุมระดับพัสดุ</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <Field label="ระดับสต็อกปัจจุบัน (ON HAND)">
+                      <Field label="ระดับสต็อกปัจจุบัน">
                         <NumberStepper value={form.qty_on_hand} onChange={(v) => setForm({...form, qty_on_hand: v})} unit={form.unit} />
                       </Field>
-                      <Field label="ระดับแจ้งเตือนขั้นต่ำ (MIN STOCK)">
+                      <Field label="ระดับแจ้งเตือนขั้นต่ำ">
                         <NumberStepper value={form.qty_min} onChange={(v) => setForm({...form, qty_min: v})} unit={form.unit} />
                       </Field>
                     </div>
@@ -242,7 +242,7 @@ export function ProductModal({ isOpen, onClose, onSave, initialData }: ProductMo
               {isSubmitting ? <RefreshCw className="animate-spin" /> : <ShieldCheck size={20} />}
               บันทึกข้อมูล
             </PillButton>
-            <PillButton variant="glass" className="w-full text-white/20" onClick={onClose}>
+            <PillButton variant="ghost" className="w-full" onClick={onClose}>
               ยกเลิก
             </PillButton>
           </div>

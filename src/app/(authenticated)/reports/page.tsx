@@ -236,24 +236,24 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="p-8 space-y-8 animate-in fade-in duration-700 max-w-7xl mx-auto">
+    <div className="p-5 space-y-3 animate-in fade-in duration-700 max-w-7xl mx-auto">
       
       {/* 1. Page Header with Title & Badges */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-5">
           <div className="w-12 h-12 bg-nexus-teal rounded-full flex items-center justify-center shadow-neon-teal">
             <Activity size={24} className="text-black" />
           </div>
           <div>
             <div className="flex gap-2 mb-2">
-              <span className="px-2 py-0.5 rounded bg-nexus-teal/10 border border-nexus-teal/20 text-[10px] text-nexus-teal font-black uppercase tracking-widest">
-                โมดูลรายงานอัจฉริยะ (Report Engine)
+              <span className="px-2 py-0.5 rounded bg-nexus-teal/10 border border-nexus-teal/20 text-xs text-nexus-teal font-medium uppercase tracking-widest">
+                โมดูลรายงานอัจฉริยะ
               </span>
-              <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-white/40 font-black uppercase tracking-widest">
+              <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-xs text-white/40 font-medium uppercase tracking-widest">
                 องค์กร: {companyName}
               </span>
             </div>
-            <h1 className="text-2xl font-black text-white flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
               ระบบวิเคราะห์ข้อมูลและสร้างแบบฟอร์มเอกสาร
             </h1>
           </div>
@@ -274,7 +274,7 @@ export default function ReportsPage() {
       </div>
 
       {/* 2. Statistical Metric Cards */}
-      <div className="grid grid-cols-4 gap-6">
+      <div className="grid grid-cols-4 gap-5">
         <MasterMetricCard 
           icon={<FileText />} 
           label="เทมเพลตที่พร้อมใช้" 
@@ -303,11 +303,11 @@ export default function ReportsPage() {
       </div>
 
       {/* 3. Filtering & Control Dashboard Area */}
-      <GlassCard className="p-6 bg-[#0a0a0c]/80 border-white/5 space-y-6">
+      <GlassCard className="p-4 bg-[#0a0a0c]/80 border-white/5 space-y-3">
         <div className="flex items-center justify-between border-b border-white/5 pb-4">
           <div className="flex items-center gap-3 text-white/60">
             <ListFilter size={18} className="text-nexus-teal" />
-            <h4 className="text-[12px] font-black uppercase tracking-widest">กรองเงื่อนไขและประเภทแบบฟอร์ม / ค้นหาข้อมูล</h4>
+            <h4 className="text-[12px] font-bold uppercase tracking-widest">กรองเงื่อนไขและประเภทแบบฟอร์ม / ค้นหาข้อมูล</h4>
           </div>
           
           {selectedTemplate && filteredSubmissions.length > 0 && (
@@ -320,10 +320,10 @@ export default function ReportsPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-4 gap-5">
           {/* Template Selector */}
           <div className="space-y-2">
-            <label className="text-[11px] font-black text-white/30 uppercase tracking-widest">เลือกแบบฟอร์มเอกสาร</label>
+            <label className="text-sm font-medium text-white/30 uppercase tracking-widest">เลือกแบบฟอร์มเอกสาร</label>
             <PillSelect 
               value={selectedTemplate?.id || ""} 
               onChange={(e) => {
@@ -340,7 +340,7 @@ export default function ReportsPage() {
 
           {/* Date Picker Start */}
           <div className="space-y-2">
-            <label className="text-[11px] font-black text-white/30 uppercase tracking-widest">ตั้งแต่วันที่</label>
+            <label className="text-sm font-medium text-white/30 uppercase tracking-widest">ตั้งแต่วันที่</label>
             <div className="relative">
               <PillInput 
                 type="date" 
@@ -353,7 +353,7 @@ export default function ReportsPage() {
 
           {/* Date Picker End */}
           <div className="space-y-2">
-            <label className="text-[11px] font-black text-white/30 uppercase tracking-widest">ถึงวันที่</label>
+            <label className="text-sm font-medium text-white/30 uppercase tracking-widest">ถึงวันที่</label>
             <div className="relative">
               <PillInput 
                 type="date" 
@@ -366,7 +366,7 @@ export default function ReportsPage() {
 
           {/* Text Search Input */}
           <div className="space-y-2">
-            <label className="text-[11px] font-black text-white/30 uppercase tracking-widest">ค้นหาคำสำคัญ</label>
+            <label className="text-sm font-medium text-white/30 uppercase tracking-widest">ค้นหาคำสำคัญ</label>
             <div className="relative">
               <PillInput 
                 type="text" 
@@ -382,10 +382,10 @@ export default function ReportsPage() {
       </GlassCard>
 
       {/* 4. Beautiful Unified Table Layout (PSG UI V3.1 Standards) */}
-      <GlassCard className="p-6 bg-[#0a0a0c] border-white/5">
+      <GlassCard className="p-4 bg-[#0a0a0c] border-white/5">
         <div className="flex items-center gap-3 mb-6">
           <Layers size={18} className="text-nexus-teal" />
-          <h3 className="text-xs font-black text-white/60 uppercase tracking-widest">
+          <h3 className="text-xs font-bold text-white/60 uppercase tracking-widest">
             ตารางรายการธุรกรรมที่จัดเก็บ ({filteredSubmissions.length} รายการ)
           </h3>
         </div>
@@ -407,7 +407,7 @@ export default function ReportsPage() {
             <NexusTableRow>
               <NexusTableCell 
                 colSpan={7} 
-                className="p-12 text-center text-[11px] text-white/25 uppercase font-black tracking-[0.3em] border-0 bg-transparent"
+                className="p-12 text-center text-sm text-white/25 uppercase font-medium tracking-[0.3em] border-0 bg-transparent"
               >
                 ยังไม่พบรายการข้อมูลในฐานข้อมูลหรือเงื่อนไขการค้นหา
               </NexusTableCell>
@@ -437,7 +437,7 @@ export default function ReportsPage() {
                   setIsDetailModalOpen(true);
                 }}>
                   {/* Sub ID - Monospace & Non-italic */}
-                  <NexusTableCell mono={true} className="text-nexus-teal text-[13px] font-black uppercase tracking-wide">
+                  <NexusTableCell mono={true} className="text-nexus-teal text-[13px] font-bold uppercase tracking-wide">
                     {sub.submissionId}
                   </NexusTableCell>
 
@@ -462,7 +462,7 @@ export default function ReportsPage() {
                   </NexusTableCell>
 
                   {/* Grand Total Value - Monospace Numbers */}
-                  <NexusTableCell mono={true} className="text-right text-[14px] font-black text-nexus-teal select-all">
+                  <NexusTableCell mono={true} className="text-right text-[14px] font-bold text-nexus-teal select-all">
                     ฿{totalAmount.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </NexusTableCell>
 
@@ -494,10 +494,10 @@ export default function ReportsPage() {
           title={`รายละเอียดข้อมูลเอกสาร: ${activeSubmission.submissionId}`}
           maxWidth="max-w-4xl"
         >
-          <div className="p-8 space-y-6 bg-[#0a0a0c]">
+          <div className="p-5 space-y-3 bg-[#0a0a0c]">
             <div className="flex justify-between items-center border-b border-white/5 pb-4">
               <div>
-                <span className="px-2 py-0.5 rounded bg-nexus-blue/10 border border-nexus-blue/20 text-[10px] text-nexus-blue font-black uppercase tracking-widest">
+                <span className="px-2 py-0.5 rounded bg-nexus-blue/10 border border-nexus-blue/20 text-xs text-nexus-blue font-medium uppercase tracking-widest">
                   รหัสเอกสาร: {activeSubmission.submissionId}
                 </span>
                 <p className="text-xs text-white/40 mt-1">
@@ -530,8 +530,8 @@ export default function ReportsPage() {
           title={`กรอกข้อมูลเอกสารใหม่: ${selectedTemplate.title}`}
           maxWidth="max-w-4xl"
         >
-          <div className="p-8 space-y-6 bg-[#0a0a0c]">
-            <p className="text-xs text-white/30 border-b border-white/5 pb-4 uppercase tracking-widest font-black">
+          <div className="p-5 space-y-3 bg-[#0a0a0c]">
+            <p className="text-xs text-white/30 border-b border-white/5 pb-4 uppercase tracking-widest font-bold">
               กรุณาระบุรายละเอียดให้ครบถ้วนก่อนบันทึกข้อมูลธุรกรรมเข้าสู่ระบบ Multi-tenant
             </p>
 
@@ -547,7 +547,7 @@ export default function ReportsPage() {
                 ยกเลิก
               </PillButton>
               <PillButton onClick={handleCreateSubmission} variant="primary" className="h-9 px-6 shadow-neon-teal text-black">
-                ยืนยันการบันทึก (SAVE RECORD)
+                ยืนยันการบันทึก
               </PillButton>
             </div>
           </div>

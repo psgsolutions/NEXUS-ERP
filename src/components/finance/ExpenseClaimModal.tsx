@@ -99,7 +99,7 @@ export function ExpenseClaimModal({ isOpen, onClose, onSave }: ExpenseClaimModal
     <Modal 
       isOpen={isOpen} 
       onClose={handleClose} 
-      title="เบิกเงินภายใน (PETTY CASH / REIMBURSEMENT)"
+      title="เบิกเงินภายใน"
       maxWidth="max-w-[1200px]"
     >
       <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
@@ -119,28 +119,28 @@ export function ExpenseClaimModal({ isOpen, onClose, onSave }: ExpenseClaimModal
             <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500">
               
               <div className="grid grid-cols-2 gap-8">
-                <Field label="พนักงานที่เบิก (Employee ID)">
+                <Field label="พนักงานที่เบิก">
                   <PillInput 
                     value={formData.employeeId}
                     onChange={(e) => setFormData({...formData, employeeId: e.target.value})}
                     className="w-full font-mono text-nexus-teal" 
                   />
                 </Field>
-                <Field label="รหัสบัญชีค่าใช้จ่าย (Expense GL)">
+                <Field label="รหัสบัญชีค่าใช้จ่าย">
                   <PillSelect 
                     value={formData.expenseAccountCode}
                     onChange={(e) => setFormData({...formData, expenseAccountCode: e.target.value})}
                     className="w-full font-mono text-nexus-blue"
                   >
-                     <option value="53000-00">53000-00 - ค่าใช้จ่ายเบ็ดเตล็ด (General)</option>
-                     <option value="53010-00">53010-00 - ค่าเดินทาง/ที่พัก (Travel)</option>
-                     <option value="53020-00">53020-00 - ค่ารับรองลูกค้า (Entertainment)</option>
-                     <option value="53030-00">53030-00 - วัสดุสิ้นเปลือง (Supplies)</option>
+                     <option value="53000-00">53000-00 - ค่าใช้จ่ายเบ็ดเตล็ด</option>
+                     <option value="53010-00">53010-00 - ค่าเดินทาง/ที่พัก</option>
+                     <option value="53020-00">53020-00 - ค่ารับรองลูกค้า</option>
+                     <option value="53030-00">53030-00 - วัสดุสิ้นเปลือง</option>
                   </PillSelect>
                 </Field>
               </div>
 
-              <Field label="รายละเอียดค่าใช้จ่าย (Description) *">
+              <Field label="รายละเอียดค่าใช้จ่าย *">
                 <textarea 
                   className="w-full h-24 rounded-xl bg-white/[0.03] border border-white/10 text-white text-[14px] font-bold p-6 focus:outline-none focus:border-nexus-teal/40 transition-all"
                   placeholder="ระบุรายละเอียดค่าใช้จ่าย เช่น ค่าแท็กซี่ไปพบลูกค้า, ค่าเลี้ยงรับรอง..."
@@ -164,7 +164,7 @@ export function ExpenseClaimModal({ isOpen, onClose, onSave }: ExpenseClaimModal
 
                  <div className="grid grid-cols-3 gap-6 items-end">
                     <div className="col-span-1">
-                      <Field label="ยอดก่อนภาษี (Subtotal)">
+                      <Field label="ยอดก่อนภาษี">
                          <PillInput 
                            type="number"
                            value={formData.subtotal || ''}
@@ -182,7 +182,7 @@ export function ExpenseClaimModal({ isOpen, onClose, onSave }: ExpenseClaimModal
                       </Field>
                     </div>
                     <div className="col-span-1">
-                      <Field label="ยอดรวมทั้งสิ้น (Grand Total)">
+                      <Field label="ยอดรวมทั้งสิ้น">
                          <div className="h-9 px-5 rounded-full bg-nexus-teal/10 border border-nexus-teal/20 flex items-center justify-end">
                             <span className="font-mono text-nexus-teal font-black text-lg">{grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                          </div>
@@ -193,7 +193,7 @@ export function ExpenseClaimModal({ isOpen, onClose, onSave }: ExpenseClaimModal
 
               <div className="space-y-4">
                  <div className="flex justify-between items-center">
-                    <h5 className="text-[12px] font-black text-white/50 uppercase tracking-widest">หลักฐานใบเสร็จ (Receipts)</h5>
+                    <h5 className="text-[12px] font-black text-white/50 uppercase tracking-widest">หลักฐานใบเสร็จ</h5>
                     <PillButton variant="glass" onClick={handleUploadReceipt} className="h-8 text-[11px] px-4">
                       <Camera size={14} /> แนบรูปภาพ
                     </PillButton>
@@ -234,16 +234,16 @@ export function ExpenseClaimModal({ isOpen, onClose, onSave }: ExpenseClaimModal
             </div>
 
             <div className="space-y-4">
-               <NexusDataField label="รหัสบัญชี" value={formData.expenseAccountCode} fontMono color="text-nexus-blue" />
-               <NexusDataField label="ยอดก่อนภาษี" value={`฿${formData.subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`} fontMono />
-               <NexusDataField label="ภาษีมูลค่าเพิ่ม" value={`฿${vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}`} fontMono color={formData.hasVat ? "text-nexus-teal" : "text-white/30"} />
+               <NexusDataField label="รหัสบัญชี" value={formData.expenseAccountCode} className="font-mono" color="text-nexus-blue" />
+               <NexusDataField label="ยอดก่อนภาษี" value={`฿${formData.subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`} className="font-mono" />
+               <NexusDataField label="ภาษีมูลค่าเพิ่ม" value={`฿${vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}`} className="font-mono" color={formData.hasVat ? "text-nexus-teal" : "text-white/30"} />
                <div className="pt-4 border-t border-white/5">
-                 <NexusDataField label="ยอดสุทธิที่ต้องจ่าย" value={`฿${grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`} fontMono highlight color="text-nexus-teal" />
+                 <NexusDataField label="ยอดสุทธิที่ต้องจ่าย" value={`฿${grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`} className="font-mono" highlight color="text-nexus-teal" />
                </div>
             </div>
             
             <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 text-[11px] font-bold text-white/40 leading-relaxed text-center">
-               *การเบิกจ่ายภายใน ระบบจะทำการบันทึกตัดเงินสดย่อย (Petty Cash) และบันทึกบัญชีค่าใช้จ่ายอัตโนมัติ
+               *การเบิกจ่ายภายใน ระบบจะทำการบันทึกตัดเงินสดย่อย และบันทึกบัญชีค่าใช้จ่ายอัตโนมัติ
             </div>
 
           </div>
@@ -255,10 +255,10 @@ export function ExpenseClaimModal({ isOpen, onClose, onSave }: ExpenseClaimModal
               disabled={isSaving}
             >
               <ShieldCheck size={20} className={isSaving ? "animate-pulse" : ""} />
-              {isSaving ? "PROCESSING..." : "สร้างใบเบิก (SUBMIT)"}
+              {isSaving ? "PROCESSING..." : "สร้างใบเบิก"}
             </PillButton>
             <PillButton 
-              variant="glass" 
+              variant="ghost" 
               className={cn("w-full text-white/20 hover:text-white uppercase tracking-widest", isSaving && "opacity-50 pointer-events-none")} 
               onClick={handleClose}
               disabled={isSaving}

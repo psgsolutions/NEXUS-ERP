@@ -28,7 +28,7 @@ export default function RootPage() {
   return (
     <div className="h-screen w-full bg-[#020203] flex flex-col items-center justify-center gap-4 text-nexus-blue">
       <Loader2 className="w-12 h-12 animate-spin" />
-      <p className="text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">กำลังเริ่มต้นระบบ...</p>
+      <p className="text-[11px] font-medium uppercase tracking-[0.3em] animate-pulse">กำลังเริ่มต้นระบบ...</p>
     </div>
   );
 }

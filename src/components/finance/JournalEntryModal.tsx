@@ -13,15 +13,7 @@ import {
   Search,
   X
 } from "lucide-react";
-import { 
-  PillButton, 
-  PillInput, 
-  PillSelect, 
-  Modal, 
-  PillTabs, 
-  NexusDataField,
-  cn 
-} from "@/components/ui/Base";
+import { PillButton, PillInput, PillSelect, Modal, PillTabs, NexusDataField, cn, NexusDatePicker } from "@/components/ui/Base";
 
 interface JournalEntryModalProps {
   isOpen: boolean;
@@ -87,7 +79,7 @@ export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModal
   };
 
   const handleSave = async () => {
-    if (totals.diff !== 0) return void showAlert("ยอดเดบิตและเครดิตต้องสมดุลกัน (DR must equal CR)", "System Notification", "warning");
+    if (totals.diff !== 0) return void showAlert("ยอดเดบิตและเครดิตต้องสมดุลกัน", "System Notification", "warning");
     if (entries.length < 2) return void showAlert("กรุณาระบุรายการบัญชีอย่างน้อย 2 รายการ", "System Notification", "warning");
     
     setIsSaving(true);
@@ -102,7 +94,7 @@ export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModal
     <Modal 
       isOpen={isOpen} 
       onClose={handleClose} 
-      title="บันทึกสมุดรายวัน (NEW JOURNAL ENTRY)"
+      title="บันทึกสมุดรายวัน"
       maxWidth="max-w-[1600px]"
     >
       <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
@@ -111,7 +103,7 @@ export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModal
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
               <div className="space-y-1">
                 <p className="text-[12px] font-black text-nexus-blue uppercase tracking-[0.2em]">โหมดบัญชีแยกประเภท (GL_PROT_V3.0)</p>
-                <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกรายวัน (General Journal)</h4>
+                <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกรายวัน</h4>
               </div>
               <PillTabs 
                  tabs={[
@@ -127,10 +119,8 @@ export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModal
               {activeTab === "header" && (
                 <div className="space-y-10">
                   <div className="grid grid-cols-2 gap-8">
-                    <Field label="วันที่ทำรายการ (Post Date) *">
-                      <PillInput 
-                        type="date"
-                        value={header.date}
+                    <Field label="วันที่ทำรายการ *">
+                      <NexusDatePicker value={header.date}
                         onChange={(e) => setHeader({...header, date: e.target.value})}
                         className="w-full" 
                       />
@@ -149,7 +139,7 @@ export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModal
                     </Field>
                   </div>
 
-                  <Field label="คำอธิบายรายการ (Description) *">
+                  <Field label="คำอธิบายรายการ *">
                     <textarea 
                       className="w-full h-32 rounded-xl bg-white/[0.03] border border-white/10 text-white text-[14px] font-bold p-8 focus:outline-none focus:border-nexus-blue/40 transition-all"
                       placeholder="ระบุรายละเอียดธุรกรรม..."
@@ -158,7 +148,7 @@ export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModal
                     />
                   </Field>
 
-                  <Field label="เลขที่เอกสารอ้างอิง (Reference)">
+                  <Field label="เลขที่เอกสารอ้างอิง">
                     <PillInput 
                       value={header.reference}
                       onChange={(e) => setHeader({...header, reference: e.target.value})}
@@ -172,7 +162,7 @@ export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModal
               {activeTab === "entries" && (
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-[12px] font-black text-white/30 uppercase tracking-[0.2em]">รายการบัญชี (Double Entry)</h4>
+                    <h4 className="text-[12px] font-black text-white/30 uppercase tracking-[0.2em]">รายการบัญชี</h4>
                     <PillButton variant="glass" onClick={addEntry}>
                       <Plus size={14} /> เพิ่มบรรทัด
                     </PillButton>
@@ -181,8 +171,8 @@ export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModal
                   <div className="space-y-3">
                     <div className="grid grid-cols-12 gap-4 px-6 text-[10px] font-black text-white/20 uppercase tracking-widest">
                        <div className="col-span-5">บัญชี / รายการ</div>
-                       <div className="col-span-3 text-right">เดบิต (DEBIT)</div>
-                       <div className="col-span-3 text-right">เครดิต (CREDIT)</div>
+                       <div className="col-span-3 text-right">เดบิต</div>
+                       <div className="col-span-3 text-right">เครดิต</div>
                        <div className="col-span-1"></div>
                     </div>
                     {entries.map((item) => (
@@ -194,10 +184,10 @@ export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModal
                                onChange={(e) => updateEntry(item.id, "accountName", e.target.value)}
                                className="w-full bg-transparent border-transparent px-0 font-bold text-white/80" 
                              >
-                                <option>11000 - เงินสด (Cash)</option>
-                                <option>11010 - เงินฝากธนาคาร (Bank)</option>
-                                <option>41000 - รายได้จากการขาย (Revenue)</option>
-                                <option>51000 - ต้นทุนขาย (COGS)</option>
+                                <option>11000 - เงินสด</option>
+                                <option>11010 - เงินฝากธนาคาร</option>
+                                <option>41000 - รายได้จากการขาย</option>
+                                <option>51000 - ต้นทุนขาย</option>
                              </PillSelect>
                           </div>
                           <div className="col-span-3">
@@ -239,11 +229,11 @@ export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModal
             </div>
 
             <div className="p-8 rounded-2xl bg-white/[0.03] border border-white/10 space-y-6">
-              <NexusDataField label="รวมเดบิต (DR)" value={`฿${totals.dr.toLocaleString(undefined, {minimumFractionDigits: 2})}`} color="text-nexus-blue" />
-              <NexusDataField label="รวมเครดิต (CR)" value={`฿${totals.cr.toLocaleString(undefined, {minimumFractionDigits: 2})}`} color="text-nexus-teal" />
+              <NexusDataField label="รวมเดบิต" value={`฿${totals.dr.toLocaleString(undefined, {minimumFractionDigits: 2})}`} color="text-nexus-blue" />
+              <NexusDataField label="รวมเครดิต" value={`฿${totals.cr.toLocaleString(undefined, {minimumFractionDigits: 2})}`} color="text-nexus-teal" />
               <div className="pt-6 border-t border-white/5">
                  <NexusDataField 
-                   label="ผลต่าง (Difference)" 
+                   label="ผลต่าง" 
                    value={`฿${totals.diff.toLocaleString(undefined, {minimumFractionDigits: 2})}`} 
                    highlight 
                    color={totals.diff === 0 ? "text-nexus-teal" : "text-danger"} 
@@ -268,10 +258,10 @@ export function JournalEntryModal({ isOpen, onClose, onSave }: JournalEntryModal
               disabled={isSaving}
             >
               <ShieldCheck size={22} className={isSaving ? "animate-pulse" : ""} />
-              {isSaving ? "กำลังบันทึก..." : "บันทึกรายการ (POST JV)"}
+              {isSaving ? "กำลังบันทึก..." : "บันทึกรายการ"}
             </PillButton>
             <PillButton 
-              variant="glass" 
+              variant="ghost" 
               className={cn("w-full text-white/20 hover:text-white uppercase tracking-widest", isSaving && "opacity-50 pointer-events-none")} 
               onClick={handleClose}
               disabled={isSaving}

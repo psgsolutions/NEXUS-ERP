@@ -80,12 +80,10 @@ export function ExpenseScanner() {
             </div>
 
             <div className="flex gap-2">
-              <PillButton variant="glass" className="flex-1" onClick={() => setScanResult(null)}>
+              <PillButton variant="ghost" className="flex-1" onClick={() => setScanResult(null)}>
                 ยกเลิก
               </PillButton>
-              <PillButton className="flex-1 shadow-neon-teal">
-                ยืนยันการบันทึก
-              </PillButton>
+              <PillButton className="flex-1 shadow-neon-teal" variant="save">บันทึก</PillButton>
             </div>
           </div>
         )}

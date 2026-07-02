@@ -24,7 +24,7 @@ import {
   MasterMetricCard
 } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase-client";
 import { 
   collection, 
   query, 
@@ -96,20 +96,20 @@ export default function TemplatesPage() {
 
   const getModuleThaiName = (module: string) => {
     switch (module) {
-      case "QUOTATION": return "ใบเสนอราคา (COMMERCE)";
-      case "SERVICE_REPORT": return "ใบงานบริการ (PROJECT)";
+      case "QUOTATION": return "ใบเสนอราคา";
+      case "SERVICE_REPORT": return "ใบงานบริการ";
       case "MAINTENANCE_TICKET": return "แจ้งซ่อม & SLA (SUPPORT)";
-      case "INVENTORY_ADJUST": return "ปรับสต็อกสินค้า (INVENTORY)";
+      case "INVENTORY_ADJUST": return "ปรับสต็อกสินค้า";
       default: return module;
     }
   };
 
   return (
-    <div className="p-8 space-y-8 animate-in fade-in duration-700 max-w-7xl mx-auto">
+    <div className="p-5 space-y-3 animate-in fade-in duration-700 max-w-7xl mx-auto">
       
       {/* 1. Page Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-5">
           <Link href="/reports">
             <PillButton variant="glass" className="h-10 w-10 p-0 rounded-full">
               <ArrowLeft size={16} />
@@ -117,15 +117,15 @@ export default function TemplatesPage() {
           </Link>
           <div>
             <div className="flex gap-2 mb-2">
-              <span className="px-2 py-0.5 rounded bg-nexus-blue/10 border border-nexus-blue/20 text-[10px] text-nexus-blue font-black uppercase tracking-widest">
-                โมดูลรายงานอัจฉริยะ (Report Engine)
+              <span className="px-2 py-0.5 rounded bg-nexus-blue/10 border border-nexus-blue/20 text-[12px] text-nexus-blue font-medium uppercase tracking-widest">
+                โมดูลรายงานอัจฉริยะ
               </span>
-              <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-white/40 font-black uppercase tracking-widest">
+              <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[12px] text-white/40 font-medium uppercase tracking-widest">
                 การตั้งค่าระบบหลังบ้าน
               </span>
             </div>
-            <h1 className="text-2xl font-black text-white flex items-center gap-3">
-              จัดการแม่แบบแบบฟอร์มเอกสาร (Form Templates)
+            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+              จัดการแม่แบบแบบฟอร์มเอกสาร
             </h1>
           </div>
         </div>
@@ -143,7 +143,7 @@ export default function TemplatesPage() {
       </div>
 
       {/* 2. Statistical Metric Cards */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-3 gap-5">
         <MasterMetricCard 
           icon={<Layers3 />} 
           label="จำนวนแม่แบบทั้งหมด" 
@@ -166,10 +166,10 @@ export default function TemplatesPage() {
       </div>
 
       {/* 3. Standardized Resilient Table */}
-      <GlassCard className="p-6 bg-[#0a0a0c] border-white/5">
+      <GlassCard className="p-4 bg-[#0a0a0c] border-white/5">
         <div className="flex items-center gap-3 mb-6">
           <Layers size={18} className="text-nexus-teal" />
-          <h3 className="text-xs font-black text-white/60 uppercase tracking-widest">
+          <h3 className="text-sm font-medium text-white/60 uppercase tracking-widest">
             รายการเทมเพลตแบบฟอร์มทั้งหมด ({templates.length} แม่แบบ)
           </h3>
         </div>
@@ -188,7 +188,7 @@ export default function TemplatesPage() {
             <NexusTableRow>
               <NexusTableCell 
                 colSpan={5} 
-                className="p-12 text-center text-[11px] text-white/25 uppercase font-black tracking-[0.3em] border-0 bg-transparent"
+                className="p-12 text-center text-[12px] text-white/25 uppercase font-medium tracking-[0.3em] border-0 bg-transparent"
               >
                 ยังไม่พบแม่แบบแบบฟอร์มในระบบ กรุณากดปุ่ม "สร้างแม่แบบฟอร์มใหม่"
               </NexusTableCell>
@@ -200,12 +200,12 @@ export default function TemplatesPage() {
                 setIsBuilderOpen(true);
               }}>
                 {/* ID */}
-                <NexusTableCell mono={true} className="text-nexus-teal text-[13px] font-black uppercase tracking-wide">
+                <NexusTableCell mono={true} className="text-nexus-teal text-[13px] font-bold uppercase tracking-wide">
                   {tmpl.templateId}
                 </NexusTableCell>
 
                 {/* Title */}
-                <NexusTableCell wrap={true} className="max-w-[300px] font-black text-white">
+                <NexusTableCell wrap={true} className="max-w-[300px] font-bold text-white">
                   {tmpl.title}
                 </NexusTableCell>
 

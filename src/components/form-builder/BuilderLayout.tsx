@@ -11,7 +11,7 @@ import { PropertySheet } from './PropertySheet';
 import { TemplateSelectionModal } from './TemplateSelectionModal';
 import { FieldListPanel } from './FieldListPanel';
 import { BindingVariable, getNeutralData } from '../../utils/dataBinding';
-import { db } from '../../lib/firebase';
+import { db } from '../../lib/firebase-client';
 import { useAuth } from '../../context/AuthContext';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useSystemDialog } from "@/context/DialogContext";
@@ -174,7 +174,7 @@ export const BuilderLayout: React.FC = () => {
     } catch (err) {
       console.error('Failed to save template:', err);
       setIsSaved(false);
-      showAlert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+      console.log('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
     }
   };
 

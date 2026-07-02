@@ -1,56 +1,55 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot } from 'firebase/firestore';
 
+// สร้างโครงสร้างข้อมูลสำหรับ Context
 interface ConnectionContextType {
-  isOnline: boolean;
-  errorMsg: string | null;
+  isConnected: boolean;
+  isLoading: boolean;
 }
 
 const ConnectionContext = createContext<ConnectionContextType>({
-  isOnline: true,
-  errorMsg: null,
+  isConnected: false,
+  isLoading: true,
 });
 
 export function ConnectionProvider({ children }: { children: ReactNode }) {
-  const [isOnline, setIsOnline] = useState<boolean>(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // กฎเหล็ก: ทำ Tenant Isolation ดึงข้อมูลตัวอย่างมาเช็คการเชื่อมต่อ
-    // We listen to a generic path, or 'system_status' as required
-    const unsubscribe = onSnapshot(
-      collection(db, 'system_status'),
-      (snapshot) => {
-        // ถ้ายิงสำเร็จและได้ข้อมูล (หรือได้ Snapshot เปล่า) แปลว่าเชื่อมต่อสมบูรณ์
-        setIsOnline(true);
-        setErrorMsg(null);
-      },
-      (error) => {
-        // ดักจับจังหวะหลุดออฟไลน์
-        if (error.code === 'unavailable' || error.message.includes('offline')) {
-          setIsOnline(false);
-          setErrorMsg('CLIENT_DISCONNECTED');
-        } else if (error.code === 'permission-denied') {
-          // You might still be online, but just have a permission error.
-          // However, based on the prompt we can treat this specifically if we want
-          // Let's just track offline for now, or flag auth issues
-          setIsOnline(false);
-          setErrorMsg('AUTH_REVOKED');
+    // 💡 กฎเหล็ก: ฝั่งหน้าบ้าน ต้องถามสถานะผ่าน API เท่านั้น ห้ามดึง firebase-admin ตรงๆ
+    const checkConnection = async () => {
+      try {
+        const response = await fetch('/api/health');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.database === 'connected') {
+            setIsConnected(true);
+          } else {
+            setIsConnected(false);
+          }
+        } else {
+          setIsConnected(false);
         }
+      } catch (error) {
+        setIsConnected(false);
+      } finally {
+        setIsLoading(false);
       }
-    );
+    };
 
-    return () => unsubscribe();
+    checkConnection();
+    const interval = setInterval(checkConnection, 15000); // Check every 15s to recover from offline state
+    return () => clearInterval(interval);
   }, []);
 
   return (
-    <ConnectionContext.Provider value={{ isOnline, errorMsg }}>
+    <ConnectionContext.Provider value={{ isConnected, isLoading }}>
       {children}
     </ConnectionContext.Provider>
   );
 }
 
-export const useDbStatus = () => useContext(ConnectionContext);
+// สร้าง Hook ไว้ให้หน้าอื่นๆ เรียกใช้งานได้ง่ายๆ
+export const useConnection = () => useContext(ConnectionContext);

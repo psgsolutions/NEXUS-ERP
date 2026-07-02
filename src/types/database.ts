@@ -81,7 +81,7 @@ export interface DocumentCustomerInfo {
   address: string;
 }
 
-// 2. ข้อมูลรายการสินค้า (Line Items)
+// 2. ข้อมูลรายการสินค้า
 export interface UniversalLineItem {
   id: string; // สำหรับทำ Key ตอนลากวาง
   itemCode: string; // รหัสสินค้า (บังคับดึงจากระบบ)
@@ -98,7 +98,7 @@ export interface UniversalLineItem {
 export interface Quotation extends BaseDocument {
   // Document Header
   documentNo: string; // รหัสเอกสาร (เช่น QU-2605-0001)
-  issueDate: any; // วันที่ออกเอกสาร (Firestore Timestamp)
+  issueDate: any; // วันที่ออกเอกสาร
   dueDate: any; // วันที่ครบกำหนดชำระ
   customerInfo: DocumentCustomerInfo;
   
@@ -181,8 +181,8 @@ export interface ProjectBOQItem {
   description: string;
   qty: number;
   unit: string;
-  estimatedCost: number; // ราคาทุนประมาณการต่อหน่วย (Baseline Cost)
-  estimatedPrice: number; // ราคาเสนอขายต่อหน่วย (Baseline Price)
+  estimatedCost: number; // ราคาทุนประมาณการต่อหน่วย
+  estimatedPrice: number; // ราคาเสนอขายต่อหน่วย
   totalCost: number; // estimatedCost * qty
   totalPrice: number; // estimatedPrice * qty
 }
@@ -217,7 +217,7 @@ export interface ServiceReport extends BaseDocument {
 }
 
 // ---------------------------------------------------------
-// 3.5 บริการและสนับสนุน (Support)
+// 3.5 บริการและสนับสนุน
 // ---------------------------------------------------------
 
 export interface SupportTicket extends BaseDocument {
@@ -658,8 +658,29 @@ export interface InventoryDocument extends BaseDocument {
   type: 'RECEIPT' | 'ISSUE' | 'TRANSFER' | 'ADJUSTMENT';
 }
 
+export interface Warehouse extends BaseDocument {
+  warehouseId: string;
+  name: string;
+  address: string;
+  managerId?: string;
+  status: 'active' | 'inactive';
+}
+
+export interface Asset extends BaseDocument {
+  assetId: string;
+  name: string;
+  category: string;
+  purchaseDate: any;
+  purchasePrice: number;
+  salvageValue: number;
+  usefulLifeYears: number;
+  accumulatedDepreciation: number;
+  netBookValue: number;
+  status: 'active' | 'disposed' | 'written_off';
+}
+
 // ---------------------------------------------------------
-// 5. ระบบจัดซื้อ (Procurement)
+// 5. ระบบจัดซื้อ
 // ---------------------------------------------------------
 
 export interface DocumentSupplierInfo {
@@ -693,7 +714,7 @@ export interface PurchaseDocument extends BaseDocument {
 }
 
 // ---------------------------------------------------------
-// 6. บัญชีและการเงิน (Finance)
+// 6. บัญชีและการเงิน
 // ---------------------------------------------------------
 
 export interface AccountingEntityInfo {
@@ -748,7 +769,7 @@ export interface AIProcessingLog extends BaseDocument {
 }
 
 // ---------------------------------------------------------
-// 8. จัดการบุคลากร (HR)
+// 8. จัดการบุคลากร
 // ---------------------------------------------------------
 
 export interface EmployeeProfile extends BaseDocument {
@@ -761,7 +782,7 @@ export interface EmployeeProfile extends BaseDocument {
 }
 
 // ---------------------------------------------------------
-// 9. ประวัติบันทึกระบบ (Audit Logs)
+// 9. ประวัติบันทึกระบบ
 // ---------------------------------------------------------
 
 export interface AuditLog extends BaseDocument {

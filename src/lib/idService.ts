@@ -1,4 +1,4 @@
-import { db } from "./firebase";
+import { db } from "./firebase-client";
 import { Firestore, doc, runTransaction, serverTimestamp } from "firebase/firestore";
 import { IdType, romanizeThai } from "@/lib/utils";
 

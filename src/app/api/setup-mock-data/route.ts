@@ -12,7 +12,7 @@ export async function POST() {
       { name: 'ThinkPad X1 Carbon', price: 65000, stock: 10, companyId: 'company_B', isDeleted: false },
       { name: 'Logitech MX Master 3S', price: 3990, stock: 45, companyId: 'company_B', isDeleted: false },
       
-      // ข้อมูลที่ถูกจำลองว่าโดนลบไปแล้ว (Soft Deleted)
+      // ข้อมูลที่ถูกจำลองว่าโดนลบไปแล้ว
       { name: 'Old Keyboard', price: 500, stock: 0, companyId: 'company_A', isDeleted: true },
     ];
 

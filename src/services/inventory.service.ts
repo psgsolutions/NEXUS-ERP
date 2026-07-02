@@ -1,4 +1,4 @@
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase-client";
 import { 
   collection, 
   query, 
@@ -19,7 +19,7 @@ import { auditService } from "./audit.service";
  */
 
 export const inventoryService = {
-  // ดึงรายการพัสดุทั้งหมดของบริษัท (Tenant Isolation)
+  // ดึงรายการพัสดุทั้งหมดของบริษัท
   async getCompanyInventory(companyId: string): Promise<Product[]> {
     const q = query(
       collection(db, "products"), 
@@ -33,7 +33,7 @@ export const inventoryService = {
     })) as unknown as Product[];
   },
 
-  // เพิ่มพัสดุใหม่ (Atomic Data Entry with Audit Log)
+  // เพิ่มพัสดุใหม่
   async createItem(userId: string, companyId: string, itemData: Partial<Product>) {
     const docData = {
       ...itemData,

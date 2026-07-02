@@ -34,7 +34,7 @@ export const CommandPalette = () => {
   const results = [
     { id: "nav-1", label: "ภาพรวมระบบ", icon: <LayoutDashboard size={16} />, path: "/", type: "NAV" },
     { id: "nav-2", label: "คลังสินค้าและพัสดุ", icon: <Package size={16} />, path: "/inventory", type: "NAV" },
-    { id: "nav-3", label: "งานขาย (POS)", icon: <ShoppingCart size={16} />, path: "/sales", type: "NAV" },
+    { id: "nav-3", label: "งานขาย", icon: <ShoppingCart size={16} />, path: "/sales", type: "NAV" },
     { id: "nav-4", label: "บริหารโครงการ", icon: <Briefcase size={16} />, path: "/projects", type: "NAV" },
     { id: "nav-5", label: "การเงินและบัญชี", icon: <Wallet size={16} />, path: "/finance", type: "NAV" },
     { id: "ai-1", label: "NEXUS Brain (AI วิเคราะห์)", icon: <BrainCircuit size={16} />, path: "/ai", type: "NAV" },

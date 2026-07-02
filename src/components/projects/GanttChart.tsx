@@ -27,7 +27,7 @@ export function GanttChart({ milestones }: GanttChartProps) {
           {/* Left Side: Task List */}
           <div className="bg-black/20">
              <div className="h-14 border-b border-white/5 flex items-center px-8">
-                <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">ชื่อแผนงาน (Milestone Tasks)</span>
+                <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">ชื่อแผนงาน</span>
              </div>
              <div className="divide-y divide-white/5">
                 {milestones.map((m) => (

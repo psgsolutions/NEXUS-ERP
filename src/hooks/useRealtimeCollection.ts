@@ -7,7 +7,7 @@ import {
   where,
   orderBy
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db } from '@/lib/firebase-client';
 import { useAuth } from '@/context/AuthContext';
 
 export function useRealtimeCollection<T = any>(
@@ -36,10 +36,7 @@ export function useRealtimeCollection<T = any>(
         queryConstraints.push(where('companyId', '==', companyId));
       }
       
-      // We don't filter out isDeleted here to keep the hook generic, 
-      // but usually we would push(where('isDeleted', '==', false)).
-      // Let's add it automatically if desired, but we can rely on consumers to add it or do it here.
-      // Usually, ERPs filter out soft-deleted records.
+      // Enforce soft-delete rule globally (NEXUS Schema V3.0)
       queryConstraints.push(where('isDeleted', '==', false));
       
       queryConstraints.push(...constraints);
@@ -49,7 +46,10 @@ export function useRealtimeCollection<T = any>(
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const results: T[] = [];
         snapshot.forEach((doc) => {
-          results.push({ id: doc.id, ...doc.data() } as unknown as T);
+          const data = doc.data();
+          if (data.isDeleted !== true) {
+            results.push({ id: doc.id, ...data } as unknown as T);
+          }
         });
         setData(results);
         setLoading(false);

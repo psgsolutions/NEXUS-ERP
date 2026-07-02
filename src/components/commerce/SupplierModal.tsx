@@ -53,11 +53,11 @@ const INITIAL_FORM = {
 };
 
 const BANKS = [
-  "ธนาคารกสิกรไทย (KBANK)",
-  "ธนาคารไทยพาณิชย์ (SCB)",
-  "ธนาคารกรุงเทพ (BBL)",
-  "ธนาคารกรุงไทย (KTB)",
-  "ธนาคารทหารไทยธนชาต (TTB)"
+  "ธนาคารกสิกรไทย",
+  "ธนาคารไทยพาณิชย์",
+  "ธนาคารกรุงเทพ",
+  "ธนาคารกรุงไทย",
+  "ธนาคารทหารไทยธนชาต"
 ];
 
 export function SupplierModal({ isOpen, onClose, onSave, initialData }: SupplierModalProps) {
@@ -82,8 +82,8 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
   }, [isOpen, initialData]);
 
   const tabs = [
-    { id: "profile", label: "ข้อมูลทั่วไป (PROFILE)", icon: <Building2 /> },
-    { id: "bank", label: "บัญชีธนาคาร (FINANCIAL)", icon: <Landmark /> }
+    { id: "profile", label: "ข้อมูลทั่วไป", icon: <Building2 /> },
+    { id: "bank", label: "บัญชีธนาคาร", icon: <Landmark /> }
   ];
 
   const handleCommit = async () => {
@@ -91,9 +91,9 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
     if (!form.name.trim()) return void showAlert("กรุณาระบุชื่อคู่ค้า");
     
     // Tax ID check: Only digits, exactly 13 characters
-    if (!form.tax_id) return void showAlert("กรุณาระบุเลขประจำตัวผู้เสียภาษี (Tax ID)");
-    if (form.tax_id.length !== 13) return void showAlert("เลขประจำตัวผู้เสียภาษี (Tax ID) ต้องมีครบ 13 หลักตามกฎหมายกำหนด");
-    if (!/^\d{13}$/.test(form.tax_id)) return void showAlert("เลขประจำตัวผู้เสียภาษี (Tax ID) ต้องเป็นตัวเลขเท่านั้น");
+    if (!form.tax_id) return void showAlert("กรุณาระบุเลขประจำตัวผู้เสียภาษี");
+    if (form.tax_id.length !== 13) return void showAlert("เลขประจำตัวผู้เสียภาษี ต้องมีครบ 13 หลักตามกฎหมายกำหนด");
+    if (!/^\d{13}$/.test(form.tax_id)) return void showAlert("เลขประจำตัวผู้เสียภาษี ต้องเป็นตัวเลขเท่านั้น");
 
     // Contact info check
     if (!form.phone.trim()) return void showAlert("กรุณาระบุเบอร์โทรศัพท์ติดต่อ");
@@ -225,9 +225,9 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
                     <div className="grid grid-cols-1 gap-8">
                       <Field label="วิธีการรับเงิน / ชำระเงิน *">
                         <PillSelect value={form.payment_method} onChange={(e) => setForm({...form, payment_method: e.target.value})} className="w-full font-black text-nexus-teal">
-                          <option value="TRANSFER">โอนเงินผ่านบัญชีธนาคาร (Bank Transfer)</option>
-                          <option value="CHEQUE">รับด้วยเช็ค (Cheque Collection)</option>
-                          <option value="CASH">ชำระด้วยเงินสด (Cash Payment)</option>
+                          <option value="TRANSFER">โอนเงินผ่านบัญชีธนาคาร</option>
+                          <option value="CHEQUE">รับด้วยเช็ค</option>
+                          <option value="CASH">ชำระด้วยเงินสด</option>
                         </PillSelect>
                       </Field>
 
@@ -346,7 +346,7 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
               {isSubmitting ? <RefreshCw className="animate-spin" /> : <CheckCircle2 size={20} />}
               บันทึกข้อมูล
             </PillButton>
-            <PillButton variant="glass" className="w-full text-white/20" onClick={onClose}>
+            <PillButton variant="ghost" className="w-full" onClick={onClose}>
               ยกเลิก
             </PillButton>
           </div>

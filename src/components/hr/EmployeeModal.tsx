@@ -14,16 +14,7 @@ import {
   X,
   DollarSign
 } from "lucide-react";
-import { 
-  PillButton, 
-  PillInput, 
-  PillSelect, 
-  Modal, 
-  PillTabs, 
-  NexusDataField,
-  cn,
-  Toast
-} from "@/components/ui/Base";
+import { PillButton, PillInput, PillSelect, Modal, PillTabs, NexusDataField, cn, Toast, NexusDatePicker } from "@/components/ui/Base";
 
 interface EmployeeModalProps {
   isOpen: boolean;
@@ -132,7 +123,7 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
     <Modal 
       isOpen={isOpen} 
       onClose={handleClose} 
-      title="ลงทะเบียนพนักงานใหม่ (NEW EMPLOYEE REGISTRATION)"
+      title="ลงทะเบียนพนักงานใหม่"
       maxWidth="max-w-[1600px]"
     >
       <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
@@ -141,7 +132,7 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
               <div className="space-y-1">
                 <p className="text-[12px] font-black text-nexus-teal uppercase tracking-[0.2em]">โหมดจัดการบุคลากร (HR_CORE_V3.0)</p>
-                <h4 className="text-xl font-black text-white uppercase tracking-tight">ข้อมูลพนักงาน (Employee Profile)</h4>
+                <h4 className="text-xl font-black text-white uppercase tracking-tight">ข้อมูลพนักงาน</h4>
               </div>
               <PillTabs 
                  tabs={[
@@ -172,16 +163,16 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
                               </PillSelect>
                            </Field>
                            <div className="col-span-3">
-                              <Field label="ชื่อจริง (First Name) *">
+                              <Field label="ชื่อจริง *">
                                  <PillInput value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} placeholder="ระบุชื่อจริง..." className="w-full" />
                               </Field>
                            </div>
                         </div>
                         <div className="grid grid-cols-2 gap-6">
-                           <Field label="นามสกุล (Last Name) *">
+                           <Field label="นามสกุล *">
                               <PillInput value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} placeholder="ระบุนามสกุล..." className="w-full" />
                            </Field>
-                           <Field label="ชื่อเล่น (Nickname)">
+                           <Field label="ชื่อเล่น">
                               <PillInput value={formData.nickname} onChange={(e) => setFormData({...formData, nickname: e.target.value})} placeholder="ชื่อเล่น..." className="w-full" />
                            </Field>
                         </div>
@@ -193,10 +184,10 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
               {activeTab === "job" && (
                 <div className="space-y-10">
                    <div className="grid grid-cols-2 gap-8">
-                      <Field label="ตำแหน่งงาน (Job Position) *">
+                      <Field label="ตำแหน่งงาน *">
                          <PillInput value={formData.position} onChange={(e) => setFormData({...formData, position: e.target.value})} placeholder="เช่น Network Engineer..." className="w-full" />
                       </Field>
-                      <Field label="แผนก (Department)">
+                      <Field label="แผนก">
                          <PillSelect value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})} className="w-full">
                             <option value="ENGINEERING">ENGINEERING (วิศวกรรม)</option>
                             <option value="SALES">SALES & MARKETING</option>
@@ -208,13 +199,13 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
                    <div className="grid grid-cols-2 gap-8">
                       <Field label="ประเภทการจ้างงาน">
                          <PillSelect value={formData.employmentType} onChange={(e) => setFormData({...formData, employmentType: e.target.value})} className="w-full">
-                            <option value="permanent">พนักงานประจำ (Permanent)</option>
-                            <option value="contract">สัญญาจ้าง (Contract)</option>
-                            <option value="probation">ทดลองงาน (Probation)</option>
+                            <option value="permanent">พนักงานประจำ</option>
+                            <option value="contract">สัญญาจ้าง</option>
+                            <option value="probation">ทดลองงาน</option>
                          </PillSelect>
                       </Field>
-                      <Field label="วันที่เริ่มงาน (Join Date)">
-                         <PillInput type="date" value={formData.joinDate} onChange={(e) => setFormData({...formData, joinDate: e.target.value})} className="w-full" />
+                      <Field label="วันที่เริ่มงาน">
+                         <NexusDatePicker value={formData.joinDate} onChange={(e) => setFormData({...formData, joinDate: e.target.value})} className="w-full" />
                       </Field>
                    </div>
                 </div>
@@ -223,10 +214,10 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
                {activeTab === "payroll" && (
                 <div className="space-y-10">
                    <div className="grid grid-cols-2 gap-8">
-                      <Field label="เลขประจำตัวผู้เสียภาษี (TAX ID)">
+                      <Field label="เลขประจำตัวผู้เสียภาษี">
                          <PillInput value={formData.taxId} onChange={handleTaxIdChange} placeholder="เลขประจำตัวผู้เสียภาษี 13 หลัก" className="w-full" />
                       </Field>
-                      <Field label="เงินเดือนฐาน (Base Salary)">
+                      <Field label="เงินเดือนฐาน">
                          <div className="relative">
                             <PillInput type="text" inputMode="numeric" value={formData.salary} onChange={handleSalaryChange} placeholder="0" className="w-full pl-10" />
                             <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={16} />
@@ -279,10 +270,10 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
               disabled={isSaving}
             >
               <ShieldCheck size={22} className={isSaving ? "animate-pulse" : ""} />
-              {isSaving ? "กำลังบันทึกข้อมูล (SAVING...)" : "บันทึกรายชื่อ (ENROLL EMP)"}
+              {isSaving ? "กำลังบันทึกข้อมูล (SAVING...)" : "บันทึกรายชื่อ"}
             </PillButton>
             <PillButton 
-              variant="glass" 
+              variant="ghost" 
               className={cn("w-full text-white/20 hover:text-white uppercase tracking-widest", isSaving && "opacity-50 pointer-events-none")} 
               onClick={handleClose}
               disabled={isSaving}

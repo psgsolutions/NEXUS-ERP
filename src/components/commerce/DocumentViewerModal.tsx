@@ -46,7 +46,7 @@ export function DocumentViewerModal({ isOpen, onClose, data, type = "quotation" 
               <Download size={14} className="mr-2" /> โหลด PDF
             </PillButton>
             <PillButton className="h-9 px-6 shadow-neon-teal" onClick={handlePrint}>
-              <Printer size={16} className="mr-2" /> พิมพ์เอกสาร (Print)
+              <Printer size={16} className="mr-2" /> พิมพ์เอกสาร
             </PillButton>
           </div>
         </div>
@@ -151,7 +151,7 @@ export function DocumentViewerModal({ isOpen, onClose, data, type = "quotation" 
                   <table className="w-full text-sm">
                     <tbody>
                       <tr>
-                        <td className="py-2 px-3 text-right text-gray-600 font-bold">รวมเป็นเงิน (Subtotal)</td>
+                        <td className="py-2 px-3 text-right text-gray-600 font-bold">รวมเป็นเงิน</td>
                         <td className="py-2 px-3 text-right font-bold text-gray-900">{formatCurrency(data.financials?.subtotal || 0)}</td>
                       </tr>
                       <tr>
@@ -162,7 +162,7 @@ export function DocumentViewerModal({ isOpen, onClose, data, type = "quotation" 
                         <td className="py-2 px-3 text-right text-gray-900">{formatCurrency(data.financials?.vat || 0)}</td>
                       </tr>
                       <tr className="border-t-2 border-gray-900">
-                        <td className="py-3 px-3 text-right text-base font-black text-gray-900">ยอดเงินสุทธิ (Net Total)</td>
+                        <td className="py-3 px-3 text-right text-base font-black text-gray-900">ยอดเงินสุทธิ</td>
                         <td className="py-3 px-3 text-right text-lg font-black text-[#0d9488]">{formatCurrency(data.financials?.total || data.financials?.net || 0)}</td>
                       </tr>
                     </tbody>

@@ -2,15 +2,7 @@
 
 import React from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { 
-  PillInput, 
-  PillSelect, 
-  NexusTable, 
-  NexusTableRow, 
-  NexusTableCell,
-  PillButton,
-  cn 
-} from "@/components/ui/Base";
+import { PillInput, PillSelect, NexusTable, NexusTableRow, NexusTableCell, PillButton, cn, NexusDatePicker } from "@/components/ui/Base";
 import { FormTemplate, FormField } from "@/types/database";
 
 interface FormRendererProps {
@@ -92,9 +84,7 @@ export default function FormRenderer({ template, values, onChange, disabled = fa
                   ))}
                 </PillSelect>
               ) : field.type === "date" ? (
-                <PillInput
-                  type="date"
-                  value={values[field.id] || ""}
+                <NexusDatePicker value={values[field.id] || ""}
                   onChange={(e) => handleFieldChange(field.id, e.target.value)}
                   disabled={disabled}
                   className="w-full text-white"
@@ -123,7 +113,7 @@ export default function FormRenderer({ template, values, onChange, disabled = fa
                         onClick={() => handleAddTableRow(field.id)}
                         className="h-8 px-4 text-[11px] shadow-neon-teal text-black"
                       >
-                        <Plus size={14} /> เพิ่มรายการย่อย (ADD ROW)
+                        <Plus size={14} /> เพิ่มรายการย่อย
                       </PillButton>
                     )}
                   </div>

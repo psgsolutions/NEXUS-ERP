@@ -190,14 +190,14 @@ export default function DocumentBuilderPage() {
             <div>
               <input 
                 value={templateName} onChange={(e) => setTemplateName(e.target.value)}
-                className="bg-transparent border-0 font-black text-sm tracking-tight text-white focus:outline-none focus:ring-1 focus:ring-nexus-teal/40 px-2 py-0.5 rounded w-[300px]"
+                className="bg-transparent border-0 font-bold text-sm tracking-tight text-white focus:outline-none focus:ring-1 focus:ring-nexus-teal/40 px-2 py-0.5 rounded w-[300px]"
               />
             </div>
           </div>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 mr-4 border-r border-white/10 pr-4">
-            <span className="text-[10px] font-black uppercase text-white/40">Paper Size:</span>
+            <span className="text-[11px] font-medium uppercase text-white/40">Paper Size:</span>
             <PillSelect value={paperSize} onChange={(e) => setPaperSize(e.target.value as PaperSize)} className="h-8 py-0">
               <option value="A4">A4 (210x297mm)</option>
               <option value="A5">A5 (148x210mm)</option>
@@ -216,35 +216,35 @@ export default function DocumentBuilderPage() {
         {/* LEFT SIDEBAR: PROPERTIES */}
         <aside className="w-[320px] border-r border-white/5 bg-[#0F0F12]/80 backdrop-blur-xl flex flex-col z-30 overflow-y-auto custom-scrollbar">
           <div className="p-5 border-b border-white/5">
-            <h3 className="text-xs font-black text-white/60 uppercase tracking-widest mb-4 flex items-center gap-2"><Sliders size={14} className="text-nexus-teal"/> PROPERTIES</h3>
+            <h3 className="text-sm font-medium text-white/60 uppercase tracking-widest mb-4 flex items-center gap-2"><Sliders size={14} className="text-nexus-teal"/> PROPERTIES</h3>
             {selectedBlock ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] font-black text-white/60 uppercase block mb-1">X (px)</label>
+                    <label className="text-[11px] font-medium text-white/60 uppercase block mb-1">X (px)</label>
                     <PillInput type="number" value={selectedBlock.x} onChange={e => updateSelectedBlock({ x: Number(e.target.value) })} className="w-full" />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-white/60 uppercase block mb-1">Y (px)</label>
+                    <label className="text-[11px] font-medium text-white/60 uppercase block mb-1">Y (px)</label>
                     <PillInput type="number" value={selectedBlock.y} onChange={e => updateSelectedBlock({ y: Number(e.target.value) })} className="w-full" />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-white/60 uppercase block mb-1">Width</label>
+                    <label className="text-[11px] font-medium text-white/60 uppercase block mb-1">Width</label>
                     <PillInput type="number" value={selectedBlock.width} onChange={e => updateSelectedBlock({ width: Number(e.target.value) })} className="w-full" />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-white/60 uppercase block mb-1">Height</label>
+                    <label className="text-[11px] font-medium text-white/60 uppercase block mb-1">Height</label>
                     <PillInput type="number" value={selectedBlock.height} onChange={e => updateSelectedBlock({ height: Number(e.target.value) })} className="w-full" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] font-black text-white/60 uppercase block mb-1">Rotation (°)</label>
+                    <label className="text-[11px] font-medium text-white/60 uppercase block mb-1">Rotation (°)</label>
                     <input type="range" min="0" max="360" value={selectedBlock.rotation} onChange={e => updateSelectedBlock({ rotation: Number(e.target.value) })} className="w-full accent-nexus-teal" />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-white/60 uppercase block mb-1">Opacity (%)</label>
+                    <label className="text-[11px] font-medium text-white/60 uppercase block mb-1">Opacity (%)</label>
                     <input type="range" min="0" max="100" value={selectedBlock.opacity} onChange={e => updateSelectedBlock({ opacity: Number(e.target.value) })} className="w-full accent-nexus-teal" />
                   </div>
                 </div>
@@ -253,7 +253,7 @@ export default function DocumentBuilderPage() {
                 {selectedBlock.type === "text" && (
                   <>
                     <div>
-                      <label className="text-[10px] font-black text-white/60 uppercase block mb-1">Content</label>
+                      <label className="text-[11px] font-medium text-white/60 uppercase block mb-1">Content</label>
                       <textarea 
                         value={selectedBlock.content} 
                         onChange={e => updateSelectedBlock({ content: e.target.value })}
@@ -262,13 +262,13 @@ export default function DocumentBuilderPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                         <label className="text-[10px] font-black text-white/60 uppercase block mb-1">Font Size</label>
+                         <label className="text-[11px] font-medium text-white/60 uppercase block mb-1">Font Size</label>
                          <PillSelect value={selectedBlock.fontSize} onChange={e => updateSelectedBlock({ fontSize: e.target.value as any })}>
                            <option value="sm">Small</option><option value="base">Base</option><option value="lg">Large</option><option value="xl">X-Large</option>
                          </PillSelect>
                       </div>
                       <div>
-                         <label className="text-[10px] font-black text-white/60 uppercase block mb-1">Align</label>
+                         <label className="text-[11px] font-medium text-white/60 uppercase block mb-1">Align</label>
                          <PillSelect value={selectedBlock.textAlign} onChange={e => updateSelectedBlock({ textAlign: e.target.value as any })}>
                            <option value="left">Left</option><option value="center">Center</option><option value="right">Right</option>
                          </PillSelect>
@@ -279,21 +279,21 @@ export default function DocumentBuilderPage() {
 
                 {selectedBlock.type === "image" && (
                   <div>
-                    <label className="text-[10px] font-black text-white/60 uppercase block mb-1">Image URL</label>
+                    <label className="text-[11px] font-medium text-white/60 uppercase block mb-1">Image URL</label>
                     <PillInput value={selectedBlock.imageUrl || ""} onChange={e => updateSelectedBlock({ imageUrl: e.target.value })} className="w-full" placeholder="https://..." />
                   </div>
                 )}
 
                 {selectedBlock.type === "line" && (
                   <div>
-                    <label className="text-[10px] font-black text-white/60 uppercase block mb-1">Line Color</label>
+                    <label className="text-[11px] font-medium text-white/60 uppercase block mb-1">Line Color</label>
                     <input type="color" value={selectedBlock.backgroundColor || "#000000"} onChange={e => updateSelectedBlock({ backgroundColor: e.target.value })} className="w-full h-8 rounded cursor-pointer" />
                   </div>
                 )}
 
                 {selectedBlock.type === "table" && (
                   <div className="space-y-3">
-                    <label className="text-[10px] font-black text-white/60 uppercase block mb-1">Data Binding Columns</label>
+                    <label className="text-[11px] font-medium text-white/60 uppercase block mb-1">Data Binding Columns</label>
                     {["itemCode", "description", "quantity", "unitPrice", "discount", "totalAmount"].map(col => (
                       <PillCheckbox 
                         key={col} 

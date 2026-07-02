@@ -106,7 +106,7 @@ export const FieldListPanel: React.FC<FieldListPanelProps> = ({
             <div className="p-2 border-b border-white/5 flex-shrink-0">
               <input
                 type="text"
-                placeholder="ค้นหา field..."
+                placeholder="พิมพ์เพื่อค้นหา..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="w-full bg-white/5 border border-white/5 rounded-lg px-3 py-1.5 text-[11px] text-white/70 placeholder:text-white/20 focus:outline-none focus:border-nexus-teal/30"

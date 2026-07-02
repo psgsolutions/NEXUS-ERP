@@ -43,9 +43,9 @@ export function TemplateArchitectModal({ isOpen, onClose, templateName }: Templa
   });
 
   const tabs = [
-    { id: "layout", label: "โครงสร้าง (LAYOUT)", icon: <Layout size={14} /> },
-    { id: "content", label: "เนื้อหา (CONTENT)", icon: <Type size={14} /> },
-    { id: "preview", label: "ตัวอย่าง (PREVIEW)", icon: <Eye size={14} /> },
+    { id: "layout", label: "โครงสร้าง", icon: <Layout size={14} /> },
+    { id: "content", label: "เนื้อหา", icon: <Type size={14} /> },
+    { id: "preview", label: "ตัวอย่าง", icon: <Eye size={14} /> },
   ];
 
   return (
@@ -69,7 +69,7 @@ export function TemplateArchitectModal({ isOpen, onClose, templateName }: Templa
               {activeTab === "layout" && (
                 <div className="space-y-8 animate-in fade-in duration-500">
                    <div className="space-y-4">
-                      <div className="flex items-center gap-3 text-white/40"><ImageIcon size={16} /><span className="text-[11px] font-black uppercase tracking-widest">ส่วนหัวเอกสาร (Header)</span></div>
+                      <div className="flex items-center gap-3 text-white/40"><ImageIcon size={16} /><span className="text-[11px] font-black uppercase tracking-widest">ส่วนหัวเอกสาร</span></div>
                       <div className="grid grid-cols-2 gap-3">
                          <ConfigToggle label="แสดงโลโก้บริษัท" active={config.showLogo} onClick={() => setConfig({...config, showLogo: !config.showLogo})} />
                          <ConfigToggle label="แสดงเลขผู้เสียภาษี" active={config.showTaxId} onClick={() => setConfig({...config, showTaxId: !config.showTaxId})} />
@@ -94,7 +94,7 @@ export function TemplateArchitectModal({ isOpen, onClose, templateName }: Templa
                    </div>
 
                    <div className="space-y-4">
-                      <div className="flex items-center gap-3 text-white/40"><Columns size={16} /><span className="text-[11px] font-black uppercase tracking-widest">ตารางข้อมูล (Data Columns)</span></div>
+                      <div className="flex items-center gap-3 text-white/40"><Columns size={16} /><span className="text-[11px] font-black uppercase tracking-widest">ตารางข้อมูล</span></div>
                       <div className="grid grid-cols-2 gap-3">
                          {["ITEM", "QTY", "UNIT", "PRICE", "DISCOUNT", "TAX", "TOTAL"].map(col => (
                            <ConfigToggle 
@@ -152,7 +152,7 @@ export function TemplateArchitectModal({ isOpen, onClose, templateName }: Templa
               <PillButton className="w-full shadow-neon-teal" onClick={() => { onClose(); }}>
                  <Save size={18} /> บันทึกและนำไปใช้
               </PillButton>
-              <PillButton variant="glass" className="w-full text-white/20 hover:text-white" onClick={onClose}>
+              <PillButton variant="ghost" className="w-full hover:" onClick={onClose}>
                  ยกเลิก
               </PillButton>
            </div>

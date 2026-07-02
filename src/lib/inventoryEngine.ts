@@ -1,4 +1,4 @@
-import { db } from "./firebase";
+import { db } from "./firebase-client";
 import { 
   doc, 
   runTransaction, 

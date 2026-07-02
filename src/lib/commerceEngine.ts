@@ -2,7 +2,7 @@
 import { generateId } from "./idService";
 import { issueStock } from "./inventoryEngine";
 import { postToGL, ACCOUNTS } from "./financeEngine";
-import { db } from "./firebase";
+import { db } from "./firebase-client";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 
 interface CheckoutData {

@@ -19,13 +19,13 @@ export default function ExpensesPage() {
   const [activeTab, setActiveTab] = useState<"scan" | "pending" | "history">("scan");
 
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-700 max-w-[1200px] mx-auto">
+    <div className="p-5 space-y-3 animate-in fade-in duration-700 max-w-[1200px] mx-auto">
       
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <p className="tactical-label !text-nexus-teal drop-shadow-neon">Paypers AI Integration</p>
-          <h1 className="text-3xl font-black text-white tracking-tight">จัดการค่าใช้จ่ายหน้างาน</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">จัดการค่าใช้จ่ายหน้างาน</h1>
         </div>
         <div className="flex gap-3">
           <PillButton variant="glass" className="px-6">
@@ -35,37 +35,37 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         
         {/* Scan & Processing Area */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-3">
            {/* Tab Navigation */}
            <div className="flex gap-2 p-1 bg-white/5 rounded-full w-fit border border-white/5 shadow-inner h-11">
               <button 
                 onClick={() => setActiveTab("scan")}
-                className={cn("px-6 h-full rounded-full text-xs font-black uppercase transition-all", activeTab === "scan" ? "bg-nexus-teal text-black shadow-neon-teal" : "text-white/40")}
+                className={cn("px-6 h-full rounded-full text-sm font-medium uppercase transition-all", activeTab === "scan" ? "bg-nexus-teal text-black shadow-neon-teal" : "text-white/40")}
               >
                 สแกนใบเสร็จ
               </button>
               <button 
                 onClick={() => setActiveTab("pending")}
-                className={cn("px-6 h-full rounded-full text-xs font-black uppercase transition-all", activeTab === "pending" ? "bg-nexus-blue text-white shadow-neon-blue" : "text-white/40")}
+                className={cn("px-6 h-full rounded-full text-sm font-medium uppercase transition-all", activeTab === "pending" ? "bg-nexus-blue text-white shadow-neon-blue" : "text-white/40")}
               >
                 รออนุมัติ (3)
               </button>
            </div>
 
            {activeTab === "scan" && (
-             <div className="space-y-6 animate-in slide-in-from-left duration-500">
+             <div className="space-y-3 animate-in slide-in-from-left duration-500">
                 <ExpenseScanner />
                 
-                <GlassCard className="p-6 bg-nexus-teal/5 border-nexus-teal/20">
+                <GlassCard className="p-4 bg-nexus-teal/5 border-nexus-teal/20">
                    <h4 className="tactical-label !text-nexus-teal mb-4 flex items-center gap-2">
                       <Sparkles size={16} />
                       AI Intelligence Note
                    </h4>
                    <p className="text-sm text-white/70 leading-relaxed italic">
-                     "ระบบจะพยายามเดารหัสโครงการ (Project ID) ให้อัตโนมัติจากตำแหน่ง GPS และตารางงานที่คุณลงทะเบียนไว้ เพื่อนำค่าใช้จ่ายไปตัดงบประมาณทันทีเมื่อมีการอนุมัติ"
+                     "ระบบจะพยายามเดารหัสโครงการ ให้อัตโนมัติจากตำแหน่ง GPS และตารางงานที่คุณลงทะเบียนไว้ เพื่อนำค่าใช้จ่ายไปตัดงบประมาณทันทีเมื่อมีการอนุมัติ"
                    </p>
                 </GlassCard>
              </div>
@@ -75,22 +75,22 @@ export default function ExpensesPage() {
         </div>
 
         {/* Status & Stats Sidebar */}
-        <div className="space-y-6">
-           <GlassCard className="p-6 space-y-6">
+        <div className="space-y-3">
+           <GlassCard className="p-4 space-y-3">
               <h4 className="tactical-label">My Expense Summary</h4>
-              <div className="space-y-4">
+              <div className="space-y-3">
                  <StatItem label="ยอดเงินที่รอรับคืน" value="฿4,250" color="text-nexus-teal" />
                  <StatItem label="โครงการที่ใช้งบเยอะสุด" value="PRJ-26-001" color="text-nexus-blue" />
                  <StatItem label="โควต้าเบิกรายเดือน" value="72%" color="text-white" />
               </div>
            </GlassCard>
 
-           <div className="p-6 rounded-3xl bg-warning/10 border border-warning/20 flex gap-4">
+           <div className="p-5 rounded-3xl bg-warning/10 border border-warning/20 flex gap-4">
               <AlertCircle className="text-warning shrink-0" size={24} />
               <div className="space-y-1">
-                 <p className="text-xs font-black text-warning uppercase">Compliance Check</p>
+                 <p className="text-sm font-medium text-warning uppercase">Compliance Check</p>
                  <p className="text-xs text-white/60 leading-relaxed">
-                   ใบเสร็จต้องมีความคมชัดและเห็นเลขผู้เสียภาษี 13 หลัก เพื่อใช้ในการขอคืนภาษีมูลค่าเพิ่ม (Input VAT)
+                   ใบเสร็จต้องมีความคมชัดและเห็นเลขผู้เสียภาษี 13 หลัก เพื่อใช้ในการขอคืนภาษีมูลค่าเพิ่ม
                  </p>
               </div>
            </div>
@@ -102,7 +102,7 @@ export default function ExpensesPage() {
 
 function PendingExpenseList() {
   return (
-    <div className="space-y-4 animate-in slide-in-from-bottom duration-500">
+    <div className="space-y-3 animate-in slide-in-from-bottom duration-500">
        <ExpenseItem 
          id="EXP-2604-0012" 
          merchant="Shell Thailand" 
@@ -130,13 +130,13 @@ function ExpenseItem({ id, merchant, amount, project, category }: { id: string, 
           </div>
           <div className="space-y-0.5">
              <p className="text-sm font-bold text-white">{merchant}</p>
-             <p className="text-[10px] text-white/30 uppercase font-black">{id} • {category}</p>
+             <p className="text-[12px] text-white/30 uppercase font-medium">{id} • {category}</p>
           </div>
        </div>
-       <div className="flex items-center gap-6">
+       <div className="flex items-center gap-5">
           <div className="text-right">
-             <p className="text-sm font-black text-white">฿{amount}</p>
-             <p className="text-[10px] text-nexus-blue font-black tracking-widest">{project}</p>
+             <p className="text-sm font-bold text-white">฿{amount}</p>
+             <p className="text-[12px] text-nexus-blue font-medium tracking-widest">{project}</p>
           </div>
           <div className="flex gap-2">
              <button className="p-2 text-white/10 hover:text-nexus-teal transition-colors">
@@ -155,7 +155,7 @@ function StatItem({ label, value, color }: { label: string, value: string, color
   return (
     <div className="flex justify-between items-center">
        <span className="text-xs text-white/30">{label}</span>
-       <span className={cn("text-sm font-black uppercase", color)}>{value}</span>
+       <span className={cn("text-sm font-bold uppercase", color)}>{value}</span>
     </div>
   );
 }

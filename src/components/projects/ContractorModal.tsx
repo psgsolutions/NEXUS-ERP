@@ -164,7 +164,7 @@ export function ContractorModal({ isOpen, onClose, onSave, initialData, showToas
 
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-[11px] font-black text-white/50 uppercase tracking-widest">ชื่อผู้ติดต่อหลัก (Contact Person)</label>
+                      <label className="text-[11px] font-black text-white/50 uppercase tracking-widest">ชื่อผู้ติดต่อหลัก</label>
                       <PillInput 
                         placeholder="ชื่อผู้ประสานงาน..." 
                         className="w-full bg-white/[0.02]" 
@@ -202,7 +202,7 @@ export function ContractorModal({ isOpen, onClose, onSave, initialData, showToas
                     <div className="text-center text-white/30 space-y-2">
                       <Briefcase size={32} className="mx-auto opacity-50" />
                       <p className="text-xs font-bold uppercase tracking-wider">ประวัติงานติดตั้ง</p>
-                      <p className="text-[10px]">ระบบจะดึงข้อมูลโครงการที่ทีมนี้รับผิดชอบมาแสดงอัตโนมัติ (Coming Soon)</p>
+                      <p className="text-[10px]">ระบบจะดึงข้อมูลโครงการที่ทีมนี้รับผิดชอบมาแสดงอัตโนมัติ</p>
                     </div>
                   </div>
                 </div>
@@ -301,9 +301,9 @@ export function ContractorModal({ isOpen, onClose, onSave, initialData, showToas
           <div className="p-6 border-t border-white/5 flex items-center justify-end gap-3 bg-zinc-900/60 shrink-0">
             <PillButton 
               type="button"
-              variant="glass"
+              variant="ghost"
               onClick={onClose} 
-              className="h-10 text-white/40 hover:text-white px-6 font-black uppercase"
+              className="h-10 hover: px-6 font-black uppercase"
             >
               ยกเลิก
             </PillButton>
@@ -311,7 +311,7 @@ export function ContractorModal({ isOpen, onClose, onSave, initialData, showToas
               type="button"
               disabled={isSubmitting} 
               onClick={handleCommit} 
-              className="h-10 px-8 bg-nexus-blue text-white shadow-[0_0_15px_rgba(37,99,235,0.3)] font-black uppercase"
+              className="h-10 px-8 bg-nexus-blue shadow-[0_0_15px_rgba(37,99,235,0.3)] font-black uppercase"
             >
               {isSubmitting ? (
                 <RefreshCw size={14} className="animate-spin" />

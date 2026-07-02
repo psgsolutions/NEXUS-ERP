@@ -14,7 +14,7 @@ export const analyzeInventoryTrends = async (data: any) => {
   return {
     recommendation: "แนะนำให้สั่งซื้อ Cisco Catalyst 9200L เพิ่ม 5 ตัว เนื่องจากมีแนวโน้มการใช้งานในโปรเจกต์เดือนหน้าสูงขึ้น 20%",
     confidence: 0.95,
-    reasoning: "วิเคราะห์จากประวัติการเบิกพัสดุ (Internal Issue) และ Sales Order ย้อนหลัง 3 เดือน"
+    reasoning: "วิเคราะห์จากประวัติการเบิกพัสดุ และ Sales Order ย้อนหลัง 3 เดือน"
   };
 };
 

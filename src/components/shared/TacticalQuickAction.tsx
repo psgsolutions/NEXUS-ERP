@@ -37,21 +37,21 @@ export function TacticalQuickAction() {
   const getContextActions = (): QuickAction[] => {
     if (pathname.includes("/inventory")) {
       return [
-        { label: "สแกนพัสดุ / ซีเรียล (SERIAL)", icon: <ScanBarcode size={18} />, action: () => console.log("Scan SN") },
-        { label: "บันทึกรับสินค้า (GOODS RECEIPT)", icon: <Truck size={18} />, action: () => console.log("Receive Item") },
+        { label: "สแกนพัสดุ / ซีเรียล", icon: <ScanBarcode size={18} />, action: () => console.log("Scan SN") },
+        { label: "บันทึกรับสินค้า", icon: <Truck size={18} />, action: () => console.log("Receive Item") },
         { label: "AI: พยากรณ์ความต้องการสต็อก", icon: <Sparkles size={18} />, action: () => console.log("AI Forecast"), isAI: true },
       ];
     }
     if (pathname.includes("/sales")) {
       return [
-        { label: "สร้างใบเสนอราคา (QUOTATION)", icon: <FileText size={18} />, action: () => console.log("New QT") },
-        { label: "เปิดจุดขายอัจฉริยะ (POS)", icon: <Receipt size={18} />, action: () => console.log("Open POS") },
+        { label: "สร้างใบเสนอราคา", icon: <FileText size={18} />, action: () => console.log("New QT") },
+        { label: "เปิดจุดขายอัจฉริยะ", icon: <Receipt size={18} />, action: () => console.log("Open POS") },
         { label: "AI: วิเคราะห์อัตรากำไร", icon: <Sparkles size={18} />, action: () => console.log("AI Margin"), isAI: true },
       ];
     }
     if (pathname.includes("/projects")) {
       return [
-        { label: "บันทึกใบงานบริการ (SERVICE REPORT)", icon: <PlusCircle size={18} />, action: () => console.log("New Report") },
+        { label: "บันทึกใบงานบริการ", icon: <PlusCircle size={18} />, action: () => console.log("New Report") },
         { label: "บันทึกความคืบหน้าโครงการ", icon: <Briefcase size={18} />, action: () => console.log("Update Milestone") },
         { label: "AI: ตรวจสอบความเสี่ยงโครงการ", icon: <ShieldCheck size={18} />, action: () => console.log("AI Risk Check"), isAI: true },
       ];

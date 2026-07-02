@@ -82,7 +82,7 @@ export default function ReportExporter({ template, data, dateRange, companyName 
   if (!isMounted || !isLibrariesLoaded) {
     return (
       <div className="flex gap-3">
-        <PillButton variant="glass" disabled className="text-white/20 h-9 rounded-full px-6">
+        <PillButton variant="glass" disabled className="h-9 rounded-full px-6">
           กำลังเตรียมระบบส่งออกรายงาน...
         </PillButton>
       </div>
@@ -101,9 +101,9 @@ export default function ReportExporter({ template, data, dateRange, companyName 
       const worksheetData = data.map((item, index) => {
         const row: Record<string, any> = {
           "ลำดับ (No.)": index + 1,
-          "รหัสเอกสาร (Doc ID)": item.id || item.submissionId || "-",
-          "โมดูล (Module)": item.module || template.module,
-          "วันที่สร้าง (Date)": item.createdAt ? new Date(item.createdAt.seconds * 1000).toLocaleDateString("th-TH") : "-"
+          "รหัสเอกสาร": item.id || item.submissionId || "-",
+          "โมดูล": item.module || template.module,
+          "วันที่สร้าง": item.createdAt ? new Date(item.createdAt.seconds * 1000).toLocaleDateString("th-TH") : "-"
         };
 
         // Add dynamic template fields values
@@ -130,7 +130,7 @@ export default function ReportExporter({ template, data, dateRange, companyName 
         });
 
         if (totalAmount > 0) {
-          row["ยอดรวมสุทธิ (Grand Total)"] = totalAmount;
+          row["ยอดรวมสุทธิ"] = totalAmount;
         }
 
         return row;
@@ -440,7 +440,7 @@ export default function ReportExporter({ template, data, dateRange, companyName 
         type="button"
         variant="glass" 
         onClick={handleExportExcel}
-        className="h-9 px-6 rounded-full font-black text-[11px] tracking-widest flex items-center gap-2 text-white/70 hover:text-white"
+        className="h-9 px-6 rounded-full font-black text-[11px] tracking-widest flex items-center gap-2 hover:"
       >
         <FileSpreadsheet size={16} className="text-nexus-blue animate-pulse-glow" />
         ดาวน์โหลด EXCEL (XLSX)

@@ -37,19 +37,25 @@ import {
   GlassCard,
   NexusSearchInput
 } from "@/components/ui/Base";
+import { DocumentFlowStepper } from "@/components/ui/DocumentFlowStepper";
+
 import { EmployeeModal } from "@/components/hr/EmployeeModal";
 import { AttendanceModal } from "@/components/hr/AttendanceModal";
 import { PayrollModal } from "@/components/hr/PayrollModal";
+import { getAuth } from "firebase/auth";
+import { nexusSequenceEngine } from "@/lib/sequence-engine";
 import { useAuth } from "@/context/AuthContext";
 import { auditService } from "@/services/audit.service";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase-client";
 import { collection, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { saveToFirestore } from "@/lib/firebaseUtils";
+import { SecureDeleteAction } from "@/components/ui/SecureDeleteAction";
 import Link from "next/link";
 import { useSystemDialog } from "@/context/DialogContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useRouter } from "next/navigation";
 
-type HRSubModule = "profiles" | "attendance" | "payroll";
+type HRSubModule = "profiles" | "attendance" | "payroll" | "expenses";
 
 export default function HRPage() {
   const { user, companyId } = useAuth();
@@ -62,12 +68,13 @@ export default function HRPage() {
   const { data: dbEmployees, loading: employeesLoading } = useRealtimeCollection<any>('employees');
   const { data: dbAttendance, loading: attendanceLoading } = useRealtimeCollection<any>('attendance');
   const { data: dbPayrolls, loading: payrollsLoading } = useRealtimeCollection<any>('payrolls');
+  const { data: dbExpenses, loading: expensesLoading } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/expenses` : 'expenses');
 
   const employeesList = dbEmployees.map(e => ({
-    id: e.id,
-    name: `${e.prefix === 'Mr.' ? 'นาย' : e.prefix === 'Mrs.' ? 'นาง' : 'คุณ'}${e.firstName || ''} ${e.lastName || ''}`,
-    role: e.position || 'Unknown',
-    dept: e.department || 'Unknown',
+    id: e.employeeId || e.id,
+    name: e.name || `${e.prefix === 'Mr.' ? 'นาย' : e.prefix === 'Mrs.' ? 'นาง' : e.prefix === 'Ms.' ? 'นางสาว' : 'คุณ'}${e.firstName || ''} ${e.lastName || ''}`.trim(),
+    role: e.position || e.role || 'Unknown',
+    dept: e.department || e.dept || 'Unknown',
     location: e.location || 'สำนักงาน',
     status: e.status || 'active'
   }));
@@ -87,6 +94,15 @@ export default function HRPage() {
     status: p.status || 'pending'
   }));
 
+  const expensesList = dbExpenses.map(e => ({
+    id: e.id,
+    date: e.date || '-',
+    employeeName: e.employeeName || e.requestedBy || 'Unknown',
+    description: e.description || '-',
+    amount: e.amount || 0,
+    status: e.status || 'pending_approval'
+  }));
+
   const filteredEmployees = employeesList.filter(e => 
     e.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     e.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -102,29 +118,35 @@ export default function HRPage() {
     p.period.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredExpenses = expensesList.filter(e => 
+    e.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    e.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
 
   const showToast = (message: string) => {
     showAlert(message, "System Notification", "info");
   };
 
   const tabs = [
-    { id: "profiles", label: "บุคลากร (PROFILES)", icon: <Users size={14} /> },
-    { id: "attendance", label: "ลงเวลาทำงาน (GPS)", icon: <MapPin size={14} /> },
-    { id: "payroll", label: "ระบบเงินเดือน (PAYROLL)", icon: <DollarSign size={14} /> },
+    { id: "profiles", label: "บุคลากร", icon: <Users size={14} /> },
+    { id: "attendance", label: "ลงเวลาทำงาน", icon: <MapPin size={14} /> },
+    { id: "payroll", label: "ระบบเงินเดือน", icon: <DollarSign size={14} /> },
+    { id: "expenses", label: "อนุมัติเบิกจ่าย", icon: <Wallet size={14} /> },
   ];
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
 
       {/* Compact Module Header — icon + title + inline metric chips on same plane */}
-      <header className="p-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-black/20 shrink-0">
+      <header className="p-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-5 bg-black/20 shrink-0">
         <div className="flex items-center gap-4 shrink-0">
           <div className="w-10 h-10 rounded-2xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
             <Users size={22} />
           </div>
           <div>
-            <h1 className="text-lg font-black text-white tracking-tight leading-none">ศูนย์บริหารบุคลากร</h1>
-            <p className="text-[10px] font-black text-white/30 uppercase mt-1.5 tracking-widest leading-none">Human Capital Management Hub</p>
+            <h1 className="text-lg font-bold text-white tracking-tight leading-none">ศูนย์บริหารบุคลากร</h1>
+            <p className="text-[11px] font-medium text-white/30 uppercase mt-1.5 tracking-widest leading-none">Human Capital Management Hub</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -133,8 +155,8 @@ export default function HRPage() {
               <Users size={18} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-[10px] font-black text-white/30 uppercase tracking-widest leading-none">พนักงานทั้งหมด</span>
-              <span className="text-[17px] font-black text-nexus-teal mt-1 mono-numbers leading-none">48 คน</span>
+              <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">พนักงานทั้งหมด</span>
+              <span className="text-[17px] font-bold text-nexus-teal mt-1 mono-numbers leading-none">48 คน</span>
             </div>
           </div>
           <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
@@ -142,8 +164,8 @@ export default function HRPage() {
               <CalendarCheck size={18} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-[10px] font-black text-white/30 uppercase tracking-widest leading-none">มาทำงานวันนี้</span>
-              <span className="text-[17px] font-black text-nexus-teal mt-1 mono-numbers leading-none">45 คน</span>
+              <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">มาทำงานวันนี้</span>
+              <span className="text-[17px] font-bold text-nexus-teal mt-1 mono-numbers leading-none">45 คน</span>
             </div>
           </div>
           <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
@@ -151,8 +173,8 @@ export default function HRPage() {
               <MapPin size={18} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-[10px] font-black text-white/30 uppercase tracking-widest leading-none">ทำงานหน้างาน</span>
-              <span className="text-[17px] font-black text-nexus-blue mt-1 mono-numbers leading-none">12 คน</span>
+              <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">ทำงานหน้างาน</span>
+              <span className="text-[17px] font-bold text-nexus-blue mt-1 mono-numbers leading-none">12 คน</span>
             </div>
           </div>
           <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[110px] transition-all hover:border-white/20 hover:bg-white/[0.03]">
@@ -160,36 +182,27 @@ export default function HRPage() {
               <Clock size={18} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-[10px] font-black text-white/30 uppercase tracking-widest leading-none">เข้าสาย</span>
-              <span className="text-[17px] font-black text-white mt-1 mono-numbers leading-none">0 คน</span>
+              <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">เข้าสาย</span>
+              <span className="text-[17px] font-bold text-white mt-1 mono-numbers leading-none">0 คน</span>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Tab Navigation */}
-      <section className="px-6 py-4 bg-black/10 border-b border-white/5 shrink-0">
-        <PillTabs 
-          tabs={tabs} 
-          activeTab={activeTab} 
-          onTabChange={(id: any) => setActiveTab(id)} 
-        />
-      </section>
-
       {/* Main Content Scroll Area */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-      <div className="p-6 space-y-6 max-w-[1800px] mx-auto">
+      <div className="p-5 space-y-3 max-w-[1800px] mx-auto">
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <div className="lg:col-span-3 space-y-10">
+      <div className="flex flex-col lg:flex-row items-start gap-4">
+        <div className="flex-1 w-full space-y-10">
           
-          <div className="space-y-6">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                  <Activity className="text-nexus-teal" size={24} />
                  <div className="space-y-0.5">
-                    <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">ทะเบียนรายชื่อบุคลากร (2026-ปัจจุบัน)</p>
-                    <h2 className="text-xl font-black text-white uppercase">ทะเบียนข้อมูล</h2>
+                    <p className="text-[11px] font-medium text-white/20 uppercase tracking-widest">ทะเบียนรายชื่อบุคลากร (2026-ปัจจุบัน)</p>
+                    <h2 className="text-xl font-bold text-white uppercase">ทะเบียนข้อมูล</h2>
                  </div>
               </div>
               <div className="flex gap-3">
@@ -203,12 +216,6 @@ export default function HRPage() {
                        else if (activeTab === "attendance") setActiveModal("clock");
                        else if (activeTab === "payroll") setActiveModal("payroll");
                     }} 
-                    className={cn(
-                       "h-9 px-6 font-black uppercase tracking-[0.15em] transition-all active:scale-95 flex items-center gap-3 rounded-full", 
-                       activeTab === "profiles" && "shadow-neon-blue bg-nexus-blue border-nexus-blue text-white",
-                       activeTab === "attendance" && "shadow-neon-teal bg-nexus-teal border-nexus-teal text-black",
-                       activeTab === "payroll" && "shadow-neon-purple bg-purple-500 border-purple-500 text-white"
-                    )}
                  >
                     {activeTab === "profiles" ? <Plus size={18} /> : 
                      activeTab === "attendance" ? <MapIcon size={18} /> : 
@@ -216,6 +223,7 @@ export default function HRPage() {
                     {
                        activeTab === "profiles" ? "เพิ่มพนักงานใหม่" : 
                        activeTab === "attendance" ? "บันทึกเวลาเข้า/ออก" : 
+                       activeTab === "expenses" ? "บันทึกค่าใช้จ่ายใหม่" :
                        "ประมวลผลเงินเดือน"
                     }
                  </PillButton>
@@ -225,7 +233,7 @@ export default function HRPage() {
             {/* Tactical Command Bar */}
             <div className="flex flex-col md:flex-row items-center gap-4 bg-white/[0.01] p-1.5 rounded-full border border-white/5 backdrop-blur-md">
                <NexusSearchInput 
-                 placeholder="ค้นหาพนักงาน, ตำแหน่ง, แผนก หรือรหัส EMP..." 
+                 placeholder="พิมพ์เพื่อค้นหา..." 
                  value={searchQuery}
                  onChange={(e) => setSearchQuery(e.target.value)}
                  className="flex-1"
@@ -243,14 +251,14 @@ export default function HRPage() {
               <div className="overflow-x-auto custom-scrollbar flex-1 w-full p-2">
                 {activeTab === "profiles" && (
                   <div className="animate-in fade-in duration-500">
-                    <NexusTable headers={["ID / ชื่อพนักงาน", "ตำแหน่ง", "แผนก", "การเข้างาน", "สถานะ"]}>
+                    <NexusTable headers={["รหัสพนักงาน", "ตำแหน่ง", "แผนก", "สถานที่ทำงาน", "สถานะ", "จัดการ"]}>
                       {employeesLoading ? (
                         <NexusTableRow>
-                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
+                          <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
                         </NexusTableRow>
                       ) : filteredEmployees.length === 0 ? (
                         <NexusTableRow>
-                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">ไม่พบข้อมูลในระบบ</NexusTableCell>
+                          <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">ไม่พบข้อมูลในระบบ</NexusTableCell>
                         </NexusTableRow>
                       ) : filteredEmployees.map(e => (
                         <EmployeeRow key={e.id} {...e} />
@@ -294,6 +302,24 @@ export default function HRPage() {
                     </NexusTable>
                   </div>
                 )}
+
+                {activeTab === "expenses" && (
+                  <div className="animate-in fade-in duration-500">
+                    <NexusTable headers={["วันที่", "ผู้เบิก / พนักงาน", "รายละเอียด", "จำนวนเงิน", "สถานะ", "จัดการ"]}>
+                      {expensesLoading ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredExpenses.length === 0 ? (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">ไม่มีรายการรออนุมัติ</NexusTableCell>
+                        </NexusTableRow>
+                      ) : filteredExpenses.map((e, i) => (
+                        <ExpenseRow key={i} {...e} onApprove={() => showToast(`อนุมัติรายการ ${e.description} แล้ว (ข้อมูลไหลไปตั้งหนี้ AP)`)} />
+                      ))}
+                    </NexusTable>
+                  </div>
+                )}
               </div>
 
               <div className="p-4 border-t border-white/5 bg-black/10 flex items-center justify-between text-xs text-white/30 font-bold">
@@ -306,19 +332,19 @@ export default function HRPage() {
         </div>
 
         {/* Right Sidebar Status */}
-        <div className="space-y-6">
-           <GlassCard className="p-6 border-white/10 bg-nexus-teal/5">
-              <h4 className="text-[11px] font-black text-nexus-teal uppercase tracking-widest mb-6">ดัชนีสุขภาพบุคลากร</h4>
-              <div className="space-y-6">
+        <div className="space-y-3">
+           <GlassCard className="p-4 border-white/10 bg-nexus-teal/5">
+              <h4 className="text-[12px] font-medium text-nexus-teal uppercase tracking-widest mb-6">ดัชนีสุขภาพบุคลากร</h4>
+              <div className="space-y-3">
                  <HRMetricItem label="ความพึงพอใจพนักงาน" value="92%" />
                  <HRMetricItem label="การพัฒนาทักษะ" value="78%" />
                  <HRMetricItem label="อัตราการลาออก" value="2.4%" />
               </div>
            </GlassCard>
 
-           <GlassCard className="p-6 border-white/10">
-              <h4 className="text-[11px] font-black text-white/20 uppercase tracking-widest mb-6">บันทึกเวลาเข้างานล่าสุด</h4>
-              <div className="space-y-4">
+           <GlassCard className="p-4 border-white/10">
+              <h4 className="text-[12px] font-medium text-white/20 uppercase tracking-widest mb-6">บันทึกเวลาเข้างานล่าสุด</h4>
+              <div className="space-y-3">
                  <AttendanceFeedItem name="Somchai R." location="ศูนย์ประชุมฯ" time="08:15 AM" />
                  <AttendanceFeedItem name="Kriangkrai M." location="อาคาร PTT" time="08:42 AM" />
               </div>
@@ -337,13 +363,14 @@ export default function HRPage() {
             showToast("ไม่พบข้อมูลผู้ใช้งาน หรือเซสชันหมดอายุ");
             return;
           }
-          const empId = `EMP-${Date.now().toString().slice(-4)}`;
+          const empId = await nexusSequenceEngine("EMP", companyId);
           
           try {
             const empRef = doc(collection(db, "employees"), empId);
             const saveOp = async () => {
               await setDoc(empRef, {
                 ...data,
+                employeeId: empId,
                 companyId,
                 status: "active",
                 createdAt: serverTimestamp()
@@ -428,24 +455,30 @@ export default function HRPage() {
 }
 
 function EmployeeRow({ id, name, role, dept, location, status }: { id: string, name: string, role: string, dept: string, location: string, status: "active" | "danger" }) {
+  const router = useRouter();
   return (
-    <NexusTableRow>
+    <NexusTableRow onClick={() => router.push(`/hr/employees/${id}`)}>
       <NexusTableCell className="w-[300px]">
-        <Link href={`/hr/employees/${id}`} className="block">
-           <p className="font-mono text-[10px] text-nexus-blue font-black tracking-tighter">{id}</p>
-           <p className="font-black text-white/80 group-hover:text-white transition-colors">{name}</p>
-        </Link>
+        <div className="block">
+           <p className="font-mono text-[12px] text-nexus-blue font-medium tracking-tighter">{id}</p>
+           <p className="font-bold text-white/80 group-hover:text-white transition-colors">{name}</p>
+        </div>
       </NexusTableCell>
-      <NexusTableCell className="w-[180px] text-[11px] font-black text-white/40 uppercase tracking-widest">{role}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-[11px] font-black text-white/40 uppercase tracking-widest">{dept}</NexusTableCell>
+      <NexusTableCell className="w-[180px] text-[12px] font-medium text-white/40 uppercase tracking-widest">{role}</NexusTableCell>
+      <NexusTableCell className="w-[150px] text-[12px] font-medium text-white/40 uppercase tracking-widest">{dept}</NexusTableCell>
       <NexusTableCell>
          <div className="flex items-center gap-2">
             <MapIcon size={12} className="text-nexus-blue" />
-            <span className="text-[10px] font-black text-white/60 uppercase">{location}</span>
+            <span className="text-[11px] font-medium text-white/60 uppercase">{location}</span>
          </div>
       </NexusTableCell>
-      <NexusTableCell className="w-[180px]">
+      <NexusTableCell className="text-center w-[180px]">
         <StatusBadge status={status} label="ปฏิบัติงาน" />
+      </NexusTableCell>
+      <NexusTableCell className="w-[80px]">
+         <div onClick={(e) => e.stopPropagation()}>
+            <SecureDeleteAction collectionName="employees" documentId={id} displayName={name} compact />
+         </div>
       </NexusTableCell>
     </NexusTableRow>
   );
@@ -454,11 +487,13 @@ function EmployeeRow({ id, name, role, dept, location, status }: { id: string, n
 function AttendanceRow({ name, time, loc, type, status }: { name: string, time: string, loc: string, type: string, status: any }) {
   return (
     <NexusTableRow>
-      <NexusTableCell className="font-black text-white">{name}</NexusTableCell>
-      <NexusTableCell className="w-[180px] text-[11px] font-black text-white/40 uppercase tracking-widest">{time}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-[11px] font-black text-nexus-blue uppercase tracking-widest">{loc}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-[11px] font-black text-nexus-teal uppercase tracking-widest">{type}</NexusTableCell>
-      <NexusTableCell className="w-[180px]"><StatusBadge status={status} label="บันทึกแล้ว" /></NexusTableCell>
+      <NexusTableCell className="font-bold text-white">{name}</NexusTableCell>
+      <NexusTableCell className="w-[180px] text-[12px] font-medium text-white/40 uppercase tracking-widest">{time}</NexusTableCell>
+      <NexusTableCell className="w-[150px] text-[12px] font-medium text-nexus-blue uppercase tracking-widest">{loc}</NexusTableCell>
+      <NexusTableCell className="w-[150px] text-[12px] font-medium text-nexus-teal uppercase tracking-widest">{type}</NexusTableCell>
+      <NexusTableCell className="text-center w-[180px]">
+        <StatusBadge status={status} label="บันทึกแล้ว" />
+      </NexusTableCell>
     </NexusTableRow>
   );
 }
@@ -466,10 +501,12 @@ function AttendanceRow({ name, time, loc, type, status }: { name: string, time: 
 function PayrollRow({ period, count, total, status }: { period: string, count: number, total: string, status: any }) {
   return (
     <NexusTableRow>
-      <NexusTableCell className="font-black text-white">{period}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-[11px] font-black text-white/40 uppercase tracking-widest">{count} คน</NexusTableCell>
-      <NexusTableCell className="w-[180px] text-right font-black text-nexus-teal mono-numbers">{total}</NexusTableCell>
-      <NexusTableCell className="w-[180px]"><StatusBadge status={status} label={status === "active" ? "โอนแล้ว" : "รอดำเนินการ"} /></NexusTableCell>
+      <NexusTableCell className="font-bold text-white">{period}</NexusTableCell>
+      <NexusTableCell className="w-[150px] text-[12px] font-medium text-white/40 uppercase tracking-widest">{count} คน</NexusTableCell>
+      <NexusTableCell className="w-[180px] text-right font-bold text-nexus-teal mono-numbers">{total}</NexusTableCell>
+      <NexusTableCell className="text-center w-[180px]">
+        <StatusBadge status={status} label={status === "active" ? "โอนแล้ว" : "รอดำเนินการ"} />
+      </NexusTableCell>
       <NexusTableCell className="w-[120px]"><PillButton variant="glass" className="px-4 text-[10px]">ดาวน์โหลด</PillButton></NexusTableCell>
     </NexusTableRow>
   );
@@ -478,7 +515,7 @@ function PayrollRow({ period, count, total, status }: { period: string, count: n
 function HRMetricItem({ label, value }: { label: string, value: string }) {
   return (
     <div className="space-y-2">
-       <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+       <div className="flex justify-between items-center text-[11px] font-medium uppercase tracking-widest">
           <span className="text-white/30">{label}</span>
           <span className="text-white/80">{value}</span>
        </div>
@@ -496,9 +533,32 @@ function AttendanceFeedItem({ name, location, time }: { name: string, location: 
           <Clock size={16} />
        </div>
        <div className="flex-1 min-w-0">
-          <p className="text-xs font-black text-white truncate">{name}</p>
-          <p className="text-[10px] text-white/30 uppercase font-black tracking-[0.1em] mt-0.5">{location} • {time}</p>
+          <p className="text-sm font-medium text-white truncate">{name}</p>
+          <p className="text-[12px] text-white/30 uppercase font-medium tracking-[0.1em] mt-0.5">{location} • {time}</p>
        </div>
     </div>
+  );
+}
+
+function ExpenseRow({ id, date, employeeName, description, amount, status, onApprove }: any) {
+  const isPending = status === 'pending_approval';
+  
+  return (
+    <NexusTableRow>
+      <NexusTableCell className="w-[120px] font-mono text-[11px] text-white/50">{date}</NexusTableCell>
+      <NexusTableCell className="font-bold text-white">{employeeName}</NexusTableCell>
+      <NexusTableCell className="text-[12px] text-white/70">{description}</NexusTableCell>
+      <NexusTableCell className="w-[150px] text-right font-bold text-warning mono-numbers">฿{amount.toLocaleString()}</NexusTableCell>
+      <NexusTableCell className="text-center w-[180px]">
+        <StatusBadge status={isPending ? "pending" : "active"} label={isPending ? "รออนุมัติ" : "อนุมัติแล้ว"} />
+      </NexusTableCell>
+      <NexusTableCell className="w-[150px]">
+        {isPending && (
+          <div className="flex gap-2">
+            <PillButton className="h-7 px-3 text-[10px] bg-nexus-teal shadow-neon-teal" onClick={onApprove}>Approve</PillButton>
+          </div>
+        )}
+      </NexusTableCell>
+    </NexusTableRow>
   );
 }

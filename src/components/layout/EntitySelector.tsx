@@ -18,7 +18,7 @@ export function EntitySelector() {
     <div className="relative">
        <div 
           onClick={() => setIsOpen(!isOpen)}
-          className="mb-8 p-5 rounded-xl bg-white/[0.03] border border-white/10 relative group cursor-pointer hover:bg-white/[0.06] transition-all overflow-hidden"
+          className="mb-2 p-3 rounded-xl bg-white/[0.03] border border-white/10 relative group cursor-pointer hover:bg-white/[0.06] transition-all overflow-hidden"
        >
           <div className="flex items-center gap-4 relative z-10">
              <div className={cn("w-10 h-10 rounded-xl bg-opacity-10 flex items-center justify-center border border-opacity-20 flex-shrink-0", 
@@ -27,8 +27,8 @@ export function EntitySelector() {
                 {selectedEntity.id === "gl" ? <Globe size={20} /> : <ShieldCheck size={20} />}
              </div>
              <div className="flex-1 min-w-0 text-left">
-                <p className="text-[13px] font-bold text-white/20 uppercase tracking-widest mb-1">{selectedEntity.type}</p>
-                <p className="text-sm font-black text-white truncate uppercase leading-tight">{selectedEntity.name}</p>
+                <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1">{selectedEntity.type}</p>
+                <p className="text-[13px] font-black text-white uppercase leading-tight break-words">{selectedEntity.name}</p>
              </div>
              <ChevronRight size={14} className={cn("text-white/20 group-hover:text-white transition-transform", isOpen && "rotate-90")} />
           </div>

@@ -1,4 +1,4 @@
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase-client";
 import { collection, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { JournalEntry } from "@/types/database";
 
@@ -20,8 +20,8 @@ export const TaxEngine = {
     );
 
     const snapshot = await getDocs(q);
-    const inputVatTransactions = [];
-    const outputVatTransactions = [];
+    const inputVatTransactions: any[] = [];
+    const outputVatTransactions: any[] = [];
     let totalInputVat = 0;
     let totalOutputVat = 0;
 

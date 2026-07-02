@@ -4,10 +4,14 @@
 import React, { useState } from "react";
 import { 
   DollarSign, 
+  BadgeDollarSign,
   Package, 
+  Warehouse,
   Briefcase, 
+  FolderKanban,
   AlertTriangle,
   Plus,
+  ShoppingBasket,
   TrendingUp,
   Activity,
   CheckCircle2,
@@ -19,6 +23,7 @@ import {
   ArrowUpRight,
   Target,
   Users,
+  UsersRound,
   MessageSquare,
   ShieldCheck,
   Search,
@@ -48,6 +53,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<"standard" | "quantum" | "macro" | "temporal">("standard");
   const [neuralEnabled, setNeuralEnabled] = useState(false);
+  const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
 
   return (
     <div className={cn(
@@ -56,18 +62,18 @@ export default function DashboardPage() {
     )}>
       
       {/* --- TOP COMMAND HEADER --- */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
-        <div className="space-y-6">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
+        <div className="space-y-3">
           <div className="flex flex-wrap gap-3">
             <SystemHealthIndicator />
-            <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-white/40 font-black uppercase flex items-center gap-2 tracking-widest">
+            <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[12px] text-white/40 font-medium uppercase flex items-center gap-2 tracking-widest">
               <div className="w-1.5 h-1.5 rounded-full bg-nexus-teal shadow-neon-teal animate-pulse" />
               โหนด: NEXUS-BKK-GLOBAL
             </div>
             <div className="flex gap-2">
                <div 
                   onClick={() => setViewMode(viewMode === "standard" ? "quantum" : "standard")}
-                  className={cn("px-4 py-1.5 rounded-full border text-[10px] font-black uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
+                  className={cn("px-4 py-1.5 rounded-full border text-[11px] font-medium uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
                      viewMode === "quantum" ? "bg-warning/20 border-warning text-warning shadow-neon-warning" : "bg-nexus-blue/10 border-nexus-blue/20 text-nexus-blue"
                   )}
                >
@@ -76,7 +82,7 @@ export default function DashboardPage() {
                </div>
                <div 
                   onClick={() => setViewMode(viewMode === "macro" ? "standard" : "macro")}
-                  className={cn("px-4 py-1.5 rounded-full border text-[10px] font-black uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
+                  className={cn("px-4 py-1.5 rounded-full border text-[11px] font-medium uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
                      viewMode === "macro" ? "bg-nexus-blue/20 border-nexus-blue text-nexus-blue shadow-neon-blue" : "bg-white/5 border-white/10 text-white/40"
                   )}
                >
@@ -85,7 +91,7 @@ export default function DashboardPage() {
                </div>
                <div 
                   onClick={() => setViewMode(viewMode === "temporal" ? "standard" : "temporal")}
-                  className={cn("px-4 py-1.5 rounded-full border text-[10px] font-black uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
+                  className={cn("px-4 py-1.5 rounded-full border text-[11px] font-medium uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
                      viewMode === "temporal" ? "bg-nexus-teal/20 border-nexus-teal text-nexus-teal shadow-neon-teal" : "bg-white/5 border-white/10 text-white/40"
                   )}
                >
@@ -94,7 +100,7 @@ export default function DashboardPage() {
                </div>
                <div 
                   onClick={() => setNeuralEnabled(!neuralEnabled)}
-                  className={cn("px-4 py-1.5 rounded-full border text-[10px] font-black uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
+                  className={cn("px-4 py-1.5 rounded-full border text-[11px] font-medium uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
                      neuralEnabled ? "bg-danger/20 border-danger text-danger shadow-neon-danger" : "bg-white/5 border-white/10 text-white/40"
                   )}
                >
@@ -103,27 +109,67 @@ export default function DashboardPage() {
                </div>
             </div>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-5">
             <div className="w-14 h-14 bg-nexus-teal rounded-xl flex items-center justify-center shadow-neon-teal">
               <Zap size={28} className="text-black fill-current drop-shadow-md" />
             </div>
             <div>
-              <p className="text-[13px] font-bold text-white/20 uppercase tracking-[0.2em] mb-1 ml-1" title="หน้าหลักควบคุมการปฏิบัติงานรวม">หน้าแรก</p>
-              <h1 className="text-3xl font-black text-white tracking-tighter leading-none uppercase">ภาพรวมระบบ</h1>
+              <p className="text-[14px] font-medium text-white/20 uppercase tracking-[0.2em] mb-1 ml-1" title="หน้าหลักควบคุมการปฏิบัติงานรวม">หน้าแรก</p>
+              <h1 className="text-3xl font-bold text-white tracking-tighter leading-none uppercase">ภาพรวมระบบ</h1>
             </div>
           </div>
         </div>
         
         <div className="flex items-center gap-4">
             <NexusSearchInput 
-              placeholder="ค้นหาข้อมูล หรือสั่งการ..." 
+              placeholder="พิมพ์เพื่อค้นหา..." 
               className="w-80 hidden xl:block"
               kbd="CTRL+K"
             />
-          <PillButton className="px-8 shadow-neon-teal">
-            <Plus size={18} />
-            สร้างรายการใหม่
-          </PillButton>
+          <div className="relative">
+            <PillButton 
+              className="px-8 shadow-neon-teal" 
+              onClick={() => setIsCreateMenuOpen(!isCreateMenuOpen)}
+            >
+              <Plus size={18} className={cn("transition-transform", isCreateMenuOpen && "rotate-45")} />
+              สร้างรายการใหม่
+            </PillButton>
+            
+            {isCreateMenuOpen && (
+              <div className="absolute top-full right-0 mt-3 w-56 bg-[#0a0a0c]/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in slide-in-from-top-2 duration-200">
+                <div className="p-2 space-y-1">
+                  <div 
+                    onClick={() => router.push('/projects?action=new')}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer text-white/70 hover:text-white transition-colors group"
+                  >
+                    <FolderKanban size={16} className="group-hover:text-nexus-blue" />
+                    <span className="text-sm font-bold uppercase tracking-widest">โครงการใหม่</span>
+                  </div>
+                  <div 
+                    onClick={() => router.push('/sales?action=new-quotation')}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer text-white/70 hover:text-white transition-colors group"
+                  >
+                    <BadgeDollarSign size={16} className="group-hover:text-nexus-teal" />
+                    <span className="text-sm font-bold uppercase tracking-widest">ใบเสนอราคา</span>
+                  </div>
+                  <div 
+                    onClick={() => router.push('/procurement?action=new')}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer text-white/70 hover:text-white transition-colors group"
+                  >
+                    <ShoppingBasket size={16} className="group-hover:text-warning" />
+                    <span className="text-sm font-bold uppercase tracking-widest">ใบสั่งซื้อ</span>
+                  </div>
+                  <div 
+                    onClick={() => router.push('/sales?action=new-customer')}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer text-white/70 hover:text-white transition-colors group"
+                  >
+                    <UsersRound size={16} className="group-hover:text-nexus-teal" />
+                    <span className="text-sm font-bold uppercase tracking-widest">เพิ่มลูกค้าใหม่</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -149,13 +195,13 @@ export default function DashboardPage() {
       )}
 
       {/* --- TOP METRICS & QUICK ACTIONS --- */}
-      <div className="flex flex-col 2xl:flex-row justify-between w-full gap-6">
+      <div className="flex flex-col 2xl:flex-row justify-between w-full gap-5">
         
         {/* HERO METRICS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
           <div className="w-full">
             <MasterMetricCard 
-              icon={<DollarSign size={24} />} 
+              icon={<BadgeDollarSign size={24} />} 
               label="รายได้เดือนนี้" 
               value="฿2.45M" 
               color="text-nexus-teal" 
@@ -177,7 +223,7 @@ export default function DashboardPage() {
           </div>
           <div className="w-full">
             <MasterMetricCard 
-              icon={<Briefcase size={24} />} 
+              icon={<FolderKanban size={24} />} 
               label="โครงการ" 
               value="12 งาน" 
               color="text-white" 
@@ -200,34 +246,34 @@ export default function DashboardPage() {
         {/* QUICK ACTIONS */}
         <div className="grid grid-cols-4 gap-3 xl:flex xl:flex-nowrap xl:w-auto">
            <div className="w-full xl:w-[110px]">
-             <QuickActionCard icon={<DollarSign size={16} />} label="เสนอราคา" color="bg-nexus-teal" link="/sales?action=new-quotation" title="สร้างเอกสารใบเสนอราคาใหม่" />
+             <QuickActionCard icon={<BadgeDollarSign size={16} />} label="เสนอราคา" color="bg-nexus-teal" link="/sales?action=new-quotation" title="สร้างเอกสารใบเสนอราคาใหม่" />
            </div>
            <div className="w-full xl:w-[110px]">
-             <QuickActionCard icon={<Package size={16} />} label="คลังสินค้า" color="bg-nexus-blue" link="/inventory" title="ตรวจสอบและบริหารพัสดุ" />
+             <QuickActionCard icon={<Warehouse size={16} />} label="คลังสินค้า" color="bg-nexus-blue" link="/inventory" title="ตรวจสอบและบริหารพัสดุ" />
            </div>
            <div className="w-full xl:w-[110px]">
-             <QuickActionCard icon={<Users size={16} />} label="ลูกค้า" color="bg-white/5" link="/sales" title="ฐานข้อมูลและประวัติลูกค้า" />
+             <QuickActionCard icon={<UsersRound size={16} />} label="ลูกค้า" color="bg-white/5" link="/sales" title="ฐานข้อมูลและประวัติลูกค้า" />
            </div>
            <div className="w-full xl:w-[110px]">
-             <QuickActionCard icon={<Plus size={16} />} label="สั่งซื้อ" color="bg-white/5" link="/procurement" title="สร้างเอกสารใบสั่งซื้อ (PO)" />
+             <QuickActionCard icon={<ShoppingBasket size={16} />} label="สั่งซื้อ" color="bg-white/5" link="/procurement" title="สร้างเอกสารใบสั่งซื้อ" />
            </div>
         </div>
       </div>
 
       {/* --- MAIN OPERATIONAL LAYER --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         
         {/* LEFT: PERFORMANCE & GRAPHS */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-8 space-y-3">
           
           {/* AI Briefing Bar */}
-          <div className="bg-nexus-teal/5 border border-nexus-teal/20 rounded-xl p-6 flex items-center gap-6 animate-shimmer relative overflow-hidden group">
+          <div className="bg-nexus-teal/5 border border-nexus-teal/20 rounded-xl p-6 flex items-center gap-5 animate-shimmer relative overflow-hidden group">
              <div className="w-14 h-14 rounded-2xl bg-nexus-teal/20 flex items-center justify-center text-nexus-teal border border-nexus-teal/30 shadow-neon-teal">
                 <Sparkles size={28} className="animate-pulse" />
              </div>
              <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                   <h3 className="text-[13px] font-bold text-nexus-teal uppercase tracking-[0.2em]">การวิเคราะห์สถานการณ์โดย AI (Strategic Insights)</h3>
+                   <h3 className="text-[14px] font-medium text-nexus-teal uppercase tracking-[0.2em]">การวิเคราะห์สถานการณ์โดย AI</h3>
                    <div className="w-1 h-1 rounded-full bg-nexus-teal animate-ping" />
                 </div>
                 <p className="text-base font-bold text-white leading-relaxed">
@@ -239,23 +285,23 @@ export default function DashboardPage() {
           </div>
 
           {/* Revenue Intelligence Graph */}
-          <GlassCard className="p-8 h-[420px] relative overflow-hidden group border-white/5 rounded-2xl">
+          <GlassCard className="p-4 h-[420px] relative overflow-hidden group border-white/5 rounded-2xl">
             <div className="flex items-center justify-between mb-10">
                <div className="space-y-1">
-                  <h3 className="text-xs font-black text-white uppercase flex items-center gap-2 tracking-[0.2em]">
+                  <h3 className="text-sm font-medium text-white uppercase flex items-center gap-2 tracking-[0.2em]">
                      <Activity size={16} className="text-nexus-teal animate-pulse" />
                      การวิเคราะห์และพยากรณ์ข้อมูลธุรกิจ
                   </h3>
-                  <p className="text-xs text-white/20 uppercase font-black tracking-widest mt-2">การวิเคราะห์การเติบโตของรายได้ (Q2 2026)</p>
+                  <p className="text-sm text-white/20 uppercase font-medium tracking-widest mt-2">การวิเคราะห์การเติบโตของรายได้ (Q2 2026)</p>
                </div>
-               <div className="flex gap-6">
+               <div className="flex gap-5">
                   <div className="flex items-center gap-3">
                      <div className="w-2.5 h-2.5 rounded-full bg-nexus-teal shadow-neon-teal" />
-                     <span className="text-[13px] font-bold text-white/40 uppercase tracking-widest">เกิดขึ้นจริง</span>
+                     <span className="text-[14px] font-medium text-white/40 uppercase tracking-widest">เกิดขึ้นจริง</span>
                   </div>
                   <div className="flex items-center gap-3">
                      <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
-                     <span className="text-[13px] font-bold text-white/40 uppercase tracking-widest">เป้าหมาย</span>
+                     <span className="text-[14px] font-medium text-white/40 uppercase tracking-widest">เป้าหมาย</span>
                   </div>
                </div>
             </div>
@@ -288,7 +334,7 @@ export default function DashboardPage() {
                </svg>
             </div>
             
-            <div className="absolute inset-x-10 bottom-10 flex justify-between items-end text-[13px] font-bold text-white/10 uppercase tracking-[0.4em] border-t border-white/5 pt-6">
+            <div className="absolute inset-x-10 bottom-10 flex justify-between items-end text-[14px] font-medium text-white/10 uppercase tracking-[0.4em] border-t border-white/5 pt-6">
                <span>สัปดาห์ 1</span>
                <span>สัปดาห์ 2</span>
                <span>สัปดาห์ 3</span>
@@ -298,36 +344,36 @@ export default function DashboardPage() {
           </GlassCard>
 
           {/* Bottom Operational Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <GlassCard className="p-6 border-white/5 bg-[#0a0a0c]/40 rounded-2xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+             <GlassCard className="p-4 border-white/5 bg-[#0a0a0c]/40 rounded-2xl">
                 <div className="flex items-center justify-between mb-8">
-                   <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-3">
+                   <h3 className="text-sm font-medium text-white uppercase tracking-widest flex items-center gap-3">
                       <Briefcase size={16} className="text-nexus-blue" />
                       ความคืบหน้าโครงการติดตั้ง
                    </h3>
-                   <span className="text-[13px] font-bold text-white/20 uppercase tracking-widest">งานที่ดำเนินการอยู่</span>
+                   <span className="text-[14px] font-medium text-white/20 uppercase tracking-widest">งานที่ดำเนินการอยู่</span>
                 </div>
-                <div className="space-y-6">
+                <div className="space-y-3">
                    <ProjectProgressRow name="ติดตั้ง LED Wall - ศูนย์ประชุม" progress={75} id="PRJ-26-001" status="กำลังดำเนินการ" />
                    <ProjectProgressRow name="วางระบบ Network - PSG HQ" progress={40} id="PRJ-26-003" status="ล่าช้ากว่าแผน" isRisk />
                    <ProjectProgressRow name="MA Service - PTT" progress={100} id="SRV-26-012" status="เสร็จสมบูรณ์" />
                 </div>
              </GlassCard>
 
-             <GlassCard className="p-6 border-white/5 bg-[#0a0a0c]/40 rounded-2xl">
+             <GlassCard className="p-4 border-white/5 bg-[#0a0a0c]/40 rounded-2xl">
                 <div className="flex items-center justify-between mb-8">
-                   <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-3">
+                   <h3 className="text-sm font-medium text-white uppercase tracking-widest flex items-center gap-3">
                       <Package size={16} className="text-nexus-teal" />
                       การติดตามพัสดุและสินค้าคงคลัง
                    </h3>
-                   <span className="text-[13px] font-bold text-white/20 uppercase tracking-widest">สต็อกวิกฤต</span>
+                   <span className="text-[14px] font-medium text-white/20 uppercase tracking-widest">สต็อกวิกฤต</span>
                 </div>
                 <div className="space-y-5">
                    <StockAlertRow item="Aruba AP-505" stock={2} min={10} trend="down" />
                    <StockAlertRow item="Cat6 Cable 305m" stock={5} min={20} trend="down" />
                    <StockAlertRow item="Cisco C9200L" stock={1} min={2} trend="stable" />
                 </div>
-                <PillButton variant="glass" className="w-full mt-8 border-white/5 hover:bg-white/5 uppercase text-[10px] tracking-widest">
+                <PillButton variant="glass" className="w-full mt-8 border-white/5 hover: uppercase text-[10px] tracking-widest">
                    ดูสต็อกทั้งหมด
                    <ChevronRight size={14} className="ml-2" />
                 </PillButton>
@@ -336,11 +382,11 @@ export default function DashboardPage() {
         </div>
 
         {/* RIGHT: TACTICAL SIDEBAR */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="lg:col-span-4 space-y-3">
            {/* System Activity Feed (Moved up due to Quick Operations relocation) */}
            <GlassCard className="border-white/10 flex flex-col rounded-2xl overflow-hidden">
-              <div className="p-6 border-b border-white/5 flex flex-wrap items-center justify-between bg-white/[0.02] gap-4">
-                 <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-3 min-w-0">
+              <div className="p-5 border-b border-white/5 flex flex-wrap items-center justify-between bg-white/[0.02] gap-4">
+                 <h3 className="text-sm font-medium text-white uppercase tracking-widest flex items-center gap-3 min-w-0">
                     <Bell size={16} className="text-warning flex-shrink-0 animate-pulse" />
                     <span className="truncate">บันทึกกิจกรรมและความปลอดภัย</span>
                  </h3>
@@ -355,19 +401,19 @@ export default function DashboardPage() {
                   <TacticalLogItem type="ข้อมูล" msg="ตรวจสอบสต็อกสินค้าเสร็จสิ้นโดย: ผู้ดูแลระบบ" time="เมื่อวานนี้" />
               </div>
               
-              <Link href="/logs" className="w-full py-5 px-4 text-[11px] sm:text-[13px] font-bold text-white/20 uppercase hover:text-white hover:bg-white/[0.02] transition-all flex items-center justify-center gap-2 border-t border-white/5 tracking-wider sm:tracking-[0.2em] text-center">
-                 เข้าสู่ศูนย์ประวัติระบบ (AUDIT HUB) <ArrowUpRight size={14} className="flex-shrink-0" />
+              <Link href="/logs" className="w-full py-5 px-4 text-[11px] sm:text-[14px] font-medium text-white/20 uppercase hover:text-white hover:bg-white/[0.02] transition-all flex items-center justify-center gap-2 border-t border-white/5 tracking-wider sm:tracking-[0.2em] text-center">
+                 เข้าสู่ศูนย์ประวัติระบบ <ArrowUpRight size={14} className="flex-shrink-0" />
               </Link>
            </GlassCard>
 
            {/* AI Performance Insight */}
-           <GlassCard className="p-6 border-white/10 bg-nexus-blue/5 rounded-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 opacity-5">
+           <GlassCard className="p-4 border-white/10 bg-nexus-blue/5 rounded-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-5 opacity-5">
                  <Cpu size={80} />
               </div>
               <div className="flex flex-wrap items-center justify-between mb-8 gap-3">
-                 <h3 className="text-[13px] font-bold text-nexus-blue uppercase tracking-widest min-w-0 flex-1 truncate">ประสิทธิภาพการใช้ทรัพยากร</h3>
-                 <span className="px-2 py-0.5 rounded-full bg-nexus-blue/10 text-[11px] sm:text-[13px] font-bold text-nexus-blue uppercase whitespace-nowrap">AI เรียลไทม์</span>
+                 <h3 className="text-[14px] font-medium text-nexus-blue uppercase tracking-widest min-w-0 flex-1 truncate">ประสิทธิภาพการใช้ทรัพยากร</h3>
+                 <span className="px-2 py-0.5 rounded-full bg-nexus-blue/10 text-[11px] sm:text-[14px] font-medium text-nexus-blue uppercase whitespace-nowrap">AI เรียลไทม์</span>
               </div>
               <div className="flex items-center justify-center py-6 relative">
                  <svg className="w-40 h-40 transform -rotate-90">
@@ -380,18 +426,18 @@ export default function DashboardPage() {
                     />
                  </svg>
                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-black text-white tracking-tighter">82%</span>
-                    <span className="text-[13px] font-bold text-white/20 uppercase tracking-widest mt-2">ดัชนี SLA ภาพรวม</span>
+                    <span className="text-4xl font-bold text-white tracking-tighter">82%</span>
+                    <span className="text-[14px] font-medium text-white/20 uppercase tracking-widest mt-2">ดัชนี SLA ภาพรวม</span>
                  </div>
               </div>
               <div className="grid grid-cols-2 gap-4 mt-8 border-t border-white/5 pt-8">
                  <div className="text-center min-w-0">
-                    <p className="text-[11px] sm:text-[13px] font-bold text-white/20 uppercase tracking-widest mb-1 truncate">รายการรอดำเนินการ</p>
-                    <p className="text-xl sm:text-2xl font-black text-white">12</p>
+                    <p className="text-[11px] sm:text-[14px] font-medium text-white/20 uppercase tracking-widest mb-1 truncate">รายการรอดำเนินการ</p>
+                    <p className="text-xl sm:text-2xl font-bold text-white">12</p>
                  </div>
                  <div className="text-center min-w-0">
-                    <p className="text-[11px] sm:text-[13px] font-bold text-white/20 uppercase tracking-widest mb-1 truncate">ระยะเวลาเฉลี่ย</p>
-                    <p className="text-xl sm:text-2xl font-black text-white tracking-tighter">4ชม. 20น.</p>
+                    <p className="text-[11px] sm:text-[14px] font-medium text-white/20 uppercase tracking-widest mb-1 truncate">ระยะเวลาเฉลี่ย</p>
+                    <p className="text-xl sm:text-2xl font-bold text-white tracking-tighter">4ชม. 20น.</p>
                  </div>
               </div>
            </GlassCard>
@@ -408,10 +454,10 @@ function ProjectProgressRow({ name, progress, id, status, isRisk = false }: { na
     <div className="space-y-2">
        <div className="flex justify-between items-end">
           <div className="min-w-0">
-             <p className="text-[13px] font-bold text-nexus-blue uppercase tracking-widest mb-1">{id}</p>
+             <p className="text-[14px] font-medium text-nexus-blue uppercase tracking-widest mb-1">{id}</p>
              <p className="text-sm font-bold text-white truncate">{name}</p>
           </div>
-          <span className={cn("text-[13px] font-bold uppercase px-2 py-0.5 rounded border tracking-widest", isRisk ? "text-danger border-danger/30 bg-danger/10" : "text-white/40 border-white/10")}>
+          <span className={cn("text-[14px] font-medium uppercase px-2 py-0.5 rounded border tracking-widest", isRisk ? "text-danger border-danger/30 bg-danger/10" : "text-white/40 border-white/10")}>
              {status}
           </span>
        </div>
@@ -434,12 +480,12 @@ function StockAlertRow({ item, stock, min, trend }: { item: string, stock: numbe
           </div>
           <div>
              <p className="text-xs font-bold text-white">{item}</p>
-             <p className="text-[13px] font-bold text-white/20 uppercase tracking-widest">Threshold: {min} units</p>
+             <p className="text-[14px] font-medium text-white/20 uppercase tracking-widest">Threshold: {min} units</p>
           </div>
        </div>
         <div className="text-right">
-          <p className={cn("text-lg font-black", stock <= 2 ? "text-danger animate-pulse" : "text-white")}>{stock}</p>
-          <p className="text-[13px] font-bold text-white/10 uppercase tracking-widest">สต็อกปัจจุบัน</p>
+          <p className={cn("text-lg font-bold", stock <= 2 ? "text-danger animate-pulse" : "text-white")}>{stock}</p>
+          <p className="text-[14px] font-medium text-white/10 uppercase tracking-widest">สต็อกปัจจุบัน</p>
         </div>
     </div>
   );
@@ -466,9 +512,9 @@ function TacticalLogItem({ type, msg, time }: { type: string, msg: string, time:
        <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-white/80 group-hover:text-white transition-colors leading-relaxed line-clamp-2">{msg}</p>
           <div className="flex items-center gap-3 mt-2">
-             <span className="text-[13px] font-bold text-white/20 uppercase tracking-widest">{time}</span>
-             <span className="text-[13px] font-bold text-white/10">•</span>
-             <span className={cn("text-[13px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border", badgeColors[type])}>
+             <span className="text-[14px] font-medium text-white/20 uppercase tracking-widest">{time}</span>
+             <span className="text-[14px] font-medium text-white/10">•</span>
+             <span className={cn("text-[14px] font-medium uppercase tracking-widest px-2 py-0.5 rounded border", badgeColors[type])}>
                 {type}
              </span>
           </div>
@@ -485,7 +531,7 @@ function QuickActionCard({ icon, label, color, link }: { icon: any, label: strin
          <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-2xl transition-transform group-hover:scale-110", color)}>
             {React.cloneElement(icon as React.ReactElement, { size: 20 })}
          </div>
-         <span className="text-[10px] font-black text-white uppercase text-center tracking-widest leading-snug truncate w-full px-1">{label}</span>
+         <span className="text-[11px] font-medium text-white uppercase text-center tracking-widest leading-snug truncate w-full px-1">{label}</span>
          <div className={cn("absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity", color)} />
          <div className="absolute top-3 right-3 w-1.5 h-1.5 rounded-full bg-white/10 group-hover:bg-nexus-teal transition-colors" />
       </div>

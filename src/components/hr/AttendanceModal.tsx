@@ -57,7 +57,7 @@ export function AttendanceModal({ isOpen, onClose, onConfirm }: AttendanceModalP
     <Modal 
       isOpen={isOpen} 
       onClose={onClose} 
-      title="บันทึกเวลาเข้า/ออกงาน (DIGITAL TIME ATTENDANCE)"
+      title="บันทึกเวลาเข้า/ออกงาน"
       maxWidth="max-w-[1600px]"
     >
       <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
@@ -86,7 +86,7 @@ export function AttendanceModal({ isOpen, onClose, onConfirm }: AttendanceModalP
                       attendanceType === "IN" ? "bg-nexus-teal text-black shadow-neon-teal" : "text-white/20 hover:text-white/40"
                     )}
                   >
-                     <CheckCircle2 size={18} /> เข้างาน (Check-In)
+                     <CheckCircle2 size={18} /> เข้างาน
                   </button>
                   <button 
                     onClick={() => setAttendanceType("OUT")}
@@ -95,13 +95,13 @@ export function AttendanceModal({ isOpen, onClose, onConfirm }: AttendanceModalP
                       attendanceType === "OUT" ? "bg-danger text-white shadow-neon-danger" : "text-white/20 hover:text-white/40"
                     )}
                   >
-                     <ArrowRight size={18} /> ออกงาน (Check-Out)
+                     <ArrowRight size={18} /> ออกงาน
                   </button>
                </div>
 
                <div className="space-y-8">
                   <div className="grid grid-cols-2 gap-8">
-                    <Field label="พนักงาน (Employee) *">
+                    <Field label="พนักงาน *">
                        <PillSelect value={employee} onChange={(e) => setEmployee(e.target.value)} className="w-full px-6">
                           <option value="">ระบุชื่อพนักงาน...</option>
                           <option>Somchai ใจดี</option>
@@ -140,7 +140,7 @@ export function AttendanceModal({ isOpen, onClose, onConfirm }: AttendanceModalP
                </div>
                <div className="space-y-1">
                   <p className="text-[11px] font-black text-white uppercase tracking-widest">แตะลายนิ้วมือเพื่อยืนยัน</p>
-                  <p className="text-[9px] text-white/20 font-bold uppercase">หรือใช้ระบบจดจำใบหน้า (Face ID)</p>
+                  <p className="text-[9px] text-white/20 font-bold uppercase">หรือใช้ระบบจดจำใบหน้า</p>
                </div>
             </div>
 
@@ -157,10 +157,10 @@ export function AttendanceModal({ isOpen, onClose, onConfirm }: AttendanceModalP
               disabled={isSaving}
             >
               <ShieldCheck size={22} className={isSaving ? "animate-pulse" : ""} />
-              {isSaving ? "กำลังบันทึก..." : "บันทึกข้อมูล (SUBMIT)"}
+              {isSaving ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
             </PillButton>
             <PillButton 
-              variant="glass" 
+              variant="ghost" 
               className={cn("w-full text-white/20 hover:text-white uppercase tracking-widest", isSaving && "opacity-50 pointer-events-none")} 
               onClick={onClose}
               disabled={isSaving}

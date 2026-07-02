@@ -11,7 +11,7 @@ import {
   ArrowUp, ArrowDown, Maximize2
 } from "lucide-react";
 import { PillButton, GlassCard, PillInput, PillSelect, PillCheckbox } from "@/components/ui/Base";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase-client";
 import { useAuth } from "@/context/AuthContext";
 import { 
   collection, 
@@ -104,7 +104,7 @@ const resolveIcon = (name: string, size = 18, className = "") => {
 // -------------------------------------------------------------
 // CONSTANTS & DIMENSIONS
 // -------------------------------------------------------------
-const PAPER_DIMENSIONS = {
+export const PAPER_DIMENSIONS = {
   A4: { width: 794, height: 1123, label: "A4 (210x297mm)" },
   A5: { width: 559, height: 794, label: "A5 (148x210mm)" },
   Letter: { width: 816, height: 1056, label: "Letter (8.5x11\")" },
@@ -774,7 +774,7 @@ export const getInitialTemplate = (name: string): DocumentTemplateV3 => {
           isChecked: false,
           zIndex: 10
         },
-        content: "เงินสด (Cash)"
+        content: "เงินสด"
       },
       {
         id: "rec-pay-transfer",
@@ -796,7 +796,7 @@ export const getInitialTemplate = (name: string): DocumentTemplateV3 => {
           isChecked: false,
           zIndex: 10
         },
-        content: "เช็ค (Cheque)"
+        content: "เช็ค"
       },
       {
         id: "rec-sig-left",
@@ -1135,14 +1135,14 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
     if (!selectedBlockId) return;
     const maxZ = template.blocks.reduce((max, b) => Math.max(max, b.properties?.zIndex || 0), 0);
     updateSelectedBlock({ zIndex: maxZ + 1 });
-    showToast("นำเลเยอร์ไปไว้หน้าสุด (Bring to Front)", "success");
+    showToast("นำเลเยอร์ไปไว้หน้าสุด", "success");
   };
 
   const sendToBack = () => {
     if (!selectedBlockId) return;
     const minZ = template.blocks.reduce((min, b) => Math.min(min, b.properties?.zIndex || 0), 0);
     updateSelectedBlock({ zIndex: minZ - 1 });
-    showToast("นำเลเยอร์ไปไว้หลังสุด (Send to Back)", "success");
+    showToast("นำเลเยอร์ไปไว้หลังสุด", "success");
   };
 
   const moveLayerUp = () => {
@@ -1151,7 +1151,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
     if (!block) return;
     const currentZ = block.properties?.zIndex || 1;
     updateSelectedBlock({ zIndex: currentZ + 1 });
-    showToast("ขยับเลเยอร์ขึ้นด้านบน (Layer Up)", "success");
+    showToast("ขยับเลเยอร์ขึ้นด้านบน", "success");
   };
 
   const moveLayerDown = () => {
@@ -1160,7 +1160,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
     if (!block) return;
     const currentZ = block.properties?.zIndex || 1;
     updateSelectedBlock({ zIndex: Math.max(1, currentZ - 1) });
-    showToast("ขยับเลเยอร์ลงด้านล่าง (Layer Down)", "success");
+    showToast("ขยับเลเยอร์ลงด้านล่าง", "success");
   };
 
   const alignBlock = (alignment: "left" | "center" | "right") => {
@@ -1404,7 +1404,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
       blocks: [...prev.blocks, duplicated]
     }));
     setSelectedBlockId(newId);
-    showToast("โคลนบล็อกต้นแบบสำเร็จ (Duplicate)", "success");
+    showToast("โคลนบล็อกต้นแบบสำเร็จ", "success");
   };
 
   // -------------------------------------------------------------
@@ -1581,7 +1581,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
             <thead className="bg-black/5 border-b border-black/25">
               <tr>
                 <th className="p-2 text-left uppercase text-black/60 font-black">รหัสพัสดุ</th>
-                <th className="p-2 text-left uppercase text-black/60 font-black">รายละเอียดพัสดุ (Description)</th>
+                <th className="p-2 text-left uppercase text-black/60 font-black">รายละเอียดพัสดุ</th>
                 <th className="p-2 text-right uppercase text-black/60 font-black">จำนวน</th>
                 <th className="p-2 text-right uppercase text-black/60 font-black">ราคา/หน่วย</th>
                 <th className="p-2 text-right uppercase text-black/60 font-black">ยอดเงินรวม</th>
@@ -1647,7 +1647,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
         return (
           <div className="w-full h-full flex flex-col justify-end items-center text-center pb-2">
             <div className="w-full border-t border-black/40 pt-1 text-[11px] font-black text-black/75">
-              {block.content || "ผู้ส่งมอบสินค้า (Signature)"}
+              {block.content || "ผู้ส่งมอบสินค้า"}
             </div>
           </div>
         );
@@ -1666,7 +1666,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
           ------------------------------------------------------------- */}
       <div className="h-16 border-b border-white/5 bg-[#0F0F12] flex items-center justify-between px-6 z-40 flex-shrink-0">
         <div className="flex items-center gap-4">
-          <PillButton variant="glass" className="h-9 w-9 p-0 rounded-full text-white/50" onClick={onClose}>
+          <PillButton variant="glass" className="h-9 w-9 p-0 rounded-full" onClick={onClose}>
             <ArrowLeft size={16} />
           </PillButton>
           <div className="flex items-center gap-3">
@@ -1706,10 +1706,10 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
           
           <PillButton 
             variant="glass" 
-            className="h-9 px-5 text-white/70 hover:text-nexus-teal hover:border-nexus-teal/30 rounded-full"
+            className="h-9 px-5 hover:text-nexus-teal hover:border-nexus-teal/30 rounded-full"
             onClick={() => setShowPreview(true)}
           >
-            <Eye size={14} /> ดูตัวอย่างจริง (PREVIEW)
+            <Eye size={14} /> ดูตัวอย่างจริง
           </PillButton>
           
           <PillButton 
@@ -1717,7 +1717,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
             className="h-9 px-6 text-black font-black tracking-wider rounded-full shadow-neon-teal border-0 bg-gradient-to-r from-nexus-teal to-teal-400"
             onClick={handleSaveTemplate}
           >
-            <Save size={14} /> บันทึกเทมเพลต (SAVE)
+            <Save size={14} /> บันทึกเทมเพลต
           </PillButton>
         </div>
       </div>
@@ -1756,7 +1756,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                   <div className="space-y-6">
                     {/* SECTION 1: COORDINATES & DIMENSIONS */}
                     <div className="bg-[#121216]/50 border border-white/5 rounded-2xl p-4 space-y-3">
-                      <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">ตำแหน่ง & ขนาด (Geometry)</h4>
+                      <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">ตำแหน่ง & ขนาด</h4>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="text-[9px] font-black text-white/40 uppercase block mb-1">แกน X (พิกเซล)</label>
@@ -1800,11 +1800,11 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                     {/* SECTION 2: TEXT STYLE PANEL (FOR TEXT-CONTAINING BLOCKS) */}
                     {(selectedBlock.type === "TEXT" || selectedBlock.type === "SIGNATURE" || selectedBlock.type === "FORM_FIELD" || selectedBlock.type === "BARCODE") && (
                       <div className="bg-[#121216]/50 border border-white/5 rounded-2xl p-4 space-y-4">
-                        <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">รูปแบบข้อความ (Text Style)</h4>
+                        <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">รูปแบบข้อความ</h4>
                         
                         {/* Font Family Dropdown */}
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-white/50 block">แบบตัวอักษร (Font Family)</label>
+                          <label className="text-[9px] font-black text-white/50 block">แบบตัวอักษร</label>
                           <PillSelect
                             value={selectedBlock.properties?.fontFamily || "Sarabun"}
                             onChange={e => updateSelectedBlock({ fontFamily: e.target.value })}
@@ -1820,7 +1820,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                         {/* Font Size & Color */}
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1">
-                            <label className="text-[9px] font-black text-white/50 block">ขนาดอักษร (px)</label>
+                            <label className="text-[9px] font-black text-white/50 block">ขนาดอักษร</label>
                             <PillInput 
                               type="number" 
                               value={selectedBlock.properties?.fontSize || 12} 
@@ -1919,7 +1919,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                         {/* Horizontal Alignments Toggle Row */}
                         <div className="space-y-2">
-                          <label className="text-[9px] font-black text-white/50 block">การจัดแนวข้อความ (Horizontal Alignment)</label>
+                          <label className="text-[9px] font-black text-white/50 block">การจัดแนวข้อความ</label>
                           <div className="flex gap-1 bg-[#0A0A0C] border border-white/5 p-1 rounded-xl">
                             {["left", "center", "right", "justify"].map(align => {
                               const isAlignActive = (selectedBlock.properties?.textAlign || "left") === align;
@@ -1979,7 +1979,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                     {/* SECTION 3: SHAPE STYLE PANEL (FOR SHAPE BLOCK) */}
                     {selectedBlock.type === "SHAPE" && (
                       <div className="bg-[#121216]/50 border border-white/5 rounded-2xl p-4 space-y-4">
-                        <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">รูปแบบรูปทรง (Shape Style)</h4>
+                        <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">รูปแบบรูปทรง</h4>
                         
                         {/* Shapetypes */}
                         <div className="space-y-1">
@@ -1998,7 +1998,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                         {/* Presets Colors Row */}
                         {selectedBlock.properties?.shapeType !== "line" && (
                           <div className="space-y-2">
-                            <label className="text-[9px] font-black text-white/50 block">จานสีด่วน (Color Presets)</label>
+                            <label className="text-[9px] font-black text-white/50 block">จานสีด่วน</label>
                             <div className="flex gap-2 p-1.5 bg-[#0A0A0C] border border-white/5 rounded-xl justify-between">
                               {["#0d9488", "#3b82f6", "#22c55e", "#eab308", "#d97706", "#ffffff"].map(presetColor => (
                                 <button
@@ -2016,7 +2016,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                         {/* Background Custom Fill Picker */}
                         {selectedBlock.properties?.shapeType !== "line" && (
                           <div className="space-y-1">
-                            <label className="text-[9px] font-black text-white/50 block">สีพื้นหลังสไตล์กำหนดเอง (Fill Color)</label>
+                            <label className="text-[9px] font-black text-white/50 block">สีพื้นหลังสไตล์กำหนดเอง</label>
                             <div className="flex gap-2">
                               <input 
                                 type="color" 
@@ -2037,7 +2037,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                         {/* Border Properties (Visible only for Rectangle & Circle) */}
                         {selectedBlock.properties?.shapeType !== "line" && (
                           <div className="space-y-3 bg-[#0A0A0C]/40 border border-white/5 rounded-xl p-3">
-                            <label className="text-[9px] font-black text-nexus-teal uppercase tracking-widest block mb-1">เส้นขอบรูปทรง (Border Details)</label>
+                            <label className="text-[9px] font-black text-nexus-teal uppercase tracking-widest block mb-1">เส้นขอบรูปทรง</label>
                             
                             <div className="grid grid-cols-2 gap-3">
                               <div className="space-y-1">
@@ -2053,7 +2053,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                                 </PillSelect>
                               </div>
                               <div className="space-y-1">
-                                <label className="text-[8px] font-black text-white/40 block">ความกว้างเส้น (px)</label>
+                                <label className="text-[8px] font-black text-white/40 block">ความกว้างเส้น</label>
                                 <PillInput 
                                   type="number"
                                   value={selectedBlock.properties?.borderWidth || 0}
@@ -2085,7 +2085,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                             {selectedBlock.properties?.shapeType === "rect" && (
                               <div className="space-y-1">
                                 <label className="text-[8px] font-black text-white/40 block flex justify-between">
-                                  <span>มุมโค้งมน (Corner Radius)</span>
+                                  <span>มุมโค้งมน</span>
                                   <span className="text-nexus-teal font-mono">{selectedBlock.properties?.borderRadius || 0}px</span>
                                 </label>
                                 <input 
@@ -2118,25 +2118,25 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                     {/* SECTION 4: ARRANGE PANEL (ALIGNMENT, ROTATION, FLIP, LAYERING) */}
                     <div className="bg-[#121216]/50 border border-white/5 rounded-2xl p-4 space-y-4">
-                      <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">การจัดเรียง & จัดตำแหน่ง (Arrange Suite)</h4>
+                      <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">การจัดเรียง & จัดตำแหน่ง</h4>
                       
                       {/* Align to Page Center */}
                       <div className="space-y-2">
-                        <label className="text-[9px] font-black text-white/50 block">จัดกึ่งกลางหน้ากระดาษ (Page Center)</label>
+                        <label className="text-[9px] font-black text-white/50 block">จัดกึ่งกลางหน้ากระดาษ</label>
                         <div className="grid grid-cols-3 gap-1.5">
                           <button
                             onClick={centerHorizontally}
                             className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all"
                             title="จัดแนวตั้งกึ่งกลางซ้ายขวา"
                           >
-                            แนวนอน (H)
+                            แนวนอน
                           </button>
                           <button
                             onClick={centerVertically}
                             className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all"
                             title="จัดแนวนอนกึ่งกลางบนล่าง"
                           >
-                            แนวตั้ง (V)
+                            แนวตั้ง
                           </button>
                           <button
                             onClick={centerBoth}
@@ -2150,14 +2150,14 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                       {/* Alignments (Align Left, Center H, Align Right, Align Top, Align Middle, Align Bottom) */}
                       <div className="space-y-2">
-                        <label className="text-[9px] font-black text-white/50 block">จัดตำแหน่งชิดขอบกระดาษ (Page Alignment)</label>
+                        <label className="text-[9px] font-black text-white/50 block">จัดตำแหน่งชิดขอบกระดาษ</label>
                         <div className="grid grid-cols-3 gap-1.5">
                           <button onClick={() => alignBlock("left")} className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5"><AlignLeft size={10} /> ซ้าย</button>
-                          <button onClick={() => alignBlock("center")} className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5"><AlignCenter size={10} /> กลาง (H)</button>
+                          <button onClick={() => alignBlock("center")} className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5"><AlignCenter size={10} /> กลาง</button>
                           <button onClick={() => alignBlock("right")} className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5"><AlignRight size={10} /> ขวา</button>
                           
                           <button onClick={() => alignVertically("top")} className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5">ขอบบน</button>
-                          <button onClick={() => alignVertically("middle")} className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5">กลาง (V)</button>
+                          <button onClick={() => alignVertically("middle")} className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5">กลาง</button>
                           <button onClick={() => alignVertically("bottom")} className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5">ขอบล่าง</button>
                         </div>
                       </div>
@@ -2165,7 +2165,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                       {/* Z-order Layers Ordering */}
                       <div className="space-y-2">
                         <label className="text-[9px] font-black text-white/50 block flex justify-between">
-                          <span>ความลึกเลเยอร์ (Z-order)</span>
+                          <span>ความลึกเลเยอร์</span>
                           <span className="text-nexus-teal font-mono">Z:{selectedBlock.properties?.zIndex || 1}</span>
                         </label>
                         <div className="grid grid-cols-4 gap-1">
@@ -2338,7 +2338,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                     {/* Image block Unique settings */}
                     {selectedBlock.type === "IMAGE" && (
                       <div className="bg-[#121216]/50 border border-white/5 rounded-2xl p-4 space-y-3">
-                        <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">ลิงก์รูปภาพ (Source URL)</h4>
+                        <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">ลิงก์รูปภาพ</h4>
                         <PillInput 
                           value={selectedBlock.src || ""} 
                           onChange={e => updateSelectedBlock({ src: e.target.value })}
@@ -2363,10 +2363,10 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                     {/* Action buttons (Clone / Delete) */}
                     <div className="pt-6 border-t border-white/5 flex gap-3">
-                      <PillButton variant="glass" className="flex-1 text-[11px] h-9 text-white/50 hover:text-nexus-teal hover:border-nexus-teal/20" onClick={() => duplicateBlock(selectedBlock)}>
+                      <PillButton variant="glass" className="flex-1 text-[11px] h-9 hover:text-nexus-teal hover:border-nexus-teal/20" onClick={() => duplicateBlock(selectedBlock)}>
                         <Copy size={12} /> โคลนบล็อก
                       </PillButton>
-                      <PillButton variant="glass" className="flex-1 text-[11px] h-9 text-white/50 hover:text-red-400 hover:border-red-400/25" onClick={(e) => deleteBlock(selectedBlock.id, e)}>
+                      <PillButton variant="glass" className="flex-1 text-[11px] h-9 hover:text-red-400 hover:border-red-400/25" onClick={(e) => deleteBlock(selectedBlock.id, e)}>
                         <Trash2 size={12} /> ลบบล็อกนี้
                       </PillButton>
                     </div>
@@ -2410,7 +2410,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                   </button>
                   <button onClick={() => addNewBlock("DYNAMIC_TABLE")} className="h-24 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-nexus-teal/10 hover:border-nexus-teal/30 hover:text-nexus-teal flex flex-col items-center justify-center gap-2 text-white/60 transition-all font-black text-xs uppercase tracking-wider col-span-2">
                     <TableIcon size={20} />
-                    <span>ตารางข้อมูลพัสดุ (Dynamic table)</span>
+                    <span>ตารางข้อมูลพัสดุ</span>
                   </button>
                   <button onClick={() => addNewBlock("SIGNATURE")} className="h-24 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-nexus-teal/10 hover:border-nexus-teal/30 hover:text-nexus-teal flex flex-col items-center justify-center gap-2 text-white/60 transition-all font-black text-xs uppercase tracking-wider col-span-2">
                     <FileText size={20} />
@@ -2423,7 +2423,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
             {/* ----------------- TAB: PAGE-SETUP ----------------- */}
             {activeTab === "page-setup" && (
               <div className="space-y-6">
-                <h4 className="text-[11px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">ตั้งค่าขนาดหน้ากระดาษ (Page Layout)</h4>
+                <h4 className="text-[11px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">ตั้งค่าขนาดหน้ากระดาษ</h4>
                 
                 <div className="space-y-4">
                   <div className="space-y-1.5">
@@ -2461,7 +2461,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                   {/* Watermark Diagonal text background page selection */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-white/40 uppercase block">ลายน้ำป้องกันกระดาษ (Watermark):</label>
+                    <label className="text-[10px] font-black text-white/40 uppercase block">ลายน้ำป้องกันกระดาษ:</label>
                     <PillSelect 
                       value={template.globalStyles.watermark || "NONE"} 
                       onChange={e => setTemplate(prev => ({
@@ -2622,7 +2622,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
               <div className="flex items-center gap-3">
                 <Eye size={18} className="text-nexus-teal animate-pulse" />
                 <div>
-                  <h3 className="text-sm font-black text-white uppercase tracking-wider">โหมดจำลองเอกสารจริง (Thai ERP Simulation)</h3>
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider">โหมดจำลองเอกสารจริง</h3>
                   <p className="text-[10px] text-white/30 uppercase mt-0.5 tracking-widest leading-none font-bold">Injecting real-world variable mock data</p>
                 </div>
               </div>
@@ -2635,12 +2635,12 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                     window.print();
                   }}
                 >
-                  <Send size={12} /> สั่งพิมพ์เอกสาร (Print)
+                  <Send size={12} /> สั่งพิมพ์เอกสาร
                 </PillButton>
                 
                 <PillButton 
                   variant="glass" 
-                  className="h-8 px-4 text-white/50 text-[11px] font-black uppercase rounded-full"
+                  className="h-8 px-4 text-[11px] font-black uppercase rounded-full"
                   onClick={() => setShowPreview(false)}
                 >
                   ปิดหน้ารายงาน

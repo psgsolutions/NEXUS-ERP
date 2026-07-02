@@ -10,7 +10,7 @@ export interface BindingVariable {
   table: string;         // ชื่อ Collection/ตาราง
   group: string;         // กลุ่มโมดูล
   fieldType: 'text' | 'number' | 'date' | 'currency';
-  neutralValue: string;  // ค่าตัวอย่าง (Preview)
+  neutralValue: string;  // ค่าตัวอย่าง
 }
 
 // ============================================================
@@ -20,7 +20,7 @@ export const DB_TABLES: Record<string, { label: string; icon: string; fields: Bi
 
   // ── ข้อมูลบริษัท ──────────────────────────────────────────
   companyConfig: {
-    label: 'ข้อมูลบริษัท (Company)', icon: '🏢',
+    label: 'ข้อมูลบริษัท', icon: '🏢',
     fields: [
       { key: 'company.name',    label: 'ชื่อบริษัท',           table: 'companyConfig', group: 'companyConfig', fieldType: 'text',     neutralValue: 'บริษัท NEXUS ERP จำกัด' },
       { key: 'company.taxId',   label: 'เลขผู้เสียภาษีบริษัท', table: 'companyConfig', group: 'companyConfig', fieldType: 'text',     neutralValue: '0105560001234' },
@@ -30,9 +30,9 @@ export const DB_TABLES: Record<string, { label: string; icon: string; fields: Bi
     ],
   },
 
-  // ── ลูกค้า (CRM) ──────────────────────────────────────────
+  // ── ลูกค้า ──────────────────────────────────────────
   customers: {
-    label: 'ลูกค้า (Customers)', icon: '👤',
+    label: 'ลูกค้า', icon: '👤',
     fields: [
       { key: 'customer.customerId',   label: 'รหัสลูกค้า',           table: 'customers', group: 'customers', fieldType: 'text',     neutralValue: 'CUST-001' },
       { key: 'customer.name',         label: 'ชื่อลูกค้า/บริษัท',    table: 'customers', group: 'customers', fieldType: 'text',     neutralValue: 'บริษัท เอบีซี จำกัด' },
@@ -46,7 +46,7 @@ export const DB_TABLES: Record<string, { label: string; icon: string; fields: Bi
 
   // ── ใบเสนอราคา / ใบสั่งขาย ────────────────────────────────
   quotations: {
-    label: 'ใบเสนอราคา (Quotations)', icon: '📋',
+    label: 'ใบเสนอราคา', icon: '📋',
     fields: [
       { key: 'quotation.documentNo',     label: 'เลขที่เอกสาร',        table: 'quotations', group: 'quotations', fieldType: 'text',     neutralValue: 'QT-2569-0001' },
       { key: 'quotation.issueDate',      label: 'วันที่ออกเอกสาร',     table: 'quotations', group: 'quotations', fieldType: 'date',     neutralValue: '29/05/2569' },
@@ -61,7 +61,7 @@ export const DB_TABLES: Record<string, { label: string; icon: string; fields: Bi
 
   // ── ใบแจ้งหนี้ / ใบกำกับภาษี ─────────────────────────────
   invoices: {
-    label: 'ใบแจ้งหนี้ (Invoices)', icon: '🧾',
+    label: 'ใบแจ้งหนี้', icon: '🧾',
     fields: [
       { key: 'invoice.documentNo',    label: 'เลขที่ใบแจ้งหนี้',    table: 'invoices', group: 'invoices', fieldType: 'text',     neutralValue: 'INV-2569-0001' },
       { key: 'invoice.issueDate',     label: 'วันที่ออกใบแจ้งหนี้', table: 'invoices', group: 'invoices', fieldType: 'date',     neutralValue: '29/05/2569' },
@@ -75,7 +75,7 @@ export const DB_TABLES: Record<string, { label: string; icon: string; fields: Bi
 
   // ── ใบสั่งซื้อ ─────────────────────────────────────────────
   purchaseOrders: {
-    label: 'ใบสั่งซื้อ (Purchase Orders)', icon: '🛒',
+    label: 'ใบสั่งซื้อ', icon: '🛒',
     fields: [
       { key: 'po.documentNo',    label: 'เลขที่ใบสั่งซื้อ',  table: 'purchaseOrders', group: 'purchaseOrders', fieldType: 'text',     neutralValue: 'PO-2569-0001' },
       { key: 'po.orderDate',     label: 'วันที่สั่งซื้อ',    table: 'purchaseOrders', group: 'purchaseOrders', fieldType: 'date',     neutralValue: '29/05/2569' },
@@ -88,7 +88,7 @@ export const DB_TABLES: Record<string, { label: string; icon: string; fields: Bi
 
   // ── Supplier ──────────────────────────────────────────────
   suppliers: {
-    label: 'ผู้จำหน่าย (Suppliers)', icon: '🏭',
+    label: 'ผู้จำหน่าย', icon: '🏭',
     fields: [
       { key: 'supplier.name',        label: 'ชื่อผู้จำหน่าย',         table: 'suppliers', group: 'suppliers', fieldType: 'text', neutralValue: 'บริษัท ซัพพลายเออร์ จำกัด' },
       { key: 'supplier.taxId',       label: 'เลขผู้เสียภาษีผู้ขาย',  table: 'suppliers', group: 'suppliers', fieldType: 'text', neutralValue: '0105599999999' },
@@ -100,7 +100,7 @@ export const DB_TABLES: Record<string, { label: string; icon: string; fields: Bi
 
   // ── โครงการ ────────────────────────────────────────────────
   projects: {
-    label: 'โครงการ (Projects)', icon: '📁',
+    label: 'โครงการ', icon: '📁',
     fields: [
       { key: 'project.projectId',  label: 'รหัสโครงการ',      table: 'projects', group: 'projects', fieldType: 'text',     neutralValue: 'PRJ-26-0001' },
       { key: 'project.title',      label: 'ชื่อโครงการ',      table: 'projects', group: 'projects', fieldType: 'text',     neutralValue: 'โครงการติดตั้งระบบ ERP' },
@@ -113,7 +113,7 @@ export const DB_TABLES: Record<string, { label: string; icon: string; fields: Bi
 
   // ── พนักงาน ────────────────────────────────────────────────
   employees: {
-    label: 'พนักงาน (Employees)', icon: '👨‍💼',
+    label: 'พนักงาน', icon: '👨‍💼',
     fields: [
       { key: 'employee.employeeId', label: 'รหัสพนักงาน',  table: 'employees', group: 'employees', fieldType: 'text',     neutralValue: 'EMP-001' },
       { key: 'employee.firstName',  label: 'ชื่อ',          table: 'employees', group: 'employees', fieldType: 'text',     neutralValue: 'สมชาย' },
@@ -126,9 +126,9 @@ export const DB_TABLES: Record<string, { label: string; icon: string; fields: Bi
 
   // ── สินค้า/พัสดุ ────────────────────────────────────────────
   products: {
-    label: 'สินค้า/พัสดุ (Products)', icon: '📦',
+    label: 'สินค้า/พัสดุ', icon: '📦',
     fields: [
-      { key: 'product.sku',         label: 'รหัสสินค้า (SKU)',     table: 'products', group: 'products', fieldType: 'text',     neutralValue: 'SKU-001' },
+      { key: 'product.sku',         label: 'รหัสสินค้า',     table: 'products', group: 'products', fieldType: 'text',     neutralValue: 'SKU-001' },
       { key: 'product.name',        label: 'ชื่อสินค้า',           table: 'products', group: 'products', fieldType: 'text',     neutralValue: 'Network Switch 48 Port' },
       { key: 'product.brand',       label: 'ยี่ห้อ',               table: 'products', group: 'products', fieldType: 'text',     neutralValue: 'Cisco' },
       { key: 'product.unit',        label: 'หน่วย',                table: 'products', group: 'products', fieldType: 'text',     neutralValue: 'ชุด' },
@@ -139,7 +139,7 @@ export const DB_TABLES: Record<string, { label: string; icon: string; fields: Bi
 
   // ── เอกสารการบัญชี ─────────────────────────────────────────
   accountingDocuments: {
-    label: 'เอกสารบัญชี (Accounting)', icon: '📊',
+    label: 'เอกสารบัญชี', icon: '📊',
     fields: [
       { key: 'acc.documentNo',      label: 'เลขที่เอกสารบัญชี', table: 'accountingDocuments', group: 'accountingDocuments', fieldType: 'text',     neutralValue: 'RV-2569-0001' },
       { key: 'acc.transactionDate', label: 'วันที่ธุรกรรม',     table: 'accountingDocuments', group: 'accountingDocuments', fieldType: 'date',     neutralValue: '29/05/2569' },
@@ -151,7 +151,7 @@ export const DB_TABLES: Record<string, { label: string; icon: string; fields: Bi
 
   // ── Service Report ─────────────────────────────────────────
   serviceReports: {
-    label: 'รายงานการบริการ (Service Reports)', icon: '🔧',
+    label: 'รายงานการบริการ', icon: '🔧',
     fields: [
       { key: 'sr.reportId',    label: 'รหัส Service Report', table: 'serviceReports', group: 'serviceReports', fieldType: 'text', neutralValue: 'SR-2569-0001' },
       { key: 'sr.workDate',    label: 'วันที่ปฏิบัติงาน',   table: 'serviceReports', group: 'serviceReports', fieldType: 'date', neutralValue: '29/05/2569' },

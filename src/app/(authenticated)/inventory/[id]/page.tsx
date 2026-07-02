@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/Base";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase-client";
 import {
   doc,
   onSnapshot,
@@ -232,10 +232,10 @@ export default function ProductDetailPage() {
   };
 
   const tabs = [
-    { id: "overview", label: "ข้อมูลสินค้า (INFO)", icon: <Info size={14} /> },
-    { id: "pricing", label: "ราคาและต้นทุน (PRICING)", icon: <DollarSign size={14} /> },
-    { id: "stock", label: "ควบคุมสต็อก (STOCK)", icon: <Box size={14} /> },
-    { id: "history", label: "ความเคลื่อนไหว (LOGS)", icon: <Activity size={14} /> }
+    { id: "overview", label: "ข้อมูลสินค้า", icon: <Info size={14} /> },
+    { id: "pricing", label: "ราคาและต้นทุน", icon: <DollarSign size={14} /> },
+    { id: "stock", label: "ควบคุมสต็อก", icon: <Box size={14} /> },
+    { id: "history", label: "ความเคลื่อนไหว", icon: <Activity size={14} /> }
   ];
 
   const isLow = form.onHand <= form.minStock;
@@ -248,7 +248,7 @@ export default function ProductDetailPage() {
       <div className="flex-1 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-10 h-10 animate-spin text-nexus-teal" />
-          <p className="text-xs font-black text-white/30 uppercase tracking-widest">กำลังโหลดข้อมูลพัสดุ...</p>
+          <p className="text-[13px] font-medium text-white/30 uppercase tracking-widest">กำลังโหลดข้อมูลพัสดุ...</p>
         </div>
       </div>
     );
@@ -257,9 +257,9 @@ export default function ProductDetailPage() {
   if (!product) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <GlassCard className="p-10 text-center space-y-4 max-w-md">
+        <GlassCard className="p-10 text-center space-y-3 max-w-md">
           <AlertTriangle size={40} className="mx-auto text-warning" />
-          <h3 className="text-lg font-black text-white">ไม่พบรายการพัสดุ</h3>
+          <h3 className="text-lg font-bold text-white">ไม่พบรายการพัสดุ</h3>
           <p className="text-sm text-white/40">รหัสพัสดุ {productId} ไม่มีอยู่ในระบบหรืออาจถูกลบแล้ว</p>
           <PillButton variant="glass" onClick={() => router.back()} className="mx-auto">
             <ChevronLeft size={16} /> กลับหน้าคลังพัสดุ
@@ -273,22 +273,22 @@ export default function ProductDetailPage() {
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
 
       {/* Page Header */}
-      <header className="p-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-black/20">
+      <header className="p-5 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-black/20">
         <div className="flex items-center gap-4">
           <PillBackButton onClick={() => router.back()} />
           <div className="w-px h-8 bg-white/10" />
           <div className="flex items-center gap-3">
             <StatusBadge status={stockStatus} label={stockLabel} />
-            <p className="text-[10px] font-black text-white/20 uppercase tracking-widest font-mono">
+            <p className="text-[11px] font-medium text-white/20 uppercase tracking-widest font-mono">
               ID: {productId}
             </p>
           </div>
           <div className="w-px h-8 bg-white/10" />
           <div>
-            <h1 className="text-lg font-black text-white tracking-tight leading-none">
+            <h1 className="text-lg font-bold text-white tracking-tight leading-none">
               {product.name}
             </h1>
-            <p className="text-[10px] font-black text-white/30 uppercase mt-1 tracking-widest font-mono">
+            <p className="text-[11px] font-medium text-white/30 uppercase mt-1 tracking-widest font-mono">
               {product.sku}
             </p>
           </div>
@@ -298,8 +298,8 @@ export default function ProductDetailPage() {
           {isEditMode ? (
             <>
               <PillButton
-                variant="glass"
-                className="gap-2 h-9 text-xs border-white/10 text-white/40 hover:text-white"
+                variant="ghost"
+                className="gap-2 h-9 text-xs border-white/10 hover:"
                 onClick={handleCancel}
                 disabled={isSaving}
               >
@@ -317,7 +317,7 @@ export default function ProductDetailPage() {
           ) : (
             <PillButton
               variant="glass"
-              className="gap-2 h-9 text-xs border-nexus-blue/20 text-nexus-blue hover:text-white"
+              className="gap-2 h-9 text-xs border-nexus-blue/20 text-nexus-blue hover:"
               onClick={() => setIsEditMode(true)}
             >
               <Edit3 size={14} /> แก้ไขข้อมูล
@@ -332,13 +332,13 @@ export default function ProductDetailPage() {
       </section>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+      <main className="flex-1 overflow-y-auto p-5 custom-scrollbar">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(20,163,204,0.03)_0%,transparent_50%)] pointer-events-none" />
 
-        <div className="flex flex-col lg:flex-row gap-6 items-start relative z-10 w-full animate-in fade-in duration-500">
+        <div className="flex flex-col lg:flex-row gap-4 items-start relative z-10 w-full animate-in fade-in duration-500">
 
           {/* Left Column - Main Form */}
-          <div className="flex-1 w-full space-y-6">
+          <div className="flex-1 w-full space-y-3">
 
             {/* Summary Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -351,7 +351,7 @@ export default function ProductDetailPage() {
               />
               <MasterMetricCard
                 icon={<TrendingUp size={20} />}
-                label="ต้นทุนเฉลี่ย (WAC)"
+                label="ต้นทุนเฉลี่ย"
                 value={`\u0E3F${form.costWAC.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 color="text-nexus-blue"
               />
@@ -367,7 +367,7 @@ export default function ProductDetailPage() {
             {isEditMode && (
               <div className="flex items-center gap-3 p-4 rounded-2xl bg-nexus-blue/5 border border-nexus-blue/20">
                 <Unlock size={16} className="text-nexus-blue shrink-0" />
-                <p className="text-[11px] font-black text-nexus-blue uppercase tracking-widest">
+                <p className="text-[12px] font-medium text-nexus-blue uppercase tracking-widest">
                   โหมดแก้ไข — แก้ไขข้อมูลแล้วกด "บันทึกข้อมูล" เพื่อยืนยัน
                 </p>
               </div>
@@ -375,25 +375,25 @@ export default function ProductDetailPage() {
 
             {/* Tab: Overview - Product Info */}
             {activeTab === "overview" && (
-              <GlassCard className="p-6 border-white/5 bg-black/40 space-y-8">
+              <GlassCard className="p-4 border-white/5 bg-black/40 space-y-3">
                 <div className="flex items-center gap-3 border-b border-white/5 pb-4">
                   <Zap size={16} className="text-nexus-blue" />
-                  <h3 className="text-[11px] font-black text-nexus-blue uppercase tracking-widest">
-                    อัตลักษณ์พัสดุ (Product Identity)
+                  <h3 className="text-[12px] font-medium text-nexus-blue uppercase tracking-widest">
+                    อัตลักษณ์พัสดุ
                   </h3>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField label="รหัสสินค้า (SKU CODE) *">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <FormField label="รหัสสินค้า *">
                     {isEditMode ? (
                       <PillInput
                         value={form.sku}
                         onChange={(e) => setForm({ ...form, sku: e.target.value })}
                         placeholder="ระบุรหัส SKU..."
-                        className="w-full font-mono text-nexus-blue font-black"
+                        className="w-full font-mono text-nexus-blue font-bold"
                       />
                     ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono text-sm font-black text-nexus-blue">
+                      <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono text-sm font-bold text-nexus-blue">
                         {form.sku || "—"}
                       </div>
                     )}
@@ -448,7 +448,7 @@ export default function ProductDetailPage() {
                     )}
                   </FormField>
 
-                  <FormField label="หน่วยนับ (UNIT)">
+                  <FormField label="หน่วยนับ">
                     {isEditMode ? (
                       <PillSelect
                         value={form.unit}
@@ -466,7 +466,7 @@ export default function ProductDetailPage() {
                     )}
                   </FormField>
 
-                  <FormField label="คำอธิบายสินค้า (Description)">
+                  <FormField label="คำอธิบายสินค้า">
                     {isEditMode ? (
                       <textarea
                         value={form.description}
@@ -487,20 +487,20 @@ export default function ProductDetailPage() {
 
             {/* Tab: Pricing */}
             {activeTab === "pricing" && (
-              <GlassCard className="p-6 border-white/5 bg-black/40 space-y-8">
+              <GlassCard className="p-4 border-white/5 bg-black/40 space-y-3">
                 <div className="flex items-center gap-3 border-b border-white/5 pb-4">
                   <DollarSign size={16} className="text-warning" />
-                  <h3 className="text-[11px] font-black text-warning uppercase tracking-widest">
-                    โครงสร้างราคาและต้นทุน (Financial Structure)
+                  <h3 className="text-[12px] font-medium text-warning uppercase tracking-widest">
+                    โครงสร้างราคาและต้นทุน
                   </h3>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="col-span-full p-4 rounded-2xl bg-white/[0.02] border border-white/5 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField label="ราคาเสนอโครงการ (PROJECT PRICE)">
+                    <FormField label="ราคาเสนอโครงการ">
                       {isEditMode ? (
                         <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-black">\u0E3F</span>
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-bold">\u0E3F</span>
                           <PillInput
                             type="number"
                             value={form.priceProject}
@@ -509,16 +509,16 @@ export default function ProductDetailPage() {
                           />
                         </div>
                       ) : (
-                        <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-black text-white">
+                        <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-bold text-white">
                           \u0E3F{form.priceProject.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </div>
                       )}
                     </FormField>
 
-                    <FormField label="ราคาขายปลีก (RETAIL PRICE)">
+                    <FormField label="ราคาขายปลีก">
                       {isEditMode ? (
                         <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-black">\u0E3F</span>
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-bold">\u0E3F</span>
                           <PillInput
                             type="number"
                             value={form.pricePOS}
@@ -527,16 +527,16 @@ export default function ProductDetailPage() {
                           />
                         </div>
                       ) : (
-                        <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-black text-white">
+                        <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-bold text-white">
                           \u0E3F{form.pricePOS.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </div>
                       )}
                     </FormField>
 
-                    <FormField label="ต้นทุนเฉลี่ย (WAC COST)">
+                    <FormField label="ต้นทุนเฉลี่ย">
                       {isEditMode ? (
                         <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-black">\u0E3F</span>
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-bold">\u0E3F</span>
                           <PillInput
                             type="number"
                             value={form.costWAC}
@@ -545,7 +545,7 @@ export default function ProductDetailPage() {
                           />
                         </div>
                       ) : (
-                        <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-black text-nexus-teal">
+                        <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-bold text-nexus-teal">
                           \u0E3F{form.costWAC.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </div>
                       )}
@@ -554,22 +554,22 @@ export default function ProductDetailPage() {
 
                   {/* Margin Indicator */}
                   <div className="col-span-full flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 p-6 rounded-2xl bg-nexus-teal/5 border border-nexus-teal/15 flex flex-col items-center justify-center gap-2">
-                      <span className="text-[9px] font-black text-nexus-teal uppercase tracking-widest">Project Margin</span>
-                      <div className={cn("text-3xl font-black font-mono", margin >= 20 ? "text-nexus-teal" : margin >= 0 ? "text-warning" : "text-danger")}>
+                    <div className="flex-1 p-5 rounded-2xl bg-nexus-teal/5 border border-nexus-teal/15 flex flex-col items-center justify-center gap-2">
+                      <span className="text-[10px] font-normal text-nexus-teal uppercase tracking-widest">Project Margin</span>
+                      <div className={cn("text-3xl font-bold font-mono", margin >= 20 ? "text-nexus-teal" : margin >= 0 ? "text-warning" : "text-danger")}>
                         {margin}%
                       </div>
-                      <span className="text-[9px] text-white/30 font-bold">
+                      <span className="text-xs text-white/30 font-bold">
                         กำไรต่อหน่วย: \u0E3F{(form.priceProject - form.costWAC).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </span>
                     </div>
 
-                    <div className="flex-1 p-6 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col items-center justify-center gap-2">
-                      <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">มูลค่าคงคลังรวม</span>
-                      <div className="text-2xl font-black font-mono text-nexus-blue">
+                    <div className="flex-1 p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col items-center justify-center gap-2">
+                      <span className="text-[10px] font-normal text-white/30 uppercase tracking-widest">มูลค่าคงคลังรวม</span>
+                      <div className="text-2xl font-bold font-mono text-nexus-blue">
                         \u0E3F{totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </div>
-                      <span className="text-[9px] text-white/30 font-bold">
+                      <span className="text-xs text-white/30 font-bold">
                         {form.onHand} {form.unit} x \u0E3F{form.costWAC.toLocaleString()}
                       </span>
                     </div>
@@ -580,16 +580,16 @@ export default function ProductDetailPage() {
 
             {/* Tab: Stock Control */}
             {activeTab === "stock" && (
-              <GlassCard className="p-6 border-white/5 bg-black/40 space-y-8">
+              <GlassCard className="p-4 border-white/5 bg-black/40 space-y-3">
                 <div className="flex items-center gap-3 border-b border-white/5 pb-4">
                   <Box size={16} className="text-nexus-teal" />
-                  <h3 className="text-[11px] font-black text-nexus-teal uppercase tracking-widest">
-                    การควบคุมระดับพัสดุ (Stock Control)
+                  <h3 className="text-[12px] font-medium text-nexus-teal uppercase tracking-widest">
+                    การควบคุมระดับพัสดุ
                   </h3>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <FormField label="ระดับสต็อกปัจจุบัน (ON HAND)">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <FormField label="ระดับสต็อกปัจจุบัน">
                     {isEditMode ? (
                       <PillInput
                         type="number"
@@ -598,13 +598,13 @@ export default function ProductDetailPage() {
                         className="w-full font-mono mono-numbers"
                       />
                     ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-nexus-teal/5 border border-nexus-teal/15 font-mono font-black text-nexus-teal text-lg">
+                      <div className="px-4 py-3 rounded-2xl bg-nexus-teal/5 border border-nexus-teal/15 font-mono font-bold text-nexus-teal text-lg">
                         {form.onHand.toLocaleString()} {form.unit}
                       </div>
                     )}
                   </FormField>
 
-                  <FormField label="ถูกจองใช้งาน (RESERVED)">
+                  <FormField label="ถูกจองใช้งาน">
                     {isEditMode ? (
                       <PillInput
                         type="number"
@@ -613,19 +613,19 @@ export default function ProductDetailPage() {
                         className="w-full font-mono mono-numbers"
                       />
                     ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-black text-warning text-lg">
+                      <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-bold text-warning text-lg">
                         {form.reserved.toLocaleString()} {form.unit}
                       </div>
                     )}
                   </FormField>
 
-                  <FormField label="พร้อมใช้งาน (AVAILABLE)">
-                    <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-black text-nexus-blue text-lg">
+                  <FormField label="พร้อมใช้งาน">
+                    <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-bold text-nexus-blue text-lg">
                       {Math.max(0, form.onHand - form.reserved).toLocaleString()} {form.unit}
                     </div>
                   </FormField>
 
-                  <FormField label="ระดับแจ้งเตือนขั้นต่ำ (MIN STOCK)">
+                  <FormField label="ระดับแจ้งเตือนขั้นต่ำ">
                     {isEditMode ? (
                       <PillInput
                         type="number"
@@ -634,7 +634,7 @@ export default function ProductDetailPage() {
                         className="w-full font-mono mono-numbers"
                       />
                     ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-black text-white/60">
+                      <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-bold text-white/60">
                         {form.minStock} {form.unit}
                       </div>
                     )}
@@ -652,7 +652,7 @@ export default function ProductDetailPage() {
                    isLow ? <AlertTriangle size={20} className="text-warning shrink-0" /> :
                    <CheckCircle2 size={20} className="text-nexus-teal shrink-0" />}
                   <div>
-                    <p className={cn("text-xs font-black uppercase tracking-widest", isOut ? "text-danger" : isLow ? "text-warning" : "text-nexus-teal")}>
+                    <p className={cn("text-[13px] font-medium uppercase tracking-widest", isOut ? "text-danger" : isLow ? "text-warning" : "text-nexus-teal")}>
                       {stockLabel}
                     </p>
                     <p className="text-[10px] text-white/40 font-bold mt-0.5">
@@ -670,8 +670,8 @@ export default function ProductDetailPage() {
               <GlassCard className="p-0 overflow-hidden border-white/5 bg-black/40">
                 <div className="p-4 border-b border-white/5 flex items-center gap-3">
                   <Activity size={16} className="text-nexus-teal" />
-                  <h3 className="text-[11px] font-black text-nexus-teal uppercase tracking-widest">
-                    ประวัติการเคลื่อนไหว (Stock Movements)
+                  <h3 className="text-[12px] font-medium text-nexus-teal uppercase tracking-widest">
+                    ประวัติการเคลื่อนไหว
                   </h3>
                 </div>
                 <NexusTable 
@@ -681,19 +681,19 @@ export default function ProductDetailPage() {
                   {movements.length === 0 ? (
                     <NexusTableRow>
                       <NexusTableCell colSpan={5} className="p-16 text-center text-white/20">
-                        <span className="text-[11px] font-black tracking-widest uppercase">ยังไม่มีประวัติการเคลื่อนไหว</span>
+                        <span className="text-[12px] font-medium tracking-widest uppercase">ยังไม่มีประวัติการเคลื่อนไหว</span>
                       </NexusTableCell>
                     </NexusTableRow>
                   ) : (
                     movements.map((move) => (
                       <NexusTableRow key={move.id}>
                         <NexusTableCell mono className="w-36">{move.transactionId}</NexusTableCell>
-                        <NexusTableCell className="w-24">
-                          <StatusBadge
+                        <NexusTableCell className="text-center w-24">
+        <StatusBadge
                             status={move.type === "IN" ? "active" : move.type === "OUT" ? "danger" : "pending"}
                             label={move.type}
                           />
-                        </NexusTableCell>
+      </NexusTableCell>
                         <NexusTableCell mono className="w-20 text-right">{move.quantity}</NexusTableCell>
                         <NexusTableCell className="font-mono text-[10px] text-white/40 uppercase">
                           {move.fromLocation || "EXTERNAL"} &rarr; {move.toLocation || "MAIN-WH"}
@@ -712,15 +712,15 @@ export default function ProductDetailPage() {
           </div>
 
           {/* Right Sidebar */}
-          <div className="w-full lg:w-[360px] shrink-0 space-y-4">
+          <div className="w-full lg:w-[280px] shrink-0 space-y-3">
 
             {/* Quick Stats Card */}
-            <GlassCard className="p-5 border-white/5 space-y-5">
+            <GlassCard className="p-4 border-white/5 space-y-5">
               <div className="flex items-center gap-2 border-b border-white/5 pb-3">
                 <ShieldCheck size={14} className="text-nexus-teal" />
-                <h4 className="text-[10px] font-black text-nexus-teal uppercase tracking-widest">สรุปข้อมูลสินค้า</h4>
+                <h4 className="text-sm font-medium text-nexus-teal uppercase tracking-widest">สรุปข้อมูลสินค้า</h4>
                 {!isEditMode && (
-                  <span className="ml-auto flex items-center gap-1 text-[9px] text-white/20 font-black uppercase">
+                  <span className="ml-auto flex items-center gap-1 text-sm text-white/20 font-normal uppercase">
                     <Lock size={10} /> READ
                   </span>
                 )}
@@ -735,19 +735,19 @@ export default function ProductDetailPage() {
 
               <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
                 <div className="p-3 rounded-xl bg-nexus-teal/5 border border-nexus-teal/10 text-center">
-                  <span className="text-[8px] font-black text-white/30 uppercase tracking-widest block">ON HAND</span>
-                  <span className="text-lg font-black text-nexus-teal mt-1 block mono-numbers">{form.onHand}</span>
+                  <span className="text-sm font-medium text-white/30 uppercase tracking-widest block">ON HAND</span>
+                  <span className="text-lg font-medium text-nexus-teal mt-1 block mono-numbers">{form.onHand}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
-                  <span className="text-[8px] font-black text-white/30 uppercase tracking-widest block">RESERVED</span>
-                  <span className="text-lg font-black text-warning mt-1 block mono-numbers">{form.reserved}</span>
+                  <span className="text-sm font-medium text-white/30 uppercase tracking-widest block">RESERVED</span>
+                  <span className="text-lg font-medium text-warning mt-1 block mono-numbers">{form.reserved}</span>
                 </div>
               </div>
             </GlassCard>
 
             {/* Actions Card */}
-            <GlassCard className="p-5 border-white/5 space-y-3">
-              <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest">การดำเนินการด่วน</h4>
+            <GlassCard className="p-4 border-white/5 space-y-3">
+              <h4 className="text-sm font-medium text-white/30 uppercase tracking-widest">การดำเนินการด่วน</h4>
               <PillButton
                 className="w-full text-xs shadow-neon-teal"
                 onClick={() => setIsEditMode(true)}
@@ -757,14 +757,14 @@ export default function ProductDetailPage() {
               </PillButton>
               <PillButton
                 variant="glass"
-                className="w-full text-xs border-nexus-blue/20 text-nexus-blue hover:text-white"
+                className="w-full text-xs border-nexus-blue/20 text-nexus-blue hover:"
                 onClick={() => setActiveTab("history")}
               >
                 <History size={14} /> ดูประวัติการเคลื่อนไหว
               </PillButton>
               <PillButton
                 variant="glass"
-                className="w-full text-xs border-white/5 text-white/40 hover:text-white"
+                className="w-full text-xs border-white/5 hover:"
                 onClick={() => router.back()}
               >
                 <ChevronLeft size={14} /> กลับหน้าคลังพัสดุ
@@ -773,12 +773,12 @@ export default function ProductDetailPage() {
 
             {/* Margin Indicator (when on pricing tab) */}
             {activeTab === "pricing" && (
-              <GlassCard className="p-5 border-nexus-teal/10 bg-nexus-teal/5 space-y-2 text-center">
-                <span className="text-[9px] font-black text-nexus-teal uppercase tracking-widest block">Project Gross Margin</span>
-                <div className={cn("text-4xl font-black font-mono", margin >= 20 ? "text-nexus-teal" : margin >= 0 ? "text-warning" : "text-danger")}>
+              <GlassCard className="p-4 border-nexus-teal/10 bg-nexus-teal/5 space-y-2 text-center">
+                <span className="text-sm font-normal text-nexus-teal uppercase tracking-widest block">Project Gross Margin</span>
+                <div className={cn("text-4xl font-medium font-mono", margin >= 20 ? "text-nexus-teal" : margin >= 0 ? "text-warning" : "text-danger")}>
                   {margin}%
                 </div>
-                <span className="text-[10px] text-white/40 font-bold block">
+                <span className="text-sm text-white/40 font-medium block">
                   กำไรต่อหน่วย: \u0E3F{(form.priceProject - form.costWAC).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </span>
               </GlassCard>
@@ -801,7 +801,7 @@ export default function ProductDetailPage() {
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <label className="text-[10px] font-black text-white/30 uppercase tracking-widest ml-1 block">
+      <label className="text-sm font-medium text-white/30 uppercase tracking-widest ml-1 block">
         {label}
       </label>
       {children}

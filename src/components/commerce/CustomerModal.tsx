@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/Base";
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { SmartAddressPicker, ThaiAddress } from "@/components/ui/SmartAddressPicker";
+import { SmartScanner } from "@/components/shared/SmartScanner";
 import { CustomerType, CustomerStatus } from "@/lib/erp-logic";
 import { useSystemDialog } from "@/context/DialogContext";
 
@@ -78,9 +79,9 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
   }, [isOpen, initialData]);
 
   const tabs = [
-    { id: "legal", label: "ข้อมูลนิติบุคคล (LEGAL)", icon: <Building2 /> },
-    { id: "geo", label: "พิกัดและไซต์งาน (GEO)", icon: <MapPin /> },
-    { id: "contacts", label: "ผู้ติดต่อ (CONTACTS)", icon: <User /> }
+    { id: "legal", label: "ข้อมูลนิติบุคคล", icon: <Building2 /> },
+    { id: "geo", label: "พิกัดและไซต์งาน", icon: <MapPin /> },
+    { id: "contacts", label: "ผู้ติดต่อ", icon: <User /> }
   ];
 
   const handleCommit = async () => {
@@ -137,21 +138,44 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
               {activeTab === "legal" && (
                 <div className="space-y-10 animate-in fade-in slide-in-from-left-4">
                   <section className="space-y-6">
-                    <h3 className="text-[12px] font-black text-nexus-teal uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><Zap size={16} /> 1. อัตลักษณ์ธุรกิจ</h3>
+                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                       <h3 className="text-[12px] font-black text-nexus-teal uppercase flex items-center gap-2 italic"><Zap size={16} /> 1. อัตลักษณ์ธุรกิจ</h3>
+                       {!isLocked && (
+                         <SmartScanner 
+                           type="business_card" 
+                           buttonLabel="AI สแกนนามบัตร"
+                           onDataExtracted={(data) => {
+                             setForm(prev => ({
+                               ...prev,
+                               name: data.company || prev.name,
+                               contacts: [
+                                 ...prev.contacts,
+                                 {
+                                   name: data.name || "",
+                                   position: data.position || "",
+                                   phone: data.phone || "",
+                                   email: data.email || ""
+                                 }
+                               ]
+                             }));
+                           }}
+                         />
+                       )}
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <Field label="ชื่อบริษัท / นิติบุคคล *">
                         <PillInput value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} placeholder="ระบุชื่อเต็ม..." className="w-full" />
                       </Field>
-                      <Field label="เลขผู้เสียภาษี (TAX ID)">
+                      <Field label="เลขผู้เสียภาษี">
                         <PillInput value={form.tax_id} onChange={(e) => setForm({...form, tax_id: e.target.value})} placeholder="13 หลัก..." className="w-full font-mono" />
                       </Field>
                     </div>
                     <div className="grid grid-cols-2 gap-8">
                       <Field label="ประเภทลูกค้า">
                         <PillSelect value={form.type} onChange={(e) => setForm({...form, type: e.target.value as CustomerType})} className="w-full">
-                          <option value="company">นิติบุคคล (Company)</option>
-                          <option value="government">หน่วยงานราชการ (Government)</option>
-                          <option value="person">บุคคลธรรมดา (Individual)</option>
+                          <option value="company">นิติบุคคล</option>
+                          <option value="government">หน่วยงานราชการ</option>
+                          <option value="person">บุคคลธรรมดา</option>
                         </PillSelect>
                       </Field>
                       <Field label="กลุ่มอุตสาหกรรม">
@@ -168,7 +192,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
                       <Field label="เครดิตเทอม (วัน)">
                         <NumberStepper value={form.credit_term_days} onChange={(v) => setForm({...form, credit_term_days: v})} unit="วัน" />
                       </Field>
-                      <Field label="วงเงินสินเชื่อ (Credit Limit)">
+                      <Field label="วงเงินสินเชื่อ">
                         <NumberStepper value={form.credit_limit} onChange={(v) => setForm({...form, credit_limit: v})} unit="฿" step={10000} />
                       </Field>
                       <Field label="รอบวางบิล">
@@ -287,9 +311,9 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
               </div>
               <div className="space-y-4">
                 <PillSelect value={form.status} onChange={(e) => setForm({...form, status: e.target.value as CustomerStatus})} className="w-full">
-                  <option value="active">เปิดใช้งาน (ACTIVE)</option>
-                  <option value="draft">ฉบับร่าง (DRAFT)</option>
-                  <option value="suspended">ระงับการบริการ (SUSPENDED)</option>
+                  <option value="active">เปิดใช้งาน</option>
+                  <option value="draft">ฉบับร่าง</option>
+                  <option value="suspended">ระงับการบริการ</option>
                 </PillSelect>
                 <NexusDataField label="รหัสลูกค้า" value={form.customer_code || "AUTO-GEN"} />
                 <NexusDataField label="เครดิตรวม" value={form.credit_term_days + " วัน"} />
@@ -307,7 +331,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
               {isSubmitting ? <RefreshCw className="animate-spin" /> : <CheckCircle2 size={20} />}
               บันทึกข้อมูล
             </PillButton>
-            <PillButton variant="glass" className="w-full text-white/20" onClick={onClose}>
+            <PillButton variant="ghost" className="w-full" onClick={onClose}>
               ยกเลิก
             </PillButton>
           </div>

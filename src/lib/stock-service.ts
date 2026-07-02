@@ -1,4 +1,4 @@
-import { db } from "./firebase";
+import { db } from "./firebase-client";
 import { 
   collection, 
   doc, 
@@ -31,7 +31,7 @@ export async function processStockMovement(movement: StockMovement) {
   const { productId, type, quantity, fromLocation, toLocation, companyId, snList } = movement;
 
   // 1. Generate Transaction ID (NXI-YYMM-XXXX)
-  const transactionId = await nexusSequenceEngine("NXI", companyId);
+  const transactionId = await nexusSequenceEngine("INV", companyId);
 
   await runTransaction(db, async (transaction) => {
     // 1.5 Fetch Product Data for WAC and Balance

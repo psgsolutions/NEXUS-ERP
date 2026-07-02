@@ -59,7 +59,7 @@ export function PeriodCloseModal({ isOpen, onClose, onConfirm }: PeriodCloseModa
     <Modal 
       isOpen={isOpen} 
       onClose={handleClose} 
-      title="การปิดงวดบัญชี (FINANCIAL PERIOD CLOSE)"
+      title="การปิดงวดบัญชี"
       maxWidth="max-w-[1600px]"
     >
       <div className="flex h-full bg-[#0D0D0D]">
@@ -81,14 +81,14 @@ export function PeriodCloseModal({ isOpen, onClose, onConfirm }: PeriodCloseModa
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="grid grid-cols-2 gap-8 p-8 rounded-2xl bg-white/[0.02] border border-white/5">
                    <div className="space-y-3">
-                      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">ปีปฏิทิน (Fiscal Year)</label>
+                      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">ปีปฏิทิน</label>
                       <PillSelect value={period.year} onChange={(e) => setPeriod({...period, year: e.target.value})} className="w-full px-6">
                         <option>2025</option>
                         <option>2026</option>
                       </PillSelect>
                    </div>
                    <div className="space-y-3">
-                      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">เดือนที่ต้องการปิด (Month)</label>
+                      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">เดือนที่ต้องการปิด</label>
                       <PillSelect value={period.month} onChange={(e) => setPeriod({...period, month: e.target.value})} className="w-full px-6 text-nexus-blue font-black">
                         <option>January</option>
                         <option>February</option>
@@ -100,11 +100,11 @@ export function PeriodCloseModal({ isOpen, onClose, onConfirm }: PeriodCloseModa
                 </div>
 
                 <div className="space-y-6">
-                   <h5 className="text-[12px] font-black text-white/20 uppercase tracking-widest">ระบบตรวจสอบความพร้อม (System Readiness Check)</h5>
+                   <h5 className="text-[12px] font-black text-white/20 uppercase tracking-widest">ระบบตรวจสอบความพร้อม</h5>
                    <div className="space-y-3">
-                      <CheckItem label="รายการรายวันที่ยังไม่ผ่านเช็ค (Unposted JVs)" value={checks.unpostedJVs === 0 ? "ผ่าน" : `${checks.unpostedJVs} รายการ`} status={checks.unpostedJVs === 0 ? "pass" : "fail"} />
-                      <CheckItem label="ยอดสมดุลผังบัญชี (Trial Balance)" value={checks.unbalancedAccounts === 0 ? "สมดุล" : "ไม่สมดุล"} status={checks.unbalancedAccounts === 0 ? "pass" : "fail"} />
-                      <CheckItem label="รายงานภาษีซื้อ-ขาย (Tax Filing)" value={checks.pendingTax ? "รอยืนยัน" : "เรียบร้อย"} status="warning" />
+                      <CheckItem label="รายการรายวันที่ยังไม่ผ่านเช็ค" value={checks.unpostedJVs === 0 ? "ผ่าน" : `${checks.unpostedJVs} รายการ`} status={checks.unpostedJVs === 0 ? "pass" : "fail"} />
+                      <CheckItem label="ยอดสมดุลผังบัญชี" value={checks.unbalancedAccounts === 0 ? "สมดุล" : "ไม่สมดุล"} status={checks.unbalancedAccounts === 0 ? "pass" : "fail"} />
+                      <CheckItem label="รายงานภาษีซื้อ-ขาย" value={checks.pendingTax ? "รอยืนยัน" : "เรียบร้อย"} status="warning" />
                    </div>
                 </div>
               </div>
@@ -132,7 +132,7 @@ export function PeriodCloseModal({ isOpen, onClose, onConfirm }: PeriodCloseModa
                        {isSaving ? "กำลังล็อกงวดบัญชี..." : "ยืนยันและล็อกงวดบัญชี"}
                     </PillButton>
                     <PillButton 
-                      variant="glass" 
+                      variant="ghost" 
                       className={cn("w-full text-white/20", isSaving && "opacity-50 pointer-events-none")} 
                       onClick={() => setStep(1)}
                       disabled={isSaving}

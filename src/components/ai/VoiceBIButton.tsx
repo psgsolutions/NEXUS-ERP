@@ -18,7 +18,7 @@ export function VoiceBIButton() {
 
   return (
     <>
-      <div className="fixed bottom-8 right-8 z-[100] group">
+      <div className="fixed bottom-8 right-28 z-[100] group">
          <button 
             onClick={toggleListen}
             className={cn(

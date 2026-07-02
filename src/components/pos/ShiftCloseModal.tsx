@@ -18,6 +18,7 @@ import {
   NexusDataField,
   cn 
 } from "@/components/ui/Base";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 
 interface ShiftCloseModalProps {
   isOpen: boolean;
@@ -29,10 +30,31 @@ export function ShiftCloseModal({ isOpen, onClose, onConfirm }: ShiftCloseModalP
   const [step, setStep] = useState(1);
   const [cashInDrawer, setCashInDrawer] = useState("");
   
-  const mockSystemData = {
-    expectedCash: 45000,
-    totalSales: 125400,
-    openingCash: 5000
+  const { data: posSessions } = useRealtimeCollection("pos_sessions");
+  const { data: salesOrders } = useRealtimeCollection("sales_orders");
+
+  const currentSession = posSessions?.find(s => s.status === 'open');
+  const openingCash = currentSession?.openingCash || 0;
+
+  // Calculate total cash sales during this session (for simplicity, we take today's orders)
+  const today = new Date().toISOString().split('T')[0];
+  const todayOrders = salesOrders?.filter(o => {
+     if (!o.orderDate) return false;
+     try {
+        const orderDateStr = o.orderDate?.toDate ? o.orderDate.toDate().toISOString() : new Date(o.orderDate).toISOString();
+        return orderDateStr.startsWith(today);
+     } catch (e) {
+        return false;
+     }
+  }) || [];
+  
+  const totalSales = todayOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+  const expectedCash = openingCash + (totalSales * 0.4); // Assuming 40% of sales are cash as per DailySummaryModal logic
+
+  const systemData = {
+    expectedCash,
+    totalSales,
+    openingCash
   };
 
   const handleClose = () => {
@@ -40,7 +62,7 @@ export function ShiftCloseModal({ isOpen, onClose, onConfirm }: ShiftCloseModalP
     setStep(1);
   };
 
-  const cashDiff = parseFloat(cashInDrawer || "0") - mockSystemData.expectedCash;
+  const cashDiff = parseFloat(cashInDrawer || "0") - systemData.expectedCash;
 
   return (
     <Modal 
@@ -67,7 +89,7 @@ export function ShiftCloseModal({ isOpen, onClose, onConfirm }: ShiftCloseModalP
             {step === 1 && (
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="space-y-6">
-                   <h5 className="text-[12px] font-black text-white/30 uppercase tracking-widest ml-1">1. ตรวจนับเงินสดในลิ้นชัก (Cash Count)</h5>
+                   <h5 className="text-[12px] font-black text-white/30 uppercase tracking-widest ml-1">1. ตรวจนับเงินสดในลิ้นชัก</h5>
                    <div className="p-10 rounded-2xl bg-white/[0.02] border border-white/5 space-y-8">
                       <div className="space-y-3">
                          <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1 text-center block">ระบุจำนวนเงินสดที่นับได้จริง *</label>
@@ -83,13 +105,13 @@ export function ShiftCloseModal({ isOpen, onClose, onConfirm }: ShiftCloseModalP
                       <div className="grid grid-cols-2 gap-4">
                          <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
                             <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">ยอดเงินสดในระบบ</p>
-                            <p className="text-xl font-black text-white mt-1">฿{mockSystemData.expectedCash.toLocaleString()}</p>
+                            <p className="text-xl font-black text-white mt-1">฿{systemData.expectedCash.toLocaleString()}</p>
                          </div>
                          <div className={cn(
                            "p-6 rounded-2xl border",
                            cashDiff === 0 ? "bg-nexus-teal/5 border-nexus-teal/20" : "bg-danger/5 border-danger/20"
                          )}>
-                            <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">ผลต่าง (Difference)</p>
+                            <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">ผลต่าง</p>
                             <p className={cn("text-xl font-black mt-1", cashDiff === 0 ? "text-nexus-teal" : "text-danger")}>
                                {cashDiff > 0 ? "+" : ""}{cashDiff.toLocaleString()}
                             </p>
@@ -99,10 +121,10 @@ export function ShiftCloseModal({ isOpen, onClose, onConfirm }: ShiftCloseModalP
                 </div>
 
                 <div className="space-y-6">
-                   <h5 className="text-[12px] font-black text-white/20 uppercase tracking-widest">ระบบตรวจสอบความพร้อม (Settlement Check)</h5>
+                   <h5 className="text-[12px] font-black text-white/20 uppercase tracking-widest">ระบบตรวจสอบความพร้อม</h5>
                    <div className="space-y-3">
-                      <CheckItem label="รายการที่ยังไม่ชำระ (Pending Orders)" value="0 รายการ" status="pass" />
-                      <CheckItem label="การซิงค์ข้อมูลกับระบบคลัง (Stock Sync)" value="สมบูรณ์" status="pass" />
+                      <CheckItem label="รายการที่ยังไม่ชำระ" value="0 รายการ" status="pass" />
+                      <CheckItem label="การซิงค์ข้อมูลกับระบบคลัง" value="สมบูรณ์" status="pass" />
                    </div>
                 </div>
               </div>
@@ -124,7 +146,7 @@ export function ShiftCloseModal({ isOpen, onClose, onConfirm }: ShiftCloseModalP
                        <ShieldCheck size={20} />
                        ยืนยันปิดยอดประจำวัน
                     </PillButton>
-                    <PillButton variant="glass" className="w-full text-white/20" onClick={() => setStep(1)}>
+                    <PillButton variant="ghost" className="w-full" onClick={() => setStep(1)}>
                        ย้อนกลับไปแก้ไข
                     </PillButton>
                  </div>

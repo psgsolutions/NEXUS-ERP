@@ -11,10 +11,12 @@ import {
 import { 
   PillButton, 
   PillInput, 
-  PillSelect, 
+  PillSelect,
+  CreatableCombobox, 
   Modal, 
   PillTabs, 
   NexusDataField,
+  NexusDatePicker,
   cn 
 } from "@/components/ui/Base";
 import { NumberStepper } from "@/components/ui/NumberStepper";
@@ -279,25 +281,27 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                         </div>
                       </Field>
                       
-                      <Field label="ผู้จัดจำหน่าย (SUPPLIER) *">
-                        <PillSelect 
+                      <Field label="ผู้จัดจำหน่าย *">
+                        <CreatableCombobox 
                           value={form.supplier} 
-                          onChange={(e) => setForm({...form, supplier: e.target.value})} 
+                          onChange={(val) => setForm({...form, supplier: val})} 
                           className="w-full"
-                        >
-                          <option value="">เลือกคู่ค้า...</option>
-                          <option value="SUP-001">Thai Equipment Co., Ltd. (สำนักงานใหญ่)</option>
-                          <option value="SUP-002">Global Tech Industries Inc. (Global)</option>
-                          <option value="SUP-003">Nippon Precision Parts (Japan)</option>
-                          <option value="SUP-004">Shenzhen Logistics Components (China)</option>
-                        </PillSelect>
+                          options={[
+                            { value: "", label: "เลือกคู่ค้า..." },
+                            { value: "SUP-001", label: "Thai Equipment Co., Ltd. (สำนักงานใหญ่)" },
+                            { value: "SUP-002", label: "Global Tech Industries Inc. (Global)" },
+                            { value: "SUP-003", label: "Nippon Precision Parts (Japan)" },
+                            { value: "SUP-004", label: "Shenzhen Logistics Components (China)" }
+                          ]}
+                          allowCustom={true}
+                        />
                       </Field>
                     </div>
 
                     {/* Mode Specific Selection Fields */}
                     <div className="grid grid-cols-2 gap-6 pt-2 animate-in zoom-in-95 duration-500">
                       {form.order_type === 'PROJECT' && (
-                        <Field label="โครงการที่อ้างอิง (REFERENCE PROJECT) *">
+                        <Field label="โครงการที่อ้างอิง *">
                           <PillSelect 
                             value={form.project_id} 
                             onChange={(e) => setForm({...form, project_id: e.target.value})} 
@@ -312,7 +316,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                       )}
 
                       {form.order_type === 'CONSUMABLE' && (
-                        <Field label="แผนกที่ทำรายการเบิก (REQUESTING DEPARTMENT) *">
+                        <Field label="แผนกที่ทำรายการเบิก *">
                           <PillSelect 
                             value={form.department} 
                             onChange={(e) => setForm({...form, department: e.target.value})} 
@@ -328,7 +332,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                       )}
 
                       {form.order_type === 'STOCK' && (
-                        <Field label="คลังพัสดุปลายทาง (DESTINATION WAREHOUSE)">
+                        <Field label="คลังพัสดุปลายทาง">
                           <PillInput 
                             value="Main Warehouse (คลังส่วนกลาง)" 
                             disabled
@@ -340,19 +344,15 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                     </div>
 
                     <div className="grid grid-cols-2 gap-6 pt-2">
-                      <Field label="วันที่สั่งซื้อ (PO DATE) *">
-                        <PillInput 
-                          type="date"
-                          value={form.date} 
+                      <Field label="วันที่สั่งซื้อ *">
+                        <NexusDatePicker value={form.date} 
                           onChange={(e) => setForm({...form, date: e.target.value})} 
                           className="w-full" 
                         />
                       </Field>
                       
-                      <Field label="กำหนดส่งมอบ (DELIVERY DATE) *">
-                        <PillInput 
-                          type="date"
-                          value={form.delivery_date} 
+                      <Field label="กำหนดส่งมอบ *">
+                        <NexusDatePicker value={form.delivery_date} 
                           onChange={(e) => setForm({...form, delivery_date: e.target.value})} 
                           className="w-full" 
                         />
@@ -383,7 +383,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                     </h3>
                     
                     <div className="grid grid-cols-2 gap-6">
-                      <Field label="สกุลเงินชำระเงิน (PO CURRENCY) *">
+                      <Field label="สกุลเงินชำระเงิน *">
                         <PillSelect 
                           value={form.currency} 
                           onChange={(e) => {
@@ -407,7 +407,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                         </PillSelect>
                       </Field>
                       
-                      <Field label="อัตราแลกเปลี่ยนแปลงค่า (EXCHANGE RATE) ต่อ 1 หน่วย">
+                      <Field label="อัตราแลกเปลี่ยนแปลงค่า ต่อ 1 หน่วย">
                         <div className="relative">
                           <PillInput 
                             type="number"
@@ -456,7 +456,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                         </PillSelect>
                       </Field>
                       
-                      <Field label="สถานที่ส่งมอบ (NAMED PLACE)">
+                      <Field label="สถานที่ส่งมอบ">
                         <PillInput 
                           value={form.incoterm_place} 
                           onChange={(e) => setForm({...form, incoterm_place: e.target.value})} 
@@ -465,7 +465,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                         />
                       </Field>
 
-                      <Field label="การชำระเงิน (PAYMENT TERM)">
+                      <Field label="การชำระเงิน">
                         <PillSelect 
                           value={form.payment_term} 
                           onChange={(e) => setForm({...form, payment_term: e.target.value})} 
@@ -491,7 +491,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                     </h3>
                     
                     <div className="grid grid-cols-2 gap-6">
-                      <Field label="วิธีการจัดส่ง (SHIPPING METHOD)">
+                      <Field label="วิธีการจัดส่ง">
                         <PillSelect 
                           value={form.shipping_method} 
                           onChange={(e) => setForm({...form, shipping_method: e.target.value})} 
@@ -500,12 +500,12 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                           <option value="Road Freight">Road Freight - ทางบก (รถยนต์/รถบรรทุก)</option>
                           <option value="Air Freight">Air Freight - ทางอากาศ (เครื่องบินสินค้า)</option>
                           <option value="Sea Freight">Sea Freight - ทางทะเล (ตู้คอนเทนเนอร์)</option>
-                          <option value="Express Courier">Express Courier - พัสดุด่วน (DHL/FedEx/UPS)</option>
+                          <option value="Express Courier">Express Courier - พัสดุด่วน</option>
                           <option value="Rail Freight">Rail Freight - ทางรถไฟ</option>
                         </PillSelect>
                       </Field>
                       
-                      <Field label="ผู้ขนส่ง / ชื่อเรือ (CARRIER / SHIP NAME)">
+                      <Field label="ผู้ขนส่ง / ชื่อเรือ">
                         <PillInput 
                           value={form.carrier} 
                           onChange={(e) => setForm({...form, carrier: e.target.value})} 
@@ -516,7 +516,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                     </div>
 
                     <div className="grid grid-cols-2 gap-6 pt-2">
-                      <Field label="ท่าเรือ/ด่านศุลกากรต้นทาง (PORT OF LOADING)">
+                      <Field label="ท่าเรือ/ด่านศุลกากรต้นทาง">
                         <PillInput 
                           value={form.port_loading} 
                           onChange={(e) => setForm({...form, port_loading: e.target.value})} 
@@ -525,7 +525,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                         />
                       </Field>
                       
-                      <Field label="ท่าเรือ/ด่านศุลกากรปลายทาง (PORT OF DISCHARGE)">
+                      <Field label="ท่าเรือ/ด่านศุลกากรปลายทาง">
                         <PillInput 
                           value={form.port_discharge} 
                           onChange={(e) => setForm({...form, port_discharge: e.target.value})} 
@@ -543,7 +543,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                   <div className="flex justify-between items-center">
                     <div className="space-y-1">
-                      <h4 className="text-[12px] font-black text-white/50 uppercase tracking-[0.2em]">รายการสั่งซื้อสินค้า (PURCHASE ITEMS)</h4>
+                      <h4 className="text-[12px] font-black text-white/50 uppercase tracking-[0.2em]">รายการสั่งซื้อสินค้า</h4>
                       <p className="text-[10px] text-white/40 uppercase font-black tracking-widest">
                         ป้อนราคาทุนในสกุลเงินที่เลือก: <span className="text-nexus-blue font-black">{form.currency}</span>
                       </p>
@@ -571,12 +571,12 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                         )} />
 
                         <div className="col-span-5 space-y-1.5">
-                          <label className="text-[10px] font-black text-white/55 uppercase tracking-widest ml-1">ชื่อพัสดุ / สเปกสินค้า (ITEM SPECIFICATION)</label>
+                          <label className="text-[10px] font-black text-white/55 uppercase tracking-widest ml-1">ชื่อพัสดุ / สเปกสินค้า</label>
                           <PillInput className="w-full bg-transparent border-white/5 font-black text-[14px] h-9" value={item.name} onChange={(e) => updateItem(item.id, "name", e.target.value)} />
                         </div>
                         
                         <div className="col-span-3 space-y-1.5">
-                          <label className="text-[10px] font-black text-white/55 uppercase tracking-widest text-center block">จำนวน (QTY)</label>
+                          <label className="text-[10px] font-black text-white/55 uppercase tracking-widest text-center block">จำนวน</label>
                           <NumberStepper value={item.qty} unit={item.unit || "ชิ้น"} onChange={(v) => updateItem(item.id, "qty", v)} />
                         </div>
                         
@@ -627,18 +627,18 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                       <div className="flex gap-2">
                         <PillButton 
                           variant="glass" 
-                          className="h-9 px-6 rounded-full text-white/70 hover:text-white"
+                          className="h-9 px-6 rounded-full hover:"
                           onClick={() => setForm({
                             ...form,
                             terms: "1. สินค้าต้องจัดส่งในสภาพสมบูรณ์และถูกต้องตามรุ่นที่สั่งซื้อ\n2. บรรจุภัณฑ์ต้องเหมาะสมกับการขนส่งเพื่อป้องกันการชำรุดเสียหาย\n3. กรุณาแนบใบกำกับภาษี/ใบส่งสินค้าและสำเนาใบสั่งซื้อมาพร้อมกับสินค้า"
                           })}
                         >
-                          เงื่อนไขมาตรฐาน (TH)
+                          เงื่อนไขมาตรฐาน
                         </PillButton>
                         
                         <PillButton 
                           variant="glass" 
-                          className="h-9 px-6 rounded-full text-white/70 hover:text-white"
+                          className="h-9 px-6 rounded-full hover:"
                           onClick={() => setForm({
                             ...form,
                             terms: "1. All goods must be delivered in perfect condition and match technical specifications.\n2. Packaging must be appropriate for transit and protect items from damage.\n3. Please enclose the commercial invoice, packing list, and PO copy with the shipment."
@@ -680,11 +680,11 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
               </div>
               
               <div className="space-y-4">
-                <Field label="ระบบภาษี (VAT CONFIG)">
+                <Field label="ระบบภาษี">
                   <PillSelect value={form.vat_type} onChange={(e) => setForm({...form, vat_type: e.target.value as VatType})} className="w-full h-9">
                     <option value="Exclusive">แยกภาษี (Exclusive 7%)</option>
                     <option value="Inclusive">รวมภาษี (Inclusive 7%)</option>
-                    <option value="Non-VAT">ไม่มีภาษี (Non-VAT)</option>
+                    <option value="Non-VAT">ไม่มีภาษี</option>
                   </PillSelect>
                 </Field>
                 
@@ -710,7 +710,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                   {form.currency !== "THB" && (
                     <div className="mt-4 p-4 rounded-[1.5rem] bg-nexus-blue/10 border border-nexus-blue/20 text-center animate-in fade-in duration-300">
                       <span className="text-[10px] font-black text-nexus-blue uppercase tracking-[0.2em] block mb-1">
-                        มูลค่ารวมในสกุลเงินบาท (THB EQUIVALENT)
+                        มูลค่ารวมในสกุลเงินบาท
                       </span>
                       <div className="text-xl font-black text-white font-mono italic">
                         {formatCurrency(financialsTHB.total)}
@@ -737,7 +737,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
               บันทึกข้อมูล
             </PillButton>
             
-            <PillButton variant="glass" className="w-full h-9 px-6 rounded-full text-white/60 hover:text-white" onClick={onClose}>
+            <PillButton variant="ghost" className="w-full h-9 px-6 rounded-full hover:" onClick={onClose}>
               ยกเลิก
             </PillButton>
           </div>

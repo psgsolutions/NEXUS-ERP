@@ -18,6 +18,7 @@ import {
   NexusDataField,
   cn 
 } from "@/components/ui/Base";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 
 interface AssetDepreciationModalProps {
   isOpen: boolean;
@@ -29,11 +30,24 @@ export function AssetDepreciationModal({ isOpen, onClose, onConfirm }: AssetDepr
   const [step, setStep] = useState(1);
   const [period, setPeriod] = useState("เมษายน 2569");
   
-  const mockAssetSummary = {
-    totalAssets: 124,
-    totalBookValue: 8420000,
-    depreciationAmount: 142500,
-    accountsAffected: 2
+  const { data: assets } = useRealtimeCollection("assets");
+
+  const totalAssets = assets?.length || 0;
+  const totalBookValue = assets?.reduce((sum, a) => sum + (a.netBookValue || 0), 0) || 0;
+  
+  // Calculate mock monthly depreciation: 1/12 of ((purchasePrice - salvage) / usefulLifeYears)
+  const depreciationAmount = assets?.reduce((sum, a) => {
+     if (a.usefulLifeYears > 0) {
+        return sum + (((a.purchasePrice || 0) - (a.salvageValue || 0)) / a.usefulLifeYears) / 12;
+     }
+     return sum;
+  }, 0) || 0;
+
+  const assetSummary = {
+    totalAssets,
+    totalBookValue,
+    depreciationAmount,
+    accountsAffected: totalAssets > 0 ? 2 : 0
   };
   const [isSaving, setIsSaving] = useState(false);
 
@@ -56,7 +70,7 @@ export function AssetDepreciationModal({ isOpen, onClose, onConfirm }: AssetDepr
     <Modal 
       isOpen={isOpen} 
       onClose={handleClose} 
-      title="ระบบคำนวณค่าเสื่อมราคาสินทรัพย์ (ASSET DEPRECIATION ENGINE)"
+      title="ระบบคำนวณค่าเสื่อมราคาสินทรัพย์"
       maxWidth="max-w-[1600px]"
     >
       <div className="flex h-full bg-[#0D0D0D]">
@@ -78,7 +92,7 @@ export function AssetDepreciationModal({ isOpen, onClose, onConfirm }: AssetDepr
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="grid grid-cols-2 gap-8 p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5">
                    <div className="space-y-3">
-                      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">งวดบัญชี (Period)</label>
+                      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">งวดบัญชี</label>
                       <PillSelect value={period} onChange={(e) => setPeriod(e.target.value)} className="w-full px-6">
                         <option>เมษายน 2569</option>
                         <option>พฤษภาคม 2569</option>
@@ -87,27 +101,27 @@ export function AssetDepreciationModal({ isOpen, onClose, onConfirm }: AssetDepr
                    <div className="space-y-3">
                       <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">จำนวนสินทรัพย์ที่รอประมวลผล</label>
                       <div className="h-11 px-6 rounded-2xl bg-white/5 border border-white/10 flex items-center text-sm font-bold text-white">
-                         {mockAssetSummary.totalAssets} รายการ
+                         {assetSummary.totalAssets} รายการ
                       </div>
                    </div>
                 </div>
 
                 <div className="space-y-6">
-                   <h5 className="text-[12px] font-black text-white/20 uppercase tracking-widest ml-1">ประมาณการค่าเสื่อมราคา (Estimated Depreciation)</h5>
+                   <h5 className="text-[12px] font-black text-white/20 uppercase tracking-widest ml-1">ประมาณการค่าเสื่อมราคา</h5>
                    <div className="p-8 rounded-[3.5rem] bg-white/[0.02] border border-white/5 space-y-8">
                       <div className="flex justify-between items-end">
                          <div className="space-y-1">
                             <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">ยอดค่าเสื่อมรวบรวมงวดนี้</p>
-                            <p className="text-4xl font-black text-warning drop-shadow-neon-warning">฿{mockAssetSummary.depreciationAmount.toLocaleString()}</p>
+                            <p className="text-4xl font-black text-warning drop-shadow-neon-warning">฿{assetSummary.depreciationAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                          </div>
                          <div className="text-right space-y-1">
                             <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">มูลค่าทางบัญชีรวมหลังหัก</p>
-                            <p className="text-xl font-black text-white/80">฿{(mockAssetSummary.totalBookValue - mockAssetSummary.depreciationAmount).toLocaleString()}</p>
+                            <p className="text-xl font-black text-white/80">฿{(assetSummary.totalBookValue - assetSummary.depreciationAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                          </div>
                       </div>
                       
                       <div className="pt-8 border-t border-white/5 grid grid-cols-2 gap-4 text-[11px] font-bold text-white/40 uppercase tracking-widest">
-                         <div className="flex items-center gap-2"><CheckCircle2 className="text-nexus-teal" size={14} /> คำนวณแบบเส้นตรง (Straight-Line)</div>
+                         <div className="flex items-center gap-2"><CheckCircle2 className="text-nexus-teal" size={14} /> คำนวณแบบเส้นตรง</div>
                          <div className="flex items-center gap-2"><CheckCircle2 className="text-nexus-teal" size={14} /> บันทึกสมุดรายวัน JV อัตโนมัติ</div>
                       </div>
                    </div>
@@ -123,7 +137,7 @@ export function AssetDepreciationModal({ isOpen, onClose, onConfirm }: AssetDepr
                  <div className="space-y-4">
                     <h4 className="text-2xl font-black text-white uppercase tracking-tight">ยืนยันการบันทึกค่าเสื่อมราคา?</h4>
                     <p className="text-sm text-white/40 font-bold leading-relaxed max-w-md mx-auto">
-                       ระบบจะทำการสร้างรายการบัญชี (JV) เพื่อบันทึกค่าใช้จ่ายค่าเสื่อมราคา และลดยอดสินทรัพย์สะสมในฐานข้อมูลหลักอย่างถาวร
+                       ระบบจะทำการสร้างรายการบัญชี เพื่อบันทึกค่าใช้จ่ายค่าเสื่อมราคา และลดยอดสินทรัพย์สะสมในฐานข้อมูลหลักอย่างถาวร
                     </p>
                  </div>
                  <div className="flex flex-col gap-3 max-w-sm mx-auto pt-6">
@@ -133,10 +147,10 @@ export function AssetDepreciationModal({ isOpen, onClose, onConfirm }: AssetDepr
                       disabled={isSaving}
                     >
                        <ShieldCheck size={20} className={isSaving ? "animate-pulse" : ""} />
-                       {isSaving ? "กำลังประมวลผล..." : "ยืนยันการประมวลผล (POST DEPRECIATION)"}
+                       {isSaving ? "กำลังประมวลผล..." : "ยืนยันการประมวลผล"}
                     </PillButton>
                     <PillButton 
-                      variant="glass" 
+                      variant="ghost" 
                       className={cn("w-full text-white/20", isSaving && "opacity-50 pointer-events-none")} 
                       onClick={() => setStep(1)}
                       disabled={isSaving}

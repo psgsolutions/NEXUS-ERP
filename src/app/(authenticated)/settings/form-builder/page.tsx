@@ -60,7 +60,7 @@ interface TextBlock {
 }
 
 export default function DocumentFormBuilderPage() {
-  const [docTitle, setDocTitle] = useState("ใบเสนอราคาต้นแบบ (STANDARD QUOTATION)");
+  const [docTitle, setDocTitle] = useState("ใบเสนอราคาต้นแบบ");
   const [themeColor, setThemeColor] = useState("cyan");
   const [fontFamily, setFontFamily] = useState("Sarabun");
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
@@ -216,7 +216,7 @@ export default function DocumentFormBuilderPage() {
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0A0A0C]">
       
       {/* 1. TYPOGRAPHY & DATA BINDING TOOLBAR */}
-      <header className="h-20 bg-[#0F0F12] border-b border-white/5 px-8 flex items-center justify-between shrink-0 gap-6 z-20">
+      <header className="h-20 bg-[#0F0F12] border-b border-white/5 px-8 flex items-center justify-between shrink-0 gap-5 z-20">
         <div className="flex items-center gap-4">
           <Link href="/settings">
             <PillButton variant="glass" className="h-9 w-9 p-0 rounded-full flex items-center justify-center">
@@ -225,18 +225,18 @@ export default function DocumentFormBuilderPage() {
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded bg-nexus-teal/10 border border-nexus-teal/20 text-[9px] text-nexus-teal font-black uppercase tracking-widest leading-none">
+              <span className="px-2 py-0.5 rounded bg-nexus-teal/10 border border-nexus-teal/20 text-[10px] text-nexus-teal font-normal uppercase tracking-widest leading-none">
                 Master Document Architect V3.9
               </span>
             </div>
-            <h1 className="text-sm font-black text-white uppercase tracking-wider mt-1.5 leading-none">Document Form Builder</h1>
+            <h1 className="text-sm font-bold text-white uppercase tracking-wider mt-1.5 leading-none">Document Form Builder</h1>
           </div>
         </div>
 
         {/* Toolbar Settings */}
         <div className="flex items-center gap-4 flex-1 justify-center max-w-4xl bg-black/30 p-2 rounded-full border border-white/5">
           <div className="flex items-center gap-1.5 border-r border-white/5 pr-4 shrink-0">
-            <span className="text-[10px] font-black text-white/30 uppercase tracking-widest mr-2">ฟอนต์ดีไซน์</span>
+            <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest mr-2">ฟอนต์ดีไซน์</span>
             <PillSelect 
               value={fontFamily} 
               onChange={(e) => setFontFamily(e.target.value)} 
@@ -274,7 +274,7 @@ export default function DocumentFormBuilderPage() {
 
           <div className="flex items-center gap-2 shrink-0">
             <Database size={13} className="text-nexus-teal" />
-            <span className="text-[10px] font-black text-white/30 uppercase tracking-widest mr-1">ผูกตัวแปรระบบ</span>
+            <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest mr-1">ผูกตัวแปรระบบ</span>
             <PillSelect 
               value="" 
               onChange={(e) => {
@@ -283,16 +283,16 @@ export default function DocumentFormBuilderPage() {
                   e.target.value = ""; // Reset
                 }
               }} 
-              className="h-9 px-6 rounded-full text-xs text-nexus-teal font-black"
+              className="h-9 px-6 rounded-full text-sm text-nexus-teal font-medium"
             >
               <option value="">เลือกตัวแปรระบบ...</option>
-              <option value="{{customer.name}}">ชื่อลูกค้า (customer.name)</option>
+              <option value="{{customer.name}}">ชื่อลูกค้า</option>
               <option value="{{customer.tax_id}}">เลขผู้เสียภาษี (customer.tax_id)</option>
-              <option value="{{doc.id}}">รหัสเอกสาร (doc.id)</option>
-              <option value="{{doc.date}}">วันที่ออก (doc.date)</option>
-              <option value="{{product.name}}">รายละเอียดของตาราง (product.name)</option>
-              <option value="{{grand.total}}">ยอดเงินสุทธิ (grand.total)</option>
-              <option value="{{warranty.info}}">ข้อมูลรับประกัน (warranty.info)</option>
+              <option value="{{doc.id}}">รหัสเอกสาร</option>
+              <option value="{{doc.date}}">วันที่ออก</option>
+              <option value="{{product.name}}">รายละเอียดของตาราง</option>
+              <option value="{{grand.total}}">ยอดเงินสุทธิ</option>
+              <option value="{{warranty.info}}">ข้อมูลรับประกัน</option>
             </PillSelect>
           </div>
         </div>
@@ -312,10 +312,10 @@ export default function DocumentFormBuilderPage() {
       <div className="flex-1 flex overflow-hidden divide-x divide-white/5">
         
         {/* Left Side: Element Adder panel */}
-        <div className="w-80 bg-[#0F0F12] p-6 flex flex-col shrink-0 overflow-y-auto custom-scrollbar space-y-6">
+        <div className="w-80 bg-[#0F0F12] p-5 flex flex-col shrink-0 overflow-y-auto custom-scrollbar space-y-3">
           <div className="space-y-1">
-            <span className="text-[9px] text-white/20 font-black tracking-widest uppercase">Toolbox</span>
-            <h3 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+            <span className="text-[10px] text-white/20 font-normal tracking-widest uppercase">Toolbox</span>
+            <h3 className="text-sm font-medium text-white uppercase tracking-wider flex items-center gap-2">
               <Plus size={14} className="text-nexus-teal" /> เพิ่มองค์ประกอบเอกสาร
             </h3>
           </div>
@@ -323,50 +323,50 @@ export default function DocumentFormBuilderPage() {
           <div className="grid grid-cols-1 gap-2.5">
             <button 
               onClick={() => addBlock("heading")}
-              className="h-10 w-full rounded-full border border-white/5 bg-white/[0.02] text-left px-5 text-[11px] font-black uppercase text-white hover:border-nexus-teal/30 hover:bg-nexus-teal/5 transition-all flex items-center justify-between"
+              className="h-10 w-full rounded-full border border-white/5 bg-white/[0.02] text-left px-5 text-[12px] font-medium uppercase text-white hover:border-nexus-teal/30 hover:bg-nexus-teal/5 transition-all flex items-center justify-between"
             >
-              <span>[ H ] ส่วนหัวข้อเรื่อง (Heading)</span>
+              <span>[ H ] ส่วนหัวข้อเรื่อง</span>
               <Type size={12} className="text-white/30" />
             </button>
             <button 
               onClick={() => addBlock("text")}
-              className="h-10 w-full rounded-full border border-white/5 bg-white/[0.02] text-left px-5 text-[11px] font-black uppercase text-white hover:border-nexus-teal/30 hover:bg-nexus-teal/5 transition-all flex items-center justify-between"
+              className="h-10 w-full rounded-full border border-white/5 bg-white/[0.02] text-left px-5 text-[12px] font-medium uppercase text-white hover:border-nexus-teal/30 hover:bg-nexus-teal/5 transition-all flex items-center justify-between"
             >
-              <span>[ T ] ข้อความอิสระ (Text block)</span>
+              <span>[ T ] ข้อความอิสระ</span>
               <FileText size={12} className="text-white/30" />
             </button>
             <button 
               onClick={() => addBlock("table")}
-              className="h-10 w-full rounded-full border border-white/5 bg-white/[0.02] text-left px-5 text-[11px] font-black uppercase text-white hover:border-nexus-teal/30 hover:bg-nexus-teal/5 transition-all flex items-center justify-between"
+              className="h-10 w-full rounded-full border border-white/5 bg-white/[0.02] text-left px-5 text-[12px] font-medium uppercase text-white hover:border-nexus-teal/30 hover:bg-nexus-teal/5 transition-all flex items-center justify-between"
             >
-              <span>[ ▦ ] ตารางข้อมูลตาราง (Data Table)</span>
+              <span>[ ▦ ] ตารางข้อมูลตาราง</span>
               <Columns size={12} className="text-white/30" />
             </button>
             <button 
               onClick={() => addBlock("divider")}
-              className="h-10 w-full rounded-full border border-white/5 bg-white/[0.02] text-left px-5 text-[11px] font-black uppercase text-white hover:border-nexus-teal/30 hover:bg-nexus-teal/5 transition-all flex items-center justify-between"
+              className="h-10 w-full rounded-full border border-white/5 bg-white/[0.02] text-left px-5 text-[12px] font-medium uppercase text-white hover:border-nexus-teal/30 hover:bg-nexus-teal/5 transition-all flex items-center justify-between"
             >
-              <span>[ ─ ] เส้นคั่นหน้า (Divider Line)</span>
+              <span>[ ─ ] เส้นคั่นหน้า</span>
               <Palette size={12} className="text-white/30" />
             </button>
             <button 
               onClick={() => addBlock("spacer")}
-              className="h-10 w-full rounded-full border border-white/5 bg-white/[0.02] text-left px-5 text-[11px] font-black uppercase text-white hover:border-nexus-teal/30 hover:bg-nexus-teal/5 transition-all flex items-center justify-between"
+              className="h-10 w-full rounded-full border border-white/5 bg-white/[0.02] text-left px-5 text-[12px] font-medium uppercase text-white hover:border-nexus-teal/30 hover:bg-nexus-teal/5 transition-all flex items-center justify-between"
             >
-              <span>[ ⬜ ] กล่องเว้นระยะ (Blank Spacer)</span>
+              <span>[ ⬜ ] กล่องเว้นระยะ</span>
               <Sliders size={12} className="text-white/30" />
             </button>
           </div>
 
-          <div className="pt-6 border-t border-white/5 space-y-4">
+          <div className="pt-6 border-t border-white/5 space-y-3">
              <div className="space-y-1">
-               <span className="text-[9px] text-white/20 font-black tracking-widest uppercase">Global Styling</span>
-               <h3 className="text-xs font-black text-white uppercase tracking-wider">สไตล์เลย์เอาต์หน้า</h3>
+               <span className="text-[10px] text-white/20 font-normal tracking-widest uppercase">Global Styling</span>
+               <h3 className="text-sm font-medium text-white uppercase tracking-wider">สไตล์เลย์เอาต์หน้า</h3>
              </div>
              
              <div className="space-y-3 bg-white/[0.01] border border-white/5 p-4 rounded-2xl">
                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">ธีมสีคุมโทน (Theme Accent)</label>
+                  <label className="text-[11px] font-medium text-white/40 uppercase tracking-widest">ธีมสีคุมโทน</label>
                   <PillSelect value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="w-full h-9 px-6 rounded-full text-white text-xs">
                      <option value="cyan">Cyan (สีฟ้านีออน)</option>
                      <option value="blue">Blue (น้ำเงินคอสมิก)</option>
@@ -377,7 +377,7 @@ export default function DocumentFormBuilderPage() {
                   </PillSelect>
                </div>
                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">ชื่อแม่แบบฟอร์ม</label>
+                  <label className="text-[11px] font-medium text-white/40 uppercase tracking-widest">ชื่อแม่แบบฟอร์ม</label>
                   <PillInput value={docTitle} onChange={(e) => setDocTitle(e.target.value)} className="w-full h-9 px-6 rounded-full text-white text-xs" />
                </div>
              </div>
@@ -393,7 +393,7 @@ export default function DocumentFormBuilderPage() {
             className="w-[800px] bg-white text-black min-h-[1050px] shadow-2xl p-16 flex flex-col relative transition-all duration-500 box-border"
           >
             {/* Visual Guidelines */}
-            <div className="absolute top-4 left-4 text-[9px] font-mono text-gray-300 font-bold uppercase select-none pointer-events-none">
+            <div className="absolute top-4 left-4 text-xs font-mono text-gray-300 font-bold uppercase select-none pointer-events-none">
               A4 Design Sheet Guidelines
             </div>
 
@@ -409,13 +409,13 @@ export default function DocumentFormBuilderPage() {
                 const mrVal = block.marginRight ? `${block.marginRight}px` : "0px";
 
                 const sizeClass = 
-                  block.fontSize === "sm" ? "text-xs" :
+                  block.fontSize === "sm" ? "text-[13px]" :
                   block.fontSize === "lg" ? "text-lg" :
                   block.fontSize === "xl" ? "text-xl font-bold" :
-                  block.fontSize === "2xl" ? "text-2xl font-black" : "text-sm font-medium";
+                  block.fontSize === "2xl" ? "text-2xl font-medium" : "text-sm font-medium";
 
                 let resolvedContent = block.content;
-                resolvedContent = resolvedContent.replace("{{customer.name}}", "โรงพยาบาลตากสิน (Taksin Hospital)");
+                resolvedContent = resolvedContent.replace("{{customer.name}}", "โรงพยาบาลตากสิน");
                 resolvedContent = resolvedContent.replace("{{doc.id}}", "QT-2605-0042");
                 resolvedContent = resolvedContent.replace("{{warranty.info}}", "รับประกันอุปกรณ์ระบบโครงสร้างเครือข่าย 1 ปีเต็ม");
 
@@ -451,7 +451,7 @@ export default function DocumentFormBuilderPage() {
                         />
                       </div>
                     ) : block.type === "spacer" ? (
-                      <div className="w-full bg-gray-100/50 border border-dashed border-gray-200 rounded flex items-center justify-center py-2 text-[8px] font-mono text-gray-400 select-none">
+                      <div className="w-full bg-gray-100/50 border border-dashed border-gray-200 rounded flex items-center justify-center py-2 text-[10px] font-mono text-gray-400 select-none">
                         [ SPACER {block.paddingTop + block.paddingBottom} ]
                       </div>
                     ) : block.type === "table" ? (
@@ -475,7 +475,7 @@ export default function DocumentFormBuilderPage() {
                               {block.tableCols?.split(",").map((c, i) => (
                                 <th 
                                   key={i} 
-                                  className="p-3 text-[9px] font-black uppercase tracking-widest" 
+                                  className="p-3 text-[10px] font-normal uppercase tracking-widest" 
                                   style={{ 
                                     width: c.split(":")[1] || "auto",
                                     color: getResolvedTableHeaderText(block.tableHeaderTextColor)
@@ -519,7 +519,7 @@ export default function DocumentFormBuilderPage() {
                       </div>
                     ) : block.type === "heading" ? (
                       <h2 
-                        className={cn("tracking-tight font-black leading-tight", sizeClass)}
+                        className={cn("tracking-tight font-bold leading-tight", sizeClass)}
                         style={{ color: getResolvedColor(block.textColor) }}
                       >
                         {resolvedContent}
@@ -556,28 +556,28 @@ export default function DocumentFormBuilderPage() {
         </div>
 
         {/* 3. LAYOUT & BORDER INSPECTOR PANEL */}
-        <div className="w-[400px] bg-[#0F0F12] p-8 flex flex-col shrink-0 overflow-y-auto custom-scrollbar space-y-8">
+        <div className="w-[400px] bg-[#0F0F12] p-5 flex flex-col shrink-0 overflow-y-auto custom-scrollbar space-y-3">
           
           <div className="space-y-1 border-b border-white/5 pb-4">
-            <span className="text-[9px] text-white/20 font-black tracking-widest uppercase">Geometry Inspector</span>
-            <h3 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+            <span className="text-[10px] text-white/20 font-normal tracking-widest uppercase">Geometry Inspector</span>
+            <h3 className="text-sm font-medium text-white uppercase tracking-wider flex items-center gap-2">
               <Sliders size={14} className="text-nexus-teal" /> ตัวควบคุมเชิงเลย์เอาต์
             </h3>
           </div>
 
           {activeBlock ? (
-            <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+            <div className="space-y-3 animate-in slide-in-from-right-4 duration-300">
               
               {/* Spacing alignment */}
-              <div className="space-y-4">
-                 <h4 className="text-[10px] font-black text-white/40 uppercase tracking-widest flex items-center gap-2">
+              <div className="space-y-3">
+                 <h4 className="text-[11px] font-medium text-white/40 uppercase tracking-widest flex items-center gap-2">
                     <Sparkles size={12} className="text-nexus-teal" /> การจัดแนวช่องไฟและขนาดกริด
                  </h4>
                  
                  <div className="space-y-3 bg-white/[0.01] border border-white/5 p-4 rounded-2xl">
                    <div className="grid grid-cols-2 gap-3">
                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-white/30 uppercase tracking-widest">ขนาดกริด (Grid Width)</label>
+                        <label className="text-[10px] font-normal text-white/30 uppercase tracking-widest">ขนาดกริด</label>
                         <PillSelect 
                           value={activeBlock.width || "100%"}
                           onChange={(e) => updateBlock(activeBlock.id, { width: e.target.value as any })}
@@ -594,7 +594,7 @@ export default function DocumentFormBuilderPage() {
                         </PillSelect>
                      </div>
                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-white/30 uppercase tracking-widest">ขนาดตัวอักษร</label>
+                        <label className="text-[10px] font-normal text-white/30 uppercase tracking-widest">ขนาดตัวอักษร</label>
                         <PillSelect
                           value={activeBlock.fontSize}
                           onChange={(e) => updateBlock(activeBlock.id, { fontSize: e.target.value as any })}
@@ -611,10 +611,10 @@ export default function DocumentFormBuilderPage() {
 
                    {/* Margin Spacers Left Right */}
                    <div className="space-y-2 pt-2 border-t border-white/5">
-                     <label className="text-[9px] font-black text-white/30 uppercase tracking-widest block">ขยับตำแหน่งซ้าย-ขวา (Horizontal Indents)</label>
+                     <label className="text-[10px] font-normal text-white/30 uppercase tracking-widest block">ขยับตำแหน่งซ้าย-ขวา</label>
                      <div className="grid grid-cols-2 gap-4">
                        <div className="space-y-1">
-                         <div className="flex justify-between text-[8px] text-white/40">
+                         <div className="flex justify-between text-[10px] text-white/40">
                            <span>ขยับซ้าย:</span>
                            <span className="font-mono text-nexus-teal font-bold">{activeBlock.marginLeft || 0}px</span>
                          </div>
@@ -629,7 +629,7 @@ export default function DocumentFormBuilderPage() {
                          />
                        </div>
                        <div className="space-y-1">
-                         <div className="flex justify-between text-[8px] text-white/40">
+                         <div className="flex justify-between text-[10px] text-white/40">
                            <span>ขยับขวา:</span>
                            <span className="font-mono text-nexus-teal font-bold">{activeBlock.marginRight || 0}px</span>
                          </div>
@@ -648,7 +648,7 @@ export default function DocumentFormBuilderPage() {
 
                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-white/30 uppercase tracking-widest">ช่องไฟบน (Top)</label>
+                        <label className="text-[10px] font-normal text-white/30 uppercase tracking-widest">ช่องไฟบน</label>
                         <PillSelect 
                           value={activeBlock.paddingTop}
                           onChange={(e) => updateBlock(activeBlock.id, { paddingTop: parseInt(e.target.value) })}
@@ -664,7 +664,7 @@ export default function DocumentFormBuilderPage() {
                         </PillSelect>
                      </div>
                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-white/30 uppercase tracking-widest">ช่องไฟล่าง (Bottom)</label>
+                        <label className="text-[10px] font-normal text-white/30 uppercase tracking-widest">ช่องไฟล่าง</label>
                         <PillSelect 
                           value={activeBlock.paddingBottom}
                           onChange={(e) => updateBlock(activeBlock.id, { paddingBottom: parseInt(e.target.value) })}
@@ -686,7 +686,7 @@ export default function DocumentFormBuilderPage() {
               {/* Text content editor */}
               {activeBlock.type !== "divider" && activeBlock.type !== "spacer" && (
                 <div className="space-y-3">
-                   <h4 className="text-[10px] font-black text-white/40 uppercase tracking-widest">แก้ไขคำอธิบายหรือเนื้อหาข้อความ</h4>
+                   <h4 className="text-[11px] font-medium text-white/40 uppercase tracking-widest">แก้ไขคำอธิบายหรือเนื้อหาข้อความ</h4>
                    <textarea 
                      value={activeBlock.content}
                      onChange={(e) => updateBlock(activeBlock.id, { content: e.target.value })}
@@ -698,7 +698,7 @@ export default function DocumentFormBuilderPage() {
               {/* Text Blocks Custom Colors Swatch picker */}
               {activeBlock.type !== "divider" && activeBlock.type !== "spacer" && (
                 <div className="space-y-3 bg-white/[0.01] border border-white/5 p-4 rounded-xl">
-                  <span className="text-[9px] font-black text-nexus-teal uppercase tracking-widest block">แก้ไขสีตัวอักษรเฉพาะบล็อก (Text Custom HEX)</span>
+                  <span className="text-[10px] font-normal text-nexus-teal uppercase tracking-widest block">แก้ไขสีตัวอักษรเฉพาะบล็อก</span>
                   <div className="flex flex-wrap gap-1.5 py-1">
                     {[
                       { hex: "theme", label: "Theme" },
@@ -713,7 +713,7 @@ export default function DocumentFormBuilderPage() {
                         type="button"
                         onClick={() => updateBlock(activeBlock.id, { textColor: sw.hex })}
                         className={cn(
-                          "h-7 px-2.5 rounded-full border text-[9px] font-bold transition-all",
+                          "h-7 px-2.5 rounded-full border text-xs font-bold transition-all",
                           activeBlock.textColor === sw.hex ? "border-nexus-teal bg-nexus-teal/10 text-white" : "border-white/5 bg-white/5 text-white/55 hover:border-white/20"
                         )}
                       >
@@ -733,7 +733,7 @@ export default function DocumentFormBuilderPage() {
               {/* Block Background Highlight Config */}
               {activeBlock.type !== "divider" && activeBlock.type !== "spacer" && (
                 <div className="space-y-3 bg-white/[0.01] border border-white/5 p-4 rounded-xl">
-                  <span className="text-[9px] font-black text-nexus-teal uppercase tracking-widest block">สีพื้นหลังเน้นข้อความ (Highlight block background)</span>
+                  <span className="text-[10px] font-normal text-nexus-teal uppercase tracking-widest block">สีพื้นหลังเน้นข้อความ</span>
                   <div className="flex flex-wrap gap-1.5 py-1">
                     {[
                       { hex: "", label: "Transparent" },
@@ -747,7 +747,7 @@ export default function DocumentFormBuilderPage() {
                         type="button"
                         onClick={() => updateBlock(activeBlock.id, { blockBgColor: bgsw.hex })}
                         className={cn(
-                          "h-7 px-2.5 rounded-full border text-[9px] font-bold transition-all",
+                          "h-7 px-2.5 rounded-full border text-xs font-bold transition-all",
                           (activeBlock.blockBgColor || "") === bgsw.hex ? "border-nexus-teal bg-nexus-teal/10 text-white" : "border-white/5 bg-white/5 text-white/55 hover:border-white/20"
                         )}
                       >
@@ -766,12 +766,12 @@ export default function DocumentFormBuilderPage() {
 
               {/* Specific Config for Dividers & Borders */}
               {(activeBlock.type === "divider" || activeBlock.type === "table") && (
-                <div className="space-y-4">
-                   <h4 className="text-[10px] font-black text-white/40 uppercase tracking-widest">ดีไซน์เส้นและกรอบตาราง (Borders)</h4>
-                   <div className="space-y-4 bg-white/[0.01] border border-white/5 p-4 rounded-2xl">
+                <div className="space-y-3">
+                   <h4 className="text-[11px] font-medium text-white/40 uppercase tracking-widest">ดีไซน์เส้นและกรอบตาราง</h4>
+                   <div className="space-y-3 bg-white/[0.01] border border-white/5 p-4 rounded-2xl">
                      <div className="grid grid-cols-2 gap-3">
                        <div className="space-y-1">
-                         <label className="text-[9px] font-black text-white/30 uppercase tracking-widest">ลักษณะขอบเส้น (Style)</label>
+                         <label className="text-[10px] font-normal text-white/30 uppercase tracking-widest">ลักษณะขอบเส้น</label>
                          <PillSelect
                            value={activeBlock.borderStyle || "solid"}
                            onChange={(e) => updateBlock(activeBlock.id, { borderStyle: e.target.value as any })}
@@ -784,7 +784,7 @@ export default function DocumentFormBuilderPage() {
                          </PillSelect>
                        </div>
                        <div className="space-y-1">
-                         <label className="text-[9px] font-black text-white/30 uppercase tracking-widest">ความหนาเส้น (Weight)</label>
+                         <label className="text-[10px] font-normal text-white/30 uppercase tracking-widest">ความหนาเส้น</label>
                          <PillSelect
                            value={activeBlock.borderWidth || 1}
                            onChange={(e) => updateBlock(activeBlock.id, { borderWidth: parseInt(e.target.value) })}
@@ -801,7 +801,7 @@ export default function DocumentFormBuilderPage() {
                      </div>
 
                      <div className="space-y-1">
-                       <label className="text-[9px] font-black text-white/30 uppercase tracking-widest">สไตล์สีเส้นขอบ</label>
+                       <label className="text-[10px] font-normal text-white/30 uppercase tracking-widest">สไตล์สีเส้นขอบ</label>
                        <PillInput 
                          value={activeBlock.borderColor || ""}
                          onChange={(e) => updateBlock(activeBlock.id, { borderColor: e.target.value })}
@@ -813,14 +813,14 @@ export default function DocumentFormBuilderPage() {
                      {activeBlock.type === "table" && (
                        <div className="pt-2 border-t border-white/5 space-y-2">
                          <div className="flex items-center justify-between">
-                           <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">เปิดเส้นขอบด้านนอก (Outer Border)</span>
+                           <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">เปิดเส้นขอบด้านนอก</span>
                            <PillCheckbox 
                              checked={activeBlock.showOuterBorder !== false}
                              onChange={(e) => updateBlock(activeBlock.id, { showOuterBorder: e.target.checked })}
                            />
                          </div>
                          <div className="flex items-center justify-between">
-                           <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">เปิดเส้นตารางด้านใน (Grid Lines)</span>
+                           <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">เปิดเส้นตารางด้านใน</span>
                            <PillCheckbox 
                              checked={activeBlock.showGridLines !== false}
                              onChange={(e) => updateBlock(activeBlock.id, { showGridLines: e.target.checked })}
@@ -834,12 +834,12 @@ export default function DocumentFormBuilderPage() {
 
               {/* Specific Config for Dynamic Tables & Colors */}
               {activeBlock.type === "table" && (
-                <div className="space-y-4">
-                   <h4 className="text-[10px] font-black text-white/40 uppercase tracking-widest">สีตารางและการกำหนดคอลัมน์</h4>
+                <div className="space-y-3">
+                   <h4 className="text-[11px] font-medium text-white/40 uppercase tracking-widest">สีตารางและการกำหนดคอลัมน์</h4>
                    <div className="space-y-3 bg-white/[0.01] border border-white/5 p-4 rounded-2xl">
                      <div className="grid grid-cols-2 gap-3">
                        <div className="space-y-1">
-                         <label className="text-[8px] font-black text-white/30 uppercase tracking-widest">สีพื้นหลังหัวข้อ (Header BG)</label>
+                         <label className="text-[10px] font-medium text-white/30 uppercase tracking-widest">สีพื้นหลังหัวข้อ</label>
                          <PillSelect 
                            value={activeBlock.tableBgColor || "light"}
                            onChange={(e) => updateBlock(activeBlock.id, { tableBgColor: e.target.value })}
@@ -852,7 +852,7 @@ export default function DocumentFormBuilderPage() {
                          </PillSelect>
                        </div>
                        <div className="space-y-1">
-                         <label className="text-[8px] font-black text-white/30 uppercase tracking-widest">สีตัวหัวข้อ (Header Text)</label>
+                         <label className="text-[10px] font-medium text-white/30 uppercase tracking-widest">สีตัวหัวข้อ</label>
                          <PillSelect 
                            value={activeBlock.tableHeaderTextColor || "white"}
                            onChange={(e) => updateBlock(activeBlock.id, { tableHeaderTextColor: e.target.value })}
@@ -866,7 +866,7 @@ export default function DocumentFormBuilderPage() {
                      </div>
 
                      <div className="space-y-1">
-                       <label className="text-[8px] font-black text-white/30 uppercase tracking-widest block">สีแถวตารางเว้นแถว (Alternating Zebra)</label>
+                       <label className="text-[10px] font-medium text-white/30 uppercase tracking-widest block">สีแถวตารางเว้นแถว</label>
                        <PillSelect 
                          value={activeBlock.tableRowStripedColor || "lightgray"}
                          onChange={(e) => updateBlock(activeBlock.id, { tableRowStripedColor: e.target.value })}
@@ -879,13 +879,13 @@ export default function DocumentFormBuilderPage() {
                      </div>
 
                      <div className="space-y-1">
-                       <label className="text-[9px] font-black text-white/30 uppercase tracking-widest">คอลัมน์และขนาดเปอร์เซ็นต์</label>
+                       <label className="text-[10px] font-normal text-white/30 uppercase tracking-widest">คอลัมน์และขนาดเปอร์เซ็นต์</label>
                        <PillInput
                          value={activeBlock.tableCols || ""}
                          onChange={(e) => updateBlock(activeBlock.id, { tableCols: e.target.value })}
                          className="w-full h-9 px-6 rounded-full text-xs font-bold text-white"
                        />
-                       <span className="text-[8px] text-white/30 block mt-1 leading-relaxed">
+                       <span className="text-[10px] text-white/30 block mt-1 leading-relaxed">
                          * คั่นแต่ละคอลัมน์ด้วยจุลภาค เช่น `คอลัมน์:ขนาด%`
                        </span>
                      </div>
@@ -895,7 +895,7 @@ export default function DocumentFormBuilderPage() {
 
             </div>
           ) : (
-            <div className="text-center py-16 text-[11px] font-black uppercase tracking-[0.2em] text-white/15 border-2 border-dashed border-white/5 rounded-2xl">
+            <div className="text-center py-16 text-[12px] font-medium uppercase tracking-[0.2em] text-white/15 border-2 border-dashed border-white/5 rounded-2xl">
                กรุณาเลือกส่วนประกอบบนกระดาษเพื่อเริ่มตกแต่งอิสระ
              </div>
           )}

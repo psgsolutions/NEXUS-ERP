@@ -14,16 +14,9 @@ import {
   ListPlus,
   HelpCircle
 } from "lucide-react";
-import { 
-  PillButton, 
-  PillInput, 
-  PillSelect, 
-  PillCheckbox, 
-  GlassCard,
-  Toast
-} from "@/components/ui/Base";
+import { PillButton, PillInput, PillSelect, PillCheckbox, GlassCard, Toast, NexusDatePicker } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase-client";
 import { collection, addDoc, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { FormField, FormTemplate } from "@/types/database";
 
@@ -144,16 +137,16 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
         <div className="flex items-center gap-4">
           <div className="text-white/40 flex items-center gap-2">
             <Layers size={16} className="text-nexus-teal" />
-            <span className="text-[12px] font-black uppercase tracking-widest">โหมดออกแบบเทมเพลตฟอร์ม (Builder)</span>
+            <span className="text-[12px] font-black uppercase tracking-widest">โหมดออกแบบเทมเพลตฟอร์ม</span>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <PillButton variant="glass" className="text-white/50" onClick={onClose}>
+          <PillButton variant="ghost" className="" onClick={onClose}>
             ยกเลิก
           </PillButton>
           <PillButton variant="primary" className="shadow-neon-teal text-black" onClick={handleSave}>
             <Save size={16} />
-            บันทึกเทมเพลต (SAVE TEMPLATE)
+            บันทึกเทมเพลต
           </PillButton>
         </div>
       </div>
@@ -176,16 +169,16 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[12px] font-black text-white/30 uppercase tracking-widest">โมดูลเชื่อมโยง (Target Hub)</label>
+                <label className="text-[12px] font-black text-white/30 uppercase tracking-widest">โมดูลเชื่อมโยง</label>
                 <PillSelect 
                   value={module} 
                   onChange={(e) => setModule(e.target.value)} 
                   className="w-full"
                 >
-                  <option value="QUOTATION">ใบเสนอราคา (COMMERCE HUB)</option>
-                  <option value="SERVICE_REPORT">ใบงานบริการ (PROJECT HUB)</option>
+                  <option value="QUOTATION">ใบเสนอราคา</option>
+                  <option value="SERVICE_REPORT">ใบงานบริการ</option>
                   <option value="MAINTENANCE_TICKET">แจ้งซ่อม & SLA (SUPPORT TICKET)</option>
-                  <option value="INVENTORY_ADJUST">ปรับสต็อกสินค้า (INVENTORY HUB)</option>
+                  <option value="INVENTORY_ADJUST">ปรับสต็อกสินค้า</option>
                 </PillSelect>
               </div>
             </div>
@@ -301,15 +294,15 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
                             onChange={(e) => handleUpdateField(field.id, { type: e.target.value as any })}
                             className="w-full"
                           >
-                            <option value="text">ข้อความทั่วไป (Text)</option>
-                            <option value="number">ตัวเลขปริมาณ / ยอดเงิน (Number)</option>
-                            <option value="date">ปฏิทินวันที่ (Date)</option>
-                            <option value="dropdown">ตัวเลือกรายการ (Dropdown)</option>
-                            <option value="table">ตารางรายละเอียด (Dynamic Table)</option>
+                            <option value="text">ข้อความทั่วไป</option>
+                            <option value="number">ตัวเลขปริมาณ / ยอดเงิน</option>
+                            <option value="date">ปฏิทินวันที่</option>
+                            <option value="dropdown">ตัวเลือกรายการ</option>
+                            <option value="table">ตารางรายละเอียด</option>
                           </PillSelect>
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black text-white/30 uppercase tracking-widest">ขนาดหน้าจอ (Grid Columns)</label>
+                          <label className="text-[10px] font-black text-white/30 uppercase tracking-widest">ขนาดหน้าจอ</label>
                           <PillSelect 
                             value={field.gridSpan}
                             onChange={(e) => handleUpdateField(field.id, { gridSpan: parseInt(e.target.value) as any })}
@@ -325,7 +318,7 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
                         {/* Extra configurations depending on field type */}
                         {field.type === "dropdown" && (
                           <div className="col-span-4 space-y-1.5 bg-white/[0.01] border border-white/5 rounded-xl p-3">
-                            <label className="text-[10px] font-black text-nexus-teal uppercase tracking-widest">ระบุตัวเลือก (Dropdown Options) * แยกรายการด้วยเครื่องหมายจุลภาค (Comma)</label>
+                            <label className="text-[10px] font-black text-nexus-teal uppercase tracking-widest">ระบุตัวเลือก * แยกรายการด้วยเครื่องหมายจุลภาค</label>
                             <PillInput 
                               value={field.options?.join(", ") || ""}
                               onChange={(e) => handleUpdateField(field.id, { options: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
@@ -337,7 +330,7 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
 
                         <div className="col-span-4 flex items-center gap-6 mt-2">
                           <PillCheckbox 
-                            label="บังคับป้อนข้อมูล (Required)" 
+                            label="บังคับป้อนข้อมูล" 
                             checked={field.required}
                             onChange={(e) => handleUpdateField(field.id, { required: e.target.checked })}
                           />
@@ -357,7 +350,7 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
             <div className="flex items-center gap-3 border-b border-white/5 pb-4">
               <FileText size={18} className="text-nexus-teal" />
               <div>
-                <h5 className="text-[12px] font-black text-white uppercase tracking-widest">การแสดงผลตัวอย่าง (Real-time Preview)</h5>
+                <h5 className="text-[12px] font-black text-white uppercase tracking-widest">การแสดงผลตัวอย่าง</h5>
                 <p className="text-[10px] text-white/30 uppercase mt-1 tracking-wider">PSG standard layout alignment</p>
               </div>
             </div>
@@ -394,7 +387,7 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
                             ))}
                           </PillSelect>
                         ) : f.type === "date" ? (
-                          <PillInput type="date" className="w-full text-white/40" disabled />
+                          <NexusDatePicker className="w-full text-white/40" disabled />
                         ) : f.type === "number" ? (
                           <PillInput type="number" placeholder="0.00" className="w-full font-mono" disabled />
                         ) : f.type === "table" ? (

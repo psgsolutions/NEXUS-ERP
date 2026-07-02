@@ -15,15 +15,7 @@ import {
   CheckCircle2,
   X
 } from "lucide-react";
-import { 
-  PillButton, 
-  PillInput, 
-  PillSelect, 
-  Modal, 
-  PillTabs, 
-  NexusDataField,
-  cn 
-} from "@/components/ui/Base";
+import { PillButton, PillInput, PillSelect, Modal, PillTabs, NexusDataField, cn, NexusDatePicker } from "@/components/ui/Base";
 
 interface GoodsReceiptModalProps {
   isOpen: boolean;
@@ -85,7 +77,7 @@ export function GoodsReceiptModal({ isOpen, onClose, onSave }: GoodsReceiptModal
     <Modal 
       isOpen={isOpen} 
       onClose={handleClose} 
-      title="บันทึกการรับสินค้า (GOODS RECEIPT ENTRY)"
+      title="บันทึกการรับสินค้า"
       maxWidth="max-w-[1600px]"
     >
       <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
@@ -94,7 +86,7 @@ export function GoodsReceiptModal({ isOpen, onClose, onSave }: GoodsReceiptModal
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
               <div className="space-y-1">
                 <p className="text-[12px] font-black text-nexus-teal uppercase tracking-[0.2em]">คลังพัสดุและจัดซื้อ (GR_PROT_V3.0)</p>
-                <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกรับสินค้า (GR)</h4>
+                <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกรับสินค้า</h4>
               </div>
               <PillTabs 
                 tabs={tabs}
@@ -107,7 +99,7 @@ export function GoodsReceiptModal({ isOpen, onClose, onSave }: GoodsReceiptModal
               {activeTab === "header" && (
                 <div className="space-y-10">
                   <div className="grid grid-cols-2 gap-8">
-                    <Field label="เลขที่ใบสั่งซื้ออ้างอิง (PO Reference) *">
+                    <Field label="เลขที่ใบสั่งซื้ออ้างอิง *">
                       <div className="flex gap-2">
                         <div className="relative flex-1">
                            <FileText className="absolute left-4 top-1/2 -translate-y-1/2 text-white/10" size={18} />
@@ -124,21 +116,19 @@ export function GoodsReceiptModal({ isOpen, onClose, onSave }: GoodsReceiptModal
                         </PillButton>
                       </div>
                     </Field>
-                    <Field label="ชื่อผู้จำหน่าย (Auto-filled)">
+                    <Field label="ชื่อผู้จำหน่าย">
                        <PillInput value={header.supplier} disabled className="w-full bg-white/[0.02] text-white/40" />
                     </Field>
                   </div>
 
                   <div className="grid grid-cols-2 gap-8">
                     <Field label="วันที่รับสินค้า">
-                       <PillInput 
-                        type="date"
-                        value={header.receiptDate}
+                       <NexusDatePicker value={header.receiptDate}
                         onChange={(e) => setHeader({...header, receiptDate: e.target.value})}
                         className="w-full" 
                       />
                     </Field>
-                    <Field label="เลขที่ใบส่งของ (Delivery Note / Invoice)">
+                    <Field label="เลขที่ใบส่งของ">
                        <PillInput 
                         value={header.deliveryNote}
                         onChange={(e) => setHeader({...header, deliveryNote: e.target.value})}
@@ -170,7 +160,7 @@ export function GoodsReceiptModal({ isOpen, onClose, onSave }: GoodsReceiptModal
               {activeTab === "items" && (
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-[12px] font-black text-white/30 uppercase tracking-[0.2em]">รายการพัสดุที่รับเข้า (Received Items)</h4>
+                    <h4 className="text-[12px] font-black text-white/30 uppercase tracking-[0.2em]">รายการพัสดุที่รับเข้า</h4>
                     <span className="text-[11px] font-black text-nexus-teal uppercase tracking-widest">ตรวจนับและระบุ Serial Number</span>
                   </div>
 
@@ -255,9 +245,9 @@ export function GoodsReceiptModal({ isOpen, onClose, onSave }: GoodsReceiptModal
           <div className="space-y-4 pt-12 border-t border-white/5">
             <PillButton className="w-full font-black uppercase tracking-[0.2em] shadow-neon-teal" onClick={handleSave}>
               <ShieldCheck size={22} />
-              ยืนยันการรับสินค้า (CONFIRM GR)
+              ยืนยันการรับสินค้า
             </PillButton>
-            <PillButton variant="glass" className="w-full text-white/20 hover:text-white uppercase tracking-widest" onClick={handleClose}>
+            <PillButton variant="ghost" className="w-full hover: uppercase tracking-widest" onClick={handleClose}>
               ยกเลิก
             </PillButton>
           </div>

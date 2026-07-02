@@ -16,6 +16,7 @@ import {
   cn
 } from "@/components/ui/Base";
 import { useInventory } from "@/hooks/useInventory";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { Plus, Trash2, FileText, Search, ChevronDown, MapPin } from "lucide-react";
 import { Warehouse3D, mockWarehouses } from "./Warehouse3D";
 import { useSystemDialog } from "@/context/DialogContext";
@@ -45,24 +46,18 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
     qty: 1,
     cost: 0,
     price: 0,
-    packageUnit: "ชิ้น (EA)",
-    baseUnit: "ชิ้น (EA)",
+    packageUnit: "ชิ้น",
+    baseUnit: "ชิ้น",
     conversionRate: 1,
     sns: "",
     imageUrl: ""
   });
 
-  const mockSuppliers = [
-    { id: "SUPP-001", name: "Cisco Thailand (IT)" },
-    { id: "SUPP-002", name: "Dell Technologies (IT)" },
-    { id: "SUPP-003", name: "Synnex (Thailand) PCL. (IT)" },
-    { id: "SUPP-004", name: "Schneider Electric (Electrical)" },
-    { id: "SUPP-005", name: "Panasonic (Thailand) (Electrical)" },
-    { id: "SUPP-006", name: "Phelps Dodge (Cables)" },
-  ];
+  const { data: suppliers } = useRealtimeCollection("suppliers");
+  const { data: warehouses } = useRealtimeCollection("warehouses");
 
   const [categoriesList, setCategoriesList] = useState([
-    { id: "general", label: "ทั่วไป (General)", isSystem: true },
+    { id: "general", label: "ทั่วไป", isSystem: true },
     { id: "network-server", label: "ระบบเครือข่ายและเซิร์ฟเวอร์ (Network & Server)", isSystem: true },
     { id: "computer", label: "คอมพิวเตอร์และอุปกรณ์ (Computer & Peripherals)", isSystem: true },
     { id: "wires-cables", label: "สายไฟและสายสัญญาณ (Wires & Cables)", isSystem: true },
@@ -76,25 +71,25 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
     { id: "tools", label: "เครื่องมือช่างและฮาร์ดแวร์ (Tools & Hardware)", isSystem: true },
     { id: "software", label: "ซอฟต์แวร์ (Software & Licenses)", isSystem: true },
     { id: "service", label: "บริการและซ่อมบำรุง (Services & Maintenance)", isSystem: true },
-    { id: "kit", label: "ชุดงานติดตั้ง (Kit)", isSystem: true },
+    { id: "kit", label: "ชุดงานติดตั้ง", isSystem: true },
   ]);
   const uomOptions = [
-    "ชิ้น (EA)",
-    "เครื่อง (Unit)",
-    "กล่อง (Box)",
-    "ลัง (Carton)",
-    "แพ็ค (Pack)",
-    "ม้วน (Roll)",
-    "ขด (Coil)",
-    "เมตร (Meter)",
-    "เส้น (Piece/Cable)",
-    "หลอด (Tube)",
-    "โคม (Fixture)",
-    "ใบ (License)",
-    "ชุด (Set)",
-    "งาน (Job)",
-    "ชั่วโมง (Hour)",
-    "วัน (Day)",
+    "ชิ้น",
+    "เครื่อง",
+    "กล่อง",
+    "ลัง",
+    "แพ็ค",
+    "ม้วน",
+    "ขด",
+    "เมตร",
+    "เส้น",
+    "หลอด",
+    "โคม",
+    "ใบ",
+    "ชุด",
+    "งาน",
+    "ชั่วโมง",
+    "วัน",
   ];
   const [catSearch, setCatSearch] = useState("");
   const [isCatFocused, setIsCatFocused] = useState(false);
@@ -116,8 +111,8 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
   const handleSelectCat = (id: string, label: string) => {
     const updatedForm = { ...formData, category: id };
     if (id === "kit") {
-      updatedForm.packageUnit = "ชุด (Set)";
-      updatedForm.baseUnit = "ชุด (Set)";
+      updatedForm.packageUnit = "ชุด";
+      updatedForm.baseUnit = "ชุด";
       if (!updatedForm.sku.startsWith("PKG-LAB-")) {
         updatedForm.sku = `PKG-LAB-${Math.floor(1000 + Math.random() * 9000)}`;
       }
@@ -154,8 +149,8 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
     : poItems.reduce((acc, item) => acc + (item.qtyReceived * (item.cost || 0)), 0);
 
   const tabs = [
-    { id: "manual", label: "คีย์สินค้าเข้าระบบ (DIRECT ENTRY)" },
-    { id: "po", label: "รับจากคำสั่งซื้อ (RECEIVE FROM PO)" }
+    { id: "manual", label: "คีย์สินค้าเข้าระบบ" },
+    { id: "po", label: "รับจากคำสั่งซื้อ" }
   ];
 
   const handleCostChange = (val: number) => {
@@ -216,13 +211,13 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
         qty: 1,
         cost: 0,
         price: 0,
-        packageUnit: "ชิ้น (EA)",
-        baseUnit: "ชิ้น (EA)",
+        packageUnit: "ชิ้น",
+        baseUnit: "ชิ้น",
         conversionRate: 1,
         sns: "",
         imageUrl: ""
       });
-      setCatSearch("ทั่วไป (General)");
+      setCatSearch("ทั่วไป");
       setIsPriceManuallyEdited(false);
       setPoItems([]);
       setSourceMode("manual");
@@ -266,7 +261,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
     <Modal 
       isOpen={isOpen} 
       onClose={onClose} 
-      title="ระบบรับเข้าพัสดุ (GOODS RECEIPT / STOCKS IN)"
+      title="ระบบรับเข้าพัสดุ"
       maxWidth="max-w-[1600px]"
     >
       <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
@@ -286,7 +281,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                     <div className="space-y-8">
                        <div className="flex items-center gap-3 text-nexus-teal">
                           <Package size={18} />
-                          <h5 className="text-[13px] font-black uppercase tracking-widest">ข้อมูลสินค้า (Product Details)</h5>
+                          <h5 className="text-[13px] font-black uppercase tracking-widest">ข้อมูลสินค้า</h5>
                        </div>
                        <div className="space-y-6">
                           <div className="flex gap-4">
@@ -311,7 +306,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                              </div>
                              <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
                              <div className="flex-1 space-y-4">
-                                <Field label="รหัสสินค้า (Auto-Generated SKU)">
+                                <Field label="รหัสสินค้า">
                                    <div className="flex gap-2 relative group">
                                       <PillInput 
                                         value={formData.sku} 
@@ -325,18 +320,18 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                                       </div>
                                    </div>
                                 </Field>
-                                <Field label="บาร์โค้ด (Barcode)">
+                                <Field label="บาร์โค้ด">
                                    <PillInput value={formData.barcode} onChange={(e) => setFormData({...formData, barcode: e.target.value})} className="w-full" placeholder="Scan barcode..." />
                                 </Field>
                              </div>
                           </div>
                           
-                          <Field label="ชื่อสินค้า (Product Name)">
+                          <Field label="ชื่อสินค้า">
                              <PillInput value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full" placeholder="ระบุชื่อพัสดุใหม่..." />
                           </Field>
                           
                           <div className="grid grid-cols-2 gap-4">
-                             <Field label="หมวดหมู่ (Category)">
+                             <Field label="หมวดหมู่">
                                 <div className="relative">
                                   <div className="relative">
                                     <PillInput
@@ -393,14 +388,14 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                                   )}
                                 </div>
                              </Field>
-                             <Field label="คลังสินค้า (Warehouse)">
+                             <Field label="คลังสินค้า">
                                 <PillSelect value={formData.warehouseId} onChange={(e) => setFormData({...formData, warehouseId: e.target.value, rackLocation: ""})} className="w-full font-bold">
-                                   {mockWarehouses.map(wh => <option key={wh.id} value={wh.id}>{wh.name}</option>)}
+                                   {warehouses?.map(wh => <option key={wh.id} value={wh.id}>{wh.name}</option>)}
                                 </PillSelect>
                              </Field>
                           </div>
                           
-                          <Field label="พิกัดจัดเก็บ (Location Barcode)">
+                          <Field label="พิกัดจัดเก็บ">
                              <div className="flex gap-2">
                                 <PillInput value={formData.rackLocation} onChange={(e) => setFormData({...formData, rackLocation: e.target.value})} placeholder="สแกนบาร์โค้ดพิกัด หรือ เลือกจากแผนผัง 3D..." className="flex-1 font-mono font-bold text-nexus-teal" />
                                 <PillButton variant="glass" onClick={() => setShow3DPicker(true)} className="px-6 hover:text-nexus-teal hover:border-nexus-teal/30 flex items-center gap-2">
@@ -413,15 +408,15 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                            <div className="pt-2 border-t border-white/5 space-y-4 mt-2">
                               <h6 className="text-[10px] font-black uppercase text-nexus-teal tracking-widest">หน่วยและขนาดบรรจุภัณฑ์ (UOM & Packaging)</h6>
                               <div className="grid grid-cols-3 gap-4 bg-black/40 p-4 rounded-xl border border-white/5 items-end">
-                                 <Field label="หน่วยจัดเก็บ (Package)">
+                                 <Field label="หน่วยจัดเก็บ">
                                     <PillSelect value={formData.packageUnit} onChange={(e) => setFormData({...formData, packageUnit: e.target.value})} className="w-full text-center">
                                        {uomOptions.map(uom => <option key={uom} value={uom}>{uom}</option>)}
                                     </PillSelect>
                                  </Field>
-                                 <Field label={`1 ${formData.packageUnit?.split(' ')[0] || "หน่วยใหญ่"} บรรจุ (Qty)`}>
+                                 <Field label={`1 ${formData.packageUnit?.split(' ')[0] || "หน่วยใหญ่"} บรรจุ`}>
                                     <StepperInput value={formData.conversionRate} onChange={(val) => setFormData({...formData, conversionRate: val})} className="text-center text-nexus-teal font-black" />
                                  </Field>
-                                 <Field label="หน่วยขาย (Base Unit)">
+                                 <Field label="หน่วยขาย">
                                     <PillSelect value={formData.baseUnit} onChange={(e) => setFormData({...formData, baseUnit: e.target.value})} className="w-full text-center">
                                        {uomOptions.map(uom => <option key={uom} value={uom}>{uom}</option>)}
                                     </PillSelect>
@@ -438,9 +433,9 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                        </div>
                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-6">
                           <div className="grid grid-cols-2 gap-4">
-                             <Field label="ผู้จำหน่าย (Supplier)">
+                             <Field label="ผู้จำหน่าย">
                                 <PillSelect value={formData.supplierId} onChange={(e) => setFormData({...formData, supplierId: e.target.value})} className="w-full">
-                                   {mockSuppliers.map(s => (
+                                   {suppliers?.map(s => (
                                       <option key={s.id} value={s.id}>{s.name}</option>
                                    ))}
                                 </PillSelect>
@@ -458,10 +453,10 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                           </div>
                           
                           <div className="grid grid-cols-2 gap-4 bg-black/40 p-4 rounded-xl border border-white/5">
-                             <Field label="ราคาต้นทุน (Cost)">
+                             <Field label="ราคาต้นทุน">
                                 <StepperInput value={formData.cost} onChange={handleCostChange} className="text-danger font-black" />
                              </Field>
-                             <Field label="ราคาขาย (Selling Price)">
+                             <Field label="ราคาขาย">
                                 <div className="space-y-1.5">
                                    <StepperInput value={formData.price} onChange={handlePriceChange} className="text-nexus-teal font-black" />
                                    <div className="flex items-center gap-1.5 text-[9px] font-black text-white/30 uppercase tracking-widest pl-1">
@@ -470,7 +465,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                                 </div>
                              </Field>
                              <div className="col-span-2 flex justify-between items-center pt-2 border-t border-white/5">
-                                <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">กำไรคาดการณ์ (Estimated Profit)</span>
+                                <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">กำไรคาดการณ์</span>
                                 <span className={cn("text-sm font-black mono-numbers", profit > 0 ? "text-nexus-teal" : "text-white/40")}>
                                    ฿{profit.toLocaleString()} <span className="text-xs">({profitMargin}%)</span>
                                </span>
@@ -487,7 +482,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                  <div className="space-y-10">
                     <div className="flex items-end gap-4 bg-white/[0.02] p-8 rounded-2xl border border-white/5">
                        <div className="flex-1">
-                          <Field label="ค้นหาเลขที่คำสั่งซื้อ (PO Reference) *">
+                          <Field label="ค้นหาเลขที่คำสั่งซื้อ *">
                              <div className="relative">
                                 <FileText className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
                                 <PillInput value={formData.poRef} onChange={(e) => setFormData({...formData, poRef: e.target.value})} placeholder="ระบุ PO-XXXXX..." className="w-full pl-12" />
@@ -553,7 +548,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
 
               <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-4">
                  <p className="text-[11px] text-white/40 font-bold leading-relaxed uppercase tracking-widest">
-                    * ระบบจะทำการคำนวณต้นทุนถัวเฉลี่ย (WAC) อัตโนมัติเมื่อกดยืนยัน
+                    * ระบบจะทำการคำนวณต้นทุนถัวเฉลี่ย อัตโนมัติเมื่อกดยืนยัน
                  </p>
               </div>
            </div>
@@ -565,10 +560,10 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                 disabled={isSaving}
               >
                  <ShieldCheck size={22} className={isSaving ? "animate-pulse" : ""} />
-                 {isSaving ? "กำลังบันทึก..." : "ยืนยันรับของ (POST GRN)"}
+                 {isSaving ? "กำลังบันทึก..." : "ยืนยันรับของ"}
               </PillButton>
               <PillButton 
-                variant="glass" 
+                variant="ghost" 
                 className={cn("w-full text-white/20 hover:text-white uppercase tracking-widest", isSaving && "opacity-50 pointer-events-none")} 
                 onClick={onClose}
                 disabled={isSaving}

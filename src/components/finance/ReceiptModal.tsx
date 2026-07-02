@@ -14,15 +14,7 @@ import {
   CheckCircle2,
   X
 } from "lucide-react";
-import { 
-  PillButton, 
-  PillInput, 
-  PillSelect, 
-  Modal, 
-  PillTabs, 
-  NexusDataField,
-  cn 
-} from "@/components/ui/Base";
+import { PillButton, PillInput, PillSelect, Modal, PillTabs, NexusDataField, cn, NexusDatePicker } from "@/components/ui/Base";
 
 interface ReceiptModalProps {
   isOpen: boolean;
@@ -104,7 +96,7 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
     <Modal 
       isOpen={isOpen} 
       onClose={handleClose} 
-      title="บันทึกการรับชำระเงิน (NEW RECEIPT VOUCHER)"
+      title="บันทึกการรับชำระเงิน"
       maxWidth="max-w-[1600px]"
     >
       <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
@@ -113,7 +105,7 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
               <div className="space-y-1">
                 <p className="text-[12px] font-black text-nexus-teal uppercase tracking-[0.2em]">โหมดลูกหนี้ (AR_COLLECT_V3.0)</p>
-                <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกรับเงิน (Receipt Voucher)</h4>
+                <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกรับเงิน</h4>
               </div>
               <PillTabs 
                  tabs={[
@@ -129,7 +121,7 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
               {activeTab === "header" && (
                 <div className="space-y-10">
                   <div className="grid grid-cols-2 gap-8">
-                    <Field label="ลูกค้า (Customer) *">
+                    <Field label="ลูกค้า *">
                        <div className="flex gap-2">
                           <PillSelect 
                             value={header.customer}
@@ -145,9 +137,7 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
                        </div>
                     </Field>
                     <Field label="วันที่รับชำระ">
-                      <PillInput 
-                        type="date"
-                        value={header.date}
+                      <NexusDatePicker value={header.date}
                         onChange={(e) => setHeader({...header, date: e.target.value})}
                         className="w-full" 
                       />
@@ -155,7 +145,7 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
                   </div>
 
                   <div className="grid grid-cols-2 gap-8">
-                    <Field label="เข้าบัญชี (Bank Account)">
+                    <Field label="เข้าบัญชี">
                       <PillSelect 
                         value={header.bankAccount}
                         onChange={(e) => setHeader({...header, bankAccount: e.target.value})}
@@ -163,7 +153,7 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
                       >
                          <option>SCB - 123-4-XXXXX-X (Main)</option>
                          <option>KBank - 789-0-XXXXX-X (Service)</option>
-                         <option>เงินสด (Petty Cash)</option>
+                         <option>เงินสด</option>
                       </PillSelect>
                     </Field>
                     <Field label="ช่องทางชำระเงิน">
@@ -172,10 +162,10 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
                         onChange={(e) => setHeader({...header, paymentMethod: e.target.value})}
                         className="w-full px-6"
                       >
-                         <option value="transfer">โอนเงิน (Transfer)</option>
-                         <option value="cash">เงินสด (Cash)</option>
-                         <option value="cheque">เช็ค (Cheque)</option>
-                         <option value="credit_card">บัตรเครดิต (Credit Card)</option>
+                         <option value="transfer">โอนเงิน</option>
+                         <option value="cash">เงินสด</option>
+                         <option value="cheque">เช็ค</option>
+                         <option value="credit_card">บัตรเครดิต</option>
                       </PillSelect>
                     </Field>
                   </div>
@@ -194,7 +184,7 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
               {activeTab === "invoices" && (
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-[12px] font-black text-white/30 uppercase tracking-[0.2em]">รายการอินวอยซ์ที่รับชำระ (Invoices Paid)</h4>
+                    <h4 className="text-[12px] font-black text-white/30 uppercase tracking-[0.2em]">รายการอินวอยซ์ที่รับชำระ</h4>
                     <span className="text-[11px] font-black text-nexus-teal uppercase tracking-widest">ตรวจสอบยอดค้างชำระและหัก ณ ที่จ่าย</span>
                   </div>
 
@@ -261,17 +251,17 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
             </div>
 
             <div className="p-8 rounded-2xl bg-white/[0.03] border border-white/10 space-y-6">
-              <NexusDataField label="ยอดรับรวม (Net)" value={`฿${summary.subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`} />
-              <NexusDataField label="หัก ณ ที่จ่าย (WHT)" value={`฿${summary.wht.toLocaleString(undefined, {minimumFractionDigits: 2})}`} color="text-warning" />
+              <NexusDataField label="ยอดรับรวม" value={`฿${summary.subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`} />
+              <NexusDataField label="หัก ณ ที่จ่าย" value={`฿${summary.wht.toLocaleString(undefined, {minimumFractionDigits: 2})}`} color="text-warning" />
               <div className="pt-6 border-t border-white/5">
-                 <NexusDataField label="ยอดโอนจริง (Actual)" value={`฿${summary.total.toLocaleString(undefined, {minimumFractionDigits: 2})}`} highlight color="text-nexus-teal" />
+                 <NexusDataField label="ยอดโอนจริง" value={`฿${summary.total.toLocaleString(undefined, {minimumFractionDigits: 2})}`} highlight color="text-nexus-teal" />
               </div>
             </div>
 
             <div className="p-6 rounded-2xl bg-nexus-teal/5 border border-nexus-teal/10 flex items-start gap-4">
                <CheckCircle2 className="text-nexus-teal flex-shrink-0" size={18} />
                <p className="text-[11px] text-nexus-teal/60 font-bold uppercase leading-relaxed tracking-widest">
-                  การยืนยันจะตัดยอดค้างชำระลูกหนี้และบันทึกสมุดรายวันรับ (RV) อัตโนมัติ
+                  การยืนยันจะตัดยอดค้างชำระลูกหนี้และบันทึกสมุดรายวันรับ อัตโนมัติ
                </p>
             </div>
           </div>
@@ -283,10 +273,10 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
               disabled={isSaving}
             >
               <ShieldCheck size={22} className={isSaving ? "animate-pulse" : ""} />
-              {isSaving ? "กำลังบันทึก..." : "ยืนยันรับชำระ (POST RV)"}
+              {isSaving ? "กำลังบันทึก..." : "ยืนยันรับชำระ"}
             </PillButton>
             <PillButton 
-              variant="glass" 
+              variant="ghost" 
               className={cn("w-full text-white/20 hover:text-white uppercase tracking-widest", isSaving && "opacity-50 pointer-events-none")} 
               onClick={handleClose}
               disabled={isSaving}

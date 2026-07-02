@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H 0.0.0.0",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -24,6 +24,7 @@
     "@tiptap/pm": "^3.23.6",
     "@tiptap/react": "^3.23.6",
     "@tiptap/starter-kit": "^3.23.6",
+    "bahttext": "^2.4.0",
     "clsx": "^2.1.1",
     "firebase": "^10.14.1",
     "firebase-admin": "^12.7.0",
@@ -34,6 +35,7 @@
     "react-rnd": "^10.5.3",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
+    "thailand-address": "^1.0.2",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

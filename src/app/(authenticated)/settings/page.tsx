@@ -41,10 +41,11 @@ import {
   PillTabs,
   GlassCard
 } from "@/components/ui/Base";
+import { AddressFormGroup, parseAddress } from "@/components/ui/AddressFormGroup";
 
 import { UltimateDocumentBuilder, getInitialTemplate } from "@/components/reports/UltimateDocumentBuilder";
 import UsersPage from "./users/page";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase-client";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
 import { 
@@ -54,6 +55,8 @@ import {
   getDocs, 
   addDoc, 
   doc,
+  getDoc,
+  setDoc,
   updateDoc,
   serverTimestamp 
 } from "firebase/firestore";
@@ -70,6 +73,7 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [toast, setToast] = useState({ message: "", isVisible: false });
+  const [companyAddress, setCompanyAddress] = useState("เลขที่ 1/1 ถนนวิภาวดีรังสิต แขวงลาดยาว เขตจตุจักร กรุงเทพมหานคร 10900");
 
   const { user, companyId } = useAuth();
   const currentCompanyId = companyId || "COMP-001";
@@ -78,6 +82,10 @@ export default function SettingsPage() {
   const [dbTemplates, setDbTemplates] = useState<any[]>([]);
   const [isTemplatesLoading, setIsTemplatesLoading] = useState(false);
   const [showCreateWizard, setShowCreateWizard] = useState(false);
+
+  // Sequence format states
+  const [sequenceFormats, setSequenceFormats] = useState<Record<string, string>>({});
+  const [isSequenceLoading, setIsSequenceLoading] = useState(false);
 
   // Wizard form states
   const [newTemplateName, setNewTemplateName] = useState("");
@@ -115,16 +123,48 @@ export default function SettingsPage() {
   useEffect(() => {
     if (activeTab === "templates") {
       fetchTemplates();
+    } else if (activeTab === "sequence") {
+      fetchSequenceFormats();
     }
   }, [activeTab, currentCompanyId]);
+
+  const fetchSequenceFormats = async () => {
+    setIsSequenceLoading(true);
+    try {
+      const docRef = doc(db, `companies/${currentCompanyId}/settings`, "sequence_formats");
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        setSequenceFormats(snap.data() as Record<string, string>);
+      }
+    } catch (err) {
+      console.error("Failed to load sequence formats:", err);
+    } finally {
+      setIsSequenceLoading(false);
+    }
+  };
+
+  const saveSequenceFormats = async () => {
+    try {
+      const docRef = doc(db, `companies/${currentCompanyId}/settings`, "sequence_formats");
+      await setDoc(docRef, {
+        ...sequenceFormats,
+        updatedAt: serverTimestamp(),
+        updatedBy: user?.uid || "SYSTEM"
+      }, { merge: true });
+      showToast("บันทึกรูปแบบเลขที่เอกสารสำเร็จ");
+    } catch (err) {
+      console.error("Failed to save sequence formats:", err);
+      showToast("ล้มเหลวในการบันทึกรูปแบบ");
+    }
+  };
 
   const handleInstallStandardTemplates = async () => {
     try {
       const standardTemplateNames = [
-        "ใบเสนอราคา (Quotation)",
-        "ใบสั่งซื้อ (Purchase Order)",
-        "ใบกำกับภาษี (Tax Invoice)",
-        "ใบเสร็จรับเงิน (Receipt)"
+        "ใบเสนอราคา",
+        "ใบสั่งซื้อ",
+        "ใบกำกับภาษี",
+        "ใบเสร็จรับเงิน"
       ];
 
       let installedCount = 0;
@@ -214,10 +254,10 @@ export default function SettingsPage() {
     }
 
     try {
-      let nameForSeed = "ใบเสนอราคา (Quotation)";
-      if (selectedPresetType === "PURCHASE_ORDER") nameForSeed = "ใบสั่งซื้อ (Purchase Order)";
-      else if (selectedPresetType === "PROJECT_INVOICE") nameForSeed = "ใบกำกับภาษี (Tax Invoice)";
-      else if (selectedPresetType === "CRM") nameForSeed = "ใบเสร็จรับเงิน (Receipt)";
+      let nameForSeed = "ใบเสนอราคา";
+      if (selectedPresetType === "PURCHASE_ORDER") nameForSeed = "ใบสั่งซื้อ";
+      else if (selectedPresetType === "PROJECT_INVOICE") nameForSeed = "ใบกำกับภาษี";
+      else if (selectedPresetType === "CRM") nameForSeed = "ใบเสร็จรับเงิน";
       
       const seed = getInitialTemplate(nameForSeed);
       seed.templateName = newTemplateName;
@@ -292,7 +332,7 @@ export default function SettingsPage() {
   const tabs = [
     { id: "company", label: "ข้อมูลนิติบุคคล", icon: <Building2 size={14} /> },
     { id: "users", label: "จัดการผู้ใช้งาน", icon: <Users size={14} /> },
-    { id: "sequence", label: "รูปแบบเลขที่ (ID)", icon: <Fingerprint size={14} /> },
+    { id: "sequence", label: "รูปแบบเลขที่", icon: <Fingerprint size={14} /> },
     { id: "templates", label: "ต้นแบบเอกสาร", icon: <FileText size={14} /> },
     { id: "security", label: "ความปลอดภัย", icon: <ShieldCheck size={14} /> },
   ];
@@ -301,14 +341,14 @@ export default function SettingsPage() {
     <div className="p-10 space-y-10 max-w-[1600px] mx-auto animate-in fade-in duration-700">
       
       {/* Header Section */}
-      <div className="space-y-6">
+      <div className="space-y-3">
         <div className="space-y-1">
-          <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">เลเยอร์การกำหนดค่าระบบ</p>
+          <p className="text-[11px] font-medium text-white/20 uppercase tracking-[0.2em]">เลเยอร์การกำหนดค่าระบบ</p>
           <div className="flex items-center gap-4">
              <div className="w-10 h-10 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20">
                 <SettingsIcon size={22} />
              </div>
-             <h1 className="text-2xl font-black text-white tracking-tight uppercase">การตั้งค่าระบบ (SYSTEM HUB)</h1>
+             <h1 className="text-2xl font-bold text-white tracking-tight uppercase">การตั้งค่าระบบ</h1>
           </div>
         </div>
 
@@ -318,84 +358,110 @@ export default function SettingsPage() {
             activeTab={activeTab} 
             onTabChange={(id: any) => setActiveTab(id)} 
           />
-          <PillButton className="px-10 shadow-neon-teal" onClick={() => showToast("บันทึกการตั้งค่าสำเร็จ")}>
+          <PillButton className="px-10 shadow-neon-teal" onClick={() => {
+            if (activeTab === "sequence") saveSequenceFormats();
+            else showToast("บันทึกการตั้งค่าสำเร็จ");
+          }}>
             <Save size={18} />
             บันทึกการตั้งค่า
           </PillButton>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <div className="lg:col-span-3 space-y-10">
+      <div className="flex flex-col lg:flex-row items-start gap-4">
+        <div className="flex-1 w-full space-y-10">
           
           {activeTab === "company" && (
-            <GlassCard className="p-6 space-y-6 border-white/10 rounded-2xl animate-in slide-in-from-bottom duration-500">
-               <div className="flex items-center gap-6">
+            <GlassCard className="p-4 space-y-3 border-white/10 rounded-2xl animate-in slide-in-from-bottom duration-500">
+               <div className="flex items-center gap-5">
                   <div className="w-20 h-20 rounded-xl bg-white/[0.02] border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 text-white/20 hover:border-nexus-teal hover:text-nexus-teal hover:bg-nexus-teal/5 transition-all cursor-pointer">
                      <Building2 size={24} />
-                     <span className="text-[10px] font-black uppercase tracking-widest">Logo</span>
+                     <span className="text-[11px] font-medium uppercase tracking-widest">Logo</span>
                   </div>
                   <div className="space-y-1">
-                     <h2 className="text-2xl font-black text-white uppercase">โปรไฟล์นิติบุคคล</h2>
+                     <h2 className="text-2xl font-bold text-white uppercase">โปรไฟล์นิติบุคคล</h2>
                      <p className="text-sm text-white/40 font-bold">ข้อมูลสำหรับออกใบกำกับภาษีและเอกสารทางราชการ</p>
                   </div>
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4">
                   <div className="space-y-3">
-                     <label className="text-[10px] font-black text-white/20 uppercase tracking-widest ml-4">ชื่อบริษัท (ภาษาไทย) *</label>
+                     <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-4">ชื่อบริษัท (ภาษาไทย) *</label>
                      <PillInput defaultValue="บริษัท พีเอสจี โซลูชั่น จำกัด" className="bg-white/[0.02] border-white/10" />
                   </div>
                   <div className="space-y-3">
-                     <label className="text-[10px] font-black text-white/20 uppercase tracking-widest ml-4">ชื่อบริษัท (ENGLISH) *</label>
+                     <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-4">ชื่อบริษัท *</label>
                      <PillInput defaultValue="PSG SOLUTIONS CO., LTD." className="bg-white/[0.02] border-white/10 uppercase" />
                   </div>
                   <div className="space-y-3">
-                     <label className="text-[10px] font-black text-white/20 uppercase tracking-widest ml-4">เลขประจำตัวผู้เสียภาษี *</label>
+                     <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-4">เลขประจำตัวผู้เสียภาษี *</label>
                      <PillInput defaultValue="0105564000000" className="bg-white/[0.02] border-white/10 font-mono" />
                   </div>
                   <div className="space-y-3">
-                     <label className="text-[10px] font-black text-white/20 uppercase tracking-widest ml-4">เว็บไซต์ / ช่องทางออนไลน์</label>
+                     <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-4">เว็บไซต์ / ช่องทางออนไลน์</label>
                      <div className="relative">
                         <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-white/10" size={18} />
                         <PillInput defaultValue="www.psgsolutions.com" className="pl-12 bg-white/[0.02] border-white/10" />
                      </div>
                   </div>
                   <div className="md:col-span-2 space-y-3">
-                     <label className="text-[10px] font-black text-white/20 uppercase tracking-widest ml-4">ที่อยู่สำนักงานใหญ่</label>
-                     <textarea className="w-full bg-white/[0.02] border border-white/10 rounded-xl p-4 text-sm text-white focus:outline-none focus:border-nexus-teal/40 min-h-[100px] placeholder:text-white/10" defaultValue="เลขที่ 1/1 ถนนวิภาวดีรังสิต แขวงลาดยาว เขตจตุจักร กรุงเทพมหานคร 10900" />
+                     <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-4">ที่อยู่สำนักงานใหญ่</label>
+                     <div className="p-5 bg-white/[0.02] border border-white/10 rounded-2xl">
+                       <AddressFormGroup 
+                         value={parseAddress(companyAddress)}
+                         onChange={(addr) => setCompanyAddress(addr.line1 || "")}
+                       />
+                     </div>
                   </div>
                </div>
             </GlassCard>
           )}
 
           {activeTab === "sequence" && (
-            <div className="space-y-6 animate-in slide-in-from-bottom duration-500">
-               <div className="px-4">
-                  <h2 className="text-xl font-black text-white uppercase">การตั้งค่ารูปแบบเลขที่เอกสาร</h2>
-                  <p className="text-xs text-white/40 font-bold mt-1">กำหนดรูปแบบเลขที่เอกสารอัจฉริยะ (Smart Prefix Mapping)</p>
+            <div className="space-y-3 animate-in slide-in-from-bottom duration-500">
+               <div className="mb-4">
+                  <h2 className="text-xl font-bold text-white uppercase">การตั้งค่ารูปแบบเลขที่เอกสาร</h2>
+                  <p className="text-xs text-white/40 font-bold mt-1">กำหนดรูปแบบเลขที่เอกสารอัจฉริยะ</p>
                </div>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <SequenceCard module="คลังพัสดุ (Inventory)" prefix="NXI" example="NXI-2604-0001" />
-                  <SequenceCard module="ใบเสนอราคา (Quotation)" prefix="QT" example="QT-2604-0042" />
-                  <SequenceCard module="โครงการ (Project)" prefix="PRJ" example="PRJ-26-001" />
-                  <SequenceCard module="ใบสั่งซื้อ (Purchase Order)" prefix="PO" example="PO-2604-0001" />
-                  <SequenceCard module="ใบสั่งขาย (Sales Order)" prefix="SO" example="SO-2604-0001" />
-                  <SequenceCard module="รายงานปฏิบัติงาน (Service Report)" prefix="SR" example="SR-2604-0001" />
+
+               <div className="mb-6 bg-nexus-teal/10 border border-nexus-teal/20 rounded-xl p-4">
+                  <h3 className="text-nexus-teal font-medium text-sm uppercase mb-2">ตัวแปรที่ใช้งานได้</h3>
+                  <div className="flex flex-wrap gap-2 text-[10px] font-mono">
+                     <span className="bg-black/40 px-2 py-1 rounded text-white"><span className="text-nexus-teal">{"[PREFIX]"}</span> = คำนำหน้าโมดูล</span>
+                     <span className="bg-black/40 px-2 py-1 rounded text-white"><span className="text-nexus-teal">{"[YYYY]"}</span> = ปี ค.ศ. (2026)</span>
+                     <span className="bg-black/40 px-2 py-1 rounded text-white"><span className="text-nexus-teal">{"[YY]"}</span> = ปี ค.ศ. ย่อ (26)</span>
+                     <span className="bg-black/40 px-2 py-1 rounded text-white"><span className="text-nexus-teal">{"[BBBB]"}</span> = ปี พ.ศ. (2569)</span>
+                     <span className="bg-black/40 px-2 py-1 rounded text-white"><span className="text-nexus-teal">{"[BB]"}</span> = ปี พ.ศ. ย่อ (69)</span>
+                     <span className="bg-black/40 px-2 py-1 rounded text-white"><span className="text-nexus-teal">{"[MM]"}</span> = เดือน (06)</span>
+                     <span className="bg-black/40 px-2 py-1 rounded text-white"><span className="text-nexus-teal">{"[DD]"}</span> = วันที่ (20)</span>
+                     <span className="bg-black/40 px-2 py-1 rounded text-white"><span className="text-nexus-teal">{"[0000]"}</span> = ลำดับเอกสาร</span>
+                  </div>
+                  <p className="text-[10px] text-white/60 mt-2">ตัวอย่างการกรอก: <span className="text-white font-bold">{"[PREFIX]-[BBBB][MM]-[0000]"}</span> จะได้ผลลัพธ์เป็น <span className="text-nexus-teal font-bold">QT-256906-0001</span></p>
+               </div>
+
+               <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                  <SequenceCard module="คลังพัสดุ" prefix="INV" value={sequenceFormats["INV"] || "INV-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, INV: val})} />
+                  <SequenceCard module="ใบเสนอราคา" prefix="QT" value={sequenceFormats["QT"] || "QT-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, QT: val})} />
+                  <SequenceCard module="โครงการ" prefix="PRJ" value={sequenceFormats["PRJ"] || "PRJ-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, PRJ: val})} />
+                  <SequenceCard module="ใบสั่งซื้อ" prefix="PO" value={sequenceFormats["PO"] || "PO-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, PO: val})} />
+                  <SequenceCard module="ใบสั่งขาย" prefix="SO" value={sequenceFormats["SO"] || "SO-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, SO: val})} />
+                  <SequenceCard module="รายงานปฏิบัติงาน" prefix="SR" value={sequenceFormats["SR"] || "SR-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, SR: val})} />
+                  <SequenceCard module="ใบรับ/ส่งของ" prefix="DN" value={sequenceFormats["DN"] || "DN-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, DN: val})} />
+                  <SequenceCard module="การเงิน" prefix="FIN" value={sequenceFormats["FIN"] || "FIN-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, FIN: val})} />
                </div>
             </div>
           )}
           {activeTab === "templates" && (
-            <div className="space-y-6 animate-in slide-in-from-bottom duration-500">
+            <div className="space-y-3 animate-in slide-in-from-bottom duration-500">
                <div className="px-4 flex justify-between items-end">
                   <div>
-                    <h2 className="text-xl font-black text-white uppercase">สถาปนิกต้นแบบเอกสาร (DOCUMENT ARCHITECT)</h2>
+                    <h2 className="text-xl font-bold text-white uppercase">สถาปนิกต้นแบบเอกสาร</h2>
                     <p className="text-xs text-white/40 font-bold mt-1">ออกแบบและปรับแต่งรูปแบบการออกรายงานและเอกสารด้วยตัวเอง</p>
                   </div>
                   <div className="flex gap-3">
                     <PillButton 
                       variant="glass" 
-                      className="text-nexus-teal border-nexus-teal/20 hover:bg-nexus-teal/10 h-9 px-4 text-xs font-black uppercase rounded-full"
+                      className="text-nexus-teal border-nexus-teal/20 hover:bg-nexus-teal/10 h-9 px-4 text-sm font-medium uppercase rounded-full"
                       onClick={handleInstallStandardTemplates}
                     >
                       <Zap size={13} className="text-nexus-teal animate-pulse" /> ติดตั้ง 4 แม่แบบมาตรฐานด่วน
@@ -411,35 +477,35 @@ export default function SettingsPage() {
                      <div className="w-12 h-12 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 animate-pulse mb-4">
                         <Database size={24} className="animate-spin text-nexus-teal [animation-duration:3s]" />
                      </div>
-                     <span className="text-xs font-black uppercase tracking-widest text-white/50">กำลังเชื่อมต่อระบบจัดเก็บเอกสารคลาวด์...</span>
+                     <span className="text-sm font-medium uppercase tracking-widest text-white/50">กำลังเชื่อมต่อระบบจัดเก็บเอกสารคลาวด์...</span>
                   </div>
                ) : dbTemplates.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center p-12 bg-white/[0.01] border border-white/5 rounded-3xl h-[300px] text-center space-y-4">
+                  <div className="flex flex-col items-center justify-center p-12 bg-white/[0.01] border border-white/5 rounded-3xl h-[300px] text-center space-y-3">
                      <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/20">
                         <FileText size={22} />
                      </div>
                      <div>
-                        <h3 className="text-sm font-black text-white uppercase tracking-wider">ยังไม่มีต้นแบบเอกสารในคลาวด์</h3>
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider">ยังไม่มีต้นแบบเอกสารในคลาวด์</h3>
                         <p className="text-[10px] text-white/30 uppercase mt-1 tracking-widest leading-none font-bold">No standard transaction templates loaded yet</p>
                      </div>
                      <PillButton 
                         variant="glass" 
-                        className="text-nexus-teal border-nexus-teal/20 hover:bg-nexus-teal/10 h-9 px-6 text-xs font-black uppercase rounded-full"
+                        className="text-nexus-teal border-nexus-teal/20 hover:bg-nexus-teal/10 h-9 px-6 text-sm font-medium uppercase rounded-full"
                         onClick={handleInstallStandardTemplates}
                      >
                         <Zap size={12} className="text-nexus-teal animate-pulse" /> ติดตั้ง 4 แม่แบบมาตรฐานเริ่มต้นทันที
                      </PillButton>
                   </div>
                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                      {dbTemplates.map((tmpl) => (
                         <TemplateCard 
                           key={tmpl.id}
                           name={tmpl.templateName} 
                           type={
-                            tmpl.targetModule === "QUOTATION" ? "ใบเสนอราคา (Teal Preset)" :
-                            tmpl.targetModule === "PURCHASE_ORDER" ? "ใบสั่งซื้อ (Indigo Preset)" :
-                            tmpl.targetModule === "PROJECT_INVOICE" ? "ใบกำกับภาษี (Slate Preset)" : "ใบเสร็จรับเงิน (Emerald Preset)"
+                            tmpl.targetModule === "QUOTATION" ? "ใบเสนอราคา" :
+                            tmpl.targetModule === "PURCHASE_ORDER" ? "ใบสั่งซื้อ" :
+                            tmpl.targetModule === "PROJECT_INVOICE" ? "ใบกำกับภาษี" : "ใบเสร็จรับเงิน"
                           } 
                           lastEdit={tmpl.updatedAt ? new Date(tmpl.updatedAt.seconds * 1000).toLocaleDateString("th-TH") : "เพิ่งสร้างเมื่อครู่"} 
                           primaryColor={tmpl.globalStyles?.primaryColor || "#0d9488"}
@@ -461,17 +527,17 @@ export default function SettingsPage() {
           )}
 
           {activeTab === "security" && (
-            <div className="space-y-6 animate-in slide-in-from-bottom duration-500">
+            <div className="space-y-3 animate-in slide-in-from-bottom duration-500">
                <div className="px-4">
-                  <h2 className="text-xl font-black text-white uppercase">ตั้งค่าความปลอดภัย (Security Settings)</h2>
+                  <h2 className="text-xl font-bold text-white uppercase">ตั้งค่าความปลอดภัย</h2>
                   <p className="text-xs text-white/40 font-bold mt-1">กำหนดนโยบายความปลอดภัยและตรวจสอบการเข้าถึงระบบ</p>
                </div>
-               <GlassCard className="p-8 border-white/10 rounded-2xl flex flex-col items-center justify-center min-h-[300px] text-center space-y-4">
+               <GlassCard className="p-4 border-white/10 rounded-2xl flex flex-col items-center justify-center min-h-[300px] text-center space-y-3">
                   <div className="w-16 h-16 rounded-full bg-nexus-teal/10 flex items-center justify-center text-nexus-teal">
                      <ShieldCheck size={32} />
                   </div>
                   <div>
-                     <h3 className="text-lg font-black text-white uppercase">ระบบรักษาความปลอดภัย</h3>
+                     <h3 className="text-lg font-bold text-white uppercase">ระบบรักษาความปลอดภัย</h3>
                      <p className="text-sm text-white/40 mt-1">การตั้งค่าความปลอดภัยขั้นสูงจะพร้อมใช้งานในเร็วๆ นี้</p>
                   </div>
                   <PillButton className="mt-4 shadow-neon-teal">
@@ -484,10 +550,10 @@ export default function SettingsPage() {
 
 
         {/* Right Sidebar Status */}
-        <div className="space-y-6">
-           <GlassCard className="p-5 border-white/10 bg-nexus-teal/5">
-              <h4 className="text-[11px] font-black text-nexus-teal uppercase tracking-widest mb-5">สถานะระบบ (SYSTEM HEALTH)</h4>
-              <div className="space-y-4">
+        <div className="space-y-3">
+           <GlassCard className="p-4 border-white/10 bg-nexus-teal/5">
+              <h4 className="text-[12px] font-medium text-nexus-teal uppercase tracking-widest mb-5">สถานะระบบ</h4>
+              <div className="space-y-3">
                  <ConfigStatusItem icon={<Database size={14} />} label="Multi-tenancy" status="เปิดใช้งาน" />
                  <ConfigStatusItem icon={<Lock size={14} />} label="การเข้ารหัสข้อมูล" status="ระดับสูงสุด" />
                  <ConfigStatusItem icon={<Cpu size={14} />} label="AI Engine Layer" status="พร้อมใช้งาน" />
@@ -495,18 +561,18 @@ export default function SettingsPage() {
               </div>
            </GlassCard>
 
-           <GlassCard className="p-5 border-white/10">
-              <h4 className="text-[11px] font-black text-white/20 uppercase tracking-widest mb-4">ประวัติการแก้ไขล่าสุด</h4>
-              <div className="space-y-4">
+           <GlassCard className="p-4 border-white/10">
+              <h4 className="text-[12px] font-medium text-white/20 uppercase tracking-widest mb-4">ประวัติการแก้ไขล่าสุด</h4>
+              <div className="space-y-3">
                  <ConfigLogItem label="ปรับปรุงอัตราภาษี" time="2 วันที่แล้ว" user="ผู้ดูแลระบบสูงสุด" />
-                 <ConfigLogItem label="แก้ไข Prefix ใบสั่งขาย (SO)" time="5 วันที่แล้ว" user="ผู้ดูแลระบบ" />
+                 <ConfigLogItem label="แก้ไข Prefix ใบสั่งขาย" time="5 วันที่แล้ว" user="ผู้ดูแลระบบ" />
               </div>
            </GlassCard>
         </div>
       </div>
 
       {activeModal !== null && (
-         <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 bg-black/90 backdrop-blur-xl animate-in zoom-in-95 duration-300">
+         <div className="fixed inset-0 z-[5000] flex items-center justify-center p-5 bg-black/90 backdrop-blur-xl animate-in zoom-in-95 duration-300">
            <div className="w-full h-full max-w-[1800px] mx-auto flex flex-col">
              <UltimateDocumentBuilder 
                templateName={activeModal} 
@@ -520,21 +586,21 @@ export default function SettingsPage() {
       )}
 
       {showCreateWizard && (
-         <div className="fixed inset-0 z-[5500] flex items-center justify-center p-6 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300">
-           <div className="w-full max-w-[800px] bg-[#0F0F12] border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-8 space-y-6">
+         <div className="fixed inset-0 z-[5500] flex items-center justify-center p-5 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300">
+           <div className="w-full max-w-[800px] bg-[#0F0F12] border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-5 space-y-3">
               
               {/* Header */}
               <div className="space-y-1">
-                 <span className="px-3 py-1 rounded-full bg-nexus-teal/15 border border-nexus-teal/30 text-[10px] text-nexus-teal font-black uppercase tracking-widest leading-none inline-block">
-                    วิซาร์ดสร้างต้นแบบเอกสาร (Template Wizard)
+                 <span className="px-3 py-1 rounded-full bg-nexus-teal/15 border border-nexus-teal/30 text-[12px] text-nexus-teal font-medium uppercase tracking-widest leading-none inline-block">
+                    วิซาร์ดสร้างต้นแบบเอกสาร
                  </span>
-                 <h2 className="text-xl font-black text-white uppercase tracking-tight mt-2">ตั้งค่าต้นแบบเอกสารรายงานใหม่</h2>
+                 <h2 className="text-xl font-bold text-white uppercase tracking-tight mt-2">ตั้งค่าต้นแบบเอกสารรายงานใหม่</h2>
                  <p className="text-xs text-white/40 font-bold">กรุณากำหนดข้อมูลพื้นฐานและรูปแบบเริ่มต้นของเอกสารที่ต้องการจัดทำ</p>
               </div>
 
               {/* Step 1: Document Name */}
               <div className="space-y-2">
-                 <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-4 block">ชื่อต้นแบบเอกสาร (Template Name) *</label>
+                 <label className="text-[11px] font-medium text-white/40 uppercase tracking-widest ml-4 block">ชื่อต้นแบบเอกสาร *</label>
                  <PillInput 
                     value={newTemplateName} 
                     onChange={e => setNewTemplateName(e.target.value)}
@@ -545,7 +611,7 @@ export default function SettingsPage() {
 
               {/* Step 2: Preset Type */}
               <div className="space-y-2">
-                 <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-4 block">ประเภทฟังก์ชันเอกสาร (Document Preset Type)</label>
+                 <label className="text-[11px] font-medium text-white/40 uppercase tracking-widest ml-4 block">ประเภทฟังก์ชันเอกสาร</label>
                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {[
                       { id: "QUOTATION", label: "ใบเสนอราคา", desc: "Quotation" },
@@ -558,8 +624,8 @@ export default function SettingsPage() {
                         onClick={() => setSelectedPresetType(p.id as any)}
                         className={`p-4 rounded-2xl bg-white/[0.02] border text-left transition-all hover:bg-white/[0.04] flex flex-col justify-between h-20 ${selectedPresetType === p.id ? "border-nexus-teal text-nexus-teal bg-nexus-teal/5 shadow-[0_0_15px_rgba(0,255,209,0.1)]" : "border-white/5 text-white/60"}`}
                       >
-                        <span className="text-[11px] font-black uppercase tracking-tight block leading-none">{p.label}</span>
-                        <span className="text-[9px] font-mono tracking-widest uppercase block mt-1 opacity-50">{p.desc}</span>
+                        <span className="text-[12px] font-medium uppercase tracking-tight block leading-none">{p.label}</span>
+                        <span className="text-xs font-mono tracking-widest uppercase block mt-1 opacity-50">{p.desc}</span>
                       </button>
                     ))}
                  </div>
@@ -567,7 +633,7 @@ export default function SettingsPage() {
 
               {/* Step 3: Base Style / Colors */}
               <div className="space-y-2">
-                 <label className="text-[10px] font-black text-white/40 uppercase tracking-widest ml-4 block">ธีมสีและสไตล์เริ่มต้น (Theme & Styling Preset)</label>
+                 <label className="text-[11px] font-medium text-white/40 uppercase tracking-widest ml-4 block">ธีมสีและสไตล์เริ่มต้น</label>
                  <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
                     {[
                       { id: "Teal Modern", color: "#0d9488", desc: "Modern Teal" },
@@ -582,8 +648,8 @@ export default function SettingsPage() {
                         className={`p-3 rounded-xl bg-white/[0.01] border text-center transition-all hover:bg-white/[0.03] ${selectedPresetStyle === st.id ? "border-nexus-teal bg-nexus-teal/5" : "border-white/5"}`}
                       >
                         <div className="w-5 h-5 rounded-full mx-auto mb-2 border border-white/20" style={{ backgroundColor: st.color }} />
-                        <span className="text-[10px] font-black text-white uppercase block tracking-tight leading-none">{st.id.split(" ")[0]}</span>
-                        <span className="text-[8px] font-mono text-white/40 uppercase block mt-1 tracking-tighter">{st.desc}</span>
+                        <span className="text-[11px] font-medium text-white uppercase block tracking-tight leading-none">{st.id.split(" ")[0]}</span>
+                        <span className="text-[10px] font-mono text-white/40 uppercase block mt-1 tracking-tighter">{st.desc}</span>
                       </button>
                     ))}
                  </div>
@@ -592,8 +658,8 @@ export default function SettingsPage() {
               {/* Actions Footer */}
               <div className="pt-4 border-t border-white/5 flex justify-end gap-3">
                  <PillButton 
-                    variant="glass" 
-                    className="h-9 px-6 text-white/50"
+                    variant="ghost" 
+                    className="h-9 px-6"
                     onClick={() => {
                        setShowCreateWizard(false);
                        setNewTemplateName("");
@@ -604,7 +670,7 @@ export default function SettingsPage() {
                  
                  <PillButton 
                     variant="primary" 
-                    className="h-9 px-6 text-black font-black tracking-wider shadow-neon-teal"
+                    className="h-9 px-6 text-black font-bold tracking-wider shadow-neon-teal"
                     onClick={handleCreateTemplateFromWizard}
                  >
                     ตกลง สร้างต้นแบบเอกสาร
@@ -625,27 +691,55 @@ export default function SettingsPage() {
   );
 }
 
-function SequenceCard({ module, prefix, example }: { module: string, prefix: string, example: string }) {
+function SequenceCard({ module, prefix, value, onChange }: { module: string, prefix: string, value: string, onChange: (val: string) => void }) {
+  const [demo, setDemo] = useState("");
+  
+  useEffect(() => {
+    const now = new Date();
+    const YYYY = now.getFullYear().toString();
+    const YY = YYYY.slice(-2);
+    const BBBB = (now.getFullYear() + 543).toString();
+    const BB = BBBB.slice(-2);
+    const MM = (now.getMonth() + 1).toString().padStart(2, '0');
+    const DD = now.getDate().toString().padStart(2, '0');
+    
+    let resolved = value
+      .replace(/\[PREFIX\]/gi, prefix)
+      .replace(/\[YYYY\]/gi, YYYY)
+      .replace(/\[YYMM\]/gi, `${YY}${MM}`)
+      .replace(/\[YY\]/gi, YY)
+      .replace(/\[BBBB\]/gi, BBBB)
+      .replace(/\[BB\]/gi, BB)
+      .replace(/\[MM\]/gi, MM)
+      .replace(/\[DD\]/gi, DD);
+      
+    // find zeroes
+    const zeroMatch = resolved.match(/\[(0+)\]/) || resolved.match(/(0{3,})/);
+    if (zeroMatch) {
+       const padLen = zeroMatch[1] ? zeroMatch[1].length : zeroMatch[0].length;
+       resolved = resolved.replace(zeroMatch[0], '1'.padStart(padLen, '0'));
+    }
+    setDemo(resolved);
+  }, [value, prefix]);
+
   return (
-    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 group hover:border-white/10 transition-all flex items-center gap-4">
-       <div className="flex items-center gap-3 min-w-[160px]">
+    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 group hover:border-white/10 transition-all flex flex-col sm:flex-row items-center gap-4">
+       <div className="flex items-center gap-3 w-full sm:w-[220px] shrink-0">
           <div className="w-8 h-8 shrink-0 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20">
              <Fingerprint size={14} />
           </div>
-          <div>
-            <p className="text-[11px] font-black text-white uppercase tracking-tight">{module}</p>
-            <p className="text-[9px] text-white/30 font-mono mt-0.5">EX: {example}</p>
+          <div className="flex-1 overflow-hidden">
+            <p className="text-[12px] font-medium text-white uppercase tracking-tight truncate" title={module}>{module}</p>
+            <p className="text-xs text-white/30 font-mono mt-0.5 truncate">EX: {demo}</p>
           </div>
        </div>
-       <div className="flex-1 flex items-center gap-2">
+       <div className="flex-1 flex items-center gap-2 w-full">
           <PillInput 
              className="flex-1 h-8 px-2 text-[11px] font-mono text-center bg-black/40 border-white/5 text-nexus-teal focus:border-nexus-teal/50" 
-             defaultValue={`[${prefix}]-[YYMM]-[0000]`} 
+             value={value}
+             onChange={(e) => onChange(e.target.value)}
              title="รูปแบบเลขที่เอกสาร"
           />
-          <button className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg bg-white/5 text-white/40 hover:text-nexus-teal hover:bg-nexus-teal/10 transition-colors" title="อัปเดตรูปแบบ">
-             <RefreshCcw size={13} />
-          </button>
        </div>
     </div>
   );
@@ -656,9 +750,9 @@ function ConfigStatusItem({ icon, label, status }: { icon: any, label: string, s
     <div className="flex justify-between items-center group">
        <div className="flex items-center gap-3">
           <div className="text-white/20 group-hover:text-nexus-teal transition-colors">{icon}</div>
-          <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">{label}</span>
+          <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest">{label}</span>
        </div>
-       <span className="text-[10px] font-black text-nexus-teal uppercase tracking-tighter shadow-neon-teal">{status}</span>
+       <span className="text-[11px] font-medium text-nexus-teal uppercase tracking-tighter shadow-neon-teal">{status}</span>
     </div>
   );
 }
@@ -667,8 +761,8 @@ function ConfigLogItem({ label, time, user }: { label: string, time: string, use
   return (
     <div className="flex items-center justify-between group">
        <div>
-          <p className="text-xs font-black text-white group-hover:text-nexus-blue transition-colors">{label}</p>
-          <p className="text-[10px] font-black text-white/20 uppercase">{user} • {time}</p>
+          <p className="text-sm font-medium text-white group-hover:text-nexus-blue transition-colors">{label}</p>
+          <p className="text-[11px] font-medium text-white/20 uppercase">{user} • {time}</p>
        </div>
        <ArrowRight size={12} className="text-white/10 group-hover:text-white transition-all" />
     </div>
@@ -709,8 +803,8 @@ function TemplateCard({
                 <FileText size={20} />
              </div>
              <div>
-                <h3 className="text-lg font-black text-white uppercase tracking-tight">{name}</h3>
-                <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mt-1">Type: {type}</p>
+                <h3 className="text-lg font-bold text-white uppercase tracking-tight">{name}</h3>
+                <p className="text-[11px] font-medium text-white/20 uppercase tracking-widest mt-1">Type: {type}</p>
              </div>
           </div>
           <div className="flex flex-col gap-2">
@@ -726,21 +820,21 @@ function TemplateCard({
        
        <div className="mt-5 flex items-center justify-between relative z-10 pt-4 border-t border-white/5">
           <div className="flex gap-4 col-span-3 items-center">
-             <div className="flex items-center gap-1.5 text-[10px] font-black text-white/20 uppercase">
+             <div className="flex items-center gap-1.5 text-[11px] font-medium text-white/20 uppercase">
                 <Layout size={10} /> {blocksCount} องค์ประกอบ
              </div>
-             <div className="flex items-center gap-1.5 text-[10px] font-black text-white/20 uppercase">
+             <div className="flex items-center gap-1.5 text-[11px] font-medium text-white/20 uppercase">
                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: primaryColor }} /> สีหลัก
              </div>
              <button 
                onClick={onDelete}
-               className="flex items-center gap-1.5 text-[10px] font-black text-red-400/50 hover:text-red-400 uppercase transition-all"
+               className="flex items-center gap-1.5 text-[11px] font-medium text-red-400/50 hover:text-red-400 uppercase transition-all"
                title="ลบต้นแบบออกจากฐานข้อมูล"
              >
                 <Trash2 size={10} /> ลบต้นแบบ
              </button>
           </div>
-          <p className="text-[10px] font-black text-white/10 uppercase italic">ปรับปรุง: {lastEdit}</p>
+          <p className="text-[11px] font-medium text-white/10 uppercase italic">ปรับปรุง: {lastEdit}</p>
        </div>
        
        <div className="absolute bottom-0 right-0 w-32 h-32 blur-[60px] translate-y-1/2 translate-x-1/2" style={{ backgroundColor: `${primaryColor}10` }} />

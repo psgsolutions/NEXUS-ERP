@@ -48,13 +48,13 @@ export const AssetService = {
         items: [
           {
             accountCode: '5121-00', // Depreciation Expense
-            accountName: 'ค่าเสื่อมราคา (Depreciation Expense)',
+            accountName: 'ค่าเสื่อมราคา',
             debit: totalBatchAmount,
             credit: 0
           },
           {
             accountCode: '1591-00', // Accumulated Depreciation
-            accountName: 'ค่าเสื่อมราคาสะสม (Accumulated Depreciation)',
+            accountName: 'ค่าเสื่อมราคาสะสม',
             debit: 0,
             credit: totalBatchAmount
           }

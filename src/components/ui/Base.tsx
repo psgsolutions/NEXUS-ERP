@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { X, Sparkles, ChevronLeft, ChevronDown } from "lucide-react";
+import { X, Sparkles, ChevronLeft, ChevronDown, Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 export { cn };
@@ -16,16 +16,19 @@ export { cn };
  */
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "glass" | "danger" | "ghost";
+  variant?: "primary" | "save" | "confirm" | "warning" | "danger" | "glass" | "ghost";
   size?: number | string;
 }
 
 export function PillButton({ className, variant = "primary", ...props }: ButtonProps) {
   const variants = {
-    primary: "bg-nexus-teal text-black shadow-neon-teal hover:bg-white active:scale-95",
-    glass: "bg-white/5 border border-white/10 text-white hover:bg-white/10 backdrop-blur-md",
-    danger: "bg-danger text-white shadow-neon-danger/20 hover:bg-danger/80",
-    ghost: "bg-transparent text-white/40 hover:text-white",
+    primary: "bg-nexus-teal text-black font-bold shadow-neon-teal hover:bg-nexus-teal/90 active:scale-95",
+    save: "bg-emerald-500 text-black font-bold shadow-neon-emerald hover:bg-emerald-400 active:scale-95",
+    confirm: "bg-nexus-blue text-white font-bold shadow-neon-blue hover:bg-nexus-blue/90 active:scale-95",
+    warning: "bg-warning text-black font-bold shadow-neon-amber hover:bg-warning/90 active:scale-95",
+    danger: "bg-danger text-white font-bold shadow-neon-danger hover:bg-danger/90 active:scale-95",
+    glass: "bg-white/5 text-white font-bold border border-white/10 hover:bg-white/10 active:scale-95 backdrop-blur-md",
+    ghost: "bg-transparent text-white/60 font-bold hover:text-white hover:bg-white/5 active:scale-95"
   };
 
   return (
@@ -215,6 +218,31 @@ export function GlassCard({ className, children }: { className?: string; childre
   );
 }
 
+
+export type DocumentStatus = "ร่าง" | "รออนุมัติ" | "รอชำระเงิน" | "ผ่านการอนุมัติ" | "บันทึกบัญชีแล้ว" | "ยกเลิกเอกสาร";
+
+export function DocumentStatusBadge({ status }: { status: DocumentStatus | string }) {
+  const styles: Record<string, string> = {
+    "ร่าง": "bg-zinc-800 text-zinc-400 border-zinc-700/50",
+    "รออนุมัติ": "bg-amber-950/40 text-amber-400 border-amber-900/50",
+    "รอชำระเงิน": "bg-yellow-950/40 text-yellow-400 border-yellow-900/50",
+    "ผ่านการอนุมัติ": "bg-blue-950/40 text-blue-400 border-blue-900/50",
+    "บันทึกบัญชีแล้ว": "bg-emerald-950/40 text-emerald-400 border-emerald-900/50",
+    "ยกเลิกเอกสาร": "bg-red-950/40 text-red-400 border-red-900/50",
+  };
+
+  const defaultStyle = "bg-white/5 text-white/40 border-white/10";
+
+  return (
+    <span className={cn(
+      "px-3 py-1 rounded-full text-[11px] font-black uppercase border tracking-widest whitespace-nowrap",
+      styles[status] || defaultStyle
+    )}>
+      {status}
+    </span>
+  );
+}
+
 export function StatusBadge({ status, label }: { status: "active" | "inactive" | "pending" | "danger", label: string }) {
   const styles = {
     active: "bg-nexus-teal/10 text-nexus-teal border-nexus-teal/20",
@@ -312,7 +340,7 @@ function parseTabLabel(label: string): { th: string; desc: string } {
     return EN_TO_TH_MAP[upper];
   }
   
-  // Handles parenthesized English/Descriptions, e.g., "ข้อมูลคู่ค้า (VENDORS)" or "ลูกหนี้ (AR)"
+  // Handles parenthesized English/Descriptions, e.g., "ข้อมูลคู่ค้า" or "ลูกหนี้"
   const parenMatch = clean.match(/^([^(]+)\s*\(([^)]+)\)$/);
   if (parenMatch) {
     const mainText = parenMatch[1].trim();
@@ -405,20 +433,15 @@ export function NexusTable({
   minWidth?: string
 }) {
   return (
-    <div className="w-full overflow-hidden rounded-2xl border border-white/5 bg-black/[0.15] backdrop-blur-md">
+    <div className="w-full max-h-[600px] overflow-auto custom-scrollbar rounded-2xl border border-white/5 bg-black/[0.15] backdrop-blur-md relative">
       <table className={cn("w-full border-collapse", minWidth, className)}>
-        <thead>
-          <tr className="bg-white/[0.03] border-b border-white/5 h-12">
+        <thead className="sticky top-0 z-20">
+          <tr className="bg-[#0D0D0D]/95 border-b border-white/5 h-12 shadow-sm">
             {headers.map((header, i) => {
               const lowerHeader = header.toLowerCase();
+              const isDocumentId = header.includes("เลขที่") || header.includes("ใบ") || header.includes("อ้างอิง");
               const isRightAligned = 
-                header.includes("เดบิต") || 
-                header.includes("เครดิต") || 
-                header.includes("รวม") || 
-                header.includes("ยอด") || 
-                header.includes("ราคา") || 
-                header.includes("ทุน") || 
-                header.includes("จำนวน") || 
+                !isDocumentId && (
                 header.includes("มูลค่า") || 
                 header.includes("คงเหลือ") || 
                 header.includes("เปอร์เซ็นต์") || 
@@ -432,14 +455,32 @@ export function NexusTable({
                 lowerHeader.includes("qty") || 
                 lowerHeader.includes("price") || 
                 lowerHeader.includes("cost") || 
-                lowerHeader.includes("balance");
+                lowerHeader.includes("balance") ||
+                header.includes("จำนวน") ||
+                header.includes("ราคา") ||
+                header.includes("ยอด") ||
+                header.includes("รวม")
+                );
+
+              const isCenterAligned = 
+                !isDocumentId && (
+                header.includes("สถานะ") || 
+                header.includes("วันที่") || 
+                header.includes("ประเภท") || 
+                header.includes("การกระทำ") || 
+                header.includes("แอคชั่น") || 
+                lowerHeader.includes("status") || 
+                lowerHeader.includes("date") || 
+                lowerHeader.includes("type") || 
+                lowerHeader.includes("action")
+                );
               
               return (
                 <th 
                   key={i} 
                   className={cn(
-                    "px-6 text-[10px] font-black text-white/40 uppercase tracking-[0.18em] whitespace-nowrap",
-                    isRightAligned ? "text-right" : "text-left"
+                    "px-6 text-[14px] font-medium text-white/60 tracking-wider whitespace-nowrap",
+                    isRightAligned ? "text-right" : isCenterAligned ? "text-center" : "text-left"
                   )}
                 >
                   {header}
@@ -487,7 +528,7 @@ export function NexusTableCell({
     <td 
       colSpan={colSpan}
       className={cn(
-        "px-6 text-[13px] font-bold text-white/70 transition-colors duration-300",
+        "px-6 text-[14px] font-normal text-white/80 transition-colors duration-300",
         wrap ? "whitespace-normal break-words leading-relaxed py-3" : "whitespace-nowrap",
         mono && "font-mono text-nexus-teal tracking-normal font-black [font-style:normal!important]",
         className
@@ -520,7 +561,7 @@ export function StrategicTable({
               <th 
                 key={i} 
                 className={cn(
-                  "px-8 py-2 text-[10px] font-black text-white/20 uppercase tracking-[0.4em] text-left whitespace-nowrap",
+                  "px-8 py-2 text-[13px] font-medium text-white/50 tracking-wider text-left whitespace-nowrap",
                   (header.includes("มูลค่า") || header.includes("สถานะ") || header.includes("ยอด") || header.includes("Amount")) && "text-right"
                 )}
               >
@@ -752,7 +793,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-[160
           </div>
           <button 
             onClick={onClose} 
-            className="w-12 h-12 flex items-center justify-center hover:bg-white/5 rounded-full text-white/20 hover:text-white transition-all border border-white/5"
+            className="w-12 h-12 flex items-center justify-center rounded-full bg-nexus-teal text-black hover:bg-nexus-teal/90 transition-all shadow-neon-teal"
           >
             <X size={28} />
           </button>
@@ -822,7 +863,7 @@ export function Toast({ message, isVisible, onClose, type = "success" }: { messa
     )}>
       <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
       <span className="text-[14px] font-black uppercase tracking-widest">{message}</span>
-      <button onClick={onClose} className="ml-4 p-1 hover:bg-white/10 rounded-full transition-all">
+      <button onClick={onClose} className="ml-4 p-1 bg-nexus-teal text-black hover:bg-nexus-teal/80 rounded-full transition-all">
         <X size={14} />
       </button>
     </div>,
@@ -849,3 +890,143 @@ export function NexusDataField({ label, value, highlight = false, className, col
   );
 }
 
+
+
+// --- CREATABLE COMBOBOX ---
+export interface CreatableComboboxProps {
+  value: string;
+  onChange: (val: string) => void;
+  options?: { value: string; label: string }[];
+  allowCustom?: boolean;
+  className?: string;
+  placeholder?: string;
+}
+
+export function CreatableCombobox({
+  value,
+  onChange,
+  options = [],
+  allowCustom = false,
+  className,
+  placeholder = "Select or type..."
+}: CreatableComboboxProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedLabel = options.find(o => o.value === value)?.label || value || placeholder;
+
+  const filteredOptions = options.filter(o => 
+    o.label.toLowerCase().includes(search.toLowerCase()) || 
+    o.value.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className={cn("relative w-full", isOpen && "z-[9999]")} ref={containerRef}>
+      <div
+        onClick={() => {
+          setIsOpen(!isOpen);
+          setSearch("");
+        }}
+        className={cn(
+          "h-9 w-full px-5 pr-10 rounded-full bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold focus-within:border-nexus-teal/40 focus-within:bg-white/[0.06] transition-all cursor-pointer flex items-center justify-between group backdrop-blur-sm",
+          isOpen && "border-nexus-teal/40 bg-white/[0.06]",
+          className
+        )}
+      >
+        <span className={cn("truncate pr-2", !value && "text-white/40")}>{selectedLabel}</span>
+        <ChevronDown 
+          className={cn(
+            "absolute right-4 top-1/2 -translate-y-1/2 text-white/20 transition-all pointer-events-none",
+            isOpen ? "rotate-180 text-nexus-teal" : "group-hover:text-nexus-teal"
+          )} 
+          size={14} 
+        />
+      </div>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 w-full mt-2 z-[500] bg-[#0D0D0D]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9)] p-1.5 animate-in fade-in slide-in-from-top-2 duration-200 max-h-[300px] overflow-y-auto custom-scrollbar flex flex-col gap-1">
+          <input 
+            autoFocus
+            type="text"
+            className="w-full bg-black/40 border border-white/10 rounded-xl h-10 px-4 text-[13px] text-white focus:outline-none focus:border-nexus-teal/50 mb-1"
+            placeholder="Search or type new..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+          />
+          {filteredOptions.length === 0 && search && allowCustom && (
+            <div
+              className="px-4 py-2.5 rounded-xl text-[13px] text-nexus-teal font-bold hover:bg-nexus-teal/10 cursor-pointer flex items-center gap-2"
+              onClick={() => {
+                onChange(search);
+                setIsOpen(false);
+              }}
+            >
+              <Plus size={14} /> Add "{search}"
+            </div>
+          )}
+          {filteredOptions.map((opt, idx) => (
+            <div
+              key={idx}
+              className={cn(
+                "px-4 py-2.5 rounded-xl text-[13px] text-white/70 hover:text-white hover:bg-white/5 cursor-pointer transition-all",
+                value === opt.value && "bg-nexus-teal/10 text-nexus-teal font-bold"
+              )}
+              onClick={() => {
+                onChange(opt.value);
+                setIsOpen(false);
+              }}
+            >
+              {opt.label}
+            </div>
+          ))}
+          {filteredOptions.length === 0 && (!search || !allowCustom) && (
+            <div className="px-4 py-3 text-[13px] text-white/30 text-center">
+              No results found
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- NEXUS DATE PICKER ---
+export function NexusDatePicker({ 
+  className, 
+  value, 
+  onChange, 
+  disabled,
+  ...props 
+}: { 
+  className?: string, 
+  value?: string, 
+  onChange?: (e: { target: { value: string } }) => void,
+  disabled?: boolean
+}) {
+  return (
+    <input 
+      type="date"
+      value={value || ""}
+      disabled={disabled}
+      onChange={(e) => onChange?.({ target: { value: e.target.value } })}
+      className={cn(
+        "h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold focus:border-nexus-teal/40 focus:bg-white/[0.06] focus:outline-none transition-all placeholder:text-white/20",
+        disabled && "opacity-50 cursor-not-allowed",
+        className
+      )}
+      {...props as any}
+    />
+  );
+}

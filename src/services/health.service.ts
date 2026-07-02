@@ -1,4 +1,4 @@
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase-client";
 import { collection, limit, query, getDocs } from "firebase/firestore";
 
 /**
@@ -11,7 +11,7 @@ export const healthService = {
   async checkDatabaseConnectivity(): Promise<{ status: "online" | "offline"; latency: number }> {
     const startTime = Date.now();
     try {
-      // ลองดึงข้อมูลขนาดเล็กเพื่อทดสอบความหน่วง (Latency)
+      // ลองดึงข้อมูลขนาดเล็กเพื่อทดสอบความหน่วง
       const q = query(collection(db, "companies"), limit(1));
       await getDocs(q);
       const endTime = Date.now();

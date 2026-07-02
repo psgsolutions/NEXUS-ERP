@@ -22,7 +22,7 @@ import { NumberStepper } from "@/components/ui/NumberStepper";
 import { resizeImage, generateStockPilotId } from "@/lib/utils";
 import { useInventory } from "@/hooks/useInventory";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase-client";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { Users } from "lucide-react";
 
@@ -40,16 +40,16 @@ interface KitEditorProps {
 }
 
 const KIT_UNIT_TYPES = [
-  { id: "ชุด (Set)", label: "นับเป็นชุด" },
-  { id: "งาน (Job)", label: "เหมารวมทั้งงาน" },
-  { id: "จุด (Point)", label: "นับตามจุดติดตั้ง" },
-  { id: "เครื่อง (Unit)", label: "นับตามตัวเครื่อง" }
+  { id: "ชุด", label: "นับเป็นชุด" },
+  { id: "งาน", label: "เหมารวมทั้งงาน" },
+  { id: "จุด", label: "นับตามจุดติดตั้ง" },
+  { id: "เครื่อง", label: "นับตามตัวเครื่อง" }
 ];
 
 const INITIAL_FORM = {
   name: "",
   description: "",
-  unit_type: "ชุด (Set)",
+  unit_type: "ชุด",
   imageUrl: "",
   items: [] as any[],
   labor_items: [] as any[],
@@ -91,7 +91,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
         setForm({
           name: initialData.name || "",
           description: initialData.description || "",
-          unit_type: initialData.unit_type || "ชุด (Set)",
+          unit_type: initialData.unit_type || "ชุด",
           imageUrl: initialData.imageUrl || "",
           items: initialData.items || [],
           labor_items: initialData.labor_items || [],
@@ -180,7 +180,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
     setTouched(true);
     if (!validation.isValid) {
       if (!validation.name) showToast("กรุณาระบุชื่อชุดงานติดตั้ง", "error");
-      else if (!validation.items) showToast("กรุณาเพิ่มรายการพัสดุ (BOM) หรือค่าแรงอย่างน้อย 1 รายการ", "error");
+      else if (!validation.items) showToast("กรุณาเพิ่มรายการพัสดุ หรือค่าแรงอย่างน้อย 1 รายการ", "error");
       return;
     }
     if (isLocked || isSubmitting) return;
@@ -216,7 +216,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
               <Zap size={18} className="animate-pulse" />
             </div>
             <div className="flex flex-col overflow-hidden">
-              <h2 className="text-[15px] font-black text-white uppercase tracking-tight leading-none truncate">ออกแบบชุดงานติดตั้ง (INSTALLATION KIT BUILDER)</h2>
+              <h2 className="text-[15px] font-black text-white uppercase tracking-tight leading-none truncate">ออกแบบชุดงานติดตั้ง</h2>
               <p className="text-[10px] font-bold text-nexus-teal uppercase tracking-[0.2em] mt-1.5 opacity-80">Hybrid BOM & Labor Framework</p>
             </div>
           </div>
@@ -247,7 +247,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                     {tab === "general" && <LayoutList size={14} />}
                     {tab === "bom" && <Layers size={14} />}
                     {tab === "labor" && <Wrench size={14} />}
-                    {tab === "general" ? "ข้อมูลทั่วไป" : tab === "bom" ? "รายการพัสดุ (BOM)" : "โครงสร้างค่าแรง"}
+                    {tab === "general" ? "ข้อมูลทั่วไป" : tab === "bom" ? "รายการพัสดุ" : "โครงสร้างค่าแรง"}
                   </button>
                 ))}
               </div>
@@ -282,7 +282,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                       {/* Basic details */}
                       <div className="flex-1 space-y-4 min-w-0">
                         <div className="space-y-2">
-                          <label className="text-[11px] font-black text-white/50 uppercase tracking-widest">ชื่อชุดงานติดตั้ง (Kit Name) *</label>
+                          <label className="text-[11px] font-black text-white/50 uppercase tracking-widest">ชื่อชุดงานติดตั้ง *</label>
                           <PillInput 
                             disabled={isLocked} 
                             placeholder="เช่น ชุดติดตั้ง Access Point + ท่อสายสัญญาณสำเร็จรูป..." 
@@ -308,7 +308,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                           </div>
                           
                           <div className="space-y-2">
-                            <label className="text-[11px] font-black text-white/50 uppercase tracking-widest">ราคาเสนอขายแนะนำ (Suggested Price)</label>
+                            <label className="text-[11px] font-black text-white/50 uppercase tracking-widest">ราคาเสนอขายแนะนำ</label>
                             <NumberStepper 
                               disabled={isLocked} 
                               value={form.suggested_price} 
@@ -321,7 +321,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                         </div>
                         
                         <div className="space-y-2">
-                          <label className="text-[11px] font-black text-white/50 uppercase tracking-widest">ขอบเขตงานและรายละเอียดทางเทคนิค (Technical Spec / Description)</label>
+                          <label className="text-[11px] font-black text-white/50 uppercase tracking-widest">ขอบเขตงานและรายละเอียดทางเทคนิค</label>
                           <textarea 
                             disabled={isLocked} 
                             rows={4}
@@ -362,7 +362,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                           </div>
                           <div className="relative w-full md:w-64 shrink-0">
                             <PillInput 
-                              placeholder="ค้นหาสินค้า / SKU..." 
+                              placeholder="พิมพ์เพื่อค้นหา..." 
                               className="w-full pl-10 bg-[#0a0a0c] text-xs border-white/5 focus:border-nexus-teal/30" 
                               value={productSearch} 
                               onChange={(e) => setProductSearch(e.target.value)} 
@@ -666,11 +666,11 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                 
                 <div className="space-y-3">
                   <div className="flex justify-between items-center text-[10px] font-bold text-white/40 uppercase">
-                    <span>พัสดุ (Material Cost)</span>
+                    <span>พัสดุ</span>
                     <span className="text-white/80 font-mono text-[11px]">{formatCurrency(financials.material_cost)}</span>
                   </div>
                   <div className="flex justify-between items-center text-[10px] font-bold text-white/40 uppercase">
-                    <span>งานช่าง (Labor Cost)</span>
+                    <span>งานช่าง</span>
                     <span className="text-white/80 font-mono text-[11px]">{formatCurrency(financials.labor_cost)}</span>
                   </div>
                   <div className="pt-2 mt-1 border-t border-white/5 flex justify-between items-center text-[11px] font-black text-white/70 uppercase">
@@ -726,9 +726,9 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
               </PillButton>
               <PillButton 
                 type="button"
-                variant="glass"
+                variant="ghost"
                 onClick={onClose} 
-                className="w-full h-9 text-white/40 hover:text-white text-xs font-black uppercase"
+                className="w-full h-9 hover: text-xs font-black uppercase"
               >
                 ยกเลิกการออกแบบ
               </PillButton>

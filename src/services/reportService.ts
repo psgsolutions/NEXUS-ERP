@@ -1,5 +1,5 @@
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../lib/firebase-client';
 
 /**
  * อาโป: โครงสร้าง Query ข้อมูลรายงานสำหรับ NEXUS ERP

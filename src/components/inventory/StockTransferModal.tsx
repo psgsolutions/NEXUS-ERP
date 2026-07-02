@@ -72,7 +72,7 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
     <Modal 
       isOpen={isOpen} 
       onClose={onClose} 
-      title="ระบบโอนย้ายพัสดุระหว่างคลัง (STOCKS TRANSFER)"
+      title="ระบบโอนย้ายพัสดุระหว่างคลัง"
       maxWidth="max-w-[1600px]"
     >
       <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
@@ -89,11 +89,11 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                <div className="space-y-8">
                   <div className="flex items-center gap-3 text-nexus-blue">
                      <MapPin size={18} />
-                     <h5 className="text-[13px] font-black uppercase tracking-widest">1. เส้นทางการโอนย้าย (Transfer Route)</h5>
+                     <h5 className="text-[13px] font-black uppercase tracking-widest">1. เส้นทางการโอนย้าย</h5>
                   </div>
                   <div className="space-y-6">
                      <div className="grid grid-cols-2 gap-4">
-                        <Field label="คลังต้นทาง (From)">
+                        <Field label="คลังต้นทาง">
                            <PillSelect 
                              value={formData.fromWarehouse}
                              onChange={(e) => setFormData({...formData, fromWarehouse: e.target.value})}
@@ -103,7 +103,7 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                               <option value="RAYONG">Site Warehouse (Rayong)</option>
                            </PillSelect>
                         </Field>
-                        <Field label="คลังปลายทาง (To)">
+                        <Field label="คลังปลายทาง">
                            <PillSelect 
                              value={formData.toWarehouse}
                              onChange={(e) => setFormData({...formData, toWarehouse: e.target.value})}
@@ -114,7 +114,7 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                            </PillSelect>
                         </Field>
                      </div>
-                     <Field label="ผู้ทำรายการ (Requested By)">
+                     <Field label="ผู้ทำรายการ">
                         <PillSelect 
                           value={formData.requester}
                           onChange={(e) => setFormData({...formData, requester: e.target.value})}
@@ -124,15 +124,15 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                            <option value="Somchai J.">Somchai J.</option>
                         </PillSelect>
                      </Field>
-                     <Field label="วัตถุประสงค์ (Purpose / Reason)">
+                     <Field label="วัตถุประสงค์">
                         <PillSelect 
                           value={formData.reason}
                           onChange={(e) => setFormData({...formData, reason: e.target.value})}
                           className="w-full"
                         >
-                           <option value="Stock Replenishment">เติมสต็อกสินค้า (Replenishment)</option>
-                           <option value="Site Installation">เบิกใช้หน้างาน (Installation)</option>
-                           <option value="RMA / Return">ส่งคืน / เคลมสินค้า (RMA)</option>
+                           <option value="Stock Replenishment">เติมสต็อกสินค้า</option>
+                           <option value="Site Installation">เบิกใช้หน้างาน</option>
+                           <option value="RMA / Return">ส่งคืน / เคลมสินค้า</option>
                         </PillSelect>
                      </Field>
                   </div>
@@ -141,7 +141,7 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                <div className="space-y-8">
                   <div className="flex items-center gap-3 text-white">
                      <Package size={18} />
-                     <h5 className="text-[13px] font-black uppercase tracking-widest">2. รายการพัสดุ (Items Selection)</h5>
+                     <h5 className="text-[13px] font-black uppercase tracking-widest">2. รายการพัสดุ</h5>
                   </div>
                   <div className="space-y-6">
                      <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/5 space-y-6">
@@ -211,10 +211,10 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                 disabled={isSaving}
               >
                  <ShieldCheck size={22} className={isSaving ? "animate-pulse" : ""} />
-                 {isSaving ? "กำลังบันทึก..." : "ยืนยันการโอน (INITIATE)"}
+                 {isSaving ? "กำลังบันทึก..." : "ยืนยันการโอน"}
               </PillButton>
               <PillButton 
-                variant="glass" 
+                variant="ghost" 
                 className={cn("w-full text-white/20 hover:text-white uppercase tracking-widest", isSaving && "opacity-50 pointer-events-none")} 
                 onClick={onClose}
                 disabled={isSaving}

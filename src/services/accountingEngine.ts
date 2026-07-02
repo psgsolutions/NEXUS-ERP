@@ -1,7 +1,8 @@
 // @ts-nocheck
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase-client";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { JournalEntry } from "@/types/database";
+import { WriteBatch, doc } from "firebase/firestore";
 
 /**
  * Nexus Accounting Engine V3.0
@@ -21,17 +22,17 @@ export const AccountingEngine = {
     vatAmount: number;
     grandTotal: number;
     isVatRegistered: boolean;
-  }) {
+  }, batch?: WriteBatch) {
     const items = [
       {
         accountCode: '1131-00', // Accounts Receivable
-        accountName: 'ลูกหนี้การค้า (Accounts Receivable)',
+        accountName: 'ลูกหนี้การค้า',
         debit: data.grandTotal,
         credit: 0
       },
       {
         accountCode: '4111-00', // Sales Revenue
-        accountName: 'รายได้จากการขาย (Sales Revenue)',
+        accountName: 'รายได้จากการขาย',
         debit: 0,
         credit: data.subTotal
       }
@@ -40,7 +41,7 @@ export const AccountingEngine = {
     if (data.isVatRegistered && data.vatAmount > 0) {
       items.push({
         accountCode: '2121-00', // Output VAT
-        accountName: 'ภาษีขาย (Output VAT)',
+        accountName: 'ภาษีขาย',
         debit: 0,
         credit: data.vatAmount
       });
@@ -60,6 +61,11 @@ export const AccountingEngine = {
       updatedAt: serverTimestamp()
     };
 
+    if (batch) {
+      const docRef = doc(collection(db, "journal_entries"));
+      batch.set(docRef, journalEntry);
+      return docRef;
+    }
     return await addDoc(collection(db, "journal_entries"), journalEntry);
   },
 
@@ -77,18 +83,18 @@ export const AccountingEngine = {
     totalAmount: number;
     warehouseName: string;
     vatType?: 'Inclusive' | 'Exclusive' | 'Non-VAT';
-  }) {
+  }, batch?: WriteBatch) {
     const isNonVat = data.vatType === 'Non-VAT';
     const items = [
       {
         accountCode: '1141-00', // Inventory Asset Account
-        accountName: 'สินค้าคงเหลือ (Inventory)',
+        accountName: 'สินค้าคงเหลือ',
         debit: data.subTotal,
         credit: 0
       },
       {
         accountCode: '2111-00', // Accounts Payable
-        accountName: 'เจ้าหนี้การค้า (Accounts Payable)',
+        accountName: 'เจ้าหนี้การค้า',
         debit: 0,
         credit: data.totalAmount
       }
@@ -97,7 +103,7 @@ export const AccountingEngine = {
     if (!isNonVat && data.vatAmount > 0) {
       items.push({
         accountCode: '1151-00', // Input VAT (Asset)
-        accountName: 'ภาษีซื้อ (Input VAT)',
+        accountName: 'ภาษีซื้อ',
         debit: data.vatAmount,
         credit: 0
       });
@@ -117,6 +123,11 @@ export const AccountingEngine = {
       updatedAt: serverTimestamp()
     };
 
+    if (batch) {
+      const docRef = doc(collection(db, "journal_entries"));
+      batch.set(docRef, journalEntry);
+      return docRef;
+    }
     return await addDoc(collection(db, "journal_entries"), journalEntry);
   },
 
@@ -132,7 +143,7 @@ export const AccountingEngine = {
     receivedAmount: number;
     whtAmount: number;
     bankName: string;
-  }) {
+  }, batch?: WriteBatch) {
     const arAmount = data.receivedAmount + data.whtAmount;
     const items = [
       {
@@ -143,7 +154,7 @@ export const AccountingEngine = {
       },
       {
         accountCode: '1131-00', // Accounts Receivable
-        accountName: 'ลูกหนี้การค้า (Accounts Receivable)',
+        accountName: 'ลูกหนี้การค้า',
         debit: 0,
         credit: arAmount
       }
@@ -152,7 +163,7 @@ export const AccountingEngine = {
     if (data.whtAmount > 0) {
       items.push({
         accountCode: '1152-00', // Withholding Tax Receivable
-        accountName: 'ภาษีหัก ณ ที่จ่ายรอล่วงหน้า (WHT Receivable)',
+        accountName: 'ภาษีหัก ณ ที่จ่ายรอล่วงหน้า',
         debit: data.whtAmount,
         credit: 0
       });
@@ -171,6 +182,11 @@ export const AccountingEngine = {
       updatedAt: serverTimestamp()
     };
 
+    if (batch) {
+      const docRef = doc(collection(db, "journal_entries"));
+      batch.set(docRef, journalEntry);
+      return docRef;
+    }
     return await addDoc(collection(db, "journal_entries"), journalEntry);
   },
 
@@ -186,12 +202,12 @@ export const AccountingEngine = {
     paidAmount: number;
     whtAmount: number;
     bankName: string;
-  }) {
+  }, batch?: WriteBatch) {
     const apAmount = data.paidAmount + data.whtAmount;
     const items = [
       {
         accountCode: '2111-00', // Accounts Payable
-        accountName: 'เจ้าหนี้การค้า (Accounts Payable)',
+        accountName: 'เจ้าหนี้การค้า',
         debit: apAmount,
         credit: 0
       },
@@ -206,7 +222,7 @@ export const AccountingEngine = {
     if (data.whtAmount > 0) {
       items.push({
         accountCode: '2122-00', // Withholding Tax Payable
-        accountName: 'ภาษีหัก ณ ที่จ่ายค้างจ่าย (WHT Payable)',
+        accountName: 'ภาษีหัก ณ ที่จ่ายค้างจ่าย',
         debit: 0,
         credit: data.whtAmount
       });
@@ -225,6 +241,11 @@ export const AccountingEngine = {
       updatedAt: serverTimestamp()
     };
 
+    if (batch) {
+      const docRef = doc(collection(db, "journal_entries"));
+      batch.set(docRef, journalEntry);
+      return docRef;
+    }
     return await addDoc(collection(db, "journal_entries"), journalEntry);
   },
 
@@ -237,17 +258,17 @@ export const AccountingEngine = {
     companyId: string;
     documentId: string;
     cogsAmount: number;
-  }) {
+  }, batch?: WriteBatch) {
     const items = [
       {
         accountCode: '5111-00', // COGS
-        accountName: 'ต้นทุนขาย (Cost of Goods Sold)',
+        accountName: 'ต้นทุนขาย',
         debit: data.cogsAmount,
         credit: 0
       },
       {
         accountCode: '1141-00', // Inventory Asset Account
-        accountName: 'สินค้าคงเหลือ (Inventory)',
+        accountName: 'สินค้าคงเหลือ',
         debit: 0,
         credit: data.cogsAmount
       }
@@ -266,6 +287,11 @@ export const AccountingEngine = {
       updatedAt: serverTimestamp()
     };
 
+    if (batch) {
+      const docRef = doc(collection(db, "journal_entries"));
+      batch.set(docRef, journalEntry);
+      return docRef;
+    }
     return await addDoc(collection(db, "journal_entries"), journalEntry);
   },
 
@@ -279,17 +305,17 @@ export const AccountingEngine = {
     woId: string;
     subcontractorName: string;
     totalLaborCost: number;
-  }) {
+  }, batch?: WriteBatch) {
     const items = [
       {
         accountCode: '5121-00', // Cost of Services
-        accountName: 'ต้นทุนบริการ (Cost of Services)',
+        accountName: 'ต้นทุนบริการ',
         debit: data.totalLaborCost,
         credit: 0
       },
       {
         accountCode: '2111-00', // Accounts Payable
-        accountName: 'เจ้าหนี้การค้า (Accounts Payable)',
+        accountName: 'เจ้าหนี้การค้า',
         debit: 0,
         credit: data.totalLaborCost
       }
@@ -308,6 +334,11 @@ export const AccountingEngine = {
       updatedAt: serverTimestamp()
     };
 
+    if (batch) {
+      const docRef = doc(collection(db, "journal_entries"));
+      batch.set(docRef, journalEntry);
+      return docRef;
+    }
     return await addDoc(collection(db, "journal_entries"), journalEntry);
   },
 
@@ -322,7 +353,7 @@ export const AccountingEngine = {
     whtAmount: number;
     whtRate: number;
     baseAmount: number;
-  }) {
+  }, batch?: WriteBatch) {
     const certificate = {
       companyId: data.companyId,
       pvId: data.pvId,
@@ -334,6 +365,11 @@ export const AccountingEngine = {
       createdAt: serverTimestamp(),
       status: 'active'
     };
+    if (batch) {
+      const docRef = doc(collection(db, "wht_certificates"));
+      batch.set(docRef, certificate);
+      return docRef;
+    }
     return await addDoc(collection(db, "wht_certificates"), certificate);
   },
 
@@ -345,7 +381,7 @@ export const AccountingEngine = {
     description: string;
     totalAmount: number;
     items: any[];
-  }) {
+  }, batch?: WriteBatch) {
     const journalEntry: Partial<JournalEntry> = {
       companyId: data.companyId,
       date: serverTimestamp(),
@@ -359,6 +395,11 @@ export const AccountingEngine = {
       updatedAt: serverTimestamp()
     };
 
+    if (batch) {
+      const docRef = doc(collection(db, "journal_entries"));
+      batch.set(docRef, journalEntry);
+      return docRef;
+    }
     return await addDoc(collection(db, "journal_entries"), journalEntry);
   },
 
@@ -373,7 +414,7 @@ export const AccountingEngine = {
     expenseAccountCode: string;
     expenseAccountName: string;
     focReason: string;
-  }) {
+  }, batch?: WriteBatch) {
     const journalEntry: Partial<JournalEntry> = {
       companyId: data.companyId,
       date: serverTimestamp(),
@@ -392,7 +433,7 @@ export const AccountingEngine = {
         },
         {
           accountCode: '1141-00', // Inventory Asset Account
-          accountName: 'สินค้าคงเหลือ (Inventory)',
+          accountName: 'สินค้าคงเหลือ',
           debit: 0,
           credit: data.totalCost
         }
@@ -401,19 +442,24 @@ export const AccountingEngine = {
       updatedAt: serverTimestamp()
     };
 
+    if (batch) {
+      const docRef = doc(collection(db, "journal_entries"));
+      batch.set(docRef, journalEntry);
+      return docRef;
+    }
     return await addDoc(collection(db, "journal_entries"), journalEntry);
   },
 
   /**
    * Generates General Journal Entry for Internal Expense Claim (PV)
    */
-  async postExpenseClaimJournal(companyId: string, claimData: any) {
+  async postExpenseClaimJournal(companyId: string, claimData: any, batch?: WriteBatch) {
     const lines = [];
     
     // Dr. Expense Account
     lines.push({
       accountCode: claimData.expenseAccountCode || '53000-00',
-      accountName: 'ค่าใช้จ่ายเบ็ดเตล็ด (General Expense)',
+      accountName: 'ค่าใช้จ่ายเบ็ดเตล็ด',
       debit: claimData.subtotal,
       credit: 0
     });
@@ -422,7 +468,7 @@ export const AccountingEngine = {
     if (claimData.hasVat && claimData.vatAmount > 0) {
       lines.push({
         accountCode: '1151-00',
-        accountName: 'ภาษีซื้อ (Input VAT)',
+        accountName: 'ภาษีซื้อ',
         debit: claimData.vatAmount,
         credit: 0
       });
@@ -431,7 +477,7 @@ export const AccountingEngine = {
     // Cr. Petty Cash / Bank
     lines.push({
       accountCode: '11000-00',
-      accountName: 'เงินสดย่อย / เงินฝากธนาคาร (Petty Cash/Bank)',
+      accountName: 'เงินสดย่อย / เงินฝากธนาคาร',
       debit: 0,
       credit: claimData.grandTotal
     });
@@ -449,6 +495,11 @@ export const AccountingEngine = {
       updatedAt: serverTimestamp()
     };
 
+    if (batch) {
+      const docRef = doc(collection(db, "journal_entries"));
+      batch.set(docRef, journalEntry);
+      return docRef;
+    }
     return await addDoc(collection(db, "journal_entries"), journalEntry);
   }
 };

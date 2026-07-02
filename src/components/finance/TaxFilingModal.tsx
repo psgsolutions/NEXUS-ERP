@@ -99,20 +99,20 @@ export function TaxFilingModal({ isOpen, onClose, onConfirm }: TaxFilingModalPro
                 </div>
 
                 <div className="space-y-6">
-                   <h5 className="text-[12px] font-black text-white/20 uppercase tracking-widest">สรุปรายการภาษี (Tax Summary)</h5>
+                   <h5 className="text-[12px] font-black text-white/20 uppercase tracking-widest">สรุปรายการภาษี</h5>
                    <div className="grid grid-cols-2 gap-4">
                       <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                         <p className="text-[10px] font-black text-white/20 uppercase">ภาษีขาย (Output VAT)</p>
+                         <p className="text-[10px] font-black text-white/20 uppercase">ภาษีขาย</p>
                          <p className="text-xl font-black text-nexus-blue">฿{mockTaxData.outputTax.toLocaleString()}</p>
                       </div>
                       <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                         <p className="text-[10px] font-black text-white/20 uppercase">ภาษีซื้อ (Input VAT)</p>
+                         <p className="text-[10px] font-black text-white/20 uppercase">ภาษีซื้อ</p>
                          <p className="text-xl font-black text-nexus-teal">฿{mockTaxData.inputTax.toLocaleString()}</p>
                       </div>
                    </div>
                    <div className="p-8 rounded-2xl bg-nexus-blue/5 border border-nexus-blue/20 flex justify-between items-center">
                       <div>
-                         <p className="text-[11px] font-black text-nexus-blue uppercase tracking-widest">ภาษีที่ต้องชำระสุทธิ (Net Payable)</p>
+                         <p className="text-[11px] font-black text-nexus-blue uppercase tracking-widest">ภาษีที่ต้องชำระสุทธิ</p>
                          <p className="text-3xl font-black text-white mt-1">฿{mockTaxData.netPayable.toLocaleString()}</p>
                       </div>
                       <ShieldCheck size={48} className="text-nexus-blue/20" />
@@ -139,10 +139,10 @@ export function TaxFilingModal({ isOpen, onClose, onConfirm }: TaxFilingModalPro
                       disabled={isSaving}
                     >
                        <ShieldCheck size={20} className={isSaving ? "animate-pulse" : ""} />
-                       {isSaving ? "กำลังยื่นแบบ..." : "ยืนยันและส่งแบบ (E-Filing)"}
+                       {isSaving ? "กำลังยื่นแบบ..." : "ยืนยันและส่งแบบ"}
                     </PillButton>
                     <PillButton 
-                      variant="glass" 
+                      variant="ghost" 
                       className={cn("w-full text-white/20", isSaving && "opacity-50 pointer-events-none")} 
                       onClick={() => setStep(1)}
                       disabled={isSaving}

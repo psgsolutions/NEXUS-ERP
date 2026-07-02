@@ -15,6 +15,7 @@ import { nexusSequenceEngine } from "./sequence-engine";
  */
 
 export interface Quotation {
+  id?: string;
   customerId: string;
   items: {
     productId: string;
@@ -24,6 +25,11 @@ export interface Quotation {
   }[];
   discount?: number;
   companyId: string;
+  subject?: string;
+  date?: string;
+  validUntil?: string;
+  taxMode?: string;
+  paymentTerms?: string;
 }
 
 export async function createQuotation(quote: Quotation) {
@@ -45,20 +51,48 @@ export async function createQuotation(quote: Quotation) {
   }
 
   // 2. Generate QT ID
-  const quoteId = await nexusSequenceEngine("QT", companyId);
+  const quoteId = quote.id || await nexusSequenceEngine("QT", companyId);
 
   // 3. Save to Firestore
   const quoteRef = doc(db, `companies/${companyId}/quotations`, quoteId);
   await setDoc(quoteRef, {
     ...quote,
+    id: quoteId,
     quoteId,
     totalRevenue,
     margin,
-    status: "Draft",
+    status: quote.id && quote.id.includes("-REV") ? "Draft" : "Draft", // Keep Draft for revisions
     createdAt: serverTimestamp()
-  });
+  }, { merge: true });
 
   return quoteId;
+}
+
+export async function createSalesOrder(data: any, companyId: string) {
+  const soId = data.id || await nexusSequenceEngine("SO", companyId);
+  const soRef = doc(db, `companies/${companyId}/sales_orders`, soId);
+  
+  let totalRevenue = 0;
+  const items = data.items || [];
+  items.forEach((item: any) => {
+    const qty = item.qty || item.quantity || 0;
+    totalRevenue += (item.price || 0) * qty;
+  });
+  
+  await setDoc(soRef, {
+    ...data.header,
+    id: soId,
+    customer: data.header?.customer || data.customer || "Unknown",
+    items,
+    summary: data.summary || {},
+    soId,
+    totalRevenue,
+    status: data.header?.paymentStatus === "paid" ? "Confirmed" : "Pending",
+    companyId,
+    createdAt: serverTimestamp()
+  }, { merge: true });
+  
+  return soId;
 }
 
 export async function convertToSalesOrder(quoteId: string, companyId: string) {
@@ -78,10 +112,13 @@ export async function convertToSalesOrder(quoteId: string, companyId: string) {
 
     // 2. 3-State Stock Lock Logic (Allocate Inventory Statuses)
     for (const item of quoteData.items) {
+      if (!item.productId) continue; // Skip custom/free-text items
+
       const productRef = doc(db, "products", item.productId);
       const productSnap = await transaction.get(productRef);
       if (!productSnap.exists()) {
-        throw new Error(`PRODUCT_NOT_FOUND: ไม่พบพัสดุรหัส ${item.productId}`);
+        console.warn(`PRODUCT_NOT_FOUND: ข้ามการตัดสต็อกสำหรับพัสดุรหัส ${item.productId} เนื่องจากไม่มีในฐานข้อมูลหลัก`);
+        continue; // Skip items that were deleted from master data
       }
 
       const productData = productSnap.data();
@@ -97,7 +134,7 @@ export async function convertToSalesOrder(quoteId: string, companyId: string) {
 
       // Soft Reserve Guard: Assert stock sufficiency
       if (newAvailable < 0) {
-        throw new Error(`STOCK_INSUFFICIENT: พัสดุ ${productData.name} มีสต็อกว่างไม่เพียงพอสำหรับการเบิกใช้งาน (มีอยู่ ${currentOnHand - currentReserved})`);
+        throw new Error(`STOCK_INSUFFICIENT: พัสดุ ${productData.name || item.productId} มีสต็อกว่างไม่เพียงพอสำหรับการจอง (มีอยู่ ${currentOnHand - currentReserved})`);
       }
 
       transaction.update(productRef, {
@@ -254,3 +291,76 @@ export async function autoGenerateOrdersFromSO(soId: string, companyId: string) 
   return true;
 }
 
+// ==========================================
+// THAI ACCOUNTING DOCUMENT FLOW (PHASE 1)
+// ==========================================
+
+/**
+ * Creates an Invoice (ใบแจ้งหนี้) from an existing Sales Order
+ */
+export async function createInvoiceFromSO(soId: string, companyId: string) {
+  const soRef = doc(db, `companies/${companyId}/sales_orders`, soId);
+  const soSnap = await getDoc(soRef);
+
+  if (!soSnap.exists()) {
+    throw new Error(`Sales Order ${soId} not found`);
+  }
+
+  const soData = soSnap.data();
+  const invId = await nexusSequenceEngine("INV", companyId);
+  const invRef = doc(db, `companies/${companyId}/invoices`, invId);
+
+  await setDoc(invRef, {
+    ...soData,
+    id: invId,
+    invoiceId: invId,
+    soRef: soId,
+    documentType: "Invoice",
+    status: "Awaiting Payment",
+    issuedAt: serverTimestamp(),
+    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days default
+    companyId,
+    createdAt: serverTimestamp(),
+  });
+
+  return invId;
+}
+
+/**
+ * Creates a Receipt (ใบเสร็จรับเงิน) from an existing Invoice
+ */
+export async function createReceiptFromInvoice(invId: string, companyId: string) {
+  const invRef = doc(db, `companies/${companyId}/invoices`, invId);
+  const invSnap = await getDoc(invRef);
+
+  if (!invSnap.exists()) {
+    throw new Error(`Invoice ${invId} not found`);
+  }
+
+  const invData = invSnap.data();
+  const recId = await nexusSequenceEngine("RE", companyId);
+  const recRef = doc(db, `companies/${companyId}/receipts`, recId);
+
+  // Run in transaction to update Invoice status to 'Paid' and create Receipt
+  await runTransaction(db, async (transaction) => {
+    transaction.set(recRef, {
+      ...invData,
+      id: recId,
+      receiptId: recId,
+      invRef: invId,
+      documentType: "Receipt",
+      status: "Paid",
+      paymentDate: serverTimestamp(),
+      companyId,
+      createdAt: serverTimestamp(),
+    });
+
+    transaction.update(invRef, {
+      status: "Paid",
+      paymentDate: serverTimestamp(),
+      receiptRef: recId
+    });
+  });
+
+  return recId;
+}

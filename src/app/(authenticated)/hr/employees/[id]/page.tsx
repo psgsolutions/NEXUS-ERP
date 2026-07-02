@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/Base";
 import { useParams, useRouter } from "next/navigation";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { SecureDeleteAction } from "@/components/ui/SecureDeleteAction";
 
 export default function EmployeeDetailPage() {
   const params = useParams();
@@ -41,16 +42,16 @@ export default function EmployeeDetailPage() {
   const [activeTab, setActiveTab] = useState("overview");
 
   const tabs = [
-    { id: "overview", label: "บุคลากร (PROFILES)", icon: <Users size={14} /> },
-    { id: "skills", label: "ทักษะ (SKILLS)", icon: <Award size={14} /> },
-    { id: "attendance", label: "ประวัติ (LOGS)", icon: <History size={14} /> },
-    { id: "payroll", label: "เงินเดือน (PAYROLL)", icon: <DollarSign size={14} /> },
+    { id: "overview", label: "บุคลากร", icon: <Users size={14} /> },
+    { id: "skills", label: "ทักษะ", icon: <Award size={14} /> },
+    { id: "attendance", label: "ประวัติ", icon: <History size={14} /> },
+    { id: "payroll", label: "เงินเดือน", icon: <DollarSign size={14} /> },
   ];
 
   const { data: dbEmployees, loading } = useRealtimeCollection<any>('employees');
   
   // Find employee by ID, or use a placeholder if loading/not found
-  const employee = dbEmployees.find((e: any) => e.id === params.id) || null;
+  const employee = dbEmployees.find((e: any) => e.employeeId === params.id || e.id === params.id) || null;
   const isNotFound = !loading && !employee;
 
   if (loading) {
@@ -70,24 +71,30 @@ export default function EmployeeDetailPage() {
     );
   }
 
-  const fullName = `${employee.prefix === 'Mr.' ? 'นาย' : employee.prefix === 'Mrs.' ? 'นาง' : 'คุณ'}${employee.firstName || ''} ${employee.lastName || ''}`;
+  const fullName = employee.name || `${employee.prefix === 'Mr.' ? 'นาย' : employee.prefix === 'Mrs.' ? 'นาง' : employee.prefix === 'Ms.' ? 'นางสาว' : 'คุณ'}${employee.firstName || ''} ${employee.lastName || ''}`.trim() || "Unknown Employee";
 
   return (
     <div className="p-10 space-y-10 max-w-[1600px] mx-auto animate-in fade-in duration-700">
       
       {/* Header with Back Button */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-5">
           <PillBackButton onClick={() => router.back()} />
           <div className="space-y-1">
             <div className="flex items-center gap-3">
                <StatusBadge status={employee.status || 'active'} label="EMPLOYEE" />
-               <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">Employee ID: {params.id}</p>
+               <p className="text-[11px] font-medium text-white/20 uppercase tracking-widest">Employee ID: {params.id}</p>
             </div>
-            <h1 className="text-3xl font-black text-white tracking-tight uppercase">{fullName}</h1>
+            <h1 className="text-3xl font-bold text-white tracking-tight uppercase">{fullName}</h1>
           </div>
         </div>
         <div className="flex gap-3">
+          <SecureDeleteAction 
+            collectionName="employees"
+            documentId={employee.id}
+            displayName={fullName}
+            onSuccess={() => router.push("/hr")}
+          />
           <PillButton variant="glass" className="px-6">ระงับการเข้าถึง</PillButton>
           <PillButton className="px-8 shadow-neon-teal">
             <Edit3 size={18} />
@@ -96,30 +103,30 @@ export default function EmployeeDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="flex flex-col lg:flex-row items-start gap-4">
         
         {/* Left Content Area */}
-        <div className="lg:col-span-3 space-y-10">
+        <div className="flex-1 w-full space-y-10">
           
           <PillTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
 
           {activeTab === "overview" && (
             <div className="space-y-10 animate-in slide-in-from-bottom duration-500">
               {/* Performance Highlights */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <MasterMetricCard icon={<UserCheck size={24} />} label="KPI Score" value="94.5%" color="text-nexus-teal" neon="shadow-neon-teal" />
-                <MasterMetricCard icon={<Calendar size={24} />} label="อายุงาน (Tenure)" value="4 ปี 2 เดือน" color="text-nexus-blue" />
+                <MasterMetricCard icon={<Calendar size={24} />} label="อายุงาน" value="4 ปี 2 เดือน" color="text-nexus-blue" />
                 <MasterMetricCard icon={<Activity size={24} />} label="Leave Credits" value="12 วัน" color="text-white" />
               </div>
 
               {/* Personal & Contract Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <GlassCard className="p-8 border-white/10 space-y-6">
-                   <h3 className="text-xs font-black text-nexus-teal uppercase tracking-widest flex items-center gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <GlassCard className="p-4 border-white/10 space-y-3">
+                   <h3 className="text-[13px] font-medium text-nexus-teal uppercase tracking-widest flex items-center gap-2">
                       <Briefcase size={16} />
                       ข้อมูลตำแหน่งงาน
                    </h3>
-                   <div className="space-y-4">
+                   <div className="space-y-3">
                         <NexusDataField label="ตำแหน่งปัจจุบัน" value={employee.position || '-'} />
                         <NexusDataField label="แผนก" value={employee.department || '-'} />
                         <NexusDataField label="สาขาที่สังกัด" value={employee.location || 'สำนักงานใหญ่'} />
@@ -127,12 +134,12 @@ export default function EmployeeDetailPage() {
                    </div>
                 </GlassCard>
 
-                <GlassCard className="p-8 border-white/10 space-y-6">
-                   <h3 className="text-xs font-black text-white/40 uppercase tracking-widest flex items-center gap-2">
+                <GlassCard className="p-4 border-white/10 space-y-3">
+                   <h3 className="text-[13px] font-medium text-white/40 uppercase tracking-widest flex items-center gap-2">
                       <ShieldCheck size={16} />
                       ข้อมูลสัญญาและสวัสดิการ
                    </h3>
-                   <div className="space-y-4">
+                   <div className="space-y-3">
                         <NexusDataField label="ประเภทพนักงาน" value={employee.employeeType || 'พนักงานประจำ'} />
                         <NexusDataField label="อีเมลเข้าระบบ" value={employee.email || '-'} />
                         <NexusDataField label="ระดับการเข้าถึง" value={employee.role || '-'} />
@@ -142,12 +149,12 @@ export default function EmployeeDetailPage() {
               </div>
 
               {/* Contact Info Grid */}
-              <GlassCard className="p-8 border-white/10 space-y-6">
-                 <h3 className="text-xs font-black text-white/40 uppercase tracking-widest flex items-center gap-2">
+              <GlassCard className="p-4 border-white/10 space-y-3">
+                 <h3 className="text-[13px] font-medium text-white/40 uppercase tracking-widest flex items-center gap-2">
                     <Mail size={16} />
                     ช่องทางการติดต่อ & ที่อยู่
                  </h3>
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <ContactItem icon={<Mail />} label="Email" value={employee.email || '-'} />
                     <ContactItem icon={<Phone />} label="Phone" value={employee.phone || '-'} />
                     <ContactItem icon={<MapPin />} label="Address" value={employee.address || '-'} />
@@ -158,10 +165,10 @@ export default function EmployeeDetailPage() {
         </div>
 
         {/* Right Sidebar - Tactical Info */}
-        <div className="space-y-6">
-           <GlassCard className="p-8 border-white/10 bg-nexus-blue/5">
-              <h4 className="text-[11px] font-black text-nexus-blue uppercase tracking-widest mb-6">ทักษะและความสามารถ (SKILLS)</h4>
-              <div className="space-y-6">
+        <div className="space-y-3">
+           <GlassCard className="p-4 border-white/10 bg-nexus-blue/5">
+              <h4 className="text-[12px] font-medium text-nexus-blue uppercase tracking-widest mb-6">ทักษะและความสามารถ</h4>
+              <div className="space-y-3">
                  <SkillBar label="Cisco Network" value="95%" />
                  <SkillBar label="Aruba WiFi" value="88%" />
                  <SkillBar label="Fiber Splicing" value="70%" />
@@ -169,14 +176,14 @@ export default function EmployeeDetailPage() {
               </div>
            </GlassCard>
 
-           <GlassCard className="p-8 border-white/10">
-              <h4 className="text-[11px] font-black text-white/20 uppercase tracking-widest mb-6">ใบรับรองทางเทคนิค (CERT)</h4>
-              <div className="space-y-4">
+           <GlassCard className="p-4 border-white/10">
+              <h4 className="text-[12px] font-medium text-white/20 uppercase tracking-widest mb-6">ใบรับรองทางเทคนิค</h4>
+              <div className="space-y-3">
                  <CertItem label="CCNP Enterprise" date="Expired: 2027" />
                  <CertItem label="Aruba ACSP" date="Expired: 2026" />
                  <CertItem label="PMP Professional" date="Expired: 2025" />
               </div>
-              <button className="w-full mt-6 text-[10px] font-black text-white/20 uppercase hover:text-nexus-teal flex items-center justify-center gap-2">
+              <button className="w-full mt-6 text-[11px] font-medium text-white/20 uppercase hover:text-nexus-teal flex items-center justify-center gap-2">
                  ดูไฟล์แนบทั้งหมด <ArrowUpRight size={12} />
               </button>
            </GlassCard>
@@ -189,7 +196,7 @@ export default function EmployeeDetailPage() {
 function ContactItem({ icon, label, value }: { icon: any, label: string, value: string }) {
   return (
     <div className="space-y-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
-       <div className="flex items-center gap-2 text-[10px] font-black text-white/20 uppercase tracking-widest">
+       <div className="flex items-center gap-2 text-[11px] font-medium text-white/20 uppercase tracking-widest">
           {React.cloneElement(icon as React.ReactElement, { size: 12 })}
           {label}
        </div>
@@ -201,7 +208,7 @@ function ContactItem({ icon, label, value }: { icon: any, label: string, value: 
 function SkillBar({ label, value }: { label: string, value: string }) {
   return (
     <div className="space-y-2">
-       <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+       <div className="flex justify-between items-center text-[11px] font-medium uppercase tracking-widest">
           <span className="text-white/40">{label}</span>
           <span className="text-nexus-blue">{value}</span>
        </div>
@@ -219,8 +226,8 @@ function CertItem({ label, date }: { label: string, date: string }) {
           <Award size={20} />
        </div>
        <div>
-          <p className="text-xs font-black text-white">{label}</p>
-          <p className="text-[10px] font-black text-white/20 uppercase">{date}</p>
+          <p className="text-[13px] font-medium text-white">{label}</p>
+          <p className="text-[11px] font-medium text-white/20 uppercase">{date}</p>
        </div>
     </div>
   );

@@ -69,7 +69,7 @@ export function SecurityGuard({
               <div className="flex gap-3 pt-4 border-t border-white/5">
                 <PillButton 
                   variant="ghost" 
-                  className="flex-1 text-white/40 hover:text-white"
+                  className="flex-1 hover:"
                   onClick={() => setShowConfirm(false)}
                 >
                   ยกเลิก

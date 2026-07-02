@@ -54,7 +54,7 @@ import { QuotationModal } from "@/components/commerce/QuotationModal";
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase-client";
 import { doc, setDoc, collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
 import { generateStockPilotId } from "@/lib/utils";
 import { KitEditor } from "@/components/projects/KitEditor";
@@ -86,6 +86,13 @@ const PRICING_HISTORY: Record<string, Record<string, number>> = {
     "SKU-CAB-006": 4800
   }
 };
+
+
+const MOCK_PROJECTS = [
+  { id: 'PRJ-2606-001', name: 'ระบบเครือข่ายไร้สาย (Wi-Fi 6) อาคาร A', customer: 'โรงพยาบาลตากสิน', value: 1250000, progress: 45, status: 'Active', startDate: '2026-06-01', endDate: '2026-08-30' },
+  { id: 'PRJ-2606-002', name: 'ติดตั้งระบบ CCTV และ Access Control', customer: 'ศูนย์ประชุมแห่งชาติ', value: 3400000, progress: 15, status: 'Active', startDate: '2026-06-15', endDate: '2026-11-30' }
+];
+
 
 type ProjectSubModule = "list" | "planning" | "report" | "costing";
 
@@ -362,7 +369,7 @@ export default function ProjectsPage() {
         sku: newSku,
         name: `[ชุดงาน] ${laborItem.name}`,
         description: laborItem.type === "per-point" ? `คิดตามจุด (${laborItem.points} จุด @ ฿${(laborItem.price || 0).toLocaleString()})` : "เหมาจ่ายรวม",
-        category: "ชุดงานติดตั้ง (Kit)",
+        category: "ชุดงานติดตั้ง",
         category_id: "Kit",
         brand: "NEXUS-KIT",
         unit: "ชุด",
@@ -471,25 +478,25 @@ export default function ProjectsPage() {
   };
 
   const tabs = [
-    { id: "list", label: "โครงการ (PROJECTS)", icon: <Briefcase size={14} /> },
-    { id: "planning", label: "งวดงาน (MILESTONES)", icon: <Target size={14} /> },
-    { id: "report", label: "รายงานบริการ (SERVICE REPORTS)", icon: <ClipboardList size={14} /> },
-    { id: "costing", label: "งบประมาณ & กำไร (BUDGET)", icon: <BarChart3 size={14} /> },
-    { id: "contractors", label: "ผู้รับเหมา (CONTRACTORS)", icon: <Users size={14} /> },
+    { id: "list", label: "โครงการ", icon: <Briefcase size={14} /> },
+    { id: "planning", label: "งวดงาน", icon: <Target size={14} /> },
+    { id: "report", label: "รายงานบริการ", icon: <ClipboardList size={14} /> },
+    { id: "costing", label: "งบประมาณ & กำไร", icon: <BarChart3 size={14} /> },
+    { id: "contractors", label: "ผู้รับเหมา", icon: <Users size={14} /> },
   ];
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
 
       {/* Compact Module Header — icon + title + inline metric chips on same plane */}
-      <header className="p-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-black/20 shrink-0">
+      <header className="p-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-5 bg-black/20 shrink-0">
         <div className="flex items-center gap-4 shrink-0">
           <div className="w-10 h-10 rounded-2xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
             <Briefcase size={22} />
           </div>
           <div>
-            <h1 className="text-lg font-black text-white tracking-tight leading-none">ศูนย์บริหารโครงการ</h1>
-            <p className="text-[10px] font-black text-white/30 uppercase mt-1.5 tracking-widest leading-none">Project Management Hub</p>
+            <h1 className="text-lg font-bold text-white tracking-tight leading-none">ศูนย์บริหารโครงการ</h1>
+            <p className="text-sm font-medium text-white/30 uppercase mt-1.5 tracking-widest leading-none">Project Management Hub</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -498,8 +505,8 @@ export default function ProjectsPage() {
               <Activity size={18} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-[10px] font-black text-white/30 uppercase tracking-widest leading-none">โครงการ Active</span>
-              <span className="text-[17px] font-black text-nexus-teal mt-1 mono-numbers leading-none">12 งาน</span>
+              <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">โครงการ Active</span>
+              <span className="text-[17px] font-bold text-nexus-teal mt-1 mono-numbers leading-none">12 งาน</span>
             </div>
           </div>
           <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
@@ -507,8 +514,8 @@ export default function ProjectsPage() {
               <DollarSign size={18} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-[10px] font-black text-white/30 uppercase tracking-widest leading-none">งบประมาณรวม</span>
-              <span className="text-[17px] font-black text-nexus-blue mt-1 mono-numbers leading-none">฿8.5M</span>
+              <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">งบประมาณรวม</span>
+              <span className="text-[17px] font-bold text-nexus-blue mt-1 mono-numbers leading-none">฿8.5M</span>
             </div>
           </div>
           <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-white/20 hover:bg-white/[0.03]">
@@ -516,8 +523,8 @@ export default function ProjectsPage() {
               <Users size={18} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-[10px] font-black text-white/30 uppercase tracking-widest leading-none">วิศวกรหน้างาน</span>
-              <span className="text-[17px] font-black text-white mt-1 mono-numbers leading-none">24 คน</span>
+              <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">วิศวกรหน้างาน</span>
+              <span className="text-[17px] font-bold text-white mt-1 mono-numbers leading-none">24 คน</span>
             </div>
           </div>
         </div>
@@ -534,18 +541,18 @@ export default function ProjectsPage() {
 
       {/* Main Content Scroll Area */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-      <div className="p-6 space-y-6 max-w-[1800px] mx-auto">
+      <div className="p-5 space-y-3 max-w-[1800px] mx-auto">
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <div className="lg:col-span-3 space-y-10">
+      <div className="flex flex-col lg:flex-row items-start gap-4">
+        <div className="flex-1 w-full space-y-10">
           
-          <div className="space-y-6">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                  <Activity className="text-nexus-teal" size={24} />
                  <div className="space-y-0.5">
-                    <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">สถานะการติดตั้งโครงสร้างพื้นฐาน (เขตกรุงเทพฯ)</p>
-                    <h2 className="text-xl font-black text-white uppercase">ทะเบียนข้อมูล</h2>
+                    <p className="text-sm font-medium text-white/60 uppercase tracking-widest">สถานะการติดตั้งโครงสร้างพื้นฐาน (เขตกรุงเทพฯ)</p>
+                    <h2 className="text-xl font-bold text-white uppercase">ทะเบียนข้อมูล</h2>
                  </div>
               </div>
               <div className="flex gap-3">
@@ -563,13 +570,13 @@ export default function ProjectsPage() {
                  {activeTab === "planning" && (
                    <PillButton onClick={() => setActiveModal("milestone")} className="h-9 px-6 rounded-full shadow-neon-teal">
                      <Target size={18} />
-                     เพิ่มเป้าหมาย (Milestone)
+                     เพิ่มเป้าหมาย
                    </PillButton>
                  )}
                  {activeTab === "report" && (
                    <PillButton onClick={() => setActiveModal("report")} className="h-9 px-6 rounded-full shadow-neon-teal">
                      <FileText size={18} />
-                     บันทึกงานใหม่ (SR)
+                     บันทึกงานใหม่
                    </PillButton>
                  )}
               </div>
@@ -596,7 +603,7 @@ export default function ProjectsPage() {
               <div className="overflow-x-auto custom-scrollbar flex-1 w-full p-2">
                 {activeTab === "list" && (
                   <div className="animate-in fade-in duration-500">
-                    <NexusTable headers={["โครงการ / ID", "ความคืบหน้า", "ทีมงาน", "กำหนดการ", "สถานะ"]}>
+                    <NexusTable headers={["รหัสโครงการ", "ความคืบหน้า", "ทีมงาน", "กำหนดการ", "สถานะ"]}>
                       {filteredProjects.map(prj => (
                         <ProjectRow 
                           key={prj.id}
@@ -613,7 +620,7 @@ export default function ProjectsPage() {
                 )}
 
                 {activeTab === "planning" && (
-                  <div className="animate-in fade-in duration-500 space-y-6">
+                  <div className="animate-in fade-in duration-500 space-y-3">
                     <GanttChart milestones={filteredMilestones} />
                   </div>
                 )}
@@ -639,9 +646,9 @@ export default function ProjectsPage() {
                 )}
 
                 {activeTab === "contractors" && (
-                  <div className="animate-in fade-in duration-500 space-y-6">
+                  <div className="animate-in fade-in duration-500 space-y-3">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
                         <Users size={16} className="text-nexus-blue" />
                         ทำเนียบผู้รับเหมา และทีมช่างติดตั้ง
                       </h3>
@@ -651,7 +658,7 @@ export default function ProjectsPage() {
                           setSelectedContractor(null);
                           setIsContractorModalOpen(true);
                         }}
-                        className="h-9 px-6 bg-nexus-blue text-white shadow-[0_0_15px_rgba(37,99,235,0.3)] text-xs font-black uppercase rounded-full"
+                        className="h-9 px-6 bg-nexus-blue text-white shadow-[0_0_15px_rgba(37,99,235,0.3)] text-xs font-bold uppercase rounded-full"
                       >
                         <Plus size={14} /> เพิ่มทีมช่างใหม่
                       </PillButton>
@@ -678,10 +685,10 @@ export default function ProjectsPage() {
                               </div>
                               <div className="flex items-center gap-1 bg-black/40 px-2 py-1 rounded-full border border-white/5">
                                 <Star size={10} className="text-warning fill-warning" />
-                                <span className="text-[10px] font-black font-mono text-white/80">{cont.rating?.toFixed(1) || "5.0"}</span>
+                                <span className="text-sm font-medium font-mono text-white/80">{cont.rating?.toFixed(1) || "5.0"}</span>
                               </div>
                             </div>
-                            <h4 className="text-[13px] font-black text-white mb-1 truncate">{cont.name}</h4>
+                            <h4 className="text-[13px] font-bold text-white mb-1 truncate">{cont.name}</h4>
                             <div className="text-[11px] text-white/50 font-bold mb-4 flex items-center gap-2">
                               <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>
                               Active Partner
@@ -714,19 +721,19 @@ export default function ProjectsPage() {
         </div>
 
         {/* Right Sidebar Status */}
-        <div className="space-y-6">
-           <GlassCard className="p-6 border-white/10 bg-nexus-teal/5">
-              <h4 className="text-[11px] font-black text-nexus-teal uppercase tracking-widest mb-6">ดัชนีชี้วัดสุขภาพโครงการ</h4>
-              <div className="space-y-6">
+        <div className="space-y-3">
+           <GlassCard className="p-4 border-white/10 bg-nexus-teal/5">
+              <h4 className="text-sm font-medium text-nexus-teal uppercase tracking-widest mb-6">ดัชนีชี้วัดสุขภาพโครงการ</h4>
+              <div className="space-y-3">
                  <HealthItem label="อัตราการใช้งบประมาณ" value="72%" color="bg-nexus-teal" />
                  <HealthItem label="ความสำเร็จของงาน" value="85%" color="bg-nexus-blue" />
                  <HealthItem label="การปฏิบัติตาม SLA" value="100%" color="bg-nexus-teal" />
               </div>
            </GlassCard>
 
-           <GlassCard className="p-6 border-white/10">
-              <h4 className="text-[11px] font-black text-white/60 uppercase tracking-widest mb-6">กำหนดการสำคัญที่ใกล้ถึง</h4>
-              <div className="space-y-4">
+           <GlassCard className="p-4 border-white/10">
+              <h4 className="text-sm font-medium text-white/60 uppercase tracking-widest mb-6">กำหนดการสำคัญที่ใกล้ถึง</h4>
+              <div className="space-y-3">
                  <DeadlineItem title="ติดตั้ง Core Switch" date="พรุ่งนี้" project="PRJ-26-001" />
                  <DeadlineItem title="ส่งมอบงานลูกค้า" date="28 เม.ย." project="PRJ-26-002" />
               </div>
@@ -741,41 +748,41 @@ export default function ProjectsPage() {
         isOpen={!!activeModal} 
         onClose={() => setActiveModal(null)} 
         title={
-          activeModal === "project" ? "เปิดโครงการใหม่ (NEW STRATEGIC PROJECT)" :
-          activeModal === "milestone" ? "เพิ่มเป้าหมาย (ADD MILESTONE)" :
-          "บันทึกรายงานหน้างาน (SERVICE REPORT)"
+          activeModal === "project" ? "เปิดโครงการใหม่" :
+          activeModal === "milestone" ? "เพิ่มเป้าหมาย" :
+          "บันทึกรายงานหน้างาน"
         }
         maxWidth="max-w-7xl"
       >
         <div className="flex h-full divide-x divide-white/5 bg-[#0a0a0c]">
-           <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+           <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
               <div className="max-w-4xl mx-auto space-y-10">
                   {activeModal === "project" && (
                     <>
                      <PillTabs 
                          tabs={[
-                           { id: "basic", label: "รายละเอียด (DETAIL)" },
-                           { id: "site", label: "ไซต์งาน (SITE)" },
-                           { id: "governance", label: "ทีมงาน (TEAM)" },
-                           { id: "budget", label: "งบประมาณ (BUDGET)" }
+                           { id: "basic", label: "รายละเอียด" },
+                           { id: "site", label: "ไซต์งาน" },
+                           { id: "governance", label: "ทีมงาน" },
+                           { id: "budget", label: "งบประมาณ" }
                          ]}
                          activeTab={modalActiveTab}
                          onTabChange={setModalActiveTab}
                      />
                      
-                     <div className="space-y-8 animate-in fade-in duration-500">
+                     <div className="space-y-3 animate-in fade-in duration-500">
                          {modalActiveTab === "basic" && (
                            <div className="space-y-10 animate-in slide-in-from-left-4 duration-300">
-                               <div className="space-y-6">
-                                 <div className="flex items-center gap-3 text-nexus-teal"><Sparkles size={18} /><h4 className="text-[13px] font-bold uppercase tracking-widest">1. ข้อมูลพื้นฐานโครงการ (Primary Data)</h4></div>
-                                 <div className="space-y-6">
+                               <div className="space-y-3">
+                                 <div className="flex items-center gap-3 text-nexus-teal"><Sparkles size={18} /><h4 className="text-[13px] font-bold uppercase tracking-widest">1. ข้อมูลพื้นฐานโครงการ</h4></div>
+                                 <div className="space-y-3">
                                      <div className="space-y-2">
-                                       <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ชื่อโครงการ / หัวข้อการติดตั้ง *</label>
+                                       <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ชื่อโครงการ / หัวข้อการติดตั้ง *</label>
                                        <PillInput value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="ระบุชื่อโครงการ..." className="w-full text-white font-bold" />
                                      </div>
-                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                        <div className="space-y-2">
-                                           <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ประเภทโครงการ</label>
+                                           <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ประเภทโครงการ</label>
                                            <PillSelect value={projectType} onChange={(e) => setProjectType(e.target.value)} className="w-full">
                                              <option value="Infrastructure (งานระบบโครงสร้าง)">Infrastructure (งานระบบโครงสร้าง)</option>
                                              <option value="Software (งานซอฟต์แวร์)">Software (งานซอฟต์แวร์)</option>
@@ -784,8 +791,8 @@ export default function ProjectsPage() {
                                            </PillSelect>
                                        </div>
                                        <div className="space-y-2">
-                                           <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ลำดับความสำคัญ (Priority)</label>
-                                           <PillSelect value={projectPriority} onChange={(e) => setProjectPriority(e.target.value)} className="w-full text-warning font-black">
+                                           <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ลำดับความสำคัญ</label>
+                                           <PillSelect value={projectPriority} onChange={(e) => setProjectPriority(e.target.value)} className="w-full text-warning font-bold">
                                              <option value="LOW (ทั่วไป)">LOW (ทั่วไป)</option>
                                              <option value="MEDIUM (ปานกลาง)">MEDIUM (ปานกลาง)</option>
                                              <option value="HIGH (เร่งด่วน)">HIGH (เร่งด่วน)</option>
@@ -793,18 +800,18 @@ export default function ProjectsPage() {
                                            </PillSelect>
                                        </div>
                                      </div>
-                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                        <div className="space-y-2">
-                                           <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">รหัสอ้างอิงลูกค้า (Client Ref / PO)</label>
+                                           <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">รหัสอ้างอิงลูกค้า</label>
                                            <PillInput value={projectRef} onChange={(e) => setProjectRef(e.target.value)} placeholder="ระบุรหัสเอกสารอ้างอิง..." className="w-full" />
                                        </div>
                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                            <div className="space-y-2">
-                                             <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">วันที่เริ่ม</label>
+                                             <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">วันที่เริ่ม</label>
                                              <PillInput type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full" />
                                            </div>
                                            <div className="space-y-2">
-                                             <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">วันสิ้นสุด</label>
+                                             <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">วันสิ้นสุด</label>
                                              <PillInput type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full" />
                                            </div>
                                        </div>
@@ -816,24 +823,24 @@ export default function ProjectsPage() {
 
                          {modalActiveTab === "site" && (
                            <div className="space-y-10 animate-in slide-in-from-left-4 duration-300">
-                               <div className="space-y-6">
-                                 <div className="flex items-center gap-3 text-nexus-blue"><Sparkles size={18} /><h4 className="text-[13px] font-bold uppercase tracking-widest">2. พิกัดและข้อมูลผู้ติดต่อหน้างาน (Logistics)</h4></div>
-                                 <div className="space-y-4">
+                               <div className="space-y-3">
+                                 <div className="flex items-center gap-3 text-nexus-blue"><Sparkles size={18} /><h4 className="text-[13px] font-bold uppercase tracking-widest">2. พิกัดและข้อมูลผู้ติดต่อหน้างาน</h4></div>
+                                 <div className="space-y-3">
                                      <div className="space-y-2">
-                                       <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">สถานที่ติดตั้ง (Site Address) *</label>
+                                       <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">สถานที่ติดตั้ง *</label>
                                        <textarea 
                                            className="w-full h-24 rounded-lg bg-white/[0.03] border border-white/10 text-white text-[14px] font-bold p-5 focus:outline-none focus:border-nexus-blue/40 transition-all placeholder:text-white/5"
                                            placeholder="ระบุที่อยู่ที่แน่นอน หรือลิงก์ Google Maps..."
                                            defaultValue="ศูนย์ประชุมแห่งชาติสิริกิติ์ อาคาร 2 ชั้น 1 ห้องสัมมนาย่อย"
                                        />
                                      </div>
-                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                        <div className="space-y-2">
-                                           <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ผู้ติดต่อหน้างาน (Site Contact Name)</label>
+                                           <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ผู้ติดต่อหน้างาน</label>
                                            <PillInput defaultValue="Somchai J." placeholder="ชื่อผู้ติดต่อ..." className="w-full" />
                                        </div>
                                        <div className="space-y-2">
-                                           <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">เบอร์โทรศัพท์ติดต่อ</label>
+                                           <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">เบอร์โทรศัพท์ติดต่อ</label>
                                            <PillInput defaultValue="089-123-4567" placeholder="08x-xxx-xxxx" className="w-full" />
                                        </div>
                                      </div>
@@ -844,12 +851,12 @@ export default function ProjectsPage() {
 
                          {modalActiveTab === "governance" && (
                            <div className="space-y-10 animate-in slide-in-from-left-4 duration-300">
-                               <div className="space-y-6">
-                                 <div className="flex items-center gap-3 text-white"><Sparkles size={18} /><h4 className="text-[13px] font-bold uppercase tracking-widest">3. ผู้รับผิดชอบและงบประมาณ (Governance)</h4></div>
-                                 <div className="space-y-4">
-                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                               <div className="space-y-3">
+                                 <div className="flex items-center gap-3 text-white"><Sparkles size={18} /><h4 className="text-[13px] font-bold uppercase tracking-widest">3. ผู้รับผิดชอบและงบประมาณ</h4></div>
+                                 <div className="space-y-3">
+                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                        <div className="space-y-2">
-                                           <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ผู้จัดการโครงการ (Project Manager)</label>
+                                           <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ผู้จัดการโครงการ</label>
                                            <PillSelect defaultValue="Chatchai S." className="w-full px-6">
                                              <option value="">กรุณาเลือกผู้รับผิดชอบ...</option>
                                              <option value="Chatchai S.">Chatchai S. (Lead)</option>
@@ -857,18 +864,18 @@ export default function ProjectsPage() {
                                            </PillSelect>
                                        </div>
                                        <div className="space-y-2">
-                                           <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ชื่อลูกค้าผู้ชำระเงิน (Bill-To Customer) *</label>
-                                           <PillSelect value={projectCustomer} onChange={(e) => setProjectCustomer(e.target.value)} className="w-full px-6 text-nexus-teal font-black">
+                                           <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ชื่อลูกค้าผู้ชำระเงิน *</label>
+                                           <PillSelect value={projectCustomer} onChange={(e) => setProjectCustomer(e.target.value)} className="w-full px-6 text-nexus-teal font-bold">
                                              <option value="">เลือกชื่อลูกค้า...</option>
                                              <option value="CUS-001">โรงพยาบาลตากสิน</option>
                                              <option value="CUS-002">PSG Solutions</option>
                                              <option value="CUS-003">สถาบันเทคโนโลยีพระจอมเกล้าฯ</option>
-                                             <option value="CUS-004">ศูนย์ประชุมแห่งชาติ (QSNCC)</option>
+                                             <option value="CUS-004">ศูนย์ประชุมแห่งชาติ</option>
                                            </PillSelect>
                                        </div>
                                      </div>
                                      <div className="space-y-2">
-                                       <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ทีมวิศวกรที่ได้รับมอบหมาย (Assignee)</label>
+                                       <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ทีมวิศวกรที่ได้รับมอบหมาย</label>
                                        <div className="p-4 rounded-lg bg-white/[0.02] border border-white/5 grid grid-cols-1 sm:grid-cols-2 gap-3">
                                            {['Engineering Team A', 'Support Staff', 'Network Engineer', 'Electrician'].map(team => (
                                              <div key={team} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-all cursor-pointer">
@@ -885,14 +892,14 @@ export default function ProjectsPage() {
 
                          {/* NEW DETAILED BUDGET & EQUIPMENT TAB */}
                          {modalActiveTab === "budget" && (
-                           <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
+                           <div className="space-y-3 animate-in slide-in-from-right-4 duration-300">
                              {/* Dual Catalogue & Selected List Split Grid */}
-                             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+                             <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
                                
                                {/* LEFT COLUMN: AVAILABLE CATALOGUE WAREHOUSE & labor PACKAGES SPLIT TABLE (42% Width) */}
-                               <div className="xl:col-span-5 space-y-4">
+                               <div className="xl:col-span-5 space-y-3">
                                  <div className="flex flex-wrap items-center justify-between gap-4 w-full">
-                                   <h4 className="text-[12px] font-black text-white/70 uppercase tracking-[0.2em] flex items-center gap-2 shrink-0">
+                                   <h4 className="text-[12px] font-bold text-white/70 uppercase tracking-[0.2em] flex items-center gap-2 shrink-0">
                                      <Package size={14} className="text-nexus-blue animate-pulse" /> 1.1 คลังพัสดุและชุดงาน
                                    </h4>
 
@@ -902,7 +909,7 @@ export default function ProjectsPage() {
                                         <button
                                           type="button"
                                           onClick={() => setIsKitEditorOpen(true)}
-                                          className="h-9 px-6 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/30 transition-all text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 whitespace-nowrap w-full"
+                                          className="h-9 px-6 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/30 transition-all text-sm font-medium uppercase tracking-wider flex items-center justify-center gap-1.5 whitespace-nowrap w-full"
                                         >
                                           <Plus size={12} /> สร้างชุดงาน 🛠️
                                         </button>
@@ -911,14 +918,14 @@ export default function ProjectsPage() {
                                      <button
                                        type="button"
                                        onClick={() => setCatalogActiveSubTab("warehouse")}
-                                       className={`flex-1 sm:flex-none justify-center px-4 py-1.5 rounded-full text-[12px] font-black uppercase tracking-wider transition-all whitespace-nowrap shrink-0 ${catalogActiveSubTab === "warehouse" ? "bg-nexus-blue text-white" : "text-white/40 hover:text-white"}`}
+                                       className={`flex-1 sm:flex-none justify-center px-4 py-1.5 rounded-full text-[12px] font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0 ${catalogActiveSubTab === "warehouse" ? "bg-nexus-blue text-white" : "text-white/40 hover:text-white"}`}
                                      >
                                        📦 อุปกรณ์
                                      </button>
                                      <button
                                        type="button"
                                        onClick={() => setCatalogActiveSubTab("packages")}
-                                       className={`flex-1 sm:flex-none justify-center px-4 py-1.5 rounded-full text-[12px] font-black uppercase tracking-wider transition-all whitespace-nowrap shrink-0 ${catalogActiveSubTab === "packages" ? "bg-nexus-teal text-black" : "text-white/40 hover:text-white"}`}
+                                       className={`flex-1 sm:flex-none justify-center px-4 py-1.5 rounded-full text-[12px] font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0 ${catalogActiveSubTab === "packages" ? "bg-nexus-teal text-black" : "text-white/40 hover:text-white"}`}
                                      >
                                        ⚡ ชุดงานติดตั้ง
                                       </button>
@@ -926,7 +933,7 @@ export default function ProjectsPage() {
                                   </div>
                                  </div>
 
-                                 <div className="space-y-4 p-5 rounded-[2rem] bg-white/[0.02] border border-white/5 shadow-xl">
+                                 <div className="space-y-3 p-5 rounded-[2rem] bg-white/[0.02] border border-white/5 shadow-xl">
                                    {/* Compact intelligent search input */}
                                    <div className="relative">
                                      <PillInput 
@@ -968,13 +975,13 @@ export default function ProjectsPage() {
                                            return filtered.map(p => (
                                              <NexusTableRow key={p.sku} className="hover:bg-white/[0.02] transition-colors">
                                                <NexusTableCell className="w-[50%]">
-                                                 <div className="font-mono text-[9px] text-nexus-blue">{p.sku}</div>
-                                                 <div className="text-xs font-black text-white/80 whitespace-nowrap" title={p.name}>{p.name}</div>
+                                                 <div className="font-mono text-xs text-nexus-blue">{p.sku}</div>
+                                                 <div className="text-xs font-bold text-white/80 whitespace-nowrap" title={p.name}>{p.name}</div>
                                                </NexusTableCell>
                                                <NexusTableCell className="text-center w-[20%]">
-                                                 <span className="text-[10px] text-white/60 font-black">{p.qty_on_hand} {p.unit}</span>
+                                                 <span className="text-xs text-white/60 font-medium">{p.qty_on_hand} {p.unit}</span>
                                                </NexusTableCell>
-                                               <NexusTableCell className="text-right w-[20%] font-mono text-[10px] text-nexus-teal font-black">
+                                               <NexusTableCell className="text-right w-[20%] font-mono text-xs text-nexus-teal font-medium">
                                                  ฿ {p.price.toLocaleString()}
                                                </NexusTableCell>
                                                <NexusTableCell className="text-center w-[10%]">
@@ -1023,11 +1030,11 @@ export default function ProjectsPage() {
                                            return filtered.map(pkg => (
                                              <NexusTableRow key={pkg.sku} className="hover:bg-white/[0.02] transition-colors">
                                                <NexusTableCell className="w-[55%]">
-                                                 <div className="font-mono text-[9px] text-nexus-teal font-black">{pkg.sku}</div>
-                                                 <div className="text-xs font-black text-white/80 whitespace-nowrap" title={pkg.name}>{pkg.name}</div>
-                                                 <div className="text-[9px] text-white/40 font-bold leading-none mt-0.5">{pkg.details}</div>
+                                                 <div className="font-mono text-xs text-nexus-teal font-bold">{pkg.sku}</div>
+                                                 <div className="text-xs font-bold text-white/80 whitespace-nowrap" title={pkg.name}>{pkg.name}</div>
+                                                 <div className="text-xs text-white/40 font-bold leading-none mt-0.5">{pkg.details}</div>
                                                </NexusTableCell>
-                                               <NexusTableCell className="text-right w-[25%] font-mono text-[10px] text-nexus-teal font-black">
+                                               <NexusTableCell className="text-right w-[25%] font-mono text-xs text-nexus-teal font-medium">
                                                  ฿ {pkg.price.toLocaleString()}
                                                </NexusTableCell>
                                                <NexusTableCell className="text-center w-[20%]">
@@ -1090,14 +1097,14 @@ export default function ProjectsPage() {
                                </div>
 
                               {/* RIGHT COLUMN: INTEGRATED SELECTION & BUDGET MANAGERS (58% Width) */}
-                              <div className="xl:col-span-7 space-y-4">
+                              <div className="xl:col-span-7 space-y-3">
                                 <div className="flex flex-wrap justify-between items-center gap-4">
                                   {/* Sleek Sub-tabs for separating Equipment and Installation Work */}
                                   <div className="flex bg-[#0a0a0c] rounded-full p-0.5 border border-white/5 shrink-0 overflow-x-auto no-scrollbar flex-nowrap min-w-0 w-full xl:w-auto">
                                     <button
                                       type="button"
                                       onClick={() => setRightActiveSubTab("equipment")}
-                                      className={`px-4 py-1.5 rounded-full text-[12px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${rightActiveSubTab === "equipment" ? "bg-nexus-teal text-black shadow-neon-teal/20" : "text-white/40 hover:text-white"}`}
+                                      className={`px-4 py-1.5 rounded-full text-[12px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${rightActiveSubTab === "equipment" ? "bg-nexus-teal text-black shadow-neon-teal/20" : "text-white/40 hover:text-white"}`}
                                     >
                                       <Package size={14} />
                                       📦 อุปกรณ์โครงการ ({projectEquipments.length})
@@ -1105,7 +1112,7 @@ export default function ProjectsPage() {
                                     <button
                                       type="button"
                                       onClick={() => setRightActiveSubTab("labor")}
-                                      className={`px-4 py-1.5 rounded-full text-[12px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${rightActiveSubTab === "labor" ? "bg-nexus-blue text-white shadow-neon-blue/20" : "text-white/40 hover:text-white"}`}
+                                      className={`px-4 py-1.5 rounded-full text-[12px] font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${rightActiveSubTab === "labor" ? "bg-nexus-blue text-white shadow-neon-blue/20" : "text-white/40 hover:text-white"}`}
                                     >
                                       <Users size={14} />
                                       🛠️ งานติดตั้ง/ค่าแรง ({projectLabors.length})
@@ -1131,7 +1138,7 @@ export default function ProjectsPage() {
                                   /* EQUIPMENT LIST PANEL */
                                   <div className="border border-white/5 rounded-[2rem] overflow-hidden bg-white/[0.01] shadow-2xl min-h-[360px] max-h-[460px] overflow-y-auto custom-scrollbar">
                                     {projectEquipments.length === 0 ? (
-                                      <div className="flex flex-col items-center justify-center p-16 text-center space-y-4">
+                                      <div className="flex flex-col items-center justify-center p-16 text-center space-y-3">
                                         <Package size={48} className="text-white/10 animate-pulse" />
                                         <p className="text-xs text-white/40 font-bold uppercase tracking-widest">ยังไม่มีการเลือกอุปกรณ์สำหรับโครงการนี้</p>
                                         <p className="text-[10px] text-white/30">กรุณากดปุ่มเครื่องหมายบวกจากตารางสินค้าในคลังทางซ้าย เพื่อเลือกพัสดุ</p>
@@ -1146,8 +1153,8 @@ export default function ProjectsPage() {
                                               {/* Product details */}
                                               <NexusTableCell className="w-[30%] min-w-[180px]">
                                                 <div className="space-y-1">
-                                                  {item.sku && <span className="px-2 py-0.5 rounded bg-nexus-blue/10 text-nexus-blue text-[8px] font-mono font-black">{item.sku}</span>}
-                                                  <div className="text-xs font-black text-white whitespace-nowrap" title={item.name}>{item.name}</div>
+                                                  {item.sku && <span className="px-2 py-0.5 rounded bg-nexus-blue/10 text-nexus-blue text-xs font-mono font-medium">{item.sku}</span>}
+                                                  <div className="text-xs font-bold text-white whitespace-nowrap" title={item.name}>{item.name}</div>
                                                 </div>
                                               </NexusTableCell>
 
@@ -1162,7 +1169,7 @@ export default function ProjectsPage() {
                                               </NexusTableCell>
 
                                               {/* Total */}
-                                              <NexusTableCell className="text-right font-black font-mono text-nexus-teal text-xs w-[15%]">
+                                              <NexusTableCell className="text-right font-bold font-mono text-nexus-teal text-xs w-[15%]">
                                                 ฿ {(item.qty * item.price).toLocaleString()}
                                               </NexusTableCell>
 
@@ -1175,13 +1182,13 @@ export default function ProjectsPage() {
                                                       updateEquipment(item.id, "price", historicalPrice);
                                                       showToast("ดึงราคาประวัติเดิมสำเร็จ!");
                                                     }}
-                                                    className="flex items-center gap-1 px-2 py-1 rounded-full bg-nexus-teal/10 hover:bg-nexus-teal/20 text-nexus-teal font-black border border-nexus-teal/20 hover:border-nexus-teal/40 transition-all cursor-pointer text-[9px] w-full justify-center animate-shimmer"
+                                                    className="flex items-center gap-1 px-2 py-1 rounded-full bg-nexus-teal/10 hover:bg-nexus-teal/20 text-nexus-teal font-bold border border-nexus-teal/20 hover:border-nexus-teal/40 transition-all cursor-pointer text-xs w-full justify-center animate-shimmer"
                                                   >
                                                     <Zap size={9} className="animate-pulse shrink-0 text-nexus-teal" />
                                                     <span>ประวัติ: ฿{historicalPrice.toLocaleString()}</span>
                                                   </button>
                                                 ) : (
-                                                  <span className="text-white/20 italic text-[9px] block text-center">ไม่มีประวัติเดิม</span>
+                                                  <span className="text-white/20 italic text-xs block text-center">ไม่มีประวัติเดิม</span>
                                                 )}
                                               </NexusTableCell>
 
@@ -1199,9 +1206,9 @@ export default function ProjectsPage() {
                                   </div>
                                 ) : (
                                   /* INSTALLATION LABOR / WORK CARD LIST PANEL */
-                                  <div className="space-y-4 max-h-[460px] overflow-y-auto custom-scrollbar pr-2 min-h-[360px]">
+                                  <div className="space-y-3 max-h-[460px] overflow-y-auto custom-scrollbar pr-2 min-h-[360px]">
                                     {projectLabors.length === 0 ? (
-                                      <div className="flex flex-col items-center justify-center p-16 text-center space-y-4 bg-white/[0.01] border border-white/5 rounded-[2rem] h-full">
+                                      <div className="flex flex-col items-center justify-center p-16 text-center space-y-3 bg-white/[0.01] border border-white/5 rounded-[2rem] h-full">
                                         <Users size={48} className="text-white/10 animate-pulse" />
                                         <p className="text-xs text-white/40 font-bold uppercase tracking-widest">ยังไม่มีรายการงานติดตั้งหรือค่าบริการ</p>
                                         <p className="text-[10px] text-white/30">กดปุ่ม "เพิ่มงานบริการ" ที่มุมขวาบนเพื่อเริ่มกำหนดค่าแรงและแผนงาน</p>
@@ -1220,11 +1227,11 @@ export default function ProjectsPage() {
                                         const itemGP = totalRevenue > 0 ? Math.round((itemProfit / totalRevenue) * 100) : 0;
 
                                         return (
-                                          <div key={item.id} className="p-5 bg-white/[0.02] border border-white/5 rounded-[2rem] space-y-4 shadow-lg group hover:border-nexus-blue/20 transition-all">
+                                          <div key={item.id} className="p-5 bg-white/[0.02] border border-white/5 rounded-[2rem] space-y-3 shadow-lg group hover:border-nexus-blue/20 transition-all">
                                             {/* Header row: Name & Toggle Mode */}
                                             <div className="flex flex-wrap items-center justify-between gap-3">
                                               <div className="flex-1 min-w-[200px] space-y-1">
-                                                <label className="text-[9px] font-black text-white/55 uppercase tracking-widest ml-1">รายละเอียดงานบริการ / ค่าแรง</label>
+                                                <label className="text-xs font-medium text-white/55 uppercase tracking-widest ml-1">รายละเอียดงานบริการ / ค่าแรง</label>
                                                 <PillInput className="w-full bg-[#0a0a0c] border-white/5 text-white text-xs font-bold focus:border-nexus-blue/50" value={item.name} onChange={(e) => updateLabor(item.id, "name", e.target.value)} />
                                               </div>
 
@@ -1237,7 +1244,7 @@ export default function ProjectsPage() {
                                                       updateLabor(item.id, "cost", totalCost);
                                                       updateLabor(item.id, "price", totalRevenue);
                                                     }}
-                                                    className={`flex-1 sm:flex-none justify-center px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all whitespace-nowrap shrink-0 ${!isPerPoint ? "bg-nexus-blue text-white shadow-neon-blue/20" : "text-white/40 hover:text-white"}`}
+                                                    className={`flex-1 sm:flex-none justify-center px-4 py-1.5 rounded-full text-sm font-medium uppercase tracking-wider transition-all whitespace-nowrap shrink-0 ${!isPerPoint ? "bg-nexus-blue text-white shadow-neon-blue/20" : "text-white/40 hover:text-white"}`}
                                                   >
                                                     เหมาจ่าย
                                                   </button>
@@ -1251,7 +1258,7 @@ export default function ProjectsPage() {
                                                       updateLabor(item.id, "laborCost", totalCost);
                                                       updateLabor(item.id, "price", totalRevenue);
                                                     }}
-                                                    className={`flex-1 sm:flex-none justify-center px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all whitespace-nowrap shrink-0 ${isPerPoint ? "bg-nexus-teal text-black shadow-neon-teal/20" : "text-white/40 hover:text-white"}`}
+                                                    className={`flex-1 sm:flex-none justify-center px-4 py-1.5 rounded-full text-sm font-medium uppercase tracking-wider transition-all whitespace-nowrap shrink-0 ${isPerPoint ? "bg-nexus-teal text-black shadow-neon-teal/20" : "text-white/40 hover:text-white"}`}
                                                   >
                                                     คิดตามจุด ⚡
                                                   </button>
@@ -1264,8 +1271,8 @@ export default function ProjectsPage() {
                                               <div className="grid grid-cols-1 gap-3 items-center bg-black/30 p-4 rounded-[1.5rem] border border-white/[0.02]">
                                                 {/* Step 1: Material Stock Picker */}
                                                 <div className="space-y-1">
-                                                  <label className="text-[9px] font-black text-white/55 uppercase tracking-widest block">
-                                                    เชื่อมพัสดุในคลัง (Material Stock)
+                                                  <label className="text-xs font-medium text-white/55 uppercase tracking-widest block">
+                                                    เชื่อมพัสดุในคลัง
                                                   </label>
                                                   <PillSelect 
                                                     value={item.materialSku || ""}
@@ -1293,25 +1300,25 @@ export default function ProjectsPage() {
                                                 <div className="grid grid-cols-4 gap-2">
                                                   {/* Step 2: Number of Points */}
                                                   <div className="space-y-1">
-                                                    <label className="text-[8px] font-black text-white/55 uppercase tracking-widest block text-center">จุดติดตั้ง</label>
+                                                    <label className="text-[10px] font-medium text-white/55 uppercase tracking-widest block text-center">จุดติดตั้ง</label>
                                                     <NumberStepper value={pts} unit="จุด" min={1} onChange={(v) => updateLabor(item.id, "points", v)} />
                                                   </div>
 
                                                   {/* Step 3: Material Cost / Point */}
                                                   <div className="space-y-1">
-                                                    <label className="text-[8px] font-black text-white/55 uppercase tracking-widest block text-right">ค่าวัสดุ/จุด</label>
+                                                    <label className="text-[10px] font-medium text-white/55 uppercase tracking-widest block text-right">ค่าวัสดุ/จุด</label>
                                                     <NumberStepper value={matCost} unit="฿" step={50} onChange={(v) => updateLabor(item.id, "materialCost", v)} />
                                                   </div>
 
                                                   {/* Step 4: Labor Cost / Point */}
                                                   <div className="space-y-1">
-                                                    <label className="text-[8px] font-black text-white/55 uppercase tracking-widest block text-right">ค่าแรง/จุด</label>
+                                                    <label className="text-[10px] font-medium text-white/55 uppercase tracking-widest block text-right">ค่าแรง/จุด</label>
                                                     <NumberStepper value={labCost} unit="฿" step={50} onChange={(v) => updateLabor(item.id, "laborCost", v)} />
                                                   </div>
 
                                                   {/* Step 5: Selling Price / Point */}
                                                   <div className="space-y-1">
-                                                    <label className="text-[8px] font-black text-white/55 uppercase tracking-widest block text-right text-nexus-teal">ราคาขาย/จุด</label>
+                                                    <label className="text-[10px] font-medium text-white/55 uppercase tracking-widest block text-right text-nexus-teal">ราคาขาย/จุด</label>
                                                     <NumberStepper value={pricePerPoint} unit="฿" step={50} onChange={(v) => updateLabor(item.id, "price", v)} />
                                                   </div>
                                                 </div>
@@ -1320,11 +1327,11 @@ export default function ProjectsPage() {
                                               /* Lump Sum Mode Inputs */
                                               <div className="grid grid-cols-2 gap-4 bg-black/10 p-4 rounded-[1.5rem] border border-white/[0.02]">
                                                 <div className="space-y-1">
-                                                  <label className="text-[9px] font-black text-white/55 uppercase tracking-widest block text-right">ต้นทุนเหมาจ่าย (฿)</label>
+                                                  <label className="text-xs font-medium text-white/55 uppercase tracking-widest block text-right">ต้นทุนเหมาจ่าย (฿)</label>
                                                   <NumberStepper value={item.cost || 0} unit="฿" step={500} onChange={(v) => updateLabor(item.id, "cost", v)} />
                                                 </div>
                                                 <div className="space-y-1">
-                                                  <label className="text-[9px] font-black text-white/55 uppercase tracking-widest block text-right text-nexus-blue">ราคาเสนอขายเหมา (฿)</label>
+                                                  <label className="text-xs font-medium text-white/55 uppercase tracking-widest block text-right text-nexus-blue">ราคาเสนอขายเหมา (฿)</label>
                                                   <NumberStepper value={item.price || 0} unit="฿" step={500} onChange={(v) => updateLabor(item.id, "price", v)} />
                                                 </div>
                                               </div>
@@ -1356,14 +1363,14 @@ export default function ProjectsPage() {
 
                                               <div className="flex items-center gap-3">
                                                 <div className="flex items-center shrink-0">
-                                                  <span className="px-2 py-0.5 rounded-full bg-white/[0.04] text-[9px] font-mono font-black text-nexus-teal border border-white/5">
+                                                  <span className="px-2 py-0.5 rounded-full bg-white/[0.04] text-xs font-mono font-bold text-nexus-teal border border-white/5">
                                                     กำไร: ฿ {itemProfit.toLocaleString()} ({itemGP}%)
                                                   </span>
                                                 </div>
                                                 <button
                                                   type="button"
                                                   onClick={() => saveLaborAsPackage(item)}
-                                                  className="px-2.5 py-1 rounded-full bg-nexus-teal/10 hover:bg-nexus-teal text-nexus-teal hover:text-black border border-nexus-teal/20 transition-all text-[8px] font-black uppercase tracking-wider flex items-center gap-0.5 shadow-sm"
+                                                  className="px-2.5 py-1 rounded-full bg-nexus-teal/10 hover:bg-nexus-teal text-nexus-teal hover:text-black border border-nexus-teal/20 transition-all text-[10px] font-medium uppercase tracking-wider flex items-center gap-0.5 shadow-sm"
                                                   title="บันทึกชุดงานติดตั้งนี้เป็น 1 รายการอุปกรณ์พร้อมเลือกสำหรับใช้ซ้ำ"
                                                 >
                                                   <Sparkles size={8} className="animate-pulse" />
@@ -1384,23 +1391,23 @@ export default function ProjectsPage() {
                             </div>
 
                             {/* Pre-export summary stats dashboard */}
-                            <div className="p-6 rounded-[2.5rem] bg-white/[0.03] border border-white/10 grid grid-cols-4 gap-6 items-center shadow-2xl">
+                            <div className="p-6 rounded-[2.5rem] bg-white/[0.03] border border-white/10 grid grid-cols-4 gap-5 items-center shadow-2xl">
                               <div className="space-y-1">
-                                <span className="text-[9px] font-black text-white/55 uppercase tracking-widest">ต้นทุนรวมโครงการ (Est. Cost)</span>
-                                <div className="text-xl font-mono font-black text-danger">฿ {budgetSummary.totalCost.toLocaleString()}</div>
+                                <span className="text-xs font-medium text-white/55 uppercase tracking-widest">ต้นทุนรวมโครงการ (Est. Cost)</span>
+                                <div className="text-xl font-mono font-bold text-danger">฿ {budgetSummary.totalCost.toLocaleString()}</div>
                               </div>
                               <div className="space-y-1">
-                                <span className="text-[9px] font-black text-white/55 uppercase tracking-widest">ราคาขายเสนอรวม (Est. Revenue)</span>
-                                <div className="text-xl font-mono font-black text-nexus-teal">฿ {budgetSummary.totalRev.toLocaleString()}</div>
+                                <span className="text-xs font-medium text-white/55 uppercase tracking-widest">ราคาขายเสนอรวม (Est. Revenue)</span>
+                                <div className="text-xl font-mono font-bold text-nexus-teal">฿ {budgetSummary.totalRev.toLocaleString()}</div>
                               </div>
                               <div className="space-y-1">
-                                <span className="text-[9px] font-black text-white/55 uppercase tracking-widest">กำไรเบื้องต้น (Est. Profit)</span>
-                                <div className="text-xl font-mono font-black text-white">฿ {budgetSummary.grossProfit.toLocaleString()}</div>
+                                <span className="text-xs font-medium text-white/55 uppercase tracking-widest">กำไรเบื้องต้น (Est. Profit)</span>
+                                <div className="text-xl font-mono font-bold text-white">฿ {budgetSummary.grossProfit.toLocaleString()}</div>
                               </div>
                               <div className="space-y-1">
-                                <span className="text-[9px] font-black text-white/55 uppercase tracking-widest">GP PERCENTAGE</span>
+                                <span className="text-xs font-medium text-white/55 uppercase tracking-widest">GP PERCENTAGE</span>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-2xl font-mono font-black text-nexus-blue">{budgetSummary.gpPercent}%</span>
+                                  <span className="text-2xl font-mono font-bold text-nexus-blue">{budgetSummary.gpPercent}%</span>
                                   <div className="h-2 w-16 bg-white/5 rounded-full overflow-hidden border border-white/5">
                                     <div className="h-full bg-nexus-blue" style={{ width: `${budgetSummary.gpPercent}%` }} />
                                   </div>
@@ -1415,17 +1422,17 @@ export default function ProjectsPage() {
 
                   {activeModal === "milestone" && (
                      <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="space-y-8">
-                           <div className="flex items-center gap-3 text-nexus-teal"><Target size={18} /><h4 className="text-[13px] font-bold uppercase tracking-widest">กำหนดเป้าหมายโครงการ (Strategic Milestone)</h4></div>
+                        <div className="space-y-3">
+                           <div className="flex items-center gap-3 text-nexus-teal"><Target size={18} /><h4 className="text-[13px] font-bold uppercase tracking-widest">กำหนดเป้าหมายโครงการ</h4></div>
                            
-                           <div className="grid grid-cols-2 gap-8">
-                              <div className="space-y-6">
+                           <div className="grid grid-cols-2 gap-5">
+                              <div className="space-y-3">
                                  <div className="space-y-2">
-                                    <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ชื่อเป้าหมาย / กิจกรรมสำคัญ *</label>
+                                    <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ชื่อเป้าหมาย / กิจกรรมสำคัญ *</label>
                                     <PillInput placeholder="เช่น สรุปแบบติดตั้ง, ส่งมอบเฟส 1..." className="w-full" />
                                  </div>
                                  <div className="space-y-2">
-                                    <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">เชื่อมโยงกับโครงการ (Linked Project)</label>
+                                    <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">เชื่อมโยงกับโครงการ</label>
                                     <PillSelect className="w-full px-6">
                                        <option>เลือกโครงการ...</option>
                                        <option>PRJ-26-001: LED Wall</option>
@@ -1434,26 +1441,26 @@ export default function ProjectsPage() {
                                  </div>
                                  <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                       <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">กำหนดส่ง (Deadline)</label>
+                                       <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">กำหนดส่ง</label>
                                        <PillInput type="date" className="w-full" />
                                     </div>
                                     <div className="space-y-2">
-                                       <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">น้ำหนักความสำคัญ (Weight %)</label>
-                                       <PillInput type="number" placeholder="0" className="w-full text-nexus-teal font-black" />
+                                       <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">น้ำหนักความสำคัญ (Weight %)</label>
+                                       <PillInput type="number" placeholder="0" className="w-full text-nexus-teal font-bold" />
                                     </div>
                                  </div>
                               </div>
 
-                              <div className="space-y-6">
+                              <div className="space-y-3">
                                  <div className="space-y-2">
-                                    <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">รายละเอียดและเกณฑ์การวัดผล</label>
+                                    <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">รายละเอียดและเกณฑ์การวัดผล</label>
                                     <textarea 
                                        className="w-full h-[108px] rounded-lg bg-white/[0.03] border border-white/10 text-white text-[14px] font-bold p-5 focus:outline-none focus:border-nexus-teal/40 transition-all"
                                        placeholder="ระบุสิ่งที่ต้องทำให้สำเร็จเพื่อให้ Milestone นี้ผ่าน..."
                                     />
                                  </div>
                                  <div className="space-y-2">
-                                    <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ผู้รับผิดชอบ (Person in Charge)</label>
+                                    <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ผู้รับผิดชอบ</label>
                                     <PillSelect className="w-full px-6">
                                        <option>ระบุผู้รับผิดชอบ...</option>
                                        <option>Somchai J. (Engineer)</option>
@@ -1465,8 +1472,8 @@ export default function ProjectsPage() {
                                        <div className="w-4 h-4 bg-white/20 rounded-full" />
                                     </div>
                                     <div>
-                                       <p className="text-[11px] font-black text-white uppercase tracking-widest">เส้นตายวิกฤต (Critical Path)</p>
-                                       <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">หากล่าช้าจะส่งผลต่อโครงการทั้งหมด</p>
+                                       <p className="text-sm font-medium text-white uppercase tracking-widest">เส้นตายวิกฤต</p>
+                                       <p className="text-xs text-white/40 font-bold uppercase tracking-widest">หากล่าช้าจะส่งผลต่อโครงการทั้งหมด</p>
                                     </div>
                                  </div>
                               </div>
@@ -1479,25 +1486,25 @@ export default function ProjectsPage() {
                      <div className="space-y-10 animate-in fade-in duration-500">
                         <PillTabs 
                            tabs={[
-                              { id: "work", label: "การทำงาน (WORK)" },
-                              { id: "parts", label: "วัสดุ (MATERIALS)" },
-                              { id: "sign", label: "ส่งมอบ (DELIVERY)" }
+                              { id: "work", label: "การทำงาน" },
+                              { id: "parts", label: "วัสดุ" },
+                              { id: "sign", label: "ส่งมอบ" }
                            ]}
                            activeTab={modalActiveTab === "basic" ? "work" : modalActiveTab}
                            onTabChange={setModalActiveTab}
                         />
 
-                        <div className="space-y-8">
+                        <div className="space-y-3">
                            {(modalActiveTab === "work" || modalActiveTab === "basic") && (
-                              <div className="grid grid-cols-2 gap-8 animate-in slide-in-from-left-4 duration-500">
-                                 <div className="space-y-6">
+                              <div className="grid grid-cols-2 gap-5 animate-in slide-in-from-left-4 duration-500">
+                                 <div className="space-y-3">
                                     <div className="space-y-2">
-                                       <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">หัวข้องาน / รายการที่ปฏิบัติ *</label>
+                                       <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">หัวข้องาน / รายการที่ปฏิบัติ *</label>
                                        <PillInput placeholder="เช่น ติดตั้ง Core Switch, ตรวจเช็คระบบ..." className="w-full" />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                        <div className="space-y-2">
-                                          <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ประเภทงาน (Service Type)</label>
+                                          <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ประเภทงาน</label>
                                           <PillSelect className="w-full px-6">
                                              <option>Installation (ติดตั้ง)</option>
                                              <option>Maintenance (บำรุงรักษา)</option>
@@ -1506,12 +1513,12 @@ export default function ProjectsPage() {
                                           </PillSelect>
                                        </div>
                                        <div className="space-y-2">
-                                          <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">วันที่ปฏิบัติงาน</label>
+                                          <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">วันที่ปฏิบัติงาน</label>
                                           <PillInput type="date" className="w-full" />
                                        </div>
                                     </div>
                                     <div className="space-y-2">
-                                       <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">โครงการที่เกี่ยวข้อง</label>
+                                       <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">โครงการที่เกี่ยวข้อง</label>
                                        <PillSelect className="w-full px-6">
                                           <option>ระบุโครงการ...</option>
                                           <option>PRJ-26-001: LED Wall</option>
@@ -1519,7 +1526,7 @@ export default function ProjectsPage() {
                                     </div>
                                  </div>
                                  <div className="space-y-2">
-                                    <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">รายละเอียดการทำงาน (Work Description)</label>
+                                    <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">รายละเอียดการทำงาน</label>
                                     <textarea 
                                        className="w-full h-[220px] rounded-lg bg-white/[0.03] border border-white/10 text-white text-[14px] font-bold p-5 focus:outline-none focus:border-nexus-teal/40 transition-all"
                                        placeholder="ระบุรายละเอียดงานที่ทำ ผลการดำเนินงาน และปัญหาที่พบ..."
@@ -1529,9 +1536,9 @@ export default function ProjectsPage() {
                            )}
 
                            {modalActiveTab === "parts" && (
-                              <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
+                              <div className="space-y-3 animate-in slide-in-from-right-4 duration-500">
                                  <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 w-full">
-                                    <h4 className="text-[13px] font-bold text-white uppercase tracking-widest">รายการพัสดุและอุปกรณ์ที่ใช้ (Parts Consumed)</h4>
+                                    <h4 className="text-[13px] font-bold text-white uppercase tracking-widest">รายการพัสดุและอุปกรณ์ที่ใช้</h4>
                                     <PillButton variant="glass" className="h-9 px-6 rounded-full"><Plus size={14} /> เพิ่มรายการ</PillButton>
                                  </div>
                                  <div className="rounded-lg border border-white/5 overflow-hidden">
@@ -1555,8 +1562,8 @@ export default function ProjectsPage() {
 
                            {modalActiveTab === "sign" && (
                               <div className="grid grid-cols-2 gap-12 animate-in fade-in duration-500">
-                                 <div className="space-y-6">
-                                    <h4 className="text-[13px] font-bold text-white uppercase tracking-widest">ภาพถ่ายหน้างาน (Attachments)</h4>
+                                 <div className="space-y-3">
+                                    <h4 className="text-[13px] font-bold text-white uppercase tracking-widest">ภาพถ่ายหน้างาน</h4>
                                     <div className="grid grid-cols-2 gap-4">
                                        <div className="aspect-video rounded-2xl border border-dashed border-white/10 flex flex-col items-center justify-center gap-2 hover:bg-white/5 cursor-pointer transition-all">
                                           <Plus size={24} className="text-white/20" />
@@ -1564,16 +1571,16 @@ export default function ProjectsPage() {
                                        </div>
                                     </div>
                                  </div>
-                                 <div className="space-y-6">
-                                    <h4 className="text-[13px] font-bold text-white uppercase tracking-widest">การเซ็นรับงาน (Digital Signature)</h4>
+                                 <div className="space-y-3">
+                                    <h4 className="text-[13px] font-bold text-white uppercase tracking-widest">การเซ็นรับงาน</h4>
                                     <div className="aspect-[4/3] rounded-xl bg-white/[0.02] border border-white/10 relative flex flex-col items-center justify-center">
                                        <div className="absolute inset-0 flex items-center justify-center text-white/10 pointer-events-none">
-                                          <p className="text-[12px] font-black uppercase tracking-[0.5em]">SIGNATURE AREA</p>
+                                          <p className="text-[12px] font-bold uppercase tracking-[0.5em]">SIGNATURE AREA</p>
                                        </div>
                                        <div className="absolute bottom-6 w-3/4 h-px bg-white/10" />
                                     </div>
                                     <div className="space-y-2">
-                                       <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ชื่อผู้อนุมัติรับงาน (Customer Name)</label>
+                                       <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ชื่อผู้อนุมัติรับงาน</label>
                                        <PillInput placeholder="ระบุชื่อลูกค้า..." className="w-full text-center" />
                                     </div>
                                  </div>
@@ -1587,10 +1594,10 @@ export default function ProjectsPage() {
 
            {/* Project Hub Right Controls */}
            <div className="w-[420px] flex flex-col bg-[#0d0d10] p-10 flex-shrink-0">
-              <div className="flex-1 space-y-8">
-                 <div className="p-6 rounded-xl bg-white/[0.03] border border-white/10 space-y-6">
+              <div className="flex-1 space-y-3">
+                 <div className="p-5 rounded-xl bg-white/[0.03] border border-white/10 space-y-3">
                     <div className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-nexus-teal animate-ping" /><h5 className="text-[13px] font-bold text-white/70 uppercase tracking-widest">Project Intelligence</h5></div>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                        <NexusDataField label="Project ID" value="AUTO_PRJ_26" highlight />
                        <NexusDataField label="สถานะเริ่มต้น" value="PROVISIONING" />
                        <NexusDataField label="มูลค่าต้นทุนสะสม" value={`฿ ${budgetSummary.totalCost.toLocaleString()}`} className="text-danger" />
@@ -1600,26 +1607,26 @@ export default function ProjectsPage() {
 
                  {/* AUTOMATED QUOTATION TRIGGER - Premium Glowing Bridge Action */}
                  {activeModal === "project" && (
-                   <div className="p-6 rounded-xl bg-nexus-teal/5 border border-nexus-teal/20 space-y-4 animate-bounce">
+                   <div className="p-5 rounded-xl bg-nexus-teal/5 border border-nexus-teal/20 space-y-3 animate-bounce">
                      <div className="flex items-center gap-2 text-nexus-teal">
                        <Zap size={16} className="animate-spin" />
-                       <span className="text-[11px] font-black uppercase tracking-widest">ออกใบเสนอราคาด่วน</span>
+                       <span className="text-sm font-medium uppercase tracking-widest">ออกใบเสนอราคาด่วน</span>
                      </div>
                      <p className="text-[10px] text-white/60 font-bold leading-relaxed">
-                       ดึงข้อมูลรายการอุปกรณ์และงานค่าใช้จ่ายทั้งหมดออกใบเสนอราคา (Quotation) อัตโนมัติทันที
+                       ดึงข้อมูลรายการอุปกรณ์และงานค่าใช้จ่ายทั้งหมดออกใบเสนอราคา อัตโนมัติทันที
                      </p>
-                     <PillButton onClick={handleGenerateQuotation} className="w-full h-9 px-6 rounded-full shadow-neon-teal bg-nexus-teal text-black font-black uppercase flex items-center justify-center gap-2">
-                       <FileText size={16} /> ออกใบเสนอราคา (QT) ⚡
+                     <PillButton variant="primary" onClick={handleGenerateQuotation} className="w-full h-9 px-6 rounded-full font-bold uppercase flex items-center justify-center gap-2">
+                       <FileText size={16} /> ออกใบเสนอราคา ⚡
                      </PillButton>
                    </div>
                  )}
               </div>
               
-              <div className="space-y-4 pt-10 border-t border-white/5">
-                 <PillButton className="w-full h-9 px-6 rounded-full shadow-neon-teal flex items-center justify-center gap-2" onClick={() => { setActiveModal(null); showToast("เริ่มต้นโครงการใหม่สำเร็จ"); }}>
+              <div className="space-y-3 pt-10 border-t border-white/5">
+                 <PillButton variant="primary" className="w-full h-9 px-6 rounded-full flex items-center justify-center gap-2" onClick={() => { setActiveModal(null); showToast("เริ่มต้นโครงการใหม่สำเร็จ"); }}>
                     <Briefcase size={18} />ยืนยันเปิดโครงการ
                  </PillButton>
-                 <PillButton variant="glass" className="w-full h-9 px-6 rounded-full text-white/60 hover:text-white" onClick={() => setActiveModal(null)}>ยกเลิกรายการ</PillButton>
+                 <PillButton variant="glass" className="w-full h-9 px-6 rounded-full hover:" onClick={() => setActiveModal(null)}>ยกเลิกรายการ</PillButton>
               </div>
            </div>
         </div>
@@ -1655,7 +1662,7 @@ export default function ProjectsPage() {
             sku: newSku,
             name: formData.name,
             description: formData.description || "ชุดงานติดตั้งพร้อมใช้",
-            category: "ชุดงานติดตั้ง (Kit)",
+            category: "ชุดงานติดตั้ง",
             category_id: "Kit",
             brand: "NEXUS-KIT",
             unit: formData.unit_type,
@@ -1761,13 +1768,13 @@ function ProjectRow({ id, name, progress, team, deadline, status }: { id: string
     <NexusTableRow>
       <NexusTableCell>
         <Link href={`/projects/${id}`} className="block">
-           <p className="font-mono text-[10px] text-nexus-blue font-black tracking-tighter">{id}</p>
-           <p className="text-sm font-black text-white/80 group-hover:text-white transition-colors whitespace-nowrap">{name}</p>
+           <p className="font-mono text-xs text-nexus-blue font-medium tracking-tighter">{id}</p>
+           <p className="text-sm font-bold text-white/80 group-hover:text-white transition-colors whitespace-nowrap">{name}</p>
         </Link>
       </NexusTableCell>
       <NexusTableCell className="w-48">
          <div className="space-y-1.5">
-            <div className="flex justify-between items-center text-[9px] font-black text-white/40 uppercase">
+            <div className="flex justify-between items-center text-xs font-medium text-white/40 uppercase">
                <span>ความคืบหน้า</span>
                <span className="text-white/75">{progress}%</span>
             </div>
@@ -1776,8 +1783,8 @@ function ProjectRow({ id, name, progress, team, deadline, status }: { id: string
             </div>
          </div>
       </NexusTableCell>
-      <NexusTableCell className="text-[11px] font-black text-white/60 uppercase">{team}</NexusTableCell>
-      <NexusTableCell className="text-[11px] font-black text-white/60 uppercase">{deadline}</NexusTableCell>
+      <NexusTableCell className="text-sm font-medium text-white/60 uppercase">{team}</NexusTableCell>
+      <NexusTableCell className="text-sm font-medium text-white/60 uppercase">{deadline}</NexusTableCell>
       <NexusTableCell>
         <StatusBadge status={status === "active" ? "active" : status === "completed" ? "active" : "danger"} label={status === "active" ? "กำลังดำเนินการ" : status === "completed" ? "เสร็จสิ้น" : "ล่าช้า"} />
       </NexusTableCell>
@@ -1788,10 +1795,10 @@ function ProjectRow({ id, name, progress, team, deadline, status }: { id: string
 function MilestoneRow({ name, project, due, weight, status }: { name: string, project: string, due: string, weight: string, status: string }) {
   return (
     <NexusTableRow>
-      <NexusTableCell className="font-black text-white/80">{name}</NexusTableCell>
-      <NexusTableCell className="w-[140px] font-mono text-[11px] text-nexus-blue font-black tracking-tighter">{project}</NexusTableCell>
-      <NexusTableCell className="w-[180px] text-[11px] font-black text-white/60 uppercase tracking-widest">{due}</NexusTableCell>
-      <NexusTableCell className="w-[120px] text-[11px] font-black text-nexus-teal uppercase tracking-widest">{weight}</NexusTableCell>
+      <NexusTableCell className="font-bold text-white/80">{name}</NexusTableCell>
+      <NexusTableCell className="w-[140px] font-mono text-sm text-nexus-blue font-medium tracking-tighter">{project}</NexusTableCell>
+      <NexusTableCell className="w-[180px] text-sm font-medium text-white/60 uppercase tracking-widest">{due}</NexusTableCell>
+      <NexusTableCell className="w-[120px] text-sm font-medium text-nexus-teal uppercase tracking-widest">{weight}</NexusTableCell>
       <NexusTableCell className="w-[180px]">
         <StatusBadge status={status as any} label={status === "active" ? "ดำเนินการอยู่" : "รอดำเนินการ"} />
       </NexusTableCell>
@@ -1802,10 +1809,10 @@ function MilestoneRow({ name, project, due, weight, status }: { name: string, pr
 function ReportRow({ id, project, tech, date, status }: { id: string, project: string, tech: string, date: string, status: string }) {
   return (
     <NexusTableRow>
-      <NexusTableCell className="w-[140px] font-mono text-[11px] text-nexus-teal font-black tracking-tighter">{id}</NexusTableCell>
-      <NexusTableCell className="font-black text-white/80">{project}</NexusTableCell>
-      <NexusTableCell className="w-[180px] text-[11px] font-black text-white/60 uppercase tracking-widest">{tech}</NexusTableCell>
-      <NexusTableCell className="w-[180px] text-[11px] font-black text-white/60 uppercase tracking-widest">{date}</NexusTableCell>
+      <NexusTableCell className="w-[140px] font-mono text-sm text-nexus-teal font-medium tracking-tighter">{id}</NexusTableCell>
+      <NexusTableCell className="font-bold text-white/80">{project}</NexusTableCell>
+      <NexusTableCell className="w-[180px] text-sm font-medium text-white/60 uppercase tracking-widest">{tech}</NexusTableCell>
+      <NexusTableCell className="w-[180px] text-sm font-medium text-white/60 uppercase tracking-widest">{date}</NexusTableCell>
       <NexusTableCell className="w-[180px]">
         <StatusBadge status={status as any} label="เซ็นแล้ว" />
       </NexusTableCell>
@@ -1816,12 +1823,12 @@ function ReportRow({ id, project, tech, date, status }: { id: string, project: s
 function CostRow({ name, budget, actual, balance, margin }: { name: string, budget: string, actual: string, balance: string, margin: string }) {
   return (
     <NexusTableRow>
-      <NexusTableCell className="font-black text-white/80">{name}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-black text-white/60 mono-numbers">{budget}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-black text-danger mono-numbers">{actual}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-black text-nexus-teal mono-numbers">{balance}</NexusTableCell>
+      <NexusTableCell className="font-bold text-white/80">{name}</NexusTableCell>
+      <NexusTableCell className="w-[150px] text-right font-bold text-white/60 mono-numbers">{budget}</NexusTableCell>
+      <NexusTableCell className="w-[150px] text-right font-bold text-danger mono-numbers">{actual}</NexusTableCell>
+      <NexusTableCell className="w-[150px] text-right font-bold text-nexus-teal mono-numbers">{balance}</NexusTableCell>
       <NexusTableCell className="w-[120px] text-right">
-        <span className="px-3 py-1 rounded-full bg-nexus-teal/10 text-nexus-teal text-[11px] font-black">{margin}</span>
+        <span className="px-3 py-1 rounded-full bg-nexus-teal/10 text-nexus-teal text-sm font-medium">{margin}</span>
       </NexusTableCell>
     </NexusTableRow>
   );
@@ -1830,7 +1837,7 @@ function CostRow({ name, budget, actual, balance, margin }: { name: string, budg
 function HealthItem({ label, value, color }: { label: string, value: string, color: string }) {
   return (
     <div className="space-y-2">
-       <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+       <div className="flex justify-between items-center text-sm font-medium uppercase tracking-widest">
           <span className="text-white/60">{label}</span>
           <span className="text-white/80">{value}</span>
        </div>
@@ -1848,8 +1855,8 @@ function DeadlineItem({ title, date, project }: { title: string, date: string, p
           <Clock size={16} />
        </div>
        <div className="flex-1 min-w-0">
-          <p className="text-xs font-black text-white truncate">{title}</p>
-          <p className="text-[10px] text-white/60 uppercase font-black tracking-[0.1em] mt-0.5">{project} • {date}</p>
+          <p className="text-xs font-bold text-white truncate">{title}</p>
+          <p className="text-xs text-white/60 uppercase font-medium tracking-[0.1em] mt-0.5">{project} • {date}</p>
        </div>
     </div>
   );

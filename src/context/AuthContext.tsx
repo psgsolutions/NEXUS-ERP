@@ -5,7 +5,7 @@ import {
   onAuthStateChanged, 
   User as FirebaseUser 
 } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase-client";
 import { doc, getDoc } from "firebase/firestore";
 
 import { can, Permission } from "@/lib/permissions";
@@ -16,6 +16,7 @@ interface AuthContextType {
   companyId: string | null;
   role: string | null;
   checkPermission: (permission: Permission) => boolean;
+  switchCompany: (newCompanyId: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   companyId: null,
   role: null,
   checkPermission: () => false,
+  switchCompany: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -31,6 +33,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const switchCompany = (newCompanyId: string) => {
+    setCompanyId(newCompanyId);
+    localStorage.setItem("selectedCompanyId", newCompanyId);
+  };
 
   const checkPermission = (permission: Permission) => {
     return can(role, permission);
@@ -58,22 +65,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
              });
           };
 
-          const userDoc = await fetchWithTimeout();
+          const userDoc: any = await fetchWithTimeout();
 
+          let data: any = {};
           if (userDoc && typeof userDoc.exists === 'function' && userDoc.exists()) {
-            const data = userDoc.data();
-            setCompanyId(data.companyId || "COMP-PREVIEW-01");
-            setRole(data.role?.toUpperCase() || "ENGINEER");
-          } else {
-            // Fallback for development/preview
-            setCompanyId("COMP-PREVIEW-01");
-            setRole("ADMIN");
+            data = userDoc.data();
           }
+
+          let finalCompanyId = data.companyId || localStorage.getItem("selectedCompanyId") || "COM-NEXUS-01";
+          let finalRole = data.role?.toUpperCase() || "ADMIN";
+
+          // Force SUPERADMIN role for specific admin account
+          if (user.uid === "fgIglIug2dh4aNMMeachaugIyFM2" || user.email === "sadmin@admin.com") {
+            finalRole = "SUPERADMIN";
+          }
+
+          setCompanyId(finalCompanyId);
+          setRole(finalRole);
         } catch (error: any) {
           console.warn("Network timeout or error fetching user profile:", error?.message || error);
-          // Fallback on error to prevent blocking access
-          setCompanyId("COMP-PREVIEW-01");
-          setRole("ADMIN"); // เปลี่ยนเป็น ADMIN เพื่อให้เข้าถึงระบบได้ชั่วคราวเวลา network มีปัญหา
+          let finalCompanyId = localStorage.getItem("selectedCompanyId") || "COM-NEXUS-01";
+          let finalRole = "ADMIN";
+          
+          if (user.uid === "fgIglIug2dh4aNMMeachaugIyFM2" || user.email === "sadmin@admin.com") {
+            finalRole = "SUPERADMIN";
+          }
+          
+          setCompanyId(finalCompanyId);
+          setRole(finalRole);
         }
       } else {
         setCompanyId(null);
@@ -87,7 +106,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, companyId, role, checkPermission }}>
+    <AuthContext.Provider value={{ user, loading, companyId, role, checkPermission, switchCompany }}>
       {children}
     </AuthContext.Provider>
   );

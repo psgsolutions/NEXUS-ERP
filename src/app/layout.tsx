@@ -6,6 +6,7 @@ import { SystemAlertProvider } from "@/components/ui/SystemAlertProvider";
 import { ConnectionProvider } from "@/context/ConnectionContext";
 import { DialogProvider } from "@/context/DialogContext";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { LanguageProvider } from "@/context/LanguageContext";
 
 const sarabun = Sarabun({
   weight: ["100", "200", "300", "400", "500", "600", "700", "800"],
@@ -31,10 +32,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th" className={`${sarabun.variable} ${jetbrainsMono.variable}`}>
-      <body className="antialiased selection:bg-nexus-blue/30 overflow-hidden">
-        <AuthProvider>
-          <ConnectionProvider>
+    <html lang="th" className={`${sarabun.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+      <body className="antialiased selection:bg-nexus-blue/30 overflow-hidden" suppressHydrationWarning>
+        <LanguageProvider>
+          <AuthProvider>
+            <ConnectionProvider>
             <SystemAlertProvider>
               <DialogProvider>
                 <div className="relative h-screen w-full bg-[#020203] overflow-hidden">
@@ -50,8 +52,9 @@ export default function RootLayout({
                 </div>
               </DialogProvider>
             </SystemAlertProvider>
-          </ConnectionProvider>
-        </AuthProvider>
+            </ConnectionProvider>
+          </AuthProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

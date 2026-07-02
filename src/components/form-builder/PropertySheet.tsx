@@ -66,7 +66,7 @@ export const PropertySheet: React.FC<PropertySheetProps> = ({ selectedElement, o
         {/* ── DATA TAB ─────────────────────────────────────────── */}
         {(activeTab === 'Data' || activeTab === 'All') && (
           <div>
-            <SectionHeader label="ข้อมูล (DATA BINDING)" />
+            <SectionHeader label="ข้อมูล" />
 
             {/* Visibility */}
             <PropRow label="การมองเห็น">
@@ -165,7 +165,7 @@ export const PropertySheet: React.FC<PropertySheetProps> = ({ selectedElement, o
         {/* ── FORMAT TAB ─────────────────────────────────────────── */}
         {(activeTab === 'Format' || activeTab === 'All') && (
           <div>
-            <SectionHeader label="รูปแบบ (FORMAT)" />
+            <SectionHeader label="รูปแบบ" />
 
             {/* Image Properties */}
             {selectedElement.type === 'image' && (

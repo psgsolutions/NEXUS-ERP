@@ -20,7 +20,7 @@ const TEMPLATES: Partial<FormTemplate>[] = [
   },
   {
     id: 'invoice',
-    name: 'ใบแจ้งหนี้ (Invoice)',
+    name: 'ใบแจ้งหนี้',
     description: 'แม่แบบใบแจ้งหนี้มาตรฐาน พร้อม Label ผูกข้อมูลลูกค้า',
     paperSize: 'A4',
     orientation: 'portrait',
@@ -28,7 +28,7 @@ const TEMPLATES: Partial<FormTemplate>[] = [
     elements: [
       // หัวเอกสาร
       { id: 'e1', type: 'text', position: { x: 20, y: 20 }, size: { width: 300, height: 36 },
-        content: '<p style="font-size:22px;font-weight:bold;color:#2563EB;">ใบแจ้งหนี้ (INVOICE)</p>',
+        content: '<p style="font-size:22px;font-weight:bold;color:#2563EB;">ใบแจ้งหนี้</p>',
         style: { fontSize: 22, fontWeight: 'bold', color: '#2563EB' }, properties: { visible: true } },
       // เส้นแบ่ง
       { id: 'e2', type: 'line', position: { x: 20, y: 60 }, size: { width: 750, height: 2 },
@@ -37,7 +37,7 @@ const TEMPLATES: Partial<FormTemplate>[] = [
       { id: 'e3', type: 'label', position: { x: 20, y: 80 }, size: { width: 60, height: 24 },
         content: '<p style="font-size:11px;font-weight:bold;color:#4B5563;">เรียน:</p>',
         style: { fontSize: 11, fontWeight: 'bold', color: '#4B5563' }, properties: { visible: true } },
-      // Textbox: ชื่อลูกค้า (Bound)
+      // Textbox: ชื่อลูกค้า
       { id: 'e4', type: 'textbox', position: { x: 85, y: 80 }, size: { width: 300, height: 24 },
         content: '',
         style: { fontSize: 12, fontWeight: 'bold', color: '#1F2937', borderWidth: 0, backgroundColor: 'transparent' },
@@ -46,7 +46,7 @@ const TEMPLATES: Partial<FormTemplate>[] = [
       { id: 'e5', type: 'label', position: { x: 20, y: 108 }, size: { width: 60, height: 24 },
         content: '<p style="font-size:11px;color:#4B5563;">ที่อยู่:</p>',
         style: { fontSize: 11, color: '#4B5563' }, properties: { visible: true } },
-      // Textbox: ที่อยู่ลูกค้า (Bound)
+      // Textbox: ที่อยู่ลูกค้า
       { id: 'e6', type: 'textbox', position: { x: 85, y: 108 }, size: { width: 400, height: 24 },
         content: '',
         style: { fontSize: 11, color: '#374151', borderWidth: 0, backgroundColor: 'transparent' },
@@ -55,7 +55,7 @@ const TEMPLATES: Partial<FormTemplate>[] = [
       { id: 'e7', type: 'label', position: { x: 20, y: 136 }, size: { width: 60, height: 24 },
         content: '<p style="font-size:11px;color:#4B5563;">โทร:</p>',
         style: { fontSize: 11, color: '#4B5563' }, properties: { visible: true } },
-      // Textbox: เบอร์โทร (Bound)
+      // Textbox: เบอร์โทร
       { id: 'e8', type: 'textbox', position: { x: 85, y: 136 }, size: { width: 150, height: 24 },
         content: '',
         style: { fontSize: 11, color: '#374151', borderWidth: 0, backgroundColor: 'transparent' },
@@ -64,7 +64,7 @@ const TEMPLATES: Partial<FormTemplate>[] = [
       { id: 'e9', type: 'label', position: { x: 560, y: 80 }, size: { width: 80, height: 24 },
         content: '<p style="font-size:11px;color:#4B5563;">เลขที่:</p>',
         style: { fontSize: 11, color: '#4B5563' }, properties: { visible: true } },
-      // Textbox: เลขที่เอกสาร (Bound)
+      // Textbox: เลขที่เอกสาร
       { id: 'e10', type: 'textbox', position: { x: 645, y: 80 }, size: { width: 130, height: 24 },
         content: '',
         style: { fontSize: 11, fontWeight: 'bold', color: '#1F2937', borderWidth: 0, backgroundColor: 'transparent' },
@@ -73,7 +73,7 @@ const TEMPLATES: Partial<FormTemplate>[] = [
       { id: 'e11', type: 'label', position: { x: 560, y: 108 }, size: { width: 80, height: 24 },
         content: '<p style="font-size:11px;color:#4B5563;">วันที่:</p>',
         style: { fontSize: 11, color: '#4B5563' }, properties: { visible: true } },
-      // Textbox: วันที่เอกสาร (Bound)
+      // Textbox: วันที่เอกสาร
       { id: 'e12', type: 'textbox', position: { x: 645, y: 108 }, size: { width: 130, height: 24 },
         content: '',
         style: { fontSize: 11, color: '#374151', borderWidth: 0, backgroundColor: 'transparent' },
@@ -85,7 +85,7 @@ const TEMPLATES: Partial<FormTemplate>[] = [
       { id: 'e14', type: 'label', position: { x: 560, y: 190 }, size: { width: 80, height: 24 },
         content: '<p style="font-size:12px;font-weight:bold;color:#111827;">ยอดรวม:</p>',
         style: { fontSize: 12, fontWeight: 'bold', color: '#111827' }, properties: { visible: true } },
-      // Textbox: ยอดรวม (Bound)
+      // Textbox: ยอดรวม
       { id: 'e15', type: 'textbox', position: { x: 645, y: 190 }, size: { width: 130, height: 24 },
         content: '',
         style: { fontSize: 13, fontWeight: 'bold', color: '#2563EB', borderWidth: 0, backgroundColor: 'transparent' },
@@ -94,14 +94,14 @@ const TEMPLATES: Partial<FormTemplate>[] = [
   },
   {
     id: 'quotation',
-    name: 'ใบเสนอราคา (Quotation)',
+    name: 'ใบเสนอราคา',
     description: 'แม่แบบใบเสนอราคา พร้อมข้อมูลบริษัทและลูกค้า',
     paperSize: 'A4',
     orientation: 'portrait',
     margins: { top: 20, right: 20, bottom: 20, left: 20 },
     elements: [
       { id: 'q1', type: 'text', position: { x: 20, y: 20 }, size: { width: 400, height: 36 },
-        content: '<p style="font-size:20px;font-weight:bold;color:#1D4ED8;">ใบเสนอราคา (QUOTATION)</p>',
+        content: '<p style="font-size:20px;font-weight:bold;color:#1D4ED8;">ใบเสนอราคา</p>',
         style: { fontSize: 20, fontWeight: 'bold', color: '#1D4ED8' }, properties: { visible: true } },
       { id: 'q2', type: 'textbox', position: { x: 20, y: 64 }, size: { width: 350, height: 22 },
         content: '', style: { fontSize: 11, fontWeight: 'bold', color: '#111827', borderWidth: 0, backgroundColor: 'transparent' },

@@ -13,15 +13,7 @@ import {
   AlertTriangle,
   X
 } from "lucide-react";
-import { 
-  PillButton, 
-  PillInput, 
-  PillSelect, 
-  Modal, 
-  PillTabs, 
-  NexusDataField,
-  cn 
-} from "@/components/ui/Base";
+import { PillButton, PillInput, PillSelect, Modal, PillTabs, NexusDataField, cn, NexusDatePicker } from "@/components/ui/Base";
 
 interface PurchaseRequestModalProps {
   isOpen: boolean;
@@ -45,8 +37,8 @@ export function PurchaseRequestModal({ isOpen, onClose, onSave }: PurchaseReques
   });
 
   const tabs = [
-    { id: "header", label: "ข้อมูลพื้นฐานการขอซื้อ (HEADER)" },
-    { id: "items", label: "รายการพัสดุและบริการ (ITEMS)" }
+    { id: "header", label: "ข้อมูลพื้นฐานการขอซื้อ" },
+    { id: "items", label: "รายการพัสดุและบริการ" }
   ];
 
   const isDirty = items.length > 0 || header.requiredDate !== "" || header.reason !== "";
@@ -82,7 +74,7 @@ export function PurchaseRequestModal({ isOpen, onClose, onSave }: PurchaseReques
     <Modal 
       isOpen={isOpen} 
       onClose={handleClose} 
-      title="ใบขอซื้อพัสดุ/บริการ (NEW PURCHASE REQUEST)"
+      title="ใบขอซื้อพัสดุ/บริการ"
       maxWidth="max-w-[1600px]"
     >
       <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
@@ -91,7 +83,7 @@ export function PurchaseRequestModal({ isOpen, onClose, onSave }: PurchaseReques
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
               <div className="space-y-1">
                 <p className="text-[12px] font-black text-nexus-teal uppercase tracking-[0.2em]">โหมดจัดซื้อจัดจ้าง (PROC_REQ_V3.1)</p>
-                <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกใบขอซื้อ (PURCHASE REQUEST)</h4>
+                <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกใบขอซื้อ</h4>
               </div>
               <PillTabs 
                 tabs={tabs}
@@ -104,10 +96,10 @@ export function PurchaseRequestModal({ isOpen, onClose, onSave }: PurchaseReques
               {activeTab === "header" && (
                 <div className="space-y-10">
                   <div className="grid grid-cols-2 gap-8">
-                    <Field label="ผู้ยื่นคำขอซื้อ (REQUESTER)">
+                    <Field label="ผู้ยื่นคำขอซื้อ">
                       <PillInput value={header.requester} disabled className="w-full bg-white/[0.02] text-white/40" />
                     </Field>
-                    <Field label="หน่วยงาน / แผนก (DEPARTMENT)">
+                    <Field label="หน่วยงาน / แผนก">
                       <PillSelect 
                         value={header.department}
                         onChange={(e) => setHeader({...header, department: e.target.value})}
@@ -122,18 +114,16 @@ export function PurchaseRequestModal({ isOpen, onClose, onSave }: PurchaseReques
                   </div>
 
                   <div className="grid grid-cols-3 gap-8">
-                    <Field label="วันที่ยื่นคำขอ (REQUEST DATE)">
-                      <PillInput type="date" value={header.requestDate} disabled className="w-full opacity-50" />
+                    <Field label="วันที่ยื่นคำขอ">
+                      <NexusDatePicker value={header.requestDate} disabled className="w-full opacity-50" />
                     </Field>
-                    <Field label="วันที่ต้องการใช้งาน (REQUIRED DATE) *">
-                      <PillInput 
-                        type="date" 
-                        value={header.requiredDate}
+                    <Field label="วันที่ต้องการใช้งาน *">
+                      <NexusDatePicker value={header.requiredDate}
                         onChange={(e) => setHeader({...header, requiredDate: e.target.value})}
                         className="w-full text-nexus-teal" 
                       />
                     </Field>
-                    <Field label="ลำดับความสำคัญ (PRIORITY)">
+                    <Field label="ลำดับความสำคัญ">
                       <PillSelect 
                         value={header.priority}
                         onChange={(e) => setHeader({...header, priority: e.target.value})}
@@ -151,7 +141,7 @@ export function PurchaseRequestModal({ isOpen, onClose, onSave }: PurchaseReques
                   </div>
 
                   <div className="space-y-6">
-                    <Field label="โครงการที่อ้างอิง (PROJECT REF)">
+                    <Field label="โครงการที่อ้างอิง">
                       <PillInput 
                         value={header.projectRef}
                         onChange={(e) => setHeader({...header, projectRef: e.target.value})}
@@ -159,7 +149,7 @@ export function PurchaseRequestModal({ isOpen, onClose, onSave }: PurchaseReques
                         className="w-full" 
                       />
                     </Field>
-                    <Field label="วัตถุประสงค์ / ความจำเป็น (PURPOSE) *">
+                    <Field label="วัตถุประสงค์ / ความจำเป็น *">
                       <textarea 
                         className="w-full h-32 rounded-xl bg-white/[0.03] border border-white/10 text-white text-[14px] font-bold p-6 focus:outline-none focus:border-nexus-teal/40 transition-all"
                         value={header.reason}
@@ -174,7 +164,7 @@ export function PurchaseRequestModal({ isOpen, onClose, onSave }: PurchaseReques
               {activeTab === "items" && (
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-[12px] font-black text-white/30 uppercase tracking-[0.2em]">รายการที่เสนอขอซื้อ (REQUESTED ITEMS)</h4>
+                    <h4 className="text-[12px] font-black text-white/30 uppercase tracking-[0.2em]">รายการที่เสนอขอซื้อ</h4>
                     <PillButton variant="glass" onClick={addItem}>
                       <Plus size={14} /> เพิ่มรายการ
                     </PillButton>
@@ -252,7 +242,7 @@ export function PurchaseRequestModal({ isOpen, onClose, onSave }: PurchaseReques
             <div className="p-6 rounded-xl bg-warning/5 border border-warning/10 flex items-start gap-4">
                <AlertTriangle className="text-warning flex-shrink-0" size={18} />
                <p className="text-[11px] text-warning/60 font-bold uppercase leading-relaxed tracking-widest">
-                  ใบขอซื้อนี้ต้องได้รับการอนุมัติจากหัวหน้าแผนกก่อนเข้าสู่กระบวนการจัดซื้อ (PO)
+                  ใบขอซื้อนี้ต้องได้รับการอนุมัติจากหัวหน้าแผนกก่อนเข้าสู่กระบวนการจัดซื้อ
                </p>
             </div>
           </div>
@@ -260,9 +250,9 @@ export function PurchaseRequestModal({ isOpen, onClose, onSave }: PurchaseReques
           <div className="space-y-4 pt-12 border-t border-white/5">
             <PillButton className="w-full font-black uppercase tracking-[0.2em] shadow-neon-teal" onClick={handleSave}>
               <ShieldCheck size={22} />
-              ส่งขออนุมัติซื้อ (SEND PR)
+              ส่งขออนุมัติซื้อ
             </PillButton>
-            <PillButton variant="glass" className="w-full text-white/20 hover:text-white uppercase tracking-widest" onClick={handleClose}>
+            <PillButton variant="ghost" className="w-full hover: uppercase tracking-widest" onClick={handleClose}>
               ยกเลิก
             </PillButton>
           </div>

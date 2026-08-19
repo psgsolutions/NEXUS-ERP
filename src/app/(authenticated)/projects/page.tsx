@@ -543,7 +543,7 @@ export default function ProjectsPage() {
       <div className="flex-1 overflow-y-auto custom-scrollbar">
       <div className="p-5 space-y-3 max-w-[1800px] mx-auto">
 
-      <div className="flex flex-col lg:flex-row items-start gap-4">
+      <div className="flex flex-col xl:flex-row items-start gap-4">
         <div className="flex-1 w-full space-y-10">
           
           <div className="space-y-3">
@@ -721,7 +721,7 @@ export default function ProjectsPage() {
         </div>
 
         {/* Right Sidebar Status */}
-        <div className="space-y-3">
+        <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
            <GlassCard className="p-4 border-white/10 bg-nexus-teal/5">
               <h4 className="text-sm font-medium text-nexus-teal uppercase tracking-widest mb-6">ดัชนีชี้วัดสุขภาพโครงการ</h4>
               <div className="space-y-3">

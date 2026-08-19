@@ -1,0 +1,35 @@
+<USER_REQUEST>
+## Error Type
+Runtime ReferenceError
+
+## Error Message
+loadingReceipts is not defined
+
+
+    at DashboardPage (src/app/(authenticated)/dashboard/page.tsx:217:23)
+
+## Code Frame
+  215 |                icon={<TrendingUp size={24} />} 
+  216 |                label="กำไรสุทธิ" 
+> 217 |                value={loadingReceipts || loadingPO ? "..." : `${profitMargin.toFixed(1)}%`} 
+      |                       ^
+  218 |                color="text-nexus-blue" 
+  219 |                neon="shadow-neon-blue" 
+  220 |                onClick={() => router.push('/finance')}
+
+Next.js version: 16.2.4 (Turbopack)
+
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-08-10T12:03:54+07:00.
+
+The user's current state is as follows:
+Other open documents:
+- d:\NEXUS-ERP\src\lib\sales-transaction.ts (LANGUAGE_TYPESCRIPT)
+- d:\NEXUS-ERP\src\types\database.ts (LANGUAGE_TYPESCRIPT)
+- d:\NEXUS-ERP\src\components\ui\DocumentFlowStepper.tsx (LANGUAGE_TSX)
+- d:\NEXUS-ERP\src\components\ui\Base.tsx (LANGUAGE_TSX)
+- d:\NEXUS-ERP\src\app\(authenticated)\finance\page.tsx (LANGUAGE_TSX)
+Running terminal commands:
+- npm run dev (in d:\NEXUS-ERP, running for 2h13m37s)
+</ADDITIONAL_METADATA>

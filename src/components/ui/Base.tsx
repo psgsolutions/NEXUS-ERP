@@ -1,8 +1,10 @@
+"use client";
+
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { X, Sparkles, ChevronLeft, ChevronDown, Plus } from "lucide-react";
+import { X, Sparkles, ChevronLeft, ChevronDown, Plus, Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 export { cn };
@@ -22,13 +24,13 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 export function PillButton({ className, variant = "primary", ...props }: ButtonProps) {
   const variants = {
-    primary: "bg-nexus-teal text-black font-bold shadow-neon-teal hover:bg-nexus-teal/90 active:scale-95",
-    save: "bg-emerald-500 text-black font-bold shadow-neon-emerald hover:bg-emerald-400 active:scale-95",
-    confirm: "bg-nexus-blue text-white font-bold shadow-neon-blue hover:bg-nexus-blue/90 active:scale-95",
-    warning: "bg-warning text-black font-bold shadow-neon-amber hover:bg-warning/90 active:scale-95",
-    danger: "bg-danger text-white font-bold shadow-neon-danger hover:bg-danger/90 active:scale-95",
-    glass: "bg-white/5 text-white font-bold border border-white/10 hover:bg-white/10 active:scale-95 backdrop-blur-md",
-    ghost: "bg-transparent text-white/60 font-bold hover:text-white hover:bg-white/5 active:scale-95"
+    primary: "bg-nexus-teal/15 text-nexus-teal border border-nexus-teal/20 font-bold shadow-[0_0_15px_rgba(0,255,209,0.1)] hover:bg-nexus-teal/30 hover:text-white active:scale-95",
+    save: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 font-bold shadow-[0_0_15px_rgba(16,185,129,0.1)] hover:bg-emerald-500/30 hover:text-white active:scale-95",
+    confirm: "bg-nexus-blue/15 text-nexus-blue border border-nexus-blue/20 font-bold shadow-[0_0_15px_rgba(0,195,255,0.1)] hover:bg-nexus-blue/30 hover:text-white active:scale-95",
+    warning: "bg-warning/15 text-warning border border-warning/20 font-bold shadow-[0_0_15px_rgba(255,193,7,0.1)] hover:bg-warning/30 hover:text-white active:scale-95",
+    danger: "bg-danger/15 text-danger border border-danger/20 font-bold shadow-[0_0_15px_rgba(244,67,54,0.1)] hover:bg-danger/30 hover:text-white active:scale-95",
+    glass: "bg-white/10 text-white font-bold border border-white/20 hover:bg-white/20 active:scale-95 backdrop-blur-md",
+    ghost: "bg-white/5 text-white/80 font-bold hover:text-white hover:bg-white/10 border border-transparent active:scale-95"
   };
 
   return (
@@ -47,7 +49,7 @@ export function PillInput({ className, ...props }: React.InputHTMLAttributes<HTM
   return (
     <input
       className={cn(
-        "h-9 px-5 rounded-full bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all placeholder:text-white/10 backdrop-blur-sm truncate w-full",
+        "h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all placeholder:text-white/10 backdrop-blur-sm truncate w-full",
         className
       )}
       {...props}
@@ -131,7 +133,7 @@ export function PillSelect({ className, children, value, onChange, ...props }: R
       <div
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "h-9 w-full px-5 pr-10 rounded-full bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold focus-within:border-nexus-teal/40 focus-within:bg-white/[0.06] transition-all cursor-pointer flex items-center justify-between group backdrop-blur-sm",
+          "h-9 w-full px-6 pr-10 rounded-full bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold focus-within:border-nexus-teal/40 focus-within:bg-white/[0.06] transition-all cursor-pointer flex items-center justify-between group backdrop-blur-sm",
           isOpen && "border-nexus-teal/40 bg-white/[0.06]",
           className
         )}
@@ -388,7 +390,7 @@ export function PillTabs({
 }) {
   return (
     <div className={cn(
-      "flex items-center gap-1 p-1 bg-white/[0.02] border border-white/5 rounded-full w-fit max-w-full overflow-x-auto no-scrollbar backdrop-blur-md shadow-inner flex-nowrap",
+      "flex items-center gap-2 p-0 bg-transparent w-full overflow-x-auto no-scrollbar flex-nowrap",
       className
     )}>
       {tabs.map((tab) => {
@@ -401,15 +403,15 @@ export function PillTabs({
             className={cn(
               "h-9 px-5 rounded-full text-[13px] font-black transition-all duration-300 flex items-center gap-2.5 uppercase tracking-wider whitespace-nowrap flex-shrink-0",
               activeTab === tab.id 
-                ? "bg-nexus-teal text-black shadow-[0_0_20px_rgba(0,255,209,0.3)] border border-white/10" 
-                : "text-white/30 hover:text-white/60 hover:bg-white/[0.03] border border-transparent"
+                ? "bg-nexus-teal/15 text-nexus-teal shadow-[0_0_10px_rgba(0,255,209,0.1)] border border-nexus-teal/30" 
+                : "bg-white/5 text-white/50 hover:text-white hover:bg-white/10 border border-transparent"
             )}
           >
             {tab.icon && React.cloneElement(tab.icon, { 
               size: 16, 
               className: cn(
                 "transition-colors duration-300",
-                activeTab === tab.id ? "text-black" : "text-white/20"
+                activeTab === tab.id ? "text-nexus-teal drop-shadow-sm" : "text-white/40"
               ) 
             })}
             <span>{th}</span>
@@ -425,12 +427,16 @@ export function NexusTable({
   headers, 
   children, 
   className,
-  minWidth = "min-w-[700px]"
+  minWidth = "min-w-[700px]",
+  itemCount,
+  totalCount
 }: { 
   headers: string[], 
   children: React.ReactNode, 
   className?: string,
-  minWidth?: string
+  minWidth?: string,
+  itemCount?: number,
+  totalCount?: number
 }) {
   return (
     <div className="w-full max-h-[600px] overflow-auto custom-scrollbar rounded-2xl border border-white/5 bg-black/[0.15] backdrop-blur-md relative">
@@ -439,9 +445,7 @@ export function NexusTable({
           <tr className="bg-[#0D0D0D]/95 border-b border-white/5 h-12 shadow-sm">
             {headers.map((header, i) => {
               const lowerHeader = header.toLowerCase();
-              const isDocumentId = header.includes("เลขที่") || header.includes("ใบ") || header.includes("อ้างอิง");
               const isRightAligned = 
-                !isDocumentId && (
                 header.includes("มูลค่า") || 
                 header.includes("คงเหลือ") || 
                 header.includes("เปอร์เซ็นต์") || 
@@ -459,11 +463,13 @@ export function NexusTable({
                 header.includes("จำนวน") ||
                 header.includes("ราคา") ||
                 header.includes("ยอด") ||
-                header.includes("รวม")
-                );
+                header.includes("รวม") ||
+                header.includes("รหัส") ||
+                lowerHeader.includes("sku") ||
+                lowerHeader.includes("code");
 
               const isCenterAligned = 
-                !isDocumentId && (
+                !isRightAligned && (
                 header.includes("สถานะ") || 
                 header.includes("วันที่") || 
                 header.includes("ประเภท") || 
@@ -493,6 +499,13 @@ export function NexusTable({
           {children}
         </tbody>
       </table>
+      {(itemCount !== undefined || totalCount !== undefined) && (
+        <div className="px-6 py-3 border-t border-white/5 flex items-center justify-between">
+          <p className="text-xs text-slate-400 font-medium">
+            แสดง 1-{itemCount || 0} จาก {totalCount || itemCount || 0} รายการ
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -516,13 +529,15 @@ export function NexusTableCell({
   className, 
   mono = false,
   wrap = false,
-  colSpan
+  colSpan,
+  align
 }: { 
   children: React.ReactNode, 
   className?: string, 
   mono?: boolean,
   wrap?: boolean,
-  colSpan?: number
+  colSpan?: number,
+  align?: "left" | "center" | "right"
 }) {
   return (
     <td 
@@ -531,6 +546,9 @@ export function NexusTableCell({
         "px-6 text-[14px] font-normal text-white/80 transition-colors duration-300",
         wrap ? "whitespace-normal break-words leading-relaxed py-3" : "whitespace-nowrap",
         mono && "font-mono text-nexus-teal tracking-normal font-black [font-style:normal!important]",
+        align === "center" && "text-center",
+        align === "right" && "text-right",
+        align === "left" && "text-left",
         className
       )}
     >
@@ -561,8 +579,10 @@ export function StrategicTable({
               <th 
                 key={i} 
                 className={cn(
-                  "px-8 py-2 text-[13px] font-medium text-white/50 tracking-wider text-left whitespace-nowrap",
-                  (header.includes("มูลค่า") || header.includes("สถานะ") || header.includes("ยอด") || header.includes("Amount")) && "text-right"
+                  "px-8 py-2 text-[13px] font-medium text-white/50 tracking-wider whitespace-nowrap",
+                  (header.includes("มูลค่า") || header.includes("ยอด") || header.toLowerCase().includes("amount") || header.includes("รหัส") || header.toLowerCase().includes("sku") || header.toLowerCase().includes("code")) ? "text-right" : 
+                  (header.includes("สถานะ") || header.includes("วันที่") || header.toLowerCase().includes("date") || header.toLowerCase().includes("status")) ? "text-center" : 
+                  "text-left"
                 )}
               >
                 {header}
@@ -657,23 +677,39 @@ export function MasterMetricCard({
   onClick?: () => void,
   compact?: boolean
 }) {
+  const isEmerald = color.includes("emerald");
+  const isCyan = color.includes("cyan");
+  const isAmber = color.includes("amber");
+  const isRose = color.includes("rose");
   const isTeal = color.includes("nexus-teal");
   const isBlue = color.includes("nexus-blue");
   const isDanger = color.includes("danger");
   const isWarning = color.includes("warning");
   
   const theme = {
-    border: isTeal ? "border-nexus-teal/10 hover:border-nexus-teal/30" :
+    border: isEmerald ? "border-emerald-500/10 hover:border-emerald-500/30" :
+            isCyan ? "border-cyan-500/10 hover:border-cyan-500/30" :
+            isAmber ? "border-amber-500/10 hover:border-amber-500/30" :
+            isRose ? "border-rose-500/10 hover:border-rose-500/30" :
+            isTeal ? "border-nexus-teal/10 hover:border-nexus-teal/30" :
             isBlue ? "border-nexus-blue/10 hover:border-nexus-blue/30" :
             isDanger ? "border-danger/10 hover:border-danger/30" :
             isWarning ? "border-warning/10 hover:border-warning/30" :
             "border-white/5 hover:border-white/20",
-    bgIcon: isTeal ? "bg-nexus-teal/10 text-nexus-teal" :
+    bgIcon: isEmerald ? "bg-emerald-500/10 text-emerald-400" :
+            isCyan ? "bg-cyan-500/10 text-cyan-400" :
+            isAmber ? "bg-amber-500/10 text-amber-400" :
+            isRose ? "bg-rose-500/10 text-rose-400" :
+            isTeal ? "bg-nexus-teal/10 text-nexus-teal" :
             isBlue ? "bg-nexus-blue/10 text-nexus-blue" :
             isDanger ? "bg-danger/10 text-danger" :
             isWarning ? "bg-warning/10 text-warning" :
             "bg-white/5 text-white/60",
-    shadow: isTeal ? "shadow-[0_0_20px_rgba(0,255,209,0.02)]" :
+    shadow: isEmerald ? "shadow-[0_0_20px_rgba(16,185,129,0.02)]" :
+            isCyan ? "shadow-[0_0_20px_rgba(6,182,212,0.02)]" :
+            isAmber ? "shadow-[0_0_20px_rgba(245,158,11,0.02)]" :
+            isRose ? "shadow-[0_0_20px_rgba(244,63,94,0.02)]" :
+            isTeal ? "shadow-[0_0_20px_rgba(0,255,209,0.02)]" :
             isBlue ? "shadow-[0_0_20px_rgba(0,102,255,0.02)]" :
             isDanger ? "shadow-[0_0_20px_rgba(255,77,79,0.02)]" :
             isWarning ? "shadow-[0_0_20px_rgba(255,197,61,0.02)]" :
@@ -697,11 +733,10 @@ export function MasterMetricCard({
         <div className={cn("absolute -right-4 -top-4 w-20 h-20 blur-[40px] opacity-0 group-hover:opacity-10 transition-all duration-1000 rounded-full", color.replace('text-', 'bg-'))} />
 
         <div className={cn(
-          "w-11 h-11 rounded-xl flex items-center justify-center border transition-all duration-500 flex-shrink-0",
-          theme.bgIcon,
-          theme.border.split(" ")[0]
+          "w-9 h-9 rounded-full flex items-center justify-center border border-white/10 bg-white/[0.04] group-hover:bg-white/[0.08] backdrop-blur-sm transition-all flex-shrink-0",
+          color.replace('text-', 'text-') // Keep original text color
         )}>
-          {React.cloneElement(icon as React.ReactElement, { size: 20 })}
+          {React.cloneElement(icon as React.ReactElement, { size: 18 })}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.15em] leading-none truncate group-hover:text-white/40 transition-colors">{label}</p>
@@ -735,12 +770,11 @@ export function MasterMetricCard({
       <div className="relative z-10 flex items-start justify-between">
         <div className="space-y-6">
           <div className={cn(
-            "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-700",
-            "bg-white/[0.03] border border-white/5 group-hover:border-current shadow-inner shadow-black/50",
-            color, neon
-          )}>
-            {React.cloneElement(icon as React.ReactElement, { size: 24 })}
-          </div>
+          "w-9 h-9 rounded-full flex items-center justify-center border border-white/10 bg-white/[0.04] group-hover:bg-white/[0.08] backdrop-blur-sm transition-all mb-6",
+          color.replace('text-', 'text-')
+        )}>
+          {React.cloneElement(icon as React.ReactElement, { size: 18 })}
+        </div>
           <div className="space-y-1">
              <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.2em] group-hover:text-white/40 transition-colors">{label}</p>
              <div className="text-3xl font-black text-white tracking-tighter flex items-baseline gap-1 mono-numbers">
@@ -793,7 +827,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-[160
           </div>
           <button 
             onClick={onClose} 
-            className="w-12 h-12 flex items-center justify-center rounded-full bg-nexus-teal text-black hover:bg-nexus-teal/90 transition-all shadow-neon-teal"
+            className="w-12 h-12 flex items-center justify-center rounded-full bg-nexus-teal/15 text-nexus-teal border border-nexus-teal/20 hover:bg-nexus-teal/30 hover:text-white transition-all shadow-[0_0_15px_rgba(0,255,209,0.1)]"
           >
             <X size={28} />
           </button>
@@ -863,7 +897,7 @@ export function Toast({ message, isVisible, onClose, type = "success" }: { messa
     )}>
       <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
       <span className="text-[14px] font-black uppercase tracking-widest">{message}</span>
-      <button onClick={onClose} className="ml-4 p-1 bg-nexus-teal text-black hover:bg-nexus-teal/80 rounded-full transition-all">
+      <button onClick={onClose} className="ml-4 p-1 bg-nexus-teal/15 text-nexus-teal border border-nexus-teal/20 hover:bg-nexus-teal/30 hover:text-white rounded-full transition-all">
         <X size={14} />
       </button>
     </div>,

@@ -15,22 +15,24 @@ import {
 import { GlassCard, PillButton, PillInput, MasterMetricCard, cn, NexusSearchInput, NexusTable, NexusTableRow, NexusTableCell } from "@/components/ui/Base";
 import { SecurityGuard } from "@/components/shared/SecurityGuard";
 
-export default function UsersPage() {
-  return (
-    <div className="p-5 space-y-3 animate-in fade-in duration-700 max-w-[1600px] mx-auto">
-      
-      {/* Header Section */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <p className="tactical-label !text-nexus-teal drop-shadow-neon">Team & Security Access</p>
-          <h1 className="text-3xl font-bold text-white tracking-tight">จัดการผู้ใช้งานและสิทธิ์</h1>
-        </div>
-        <PillButton className="px-6 shadow-neon-teal">
-          <UserPlus size={18} />
-          เพิ่มผู้ใช้งานใหม่
-        </PillButton>
-      </div>
+import NexusPageLayout from "@/components/layout/NexusPageLayout";
 
+export default function UsersPage() {
+  const headerContent = (
+    <div className="flex items-center justify-between w-full">
+      <div className="space-y-1">
+        <p className="tactical-label !text-nexus-teal drop-shadow-neon mb-0">Team & Security Access</p>
+        <h1 className="text-xl font-bold text-white tracking-tight uppercase">จัดการผู้ใช้งานและสิทธิ์ (Users & Roles)</h1>
+      </div>
+      <PillButton className="px-6 shadow-neon-teal bg-nexus-teal text-black">
+        <UserPlus size={18} className="mr-2" />
+        เพิ่มผู้ใช้งานใหม่
+      </PillButton>
+    </div>
+  );
+
+  const leftContent = (
+    <div className="space-y-6 pb-10">
       {/* Internal Navigation Tabs (Settings context) */}
       <div className="flex gap-2 p-1 bg-white/5 rounded-full w-fit border border-white/5 shadow-inner h-11">
          <button className="flex items-center gap-2 px-6 h-full rounded-full text-sm font-medium uppercase bg-nexus-teal text-black shadow-neon-teal">
@@ -60,41 +62,72 @@ export default function UsersPage() {
            </div>
         </div>
         
-        <NexusTable 
-          headers={["ผู้ใช้งาน", "อีเมล", "บทบาท", "แผนก", "สถานะ", ""]}
-          minWidth="min-w-[900px]"
-        >
-           <UserRow 
-              name="Admin Nexus" 
-              email="admin@nexus.os" 
-              role="ADMIN" 
-              dept="Management" 
-              status="Active" 
-           />
-           <UserRow 
-              name="Nanon S." 
-              email="nanon@nexus.os" 
-              role="SUPERADMIN" 
-              dept="Intelligence" 
-              status="Active" 
-           />
-           <UserRow 
-              name="Engineer Smith" 
-              email="smith@nexus.os" 
-              role="ENGINEER" 
-              dept="Infrastructure" 
-              status="Active" 
-           />
-           <UserRow 
-              name="Sales Jane" 
-              email="jane@nexus.os" 
-              role="SALES" 
-              dept="Business" 
-              status="Suspended" 
-           />
-        </NexusTable>
+        <GlassCard className="overflow-hidden border-white/5 bg-black/20">
+          <NexusTable 
+            headers={["ผู้ใช้งาน", "อีเมล", "บทบาท", "แผนก", "สถานะ", ""]}
+            minWidth="min-w-[900px]"
+          >
+             <UserRow 
+                name="Admin Nexus" 
+                email="admin@nexus.os" 
+                role="ADMIN" 
+                dept="Management" 
+                status="Active" 
+             />
+             <UserRow 
+                name="Nanon S." 
+                email="nanon@nexus.os" 
+                role="SUPERADMIN" 
+                dept="Intelligence" 
+                status="Active" 
+             />
+             <UserRow 
+                name="Engineer Smith" 
+                email="smith@nexus.os" 
+                role="ENGINEER" 
+                dept="Infrastructure" 
+                status="Active" 
+             />
+             <UserRow 
+                name="Sales Jane" 
+                email="jane@nexus.os" 
+                role="SALES" 
+                dept="Business" 
+                status="Suspended" 
+             />
+          </NexusTable>
+        </GlassCard>
       </div>
     </div>
+  );
+
+  const rightSidebar = (
+    <GlassCard className="p-6 space-y-6 sticky top-0 bg-[#111111] shadow-2xl border-white/5 rounded-3xl overflow-hidden">
+      <div className="space-y-1 relative z-10 border-b border-white/5 pb-4">
+        <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">Security Overview</p>
+        <h5 className="text-sm font-black text-white uppercase tracking-tight">System Access Guard</h5>
+      </div>
+      
+      <div className="space-y-4 relative z-10">
+         <div className="flex justify-between items-center pb-4 border-b border-white/5">
+            <span className="text-[11px] text-white/60 font-black uppercase tracking-widest">Total Active Users</span>
+            <span className="text-[14px] font-mono font-bold text-nexus-teal drop-shadow-neon">3</span>
+         </div>
+         <div className="flex justify-between items-center pb-4 border-b border-white/5">
+            <span className="text-[11px] text-white/60 font-black uppercase tracking-widest">Suspended Accounts</span>
+            <span className="text-[14px] font-mono font-bold text-danger">1</span>
+         </div>
+      </div>
+      <div className="absolute bottom-0 right-0 w-48 h-48 bg-nexus-teal/10 blur-[60px] translate-x-1/4 translate-y-1/4 rounded-full pointer-events-none" />
+    </GlassCard>
+  );
+
+  return (
+    <NexusPageLayout
+      header={headerContent}
+      leftContent={leftContent}
+      rightSidebar={rightSidebar}
+    />
   );
 }
 

@@ -1,0 +1,122 @@
+Created At: 2026-08-10T04:55:54Z
+Completed At: 2026-08-10T04:55:55Z
+
+				The command completed successfully.
+				Output:
+				<truncated 87 lines>
+               color="text-nexus-teal" 
+               neon="shadow-neon-teal" 
+               onClick={() => router.push('/sales')}
+-              title="ยอดขายรวมสุทธิในเดือนปัจจุบัน"
++              title="ยอดรับชำระเงินสุทธิทั้งหมด"
+             />
+           </div>
+           <div className="w-full">
+             <MasterMetricCard 
+               icon={<TrendingUp size={24} />} 
+               label="กำไรสุทธิ" 
+-              value="24.8%" 
++              value={loadingReceipts || loadingPO ? "..." : `${profitMargin.toFixed(1)}%`} 
+               color="text-nexus-blue" 
+               neon="shadow-neon-blue" 
+               onClick={() => router.push('/finance')}
+-              title="เปอร์เซ็นต์กำไรสุทธิหลังหักค่าใช้จ่าย"
++              title="เปอร์เซ็นต์กำไรสุทธิหลังหักรายจ่าย(PO)"
+             />
+           </div>
+           <div className="w-full">
+             <MasterMetricCard 
+-              icon={<FolderKanban size={24} />} 
+-              label="โครงการ" 
+-              value="12 งาน" 
++              icon={<UsersRound size={24} />} 
++              label="ลูกค้าทั้งหมด" 
++              value={loadingCustomers ? "..." : `${totalCustomers} ราย`} 
+               color="text-white" 
+-              onClick={() => router.push('/projects')}
+-              title="จำนวนโครงการที่กำลังดำเนินการอยู่"
++              onClick={() => router.push('/customers')}
++              title="จำนวนฐานลูกค้าทั้งหมดในระบบ"
+             />
+           </div>
+           <div className="w-full">
+             <MasterMetricCard 
+               icon={<AlertTriangle size={24} />} 
+-              label="จุดวิกฤต" 
+-              value="3 จุด" 
++              label="ค้างชำระ" 
++              value={loadingInvoices ? "..." : `${criticalCount} บิล`} 
+               color="text-danger" 
+               onClick={() => setViewMode('quantum')}
+-              title="รายการที่ต้องได้รับการแก้ไขทันที"
++              title="จำนวนใบแจ้งหนี้ที่ยังไม่ได้รับชำระ"
+             />
+           </div>
+         </div>
+@@ -246,10 +278,10 @@ export default function DashboardPage() {
+         {/* QUICK ACTIONS */}
+         <div className="grid grid-cols-4 gap-3 xl:flex xl:flex-nowrap xl:w-auto">
+            <div className="w-full xl:w-[110px]">
+-             <QuickActionCard icon={<BadgeDollarSign size={16} />} label="เสนอราคา" color="bg-nexus-teal" link="/sales?action=new-quotation" title="สร้างเอกสารใบเสนอราคาใหม่" />
++             <QuickActionCard icon={<BadgeDollarSign size={16} />} label="เสนอราคา" color="bg-nexus-teal/80" link="/sales?action=new-quotation" title="สร้างเอกสารใบเสนอราคาใหม่" />
+            </div>
+            <div className="w-full xl:w-[110px]">
+-             <QuickActionCard icon={<Warehouse size={16} />} label="คลังสินค้า" color="bg-nexus-blue" link="/inventory" title="ตรวจสอบและบริหารพัสดุ" />
++             <QuickActionCard icon={<Warehouse size={16} />} label="คลังสินค้า" color="bg-nexus-blue/80" link="/inventory" title="ตรวจสอบและบริหารพัสดุ" />
+            </div>
+            <div className="w-full xl:w-[110px]">
+              <QuickActionCard icon={<UsersRound size={16} />} label="ลูกค้า" color="bg-white/5" link="/sales" title="ฐานข้อมูลและประวัติลูกค้า" />
+@@ -274,14 +306,14 @@ export default function DashboardPage() {
+              <div className="flex-1">
+                 <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-[14px] font-medium text-nexus-teal uppercase tracking-[0.2em]">การวิเคราะห์สถานการณ์โดย AI</h3>
+-                   <div className="w-1 h-1 rounded-full bg-nexus-teal animate-ping" />
++                   <div className="w-1 h-1 rounded-full bg-nexus-teal/80 animate-ping" />
+                 </div>
+                 <p className="text-base font-bold text-white leading-relaxed">
+                    สต็อก Aruba AP-505 เหลือเพียง 2 ชิ้น ในขณะที่โปรเจกต์ <span className="text-nexus-teal">PRJ-26-001</span> รอเบิก 5 ชิ้น 
+                    <span className="text-white/40"> • แนะนำให้เปิด PO จัดซื้อด่วนทันที</span>
+                 </p>
+              </div>
+-             <PillButton variant="glass" className="hidden md:flex border-nexus-teal/20 text-nexus-teal px-6 uppercase text-[10px]">ดำเนินการทันที</PillButton>
++             <PillButton  className="hidden md:flex border-nexus-teal/20 text-nexus-teal px-6 uppercase text-[10px]">ดำเนินการทันที</PillButton>
+           </div>
+ 
+           {/* Revenue Intelligence Graph */}
+@@ -296,7 +328,7 @@ export default function DashboardPage() {
+                </div>
+                <div className="flex gap-5">
+                   <div className="flex items-center gap-3">
+-                     <div className="w-2.5 h-2.5 rounded-full bg-nexus-teal shadow-neon-teal" />
++                     <div className="w-2.5 h-2.5 rounded-full bg-nexus-teal/80 shadow-neon-teal" />
+                      <span className="text-[14px] font-medium text-white/40 uppercase tracking-widest">เกิดขึ้นจริง</span>
+                   </div>
+                   <div className="flex items-center gap-3">
+@@ -373,7 +405,7 @@ export default function DashboardPage() {
+                    <StockAlertRow item="Cat6 Cable 305m" stock={5} min={20} trend="down" />
+                    <StockAlertRow item="Cisco C9200L" stock={1} min={2} trend="stable" />
+                 </div>
+-                <PillButton variant="glass" className="w-full mt-8 border-white/5 hover: uppercase text-[10px] tracking-widest">
++                <PillButton  className="w-full mt-8 border-white/5 hover: uppercase text-[10px] tracking-widest">
+                    ดูสต็อกทั้งหมด
+                    <ChevronRight size={14} className="ml-2" />
+                 </PillButton>
+@@ -390,7 +422,7 @@ export default function DashboardPage() {
+                     <Bell size={16} className="text-warning flex-shrink-0 animate-pulse" />
+                     <span className="truncate">บันทึกกิจกรรมและความปลอดภัย</span>
+                  </h3>
+-                 <div className="w-2 h-2 rounded-full bg-nexus-teal shadow-neon-teal flex-shrink-0" />
++                 <div className="w-2 h-2 rounded-full bg-nexus-teal/80 shadow-neon-teal flex-shrink-0" />
+               </div>
+               
+               <div className="flex-1 p-0 h-[420px] overflow-y-auto custom-scrollbar">
+@@ -463,7 +495,7 @@ function ProjectProgressRow({ name, progress, id, status, isRisk = false }: { na
+        </div>
+        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+           <div 
+-            className={cn("h-full transition-all duration-1000", isRisk ? "bg-danger" : "bg-nexus-teal shadow-neon-teal")} 
++            className={cn("h-full transition-all duration-1000", isRisk ? "bg-danger/80" : "bg-nexus-teal/80 shadow-neon-teal")} 
+             style={{ width: `${progress}%` }} 
+           />
+        </div>
+

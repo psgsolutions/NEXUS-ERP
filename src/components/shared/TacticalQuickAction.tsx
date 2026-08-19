@@ -100,10 +100,10 @@ export function TacticalQuickAction() {
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "w-14 h-14 rounded-2xl flex items-center justify-center text-black transition-all shadow-2xl active:scale-90 group",
+          "w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-2xl active:scale-90 group backdrop-blur-xl border",
           isOpen 
-            ? "bg-white rotate-90" 
-            : "bg-nexus-teal shadow-neon-teal hover:scale-110"
+            ? "bg-white/10 text-white border-white/20 rotate-90 hover:bg-white/20" 
+            : "bg-nexus-teal/20 border-nexus-teal/30 text-nexus-teal shadow-neon-teal hover:scale-110 hover:bg-nexus-teal/30"
         )}
       >
         {isOpen ? <X size={28} /> : <Plus size={28} className="group-hover:rotate-90 transition-transform duration-500" />}

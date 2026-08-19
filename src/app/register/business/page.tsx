@@ -83,7 +83,7 @@ export default function RegisterBusinessPage() {
           {/* Progress Bar */}
           {step < 3 && (
             <div className="w-full h-1 bg-white/5 rounded-full mb-8 overflow-hidden flex">
-              <div className="h-full bg-nexus-teal transition-all duration-500" style={{ width: step === 1 ? '50%' : '100%' }} />
+              <div className="h-full bg-nexus-teal transition-all duration-500 opacity-50" style={{ width: step === 1 ? '50%' : '100%' }} />
             </div>
           )}
 

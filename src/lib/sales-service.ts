@@ -5,9 +5,11 @@ import {
   runTransaction, 
   serverTimestamp,
   getDoc,
-  setDoc
+  setDoc,
+  updateDoc
 } from "firebase/firestore";
 import { nexusSequenceEngine } from "./sequence-engine";
+import { InventoryService } from "@/services/inventoryService";
 
 /**
  * [SALES-STRATEGY-V2.0]
@@ -183,6 +185,37 @@ export async function convertToSalesOrder(quoteId: string, companyId: string) {
   });
 
   return soId;
+}
+
+export async function approveSalesOrder(soId: string, companyId: string, userId: string = "SYSTEM") {
+  const soRef = doc(db, `companies/${companyId}/sales_orders`, soId);
+  const soSnap = await getDoc(soRef);
+
+  if (!soSnap.exists()) {
+    throw new Error(`ไม่พบใบสั่งขายเลขที่ ${soId}`);
+  }
+
+  const soData = soSnap.data();
+  if (soData.status === "APPROVED") {
+    throw new Error(`ใบสั่งขาย ${soId} ถูกอนุมัติไปแล้ว`);
+  }
+
+  const items = soData.items || [];
+  
+  // 1. Process Stock Deduction (Hard Reserve / Deduct) via InventoryService
+  // Note: InventoryService handles its own transaction for atomicity over stock updates
+  if (items.length > 0) {
+    await InventoryService.processSalesOrderStock(companyId, items, soId, userId);
+  }
+
+  // 2. Update Sales Order Status to APPROVED
+  await updateDoc(soRef, {
+    status: "APPROVED",
+    approvedAt: new Date().toISOString(),
+    approvedBy: userId
+  });
+
+  return true;
 }
 
 /**

@@ -94,15 +94,15 @@ export function PayrollModal({ isOpen, onClose, onConfirm }: PayrollModalProps) 
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="grid grid-cols-2 gap-8 p-8 rounded-2xl bg-white/[0.02] border border-white/5">
                    <div className="space-y-3">
-                      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">งวดการจ่าย</label>
-                      <PillSelect value={period} onChange={(e) => setPeriod(e.target.value)} className="w-full px-6">
+                      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">งวดการจ่าย (Payment Period)</label>
+                      <PillSelect value={period} onChange={(e) => setPeriod(e.target.value)} className="w-full h-9 px-6 rounded-full">
                         <option>เมษายน 2569</option>
                         <option>พฤษภาคม 2569</option>
                       </PillSelect>
                    </div>
                    <div className="space-y-3">
-                      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">จำนวนพนักงานที่ร่วมรายการ</label>
-                      <div className="h-11 px-6 rounded-2xl bg-white/5 border border-white/10 flex items-center text-sm font-bold text-white">
+                      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">จำนวนพนักงานที่ร่วมรายการ (Total Employees)</label>
+                      <div className="h-9 px-6 rounded-full bg-white/5 border border-white/10 flex items-center text-sm font-bold text-white">
                          {payrollData.employeeCount} คน (ทั้งหมด)
                       </div>
                    </div>

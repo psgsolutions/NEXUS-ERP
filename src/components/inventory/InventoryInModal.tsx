@@ -306,13 +306,13 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                              </div>
                              <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
                              <div className="flex-1 space-y-4">
-                                <Field label="รหัสสินค้า">
+                                <Field label="รหัสสินค้า (Product SKU)">
                                    <div className="flex gap-2 relative group">
                                       <PillInput 
                                         value={formData.sku} 
                                         readOnly 
                                         disabled
-                                        className="flex-1 bg-white/5 border-white/5 text-nexus-teal/70 font-black cursor-not-allowed opacity-70" 
+                                        className="flex-1 h-9 px-6 rounded-full bg-white/5 border-white/5 text-nexus-teal/70 font-black cursor-not-allowed opacity-70 font-mono text-right" 
                                       />
                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-50">
                                          <ShieldCheck size={14} className="text-nexus-teal" />
@@ -320,18 +320,18 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                                       </div>
                                    </div>
                                 </Field>
-                                <Field label="บาร์โค้ด">
-                                   <PillInput value={formData.barcode} onChange={(e) => setFormData({...formData, barcode: e.target.value})} className="w-full" placeholder="Scan barcode..." />
+                                <Field label="บาร์โค้ด (Barcode)">
+                                   <PillInput value={formData.barcode} onChange={(e) => setFormData({...formData, barcode: e.target.value})} className="w-full h-9 px-6 rounded-full font-mono text-right" placeholder="Scan barcode..." />
                                 </Field>
                              </div>
                           </div>
                           
-                          <Field label="ชื่อสินค้า">
-                             <PillInput value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full" placeholder="ระบุชื่อพัสดุใหม่..." />
+                          <Field label="ชื่อสินค้า * (Product Name)">
+                             <PillInput value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full h-9 px-6 rounded-full" placeholder="ระบุชื่อพัสดุใหม่..." />
                           </Field>
                           
                           <div className="grid grid-cols-2 gap-4">
-                             <Field label="หมวดหมู่">
+                             <Field label="หมวดหมู่ * (Category)">
                                 <div className="relative">
                                   <div className="relative">
                                     <PillInput
@@ -351,7 +351,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                                          }, 200);
                                       }}
                                       placeholder="เลือกหรือพิมพ์ใหม่..."
-                                      className="w-full pr-10"
+                                      className="w-full h-9 pl-6 pr-10 rounded-full"
                                     />
                                     <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
                                   </div>
@@ -388,17 +388,17 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                                   )}
                                 </div>
                              </Field>
-                             <Field label="คลังสินค้า">
-                                <PillSelect value={formData.warehouseId} onChange={(e) => setFormData({...formData, warehouseId: e.target.value, rackLocation: ""})} className="w-full font-bold">
+                             <Field label="คลังสินค้า (Warehouse)">
+                                <PillSelect value={formData.warehouseId} onChange={(e) => setFormData({...formData, warehouseId: e.target.value, rackLocation: ""})} className="w-full h-9 px-6 rounded-full font-bold">
                                    {warehouses?.map(wh => <option key={wh.id} value={wh.id}>{wh.name}</option>)}
                                 </PillSelect>
                              </Field>
                           </div>
                           
-                          <Field label="พิกัดจัดเก็บ">
+                          <Field label="พิกัดจัดเก็บ (Rack Location)">
                              <div className="flex gap-2">
-                                <PillInput value={formData.rackLocation} onChange={(e) => setFormData({...formData, rackLocation: e.target.value})} placeholder="สแกนบาร์โค้ดพิกัด หรือ เลือกจากแผนผัง 3D..." className="flex-1 font-mono font-bold text-nexus-teal" />
-                                <PillButton variant="glass" onClick={() => setShow3DPicker(true)} className="px-6 hover:text-nexus-teal hover:border-nexus-teal/30 flex items-center gap-2">
+                                <PillInput value={formData.rackLocation} onChange={(e) => setFormData({...formData, rackLocation: e.target.value})} placeholder="สแกนบาร์โค้ดพิกัด หรือ เลือกจากแผนผัง 3D..." className="flex-1 h-9 px-6 rounded-full font-mono font-bold text-nexus-teal" />
+                                <PillButton variant="glass" onClick={() => setShow3DPicker(true)} className="px-6 h-9 rounded-full hover:text-nexus-teal hover:border-nexus-teal/30 flex items-center gap-2">
                                    <MapPin size={16} className="text-nexus-teal" />
                                    <span>เลือกพิกัด 3D</span>
                                 </PillButton>
@@ -408,16 +408,16 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                            <div className="pt-2 border-t border-white/5 space-y-4 mt-2">
                               <h6 className="text-[10px] font-black uppercase text-nexus-teal tracking-widest">หน่วยและขนาดบรรจุภัณฑ์ (UOM & Packaging)</h6>
                               <div className="grid grid-cols-3 gap-4 bg-black/40 p-4 rounded-xl border border-white/5 items-end">
-                                 <Field label="หน่วยจัดเก็บ">
-                                    <PillSelect value={formData.packageUnit} onChange={(e) => setFormData({...formData, packageUnit: e.target.value})} className="w-full text-center">
+                                 <Field label="หน่วยจัดเก็บ (Package Unit)">
+                                    <PillSelect value={formData.packageUnit} onChange={(e) => setFormData({...formData, packageUnit: e.target.value})} className="w-full h-9 px-6 rounded-full text-center">
                                        {uomOptions.map(uom => <option key={uom} value={uom}>{uom}</option>)}
                                     </PillSelect>
                                  </Field>
-                                 <Field label={`1 ${formData.packageUnit?.split(' ')[0] || "หน่วยใหญ่"} บรรจุ`}>
+                                 <Field label={`1 ${formData.packageUnit?.split(' ')[0] || "หน่วยใหญ่"} บรรจุ (Conversion Rate)`}>
                                     <StepperInput value={formData.conversionRate} onChange={(val) => setFormData({...formData, conversionRate: val})} className="text-center text-nexus-teal font-black" />
                                  </Field>
-                                 <Field label="หน่วยขาย">
-                                    <PillSelect value={formData.baseUnit} onChange={(e) => setFormData({...formData, baseUnit: e.target.value})} className="w-full text-center">
+                                 <Field label="หน่วยขาย (Base Unit)">
+                                    <PillSelect value={formData.baseUnit} onChange={(e) => setFormData({...formData, baseUnit: e.target.value})} className="w-full h-9 px-6 rounded-full text-center">
                                        {uomOptions.map(uom => <option key={uom} value={uom}>{uom}</option>)}
                                     </PillSelect>
                                  </Field>
@@ -433,14 +433,14 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                        </div>
                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-6">
                           <div className="grid grid-cols-2 gap-4">
-                             <Field label="ผู้จำหน่าย">
-                                <PillSelect value={formData.supplierId} onChange={(e) => setFormData({...formData, supplierId: e.target.value})} className="w-full">
+                             <Field label="ผู้จำหน่าย (Supplier)">
+                                <PillSelect value={formData.supplierId} onChange={(e) => setFormData({...formData, supplierId: e.target.value})} className="w-full h-9 px-6 rounded-full">
                                    {suppliers?.map(s => (
                                       <option key={s.id} value={s.id}>{s.name}</option>
                                    ))}
                                 </PillSelect>
                              </Field>
-                             <Field label={`จำนวนรับเข้า (Qty in ${formData.packageUnit})`}>
+                             <Field label={`จำนวนรับเข้า * (Receive Qty)`}>
                                 <div className="space-y-1.5">
                                    <StepperInput value={formData.qty} onChange={(val) => setFormData({...formData, qty: val})} className="font-black text-nexus-teal" />
                                    {formData.conversionRate > 1 && (
@@ -453,10 +453,10 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                           </div>
                           
                           <div className="grid grid-cols-2 gap-4 bg-black/40 p-4 rounded-xl border border-white/5">
-                             <Field label="ราคาต้นทุน">
+                             <Field label="ราคาต้นทุน * (Cost)">
                                 <StepperInput value={formData.cost} onChange={handleCostChange} className="text-danger font-black" />
                              </Field>
-                             <Field label="ราคาขาย">
+                             <Field label="ราคาขาย * (Selling Price)">
                                 <div className="space-y-1.5">
                                    <StepperInput value={formData.price} onChange={handlePriceChange} className="text-nexus-teal font-black" />
                                    <div className="flex items-center gap-1.5 text-[9px] font-black text-white/30 uppercase tracking-widest pl-1">
@@ -472,7 +472,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                              </div>
                           </div>
 
-                          <Field label="Serial Numbers (แยกด้วยบรรทัด)">
+                          <Field label="หมายเลขซีเรียล (Serial Numbers)">
                              <textarea value={formData.sns} onChange={(e) => setFormData({...formData, sns: e.target.value})} placeholder="Scan or type serial numbers here..." className="w-full h-20 rounded-2xl bg-black/40 border border-white/10 text-white text-[12px] font-mono p-4 custom-scrollbar" />
                           </Field>
                        </div>
@@ -482,10 +482,10 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                  <div className="space-y-10">
                     <div className="flex items-end gap-4 bg-white/[0.02] p-8 rounded-2xl border border-white/5">
                        <div className="flex-1">
-                          <Field label="ค้นหาเลขที่คำสั่งซื้อ *">
+                          <Field label="ค้นหาเลขที่คำสั่งซื้อ * (Search PO)">
                              <div className="relative">
                                 <FileText className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
-                                <PillInput value={formData.poRef} onChange={(e) => setFormData({...formData, poRef: e.target.value})} placeholder="ระบุ PO-XXXXX..." className="w-full pl-12" />
+                                <PillInput value={formData.poRef} onChange={(e) => setFormData({...formData, poRef: e.target.value})} placeholder="ระบุ PO-XXXXX..." className="w-full h-9 pl-12 rounded-full font-mono" />
                              </div>
                           </Field>
                        </div>
@@ -517,11 +517,11 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                                   </div>
                                   <div className="w-24">
                                      <p className="text-[9px] font-black text-white/20 uppercase mb-1">รับจริง</p>
-                                     <PillInput type="number" value={item.qtyReceived} onChange={(e) => updatePoItem(item.id, "qtyReceived", Number(e.target.value))} className="w-full text-center h-9 font-black text-nexus-teal" />
+                                     <PillInput type="number" value={item.qtyReceived} onChange={(e) => updatePoItem(item.id, "qtyReceived", Number(e.target.value))} className="w-full h-9 px-4 rounded-full text-center font-black text-nexus-teal font-mono" />
                                   </div>
                                   <div className="w-32">
                                      <p className="text-[9px] font-black text-white/20 uppercase mb-1">ต้นทุน/หน่วย</p>
-                                     <PillInput type="number" value={item.cost} onChange={(e) => updatePoItem(item.id, "cost", Number(e.target.value))} className="w-full text-center h-9 font-black" />
+                                     <PillInput type="number" value={item.cost} onChange={(e) => updatePoItem(item.id, "cost", Number(e.target.value))} className="w-full h-9 px-4 rounded-full text-center font-black font-mono text-right" />
                                   </div>
                                </div>
                              ))}
@@ -610,7 +610,7 @@ function StepperInput({ value, onChange, className = "" }: { value: number, onCh
         value={value === 0 ? "" : value} 
         onChange={(e) => onChange(Number(e.target.value))} 
         onFocus={(e) => e.target.select()}
-        className={cn("w-full pr-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", className)} 
+        className={cn("w-full h-9 px-6 rounded-full pr-8 font-mono text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", className)} 
       />
       <div className="absolute right-1.5 top-1.5 bottom-1.5 flex flex-col justify-between w-5 rounded-md overflow-hidden bg-white/[0.03] border border-white/5 opacity-50 group-hover:opacity-100 transition-opacity">
         <button 

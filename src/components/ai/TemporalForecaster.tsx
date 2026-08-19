@@ -66,7 +66,7 @@ export function TemporalForecaster() {
           </div>
 
           <div className="p-10 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-6 relative overflow-hidden">
-             <div className="absolute top-0 left-0 w-1 h-full bg-nexus-teal shadow-neon-teal" />
+             <div className="absolute top-0 left-0 w-1 h-full bg-nexus-teal shadow-neon-teal opacity-50" />
              <div className="flex items-center gap-3">
                 <Sparkles size={18} className="text-nexus-teal" />
                 <h5 className="text-[11px] font-black text-nexus-teal uppercase tracking-widest">Temporal Intelligence Insight</h5>

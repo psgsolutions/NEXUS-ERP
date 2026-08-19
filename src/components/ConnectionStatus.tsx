@@ -3,7 +3,7 @@
 import { useConnection } from '@/context/ConnectionContext';
 import { useEffect, useState } from 'react';
 
-export function ConnectionStatus() {
+export function ConnectionStatus({ className = '' }: { className?: string }) {
   const { isConnected, isLoading } = useConnection();
   const isOnline = isConnected;
   const errorMsg = null;
@@ -48,7 +48,7 @@ export function ConnectionStatus() {
   }
 
   return (
-    <div className="fixed bottom-10 right-[200px] z-50 flex items-center gap-3 rounded-full border border-white/10 bg-[#0a0a0c]/80 px-4 py-2 backdrop-blur-md shadow-lg">
+    <div className={`flex items-center gap-3 rounded-full border border-white/10 bg-[#0a0a0c]/80 px-4 py-2 backdrop-blur-md shadow-lg ${className}`}>
       <div className="relative flex h-3 w-3 items-center justify-center">
         <div className={`absolute inline-flex h-full w-full animate-ping rounded-full ${pulseColor} opacity-75`}></div>
         <div className={`relative inline-flex h-2 w-2 rounded-full ${bgColor}`}></div>

@@ -48,8 +48,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(user);
       
       if (user) {
+        // [1] Optimistic UI: Set defaults based on LocalStorage & Email to unblock loading immediately
+        const cachedCompanyId = localStorage.getItem("selectedCompanyId") || "COM-NEXUS-01";
+        let defaultRole = "ADMIN";
+        if (user.uid === "fgIglIug2dh4aNMMeachaugIyFM2" || user.email === "sadmin@admin.com") {
+          defaultRole = "SUPERADMIN";
+        }
+        
+        setCompanyId(cachedCompanyId);
+        setRole(defaultRole);
+        setLoading(false); // <--- ปลดล็อกหน้า Loading ทันที ไม่ต้องรอ Firestore
+
+        // [2] Background Fetch: ไปดึงข้อมูล Profile จริงทีหลัง
         try {
-          // [FIX] เพิ่ม Timeout เพื่อป้องกันระบบค้างตอนโหลดครั้งแรกผ่าน network ที่ช้า
           const fetchWithTimeout = async () => {
              return new Promise((resolve, reject) => {
                const timer = setTimeout(() => reject(new Error('TIMEOUT')), 15000);
@@ -72,34 +83,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             data = userDoc.data();
           }
 
-          let finalCompanyId = data.companyId || localStorage.getItem("selectedCompanyId") || "COM-NEXUS-01";
-          let finalRole = data.role?.toUpperCase() || "ADMIN";
+          const finalCompanyId = data.companyId || cachedCompanyId;
+          let finalRole = data.role?.toUpperCase() || defaultRole;
 
-          // Force SUPERADMIN role for specific admin account
           if (user.uid === "fgIglIug2dh4aNMMeachaugIyFM2" || user.email === "sadmin@admin.com") {
             finalRole = "SUPERADMIN";
           }
 
+          // Update state with the real data from DB if it differs
           setCompanyId(finalCompanyId);
           setRole(finalRole);
         } catch (error: any) {
           console.warn("Network timeout or error fetching user profile:", error?.message || error);
-          let finalCompanyId = localStorage.getItem("selectedCompanyId") || "COM-NEXUS-01";
-          let finalRole = "ADMIN";
-          
-          if (user.uid === "fgIglIug2dh4aNMMeachaugIyFM2" || user.email === "sadmin@admin.com") {
-            finalRole = "SUPERADMIN";
-          }
-          
-          setCompanyId(finalCompanyId);
-          setRole(finalRole);
+          // Keep optimistic defaults
         }
       } else {
         setCompanyId(null);
         setRole(null);
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
     return () => unsubscribe();

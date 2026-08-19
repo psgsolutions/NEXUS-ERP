@@ -62,11 +62,11 @@ export const AccountingEngine = {
     };
 
     if (batch) {
-      const docRef = doc(collection(db, "journal_entries"));
+      const docRef = doc(collection(db, `companies/${data.companyId}/journal_entries`));
       batch.set(docRef, journalEntry);
       return docRef;
     }
-    return await addDoc(collection(db, "journal_entries"), journalEntry);
+    return await addDoc(collection(db, `companies/${data.companyId}/journal_entries`), journalEntry);
   },
 
   /**
@@ -124,11 +124,11 @@ export const AccountingEngine = {
     };
 
     if (batch) {
-      const docRef = doc(collection(db, "journal_entries"));
+      const docRef = doc(collection(db, `companies/${data.companyId}/journal_entries`));
       batch.set(docRef, journalEntry);
       return docRef;
     }
-    return await addDoc(collection(db, "journal_entries"), journalEntry);
+    return await addDoc(collection(db, `companies/${data.companyId}/journal_entries`), journalEntry);
   },
 
   /**
@@ -183,11 +183,11 @@ export const AccountingEngine = {
     };
 
     if (batch) {
-      const docRef = doc(collection(db, "journal_entries"));
+      const docRef = doc(collection(db, `companies/${data.companyId}/journal_entries`));
       batch.set(docRef, journalEntry);
       return docRef;
     }
-    return await addDoc(collection(db, "journal_entries"), journalEntry);
+    return await addDoc(collection(db, `companies/${data.companyId}/journal_entries`), journalEntry);
   },
 
   /**
@@ -242,11 +242,11 @@ export const AccountingEngine = {
     };
 
     if (batch) {
-      const docRef = doc(collection(db, "journal_entries"));
+      const docRef = doc(collection(db, `companies/${data.companyId}/journal_entries`));
       batch.set(docRef, journalEntry);
       return docRef;
     }
-    return await addDoc(collection(db, "journal_entries"), journalEntry);
+    return await addDoc(collection(db, `companies/${data.companyId}/journal_entries`), journalEntry);
   },
 
   /**
@@ -288,11 +288,11 @@ export const AccountingEngine = {
     };
 
     if (batch) {
-      const docRef = doc(collection(db, "journal_entries"));
+      const docRef = doc(collection(db, `companies/${data.companyId}/journal_entries`));
       batch.set(docRef, journalEntry);
       return docRef;
     }
-    return await addDoc(collection(db, "journal_entries"), journalEntry);
+    return await addDoc(collection(db, `companies/${data.companyId}/journal_entries`), journalEntry);
   },
 
   /**
@@ -335,11 +335,11 @@ export const AccountingEngine = {
     };
 
     if (batch) {
-      const docRef = doc(collection(db, "journal_entries"));
+      const docRef = doc(collection(db, `companies/${data.companyId}/journal_entries`));
       batch.set(docRef, journalEntry);
       return docRef;
     }
-    return await addDoc(collection(db, "journal_entries"), journalEntry);
+    return await addDoc(collection(db, `companies/${data.companyId}/journal_entries`), journalEntry);
   },
 
   /**
@@ -366,11 +366,11 @@ export const AccountingEngine = {
       status: 'active'
     };
     if (batch) {
-      const docRef = doc(collection(db, "wht_certificates"));
+      const docRef = doc(collection(db, `companies/${data.companyId}/wht_certificates`));
       batch.set(docRef, certificate);
       return docRef;
     }
-    return await addDoc(collection(db, "wht_certificates"), certificate);
+    return await addDoc(collection(db, `companies/${data.companyId}/wht_certificates`), certificate);
   },
 
   /**
@@ -396,11 +396,11 @@ export const AccountingEngine = {
     };
 
     if (batch) {
-      const docRef = doc(collection(db, "journal_entries"));
+      const docRef = doc(collection(db, `companies/${data.companyId}/journal_entries`));
       batch.set(docRef, journalEntry);
       return docRef;
     }
-    return await addDoc(collection(db, "journal_entries"), journalEntry);
+    return await addDoc(collection(db, `companies/${data.companyId}/journal_entries`), journalEntry);
   },
 
   /**
@@ -443,11 +443,11 @@ export const AccountingEngine = {
     };
 
     if (batch) {
-      const docRef = doc(collection(db, "journal_entries"));
+      const docRef = doc(collection(db, `companies/${data.companyId}/journal_entries`));
       batch.set(docRef, journalEntry);
       return docRef;
     }
-    return await addDoc(collection(db, "journal_entries"), journalEntry);
+    return await addDoc(collection(db, `companies/${data.companyId}/journal_entries`), journalEntry);
   },
 
   /**
@@ -496,11 +496,11 @@ export const AccountingEngine = {
     };
 
     if (batch) {
-      const docRef = doc(collection(db, "journal_entries"));
+      const docRef = doc(collection(db, `companies/${data.companyId}/journal_entries`));
       batch.set(docRef, journalEntry);
       return docRef;
     }
-    return await addDoc(collection(db, "journal_entries"), journalEntry);
+    return await addDoc(collection(db, `companies/${data.companyId}/journal_entries`), journalEntry);
   }
 };
 

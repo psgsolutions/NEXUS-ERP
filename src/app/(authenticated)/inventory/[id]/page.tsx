@@ -270,75 +270,72 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
+    <div className="flex flex-col w-full h-[calc(100vh-4rem)] overflow-hidden animate-in fade-in duration-700 bg-[#0D0D0D] relative">
 
-      {/* Page Header */}
-      <header className="p-5 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-black/20">
-        <div className="flex items-center gap-4">
-          <PillBackButton onClick={() => router.back()} />
-          <div className="w-px h-8 bg-white/10" />
-          <div className="flex items-center gap-3">
-            <StatusBadge status={stockStatus} label={stockLabel} />
-            <p className="text-[11px] font-medium text-white/20 uppercase tracking-widest font-mono">
-              ID: {productId}
-            </p>
-          </div>
-          <div className="w-px h-8 bg-white/10" />
-          <div>
-            <h1 className="text-lg font-bold text-white tracking-tight leading-none">
-              {product.name}
-            </h1>
-            <p className="text-[11px] font-medium text-white/30 uppercase mt-1 tracking-widest font-mono">
-              {product.sku}
-            </p>
+      {/* 1. Fixed Header Layout */}
+      <div className="sticky top-0 z-50 bg-[#020203]/90 backdrop-blur-xl shrink-0 px-5 pt-5 pb-4 border-b border-white/5 space-y-4">
+        <div className="max-w-[1800px] mx-auto w-full">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <PillBackButton onClick={() => router.back()} />
+              <div className="space-y-1">
+                <div className="flex items-center gap-3">
+                  <StatusBadge status={stockStatus} label={stockLabel} />
+                  <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">
+                    ID: {productId}
+                  </p>
+                </div>
+                <h1 className="text-3xl font-black text-white tracking-tight uppercase">
+                  {product.name}
+                </h1>
+                <p className="text-[11px] font-medium text-nexus-teal uppercase mt-1 tracking-widest font-mono">
+                  {product.sku}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {isEditMode ? (
+                <>
+                  <PillButton
+                    variant="ghost"
+                    className="gap-2 h-9 text-xs border-white/10"
+                    onClick={handleCancel}
+                    disabled={isSaving}
+                  >
+                    ยกเลิก
+                  </PillButton>
+                  <PillButton
+                    className="gap-2 h-9 text-xs shadow-neon-teal"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                    บันทึกข้อมูล
+                  </PillButton>
+                </>
+              ) : (
+                <PillButton
+                  variant="glass"
+                  className="gap-2 h-9 text-xs border-nexus-blue/20 text-nexus-blue hover:text-white"
+                  onClick={() => setIsEditMode(true)}
+                >
+                  <Edit3 size={14} /> แก้ไขข้อมูล
+                </PillButton>
+              )}
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="flex items-center gap-3">
-          {isEditMode ? (
-            <>
-              <PillButton
-                variant="ghost"
-                className="gap-2 h-9 text-xs border-white/10 hover:"
-                onClick={handleCancel}
-                disabled={isSaving}
-              >
-                ยกเลิก
-              </PillButton>
-              <PillButton
-                className="gap-2 h-9 text-xs shadow-neon-teal"
-                onClick={handleSave}
-                disabled={isSaving}
-              >
-                {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                บันทึกข้อมูล
-              </PillButton>
-            </>
-          ) : (
-            <PillButton
-              variant="glass"
-              className="gap-2 h-9 text-xs border-nexus-blue/20 text-nexus-blue hover:"
-              onClick={() => setIsEditMode(true)}
-            >
-              <Edit3 size={14} /> แก้ไขข้อมูล
-            </PillButton>
-          )}
-        </div>
-      </header>
+      {/* Main Split Layout */}
+      <div className="flex flex-col xl:flex-row gap-4 flex-1 min-h-0 max-w-[1800px] w-full mx-auto p-5 relative z-10">
 
-      {/* Tab Navigation */}
-      <section className="px-6 py-3 bg-black/10 border-b border-white/5">
-        <PillTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
-      </section>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-5 custom-scrollbar">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(20,163,204,0.03)_0%,transparent_50%)] pointer-events-none" />
-
-        <div className="flex flex-col lg:flex-row gap-4 items-start relative z-10 w-full animate-in fade-in duration-500">
-
-          {/* Left Column - Main Form */}
-          <div className="flex-1 w-full space-y-3">
+        {/* Left Column - Main Form */}
+        <div className="w-full xl:w-[80%] flex flex-col overflow-y-auto custom-scrollbar pr-2 pb-10 space-y-6">
+          <PillTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+          
+          <div className="space-y-4">
 
             {/* Summary Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -375,7 +372,7 @@ export default function ProductDetailPage() {
 
             {/* Tab: Overview - Product Info */}
             {activeTab === "overview" && (
-              <GlassCard className="p-4 border-white/5 bg-black/40 space-y-3">
+              <GlassCard className="p-4 border-white/5 bg-black/15 space-y-3">
                 <div className="flex items-center gap-3 border-b border-white/5 pb-4">
                   <Zap size={16} className="text-nexus-blue" />
                   <h3 className="text-[12px] font-medium text-nexus-blue uppercase tracking-widest">
@@ -393,7 +390,7 @@ export default function ProductDetailPage() {
                         className="w-full font-mono text-nexus-blue font-bold"
                       />
                     ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono text-sm font-bold text-nexus-blue">
+                      <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono text-sm font-bold text-nexus-blue">
                         {form.sku || "—"}
                       </div>
                     )}
@@ -408,7 +405,7 @@ export default function ProductDetailPage() {
                         className="w-full"
                       />
                     ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 text-sm font-bold text-white">
+                      <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white">
                         {form.name || "—"}
                       </div>
                     )}
@@ -427,7 +424,7 @@ export default function ProductDetailPage() {
                         ))}
                       </PillSelect>
                     ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 text-sm font-bold text-white/70">
+                      <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white/70">
                         {form.category || "—"}
                       </div>
                     )}
@@ -442,7 +439,7 @@ export default function ProductDetailPage() {
                         className="w-full"
                       />
                     ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 text-sm font-bold text-white/70">
+                      <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white/70">
                         {form.brand || "—"}
                       </div>
                     )}
@@ -460,7 +457,7 @@ export default function ProductDetailPage() {
                         ))}
                       </PillSelect>
                     ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 text-sm font-bold text-white/70">
+                      <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white/70">
                         {form.unit || "—"}
                       </div>
                     )}
@@ -473,10 +470,10 @@ export default function ProductDetailPage() {
                         onChange={(e) => setForm({ ...form, description: e.target.value })}
                         placeholder="รายละเอียดสินค้าสำหรับเอกสาร..."
                         rows={3}
-                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-sm font-bold text-white placeholder:text-white/20 focus:outline-none focus:border-nexus-teal/30 resize-none"
+                        className="w-full px-4 py-3 rounded-2xl bg-white/15 border border-white/10 text-sm font-bold text-white placeholder:text-white/20 focus:outline-none focus:border-nexus-teal/30 resize-none"
                       />
                     ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 text-sm text-white/60 min-h-[80px]">
+                      <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm text-white/60 min-h-[80px]">
                         {form.description || <span className="text-white/20 italic">ยังไม่มีคำอธิบาย</span>}
                       </div>
                     )}
@@ -487,7 +484,7 @@ export default function ProductDetailPage() {
 
             {/* Tab: Pricing */}
             {activeTab === "pricing" && (
-              <GlassCard className="p-4 border-white/5 bg-black/40 space-y-3">
+              <GlassCard className="p-4 border-white/5 bg-black/15 space-y-3">
                 <div className="flex items-center gap-3 border-b border-white/5 pb-4">
                   <DollarSign size={16} className="text-warning" />
                   <h3 className="text-[12px] font-medium text-warning uppercase tracking-widest">
@@ -509,7 +506,7 @@ export default function ProductDetailPage() {
                           />
                         </div>
                       ) : (
-                        <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-bold text-white">
+                        <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-white">
                           \u0E3F{form.priceProject.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </div>
                       )}
@@ -527,7 +524,7 @@ export default function ProductDetailPage() {
                           />
                         </div>
                       ) : (
-                        <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-bold text-white">
+                        <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-white">
                           \u0E3F{form.pricePOS.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </div>
                       )}
@@ -545,7 +542,7 @@ export default function ProductDetailPage() {
                           />
                         </div>
                       ) : (
-                        <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-bold text-nexus-teal">
+                        <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-nexus-teal">
                           \u0E3F{form.costWAC.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </div>
                       )}
@@ -580,7 +577,7 @@ export default function ProductDetailPage() {
 
             {/* Tab: Stock Control */}
             {activeTab === "stock" && (
-              <GlassCard className="p-4 border-white/5 bg-black/40 space-y-3">
+              <GlassCard className="p-4 border-white/5 bg-black/15 space-y-3">
                 <div className="flex items-center gap-3 border-b border-white/5 pb-4">
                   <Box size={16} className="text-nexus-teal" />
                   <h3 className="text-[12px] font-medium text-nexus-teal uppercase tracking-widest">
@@ -613,14 +610,14 @@ export default function ProductDetailPage() {
                         className="w-full font-mono mono-numbers"
                       />
                     ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-bold text-warning text-lg">
+                      <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-warning text-lg">
                         {form.reserved.toLocaleString()} {form.unit}
                       </div>
                     )}
                   </FormField>
 
                   <FormField label="พร้อมใช้งาน">
-                    <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-bold text-nexus-blue text-lg">
+                    <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-nexus-blue text-lg">
                       {Math.max(0, form.onHand - form.reserved).toLocaleString()} {form.unit}
                     </div>
                   </FormField>
@@ -634,7 +631,7 @@ export default function ProductDetailPage() {
                         className="w-full font-mono mono-numbers"
                       />
                     ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 font-mono font-bold text-white/60">
+                      <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-white/60">
                         {form.minStock} {form.unit}
                       </div>
                     )}
@@ -667,7 +664,7 @@ export default function ProductDetailPage() {
 
             {/* Tab: Movement History */}
             {activeTab === "history" && (
-              <GlassCard className="p-0 overflow-hidden border-white/5 bg-black/40">
+              <GlassCard className="p-0 overflow-hidden border-white/5 bg-black/15">
                 <div className="p-4 border-b border-white/5 flex items-center gap-3">
                   <Activity size={16} className="text-nexus-teal" />
                   <h3 className="text-[12px] font-medium text-nexus-teal uppercase tracking-widest">
@@ -738,7 +735,7 @@ export default function ProductDetailPage() {
                   <span className="text-sm font-medium text-white/30 uppercase tracking-widest block">ON HAND</span>
                   <span className="text-lg font-medium text-nexus-teal mt-1 block mono-numbers">{form.onHand}</span>
                 </div>
-                <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-center">
+                <div className="p-3 rounded-xl bg-white/15 border border-white/10 text-center">
                   <span className="text-sm font-medium text-white/30 uppercase tracking-widest block">RESERVED</span>
                   <span className="text-lg font-medium text-warning mt-1 block mono-numbers">{form.reserved}</span>
                 </div>
@@ -785,7 +782,7 @@ export default function ProductDetailPage() {
             )}
           </div>
         </div>
-      </main>
+      </div>
 
       {/* Toast */}
       <Toast

@@ -64,7 +64,7 @@ export default function LogsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row items-start gap-4">
+      <div className="flex flex-col xl:flex-row items-start gap-4">
         <div className="flex-1 w-full space-y-10">
           
           <div className="space-y-3">
@@ -148,7 +148,7 @@ export default function LogsPage() {
         </div>
 
         {/* Right Sidebar Status */}
-        <div className="space-y-3">
+        <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
            <GlassCard className="p-4 border-white/10 bg-nexus-teal/5 relative overflow-hidden">
               <div className="absolute -right-4 -top-4 text-nexus-teal opacity-5 rotate-12">
                  <Cpu size={120} />

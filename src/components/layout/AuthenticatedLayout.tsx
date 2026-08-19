@@ -25,7 +25,13 @@ import {
   Activity,
   ShieldCheck,
   HardHat,
-  FileText
+  FileText,
+  Layers,
+  ShoppingCart,
+  Wrench,
+  Library,
+  Sparkles,
+  Settings
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import Link from "next/link";
@@ -38,6 +44,7 @@ import { signOut } from "firebase/auth";
 import { EntitySelector } from "@/components/layout/EntitySelector";
 import { TacticalQuickAction } from "@/components/shared/TacticalQuickAction";
 import { FirebaseConnectionStatus } from "@/components/ui/FirebaseConnectionStatus";
+import { ConnectionStatus } from "@/components/ConnectionStatus";
 
 export default function AuthenticatedLayout({
   children,
@@ -63,12 +70,12 @@ export default function AuthenticatedLayout({
       <CommandPalette />
       
       {/* [1] Sidebar - Full Intelligence OS Structure */}
-      <aside className="w-[240px] hidden lg:flex flex-col border-r border-white/5 bg-[#0a0a0c] relative flex-shrink-0">
-        <div className="p-4 overflow-y-auto flex-1 custom-scrollbar">
+      <aside className="w-[240px] hidden lg:flex flex-col border-r border-white/5 bg-[#0a0a0c] relative flex-shrink-0 z-[100]">
+        <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
           {/* Brand Header */}
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-nexus-teal rounded-xl flex items-center justify-center shadow-neon-teal">
-              <Zap size={20} className="text-black fill-current drop-shadow-md" />
+            <div className="w-10 h-10 bg-nexus-teal/15 rounded-xl flex items-center justify-center shadow-neon-teal border border-nexus-teal/20">
+              <Zap size={20} className="text-nexus-teal fill-current drop-shadow-md" />
             </div>
             <div>
               <h2 className="font-black text-lg leading-none tracking-tight">NEXUS ERP</h2>
@@ -79,51 +86,53 @@ export default function AuthenticatedLayout({
           <EntitySelector />
 
           {/* Navigation Matrix */}
-          <nav className="space-y-4">
+          <nav className="space-y-4 relative z-50">
             {/* SERVICE TIER */}
             <NavGroup title="บริการ">
-              <SideLink href="/pos" icon={<MonitorSmartphone size={20} />} label="POS" active={pathname === "/pos"} title="ระบบขายหน้าร้านอัจฉริยะ" />
-              <SideLink href="/support" icon={<Headset size={20} />} label="แจ้งซ่อม" active={pathname === "/support"} title="ระบบแจ้งซ่อมและงานบริการเทคนิค" />
+              <SideLink href="/pos" icon={<Store size={20} />} label="ขายหน้าร้าน" active={pathname === "/pos"} title="POS" />
+              <SideLink href="/support" icon={<Wrench size={20} />} label="งานบริการ" active={pathname === "/support"} title="Service" />
             </NavGroup>
 
             {/* OPERATIONS TIER */}
-            <NavGroup title="การปฏิบัติงาน">
-              <SideLink href="/dashboard" icon={<Activity size={20} />} label="แดชบอร์ด" enLabel="dashboard" active={pathname === "/dashboard"} title="แดชบอร์ดแสดงสถานะภาพรวมของระบบ" />
-              <SideLink href="/sales" icon={<BadgeDollarSign size={20} />} label="งานขาย" enLabel="sales" active={pathname === "/sales"} title="ระบบใบเสนอราคาและบริหารลูกค้าสัมพันธ์" />
-              <SideLink href="/projects" icon={<FolderKanban size={20} />} label="โครงการ" enLabel="projects" active={pathname === "/projects" || pathname === "/projects/subcontractors"} title="ระบบบริหารจัดการโครงการและไซต์งาน" />
-              <SideLink href="/hr" icon={<UsersRound size={20} />} label="บุคคล" enLabel="hr" active={pathname === "/hr"} title="ระบบบริหารทรัพยากรบุคคลและเงินเดือน" />
-              <SideLink href="/inventory" icon={<Warehouse size={20} />} label="คลังสินค้า" enLabel="inventory" active={pathname === "/inventory"} title="ระบบบริหารคลังสินค้าและพัสดุคงคลัง" />
-              <SideLink href="/procurement" icon={<ShoppingBasket size={20} />} label="จัดซื้อ" enLabel="purchase" active={pathname === "/procurement"} title="ระบบสั่งซื้อสินค้าและบริหารคู่ค้า" />
-              <SideLink href="/projects/subcontractors" icon={<HardHat size={20} />} label="ค่าแรงช่าง" active={pathname === "/projects/subcontractors"} title="จัดการการจ่ายเงินค่าแรงทีมช่าง" />
+            <NavGroup title="การปฏิบัติงาน (OPERATIONS)">
+              <SideLink href="/dashboard" icon={<PieChart size={20} />} label="ภาพรวม" active={pathname === "/dashboard"} title="Dashboard" />
+              <SideLink href="/sales" icon={<BadgeDollarSign size={20} />} label="บัญชีการเงิน" active={pathname === "/sales"} title="Accounting" />
+              <SideLink href="/projects" icon={<FolderKanban size={20} />} label="โครงการ" active={pathname === "/projects"} title="Projects" />
+              <SideLink href="/hr" icon={<UsersRound size={20} />} label="บุคลากร" active={pathname === "/hr"} title="HR" />
+              <SideLink href="/inventory" icon={<Warehouse size={20} />} label="คลังสินค้า" active={pathname === "/inventory"} title="Inventory" />
+              <SideLink href="/procurement" icon={<ShoppingBasket size={20} />} label="จัดซื้อ" active={pathname === "/procurement"} title="Procurement" />
             </NavGroup>
 
             {/* MANAGEMENT TIER */}
-            <NavGroup title="การบริหาร">
-              <SideLink href="/finance" icon={<Landmark size={20} />} label="บัญชี" enLabel="accounting" active={pathname === "/finance"} title="ระบบบัญชีและการเงินภาพรวม" />
-              <SideLink href="/ai" icon={<Bot size={20} />} label="ศูนย์วิเคราะห์ AI" active={pathname === "/ai"} title="ศูนย์รวมปัญญาประดิษฐ์" />
+            <NavGroup title="การบริหาร (MANAGEMENT)">
+              <SideLink href="/finance" icon={<Landmark size={20} />} label="บัญชีแยกประเภท" active={pathname === "/finance"} title="GL" />
+              <SideLink href="/ai" icon={<Bot size={20} />} label="วิเคราะห์ข้อมูล" active={pathname === "/ai"} title="AI Analytics" />
             </NavGroup>
 
             {/* SYSTEM TIER */}
-            <NavGroup title="ระบบ">
-              <SideLink href="/settings" icon={<SlidersHorizontal size={20} />} label="ตั้งค่า" enLabel="settings" active={pathname?.startsWith("/settings")} title="จัดการการตั้งค่าและผู้ใช้งาน" />
+            <NavGroup title="ระบบ (SYSTEM)">
+              <SideLink href="/settings" icon={<Settings size={20} />} label="ตั้งค่า" active={pathname?.startsWith("/settings")} title="Settings" />
             </NavGroup>
           </nav>
         </div>
 
         {/* User Intelligence Profile */}
-        <div className="p-4 bg-white/[0.02] border-t border-white/5 space-y-2">
-          <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 group hover:bg-white/10 transition-all cursor-pointer">
-             <div className="w-10 h-10 rounded-xl bg-nexus-blue/20 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 flex-shrink-0">
-                <UserCog size={20} />
+        <div className="p-4 pb-6 bg-white/[0.02] border-t border-white/5 space-y-2">
+          <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/15 border border-white/20 group hover:bg-white/20 transition-all cursor-pointer">
+             <div className="w-9 h-9 rounded-xl bg-nexus-blue/15 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 flex-shrink-0">
+                <UserCog size={18} />
              </div>
              <div className="flex-1 min-w-0">
-                <p className="text-xs font-black text-white truncate uppercase">{user?.email?.split('@')[0] || 'ผู้ใช้งาน'}</p>
-                <p className="text-[13px] font-bold text-nexus-teal uppercase tracking-widest mt-0.5">{role || 'ไม่มีสิทธิ์'}</p>
+                <p className="text-[11px] font-black text-white truncate uppercase leading-none">{user?.email?.split('@')[0] || 'ผู้ใช้งาน'}</p>
+                <p className="text-[10px] font-bold text-nexus-teal uppercase tracking-widest mt-1 leading-none">{role || 'ไม่มีสิทธิ์'}</p>
              </div>
           </div>
+          
+          <ConnectionStatus className="w-full justify-center text-[10px] py-1 bg-white/[0.02] border-white/5" />
+          
           <button 
             onClick={handleLogout}
-            className="flex items-center justify-center gap-2 w-full rounded-full text-[13px] font-bold text-white/20 hover:text-danger hover:bg-danger/10 transition-all uppercase tracking-widest"
+            className="flex items-center justify-center gap-2 w-full rounded-full text-[11px] font-bold text-white/40 hover:text-danger hover:bg-danger/15 transition-all uppercase tracking-widest py-1.5"
           >
             <LogOut size={14} />
             ออกจากระบบ
@@ -251,25 +260,24 @@ export default function AuthenticatedLayout({
 
 function NavGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-2">
-      <p className="tactical-label !text-white/20 px-3">{title}</p>
-      <div className="space-y-0.5">
+    <div className="space-y-4">
+      <p className="tactical-label !text-white/20 px-4">{title}</p>
+      <div className="space-y-1">
         {children}
       </div>
     </div>
   );
 }
 
-function SideLink({ href, icon, label, enLabel, active, title }: { href: string; icon: any; label: string; enLabel?: string; active?: boolean; title?: string }) {
+function SideLink({ href, icon, label, active, title }: { href: string; icon: any; label: string; active?: boolean; title?: string }) {
   return (
     <Link 
       href={href}
-      title={title}
       className={cn(
-        "flex items-center gap-2.5 px-3 py-1.5 rounded-xl transition-all group relative",
+        "flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all group relative",
         active 
-          ? "bg-white/5 text-white border border-white/10 shadow-lg" 
-          : "text-white/40 hover:text-white hover:bg-white/[0.03]"
+          ? "bg-nexus-teal/15 text-nexus-teal border border-nexus-teal/20" 
+          : "text-white/40 hover:text-white hover:bg-white/15"
       )}
     >
       <div className={cn(
@@ -278,21 +286,19 @@ function SideLink({ href, icon, label, enLabel, active, title }: { href: string;
       )}>
         {React.cloneElement(icon as React.ReactElement, { size: 18 })}
       </div>
-      <div className="flex flex-col">
-        <span className={cn(
-          "text-[13px] font-bold transition-all duration-300",
-          active ? "text-white" : "text-white/60 group-hover:text-white"
-        )}>{label}</span>
-        {enLabel && (
-          <span className={cn(
-            "text-[10px] font-medium uppercase tracking-widest transition-all duration-300",
-            active ? "text-nexus-teal/80" : "text-white/20 group-hover:text-white/40"
-          )}>({enLabel})</span>
-        )}
-      </div>
+      <span className={cn(
+        "text-[13px] font-bold transition-all duration-300",
+        active ? "text-white" : "text-white/40 group-hover:text-white/60"
+      )}>{label}</span>
       
       {active && (
         <div className="absolute left-0 w-1 h-5 bg-nexus-teal rounded-r-full shadow-neon-teal" />
+      )}
+
+      {title && (
+        <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#111] border border-white/10 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 z-[100] whitespace-nowrap transform -translate-x-2 group-hover:translate-x-0 hidden lg:block">
+          <p className="text-[10px] font-mono text-nexus-teal uppercase tracking-widest leading-none drop-shadow-neon">{title}</p>
+        </div>
       )}
     </Link>
   );

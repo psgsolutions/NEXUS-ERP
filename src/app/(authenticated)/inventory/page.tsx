@@ -188,7 +188,7 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
           </div>
 
           {/* Dual Pane Layout */}
-          <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
+          <div className="flex flex-col xl:flex-row gap-4 flex-1 min-h-0">
             
             {/* Left Pane: Catalog (65%) */}
             <div className="w-full lg:w-[65%] flex flex-col bg-black/40 border border-white/5 rounded-[2.5rem] p-5 space-y-3 shadow-inner min-h-0">
@@ -707,7 +707,7 @@ export default function InventoryPage() {
 
         {/* Non-layout Tabs (Items, Assets, Serials, History) wrapped in the exact identical dual-column container */}
         {activeTab !== "layout" && (
-          <div className="flex flex-col lg:flex-row gap-4 items-start relative z-10 w-full animate-in fade-in duration-500">
+          <div className="flex flex-col xl:flex-row gap-4 items-start relative z-10 w-full animate-in fade-in duration-500">
             
             {/* Left Content Column */}
             <div className="flex-1 w-full space-y-3">
@@ -995,7 +995,7 @@ export default function InventoryPage() {
             </div>
 
             {/* Right Sidebar Column - EXACT same structure and width w-full lg:w-[280px] as Warehouse3D */}
-            <div className="w-full lg:w-[280px] shrink-0 space-y-3">
+            <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
               
               {/* SIDEBAR FOR TABS */}
 

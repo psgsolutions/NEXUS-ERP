@@ -30,7 +30,7 @@ import {
   MasterMetricCard
 } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase-client";
 import { 
   collection, 
   query, 

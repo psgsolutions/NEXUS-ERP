@@ -23,7 +23,7 @@ export function DocumentFlowStepper({ activeTab, onStepClick, steps }: DocumentF
         {/* Progress Line */}
         {activeIndex >= 0 && (
           <div
-            className="absolute top-1/2 left-0 h-[2px] bg-nexus-teal -translate-y-1/2 z-0 transition-all duration-700 ease-in-out shadow-[0_0_10px_rgba(20,163,204,0.6)] rounded-full"
+            className="absolute top-1/2 left-0 h-[2px] bg-nexus-teal -translate-y-1/2 z-0 transition-all duration-700 ease-in-out shadow-[0_0_10px_rgba(20,163,204,0.6)] rounded-full opacity-50"
             style={{ width: `${(activeIndex / (steps.length - 1)) * 100}%` }}
           ></div>
         )}

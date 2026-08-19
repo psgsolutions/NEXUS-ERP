@@ -68,7 +68,7 @@ export default function PODetailPage() {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row items-start gap-4">
+      <div className="flex flex-col xl:flex-row items-start gap-4">
         
         {/* Left Content Area */}
         <div className="flex-1 w-full space-y-10">

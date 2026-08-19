@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { db } from "@/lib/firebase-client";
-import { cn } from "@/lib/utils";
 import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, updateDoc } from "firebase/firestore";
 import { 
   Wrench, 
@@ -21,6 +20,7 @@ import {
   ShieldCheck
 } from "lucide-react";
 import { 
+  cn,
   GlassCard, 
   PillButton, 
   PillInput, 
@@ -30,7 +30,7 @@ import {
   StatusBadge, 
   Toast, 
   Modal,
-  PillSelect
+  CreatableCombobox
 } from "@/components/ui/Base";
 
 // Type Definitions
@@ -57,8 +57,8 @@ type WorkOrder = {
   createdAt: any;
 };
 
-export default function SubcontractorsPayoutPage() {
-  const { companyId, user } = useAuth();
+export function SubcontractorWagesTab() {
+  const { user } = useAuth();
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -80,15 +80,16 @@ export default function SubcontractorsPayoutPage() {
   
   // Modal States
   const [isNewWOModalOpen, setIsNewWOModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEvaluationModalOpen, setIsEvaluationModalOpen] = useState(false);
   const [selectedWO, setSelectedWO] = useState<WorkOrder | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "warning" } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
 
   useEffect(() => {
-    if (companyId) {
+    if (user) {
       fetchWorkOrders();
     }
-  }, [companyId]);
+  }, [user]);
 
   const fetchWorkOrders = async () => {
     setLoading(true);
@@ -96,7 +97,6 @@ export default function SubcontractorsPayoutPage() {
       const woRef = collection(db, "subcontractor_work_orders");
       const q = query(
         woRef,
-        where("companyId", "==", companyId),
         where("isDeleted", "==", false)
       );
       
@@ -117,7 +117,7 @@ export default function SubcontractorsPayoutPage() {
 
   const fetchQuotations = async () => {
     try {
-      const qRef = collection(db, `companies/${companyId}/quotations`);
+      const qRef = collection(db, "quotations");
       const q = query(qRef, where("isDeleted", "==", false));
       const snap = await getDocs(q);
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -137,18 +137,16 @@ export default function SubcontractorsPayoutPage() {
     if (!contractorName || !totalLaborCost) return;
 
     try {
-      const woNo = `WO-2605-${Math.floor(Math.random() * 10000)}`; // Using static random generation
+      const woNo = `WO-2605-${Math.floor(Math.random() * 10000)}`;
       
       const newWO = {
         woNo: woNo,
-        companyId: companyId,
-        contractorId: "C-" + Math.floor(Math.random() * 1000),
         contractorName,
         projectName,
         referenceQuotationNo: refDoc,
         totalLaborCost,
         payoutMilestones: [
-          { milestoneNo: 1, description: "เริ่มงาน", percentage: 30, amount: totalLaborCost * 0.3, status: "PENDING" },
+          { milestoneNo: 1, description: "เริ่มงาน (Advance)", percentage: 30, amount: totalLaborCost * 0.3, status: "PENDING" },
           { milestoneNo: 2, description: "งานโครงสร้างแล้วเสร็จ", percentage: 40, amount: totalLaborCost * 0.4, status: "PENDING" },
           { milestoneNo: 3, description: "ส่งมอบงาน", percentage: 30, amount: totalLaborCost * 0.3, status: "PENDING" },
         ],
@@ -161,6 +159,7 @@ export default function SubcontractorsPayoutPage() {
       await addDoc(collection(db, "subcontractor_work_orders"), newWO);
       showToast("สร้างใบสั่งจ้างงานเรียบร้อยแล้ว", "success");
       setIsNewWOModalOpen(false);
+      setIsAddModalOpen(false);
       setNewWOForm({ contractorName: "", projectName: "", refDoc: "", totalLaborCost: "" });
       fetchWorkOrders();
     } catch (error) {
@@ -177,14 +176,12 @@ export default function SubcontractorsPayoutPage() {
       const updatedMilestones = [...wo.payoutMilestones];
       updatedMilestones[milestoneIndex].status = "APPROVED";
       
-      // Update WO in Firestore
       await updateDoc(doc(db, "subcontractor_work_orders", woId), {
         payoutMilestones: updatedMilestones
       });
 
-      // Create Payout Log (Audit)
       const payoutAmt = updatedMilestones[milestoneIndex].amount;
-      const whtAmt = payoutAmt * 0.03; // 3% WHT
+      const whtAmt = payoutAmt * 0.03;
       
       await addDoc(collection(db, "subcontractor_payout_logs"), {
         woId,
@@ -192,12 +189,11 @@ export default function SubcontractorsPayoutPage() {
         amountApproved: payoutAmt,
         whtAmount: whtAmt,
         associatedPVNo: `PV-2605-${Math.floor(Math.random() * 1000)}`,
-        companyId: companyId,
         createdBy: user?.email,
         createdAt: serverTimestamp()
       });
 
-      showToast(`อนุมัติงวดที่ ${updatedMilestones[milestoneIndex].milestoneNo} เรียบร้อยแล้ว สั่งสร้างเอกสารจ่าย PV อัตโนมัติ`, "success");
+      showToast(`อนุมัติงวดที่ ${updatedMilestones[milestoneIndex].milestoneNo} เรียบร้อยแล้ว`, "success");
       setIsEvaluationModalOpen(false);
       fetchWorkOrders();
     } catch (error) {
@@ -206,7 +202,7 @@ export default function SubcontractorsPayoutPage() {
     }
   };
 
-  const showToast = (message: string, type: "success" | "error" | "warning") => {
+  const showToast = (message: string, type: "success" | "error" | "info") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
@@ -218,17 +214,16 @@ export default function SubcontractorsPayoutPage() {
   );
 
   return (
-    <div className="p-5 space-y-3 max-w-[1600px] mx-auto pb-32 animate-in fade-in duration-700">
+    <div className="animate-in fade-in duration-500 space-y-6">
       
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 relative z-10">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10">
         <div>
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-nexus-teal/20 rounded-xl flex items-center justify-center border border-nexus-teal/30 shadow-neon-teal">
               <Wrench className="text-nexus-teal" size={22} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white uppercase tracking-tight">
+              <h1 className="text-2xl font-black text-white uppercase tracking-tight">
                 จัดการจ่ายเงินค่าแรงช่าง
               </h1>
               <div className="flex items-center gap-2 text-xs font-bold text-nexus-teal uppercase tracking-widest mt-1">
@@ -246,18 +241,15 @@ export default function SubcontractorsPayoutPage() {
         <div className="flex items-center gap-3">
           <PillButton 
             className="h-9 px-6 rounded-full bg-nexus-teal text-black hover:bg-nexus-teal/90 shadow-neon-teal"
-            onClick={() => setIsNewWOModalOpen(true)}
+            onClick={() => setIsAddModalOpen(true)}
           >
-            <Plus size={16} /> สร้างใบสั่งจ้างงานช่าง
+            <Plus size={16} /> สร้างใบสั่งจ้างงานช่าง (WO)
           </PillButton>
         </div>
       </div>
 
-      {/* Main Content Dashboard */}
-      <div className="flex flex-col lg:flex-row items-start gap-4 relative z-10">
-        
-        {/* Left Table Section */}
-        <div className="flex-1 w-full space-y-3">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 relative z-10">
+        <div className="lg:col-span-3 space-y-6">
           <GlassCard className="p-0 border-white/5 overflow-hidden">
             <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -265,7 +257,7 @@ export default function SubcontractorsPayoutPage() {
                </h3>
                <div className="w-64">
                  <PillInput 
-                   placeholder="ค้นหารหัส WO, ชื่อช่าง..."
+                   placeholder="ค้นหาชื่อผู้รับเหมา, เลขประจำตัว, หรือเบอร์โทร..." 
                    value={searchQuery}
                    onChange={(e) => setSearchQuery(e.target.value)}
                  />
@@ -306,9 +298,9 @@ export default function SubcontractorsPayoutPage() {
                           </NexusTableCell>
                           <NexusTableCell>
                              <div className="flex items-center gap-2">
-                               <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden w-24">
+                               <div className="flex-1 h-1.5 bg-white/15 rounded-full overflow-hidden w-24">
                                   <div 
-                                    className="h-full bg-nexus-teal shadow-[0_0_10px_rgba(45,212,191,0.5)] transition-all duration-1000"
+                                    className="h-full bg-nexus-teal shadow-[0_0_10px_rgba(45,212,191,0.5)] transition-all duration-1000 opacity-50"
                                     style={{ width: `${progressPct}%` }}
                                   />
                                </div>
@@ -316,14 +308,12 @@ export default function SubcontractorsPayoutPage() {
                              </div>
                           </NexusTableCell>
                           <NexusTableCell>
-                            <StatusBadge 
-                              status={wo.status === 'ACTIVE' ? 'IN_PROGRESS' : wo.status} 
-                            />
+                            <StatusBadge status={wo.status === "ACTIVE" ? "active" : "inactive"} label={wo.status === "ACTIVE" ? "ทำงานอยู่" : "ยกเลิกแล้ว"} />
                           </NexusTableCell>
                           <NexusTableCell className="text-center">
                             <button 
                               onClick={() => { setSelectedWO(wo); setIsEvaluationModalOpen(true); }}
-                              className="text-xs font-bold text-nexus-teal bg-nexus-teal/10 hover:bg-nexus-teal/20 px-3 py-1.5 rounded-full transition-colors"
+                              className="text-xs font-bold text-nexus-teal bg-transparent hover:bg-nexus-teal/20 px-3 py-1.5 rounded-full transition-colors"
                             >
                               ตรวจรับงาน
                             </button>
@@ -337,14 +327,13 @@ export default function SubcontractorsPayoutPage() {
           </GlassCard>
         </div>
 
-        {/* Right Sidebar - Analytics */}
-        <div className="space-y-3">
-          <GlassCard className="p-4 border-white/5 bg-gradient-to-br from-nexus-teal/10 to-transparent">
+        <div className="space-y-6">
+          <GlassCard className="p-5 border-white/5 bg-gradient-to-br from-nexus-teal/10 to-transparent">
              <div className="w-10 h-10 bg-nexus-teal/20 rounded-xl flex items-center justify-center text-nexus-teal mb-4">
                 <Calculator size={20} />
              </div>
-             <p className="text-sm font-medium text-nexus-teal uppercase tracking-widest mb-1">Total Payout Pending</p>
-             <h3 className="text-3xl font-mono not-italic font-bold text-white">
+             <p className="text-[11px] font-black text-nexus-teal uppercase tracking-widest mb-1">Total Payout Pending</p>
+             <h3 className="text-3xl font-mono not-italic font-black text-white">
                {loading ? '...' : workOrders.reduce((sum, wo) => {
                  const pendingAmt = wo.payoutMilestones.filter(m => m.status === 'PENDING').reduce((a, b) => a + b.amount, 0);
                  return sum + pendingAmt;
@@ -353,71 +342,58 @@ export default function SubcontractorsPayoutPage() {
              </h3>
              <p className="text-xs text-white/40 mt-3 font-medium">รอการตรวจรับและตั้งเบิกจ่ายในรอบบิลถัดไป</p>
           </GlassCard>
-
-          <GlassCard className="p-4 border-white/5">
-             <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <ShieldCheck size={14} /> Audit Trail Log
-             </h3>
-             <div className="space-y-3">
-               <div className="text-xs text-white/60 text-center py-4 bg-white/[0.02] rounded-xl border border-white/5">
-                 บันทึกการหักภาษี ณ ที่จ่าย (50 ทวิ) จะปรากฏเมื่อมีอนุมัติ PV ใหม่
-               </div>
-             </div>
-          </GlassCard>
         </div>
       </div>
 
-      {/* ----------------- MODALS ----------------- */}
-      <Modal isOpen={isNewWOModalOpen} onClose={() => setIsNewWOModalOpen(false)} title="" maxWidth="max-w-6xl" className="!p-0 overflow-hidden rounded-[2rem]">
+      <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="เพิ่มผู้รับเหมา/ทีมช่างใหม่" maxWidth="max-w-2xl">
         <form onSubmit={handleCreateWO} className="flex flex-col md:flex-row h-full divide-x divide-white/5 bg-[#0D0D0D] min-h-[600px] w-full">
-          {/* LEFT: Main Canvas */}
-          <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
-            <div className="max-w-3xl mx-auto space-y-3">
+          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            <div className="max-w-3xl mx-auto space-y-8">
                <div className="space-y-1 border-b border-white/5 pb-6">
-                 <p className="text-[12px] font-bold text-nexus-teal uppercase tracking-[0.2em]">SUBCONTRACTOR PAYOUT MODULE</p>
-                 <h4 className="text-xl font-bold text-white uppercase tracking-tight">สร้างใบสั่งจ้างงานช่าง</h4>
+                 <p className="text-[12px] font-black text-nexus-teal uppercase tracking-[0.2em]">SUBCONTRACTOR PAYOUT MODULE</p>
+                 <h4 className="text-xl font-black text-white uppercase tracking-tight">สร้างใบสั่งจ้างงานช่าง (WORK ORDER)</h4>
                </div>
                
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-3">
-                    <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ชื่อผู้รับเหมา / บริษัทช่าง <span className="text-nexus-teal">*</span></label>
-                    <PillSelect 
+                    <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ชื่อผู้รับเหมา / บริษัทช่าง <span className="text-nexus-teal">*</span></label>
+                    <CreatableCombobox 
                       options={contractors?.map((c: any) => ({ value: c.name, label: c.name })) || []}
-                      placeholder="ค้นหาจากฐานข้อมูลช่างรับเหมา..." 
+                      placeholder="ค้นหาหรือสร้างใหม่..." 
                       className="w-full text-white font-bold bg-white/[0.02]" 
                       value={newWOForm.contractorName} 
                       onChange={(val) => setNewWOForm({...newWOForm, contractorName: val})} 
                     />
                   </div>
                   <div className="space-y-3">
-                    <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ชื่อโครงการ (Project Ref.) <span className="text-nexus-teal">*</span></label>
+                    <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ชื่อโครงการ (Project Ref.) <span className="text-nexus-teal">*</span></label>
                     <PillInput name="projectName" required placeholder="เช่น งานวางระบบเครือข่าย" className="w-full text-white font-bold bg-white/[0.02]" value={newWOForm.projectName} onChange={(e) => setNewWOForm({...newWOForm, projectName: e.target.value})} />
                   </div>
                </div>
 
-               <div className="p-5 rounded-[2rem] bg-gradient-to-br from-white/[0.03] to-transparent border border-white/5 space-y-3">
+               <div className="p-8 rounded-[2rem] bg-gradient-to-br from-white/[0.03] to-transparent border border-white/5 space-y-6">
                   <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                    <h3 className="text-xs font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                    <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
                       <DollarSign size={16} className="text-nexus-teal" /> 
                       ข้อมูลทางการเงินและการผูก Data
                     </h3>
                     <button 
                       type="button" 
                       onClick={() => { fetchQuotations(); setIsQuotationSelectorOpen(true); }} 
-                      className="flex items-center gap-2 px-4 py-2 bg-nexus-teal/10 hover:bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/20 rounded-full text-sm font-medium uppercase tracking-widest transition-all shadow-neon-teal cursor-pointer"
+                      className="flex items-center gap-2 px-4 py-2 bg-nexus-teal/15 hover:bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/20 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shadow-neon-teal cursor-pointer"
                     >
                       <Search size={14} /> ค้นหาจาก Sales BOM
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-5">
+                  <div className="grid grid-cols-2 gap-8">
                     <div className="space-y-3">
-                      <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">อ้างอิงใบเสนอราคา (Ref. SQ)</label>
-                      <PillInput name="refDoc" placeholder="SQ-..." className="w-full font-mono not-italic bg-black/40 border-white/10 text-nexus-blue" value={newWOForm.refDoc} onChange={(e) => setNewWOForm({...newWOForm, refDoc: e.target.value})} />
+                      <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">อ้างอิงใบเสนอราคา (Ref. SQ)</label>
+                      <PillInput name="refDoc" placeholder="SQ-..." className="w-full font-mono not-italic bg-black/15 border-white/10 text-nexus-blue" value={newWOForm.refDoc} onChange={(e) => setNewWOForm({...newWOForm, refDoc: e.target.value})} />
                     </div>
                     <div className="space-y-3">
-                      <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">มูลค่าค่าแรงรวม <span className="text-nexus-teal">*</span></label>
-                      <PillInput name="totalLaborCost" type="number" required placeholder="0.00" className="w-full font-mono not-italic bg-black/40 border-white/10 text-white font-bold" value={newWOForm.totalLaborCost} onChange={(e) => setNewWOForm({...newWOForm, totalLaborCost: e.target.value})} />
+                      <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">มูลค่าค่าแรงรวม (THB) <span className="text-nexus-teal">*</span></label>
+                      <PillInput name="totalLaborCost" type="number" required placeholder="0.00" className="w-full font-mono not-italic bg-black/15 border-white/10 text-white font-bold" value={newWOForm.totalLaborCost} onChange={(e) => setNewWOForm({...newWOForm, totalLaborCost: e.target.value})} />
                     </div>
                   </div>
                </div>
@@ -425,19 +401,19 @@ export default function SubcontractorsPayoutPage() {
           </div>
 
           {/* RIGHT: Strategic Sidebar */}
-          <div className="w-full md:w-[380px] flex flex-col bg-[#0F0F12] p-5 flex-shrink-0 shadow-2xl relative z-10 border-t md:border-t-0 md:border-l border-white/5">
-             <div className="flex-1 space-y-3">
+          <div className="w-full md:w-[380px] flex flex-col bg-[#0F0F12] p-8 flex-shrink-0 shadow-2xl relative z-10 border-t md:border-t-0 md:border-l border-white/5">
+             <div className="flex-1 space-y-8">
                 <div className="space-y-1 border-b border-white/5 pb-4">
-                  <p className="text-[12px] font-bold text-white/60 uppercase tracking-[0.2em]">สรุปรายการ</p>
-                  <h5 className="text-sm font-bold text-white uppercase tracking-tight flex items-center gap-2">
+                  <p className="text-[12px] font-black text-white/60 uppercase tracking-[0.2em]">สรุปรายการ</p>
+                  <h5 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-2">
                     <Wrench size={16} className="text-nexus-teal" /> การจัดสรรงบประมาณ
                   </h5>
                 </div>
 
-                <div className="p-5 rounded-[2rem] bg-white/[0.03] border border-white/10 space-y-3 relative overflow-hidden group shadow-2xl">
+                <div className="p-6 rounded-[2rem] bg-white/[0.03] border border-white/10 space-y-6 relative overflow-hidden group shadow-2xl">
                   <div className="relative z-10 space-y-2 text-center">
-                     <span className="text-sm font-medium text-nexus-teal uppercase tracking-[0.2em]">Total Labor Cost</span>
-                     <div className="text-3xl font-bold text-white font-mono drop-shadow-neon mt-2">
+                     <span className="text-[10px] font-black text-nexus-teal uppercase tracking-[0.2em]">Total Labor Cost</span>
+                     <div className="text-3xl font-black text-white font-mono drop-shadow-neon mt-2">
                        {newWOForm.totalLaborCost ? parseFloat(newWOForm.totalLaborCost).toLocaleString(undefined, {minimumFractionDigits: 2}) : "0.00"}
                      </div>
                   </div>
@@ -445,11 +421,11 @@ export default function SubcontractorsPayoutPage() {
                 </div>
 
                 <div className="bg-nexus-teal/5 p-5 rounded-2xl border border-nexus-teal/20 flex gap-4 items-start">
-                  <div className="w-8 h-8 rounded-full bg-nexus-teal/10 flex items-center justify-center text-nexus-teal flex-shrink-0 mt-0.5">
+                  <div className="w-8 h-8 rounded-full bg-nexus-teal/15 flex items-center justify-center text-nexus-teal flex-shrink-0 mt-0.5">
                     <AlertCircle size={16} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-medium text-white uppercase tracking-widest">ระบบปันส่วนงวดงานอัตโนมัติ</h4>
+                    <h4 className="text-[11px] font-black text-white uppercase tracking-widest">ระบบปันส่วนงวดงานอัตโนมัติ</h4>
                     <p className="text-[10px] text-white/40 mt-1.5 font-bold leading-relaxed uppercase tracking-wider">
                       เมื่อบันทึกข้อมูล ระบบจะสร้างแผนการจ่ายมาตรฐาน 3 งวด (30% / 40% / 30%) อัตโนมัติ เพื่อนำไปใช้เป็นเกณฑ์ตรวจรับงานในขั้นตอนถัดไป
                     </p>
@@ -457,11 +433,11 @@ export default function SubcontractorsPayoutPage() {
                 </div>
              </div>
 
-             <div className="space-y-3 pt-8 border-t border-white/5 mt-8">
-                <PillButton type="submit" className="w-full h-10 px-6 rounded-full shadow-neon-teal bg-nexus-teal text-black uppercase tracking-[0.2em] font-bold flex items-center justify-center gap-2">
+             <div className="space-y-4 pt-8 border-t border-white/5 mt-8">
+                <PillButton type="submit" className="w-full h-10 px-6 rounded-full shadow-neon-teal bg-nexus-teal text-black uppercase tracking-[0.2em] font-black flex items-center justify-center gap-2">
                   <ShieldCheck size={18} /> สร้างใบสั่งจ้างงาน
                 </PillButton>
-                <PillButton type="button" onClick={() => setIsNewWOModalOpen(false)} variant="glass" className="w-full h-10 px-6 rounded-full text-white/60 hover:text-white uppercase tracking-widest font-bold">
+                <PillButton type="button" onClick={() => setIsNewWOModalOpen(false)} variant="glass" className="w-full h-10 px-6 rounded-full text-white/60 hover:text-white uppercase tracking-widest font-black">
                   ยกเลิก
                 </PillButton>
              </div>
@@ -472,22 +448,22 @@ export default function SubcontractorsPayoutPage() {
       {/* Evaluation Modal */}
       <Modal isOpen={isEvaluationModalOpen} onClose={() => setIsEvaluationModalOpen(false)} title="ตรวจรับงานและสั่งจ่าย" maxWidth="max-w-2xl">
         {selectedWO && (
-          <div className="space-y-3">
+          <div className="space-y-6">
             <div className="flex items-start justify-between bg-white/[0.02] p-4 rounded-xl border border-white/5">
                <div>
                  <p className="text-[10px] text-white/40 uppercase tracking-widest mb-1">WORK ORDER REF</p>
-                 <h2 className="text-lg font-mono not-italic font-bold text-nexus-teal">{selectedWO.woNo}</h2>
+                 <h2 className="text-lg font-mono not-italic font-black text-nexus-teal">{selectedWO.woNo}</h2>
                  <p className="text-sm font-bold text-white mt-1">{selectedWO.projectName}</p>
                  <p className="text-xs text-white/60 mt-0.5">{selectedWO.contractorName}</p>
                </div>
                <div className="text-right">
                  <p className="text-[10px] text-white/40 uppercase tracking-widest mb-1">TOTAL LABOR COST</p>
-                 <p className="text-xl font-mono not-italic font-bold text-white">{selectedWO.totalLaborCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                 <p className="text-xl font-mono not-italic font-black text-white">{selectedWO.totalLaborCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                </div>
             </div>
 
             <div>
-               <h3 className="text-sm font-bold text-white mb-4 border-b border-white/10 pb-2">แผนการจ่ายเงิน</h3>
+               <h3 className="text-sm font-bold text-white mb-4 border-b border-white/10 pb-2">แผนการจ่ายเงิน (Payout Milestones)</h3>
                <div className="space-y-3">
                  {selectedWO.payoutMilestones.map((milestone, idx) => (
                    <div key={idx} className={cn(
@@ -499,7 +475,7 @@ export default function SubcontractorsPayoutPage() {
                      <div className="flex items-center gap-4">
                         <div className={cn(
                           "w-8 h-8 rounded-full flex items-center justify-center font-mono not-italic font-bold text-xs",
-                          milestone.status === 'APPROVED' || milestone.status === 'PAID' ? "bg-nexus-teal text-black" : "bg-white/10 text-white/40"
+                          milestone.status === 'APPROVED' || milestone.status === 'PAID' ? "bg-nexus-teal text-black" : "bg-white/15 text-white/40"
                         )}>
                            {milestone.milestoneNo}
                         </div>
@@ -517,10 +493,10 @@ export default function SubcontractorsPayoutPage() {
                             className="h-8 px-4 text-[11px] rounded-full"
                             onClick={() => handleApproveMilestone(selectedWO.id, idx)}
                           >
-                            อนุมัติจ่าย
+                            อนุมัติจ่าย (Approve)
                           </PillButton>
                         ) : (
-                          <div className="flex items-center gap-2 text-nexus-teal text-xs font-bold bg-nexus-teal/10 px-3 py-1.5 rounded-full">
+                          <div className="flex items-center gap-2 text-nexus-teal text-xs font-bold bg-transparent px-3 py-1.5 rounded-full">
                             <CheckCircle2 size={14} /> อนุมัติแล้ว
                           </div>
                         )}
@@ -534,9 +510,9 @@ export default function SubcontractorsPayoutPage() {
       </Modal>
 
       {/* Quotation Selector Modal */}
-      <Modal isOpen={isQuotationSelectorOpen} onClose={() => setIsQuotationSelectorOpen(false)} title="เลือกใบเสนอราคาอ้างอิง" maxWidth="max-w-4xl">
+      <Modal isOpen={isQuotationSelectorOpen} onClose={() => setIsQuotationSelectorOpen(false)} title="เลือกใบเสนอราคาอ้างอิง (Sales BOM Data Binding)" maxWidth="max-w-4xl">
         <div className="overflow-x-auto max-h-[60vh] custom-scrollbar">
-          <NexusTable headers={["เลขที่ใบเสนอราคา", "หัวข้อ / โครงการ", "ยอดรวม (฿)", "จัดการ"]}>
+          <NexusTable headers={["Quotation ID", "หัวข้อ / โครงการ", "ยอดรวม (฿)", "จัดการ"]}>
               {quotations.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-white/40 text-sm">ไม่พบเอกสารใบเสนอราคาในระบบ</td>
@@ -563,7 +539,7 @@ export default function SubcontractorsPayoutPage() {
                       }} 
                       className="text-[11px] font-bold text-black bg-nexus-teal px-4 py-2 rounded-full hover:bg-nexus-teal/80 transition-colors shadow-neon-teal"
                     >
-                      ดึงข้อมูล
+                      ดึงข้อมูล (Bind)
                     </button>
                   </NexusTableCell>
                 </NexusTableRow>
@@ -574,7 +550,7 @@ export default function SubcontractorsPayoutPage() {
 
       {/* Toast */}
       {toast && (
-        <Toast message={toast.message} type={toast.type} isVisible={true} onClose={() => setToast(null)} />
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
     </div>
   );

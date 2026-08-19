@@ -77,7 +77,7 @@ export function GanttChart({ milestones }: GanttChartProps) {
                             }}
                          >
                             <div 
-                               className={cn("absolute inset-y-0 left-0 rounded-l-xl transition-all",
+                               className={cn("absolute inset-y-0 left-0 rounded-l-xl transition-all opacity-50",
                                   m.status === "completed" ? "bg-nexus-teal shadow-neon-teal" :
                                   m.status === "in-progress" ? "bg-nexus-blue shadow-neon-blue animate-pulse" :
                                   "bg-white/10"

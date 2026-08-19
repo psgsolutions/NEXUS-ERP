@@ -93,42 +93,42 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                   </div>
                   <div className="space-y-6">
                      <div className="grid grid-cols-2 gap-4">
-                        <Field label="คลังต้นทาง">
+                        <Field label="คลังต้นทาง (From Warehouse)">
                            <PillSelect 
                              value={formData.fromWarehouse}
                              onChange={(e) => setFormData({...formData, fromWarehouse: e.target.value})}
-                             className="w-full text-danger border-danger/20 bg-danger/5"
+                             className="w-full h-9 px-6 rounded-full text-danger border-danger/20 bg-danger/5"
                            >
                               <option value="MAIN">Main Warehouse</option>
                               <option value="RAYONG">Site Warehouse (Rayong)</option>
                            </PillSelect>
                         </Field>
-                        <Field label="คลังปลายทาง">
+                        <Field label="คลังปลายทาง (To Warehouse)">
                            <PillSelect 
                              value={formData.toWarehouse}
                              onChange={(e) => setFormData({...formData, toWarehouse: e.target.value})}
-                             className="w-full text-nexus-teal border-nexus-teal/20 bg-nexus-teal/5"
+                             className="w-full h-9 px-6 rounded-full text-nexus-teal border-nexus-teal/20 bg-nexus-teal/5"
                            >
                               <option value="RAYONG">Site Warehouse (Rayong)</option>
                               <option value="MAIN">Main Warehouse</option>
                            </PillSelect>
                         </Field>
                      </div>
-                     <Field label="ผู้ทำรายการ">
+                     <Field label="ผู้ทำรายการ (Requester)">
                         <PillSelect 
                           value={formData.requester}
                           onChange={(e) => setFormData({...formData, requester: e.target.value})}
-                          className="w-full"
+                          className="w-full h-9 px-6 rounded-full"
                         >
                            <option value="Kriangkrai M.">Kriangkrai M.</option>
                            <option value="Somchai J.">Somchai J.</option>
                         </PillSelect>
                      </Field>
-                     <Field label="วัตถุประสงค์">
+                     <Field label="วัตถุประสงค์ (Reason)">
                         <PillSelect 
                           value={formData.reason}
                           onChange={(e) => setFormData({...formData, reason: e.target.value})}
-                          className="w-full"
+                          className="w-full h-9 px-6 rounded-full"
                         >
                            <option value="Stock Replenishment">เติมสต็อกสินค้า</option>
                            <option value="Site Installation">เบิกใช้หน้างาน</option>
@@ -145,11 +145,11 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                   </div>
                   <div className="space-y-6">
                      <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/5 space-y-6">
-                        <Field label="เลือกพัสดุ">
+                        <Field label="เลือกพัสดุ (Select Product)">
                            <PillSelect 
                              value={formData.productId}
                              onChange={(e) => setFormData({...formData, productId: e.target.value})}
-                             className="w-full"
+                             className="w-full h-9 px-6 rounded-full"
                            >
                               <option value="">เลือกพัสดุ...</option>
                               {products.map(p => (
@@ -172,7 +172,7 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                                      value={formData.qty}
                                      onChange={(e) => setFormData({...formData, qty: Number(e.target.value)})}
                                      placeholder="Qty" 
-                                     className="w-24 h-10 text-center font-black" 
+                                     className="w-24 h-9 px-4 rounded-full text-center font-black" 
                                    />
                                 </div>
                              </div>

@@ -155,25 +155,25 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
                      </div>
                      <div className="flex-1 space-y-8">
                         <div className="grid grid-cols-4 gap-6">
-                           <Field label="คำนำหน้า">
-                              <PillSelect value={formData.prefix} onChange={(e) => setFormData({...formData, prefix: e.target.value})} className="w-full">
+                           <Field label="คำนำหน้า (Prefix)">
+                              <PillSelect value={formData.prefix} onChange={(e) => setFormData({...formData, prefix: e.target.value})} className="w-full h-9 px-6 rounded-full">
                                  <option>Mr.</option>
                                  <option>Mrs.</option>
                                  <option>Ms.</option>
                               </PillSelect>
                            </Field>
                            <div className="col-span-3">
-                              <Field label="ชื่อจริง *">
-                                 <PillInput value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} placeholder="ระบุชื่อจริง..." className="w-full" />
+                              <Field label="ชื่อจริง * (First Name)">
+                                 <PillInput value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} placeholder="ระบุชื่อจริง..." className="w-full h-9 px-6 rounded-full" />
                               </Field>
                            </div>
                         </div>
                         <div className="grid grid-cols-2 gap-6">
-                           <Field label="นามสกุล *">
-                              <PillInput value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} placeholder="ระบุนามสกุล..." className="w-full" />
+                           <Field label="นามสกุล * (Last Name)">
+                              <PillInput value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} placeholder="ระบุนามสกุล..." className="w-full h-9 px-6 rounded-full" />
                            </Field>
-                           <Field label="ชื่อเล่น">
-                              <PillInput value={formData.nickname} onChange={(e) => setFormData({...formData, nickname: e.target.value})} placeholder="ชื่อเล่น..." className="w-full" />
+                           <Field label="ชื่อเล่น (Nickname)">
+                              <PillInput value={formData.nickname} onChange={(e) => setFormData({...formData, nickname: e.target.value})} placeholder="ชื่อเล่น..." className="w-full h-9 px-6 rounded-full" />
                            </Field>
                         </div>
                      </div>
@@ -184,11 +184,11 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
               {activeTab === "job" && (
                 <div className="space-y-10">
                    <div className="grid grid-cols-2 gap-8">
-                      <Field label="ตำแหน่งงาน *">
-                         <PillInput value={formData.position} onChange={(e) => setFormData({...formData, position: e.target.value})} placeholder="เช่น Network Engineer..." className="w-full" />
+                      <Field label="ตำแหน่งงาน * (Position)">
+                         <PillInput value={formData.position} onChange={(e) => setFormData({...formData, position: e.target.value})} placeholder="เช่น Network Engineer..." className="w-full h-9 px-6 rounded-full" />
                       </Field>
-                      <Field label="แผนก">
-                         <PillSelect value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})} className="w-full">
+                      <Field label="แผนก (Department)">
+                         <PillSelect value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})} className="w-full h-9 px-6 rounded-full">
                             <option value="ENGINEERING">ENGINEERING (วิศวกรรม)</option>
                             <option value="SALES">SALES & MARKETING</option>
                             <option value="FINANCE">FINANCE & ADMIN</option>
@@ -197,15 +197,15 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
                       </Field>
                    </div>
                    <div className="grid grid-cols-2 gap-8">
-                      <Field label="ประเภทการจ้างงาน">
-                         <PillSelect value={formData.employmentType} onChange={(e) => setFormData({...formData, employmentType: e.target.value})} className="w-full">
+                      <Field label="ประเภทการจ้างงาน (Employment Type)">
+                         <PillSelect value={formData.employmentType} onChange={(e) => setFormData({...formData, employmentType: e.target.value})} className="w-full h-9 px-6 rounded-full">
                             <option value="permanent">พนักงานประจำ</option>
                             <option value="contract">สัญญาจ้าง</option>
                             <option value="probation">ทดลองงาน</option>
                          </PillSelect>
                       </Field>
-                      <Field label="วันที่เริ่มงาน">
-                         <NexusDatePicker value={formData.joinDate} onChange={(e) => setFormData({...formData, joinDate: e.target.value})} className="w-full" />
+                      <Field label="วันที่เริ่มงาน (Join Date)">
+                         <NexusDatePicker value={formData.joinDate} onChange={(e) => setFormData({...formData, joinDate: e.target.value})} className="w-full h-9 px-6 rounded-full" />
                       </Field>
                    </div>
                 </div>
@@ -214,26 +214,26 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
                {activeTab === "payroll" && (
                 <div className="space-y-10">
                    <div className="grid grid-cols-2 gap-8">
-                      <Field label="เลขประจำตัวผู้เสียภาษี">
-                         <PillInput value={formData.taxId} onChange={handleTaxIdChange} placeholder="เลขประจำตัวผู้เสียภาษี 13 หลัก" className="w-full" />
+                      <Field label="เลขประจำตัวผู้เสียภาษี (Tax ID)">
+                         <PillInput value={formData.taxId} onChange={handleTaxIdChange} placeholder="เลขประจำตัวผู้เสียภาษี 13 หลัก" className="w-full h-9 px-6 rounded-full font-mono text-right" />
                       </Field>
-                      <Field label="เงินเดือนฐาน">
+                      <Field label="เงินเดือนฐาน (Base Salary)">
                          <div className="relative">
-                            <PillInput type="text" inputMode="numeric" value={formData.salary} onChange={handleSalaryChange} placeholder="0" className="w-full pl-10" />
+                            <PillInput type="text" inputMode="numeric" value={formData.salary} onChange={handleSalaryChange} placeholder="0" className="w-full h-9 pl-10 pr-6 rounded-full font-mono text-right" />
                             <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={16} />
                          </div>
                       </Field>
                    </div>
                    <div className="grid grid-cols-2 gap-8">
-                      <Field label="ธนาคารที่รับเงิน">
-                         <PillSelect value={formData.bankName} onChange={(e) => setFormData({...formData, bankName: e.target.value})} className="w-full">
+                      <Field label="ธนาคารที่รับเงิน (Bank Name)">
+                         <PillSelect value={formData.bankName} onChange={(e) => setFormData({...formData, bankName: e.target.value})} className="w-full h-9 px-6 rounded-full">
                             <option>KBank</option>
                             <option>SCB</option>
                             <option>BBL</option>
                          </PillSelect>
                       </Field>
-                      <Field label="เลขที่บัญชีธนาคาร">
-                         <PillInput value={formData.bankAccount} onChange={(e) => setFormData({...formData, bankAccount: e.target.value})} placeholder="XXX-X-XXXXX-X" className="w-full" />
+                      <Field label="เลขที่บัญชีธนาคาร (Bank Account)">
+                         <PillInput value={formData.bankAccount} onChange={(e) => setFormData({...formData, bankAccount: e.target.value})} placeholder="XXX-X-XXXXX-X" className="w-full h-9 px-6 rounded-full font-mono text-right" />
                       </Field>
                    </div>
                 </div>

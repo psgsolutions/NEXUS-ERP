@@ -1,0 +1,436 @@
+"use client";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSystemDialog } from "@/context/DialogContext";
+import { 
+  ShieldCheck, 
+  AlertTriangle,
+  ArrowLeft,
+  FileText,
+  CheckCircle2,
+  UploadCloud,
+  FileUp,
+  Trash2
+} from "lucide-react";
+import { 
+  PillButton, 
+  PillInput, 
+  PillSelect, 
+  PillTabs, 
+  NexusDataField, 
+  GlassCard, 
+  cn, 
+  NexusDatePicker 
+} from "@/components/ui/Base";
+import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
+import { SmartSelect } from "@/components/ui/SmartComponents";
+import NexusPageLayout from "@/components/layout/NexusPageLayout";
+import { DocumentStepper } from "@/components/ui/DocumentStepper";
+
+const vendorOptions = [
+  { value: "VD-001", label: "เธเธฃเธดเธฉเธฑเธ— เธญเธธเธเธเธฃเธ“เนเนเธญเธ—เธต เธเธณเธเธฑเธ” (เธกเธซเธฒเธเธ)", description: "Tax: 0105559012345" },
+  { value: "VD-002", label: "เธซเธเธ. เธฃเธฑเธเน€เธซเธกเธฒเน€เธเธฃเธทเธญเธเนเธฒเธขเนเธ—เธข", description: "Tax: 0103550012346" }
+];
+
+export default function NewPurchaseRequestPage() {
+  const router = useRouter();
+  const { showAlert, showConfirm } = useSystemDialog();
+
+  const [activeTab, setActiveTab] = useState("header");
+  const [docState, setDocState] = useState("draft");
+  const [items, setItems] = useState<any[]>([]);
+  
+  const [header, setHeader] = useState({
+    requester: "Kriangkrai M.",
+    department: "Engineering",
+    requestDate: new Date().toISOString().split('T')[0],
+    requiredDate: "",
+    priority: "medium",
+    projectRef: "",
+    reason: ""
+  });
+
+  // Tax & WHT Settings
+  const [vatMode, setVatMode] = useState<"exclude" | "include" | "none">("exclude");
+  const [whtRate, setWhtRate] = useState<number>(0);
+
+  // Vendor Auto-Inference
+  const [vendorId, setVendorId] = useState("");
+  const [vendorData, setVendorData] = useState<any>(null);
+
+  // File Attachments Vault
+  const [attachments, setAttachments] = useState<{name: string, size: string}[]>([]);
+
+  useEffect(() => {
+    // 0-Click Auto-Inference Pipeline Mockup
+    // เนเธเนเธญเนเธฒเธเธญเธดเธเนเธ—เธเธเธฒเธฃเธ•เนเธญ useRealtimeCollection('suppliers')
+    if (vendorId === "VD-001") {
+      setVendorData({ address: "123 เธ–.เธชเธธเธเธธเธกเธงเธดเธ— เธเธฃเธธเธเน€เธ—เธเธฏ", taxId: "0105559012345", creditTerms: "30 Days", contact: "เธเธธเธ“เธชเธกเธเธฒเธข" });
+    } else if (vendorId === "VD-002") {
+      setVendorData({ address: "456 เธ–.เธฃเธฑเธเธ”เธฒเธฏ เธเธฃเธธเธเน€เธ—เธเธฏ", taxId: "0103550012346", creditTerms: "15 Days", contact: "เธเธธเธ“เธงเธดเน€เธเธตเธขเธฃ" });
+    } else {
+      setVendorData(null);
+    }
+  }, [vendorId]);
+
+  const tabs = [
+    { id: "header", label: "เธเนเธญเธกเธนเธฅเธเธทเนเธเธเธฒเธเธเธฒเธฃเธเธญเธเธทเนเธญ" },
+    { id: "items", label: "เธฃเธฒเธขเธเธฒเธฃเธเธฑเธชเธ”เธธเนเธฅเธฐเธเธฃเธดเธเธฒเธฃ" }
+  ];
+
+  const handleBack = async () => {
+    const isDirty = items.length > 0 || header.requiredDate !== "" || header.reason !== "";
+    if (isDirty) {
+      if (await showConfirm("เธเธธเธ“เธกเธตเธเธฒเธฃเธเธฃเธญเธเธเนเธญเธกเธนเธฅเธเนเธฒเธเนเธงเน เธ•เนเธญเธเธเธฒเธฃเธขเนเธญเธเธเธฅเธฑเธเนเธ”เธขเนเธกเนเธเธฑเธเธ—เธถเธเนเธเนเธซเธฃเธทเธญเนเธกเน?")) {
+        router.back();
+      }
+    } else {
+      router.back();
+    }
+  };
+
+  const handleSave = () => {
+    if (items.length === 0) return void showAlert("เธเธฃเธธเธ“เธฒเน€เธเธดเนเธกเธฃเธฒเธขเธเธฒเธฃเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเธเธญเธเธทเนเธญ");
+    showAlert("เธชเนเธเธเธญเธญเธเธธเธกเธฑเธ•เธดเธเธทเนเธญเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง");
+    router.push("/procurement");
+  };
+
+  // Calculation Engine
+  const totalAmount = items.reduce((acc, i) => acc + ((i.qty || 0) * (i.price || 0)), 0);
+  const discountTotal = items.reduce((acc, i) => {
+    const rawDisc = typeof i.discount === "string" ? i.discount : (i.discount || 0).toString();
+    let d = 0;
+    if (rawDisc.endsWith("%")) {
+      d = ((i.qty || 0) * (i.price || 0)) * (parseFloat(rawDisc) / 100);
+    } else {
+      d = parseFloat(rawDisc);
+    }
+    return acc + (isNaN(d) ? 0 : d);
+  }, 0);
+  
+  const subtotal = totalAmount - discountTotal;
+  let vatAmount = 0;
+  let preVat = subtotal;
+
+  if (vatMode === "exclude") {
+    vatAmount = subtotal * 0.07;
+  } else if (vatMode === "include") {
+    preVat = subtotal / 1.07;
+    vatAmount = subtotal - preVat;
+  }
+  
+  const whtAmount = preVat * (whtRate / 100);
+  const grandTotal = (vatMode === "include" ? subtotal : subtotal + vatAmount) - whtAmount;
+
+  const headerContent = (
+    <>
+      <div className="flex items-center gap-4">
+        <button onClick={handleBack} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-white/50 hover:text-white transition-all backdrop-blur-sm">
+          <ArrowLeft size={18} />
+        </button>
+        <div>
+          <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-0.5">PROCURE V7.5</p>
+          <div className="flex items-center">
+            <h1 className="text-xl font-black uppercase tracking-tight text-white">เธเธฑเธเธ—เธถเธเนเธเธเธญเธเธทเนเธญ (New Purchase Request)</h1>
+            <DocumentStepper steps={["Draft", "Pending", "Approved", "Executing", "Completed"]} currentStep={0} />
+          </div>
+        </div>
+      </div>
+      
+      <div className="flex items-center gap-3">
+        <PillTabs 
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+        <PillButton variant="ghost" className="h-9 px-6 rounded-full text-white/50 hover:text-white" onClick={handleBack}>
+          เธขเธเน€เธฅเธดเธ
+        </PillButton>
+        <PillButton className="h-9 px-6 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 shadow-[0_0_12px_rgba(6,182,212,0.15)]" onClick={handleSave}>
+          <ShieldCheck size={14} className="mr-2" /> เธชเนเธเธเธญเธญเธเธธเธกเธฑเธ•เธดเธเธทเนเธญ
+        </PillButton>
+      </div>
+    </>
+  );
+
+  const leftContent = (
+    <div className="space-y-6">
+      {activeTab === "header" && (
+        <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl space-y-10">
+          {/* User & Request Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <Field label="เธเธนเนเธขเธทเนเธเธเธณเธเธญเธเธทเนเธญ">
+              <PillInput value={header.requester} disabled className="w-full bg-white/[0.01] text-white/40 h-11 rounded-full px-6 text-[13px] font-bold border-white/5 cursor-not-allowed" />
+            </Field>
+            <Field label="เธซเธเนเธงเธขเธเธฒเธ / เนเธเธเธ">
+              <PillSelect 
+                value={header.department}
+                onChange={(e) => setHeader({...header, department: e.target.value})}
+                className="w-full px-6 h-11 rounded-full text-[13px] font-bold"
+              >
+                <option>Engineering</option>
+                <option>Sales & Marketing</option>
+                <option>HR & Admin</option>
+                <option>Finance</option>
+              </PillSelect>
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <Field label="เธงเธฑเธเธ—เธตเนเธขเธทเนเธเธเธณเธเธญ">
+              <NexusDatePicker value={header.requestDate} disabled className="w-full opacity-50 h-11 rounded-full px-6 text-[13px] font-bold border-white/5" />
+            </Field>
+            <Field label={<>เธงเธฑเธเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเนเธเนเธเธฒเธ <span className="text-danger font-bold">*</span></>}>
+              <NexusDatePicker value={header.requiredDate}
+                onChange={(e) => setHeader({...header, requiredDate: e.target.value})}
+                className="w-full text-cyan-400 h-11 rounded-full px-6 text-[13px] font-bold bg-white/[0.02]" 
+              />
+            </Field>
+            <Field label="เธฅเธณเธ”เธฑเธเธเธงเธฒเธกเธชเธณเธเธฑเธ">
+              <PillSelect 
+                value={header.priority}
+                onChange={(e) => setHeader({...header, priority: e.target.value})}
+                className={cn(
+                  "w-full px-6 h-11 rounded-full text-[13px] font-black",
+                  header.priority === "urgent" ? "text-danger" : "text-cyan-400"
+                )}
+              >
+                <option value="low">LOW (เธ—เธฑเนเธงเนเธ)</option>
+                <option value="medium">MEDIUM (เธเธเธ•เธด)</option>
+                <option value="high">HIGH (เธ”เนเธงเธ)</option>
+                <option value="urgent">URGENT (เธ”เนเธงเธเธ—เธตเนเธชเธธเธ”)</option>
+              </PillSelect>
+            </Field>
+          </div>
+
+          {/* 2. Auto-Inference Pipeline (0-Click Data) */}
+          <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5 space-y-6">
+            <h4 className="text-[13px] font-black text-cyan-400 uppercase flex items-center gap-2">
+              <UploadCloud size={16} /> เนเธเธฐเธเธณเธเธนเนเธเธณเธซเธเนเธฒเธข (Suggested Vendor)
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Field label="เธเธทเนเธญเธเธนเนเธเธณเธซเธเนเธฒเธข / เธเธนเนเธเนเธฒ">
+                <SmartSelect 
+                  options={vendorOptions} 
+                  value={vendorId} 
+                  onChange={setVendorId} 
+                  placeholder="เธเนเธเธซเธฒเธเธนเนเธเธณเธซเธเนเธฒเธข..."
+                  className="h-11 rounded-full text-[13px] font-bold px-4"
+                />
+              </Field>
+              
+              {/* Auto-filled fields */}
+              {vendorData && (
+                <div className="grid grid-cols-2 gap-4 animate-in fade-in duration-300">
+                  <Field label="เน€เธฅเธเธเธฃเธฐเธเธณเธ•เธฑเธงเธเธนเนเน€เธชเธตเธขเธ เธฒเธฉเธต">
+                    <PillInput value={vendorData.taxId} disabled className="w-full bg-white/[0.02] h-11 rounded-full px-6 text-[13px] font-mono font-bold text-white/60" />
+                  </Field>
+                  <Field label="เน€เธเธฃเธ”เธดเธ•เน€เธ—เธญเธก">
+                    <PillInput value={vendorData.creditTerms} disabled className="w-full bg-white/[0.02] h-11 rounded-full px-6 text-[13px] font-bold text-cyan-400" />
+                  </Field>
+                </div>
+              )}
+            </div>
+            {vendorData && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <Field label="เธ—เธตเนเธญเธขเธนเน / เธเนเธญเธกเธนเธฅเธ•เธดเธ”เธ•เนเธญ">
+                  <PillInput value={`${vendorData.address} (เธ•เธดเธ”เธ•เนเธญ: ${vendorData.contact})`} disabled className="w-full bg-white/[0.02] h-11 rounded-full px-6 text-[13px] font-bold text-white/60" />
+                </Field>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-6">
+            <Field label="เนเธเธฃเธเธเธฒเธฃเธ—เธตเนเธญเนเธฒเธเธญเธดเธ">
+              <PillInput 
+                value={header.projectRef}
+                onChange={(e) => setHeader({...header, projectRef: e.target.value})}
+                placeholder="เน€เธŠเนˆเธ™ PRJ-26-001 (เธ–เน‰เธฒเธกเธต)..." 
+                className="w-full h-11 rounded-full px-6 text-[13px] font-bold bg-white/[0.02]" 
+              />
+            </Field>
+            <Field label="วัตถุประสงค์ / ความจำเป็น *" required>
+              <textarea 
+                className="w-full h-32 rounded-3xl bg-white/[0.02] border border-white/5 text-white text-[13px] font-bold p-6 focus:outline-none focus:border-cyan-400/40 transition-all custom-scrollbar placeholder:text-white/20"
+                value={header.reason}
+                onChange={(e) => setHeader({...header, reason: e.target.value})}
+                placeholder="เธฃเธฐเธšเธธเน€เธซเธ•เธธเธœเธฅเธ„เธงเธฒเธกเธˆเธณเน€เธ›เน‡เธ™เนƒเธ™เธ เธฒเธฃเธˆเธฑเธ”เธ‹เธทเน‰เธญเธ„เธฃเธฑเน‰เธ‡เธ™เธตเน‰..."
+              />
+            </Field>
+          </div>
+
+          {/* 3. Multi-Attachment Vault */}
+          <div className="space-y-4 pt-6">
+            <h4 className="text-[12px] font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
+              <FileUp size={16} /> เธ„เธฅเธฑเธ‡เน€เธญเธ เธชเธฒเธฃเน เธ™เธšเธญเน‰เธฒเธ‡เธญเธดเธ‡ (Attachments)
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div 
+                className="border border-dashed border-white/10 hover:border-cyan-400/50 bg-white/[0.01] hover:bg-cyan-400/5 rounded-3xl h-28 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors"
+                onClick={() => setAttachments([...attachments, { name: `Quotation_Vendor_${attachments.length + 1}.pdf`, size: "1.2 MB" }])}
+              >
+                <UploadCloud size={24} className="text-white/30" />
+                <span className="text-[11px] text-white/40 font-bold uppercase tracking-widest">เธฅเธฒเธ เน„เธŸเธฅเนŒเธงเธฒเธ‡เธ—เธตเนˆเธ™เธตเนˆ เธซเธฃเธทเธญเธ„เธฅเธดเธ เน€เธžเธทเนˆเธญเธญเธฑเธ›เน‚เธซเธฅเธ”</span>
+              </div>
+              <div className="space-y-2 max-h-28 overflow-y-auto custom-scrollbar pr-2">
+                {attachments.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-[11px] text-white/20 font-bold uppercase tracking-widest">เธขเธฑเธ‡เน„เธกเนˆเธกเธตเน„เธŸเธฅเนŒเน เธ™เธš</div>
+                ) : (
+                  attachments.map((file, idx) => (
+                    <div key={idx} className="flex justify-between items-center bg-white/[0.02] border border-white/5 p-3 px-4 rounded-2xl group hover:bg-white/[0.05] transition-colors">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <FileText size={16} className="text-cyan-400 shrink-0" />
+                        <span className="text-[12px] text-white/80 font-bold truncate">{file.name}</span>
+                        <span className="text-[10px] text-white/40 font-mono shrink-0">{file.size}</span>
+                      </div>
+                      <button 
+                        className="text-white/20 hover:text-danger shrink-0 transition-colors"
+                        onClick={() => setAttachments(attachments.filter((_, i) => i !== idx))}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "items" && (
+        <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl space-y-6">
+          <DocumentItemsTable 
+            items={items}
+            onChange={setItems}
+          />
+        </div>
+      )}
+    </div>
+  );
+
+  const rightSidebar = (
+    <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-8 sticky top-0">
+      <div className="space-y-1 border-b border-white/5 pb-4">
+        <h5 className="text-[13px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2">
+          เธชเธฃเธธเธ›เธฃเธฒเธขเธ เธฒเธฃเธ„เธณเธ‚เธญเธ‹เธทเน‰เธญ
+        </h5>
+      </div>
+
+      <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 space-y-6">
+        <div className="space-y-5">
+          <NexusDataField label="เน€เธฅเธ‚เธ—เธตเนˆ PR" value="PR-WAIT-GEN" />
+          <NexusDataField label="เธœเธนเน‰เธญเธ™เธธเธกเธฑเธ•เธดเธฅเธณเธ”เธฑเธšเธ—เธตเนˆ 1" value="Department Manager" />
+        </div>
+      </div>
+
+      {/* 4. Tax & WHT Engine Toggle */}
+      <div className="pt-6 border-t border-white/5 space-y-4">
+        <h5 className="text-[11px] font-black text-white/40 uppercase tracking-widest">Tax & WHT Settings</h5>
+        
+        <div className="flex gap-2">
+          {[
+            { id: "none", label: "เน„เธกเนˆเธกเธต VAT" },
+            { id: "exclude", label: "เธ เนˆเธญเธ™ VAT" },
+            { id: "include", label: "เธฃเธงเธก VAT" }
+          ].map(mode => (
+            <button
+              key={mode.id}
+              onClick={() => setVatMode(mode.id as any)}
+              className={cn(
+                "px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all",
+                vatMode === mode.id ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(20,163,204,0.3)]" : "bg-white/[0.03] text-white/30 border border-white/5 hover:text-white/60"
+              )}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap gap-2 pt-2">
+          {[0, 1, 2, 3, 5].map(rate => (
+            <button
+              key={rate}
+              onClick={() => setWhtRate(rate)}
+              className={cn(
+                "px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all",
+                whtRate === rate 
+                  ? (rate === 0 ? "bg-white/10 text-white border border-white/20" : "bg-danger/20 text-danger border border-danger/30 shadow-[0_0_10px_rgba(239,68,68,0.3)]") 
+                  : "bg-white/[0.03] text-white/30 border border-white/5 hover:text-white/60"
+              )}
+            >
+              {rate === 0 ? "เน„เธกเนˆเธซเธฑเธ  WHT" : `WHT ${rate}%`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Financial Summary Calculation */}
+      <div className="space-y-4 pt-6 border-t border-white/5">
+        <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-white/60">
+          <span>เธกเธนเธฅเธ„เนˆเธฒเธฃเธงเธก (Subtotal)</span>
+          <span className="font-mono text-[12px]">เธฟ{subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+        </div>
+        {vatMode !== "none" && (
+          <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-white/60">
+            <span>เธ เธฒเธฉเธตเธกเธนเธฅเธ„เนˆเธฒเน€เธžเธดเนˆเธก (VAT 7%)</span>
+            <span className="font-mono text-[12px]">เธฟ{vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+          </div>
+        )}
+        {whtRate > 0 && (
+          <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-danger/80">
+            <span>เธซเธฑเธ  เธ“ เธ—เธตเนˆเธˆเนˆเธฒเธข (WHT {whtRate}%)</span>
+            <span className="font-mono text-[12px]">- เธฟ{whtAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+          </div>
+        )}
+        <div className="flex justify-between items-center pt-2">
+          <span className="text-[12px] font-black text-white uppercase tracking-widest">เธขเธญเธ”เธชเธธเธ—เธ˜เธด (Grand Total)</span>
+          <span className="text-xl font-black text-cyan-400 font-mono">เธฟ{grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+        </div>
+      </div>
+
+      <div className="p-4 rounded-2xl bg-warning/5 border border-warning/10 flex items-start gap-3 mt-6">
+        <AlertTriangle className="text-warning flex-shrink-0 mt-0.5" size={16} />
+        <p className="text-[10px] text-warning/80 font-bold uppercase leading-relaxed tracking-widest">
+          เนƒเธšเธ‚เธญเธ‹เธทเน‰เธญเธ™เธตเน‰เธ•เน‰เธญเธ‡เน„เธ”เน‰เธฃเธฑเธšเธ เธฒเธฃเธญเธ™เธธเธกเธฑเธ•เธดเธˆเธฒเธ เธซเธฑเธงเธซเธ™เน‰เธฒเน เธœเธ™เธ เธ เนˆเธญเธ™เน€เธ‚เน‰เธฒเธชเธนเนˆเธ เธฃเธฐเธšเธงเธ™เธ เธฒเธฃเธˆเธฑเธ”เธ‹เธทเน‰เธญ
+        </p>
+      </div>
+
+      <div className="space-y-3 pt-6 border-t border-white/5">
+        <PillButton className="w-full h-11 rounded-full font-black uppercase tracking-widest shadow-[0_0_12px_rgba(6,182,212,0.15)] border border-cyan-500/30 bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/40 text-[12px]" onClick={handleSave}>
+          <ShieldCheck size={18} className="mr-2" />
+          เธชเนˆเธ‡เธ‚เธญเธญเธ™เธธเธกเธฑเธ•เธดเธ‹เธทเน‰เธญ
+        </PillButton>
+      </div>
+    </div>
+  );
+
+  return (
+    <NexusPageLayout
+      header={headerContent}
+      leftContent={leftContent}
+      rightSidebar={rightSidebar}
+    />
+  );
+}
+
+function Field({ label, children, required }: { label: string, children: React.ReactNode, required?: boolean }) {
+  const cleanLabel = label.replace('*', '').trim();
+  const hasAsterisk = required || label.includes('*');
+  const parts = cleanLabel.split(' (');
+  const thaiText = parts[0];
+  const engText = parts.length > 1 ? '(' + parts[1] : '';
+
+  return (
+    <div className="space-y-2 w-full flex flex-col items-start justify-center">
+      <label className="text-[12px] font-bold text-white/70 flex flex-wrap items-center gap-1 ml-1">
+        <span className="flex items-center">
+          {thaiText}
+          {hasAsterisk && <span className="text-danger ml-1 font-bold">*</span>}
+        </span>
+        {engText && <span className="text-white/40 font-normal uppercase tracking-widest text-[10px]">{engText}</span>}
+      </label>
+      {children}
+    </div>
+  );
+}

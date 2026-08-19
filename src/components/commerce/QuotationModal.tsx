@@ -2,23 +2,9 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { 
-  FileText, 
-  Plus, 
-  Trash2, 
-  ShieldCheck, 
-  Search, 
-  ArrowUpRight,
-  Calculator,
-  Box,
-  TrendingUp,
-  Percent,
-  Zap,
-  LayoutList,
-  Layers,
-  ClipboardList,
-  Target,
-  RefreshCw,
-  Edit3
+  FileText, Plus, Trash2, ShieldCheck, Search, ArrowUpRight,
+  Calculator, Box, TrendingUp, Percent, Zap, LayoutList,
+  Layers, ClipboardList, Target, RefreshCw, Edit3
 } from "lucide-react";
 import { PillButton, PillInput, PillSelect, Modal, PillTabs, NexusDataField, PillCheckbox, cn, NexusDatePicker } from "@/components/ui/Base";
 import { NumberStepper } from "@/components/ui/NumberStepper";
@@ -26,6 +12,9 @@ import { calculateFinancials, formatCurrency, getProfitRainbowColor, VatType } f
 import { useSystemDialog } from "@/context/DialogContext";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { SmartScanner } from "@/components/shared/SmartScanner";
+import { useAuth } from "@/context/AuthContext";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { where } from "firebase/firestore";
 
 interface QuotationModalProps {
   isOpen: boolean;
@@ -38,6 +27,10 @@ interface QuotationModalProps {
 const INITIAL_FORM = {
   subject: "",
   customer: "",
+  customerName: "",
+  customerAddress: "",
+  customerTaxId: "",
+  customerContact: "",
   date: new Date().toISOString().split('T')[0],
   validUntil: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
   taxMode: "Inclusive" as VatType,
@@ -50,6 +43,9 @@ const INITIAL_FORM = {
 
 export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData }: QuotationModalProps) {
   const { showAlert, showConfirm } = useSystemDialog();
+  const { companyId } = useAuth();
+  
+  const { data: customers = [] } = useRealtimeCollection("customers");
 
   const [isLocked, setIsLocked] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,16 +55,42 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
     if (initialData && isOpen) {
       setForm({
         ...INITIAL_FORM,
-        subject: initialData.title || "",
-        customer: initialData.customer || "",
+        subject: initialData.title || initialData.subject || "",
+        customer: initialData.customerId || initialData.customer || "",
+        customerName: initialData.customerName || "",
+        customerAddress: initialData.customerAddress || "",
+        customerTaxId: initialData.customerTaxId || "",
+        customerContact: initialData.customerContact || "",
+        date: initialData.date || INITIAL_FORM.date,
+        validUntil: initialData.validUntil || INITIAL_FORM.validUntil,
+        taxMode: initialData.taxMode || INITIAL_FORM.taxMode,
+        paymentTerms: initialData.paymentTerms || INITIAL_FORM.paymentTerms,
+        terms: initialData.terms || INITIAL_FORM.terms,
         items: initialData.items || []
       });
-      setIsLocked(false); // Unlocked by default for project pulls, allowing full editing!
+      setIsLocked(false);
     } else if (isOpen) {
       setForm(INITIAL_FORM);
       setIsLocked(false);
     }
   }, [initialData, isOpen]);
+
+  const handleCustomerChange = (customerId: string) => {
+    const selectedCustomer = customers.find(c => c.id === customerId);
+    if (selectedCustomer) {
+      setForm(prev => ({
+        ...prev,
+        customer: customerId,
+        customerName: selectedCustomer.name || "",
+        customerAddress: selectedCustomer.address || selectedCustomer.shippingAddress || "",
+        customerTaxId: selectedCustomer.taxId || selectedCustomer.tax_id || "",
+        customerContact: selectedCustomer.contactPerson || selectedCustomer.phone || "",
+        paymentTerms: selectedCustomer.creditTerm || prev.paymentTerms
+      }));
+    } else {
+      setForm(prev => ({ ...prev, customer: customerId }));
+    }
+  };
 
   const financials = useMemo(() => calculateFinancials(form.items, form.taxMode), [form.items, form.taxMode]);
   const rainbow = useMemo(() => getProfitRainbowColor(financials.gpPercent), [financials.gpPercent]);
@@ -99,7 +121,7 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
     <Modal 
       isOpen={isOpen} 
       onClose={onClose} 
-      title="ใบเสนอราคา"
+      title="ใบเสนอราคา (Quotation)"
       maxWidth="max-w-[1200px]"
     >
       <div className="flex flex-col h-full bg-[#0D0D0D] relative overflow-hidden">
@@ -162,53 +184,67 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
               </div>
             </div>
 
-            {/* 2. CUSTOMER & TERMS (2 Columns) */}
+            {/* 2. CUSTOMER & TERMS (2 Columns - Split Layout) */}
             <div className="grid grid-cols-2 gap-8 bg-white/[0.01] p-6 rounded-3xl border border-white/5">
-                {/* Left: Customer Info */}
+                {/* Left: Customer Profile & Address */}
                 <div className="space-y-4">
-                    <Field label="ชื่อลูกค้า (Customer Name) *">
+                    <Field label="ชื่อลูกค้า * (Customer Name)" required>
                       <PillSelect 
                         value={form.customer}
-                        onChange={(e) => setForm({...form, customer: e.target.value})}
-                        className="w-full bg-white/[0.02]"
+                        onChange={(e) => handleCustomerChange(e.target.value)}
+                        className="w-full bg-white/[0.02] h-9 rounded-full"
                       >
                         <option value="">เลือกจากฐานข้อมูล...</option>
-                        <option value="CUS-001">โรงพยาบาลตากสิน</option>
-                        <option value="CUS-002">PSG Solutions</option>
-                        <option value="CUS-003">สถาบันเทคโนโลยีพระจอมเกล้าฯ</option>
-                        <option value="CUS-004">โรงพยาบาลภูมิพลอดุลยเดช พอ.</option>
+                        {customers.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
                       </PillSelect>
                     </Field>
                     <Field label="เลขประจำตัวผู้เสียภาษี (Tax ID.)">
-                      <PillInput disabled value="-" className="w-full bg-white/[0.02] opacity-50" />
+                      <PillInput 
+                        value={form.customerTaxId}
+                        onChange={(e) => setForm({...form, customerTaxId: e.target.value})}
+                        className="w-full bg-white/[0.02] font-mono tracking-widest h-9 rounded-full text-white" 
+                        placeholder="0000000000000"
+                      />
                     </Field>
                     <Field label="ที่อยู่ (Address)">
-                      <PillInput disabled value="171 ถนนพหลโยธิน แขวงคลองถนน เขตสายไหม กรุงเทพฯ 10220" className="w-full bg-white/[0.02] text-white/50 text-[13px] opacity-50" />
+                      <PillInput 
+                        value={form.customerAddress}
+                        onChange={(e) => setForm({...form, customerAddress: e.target.value})}
+                        className="w-full bg-white/[0.02] text-[13px] h-9 rounded-full text-white" 
+                      />
                     </Field>
                     <Field label="ผู้ติดต่อ (Contact Name)">
-                      <PillInput disabled value="-" className="w-full bg-white/[0.02] opacity-50" />
+                      <PillInput 
+                        value={form.customerContact}
+                        onChange={(e) => setForm({...form, customerContact: e.target.value})}
+                        className="w-full bg-white/[0.02] h-9 rounded-full text-white" 
+                      />
                     </Field>
                 </div>
 
-                {/* Right: Terms & Dates */}
+                {/* Right: Document Info & Terms */}
                 <div className="space-y-4">
                     <Field label="วันที่ (Date)">
-                      <NexusDatePicker value={form.date}
+                      <NexusDatePicker 
+                        value={form.date}
                         onChange={(e) => setForm({...form, date: e.target.value})}
-                        className="w-full bg-white/[0.02]" 
+                        className="w-full bg-white/[0.02] h-9 rounded-full" 
                       />
                     </Field>
                     <Field label="ยืนราคาถึงวันที่ (Price Validation)">
-                      <NexusDatePicker value={form.validUntil}
+                      <NexusDatePicker 
+                        value={form.validUntil}
                         onChange={(e) => setForm({...form, validUntil: e.target.value})}
-                        className="w-full bg-white/[0.02]" 
+                        className="w-full bg-white/[0.02] h-9 rounded-full" 
                       />
                     </Field>
                     <Field label="เงื่อนไขการชำระเงิน (Terms of Payment)">
                       <PillSelect 
                         value={form.paymentTerms}
                         onChange={(e) => setForm({...form, paymentTerms: e.target.value})}
-                        className="w-full bg-white/[0.02]"
+                        className="w-full bg-white/[0.02] h-9 rounded-full"
                       >
                         <option value="Cash">เงินสด (Cash)</option>
                         <option value="30 Days">เครดิต 30 วัน</option>
@@ -220,7 +256,7 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
                       <PillSelect 
                         value={form.taxMode}
                         onChange={(e) => setForm({...form, taxMode: e.target.value as VatType})}
-                        className="w-full bg-white/[0.02]"
+                        className="w-full bg-white/[0.02] h-9 rounded-full"
                       >
                         <option value="Inclusive">รวมภาษี (Inclusive 7%)</option>
                         <option value="Exclusive">แยกภาษี (Exclusive 7%)</option>
@@ -233,12 +269,12 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
             {/* 3. PROJECT NAME */}
             <div className="bg-nexus-teal/5 p-6 rounded-3xl border border-nexus-teal/20 relative overflow-hidden group">
                 <div className="relative z-10">
-                    <Field label="Project : โครงการ *">
+                    <Field label="หัวข้อโครงการ * (Project Name)" required>
                         <PillInput 
                             value={form.subject}
                             onChange={(e) => setForm({...form, subject: e.target.value})}
                             placeholder="ระบุชื่อโครงการ..." 
-                            className="w-full text-white font-black text-xl bg-transparent border-b-2 border-transparent focus:border-nexus-teal/40 rounded-none px-0 py-2 placeholder:text-white/20" 
+                            className="w-full text-white font-black text-xl bg-transparent border-b-2 border-transparent focus:border-nexus-teal/40 rounded-none px-0 py-2 placeholder:text-white/20 h-10" 
                         />
                     </Field>
                 </div>
@@ -312,23 +348,23 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
                     <div className="relative z-10 space-y-4">
                         <div className="flex justify-between items-center text-white/80">
                             <span className="text-[14px] font-bold">รวมเป็นเงิน (Total Amount)</span>
-                            <span className="font-mono text-[16px]">{formatCurrency(financials.net)}</span>
+                            <span className="font-mono text-[16px] tracking-tight text-right">{formatCurrency(financials.net)}</span>
                         </div>
                         <div className="flex justify-between items-center text-white/80">
                             <span className="text-[14px] font-bold">ส่วนลด (Discount)</span>
-                            <span className="font-mono text-[16px] text-danger">0.00</span>
+                            <span className="font-mono text-[16px] text-danger tracking-tight text-right">0.00</span>
                         </div>
                         <div className="flex justify-between items-center text-white/80">
                             <span className="text-[14px] font-bold">ยอดรวมหลังหักส่วนลด (Net Total)</span>
-                            <span className="font-mono text-[16px]">{formatCurrency(financials.net)}</span>
+                            <span className="font-mono text-[16px] tracking-tight text-right">{formatCurrency(financials.net)}</span>
                         </div>
                         <div className="flex justify-between items-center text-white/80 pb-6 border-b border-white/10">
                             <span className="text-[14px] font-bold">ภาษีมูลค่าเพิ่ม 7% (VAT)</span>
-                            <span className="font-mono text-[16px]">{formatCurrency(financials.vat)}</span>
+                            <span className="font-mono text-[16px] tracking-tight text-right">{formatCurrency(financials.vat)}</span>
                         </div>
                         <div className="flex justify-between items-end pt-2">
                             <span className="text-[18px] font-black text-white">จำนวนเงินรวมทั้งสิ้น</span>
-                            <span className="font-mono text-3xl font-black text-nexus-teal drop-shadow-neon">{formatCurrency(financials.total)}</span>
+                            <span className="font-mono text-3xl font-black text-nexus-teal drop-shadow-neon tracking-tight text-right">{formatCurrency(financials.total)}</span>
                         </div>
                     </div>
                     {/* Background glow for total */}
@@ -343,10 +379,23 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
   );
 }
 
-function Field({ label, children }: { label: string, children: React.ReactNode }) {
+function Field({ label, children, required }: { label: string, children: React.ReactNode, required?: boolean }) {
+  // Use regex to parse and format the label standard: "ภาษาไทย * (English Specific)"
+  let formattedLabel = label;
+  let hasAsterisk = required || label.includes('*');
+  let cleanLabel = label.replace('*', '').trim();
+  
   return (
     <div className="space-y-2 w-full">
-      <label className="text-[11px] font-black text-white/50 uppercase tracking-widest ml-1">{label}</label>
+      <label className="text-[12px] font-bold text-white/70">
+        {cleanLabel.split(' (')[0]}
+        {hasAsterisk && <span className="text-danger ml-1 font-bold">*</span>}
+        {cleanLabel.includes(' (') && (
+          <span className="text-white/40 ml-1 font-normal uppercase tracking-widest text-[10px]">
+            ({cleanLabel.split(' (')[1]}
+          </span>
+        )}
+      </label>
       {children}
     </div>
   );

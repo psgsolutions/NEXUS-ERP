@@ -101,16 +101,16 @@ export function AttendanceModal({ isOpen, onClose, onConfirm }: AttendanceModalP
 
                <div className="space-y-8">
                   <div className="grid grid-cols-2 gap-8">
-                    <Field label="พนักงาน *">
-                       <PillSelect value={employee} onChange={(e) => setEmployee(e.target.value)} className="w-full px-6">
+                    <Field label="พนักงาน * (Employee)">
+                       <PillSelect value={employee} onChange={(e) => setEmployee(e.target.value)} className="w-full h-9 px-6 rounded-full">
                           <option value="">ระบุชื่อพนักงาน...</option>
                           <option>Somchai ใจดี</option>
                           <option>Wipawadee รักงาน</option>
                           <option>Kriangkrai มั่นคง</option>
                        </PillSelect>
                     </Field>
-                    <Field label="สถานที่ / ไซต์งาน">
-                       <PillSelect value={site} onChange={(e) => setSite(e.target.value)} className="w-full px-6">
+                    <Field label="สถานที่ / ไซต์งาน (Site Location)">
+                       <PillSelect value={site} onChange={(e) => setSite(e.target.value)} className="w-full h-9 px-6 rounded-full">
                           <option>สำนักงานใหญ่</option>
                           <option>SITE-A (Hospital)</option>
                           <option>SITE-B (PTT Tower)</option>
@@ -119,8 +119,8 @@ export function AttendanceModal({ isOpen, onClose, onConfirm }: AttendanceModalP
                     </Field>
                   </div>
 
-                  <Field label="หมายเหตุ / งานที่ปฏิบัติ">
-                     <PillInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="เช่น เข้าปฏิบัติงานบำรุงรักษาประจำปี..." className="w-full" />
+                  <Field label="หมายเหตุ / งานที่ปฏิบัติ (Note / Task)">
+                     <PillInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="เช่น เข้าปฏิบัติงานบำรุงรักษาประจำปี..." className="w-full h-9 px-6 rounded-full" />
                   </Field>
                </div>
             </div>

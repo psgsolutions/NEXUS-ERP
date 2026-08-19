@@ -47,8 +47,6 @@ export default function RootLayout({
                   <div className="relative z-10 h-full w-full">
                     {children}
                   </div>
-                  
-                  <ConnectionStatus />
                 </div>
               </DialogProvider>
             </SystemAlertProvider>

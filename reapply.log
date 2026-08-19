@@ -1,0 +1,195 @@
+Applying Step 1218: replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\inventory\page.tsx!
+Target: '        {/* Non-layout Tabs (Items, Assets, Serials, History) wrapped in the exact identical dual-column container */}\n        {activeTab !== "layout" && (\n          <div className="flex flex-col xl:f'
+Failed to apply replace_file_content!
+Applying Step 1233: replace_file_content on page.tsx...
+Applying Step 1239: replace_file_content on page.tsx...
+Applying Step 1254: multi_replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\sales\page.tsx!
+Target: '      {/* Tab Navigation (Stepper) */}\n      <section className="px-6 py-2 bg-black/10 border-b border-white/5 shrink-0">\n        <PillTabs \n          tabs={tabs} \n          activeTab={activeTab} \n   '
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\sales\page.tsx!
+Target: '               <div className="flex gap-3 shrink-0">\n                  {activeTab === "crm" && (\n                    <PillButton onClick={() => { setSelectedItem(null); setSelectedCustomer(null); setA'
+Failed to apply chunk in multi_replace_file_content!
+Applying Step 1260: multi_replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\procurement\page.tsx!
+Target: '      {/* Tab Navigation */}\n      <section className="px-6 py-2 bg-black/10 border-b border-white/5 shrink-0">\n        <PillTabs \n          tabs={tabs} \n          activeTab={activeTab} \n          onT'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\procurement\page.tsx!
+Target: '               <div className="flex gap-3 shrink-0">\n                 <PillButton \n                    onClick={() => {\n                       if (activeTab === "suppliers") setIsSupplierOpen(true);\n '
+Failed to apply chunk in multi_replace_file_content!
+Applying Step 1269: replace_file_content on page.tsx...
+Applying Step 1290: multi_replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\hr\page.tsx!
+Target: '                  <div className="flex gap-3">\n                    <PillButton variant="glass" className="h-9 px-6 rounded-full" onClick={() => showToast("กำลังดึงข้อมูลสลิปเงินเดือนระบบ Digital...")}'
+Failed to apply chunk in multi_replace_file_content!
+Applying Step 1302: multi_replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\finance\page.tsx!
+Target: '      {/* Tab Navigation */}\n      <section className="px-6 py-2 bg-black/10 border-b border-white/5 shrink-0">\n        <PillTabs \n          tabs={tabs} \n          activeTab={activeTab} \n          onT'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\finance\page.tsx!
+Target: '               <div className="flex gap-3 shrink-0">\n                 <PillButton variant="glass" className="px-8" onClick={() => setIsCloseOpen(true)}>\n                   <ShieldCheck size={18} />\n  '
+Failed to apply chunk in multi_replace_file_content!
+Applying Step 1311: replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\finance\page.tsx!
+Target: '              <div className="flex items-center gap-4 shrink-0">\n                 <Activi               {activeTab === "ap" && (\n                    <PillButton onClick={() => router.push(\'/finance/pa'
+Failed to apply replace_file_content!
+Applying Step 1339: multi_replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\customers\page.tsx!
+Target: '          <PillButton \n            onClick={() => router.push(\'/customers/new\')}\n            className="px-5 h-9 text-[12px] shadow-neon-teal ml-4"\n          >\n            <Plus size={16} className="m'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\customers\page.tsx!
+Target: '      <section className="px-6 py-2 bg-black/10 border-b border-white/5 shrink-0">\n        <PillTabs \n          tabs={tabs} \n          activeTab={activeTab} \n          onTabChange={(id: any) => setAct'
+Failed to apply chunk in multi_replace_file_content!
+Applying Step 1345: multi_replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\products\page.tsx!
+Target: '          {!isFormOpen && (\n            <PillButton \n              onClick={handleCreateNew}\n              className="px-5 h-9 text-[12px] shadow-neon-teal ml-4"\n            >\n              <Plus size'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\products\page.tsx!
+Target: '      <section className="px-6 py-2 bg-black/10 border-b border-white/5 shrink-0">\n        <PillTabs \n          tabs={tabs} \n          activeTab={activeTab} \n          onTabChange={(id: any) => setAct'
+Failed to apply chunk in multi_replace_file_content!
+Applying Step 1376: multi_replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\projects\page.tsx!
+Target: '      <section className="px-6 py-2 bg-black/10 border-b border-white/5 shrink-0">\n        <PillTabs \n          tabs={tabs} \n          activeTab={activeTab} \n          onTabChange={(id: any) => setAct'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\projects\page.tsx!
+Target: '               <div className="flex gap-3">\n                 <PillButton variant="glass" className="h-9 px-6 rounded-full" onClick={() => setActiveTab("report")}>\n                   <ClipboardList siz'
+Failed to apply chunk in multi_replace_file_content!
+Applying Step 1385: replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\projects\page.tsx!
+Target: '               <div className="flex gap-3">\n                 <PillButton variant="glass" className="h-9 px-6 rounded-full" onClick={() => setActiveTab("report")}>\n                   <ClipboardList siz'
+Failed to apply replace_file_content!
+Applying Step 1391: multi_replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\projects\page.tsx!
+Target: '      <section className="px-6 py-2 bg-black/10 border-b border-white/5 flex flex-col xl:flex-row items-center justify-between gap-4 shrink-0">\n        <PillTabs \n          tabs={tabs} \n          acti'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\projects\page.tsx!
+Target: '               <div className="flex gap-3">\n                 <PillButton variant="glass" className="h-9 px-6 rounded-full" onClick={() => setActiveTab("report")}>\n                   <ClipboardList siz'
+Failed to apply chunk in multi_replace_file_content!
+Applying Step 1394: replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\projects\page.tsx!
+Target: '               <div className="flex gap-3">\n                 <PillButton variant="glass" className="h-9 px-6 rounded-full" onClick={() => setActiveTab("report")}>\n                   <ClipboardList siz'
+Failed to apply replace_file_content!
+Applying Step 1400: replace_file_content on page.tsx...
+Applying Step 1415: multi_replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\settings\page.tsx!
+Target: '        <div className="flex flex-wrap items-center gap-3">\n          <PillButton className="px-5 h-9 text-[12px] shadow-neon-teal" onClick={() => {\n            if (activeTab === "sequence") saveSeque'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\settings\page.tsx!
+Target: '      {/* Tab Navigation */}\n      <section className="px-6 py-2 bg-black/10 border-b border-white/5 shrink-0">\n        <PillTabs \n          tabs={tabs} \n          activeTab={activeTab} \n          onT'
+Failed to apply chunk in multi_replace_file_content!
+Applying Step 1452: replace_file_content on page.tsx...
+Applying Step 1458: replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\settings\page.tsx!
+Target: '        </div>\n      </header>'
+Failed to apply replace_file_content!
+Applying Step 1461: replace_file_content on page.tsx...
+Applying Step 1494: replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\portal\repair\page.tsx!
+Target: "export default function CustomerRepairPortal() {\n  const searchParams = useSearchParams();\n  const companyId = searchParams.get('company') || 'UNKNOWN';"
+Failed to apply replace_file_content!
+Applying Step 1500: replace_file_content on page.tsx...
+Applying Step 1537: replace_file_content on Base.tsx...
+Applying Step 1556: replace_file_content on DailySummaryModal.tsx...
+Applying Step 1635: replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\procurement\page.tsx!
+Target: '           <PillButton \n              onClick={() => {\n                 if (activeTab === "suppliers") setIsSupplierOpen(true);\n                 else if (activeTab === "pr") setIsPROpen(true);\n       '
+Failed to apply replace_file_content!
+Applying Step 1656: replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\customers\page.tsx!
+Target: '          <PillButton \n            onClick={() => router.push(\'/customers/new\')}\n            className="px-5 h-9 text-[12px] shadow-neon-teal"\n          >\n            <Plus size={16} className="mr-2" '
+Failed to apply replace_file_content!
+Applying Step 1668: replace_file_content on page.tsx...
+Applying Step 1683: replace_file_content on Base.tsx...
+Target content not found in d:\NEXUS-ERP\src\components\ui\Base.tsx!
+Target: '  const variants = {\n    primary: "bg-transparent text-nexus-teal border border-nexus-teal/40 hover:bg-nexus-teal/10 hover:border-nexus-teal/60 shadow-neon-teal active:scale-95",\n    save: "bg-transpa'
+Failed to apply replace_file_content!
+Applying Step 1696: multi_replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\sales\page.tsx!
+Target: '          {activeTab === "crm" && (\n            <PillButton variant="glass" onClick={() => { setSelectedItem(null); setSelectedCustomer(null); setActiveModal("customer"); }} className="px-6 rounded-fu'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\sales\page.tsx!
+Target: '          {activeTab === "quotations" && (\n            <PillButton variant="glass" onClick={() => router.push(\'/sales/quotations/new\')} className="px-6 rounded-full">\n              <FileText size={18}'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\sales\page.tsx!
+Target: '          {activeTab === "orders" && (\n            <PillButton variant="glass" onClick={() => router.push(\'/sales/orders/new\')} className="px-6 rounded-full">\n              <Receipt size={18} />\n     '
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\sales\page.tsx!
+Target: '          {activeTab === "invoices" && (\n            <PillButton variant="glass" onClick={() => { showToast("เลือกใบสั่งขายที่ต้องการสร้างใบแจ้งหนี้จากแท็บ SO"); setActiveTab("orders"); }} className="'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\sales\page.tsx!
+Target: '          {activeTab === "receipts" && (\n            <PillButton variant="glass" onClick={() => { showToast("เลือกใบแจ้งหนี้ที่ต้องการรับชำระเงินจากแท็บ INV"); setActiveTab("invoices"); }} className="'
+Failed to apply chunk in multi_replace_file_content!
+Applying Step 1699: replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\procurement\page.tsx!
+Target: '           <PillButton \n              variant="glass"\n              onClick={() => {'
+Failed to apply replace_file_content!
+Applying Step 1711: multi_replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\finance\page.tsx!
+Target: '           <PillButton variant="glass" className="px-8" onClick={() => setIsCloseOpen(true)}>\n             <ShieldCheck size={18} />\n             ปิดงวดบัญชี\n           </PillButton>'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\finance\page.tsx!
+Target: '           {(activeTab === "overview" || activeTab === "gl") && (\n             <PillButton variant="glass" onClick={() => setActiveModal("gl")} className="px-8">\n               <Plus size={18} />\n    '
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\finance\page.tsx!
+Target: '            {activeTab === "ar" && (\n              <PillButton variant="glass" onClick={() => router.push(\'/finance/receipts/new\')} className="px-8">\n                <Plus size={18} />\n               '
+Failed to apply chunk in multi_replace_file_content!
+Applying Step 1717: multi_replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\finance\page.tsx!
+Target: '            {activeTab === "ap" && (\n              <PillButton variant="glass" onClick={() => router.push(\'/finance/payouts/new\')} className="px-8">\n                <Plus size={18} />\n                '
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\finance\page.tsx!
+Target: '           {activeTab === "tax" && (\n             <PillButton variant="glass" onClick={() => setIsTaxModalOpen(true)} className="px-8">\n               <FileText size={18} />\n               ยื่นแบบภาษี'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\finance\page.tsx!
+Target: '           {activeTab === "assets" && (\n             <PillButton variant="glass" onClick={() => setIsAssetModalOpen(true)} className="px-8">\n               <Calculator size={18} />\n               ประม'
+Failed to apply chunk in multi_replace_file_content!
+Applying Step 1720: replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\products\page.tsx!
+Target: '          {!isFormOpen && (\n            <PillButton variant="glass" \n              onClick={handleCreateNew}\n              className="px-5 h-9 text-[12px]"\n            >\n              <Plus size={16} '
+Failed to apply replace_file_content!
+Applying Step 1726: replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\customers\page.tsx!
+Target: '          <PillButton \n            variant="glass"\n            onClick={() => router.push(\'/customers/new\')}\n            className="px-5 h-9 text-[12px]"\n          >\n            <Plus size={16} classN'
+Failed to apply replace_file_content!
+Applying Step 1732: replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\settings\page.tsx!
+Target: '        <div className="flex gap-3 shrink-0">\n          <PillButton variant="glass" className="px-5 h-9 text-[12px]" onClick={() => {\n            if (activeTab === "sequence") saveSequenceFormats();\n '
+Failed to apply replace_file_content!
+Applying Step 1738: multi_replace_file_content on page.tsx...
+Applying Step 1753: multi_replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\projects\page.tsx!
+Target: '             <PillButton variant="glass" onClick={() => setActiveModal("project")} className="h-9 px-6 rounded-full">\n               <Plus size={18} />\n               เริ่มโครงการใหม่\n             </P'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\projects\page.tsx!
+Target: '             <PillButton variant="glass" onClick={() => setActiveModal("milestone")} className="h-9 px-6 rounded-full">\n               <Target size={18} />\n               เพิ่มเป้าหมาย\n             </'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\projects\page.tsx!
+Target: '             <PillButton variant="glass" onClick={() => setActiveModal("report")} className="h-9 px-6 rounded-full">\n               <FileText size={18} />\n               บันทึกงานใหม่\n             </P'
+Failed to apply chunk in multi_replace_file_content!
+Applying Step 1786: multi_replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\settings\page.tsx!
+Target: '      <header className="px-6 py-3 min-h-[82px] border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-black/20 shrink-0">'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\settings\page.tsx!
+Target: '            <p className="text-sm font-medium text-white/30 uppercase mt-1.5 tracking-widest leading-none">System Configuration</p>'
+Failed to apply chunk in multi_replace_file_content!
+Applying Step 1789: multi_replace_file_content on page.tsx...
+Applying Step 1819: multi_replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\procurement\page.tsx!
+Target: '            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">\n              <div className="flex items-center gap-4 shrink-0">\n                 <Activity className="tex'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\procurement\page.tsx!
+Target: '      {/* Main Content Scroll Area */}\n      <div className="flex-1 overflow-y-auto custom-scrollbar">\n        <div className="p-5 space-y-3 max-w-[1800px] mx-auto">'
+Failed to apply chunk in multi_replace_file_content!
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\procurement\page.tsx!
+Target: '               </div>\n            </GlassCard>\n\n          </div>'
+Failed to apply chunk in multi_replace_file_content!
+Applying Step 2002: multi_replace_file_content on page.tsx...
+Target content not found in d:\NEXUS-ERP\src\app\(authenticated)\settings\page.tsx!
+Target: '      {/* Compact Module Header */}\n      <header className="px-6 py-3 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-black/20 shrink-0">\n        <div class'
+Failed to apply chunk in multi_replace_file_content!
+Applying Step 2086: multi_replace_file_content on Base.tsx...
+Target content not found in d:\NEXUS-ERP\src\components\ui\Base.tsx!
+Target: 'export function PillButton({ className, variant = "primary", ...props }: ButtonProps) {\n  const variants = {\n    primary: "bg-nexus-teal/15 text-nexus-teal border border-nexus-teal/30 hover:bg-nexus-t'
+Failed to apply chunk in multi_replace_file_content!

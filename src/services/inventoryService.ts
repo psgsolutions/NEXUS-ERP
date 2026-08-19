@@ -1,116 +1,135 @@
 import { db } from "@/lib/firebase-client";
-import { doc, updateDoc, increment, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, addDoc, writeBatch, runTransaction } from "firebase/firestore";
 
-/**
- * Nexus Inventory Control V3.0
- * Handles stock reservations and project-based movements.
- */
+export interface StockMovementData {
+  companyId: string;       // ID ของบริษัท
+  productId: string;       // ID ของสินค้า
+  productCode: string;
+  type: "IN" | "OUT" | "ADJUST";
+  quantity: number;
+  refDocumentNo: string;   // เลขที่เอกสารอ้างอิง (เช่น PO-XXXX, SO-XXXX)
+  note?: string;
+  createdBy: string;
+}
+
 export const InventoryService = {
   /**
-   * Reserves stock when a Sales Order is approved.
-   * Increments 'reservedQty' and decrements 'availableQty' (calculated field).
+   * บันทึกการเคลื่อนไหวสต็อก (Stock Movement) เข้า Subcollection ของบริษัท
    */
-  async softReserve(productId: string, qty: number, orderId: string) {
-    const productRef = doc(db, "products", productId);
-    
-    // We update the reserved quantity. 
-    // In V3.0, currentQty remains same until actual delivery.
-    return await updateDoc(productRef, {
-      reservedQty: increment(qty),
-      updatedAt: serverTimestamp()
+  async recordStockMovement(data: StockMovementData, batch?: any) {
+    if (!data.companyId) {
+      throw new Error("[Tenant Isolation Violation] companyId is required!");
+    }
+
+    const movementPayload = {
+      ...data,
+      createdAt: new Date().toISOString(),
+      isDeleted: false,
+    };
+
+    // 🔒 ล็อก Path ไปยัง Subcollection ของบริษัทนั้นๆ
+    const companyStockPath = `companies/${data.companyId}/stock_movements`;
+
+    if (batch) {
+      const docRef = doc(collection(db, companyStockPath));
+      batch.set(docRef, movementPayload);
+      return docRef;
+    }
+
+    return await addDoc(collection(db, companyStockPath), movementPayload);
+  },
+
+  /**
+   * ตัดหรือเพิ่มสต็อกแบบ Atomic Transaction ป้องกันแข่งกันบันทึก (Concurrency)
+   */
+  async updateProductStockTransaction(
+    companyId: string,
+    productId: string,
+    quantityChange: number,
+    movementData: Omit<StockMovementData, "companyId" | "productId">
+  ) {
+    if (!companyId) throw new Error("[Tenant Isolation Violation] companyId is required!");
+
+    const productRef = doc(db, `companies/${companyId}/products`, productId);
+    const movementRef = doc(collection(db, `companies/${companyId}/stock_movements`));
+
+    return await runTransaction(db, async (transaction) => {
+      const productDoc = await transaction.get(productRef);
+      if (!productDoc.exists()) {
+        throw new Error("Product not found");
+      }
+
+      const currentStock = productDoc.data().currentStock || 0;
+      const newStock = currentStock + quantityChange;
+
+      // 1. อัปเดตยอดสต็อกคงเหลือใน Master Product
+      transaction.update(productRef, {
+        currentStock: newStock,
+        updatedAt: new Date().toISOString(),
+      });
+
+      // 2. บันทึก Stock Movement Log
+      transaction.set(movementRef, {
+        ...movementData,
+        companyId,
+        productId,
+        quantity: quantityChange,
+        createdAt: new Date().toISOString(),
+        isDeleted: false,
+      });
     });
   },
 
   /**
-   * Moves stock to Work-In-Progress (WIP) for project sites.
-   * Used when items are picked and sent to job site but not yet 'consumed'.
+   * ตัดสต็อกอัตโนมัติเมื่ออนุมัติใบสั่งขาย (Auto Stock Deduction for SO Approval)
    */
-  async moveToWIP(productId: string, qty: number, projectId: string) {
-    const productRef = doc(db, "products", productId);
-    
-    // Decrement actual stock and increment WIP stock
-    await updateDoc(productRef, {
-      currentQty: increment(-qty),
-      wipQty: increment(qty),
-      updatedAt: serverTimestamp()
-    });
+  async processSalesOrderStock(
+    companyId: string, 
+    items: Array<{ productId: string; name?: string; quantity: number }>, 
+    soNo: string,
+    userId: string = "SYSTEM"
+  ) {
+    if (!companyId) throw new Error("[Tenant Isolation Violation] companyId is required!");
 
-    // Log the movement
-    return await addDoc(collection(db, "stock_movements"), {
-      productId,
-      projectId,
-      type: 'WIP_MOVE',
-      qty,
-      timestamp: serverTimestamp()
-    });
-  },
+    return await runTransaction(db, async (transaction) => {
+      for (const item of items) {
+        if (!item.productId) continue; // Skip non-inventory items
 
-  /**
-   * Consumes WIP stock once project phase is signed off.
-   * Decrements WIP stock permanently.
-   */
-  async consumeWIP(productId: string, qty: number, projectId: string) {
-     const productRef = doc(db, "products", productId);
-     return await updateDoc(productRef, {
-       wipQty: increment(-qty),
-       updatedAt: serverTimestamp()
-     });
-  },
+        const productRef = doc(db, `companies/${companyId}/products`, item.productId);
+        const productDoc = await transaction.get(productRef);
 
-  /**
-   * AI-Driven Auto-Replenishment Engine
-   * Scans for products where availableQty < reorderPoint and generates PRs.
-   */
-  async checkAndAutoReplenish() {
-     // In a real system, we would query Firestore for products below threshold.
-     // For this V4.0 implementation, we simulate the logic.
-     const lowStockItems = [
-       { id: 'prod-001', name: 'Aruba AP-505', current: 2, threshold: 10, supplierId: 'cis-01' }
-     ];
+        if (!productDoc.exists()) {
+          throw new Error(`Product ID ${item.productId} not found in inventory.`);
+        }
 
-     const prEntries = [];
-     for (const item of lowStockItems) {
-        const prData = {
-           requestDate: serverTimestamp(),
-           status: 'pending',
-           requesterId: 'SYSTEM-AI',
-           items: [{
-              productId: item.id,
-              name: item.name,
-              requestedQty: item.threshold * 2, // Auto-stock 2x threshold
-              purpose: '[AUTO-AI] Low stock replenishment detected.'
-           }],
-           createdAt: serverTimestamp()
-        };
+        const data = productDoc.data();
+        const currentStock = data.currentStock || 0;
         
-        const prRef = await addDoc(collection(db, "purchase_requests"), prData);
-        prEntries.push(prRef.id);
-     }
-     
-     return prEntries;
+        // Prevent negative stock (Hard Reserve)
+        if (currentStock < item.quantity) {
+          throw new Error(`สต็อกไม่เพียงพอสำหรับสินค้า: ${item.name || data.name || item.productId} (ต้องการ: ${item.quantity}, มี: ${currentStock})`);
+        }
+
+        // ตัดสต็อกและบันทึกประวัติการเคลื่อนไหว
+        transaction.update(productRef, {
+          currentStock: currentStock - item.quantity,
+          updatedAt: new Date().toISOString(),
+        });
+
+        const movementRef = doc(collection(db, `companies/${companyId}/stock_movements`));
+        transaction.set(movementRef, {
+          companyId,
+          productId: item.productId,
+          productCode: data.sku || data.productCode || item.productId,
+          type: "OUT",
+          quantity: item.quantity,
+          refDocumentNo: soNo,
+          note: `ตัดสต็อกอัตโนมัติจากใบสั่งขาย ${soNo}`,
+          createdBy: userId,
+          createdAt: new Date().toISOString(),
+          isDeleted: false,
+        });
+      }
+    });
   },
-
-  /**
-   * Issues Free of Charge (FOC) items permanently from stock.
-   */
-  async issueFOCItems(productId: string, qty: number, orderId: string, focReason: string) {
-    const productRef = doc(db, "products", productId);
-    
-    // Decrement stock status
-    await updateDoc(productRef, {
-      'stockStatus.onHand': increment(-qty),
-      updatedAt: serverTimestamp()
-    });
-
-    // Log the movement as an FOC ISSUE
-    return await addDoc(collection(db, "stock_movements"), {
-      productId,
-      referenceNo: orderId,
-      type: 'FOC_ISSUE',
-      qty,
-      isFOC: true,
-      focReason: focReason,
-      timestamp: serverTimestamp()
-    });
-  }
 };

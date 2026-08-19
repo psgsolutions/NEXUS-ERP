@@ -108,7 +108,7 @@ export default function SupportPage() {
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         <div className="p-5 space-y-3 max-w-[1800px] mx-auto animate-in fade-in duration-700">
           
-          <div className="flex flex-col lg:flex-row items-start gap-4">
+          <div className="flex flex-col xl:flex-row items-start gap-4">
         <div className="flex-1 w-full space-y-10">
           
           <div className="space-y-3">

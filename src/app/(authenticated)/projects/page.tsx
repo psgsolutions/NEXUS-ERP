@@ -32,6 +32,7 @@ import {
   Phone,
   Wrench
 } from "lucide-react";
+import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { 
   PillButton, 
   PillInput, 
@@ -107,16 +108,16 @@ export default function ProjectsPage() {
   const [toast, setToast] = useState({ message: "", isVisible: false });
 
   // Quotation Integration States
-  const [isQuotationOpen, setIsQuotationOpen] = useState(false);
+  
   const [quotationInitialData, setQuotationInitialData] = useState<any>(null);
 
   // Kit Editor States
-  const [isKitEditorOpen, setIsKitEditorOpen] = useState(false);
+  
   const [kitEditorInitialData, setKitEditorInitialData] = useState<any>(null);
   const [dbProducts, setDbProducts] = useState<any[]>([]);
 
   // Contractor States
-  const [isContractorModalOpen, setIsContractorModalOpen] = useState(false);
+  
   const [selectedContractor, setSelectedContractor] = useState<any>(null);
   const [dbContractors, setDbContractors] = useState<any[]>([]);
   useEffect(() => {
@@ -475,7 +476,7 @@ export default function ProjectsPage() {
     });
 
     ; // Close project modal
-    setIsQuotationOpen(true); // Open QuotationModal automatically!
+    router.push("/sales/quotations/new"); // Open QuotationModal automatically!
     showToast("ดึงข้อมูลอุปกรณ์และงานค่าใช้จ่ายออกใบเสนอราคาสำเร็จ!");
   };
 
@@ -487,9 +488,8 @@ export default function ProjectsPage() {
     { id: "contractors", label: "ผู้รับเหมา", icon: <Users size={14} /> },
   ];
 
-  return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
-
+  const headerContent = (
+    <div className="flex-1 w-full">
       {/* Compact Module Header — icon + title + inline metric chips on same plane */}
       <header className="p-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-5 bg-black/20 shrink-0">
         <div className="flex items-center gap-4 shrink-0">
@@ -531,6 +531,11 @@ export default function ProjectsPage() {
           </div>
         </div>
       </header>
+    </div>
+  );
+
+  const leftContent = (
+    <div className="flex-1 flex flex-col h-full bg-transparent">
 
       {/* Tab Navigation */}
       <section className="px-6 py-4 bg-black/10 border-b border-white/5 shrink-0">
@@ -658,7 +663,7 @@ export default function ProjectsPage() {
                         type="button"
                         onClick={() => {
                           setSelectedContractor(null);
-                          setIsContractorModalOpen(true);
+                          router.push("/procurement/suppliers/new");
                         }}
                         className="h-9 px-6 bg-nexus-blue text-white shadow-[0_0_15px_rgba(37,99,235,0.3)] text-xs font-bold uppercase rounded-full"
                       >
@@ -677,7 +682,7 @@ export default function ProjectsPage() {
                             key={cont.id} 
                             onClick={() => {
                               setSelectedContractor(cont);
-                              setIsContractorModalOpen(true);
+                              router.push("/procurement/suppliers/new");
                             }}
                             className="bg-white/[0.02] border border-white/5 p-5 rounded-[2rem] hover:bg-nexus-blue/5 hover:border-nexus-blue/30 transition-all cursor-pointer group"
                           >
@@ -747,127 +752,11 @@ export default function ProjectsPage() {
 
       
 
-      <QuotationModal 
-        isOpen={isQuotationOpen}
-        onClose={() => setIsQuotationOpen(false)}
-        initialData={quotationInitialData}
-        onSave={async (data) => {
-          console.log("Quotation generated successfully:", data);
-          setIsQuotationOpen(false);
-          showToast(`ออกใบเสนอราคาสำเร็จ สำหรับโครงการ: ${data.subject || "LED Wall"}`);
-        }}
-      />
+      
 
-      <KitEditor
-        isOpen={isKitEditorOpen}
-        onClose={() => {
-          setIsKitEditorOpen(false);
-          setKitEditorInitialData(null);
-        }}
-        showToast={showToast}
-        initialData={kitEditorInitialData}
-        onSave={async (formData) => {
-          // 1. Generate premium sequence SKU
-          const newSku = generateStockPilotId("KIT", formData.name);
-          const productId = `prod_kit_${Date.now()}`;
-          const cid = companyId || "nexus-global-node";
 
-          const productData = {
-            productId: productId,
-            sku: newSku,
-            name: formData.name,
-            description: formData.description || "ชุดงานติดตั้งพร้อมใช้",
-            category: "ชุดงานติดตั้ง",
-            category_id: "Kit",
-            brand: "NEXUS-KIT",
-            unit: formData.unit_type,
-            stockStatus: {
-              onHand: 1,
-              reserved: 0,
-              available: 1
-            },
-            currentQty: 1,
-            pricing: {
-              costWAC: formData.financials.total_cost,
-              pricePOS: formData.financials.suggested_price,
-              priceProject: formData.financials.suggested_price
-            },
-            kitItems: formData.items,
-            kitLabors: formData.labor_items,
-            bomData: {
-              bomNo: newSku,
-              bomName: formData.name,
-              totalMaterialCost: formData.financials.material_cost,
-              laborCost: formData.financials.labor_cost,
-              grandTotal: formData.financials.total_cost
-            },
-            isKit: true,
-            companyId: cid,
-            isDeleted: false,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            createdBy: user?.uid || "system",
-            updatedBy: user?.uid || "system"
-          };
 
-          // Save to Firestore
-          await setDoc(doc(db, "products", productId), productData);
-
-          // Update local catalog state
-          const newPkg = {
-            id: productId,
-            sku: newSku,
-            name: formData.name,
-            cost: formData.financials.total_cost,
-            price: formData.financials.suggested_price,
-            qty_on_hand: 1,
-            unit: formData.unit_type.split(" ")[0],
-            details: formData.description || "ชุดงานติดตั้งพร้อมใช้",
-            items: formData.items,
-            labor_items: formData.labor_items
-          };
-          setInstallationPackages(prev => [newPkg, ...prev]);
-
-          showToast(`บันทึกชุดงาน "${formData.name}" เข้าคลังสินค้าและบัญชีแยกประเภทเรียบร้อย! 📦`, "success");
-          setIsKitEditorOpen(false);
-          setKitEditorInitialData(null);
-        }}
-      />
-
-      <ContractorModal
-        isOpen={isContractorModalOpen}
-        onClose={() => {
-          setIsContractorModalOpen(false);
-          setSelectedContractor(null);
-        }}
-        showToast={showToast}
-        initialData={selectedContractor}
-        onSave={async (formData) => {
-          try {
-            const cid = companyId || "nexus-global-node";
-            let contId = selectedContractor?.id;
-            
-            if (!contId) {
-              contId = `cont_${Date.now()}`;
-            }
-
-            const payload = {
-              ...formData,
-              id: contId,
-              companyId: cid,
-              isActive: true,
-              updatedAt: new Date(),
-              ...(!selectedContractor && { createdAt: new Date() })
-            };
-
-            await setDoc(doc(db, "contractors", contId), payload);
-            showToast(`บันทึกข้อมูลทีมช่าง "${formData.name}" เรียบร้อย! 👷‍♂️`, "success");
-          } catch (e) {
-            console.error(e);
-            throw e;
-          }
-        }}
-      />
+      
 
       <Toast 
         message={toast.message} 

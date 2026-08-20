@@ -57,6 +57,7 @@ import { saveToFirestore } from "@/lib/firebaseUtils";
 import { useSystemDialog } from "@/context/DialogContext";
 import Link from "next/link";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useRouter } from "next/navigation";
 
 
 const MOCK_RV = [
@@ -71,13 +72,15 @@ const MOCK_PV = [
 type FinanceSubModule = "overview" | "ar" | "ap" | "gl" | "tax" | "assets" | "bank" | "cheques";
 
 export default function FinancePage() {
+  const router = useRouter();
+
   const { user, companyId } = useAuth();
   const [activeTab, setActiveTab] = useState<FinanceSubModule>("overview");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [isCloseOpen, setIsCloseOpen] = useState(false);
-  const [isTaxModalOpen, setIsTaxModalOpen] = useState(false);
-  const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
+  
+  
+  
+  
   const [modalActiveTab, setModalActiveTab] = useState("basic");
   const { showAlert } = useSystemDialog();
   const [toast, setToast] = useState({ message: "", isVisible: false });
@@ -313,37 +316,37 @@ export default function FinancePage() {
                 </div>
               )}
               <div className="flex gap-3 shrink-0">
-                 <PillButton variant="glass" className="px-8" onClick={() => setIsCloseOpen(true)}>
+                 <PillButton variant="glass" className="px-8" onClick={() => router.push("/finance/period-close/new")}>
                    <ShieldCheck size={18} />
                    ปิดงวดบัญชี
                  </PillButton>
                  
                  {(activeTab === "overview" || activeTab === "gl") && (
-                   <PillButton onClick={() => setActiveModal("gl")} className="px-8 shadow-neon-teal">
+                   <PillButton onClick={() => router.push("/finance/journal-entries/new")} className="px-8 shadow-neon-teal">
                      <Plus size={18} />
                      บันทึกรายวัน
                    </PillButton>
                  )}
                  {activeTab === "ar" && (
-                   <PillButton onClick={() => setActiveModal("ar")} className="px-8 shadow-neon-teal">
+                   <PillButton onClick={() => router.push("/finance/receipts/new")} className="px-8 shadow-neon-teal">
                      <Plus size={18} />
                      รับชำระเงิน
                    </PillButton>
                  )}
                  {activeTab === "ap" && (
-                   <PillButton onClick={() => setActiveModal("ap")} className="px-8 shadow-neon-teal">
+                   <PillButton onClick={() => router.push("/finance/payments/new")} className="px-8 shadow-neon-teal">
                      <Plus size={18} />
                      จ่ายชำระเงิน
                    </PillButton>
                  )}
                  {activeTab === "tax" && (
-                   <PillButton onClick={() => setIsTaxModalOpen(true)} className="px-8 shadow-neon-blue">
+                   <PillButton onClick={() => router.push("/finance/tax-filing/new")} className="px-8 shadow-neon-blue">
                      <FileText size={18} />
                      ยื่นแบบภาษี
                    </PillButton>
                  )}
                  {activeTab === "assets" && (
-                   <PillButton onClick={() => setIsAssetModalOpen(true)} className="px-8 shadow-neon-warning">
+                   <PillButton onClick={() => router.push("/finance/assets/depreciation/new")} className="px-8 shadow-neon-warning">
                      <Calculator size={18} />
                      ประมวลผลค่าเสื่อม
                    </PillButton>
@@ -541,35 +544,7 @@ export default function FinancePage() {
       </div>
 
       {/* Finance Management Modals */}
-      <JournalEntryModal 
-        isOpen={activeModal === "gl"} 
-        onClose={() => setActiveModal(null)}
-        onSave={async (data) => {
-          if (!user || !companyId) return;
-          try {
-            const saveOp = async () => {
-              const jvRef = doc(collection(db, "journalEntries"));
-              await setDoc(jvRef, {
-                ...data.header,
-                companyId,
-                totalDebit: data.totals.dr,
-                totalCredit: data.totals.cr,
-                entries: data.entries,
-                status: "active",
-                createdAt: serverTimestamp()
-              });
-              await auditService.logCreate(user.uid, companyId, "FINANCE_GL", "NEW", data);
-            };
-            
-            await saveToFirestore(saveOp());
-            setActiveModal(null);
-            showAlert("บันทึกรายการรายวันสำเร็จ", "System Notification", "info");
-          } catch (err: any) {
-            console.error(err);
-            showAlert(`ซิงค์ข้อมูลล้มเหลว: ${err.message}`, "System Notification", "error");
-          }
-        }}
-      />
+      
 
       <PeriodCloseModal 
         isOpen={isCloseOpen}
@@ -597,58 +572,9 @@ export default function FinancePage() {
         }}
       />
 
-      <ReceiptModal 
-        isOpen={activeModal === "ar"} 
-        onClose={() => setActiveModal(null)}
-        onSave={async (data) => {
-          if (!user || !companyId) return;
-          try {
-            const saveOp = async () => {
-              const rvRef = doc(collection(db, "receivables"));
-              await setDoc(rvRef, {
-                ...data,
-                companyId,
-                status: "completed",
-                createdAt: serverTimestamp()
-              });
-              await auditService.logCreate(user.uid, companyId, "FINANCE_AR", "NEW", data);
-            };
-            
-            await saveToFirestore(saveOp());
-            setActiveModal(null);
-            showAlert("บันทึกรับชำระเงินสำเร็จ", "System Notification", "info");
-          } catch (err: any) {
-            console.error(err);
-            showAlert(`ซิงค์ข้อมูลล้มเหลว: ${err.message}`, "System Notification", "error");
-          }
-        }}
-      />
+      
 
-      <PaymentModal 
-        isOpen={activeModal === "ap"} 
-        onClose={() => setActiveModal(null)}
-        onSave={async (data) => {
-          if (!user || !companyId) return;
-          try {
-            const saveOp = async () => {
-              const pvRef = doc(collection(db, "payables"));
-              await setDoc(pvRef, {
-                ...data,
-                companyId,
-                status: "paid",
-                createdAt: serverTimestamp()
-              });
-              await auditService.logCreate(user.uid, companyId, "FINANCE_AP", "NEW", data);
-            };
-            await saveToFirestore(saveOp());
-            setActiveModal(null);
-            showAlert("บันทึกการจ่ายชำระเงินสำเร็จ", "System Notification", "info");
-          } catch (err: any) {
-            console.error(err);
-            showAlert(`ซิงค์ข้อมูลล้มเหลว: ${err.message}`, "System Notification", "error");
-          }
-        }}
-      />
+      
 
       <TaxFilingModal 
         isOpen={isTaxModalOpen}

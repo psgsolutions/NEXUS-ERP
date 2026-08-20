@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { 
   ShoppingBag, 
   ShoppingCart,
@@ -60,15 +61,10 @@ type ProcSubModule = "suppliers" | "pr" | "po" | "receipt" | "expense" | "wht";
 
 export default function ProcurementPage() {
   const { user, companyId } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<ProcSubModule>("pr");
   const [modalActiveTab, setModalActiveTab] = useState("header");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isSupplierOpen, setIsSupplierOpen] = useState(false);
-  const [isPROpen, setIsPROpen] = useState(false);
-  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
-  const [isExpenseOpen, setIsExpenseOpen] = useState(false);
-  const [isWHTOpen, setIsWHTOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [toast, setToast] = useState({ message: "", isVisible: false });
 
@@ -233,10 +229,12 @@ export default function ProcurementPage() {
               <div className="flex gap-3 shrink-0">
                  <PillButton 
                     onClick={() => {
-                       if (activeTab === "suppliers") setIsSupplierOpen(true);
-                       else if (activeTab === "pr") setIsPROpen(true);
-                       else if (activeTab === "receipt") setIsReceiptOpen(true);
-                       else setIsCreateOpen(true);
+                       if (activeTab === "suppliers") router.push("/procurement/suppliers/new");
+                       else if (activeTab === "pr") router.push("/procurement/requests/new");
+                       else if (activeTab === "receipt") router.push("/inventory/in/new");
+                       else if (activeTab === "expense") router.push("/finance/expense-claims/new");
+                       else if (activeTab === "wht") router.push("/procurement/wht/new");
+                       else router.push("/procurement/orders/new");
                     }} 
                  >
                     {activeTab === "suppliers" ? <UserPlus size={20} /> : 
@@ -380,87 +378,17 @@ export default function ProcurementPage() {
       </div>
 
       {/* Procurement Management Modal */}
-      <GoodsReceiptModal 
-        isOpen={isReceiptOpen} 
-        onClose={() => setIsReceiptOpen(false)}
-        onSave={async (data) => {
-          console.log("Saving GR:", data);
-          if (user && companyId) {
-            await auditService.logCreate(user.uid, companyId, "PROCUREMENT_GR", "NEW", data);
-          }
-          setIsReceiptOpen(false);
-          showToast("บันทึกรับสินค้าสำเร็จ (GR-2604-XXXX)");
-        }}
-      />
+      
 
-      <PurchaseOrderModal 
-        isOpen={isCreateOpen} 
-        onClose={() => setIsCreateOpen(false)}
-        onSave={async (data) => {
-          console.log("Saving PO:", data);
-          if (user && companyId) {
-            await auditService.logCreate(user.uid, companyId, "PROCUREMENT_PO", "NEW", data);
-          }
-          setIsCreateOpen(false);
-          showToast(`ออกใบสั่งซื้อสำเร็จ (${data.id || "PO-2604-XXXX"})`);
-        }}
-      />
+      
 
-      <PurchaseRequestModal 
-        isOpen={isPROpen} 
-        onClose={() => setIsPROpen(false)}
-        onSave={async (data) => {
-          console.log("Saving PR:", data);
-          if (user && companyId) {
-            await auditService.logCreate(user.uid, companyId, "PROCUREMENT_PR", "NEW", data);
-          }
-          setIsPROpen(false);
-          showToast("ส่งใบขอซื้อสำเร็จ (PR-2604-XXXX)");
-        }}
-      />
+      
 
-      <SupplierModal 
-        isOpen={isSupplierOpen} 
-        onClose={() => setIsSupplierOpen(false)}
-        onSave={async (data) => {
-          console.log("Saving Supplier:", data);
-          if (user && companyId) {
-            await auditService.logCreate(user.uid, companyId, "PROCUREMENT_SUPPLIER", "NEW", data);
-          }
-          setIsSupplierOpen(false);
-          showToast("เพิ่มคู่ค้าสำเร็จ (VEN-2604-XXXX)");
-        }}
-      />
+      
 
-      <ExpenseModal
-        isOpen={isExpenseOpen}
-        onClose={() => setIsExpenseOpen(false)}
-        initialData={selectedItem}
-        onSave={async (data) => {
-          if (!companyId) return;
-          try {
-            await setDoc(doc(db, `companies/${companyId}/expenses`, data.id), data, { merge: true });
-            setIsExpenseOpen(false);
-          } catch (e: any) {
-            showToast(e.message || "เกิดข้อผิดพลาด");
-          }
-        }}
-      />
+      
 
-      <WHTModal
-        isOpen={isWHTOpen}
-        onClose={() => setIsWHTOpen(false)}
-        initialData={selectedItem}
-        onSave={async (data) => {
-          if (!companyId) return;
-          try {
-            await setDoc(doc(db, `companies/${companyId}/withholding_taxes`, data.id), data, { merge: true });
-            setIsWHTOpen(false);
-          } catch (e: any) {
-            showToast(e.message || "เกิดข้อผิดพลาด");
-          }
-        }}
-      />
+      
 
       <Toast 
         message={toast.message} 

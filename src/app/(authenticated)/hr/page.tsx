@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { 
   UserCog, 
   Users, 
@@ -53,15 +54,14 @@ import { SecureDeleteAction } from "@/components/ui/SecureDeleteAction";
 import Link from "next/link";
 import { useSystemDialog } from "@/context/DialogContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { useRouter } from "next/navigation";
-
 type HRSubModule = "profiles" | "attendance" | "payroll" | "expenses";
 
 export default function HRPage() {
+  const router = useRouter();
   const { user, companyId } = useAuth();
   const [activeTab, setActiveTab] = useState<HRSubModule>("profiles");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeModal, setActiveModal] = useState<string | null>(null);
+  
   const [modalActiveTab, setModalActiveTab] = useState("basic");
   const { showAlert } = useSystemDialog();
 
@@ -212,9 +212,9 @@ export default function HRPage() {
                  </PillButton>
                  <PillButton 
                     onClick={() => {
-                       if (activeTab === "profiles") setActiveModal("employee");
-                       else if (activeTab === "attendance") setActiveModal("clock");
-                       else if (activeTab === "payroll") setActiveModal("payroll");
+                       if (activeTab === "profiles") router.push("/hr/employees/new");
+                       else if (activeTab === "attendance") router.push("/hr/attendance/new");
+                       else if (activeTab === "payroll") router.push("/hr/payroll/new");
                     }} 
                  >
                     {activeTab === "profiles" ? <Plus size={18} /> : 
@@ -355,101 +355,11 @@ export default function HRPage() {
       </div>
 
       {/* HR Management Modals */}
-      <EmployeeModal 
-        isOpen={activeModal === "employee"} 
-        onClose={() => setActiveModal(null)}
-        onSave={async (data) => {
-          if (!user || !companyId) {
-            showToast("ไม่พบข้อมูลผู้ใช้งาน หรือเซสชันหมดอายุ");
-            return;
-          }
-          const empId = await nexusSequenceEngine("EMP", companyId);
-          
-          try {
-            const empRef = doc(collection(db, "employees"), empId);
-            const saveOp = async () => {
-              await setDoc(empRef, {
-                ...data,
-                employeeId: empId,
-                companyId,
-                status: "active",
-                createdAt: serverTimestamp()
-              });
-              await auditService.logCreate(user?.uid || "system", companyId, "HR_PROFILES", empId, data);
-            };
-            
-            await saveToFirestore(saveOp());
-            
-            setActiveModal(null);
-            showToast(`เพิ่มบุคลากรใหม่ ${data.firstName} ${data.lastName} เรียบร้อยแล้ว`);
-          } catch (err: any) {
-            console.error("Save error:", err);
-            showToast(`ไม่สามารถบันทึกข้อมูลได้: ${err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ'}`);
-          }
-        }}
-      />
+      
 
-      <AttendanceModal 
-        isOpen={activeModal === "clock"} 
-        onClose={() => setActiveModal(null)}
-        onConfirm={async (data) => {
-          if (!user || !companyId) return;
-          try {
-            const attRef = doc(collection(db, "attendance"));
-            const saveOp = async () => {
-              await setDoc(attRef, {
-                ...data,
-                companyId,
-                name: data.employeeName || user.displayName || "คุณ",
-                time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
-                loc: data.site || 'สำนักงาน',
-                status: "active",
-                createdAt: serverTimestamp()
-              });
-              await auditService.logCreate(user.uid, companyId, "HR_ATTENDANCE", "NEW", data);
-            };
-            
-            await saveToFirestore(saveOp());
-            
-            setActiveModal(null);
-            showToast(`บันทึกเวลา ${data.type === "IN" ? "เข้างาน" : "ออกงาน"} สำเร็จ`);
-          } catch (err: any) {
-            console.error(err);
-            showToast(`ไม่สามารถบันทึกได้: ${err.message}`);
-          }
-        }}
-      />
+      
 
-      <PayrollModal 
-        isOpen={activeModal === "payroll"} 
-        onClose={() => setActiveModal(null)}
-        onConfirm={async (data) => {
-          if (!user || !companyId) return;
-          try {
-            const payrollRef = doc(collection(db, "payrolls"));
-            const saveOp = async () => {
-              await setDoc(payrollRef, {
-                ...data,
-                companyId,
-                period: data.period || "งวดใหม่",
-                count: data.employeeCount || 0,
-                total: `฿${(data.netPayout || 0).toLocaleString()}`,
-                status: "pending",
-                createdAt: serverTimestamp()
-              });
-              await auditService.logCreate(user.uid, companyId, "HR_PAYROLL", "NEW", data);
-            };
-            
-            await saveToFirestore(saveOp());
-            
-            setActiveModal(null);
-            showToast(`ประมวลผลเงินเดือนสำเร็จ (Total: ฿${data.netPayout?.toLocaleString() || '0'})`);
-          } catch (err: any) {
-            console.error(err);
-            showToast(`ไม่สามารถบันทึกได้: ${err.message}`);
-          }
-        }}
-      />
+      
     </div>
   );
 }

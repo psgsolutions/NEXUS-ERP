@@ -110,8 +110,8 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-5">
-            <div className="w-14 h-14 bg-nexus-teal rounded-xl flex items-center justify-center shadow-neon-teal">
-              <Zap size={28} className="text-black fill-current drop-shadow-md" />
+            <div className="w-14 h-14 bg-nexus-teal/20 border border-nexus-teal/20 rounded-xl flex items-center justify-center shadow-neon-teal">
+              <Zap size={28} className="text-nexus-teal drop-shadow-md" />
             </div>
             <div>
               <p className="text-[14px] font-medium text-white/20 uppercase tracking-[0.2em] mb-1 ml-1" title="หน้าหลักควบคุมการปฏิบัติงานรวม">หน้าแรก</p>
@@ -195,7 +195,7 @@ export default function DashboardPage() {
       )}
 
       {/* --- TOP METRICS & QUICK ACTIONS --- */}
-      <div className="flex flex-col 2xl:flex-row justify-between w-full gap-5">
+      <div className="flex flex-col xl:flex-row justify-between w-full gap-5">
         
         {/* HERO METRICS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
@@ -208,6 +208,7 @@ export default function DashboardPage() {
               neon="shadow-neon-teal" 
               onClick={() => router.push('/sales')}
               title="ยอดขายรวมสุทธิในเดือนปัจจุบัน"
+              className="bg-nexus-teal/[0.1]"
             />
           </div>
           <div className="w-full">
@@ -219,6 +220,7 @@ export default function DashboardPage() {
               neon="shadow-neon-blue" 
               onClick={() => router.push('/finance')}
               title="เปอร์เซ็นต์กำไรสุทธิหลังหักค่าใช้จ่าย"
+              className="bg-nexus-blue/[0.1]"
             />
           </div>
           <div className="w-full">
@@ -226,9 +228,10 @@ export default function DashboardPage() {
               icon={<FolderKanban size={24} />} 
               label="โครงการ" 
               value="12 งาน" 
-              color="text-white" 
+              color="text-amber-500" 
               onClick={() => router.push('/projects')}
               title="จำนวนโครงการที่กำลังดำเนินการอยู่"
+              className="bg-amber-500/[0.1]"
             />
           </div>
           <div className="w-full">
@@ -239,6 +242,7 @@ export default function DashboardPage() {
               color="text-danger" 
               onClick={() => setViewMode('quantum')}
               title="รายการที่ต้องได้รับการแก้ไขทันที"
+              className="bg-danger/[0.1]"
             />
           </div>
         </div>
@@ -246,25 +250,25 @@ export default function DashboardPage() {
         {/* QUICK ACTIONS */}
         <div className="grid grid-cols-4 gap-3 xl:flex xl:flex-nowrap xl:w-auto">
            <div className="w-full xl:w-[110px]">
-             <QuickActionCard icon={<BadgeDollarSign size={16} />} label="เสนอราคา" color="bg-nexus-teal" link="/sales?action=new-quotation" title="สร้างเอกสารใบเสนอราคาใหม่" />
+             <QuickActionCard icon={<BadgeDollarSign size={16} />} label="เสนอราคา" color="text-nexus-teal bg-nexus-teal/20" link="/sales?action=new-quotation" title="สร้างเอกสารใบเสนอราคาใหม่" />
            </div>
            <div className="w-full xl:w-[110px]">
-             <QuickActionCard icon={<Warehouse size={16} />} label="คลังสินค้า" color="bg-nexus-blue" link="/inventory" title="ตรวจสอบและบริหารพัสดุ" />
+             <QuickActionCard icon={<Warehouse size={16} />} label="คลังสินค้า" color="text-nexus-blue bg-nexus-blue/20" link="/inventory" title="ตรวจสอบและบริหารพัสดุ" />
            </div>
            <div className="w-full xl:w-[110px]">
-             <QuickActionCard icon={<UsersRound size={16} />} label="ลูกค้า" color="bg-white/5" link="/sales" title="ฐานข้อมูลและประวัติลูกค้า" />
+             <QuickActionCard icon={<UsersRound size={16} />} label="ลูกค้า" color="text-amber-500 bg-amber-500/20" link="/sales" title="ฐานข้อมูลและประวัติลูกค้า" />
            </div>
            <div className="w-full xl:w-[110px]">
-             <QuickActionCard icon={<ShoppingBasket size={16} />} label="สั่งซื้อ" color="bg-white/5" link="/procurement" title="สร้างเอกสารใบสั่งซื้อ" />
+             <QuickActionCard icon={<ShoppingBasket size={16} />} label="สั่งซื้อ" color="text-rose-500 bg-rose-500/20" link="/procurement" title="สร้างเอกสารใบสั่งซื้อ" />
            </div>
         </div>
       </div>
 
       {/* --- MAIN OPERATIONAL LAYER --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="flex flex-col xl:flex-row gap-5">
         
         {/* LEFT: PERFORMANCE & GRAPHS */}
-        <div className="lg:col-span-8 space-y-3">
+        <div className="flex-1 space-y-3 min-w-0">
           
           {/* AI Briefing Bar */}
           <div className="bg-nexus-teal/5 border border-nexus-teal/20 rounded-xl p-6 flex items-center gap-5 animate-shimmer relative overflow-hidden group">
@@ -382,7 +386,7 @@ export default function DashboardPage() {
         </div>
 
         {/* RIGHT: TACTICAL SIDEBAR */}
-        <div className="lg:col-span-4 space-y-3">
+        <div className="w-full xl:w-[476px] flex-shrink-0 space-y-3">
            {/* System Activity Feed (Moved up due to Quick Operations relocation) */}
            <GlassCard className="border-white/10 flex flex-col rounded-2xl overflow-hidden">
               <div className="p-5 border-b border-white/5 flex flex-wrap items-center justify-between bg-white/[0.02] gap-4">
@@ -416,13 +420,26 @@ export default function DashboardPage() {
                  <span className="px-2 py-0.5 rounded-full bg-nexus-blue/10 text-[11px] sm:text-[14px] font-medium text-nexus-blue uppercase whitespace-nowrap">AI เรียลไทม์</span>
               </div>
               <div className="flex items-center justify-center py-6 relative">
-                 <svg className="w-40 h-40 transform -rotate-90">
+                 <svg className="w-40 h-40 transform -rotate-90 overflow-visible">
+                    <defs>
+                      <filter id="neon-glow-blue" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur1" />
+                        <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur2" />
+                        <feMerge>
+                          <feMergeNode in="blur2" />
+                          <feMergeNode in="blur1" />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
+                    </defs>
                     <circle cx="80" cy="80" r="72" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/5" />
                     <circle 
                       cx="80" cy="80" r="72" stroke="currentColor" strokeWidth="12" fill="transparent" 
                       strokeDasharray="452" 
                       strokeDashoffset="90"
-                      className="text-nexus-blue drop-shadow-neon transition-all duration-1000" 
+                      strokeLinecap="round"
+                      filter="url(#neon-glow-blue)"
+                      className="text-nexus-blue transition-all duration-1000" 
                     />
                  </svg>
                  <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -528,11 +545,11 @@ function QuickActionCard({ icon, label, color, link }: { icon: any, label: strin
   return (
     <Link href={link} className="contents">
       <div className={cn("p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/[0.08] hover:border-white/20 transition-all active:scale-95 group relative overflow-hidden shadow-2xl backdrop-blur-lg")}>
-         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-2xl transition-transform group-hover:scale-110", color)}>
+         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", color)}>
             {React.cloneElement(icon as React.ReactElement, { size: 20 })}
          </div>
          <span className="text-[11px] font-medium text-white uppercase text-center tracking-widest leading-snug truncate w-full px-1">{label}</span>
-         <div className={cn("absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity", color)} />
+         <div className={cn("absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity", color.split(' ').find(c => c.startsWith('bg-')))} />
          <div className="absolute top-3 right-3 w-1.5 h-1.5 rounded-full bg-white/10 group-hover:bg-nexus-teal transition-colors" />
       </div>
     </Link>

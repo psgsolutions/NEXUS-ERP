@@ -62,6 +62,7 @@ import { db } from "@/lib/firebase-client";
 import { collection, query, where, onSnapshot, doc, setDoc } from "firebase/firestore";
 import { createQuotation, convertToSalesOrder, createSalesOrder, autoGenerateOrdersFromSO, createInvoiceFromSO, createReceiptFromInvoice } from "@/lib/sales-service";
 import { nexusSequenceEngine } from "@/lib/sequence-engine";
+import { useRouter } from "next/navigation";
 
 
 const MOCK_QUOTATIONS = [
@@ -93,9 +94,11 @@ const MOCK_CNDN = [];
 type SalesSubModule = "crm" | "opportunities" | "quotations" | "orders" | "invoices" | "billing" | "receipts" | "cndn";
 
 export default function SalesPage() {
+  const router = useRouter();
+
   const { user, companyId, role: userRole } = useAuth();
   const [activeTab, setActiveTab] = useState<SalesSubModule>("quotations");
-  const [activeModal, setActiveModal] = useState<"customer" | "quotation" | "order" | "print" | null>(null);
+  
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -496,19 +499,19 @@ export default function SalesPage() {
 
                <div className="flex gap-3 shrink-0">
                   {activeTab === "crm" && (
-                    <PillButton onClick={() => { setSelectedItem(null); setSelectedCustomer(null); setActiveModal("customer"); }} className="px-6 rounded-full shadow-neon-teal">
+                    <PillButton onClick={() => { setSelectedItem(null); setSelectedCustomer(null); router.push("/customers/new"); }} className="px-6 rounded-full shadow-neon-teal">
                       <Plus size={18} />
                       เพิ่มลูกค้าใหม่
                     </PillButton>
                   )}
                   {activeTab === "quotations" && (
-                    <PillButton onClick={() => { setSelectedItem(null); setActiveModal("quotation"); }} className="px-6 rounded-full shadow-neon-teal">
+                    <PillButton onClick={() => { setSelectedItem(null); router.push("/sales/quotations/new"); }} className="px-6 rounded-full shadow-neon-teal">
                       <FileText size={18} />
                       สร้างใบเสนอราคา
                     </PillButton>
                   )}
                   {activeTab === "orders" && (
-                    <PillButton onClick={() => { setSelectedItem(null); setActiveModal("order"); }} className="px-6 rounded-full shadow-neon-teal">
+                    <PillButton onClick={() => { setSelectedItem(null); router.push("/sales/orders/new"); }} className="px-6 rounded-full shadow-neon-teal">
                       <Receipt size={18} />
                       เปิดใบสั่งขาย
                     </PillButton>
@@ -795,7 +798,7 @@ export default function SalesPage() {
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-white/10 flex flex-col gap-3">
-                   <PillButton size="sm" variant="glass" onClick={() => { setSelectedItem(selectedCustomer); setActiveModal("customer"); }} className="w-full border-white/20 hover:border-nexus-teal shadow-none">
+                   <PillButton size="sm" variant="glass" onClick={() => { setSelectedItem(selectedCustomer); router.push("/customers/new"); }} className="w-full border-white/20 hover:border-nexus-teal shadow-none">
                      <FileText size={14} className="mr-2" />
                      ดู / แก้ไขข้อมูลทั้งหมด
                    </PillButton>
@@ -850,11 +853,11 @@ export default function SalesPage() {
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-white/10 flex flex-col gap-3">
-                   <PillButton size="sm" variant="glass" onClick={() => setActiveModal("quotation")} className="w-full border-white/20 hover:border-nexus-teal shadow-none">
+                   <PillButton size="sm" variant="glass" onClick={() => router.push("/sales/quotations/new")} className="w-full border-white/20 hover:border-nexus-teal shadow-none">
                      <FileText size={14} className="mr-2" />
                      ดู / แก้ไขใบเสนอราคา
                    </PillButton>
-                   <PillButton size="sm" variant="glass" onClick={() => setActiveModal("print")} className="w-full border-white/20 hover:border-nexus-blue shadow-none">
+                   <PillButton size="sm" variant="glass" onClick={() => window.print()} className="w-full border-white/20 hover:border-nexus-blue shadow-none">
                      <Printer size={14} className="mr-2" />
                      พิมพ์ / ดูภาพก่อนพิมพ์
                    </PillButton>
@@ -885,7 +888,7 @@ export default function SalesPage() {
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-white/10 flex flex-col gap-3">
-                   <PillButton size="sm" variant="glass" onClick={() => setActiveModal("order")} className="w-full border-white/20 hover:border-nexus-blue shadow-none">
+                   <PillButton size="sm" variant="glass" onClick={() => router.push("/sales/orders/new")} className="w-full border-white/20 hover:border-nexus-blue shadow-none">
                      <Receipt size={14} className="mr-2" />
                      ดู / แก้ไขใบสั่งขาย
                    </PillButton>
@@ -926,170 +929,17 @@ export default function SalesPage() {
       </div>
       </div>
 
-      <CustomerModal 
-        isOpen={activeModal === "customer"} 
-        onClose={() => { setActiveModal(null); setSelectedItem(null); }} 
-        initialData={selectedItem}
-        onSave={async (data) => {
-          if (!companyId || !user) return;
-          try {
-            const isEdit = !!data.id;
-            const custId = data.id || await nexusSequenceEngine("CUS", companyId);
-            const custRef = doc(db, `companies/${companyId}/customers`, custId);
-            const docData = {
-              ...data,
-              id: custId,
-              customerId: data.customer_code || data.customerId || custId,
-              customer_code: data.customer_code || data.customerId || custId,
-              companyId,
-              isDeleted: data.isDeleted ?? false,
-              createdBy: data.createdBy || user.uid,
-              createdAt: data.createdAt || new Date().toISOString(),
-              updatedBy: user.uid,
-              updatedAt: new Date().toISOString()
-            };
-            await setDoc(custRef, docData, { merge: true });
-            
-            if (isEdit) {
-              await auditService.logUpdate(user.uid, companyId, "CRM", custId, { status: "edited" }, docData);
-            } else {
-              await auditService.logCreate(user.uid, companyId, "CRM", custId, docData);
-            }
-            
-            setActiveModal(null);
-            showToast(isEdit ? "อัปเดตข้อมูลลูกค้าสำเร็จ" : "ลงทะเบียนลูกค้าใหม่สำเร็จ");
-          } catch (err) {
-            console.error("Error creating customer:", err);
-            showToast("ล้มเหลวในการลงทะเบียนลูกค้า");
-          }
-        }}
-      />
+      
 
-      <QuotationModal 
-        isOpen={activeModal === "quotation"} 
-        onClose={() => { setActiveModal(null); setSelectedItem(null); }}
-        initialData={selectedItem}
-        onSave={async (data) => {
-          if (!companyId || !user) return;
-          try {
-            const items = (data.items || []).map((i: any) => ({
-              productId: i.productId || `prod_${Date.now()}`,
-              name: i.name,
-              quantity: i.qty || 1,
-              price: i.price || 0,
-              cost: i.cost || 0
-            }));
-            
-            const quoteId = await createQuotation({
-              id: data.id,
-              customerId: data.customer || "CUS-001",
-              subject: data.subject,
-              date: data.date,
-              validUntil: data.validUntil,
-              taxMode: data.taxMode,
-              paymentTerms: data.paymentTerms,
-              items,
-              companyId,
-              discount: data.discount || 0
-            });
-            
-            await auditService.logCreate(user.uid, companyId, "SALES_QUOTATION", quoteId, data);
-            setActiveModal(null);
-            setSelectedItem(null);
-            showToast(`สร้างใบเสนอราคาสำเร็จ (${quoteId})`);
-          } catch (err: any) {
-            console.error("Error creating quotation:", err);
-            showToast(err.message || "ล้มเหลวในการสร้างใบเสนอราคา");
-          }
-        }}
-        onApprove={async (quoteId) => {
-          if (!companyId || !user) return;
-          try {
-            const soId = await convertToSalesOrder(quoteId, companyId);
-            await auditService.logUpdate(user.uid, companyId, "SALES_QUOTATION", quoteId, { status: "pending" }, { status: "Approved", linkedSo: soId });
-            setActiveModal(null);
-            setSelectedItem(null);
-            showToast(`อนุมัติใบเสนอราคา & เปิดใบสั่งขายสำเร็จ (${soId}) ⚡`);
-          } catch (err: any) {
-            console.error("Error converting quotation to SO:", err);
-            showToast(err.message || "การตัดสต็อกหรือระบบบัญชีขัดข้อง");
-          }
-        }}
-      />
+      
 
-      <SalesOrderModal 
-        isOpen={activeModal === "order"} 
-        onClose={() => { setActiveModal(null); setSelectedItem(null); }}
-        initialData={selectedItem}
-        onSave={async (data) => {
-          if (!companyId || !user) return;
-          try {
-            const soId = await createSalesOrder(data, companyId);
-            await auditService.logCreate(user.uid, companyId, "SALES_ORDER", soId, data);
-            
-            if (data.autoGenerate) {
-              await autoGenerateOrdersFromSO(soId, companyId);
-              showToast(`เปิดใบสั่งขายสำเร็จ (${soId}) และสร้างเอกสารต่อเนื่องอัตโนมัติ ⚡`);
-            } else {
-              showToast(`เปิดใบสั่งขายสำเร็จ (${soId})`);
-            }
-            setActiveModal(null);
-          } catch (err: any) {
-            console.error("Error creating SO:", err);
-            showToast(err.message || "ล้มเหลวในการสร้างใบสั่งขาย");
-          }
-        }}
-      />
+      
 
-      <BillingNoteModal 
-        isOpen={activeModal === "billing"}
-        onClose={() => { setActiveModal(null); setSelectedItem(null); }}
-        initialData={selectedItem}
-        onSave={async (data) => {
-          if (!companyId || !user) return;
-          try {
-            const billId = data.id || await nexusSequenceEngine("BN", companyId);
-            const docRef = doc(db, `companies/${companyId}/billing_notes`, billId);
-            await setDoc(docRef, { ...data, id: billId, companyId, createdAt: serverTimestamp() });
-            setActiveModal(null);
-            showToast(`สร้างใบวางบิลสำเร็จ (${billId})`);
-          } catch (err: any) {
-            console.error(err);
-            showToast("ล้มเหลวในการสร้างใบวางบิล");
-          }
-        }}
-      />
+      
 
-      <CNDNModal 
-        isOpen={activeModal === "cndn"}
-        onClose={() => { setActiveModal(null); setSelectedItem(null); }}
-        initialData={selectedItem}
-        onSave={async (data) => {
-          if (!companyId || !user) return;
-          try {
-            const cndnId = data.id || await nexusSequenceEngine(data.type, companyId);
-            const docRef = doc(db, `companies/${companyId}/cndn`, cndnId);
-            await setDoc(docRef, { ...data, id: cndnId, companyId, createdAt: serverTimestamp() });
-            setActiveModal(null);
-            showToast(`สร้าง${data.type === "CN" ? "ใบลดหนี้" : "ใบเพิ่มหนี้"}สำเร็จ (${cndnId})`);
-          } catch (err: any) {
-            console.error(err);
-            showToast("ล้มเหลวในการสร้าง CN/DN");
-          }
-        }}
-      />
+      
 
-      <DocumentViewerModal 
-        isOpen={activeModal === "print"} 
-        onClose={() => setActiveModal(null)} 
-        data={selectedItem ? {
-          ...selectedItem,
-          customerAddress: selectedItem.customerAddress || customersList.find(c => c.id === selectedItem.customerId || c.name === selectedItem.customer)?.address || "-",
-          customerTaxId: selectedItem.customerTaxId || customersList.find(c => c.id === selectedItem.customerId || c.name === selectedItem.customer)?.tax_id || customersList.find(c => c.id === selectedItem.customerId || c.name === selectedItem.customer)?.taxId || "-",
-          customerBranch: selectedItem.customerBranch || customersList.find(c => c.id === selectedItem.customerId || c.name === selectedItem.customer)?.branch || "สำนักงานใหญ่"
-        } : null} 
-        type={activeTab === "quotations" ? "quotation" : "invoice"} 
-      />
+      
 
       <Toast 
         message={toast.message} 

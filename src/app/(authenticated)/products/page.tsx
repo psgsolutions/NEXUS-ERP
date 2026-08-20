@@ -4,20 +4,19 @@ import React, { useState } from 'react';
 import { useRealtimeCollection } from '@/hooks/useRealtimeCollection';
 import { PillButton, NexusTable, NexusTableRow, NexusTableCell, NexusSearchInput, GlassCard, PillTabs } from '@/components/ui/Base';
 import { Plus, Package, Box, Wrench, ShieldAlert } from 'lucide-react';
-import { ProductForm } from './ProductForm';
 import NexusPageLayout from '@/components/layout/NexusPageLayout';
+import { useRouter } from 'next/navigation';
 
 export default function ProductsPage() {
   const { data: products, loading } = useRealtimeCollection('products');
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const router = useRouter();
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("inventory");
 
 
   const handleCreateNew = () => {
-    setSelectedProduct(null);
-    setIsFormOpen(true);
+    router.push('/inventory/products/new');
   };
 
   // --------------------------------------------------------------------------------
@@ -79,14 +78,12 @@ export default function ProductsPage() {
           onTabChange={(id: any) => setActiveTab(id)} 
         />
         <div className="flex gap-3 shrink-0">
-          {!isFormOpen && (
-            <PillButton 
-              onClick={handleCreateNew}
-              className="px-5 h-9 text-[12px]"
-            >
-              <Plus size={16} className="mr-2" /> สร้างรายการใหม่
-            </PillButton>
-          )}
+          <PillButton 
+            onClick={handleCreateNew}
+            className="px-5 h-9 text-[12px]"
+          >
+            <Plus size={16} className="mr-2" /> สร้างรายการใหม่
+          </PillButton>
         </div>
       </section>
     </>
@@ -94,14 +91,6 @@ export default function ProductsPage() {
 
   const leftContent = (
       <div className="space-y-4">
-        {isFormOpen ? (
-          <GlassCard className="p-6">
-            <ProductForm 
-              initialData={selectedProduct} 
-              onClose={() => setIsFormOpen(false)} 
-            />
-          </GlassCard>
-        ) : (
           <>
             <GlassCard className="p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
               <div className="w-full md:w-96 relative">
@@ -211,7 +200,6 @@ export default function ProductsPage() {
               </NexusTable>
             </GlassCard>
           </>
-        )}
       </div>
   );
 

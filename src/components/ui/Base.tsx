@@ -667,7 +667,8 @@ export function MasterMetricCard({
   color, 
   neon, 
   onClick,
-  compact = true
+  compact = true,
+  className
 }: { 
   icon: any, 
   label: string, 
@@ -675,7 +676,8 @@ export function MasterMetricCard({
   color: string, 
   neon?: string, 
   onClick?: () => void,
-  compact?: boolean
+  compact?: boolean,
+  className?: string
 }) {
   const isEmerald = color.includes("emerald");
   const isCyan = color.includes("cyan");
@@ -696,15 +698,15 @@ export function MasterMetricCard({
             isDanger ? "border-danger/10 hover:border-danger/30" :
             isWarning ? "border-warning/10 hover:border-warning/30" :
             "border-white/5 hover:border-white/20",
-    bgIcon: isEmerald ? "bg-emerald-500/10 text-emerald-400" :
-            isCyan ? "bg-cyan-500/10 text-cyan-400" :
-            isAmber ? "bg-amber-500/10 text-amber-400" :
-            isRose ? "bg-rose-500/10 text-rose-400" :
-            isTeal ? "bg-nexus-teal/10 text-nexus-teal" :
-            isBlue ? "bg-nexus-blue/10 text-nexus-blue" :
-            isDanger ? "bg-danger/10 text-danger" :
-            isWarning ? "bg-warning/10 text-warning" :
-            "bg-white/5 text-white/60",
+    bgIcon: isEmerald ? "bg-emerald-500/20 text-emerald-400" :
+            isCyan ? "bg-cyan-500/20 text-cyan-400" :
+            isAmber ? "bg-amber-500/20 text-amber-400" :
+            isRose ? "bg-rose-500/20 text-rose-400" :
+            isTeal ? "bg-nexus-teal/20 text-nexus-teal" :
+            isBlue ? "bg-nexus-blue/20 text-nexus-blue" :
+            isDanger ? "bg-danger/20 text-danger" :
+            isWarning ? "bg-warning/20 text-warning" :
+            "bg-white/10 text-white/60",
     shadow: isEmerald ? "shadow-[0_0_20px_rgba(16,185,129,0.02)]" :
             isCyan ? "shadow-[0_0_20px_rgba(6,182,212,0.02)]" :
             isAmber ? "shadow-[0_0_20px_rgba(245,158,11,0.02)]" :
@@ -725,7 +727,8 @@ export function MasterMetricCard({
           onClick && "cursor-pointer active:scale-95",
           theme.border,
           theme.shadow,
-          neon ? neon.replace("shadow-neon-", "shadow-[0_0_15px_rgba(0,255,209,0.08)]_") : ""
+          neon ? neon.replace("shadow-neon-", "shadow-[0_0_15px_rgba(0,255,209,0.08)]_") : "",
+          className
         )}
         onClick={onClick}
       >
@@ -733,8 +736,8 @@ export function MasterMetricCard({
         <div className={cn("absolute -right-4 -top-4 w-20 h-20 blur-[40px] opacity-0 group-hover:opacity-10 transition-all duration-1000 rounded-full", color.replace('text-', 'bg-'))} />
 
         <div className={cn(
-          "w-9 h-9 rounded-full flex items-center justify-center border border-white/10 bg-white/[0.04] group-hover:bg-white/[0.08] backdrop-blur-sm transition-all flex-shrink-0",
-          color.replace('text-', 'text-') // Keep original text color
+          "w-9 h-9 rounded-full flex items-center justify-center transition-all flex-shrink-0 border border-white/5",
+          theme.bgIcon
         )}>
           {React.cloneElement(icon as React.ReactElement, { size: 18 })}
         </div>
@@ -762,7 +765,8 @@ export function MasterMetricCard({
       "group relative p-8 rounded-[2rem] bg-[#0a0a0c]/60 backdrop-blur-xl border border-white/5 overflow-hidden transition-all duration-700",
       "hover:bg-white/[0.04] hover:border-white/20 hover:-translate-y-1 shadow-2xl",
       onClick && "cursor-pointer active:scale-95",
-      neon
+      neon,
+      className
     )} onClick={onClick}>
       {/* Dynamic Background Glow */}
       <div className={cn("absolute -right-4 -top-4 w-32 h-32 blur-[60px] opacity-0 group-hover:opacity-10 transition-all duration-1000 rounded-full", color.replace('text-', 'bg-'))} />
@@ -770,8 +774,8 @@ export function MasterMetricCard({
       <div className="relative z-10 flex items-start justify-between">
         <div className="space-y-6">
           <div className={cn(
-          "w-9 h-9 rounded-full flex items-center justify-center border border-white/10 bg-white/[0.04] group-hover:bg-white/[0.08] backdrop-blur-sm transition-all mb-6",
-          color.replace('text-', 'text-')
+          "w-9 h-9 rounded-full flex items-center justify-center transition-all mb-6 border border-white/5",
+          theme.bgIcon
         )}>
           {React.cloneElement(icon as React.ReactElement, { size: 18 })}
         </div>

@@ -345,7 +345,7 @@ export default function InventoryPage() {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
-  const [activeModal, setActiveModal] = useState<"in" | "transfer" | null>(null);
+  
   
   // Real-time movement logs
   const [movements, setMovements] = useState<any[]>([]);
@@ -450,7 +450,7 @@ export default function InventoryPage() {
           isVisible: true,
           type: "success"
         });
-        setActiveModal(null);
+        
       } catch (error: any) {
         console.error(error);
         setToast({
@@ -510,7 +510,7 @@ export default function InventoryPage() {
         isVisible: true,
         type: "success"
       });
-      setActiveModal(null);
+      
     } catch (error: any) {
       console.error(error);
       setToast({
@@ -580,17 +580,9 @@ export default function InventoryPage() {
         onClose={() => setIsAddSheetOpen(false)} 
       />
       
-      <InventoryInModal 
-        isOpen={activeModal === "in"} 
-        onClose={() => setActiveModal(null)}
-        onConfirm={handleInventoryIn}
-      />
+      
 
-      <StockTransferModal 
-        isOpen={activeModal === "transfer"} 
-        onClose={() => setActiveModal(null)}
-        onConfirm={handleStockTransfer}
-      />
+      
 
       {/* Module Header with Compact Summaries aligned on the same horizontal plane */}
       <header className="p-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-5 bg-black/20">
@@ -664,14 +656,14 @@ export default function InventoryPage() {
             <PillButton 
               variant="glass"
               className="gap-2 h-9 text-xs border-nexus-blue/20 text-nexus-blue hover:"
-              onClick={() => setActiveModal("transfer")}
+              onClick={() => router.push("/inventory/out/new")}
             >
               <ArrowLeftRight size={16} /> โอนย้ายสต็อก
             </PillButton>
             <PillButton 
               variant="glass"
               className="gap-2 h-9 text-xs border-nexus-teal/20 text-nexus-teal hover:"
-              onClick={() => setActiveModal("in")}
+              onClick={() => router.push("/inventory/in/new")}
             >
               <Plus size={16} /> รับสินค้าเข้าคลัง
             </PillButton>
@@ -1050,14 +1042,14 @@ export default function InventoryPage() {
                           <PillButton 
                             variant="glass" 
                             className="flex-1 text-sm border-nexus-blue/20 text-nexus-blue h-9 hover:"
-                            onClick={() => setActiveModal("transfer")}
+                            onClick={() => router.push("/inventory/out/new")}
                           >
                             <ArrowLeftRight size={12} /> โอนสต็อก
                           </PillButton>
                           <PillButton 
                             variant="glass" 
                             className="flex-1 text-sm border-nexus-teal/20 text-nexus-teal h-9 hover:"
-                            onClick={() => setActiveModal("in")}
+                            onClick={() => router.push("/inventory/in/new")}
                           >
                             <Plus size={12} /> รับของ
                           </PillButton>

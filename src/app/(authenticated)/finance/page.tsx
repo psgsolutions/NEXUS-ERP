@@ -77,9 +77,9 @@ export default function FinancePage() {
   const { user, companyId } = useAuth();
   const [activeTab, setActiveTab] = useState<FinanceSubModule>("overview");
   const [searchQuery, setSearchQuery] = useState("");
-  
-  
-  
+  const [isCloseOpen, setIsCloseOpen] = useState(false);
+  const [isTaxModalOpen, setIsTaxModalOpen] = useState(false);
+  const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
   
   const [modalActiveTab, setModalActiveTab] = useState("basic");
   const { showAlert } = useSystemDialog();

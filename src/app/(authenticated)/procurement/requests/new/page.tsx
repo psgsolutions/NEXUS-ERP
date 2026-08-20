@@ -180,7 +180,7 @@ export default function NewPurchaseRequestPage() {
             <Field label="เธงเธฑเธเธ—เธตเนเธขเธทเนเธเธเธณเธเธญ">
               <NexusDatePicker value={header.requestDate} disabled className="w-full opacity-50 h-11 rounded-full px-6 text-[13px] font-bold border-white/5" />
             </Field>
-            <Field label={<>เธงเธฑเธเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเนเธเนเธเธฒเธ <span className="text-danger font-bold">*</span></>}>
+            <Field label="วันที่ต้องการใช้งาน *" required>
               <NexusDatePicker value={header.requiredDate}
                 onChange={(e) => setHeader({...header, requiredDate: e.target.value})}
                 className="w-full text-cyan-400 h-11 rounded-full px-6 text-[13px] font-bold bg-white/[0.02]" 

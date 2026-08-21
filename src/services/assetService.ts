@@ -21,7 +21,7 @@ export const AssetService = {
   /**
    * Processes depreciation for a batch of assets and posts to accounting.
    */
-  async processBatchDepreciation(assets: FixedAsset[], period: string) {
+  async processBatchDepreciation(companyId: string, assets: FixedAsset[], period: string) {
     const entries: Partial<DepreciationEntry>[] = [];
     let totalBatchAmount = 0;
 
@@ -43,6 +43,7 @@ export const AssetService = {
     // Auto-Post to Accounting
     if (totalBatchAmount > 0) {
       await AccountingEngine.postJournalEntry({
+        companyId,
         description: `[AUTO] Monthly Depreciation for ${period}`,
         totalAmount: totalBatchAmount,
         items: [

@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { InvoiceDocument } from '@/types/invoice';
 
 export default function NewInvoicePage() {
-  const { user, currentCompanyId } = useAuth();
+  const { user, companyId } = useAuth();
   
   const [loading, setLoading] = useState(false);
   const [salesOrders, setSalesOrders] = useState<any[]>([]);
@@ -34,12 +34,12 @@ export default function NewInvoicePage() {
 
   // Fetch SOs and Customers
   useEffect(() => {
-    if (!currentCompanyId) return;
+    if (!companyId) return;
 
     const fetchSOs = async () => {
       const q = query(
         collection(db, 'sales_orders'),
-        where('companyId', '==', currentCompanyId),
+        where('companyId', '==', companyId),
         where('isDeleted', '==', false)
       );
       const snapshot = await getDocs(q);
@@ -50,7 +50,7 @@ export default function NewInvoicePage() {
     const fetchCustomers = async () => {
       const q = query(
         collection(db, 'customers'),
-        where('companyId', '==', currentCompanyId),
+        where('companyId', '==', companyId),
         where('isDeleted', '==', false)
       );
       const snapshot = await getDocs(q);
@@ -60,7 +60,7 @@ export default function NewInvoicePage() {
 
     fetchSOs();
     fetchCustomers();
-  }, [currentCompanyId]);
+  }, [companyId]);
 
   // Handle SO Selection
   const handleSoSelect = (soId: string) => {
@@ -118,10 +118,10 @@ export default function NewInvoicePage() {
 
     try {
       setLoading(true);
-      const invoiceNo = await nexusSequenceEngine('INV', currentCompanyId);
+      const invoiceNo = await nexusSequenceEngine('INV', companyId as string);
       
       const docData: InvoiceDocument = {
-        companyId: currentCompanyId,
+        companyId: companyId as string,
         invoiceNo,
         referenceSoId: formData.referenceSoId,
         referencePoNo: formData.referencePoNo,

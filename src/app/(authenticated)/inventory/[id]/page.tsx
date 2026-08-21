@@ -42,6 +42,7 @@ import {
   PillSelect,
   Toast
 } from "@/components/ui/Base";
+import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase-client";
@@ -269,529 +270,526 @@ export default function ProductDetailPage() {
     );
   }
 
-  return (
-    <div className="flex flex-col w-full h-[calc(100vh-4rem)] overflow-hidden animate-in fade-in duration-700 bg-[#0D0D0D] relative">
-
-      {/* 1. Fixed Header Layout */}
-      <div className="sticky top-0 z-50 bg-[#020203]/90 backdrop-blur-xl shrink-0 px-5 pt-5 pb-4 border-b border-white/5 space-y-4">
-        <div className="max-w-[1800px] mx-auto w-full">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <PillBackButton onClick={() => router.back()} />
-              <div className="space-y-1">
-                <div className="flex items-center gap-3">
-                  <StatusBadge status={stockStatus} label={stockLabel} />
-                  <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">
-                    ID: {productId}
-                  </p>
-                </div>
-                <h1 className="text-3xl font-black text-white tracking-tight uppercase">
-                  {product.name}
-                </h1>
-                <p className="text-[11px] font-medium text-nexus-teal uppercase mt-1 tracking-widest font-mono">
-                  {product.sku}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {isEditMode ? (
-                <>
-                  <PillButton
-                    variant="ghost"
-                    className="gap-2 h-9 text-xs border-white/10"
-                    onClick={handleCancel}
-                    disabled={isSaving}
-                  >
-                    ยกเลิก
-                  </PillButton>
-                  <PillButton
-                    className="gap-2 h-9 text-xs shadow-neon-teal"
-                    onClick={handleSave}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-                    บันทึกข้อมูล
-                  </PillButton>
-                </>
-              ) : (
-                <PillButton
-                  variant="glass"
-                  className="gap-2 h-9 text-xs border-nexus-blue/20 text-nexus-blue hover:text-white"
-                  onClick={() => setIsEditMode(true)}
-                >
-                  <Edit3 size={14} /> แก้ไขข้อมูล
-                </PillButton>
-              )}
-            </div>
+  const headerContent = (
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+      <div className="flex items-center gap-6">
+        <PillBackButton onClick={() => router.back()} />
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <StatusBadge status={stockStatus} label={stockLabel} />
+            <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">
+              ID: {productId}
+            </p>
           </div>
+          <h1 className="text-3xl font-black text-white tracking-tight uppercase">
+            {product.name}
+          </h1>
+          <p className="text-[11px] font-medium text-nexus-teal uppercase mt-1 tracking-widest font-mono">
+            {product.sku}
+          </p>
         </div>
       </div>
 
-      {/* Main Split Layout */}
-      <div className="flex flex-col xl:flex-row gap-4 flex-1 min-h-0 max-w-[1800px] w-full mx-auto p-5 relative z-10">
+      <div className="flex items-center gap-3">
+        {isEditMode ? (
+          <>
+            <PillButton
+              variant="ghost"
+              className="gap-2 h-9 text-xs border-white/10"
+              onClick={handleCancel}
+              disabled={isSaving}
+            >
+              ยกเลิก
+            </PillButton>
+            <PillButton
+              className="gap-2 h-9 text-xs shadow-neon-teal"
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+              บันทึกข้อมูล
+            </PillButton>
+          </>
+        ) : (
+          <PillButton
+            variant="glass"
+            className="gap-2 h-9 text-xs border-nexus-blue/20 text-nexus-blue hover:text-white"
+            onClick={() => setIsEditMode(true)}
+          >
+            <Edit3 size={14} /> แก้ไขข้อมูล
+          </PillButton>
+        )}
+      </div>
+    </div>
+  );
 
-        {/* Left Column - Main Form */}
-        <div className="w-full xl:w-[80%] flex flex-col overflow-y-auto custom-scrollbar pr-2 pb-10 space-y-6">
-          <PillTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
-          
-          <div className="space-y-4">
+  const leftContent = (
+    <div className="flex flex-col overflow-y-auto custom-scrollbar pr-2 pb-10 space-y-6">
+      <PillTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+      
+      <div className="space-y-4">
 
-            {/* Summary Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <MasterMetricCard
-                icon={<Package size={20} />}
-                label="คงเหลือในคลัง"
-                value={`${form.onHand.toLocaleString()} ${form.unit}`}
-                color="text-nexus-teal"
-                neon="shadow-neon-teal"
-              />
-              <MasterMetricCard
-                icon={<TrendingUp size={20} />}
-                label="ต้นทุนเฉลี่ย"
-                value={`\u0E3F${form.costWAC.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                color="text-nexus-blue"
-              />
-              <MasterMetricCard
-                icon={<BarChart3 size={20} />}
-                label="มูลค่ารวมในคลัง"
-                value={`\u0E3F${totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-                color="text-warning"
-              />
+        {/* Summary Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <MasterMetricCard
+            icon={<Package size={20} />}
+            label="คงเหลือในคลัง"
+            value={`${form.onHand.toLocaleString()} ${form.unit}`}
+            color="text-nexus-teal"
+            neon="shadow-neon-teal"
+          />
+          <MasterMetricCard
+            icon={<TrendingUp size={20} />}
+            label="ต้นทุนเฉลี่ย"
+            value={`\u0E3F${form.costWAC.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            color="text-nexus-blue"
+          />
+          <MasterMetricCard
+            icon={<BarChart3 size={20} />}
+            label="มูลค่ารวมในคลัง"
+            value={`\u0E3F${totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+            color="text-warning"
+          />
+        </div>
+
+        {/* Edit Mode Notice */}
+        {isEditMode && (
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-nexus-blue/5 border border-nexus-blue/20">
+            <Unlock size={16} className="text-nexus-blue shrink-0" />
+            <p className="text-[12px] font-medium text-nexus-blue uppercase tracking-widest">
+              โหมดแก้ไข — แก้ไขข้อมูลแล้วกด "บันทึกข้อมูล" เพื่อยืนยัน
+            </p>
+          </div>
+        )}
+
+        {/* Tab: Overview - Product Info */}
+        {activeTab === "overview" && (
+          <GlassCard className="p-4 border-white/5 bg-black/15 space-y-3">
+            <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+              <Zap size={16} className="text-nexus-blue" />
+              <h3 className="text-[12px] font-medium text-nexus-blue uppercase tracking-widest">
+                อัตลักษณ์พัสดุ
+              </h3>
             </div>
 
-            {/* Edit Mode Notice */}
-            {isEditMode && (
-              <div className="flex items-center gap-3 p-4 rounded-2xl bg-nexus-blue/5 border border-nexus-blue/20">
-                <Unlock size={16} className="text-nexus-blue shrink-0" />
-                <p className="text-[12px] font-medium text-nexus-blue uppercase tracking-widest">
-                  โหมดแก้ไข — แก้ไขข้อมูลแล้วกด "บันทึกข้อมูล" เพื่อยืนยัน
-                </p>
-              </div>
-            )}
-
-            {/* Tab: Overview - Product Info */}
-            {activeTab === "overview" && (
-              <GlassCard className="p-4 border-white/5 bg-black/15 space-y-3">
-                <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-                  <Zap size={16} className="text-nexus-blue" />
-                  <h3 className="text-[12px] font-medium text-nexus-blue uppercase tracking-widest">
-                    อัตลักษณ์พัสดุ
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <FormField label="รหัสสินค้า *">
-                    {isEditMode ? (
-                      <PillInput
-                        value={form.sku}
-                        onChange={(e) => setForm({ ...form, sku: e.target.value })}
-                        placeholder="ระบุรหัส SKU..."
-                        className="w-full font-mono text-nexus-blue font-bold"
-                      />
-                    ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono text-sm font-bold text-nexus-blue">
-                        {form.sku || "—"}
-                      </div>
-                    )}
-                  </FormField>
-
-                  <FormField label="ชื่อพัสดุ / สินค้า *">
-                    {isEditMode ? (
-                      <PillInput
-                        value={form.name}
-                        onChange={(e) => setForm({ ...form, name: e.target.value })}
-                        placeholder="ชื่อที่แสดงในเอกสาร..."
-                        className="w-full"
-                      />
-                    ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white">
-                        {form.name || "—"}
-                      </div>
-                    )}
-                  </FormField>
-
-                  <FormField label="หมวดหมู่สินค้า">
-                    {isEditMode ? (
-                      <PillSelect
-                        value={form.category}
-                        onChange={(e) => setForm({ ...form, category: e.target.value })}
-                        className="w-full"
-                      >
-                        <option value="">เลือกหมวดหมู่...</option>
-                        {CATEGORIES.map((c) => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </PillSelect>
-                    ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white/70">
-                        {form.category || "—"}
-                      </div>
-                    )}
-                  </FormField>
-
-                  <FormField label="แบรนด์ / ผู้ผลิต">
-                    {isEditMode ? (
-                      <PillInput
-                        value={form.brand}
-                        onChange={(e) => setForm({ ...form, brand: e.target.value })}
-                        placeholder="เช่น Aruba, Cisco, Dell..."
-                        className="w-full"
-                      />
-                    ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white/70">
-                        {form.brand || "—"}
-                      </div>
-                    )}
-                  </FormField>
-
-                  <FormField label="หน่วยนับ">
-                    {isEditMode ? (
-                      <PillSelect
-                        value={form.unit}
-                        onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                        className="w-full"
-                      >
-                        {UNITS.map((u) => (
-                          <option key={u} value={u}>{u}</option>
-                        ))}
-                      </PillSelect>
-                    ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white/70">
-                        {form.unit || "—"}
-                      </div>
-                    )}
-                  </FormField>
-
-                  <FormField label="คำอธิบายสินค้า">
-                    {isEditMode ? (
-                      <textarea
-                        value={form.description}
-                        onChange={(e) => setForm({ ...form, description: e.target.value })}
-                        placeholder="รายละเอียดสินค้าสำหรับเอกสาร..."
-                        rows={3}
-                        className="w-full px-4 py-3 rounded-2xl bg-white/15 border border-white/10 text-sm font-bold text-white placeholder:text-white/20 focus:outline-none focus:border-nexus-teal/30 resize-none"
-                      />
-                    ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm text-white/60 min-h-[80px]">
-                        {form.description || <span className="text-white/20 italic">ยังไม่มีคำอธิบาย</span>}
-                      </div>
-                    )}
-                  </FormField>
-                </div>
-              </GlassCard>
-            )}
-
-            {/* Tab: Pricing */}
-            {activeTab === "pricing" && (
-              <GlassCard className="p-4 border-white/5 bg-black/15 space-y-3">
-                <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-                  <DollarSign size={16} className="text-warning" />
-                  <h3 className="text-[12px] font-medium text-warning uppercase tracking-widest">
-                    โครงสร้างราคาและต้นทุน
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="col-span-full p-4 rounded-2xl bg-white/[0.02] border border-white/5 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField label="ราคาเสนอโครงการ">
-                      {isEditMode ? (
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-bold">\u0E3F</span>
-                          <PillInput
-                            type="number"
-                            value={form.priceProject}
-                            onChange={(e) => setForm({ ...form, priceProject: Number(e.target.value) })}
-                            className="w-full pl-8 font-mono mono-numbers"
-                          />
-                        </div>
-                      ) : (
-                        <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-white">
-                          \u0E3F{form.priceProject.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </div>
-                      )}
-                    </FormField>
-
-                    <FormField label="ราคาขายปลีก">
-                      {isEditMode ? (
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-bold">\u0E3F</span>
-                          <PillInput
-                            type="number"
-                            value={form.pricePOS}
-                            onChange={(e) => setForm({ ...form, pricePOS: Number(e.target.value) })}
-                            className="w-full pl-8 font-mono mono-numbers"
-                          />
-                        </div>
-                      ) : (
-                        <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-white">
-                          \u0E3F{form.pricePOS.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </div>
-                      )}
-                    </FormField>
-
-                    <FormField label="ต้นทุนเฉลี่ย">
-                      {isEditMode ? (
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-bold">\u0E3F</span>
-                          <PillInput
-                            type="number"
-                            value={form.costWAC}
-                            onChange={(e) => setForm({ ...form, costWAC: Number(e.target.value) })}
-                            className="w-full pl-8 font-mono mono-numbers"
-                          />
-                        </div>
-                      ) : (
-                        <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-nexus-teal">
-                          \u0E3F{form.costWAC.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </div>
-                      )}
-                    </FormField>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <FormField label="รหัสสินค้า *">
+                {isEditMode ? (
+                  <PillInput
+                    value={form.sku}
+                    onChange={(e) => setForm({ ...form, sku: e.target.value })}
+                    placeholder="ระบุรหัส SKU..."
+                    className="w-full font-mono text-nexus-blue font-bold"
+                  />
+                ) : (
+                  <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono text-sm font-bold text-nexus-blue">
+                    {form.sku || "—"}
                   </div>
-
-                  {/* Margin Indicator */}
-                  <div className="col-span-full flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 p-5 rounded-2xl bg-nexus-teal/5 border border-nexus-teal/15 flex flex-col items-center justify-center gap-2">
-                      <span className="text-[10px] font-normal text-nexus-teal uppercase tracking-widest">Project Margin</span>
-                      <div className={cn("text-3xl font-bold font-mono", margin >= 20 ? "text-nexus-teal" : margin >= 0 ? "text-warning" : "text-danger")}>
-                        {margin}%
-                      </div>
-                      <span className="text-xs text-white/30 font-bold">
-                        กำไรต่อหน่วย: \u0E3F{(form.priceProject - form.costWAC).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-
-                    <div className="flex-1 p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col items-center justify-center gap-2">
-                      <span className="text-[10px] font-normal text-white/30 uppercase tracking-widest">มูลค่าคงคลังรวม</span>
-                      <div className="text-2xl font-bold font-mono text-nexus-blue">
-                        \u0E3F{totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      </div>
-                      <span className="text-xs text-white/30 font-bold">
-                        {form.onHand} {form.unit} x \u0E3F{form.costWAC.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </GlassCard>
-            )}
-
-            {/* Tab: Stock Control */}
-            {activeTab === "stock" && (
-              <GlassCard className="p-4 border-white/5 bg-black/15 space-y-3">
-                <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-                  <Box size={16} className="text-nexus-teal" />
-                  <h3 className="text-[12px] font-medium text-nexus-teal uppercase tracking-widest">
-                    การควบคุมระดับพัสดุ
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <FormField label="ระดับสต็อกปัจจุบัน">
-                    {isEditMode ? (
-                      <PillInput
-                        type="number"
-                        value={form.onHand}
-                        onChange={(e) => setForm({ ...form, onHand: Number(e.target.value) })}
-                        className="w-full font-mono mono-numbers"
-                      />
-                    ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-nexus-teal/5 border border-nexus-teal/15 font-mono font-bold text-nexus-teal text-lg">
-                        {form.onHand.toLocaleString()} {form.unit}
-                      </div>
-                    )}
-                  </FormField>
-
-                  <FormField label="ถูกจองใช้งาน">
-                    {isEditMode ? (
-                      <PillInput
-                        type="number"
-                        value={form.reserved}
-                        onChange={(e) => setForm({ ...form, reserved: Number(e.target.value) })}
-                        className="w-full font-mono mono-numbers"
-                      />
-                    ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-warning text-lg">
-                        {form.reserved.toLocaleString()} {form.unit}
-                      </div>
-                    )}
-                  </FormField>
-
-                  <FormField label="พร้อมใช้งาน">
-                    <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-nexus-blue text-lg">
-                      {Math.max(0, form.onHand - form.reserved).toLocaleString()} {form.unit}
-                    </div>
-                  </FormField>
-
-                  <FormField label="ระดับแจ้งเตือนขั้นต่ำ">
-                    {isEditMode ? (
-                      <PillInput
-                        type="number"
-                        value={form.minStock}
-                        onChange={(e) => setForm({ ...form, minStock: Number(e.target.value) })}
-                        className="w-full font-mono mono-numbers"
-                      />
-                    ) : (
-                      <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-white/60">
-                        {form.minStock} {form.unit}
-                      </div>
-                    )}
-                  </FormField>
-                </div>
-
-                {/* Stock Status Visual */}
-                <div className={cn(
-                  "p-4 rounded-2xl border flex items-center gap-4",
-                  isOut ? "bg-danger/5 border-danger/20" :
-                  isLow ? "bg-warning/5 border-warning/20" :
-                  "bg-nexus-teal/5 border-nexus-teal/20"
-                )}>
-                  {isOut ? <AlertTriangle size={20} className="text-danger shrink-0" /> :
-                   isLow ? <AlertTriangle size={20} className="text-warning shrink-0" /> :
-                   <CheckCircle2 size={20} className="text-nexus-teal shrink-0" />}
-                  <div>
-                    <p className={cn("text-[13px] font-medium uppercase tracking-widest", isOut ? "text-danger" : isLow ? "text-warning" : "text-nexus-teal")}>
-                      {stockLabel}
-                    </p>
-                    <p className="text-[10px] text-white/40 font-bold mt-0.5">
-                      {isOut ? "สินค้าหมดคลัง กรุณาดำเนินการสั่งซื้อทันที" :
-                       isLow ? `ต่ำกว่าระดับขั้นต่ำ (${form.minStock} ${form.unit}) แนะนำเติมสต็อก` :
-                       `อยู่ในระดับปลอดภัย (เกินขั้นต่ำ ${form.onHand - form.minStock} ${form.unit})`}
-                    </p>
-                  </div>
-                </div>
-              </GlassCard>
-            )}
-
-            {/* Tab: Movement History */}
-            {activeTab === "history" && (
-              <GlassCard className="p-0 overflow-hidden border-white/5 bg-black/15">
-                <div className="p-4 border-b border-white/5 flex items-center gap-3">
-                  <Activity size={16} className="text-nexus-teal" />
-                  <h3 className="text-[12px] font-medium text-nexus-teal uppercase tracking-widest">
-                    ประวัติการเคลื่อนไหว
-                  </h3>
-                </div>
-                <NexusTable 
-                  headers={["เลขที่ธุรกรรม", "ประเภทธุรกรรม", "จำนวน", "เส้นทางจัดส่ง / โอนย้าย", "ผู้บันทึกรายการ"]}
-                  minWidth="min-w-[600px]"
-                >
-                  {movements.length === 0 ? (
-                    <NexusTableRow>
-                      <NexusTableCell colSpan={5} className="p-16 text-center text-white/20">
-                        <span className="text-[12px] font-medium tracking-widest uppercase">ยังไม่มีประวัติการเคลื่อนไหว</span>
-                      </NexusTableCell>
-                    </NexusTableRow>
-                  ) : (
-                    movements.map((move) => (
-                      <NexusTableRow key={move.id}>
-                        <NexusTableCell mono className="w-36">{move.transactionId}</NexusTableCell>
-                        <NexusTableCell className="text-center w-24">
-        <StatusBadge
-                            status={move.type === "IN" ? "active" : move.type === "OUT" ? "danger" : "pending"}
-                            label={move.type}
-                          />
-      </NexusTableCell>
-                        <NexusTableCell mono className="w-20 text-right">{move.quantity}</NexusTableCell>
-                        <NexusTableCell className="font-mono text-[10px] text-white/40 uppercase">
-                          {move.fromLocation || "EXTERNAL"} &rarr; {move.toLocation || "MAIN-WH"}
-                        </NexusTableCell>
-                        <NexusTableCell className="w-36 text-xs font-bold text-white/50">{move.userId || "System"}</NexusTableCell>
-                      </NexusTableRow>
-                    ))
-                  )}
-                </NexusTable>
-                <div className="p-3 border-t border-white/5 bg-black/10 flex items-center justify-between text-[10px] text-white/20 font-bold">
-                  <span>NEXUS Real-time Stock Ledger</span>
-                  <span>PSG Master UI Standard V3.2</span>
-                </div>
-              </GlassCard>
-            )}
-          </div>
-
-          {/* Right Sidebar */}
-          <div className="w-full lg:w-[280px] shrink-0 space-y-3">
-
-            {/* Quick Stats Card */}
-            <GlassCard className="p-4 border-white/5 space-y-5">
-              <div className="flex items-center gap-2 border-b border-white/5 pb-3">
-                <ShieldCheck size={14} className="text-nexus-teal" />
-                <h4 className="text-sm font-medium text-nexus-teal uppercase tracking-widest">สรุปข้อมูลสินค้า</h4>
-                {!isEditMode && (
-                  <span className="ml-auto flex items-center gap-1 text-sm text-white/20 font-normal uppercase">
-                    <Lock size={10} /> READ
-                  </span>
                 )}
+              </FormField>
+
+              <FormField label="ชื่อพัสดุ / สินค้า *">
+                {isEditMode ? (
+                  <PillInput
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="ชื่อที่แสดงในเอกสาร..."
+                    className="w-full"
+                  />
+                ) : (
+                  <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white">
+                    {form.name || "—"}
+                  </div>
+                )}
+              </FormField>
+
+              <FormField label="หมวดหมู่สินค้า">
+                {isEditMode ? (
+                  <PillSelect
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className="w-full"
+                  >
+                    <option value="">เลือกหมวดหมู่...</option>
+                    {CATEGORIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </PillSelect>
+                ) : (
+                  <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white/70">
+                    {form.category || "—"}
+                  </div>
+                )}
+              </FormField>
+
+              <FormField label="แบรนด์ / ผู้ผลิต">
+                {isEditMode ? (
+                  <PillInput
+                    value={form.brand}
+                    onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                    placeholder="เช่น Aruba, Cisco, Dell..."
+                    className="w-full"
+                  />
+                ) : (
+                  <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white/70">
+                    {form.brand || "—"}
+                  </div>
+                )}
+              </FormField>
+
+              <FormField label="หน่วยนับ">
+                {isEditMode ? (
+                  <PillSelect
+                    value={form.unit}
+                    onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                    className="w-full"
+                  >
+                    {UNITS.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </PillSelect>
+                ) : (
+                  <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white/70">
+                    {form.unit || "—"}
+                  </div>
+                )}
+              </FormField>
+
+              <FormField label="คำอธิบายสินค้า">
+                {isEditMode ? (
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    placeholder="รายละเอียดสินค้าสำหรับเอกสาร..."
+                    rows={3}
+                    className="w-full px-4 py-3 rounded-2xl bg-white/15 border border-white/10 text-sm font-bold text-white placeholder:text-white/20 focus:outline-none focus:border-nexus-teal/30 resize-none"
+                  />
+                ) : (
+                  <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm text-white/60 min-h-[80px]">
+                    {form.description || <span className="text-white/20 italic">ยังไม่มีคำอธิบาย</span>}
+                  </div>
+                )}
+              </FormField>
+            </div>
+          </GlassCard>
+        )}
+
+        {/* Tab: Pricing */}
+        {activeTab === "pricing" && (
+          <GlassCard className="p-4 border-white/5 bg-black/15 space-y-3">
+            <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+              <DollarSign size={16} className="text-warning" />
+              <h3 className="text-[12px] font-medium text-warning uppercase tracking-widest">
+                โครงสร้างราคาและต้นทุน
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="col-span-full p-4 rounded-2xl bg-white/[0.02] border border-white/5 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField label="ราคาเสนอโครงการ">
+                  {isEditMode ? (
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-bold">\u0E3F</span>
+                      <PillInput
+                        type="number"
+                        value={form.priceProject}
+                        onChange={(e) => setForm({ ...form, priceProject: Number(e.target.value) })}
+                        className="w-full pl-8 font-mono mono-numbers"
+                      />
+                    </div>
+                  ) : (
+                    <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-white">
+                      \u0E3F{form.priceProject.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
+                  )}
+                </FormField>
+
+                <FormField label="ราคาขายปลีก">
+                  {isEditMode ? (
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-bold">\u0E3F</span>
+                      <PillInput
+                        type="number"
+                        value={form.pricePOS}
+                        onChange={(e) => setForm({ ...form, pricePOS: Number(e.target.value) })}
+                        className="w-full pl-8 font-mono mono-numbers"
+                      />
+                    </div>
+                  ) : (
+                    <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-white">
+                      \u0E3F{form.pricePOS.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
+                  )}
+                </FormField>
+
+                <FormField label="ต้นทุนเฉลี่ย">
+                  {isEditMode ? (
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-bold">\u0E3F</span>
+                      <PillInput
+                        type="number"
+                        value={form.costWAC}
+                        onChange={(e) => setForm({ ...form, costWAC: Number(e.target.value) })}
+                        className="w-full pl-8 font-mono mono-numbers"
+                      />
+                    </div>
+                  ) : (
+                    <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-nexus-teal">
+                      \u0E3F{form.costWAC.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
+                  )}
+                </FormField>
               </div>
 
-              <div className="space-y-3">
-                <NexusDataField label="รหัส SKU" value={form.sku || "—"} />
-                <NexusDataField label="หมวดหมู่" value={form.category || "—"} />
-                <NexusDataField label="แบรนด์" value={form.brand || "—"} />
-                <NexusDataField label="หน่วยนับ" value={form.unit || "—"} />
+              {/* Margin Indicator */}
+              <div className="col-span-full flex flex-col md:flex-row gap-4">
+                <div className="flex-1 p-5 rounded-2xl bg-nexus-teal/5 border border-nexus-teal/15 flex flex-col items-center justify-center gap-2">
+                  <span className="text-[10px] font-normal text-nexus-teal uppercase tracking-widest">Project Margin</span>
+                  <div className={cn("text-3xl font-bold font-mono", margin >= 20 ? "text-nexus-teal" : margin >= 0 ? "text-warning" : "text-danger")}>
+                    {margin}%
+                  </div>
+                  <span className="text-xs text-white/30 font-bold">
+                    กำไรต่อหน่วย: \u0E3F{(form.priceProject - form.costWAC).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                <div className="flex-1 p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col items-center justify-center gap-2">
+                  <span className="text-[10px] font-normal text-white/30 uppercase tracking-widest">มูลค่าคงคลังรวม</span>
+                  <div className="text-2xl font-bold font-mono text-nexus-blue">
+                    \u0E3F{totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </div>
+                  <span className="text-xs text-white/30 font-bold">
+                    {form.onHand} {form.unit} x \u0E3F{form.costWAC.toLocaleString()}
+                  </span>
+                </div>
               </div>
+            </div>
+          </GlassCard>
+        )}
 
-              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
-                <div className="p-3 rounded-xl bg-nexus-teal/5 border border-nexus-teal/10 text-center">
-                  <span className="text-sm font-medium text-white/30 uppercase tracking-widest block">ON HAND</span>
-                  <span className="text-lg font-medium text-nexus-teal mt-1 block mono-numbers">{form.onHand}</span>
+        {/* Tab: Stock Control */}
+        {activeTab === "stock" && (
+          <GlassCard className="p-4 border-white/5 bg-black/15 space-y-3">
+            <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+              <Box size={16} className="text-nexus-teal" />
+              <h3 className="text-[12px] font-medium text-nexus-teal uppercase tracking-widest">
+                การควบคุมระดับพัสดุ
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <FormField label="ระดับสต็อกปัจจุบัน">
+                {isEditMode ? (
+                  <PillInput
+                    type="number"
+                    value={form.onHand}
+                    onChange={(e) => setForm({ ...form, onHand: Number(e.target.value) })}
+                    className="w-full font-mono mono-numbers"
+                  />
+                ) : (
+                  <div className="px-4 py-3 rounded-2xl bg-nexus-teal/5 border border-nexus-teal/15 font-mono font-bold text-nexus-teal text-lg">
+                    {form.onHand.toLocaleString()} {form.unit}
+                  </div>
+                )}
+              </FormField>
+
+              <FormField label="ถูกจองใช้งาน">
+                {isEditMode ? (
+                  <PillInput
+                    type="number"
+                    value={form.reserved}
+                    onChange={(e) => setForm({ ...form, reserved: Number(e.target.value) })}
+                    className="w-full font-mono mono-numbers"
+                  />
+                ) : (
+                  <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-warning text-lg">
+                    {form.reserved.toLocaleString()} {form.unit}
+                  </div>
+                )}
+              </FormField>
+
+              <FormField label="พร้อมใช้งาน">
+                <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-nexus-blue text-lg">
+                  {Math.max(0, form.onHand - form.reserved).toLocaleString()} {form.unit}
                 </div>
-                <div className="p-3 rounded-xl bg-white/15 border border-white/10 text-center">
-                  <span className="text-sm font-medium text-white/30 uppercase tracking-widest block">RESERVED</span>
-                  <span className="text-lg font-medium text-warning mt-1 block mono-numbers">{form.reserved}</span>
-                </div>
+              </FormField>
+
+              <FormField label="ระดับแจ้งเตือนขั้นต่ำ">
+                {isEditMode ? (
+                  <PillInput
+                    type="number"
+                    value={form.minStock}
+                    onChange={(e) => setForm({ ...form, minStock: Number(e.target.value) })}
+                    className="w-full font-mono mono-numbers"
+                  />
+                ) : (
+                  <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-white/60">
+                    {form.minStock} {form.unit}
+                  </div>
+                )}
+              </FormField>
+            </div>
+
+            {/* Stock Status Visual */}
+            <div className={cn(
+              "p-4 rounded-2xl border flex items-center gap-4",
+              isOut ? "bg-danger/5 border-danger/20" :
+              isLow ? "bg-warning/5 border-warning/20" :
+              "bg-nexus-teal/5 border-nexus-teal/20"
+            )}>
+              {isOut ? <AlertTriangle size={20} className="text-danger shrink-0" /> :
+               isLow ? <AlertTriangle size={20} className="text-warning shrink-0" /> :
+               <CheckCircle2 size={20} className="text-nexus-teal shrink-0" />}
+              <div>
+                <p className={cn("text-[13px] font-medium uppercase tracking-widest", isOut ? "text-danger" : isLow ? "text-warning" : "text-nexus-teal")}>
+                  {stockLabel}
+                </p>
+                <p className="text-[10px] text-white/40 font-bold mt-0.5">
+                  {isOut ? "สินค้าหมดคลัง กรุณาดำเนินการสั่งซื้อทันที" :
+                   isLow ? `ต่ำกว่าระดับขั้นต่ำ (${form.minStock} ${form.unit}) แนะนำเติมสต็อก` :
+                   `อยู่ในระดับปลอดภัย (เกินขั้นต่ำ ${form.onHand - form.minStock} ${form.unit})`}
+                </p>
               </div>
-            </GlassCard>
+            </div>
+          </GlassCard>
+        )}
 
-            {/* Actions Card */}
-            <GlassCard className="p-4 border-white/5 space-y-3">
-              <h4 className="text-sm font-medium text-white/30 uppercase tracking-widest">การดำเนินการด่วน</h4>
-              <PillButton
-                className="w-full text-xs shadow-neon-teal"
-                onClick={() => setIsEditMode(true)}
-                disabled={isEditMode}
-              >
-                <Edit3 size={14} /> แก้ไขข้อมูลสินค้า
-              </PillButton>
-              <PillButton
-                variant="glass"
-                className="w-full text-xs border-nexus-blue/20 text-nexus-blue hover:"
-                onClick={() => setActiveTab("history")}
-              >
-                <History size={14} /> ดูประวัติการเคลื่อนไหว
-              </PillButton>
-              <PillButton
-                variant="glass"
-                className="w-full text-xs border-white/5 hover:"
-                onClick={() => router.back()}
-              >
-                <ChevronLeft size={14} /> กลับหน้าคลังพัสดุ
-              </PillButton>
-            </GlassCard>
+        {/* Tab: Movement History */}
+        {activeTab === "history" && (
+          <GlassCard className="p-0 overflow-hidden border-white/5 bg-black/15">
+            <div className="p-4 border-b border-white/5 flex items-center gap-3">
+              <Activity size={16} className="text-nexus-teal" />
+              <h3 className="text-[12px] font-medium text-nexus-teal uppercase tracking-widest">
+                ประวัติการเคลื่อนไหว
+              </h3>
+            </div>
+            <NexusTable 
+              headers={["เลขที่ธุรกรรม", "ประเภทธุรกรรม", "จำนวน", "เส้นทางจัดส่ง / โอนย้าย", "ผู้บันทึกรายการ"]}
+              minWidth="min-w-[600px]"
+            >
+              {movements.length === 0 ? (
+                <NexusTableRow>
+                  <NexusTableCell colSpan={5} className="p-16 text-center text-white/20">
+                    <span className="text-[12px] font-medium tracking-widest uppercase">ยังไม่มีประวัติการเคลื่อนไหว</span>
+                  </NexusTableCell>
+                </NexusTableRow>
+              ) : (
+                movements.map((move) => (
+                  <NexusTableRow key={move.id}>
+                    <NexusTableCell mono className="w-36">{move.transactionId}</NexusTableCell>
+                    <NexusTableCell className="text-center w-24">
+    <StatusBadge
+                        status={move.type === "IN" ? "active" : move.type === "OUT" ? "danger" : "pending"}
+                        label={move.type}
+                      />
+  </NexusTableCell>
+                    <NexusTableCell mono className="w-20 text-right">{move.quantity}</NexusTableCell>
+                    <NexusTableCell className="font-mono text-[10px] text-white/40 uppercase">
+                      {move.fromLocation || "EXTERNAL"} &rarr; {move.toLocation || "MAIN-WH"}
+                    </NexusTableCell>
+                    <NexusTableCell className="w-36 text-xs font-bold text-white/50">{move.userId || "System"}</NexusTableCell>
+                  </NexusTableRow>
+                ))
+              )}
+            </NexusTable>
+            <div className="p-3 border-t border-white/5 bg-black/10 flex items-center justify-between text-[10px] text-white/20 font-bold">
+              <span>NEXUS Real-time Stock Ledger</span>
+              <span>PSG Master UI Standard V3.2</span>
+            </div>
+          </GlassCard>
+        )}
+      </div>
+    </div>
+  );
 
-            {/* Margin Indicator (when on pricing tab) */}
-            {activeTab === "pricing" && (
-              <GlassCard className="p-4 border-nexus-teal/10 bg-nexus-teal/5 space-y-2 text-center">
-                <span className="text-sm font-normal text-nexus-teal uppercase tracking-widest block">Project Gross Margin</span>
-                <div className={cn("text-4xl font-medium font-mono", margin >= 20 ? "text-nexus-teal" : margin >= 0 ? "text-warning" : "text-danger")}>
-                  {margin}%
-                </div>
-                <span className="text-sm text-white/40 font-medium block">
-                  กำไรต่อหน่วย: \u0E3F{(form.priceProject - form.costWAC).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </span>
-              </GlassCard>
-            )}
+  const rightSidebar = (
+    <div className="space-y-3">
+      {/* Quick Stats Card */}
+      <GlassCard className="p-4 border-white/5 space-y-5">
+        <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+          <ShieldCheck size={14} className="text-nexus-teal" />
+          <h4 className="text-sm font-medium text-nexus-teal uppercase tracking-widest">สรุปข้อมูลสินค้า</h4>
+          {!isEditMode && (
+            <span className="ml-auto flex items-center gap-1 text-sm text-white/20 font-normal uppercase">
+              <Lock size={10} /> READ
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <NexusDataField label="รหัส SKU" value={form.sku || "—"} />
+          <NexusDataField label="หมวดหมู่" value={form.category || "—"} />
+          <NexusDataField label="แบรนด์" value={form.brand || "—"} />
+          <NexusDataField label="หน่วยนับ" value={form.unit || "—"} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
+          <div className="p-3 rounded-xl bg-nexus-teal/5 border border-nexus-teal/10 text-center">
+            <span className="text-sm font-medium text-white/30 uppercase tracking-widest block">ON HAND</span>
+            <span className="text-lg font-medium text-nexus-teal mt-1 block mono-numbers">{form.onHand}</span>
+          </div>
+          <div className="p-3 rounded-xl bg-white/15 border border-white/10 text-center">
+            <span className="text-sm font-medium text-white/30 uppercase tracking-widest block">RESERVED</span>
+            <span className="text-lg font-medium text-warning mt-1 block mono-numbers">{form.reserved}</span>
           </div>
         </div>
-      </div>
+      </GlassCard>
 
-      {/* Toast */}
+      {/* Actions Card */}
+      <GlassCard className="p-4 border-white/5 space-y-3">
+        <h4 className="text-sm font-medium text-white/30 uppercase tracking-widest">การดำเนินการด่วน</h4>
+        <PillButton
+          className="w-full text-xs shadow-neon-teal"
+          onClick={() => setIsEditMode(true)}
+          disabled={isEditMode}
+        >
+          <Edit3 size={14} /> แก้ไขข้อมูลสินค้า
+        </PillButton>
+        <PillButton
+          variant="glass"
+          className="w-full text-xs border-nexus-blue/20 text-nexus-blue hover:"
+          onClick={() => setActiveTab("history")}
+        >
+          <History size={14} /> ดูประวัติการเคลื่อนไหว
+        </PillButton>
+        <PillButton
+          variant="glass"
+          className="w-full text-xs border-white/5 hover:"
+          onClick={() => router.back()}
+        >
+          <ChevronLeft size={14} /> กลับหน้าคลังพัสดุ
+        </PillButton>
+      </GlassCard>
+
+      {/* Margin Indicator (when on pricing tab) */}
+      {activeTab === "pricing" && (
+        <GlassCard className="p-4 border-nexus-teal/10 bg-nexus-teal/5 space-y-2 text-center">
+          <span className="text-sm font-normal text-nexus-teal uppercase tracking-widest block">Project Gross Margin</span>
+          <div className={cn("text-4xl font-medium font-mono", margin >= 20 ? "text-nexus-teal" : margin >= 0 ? "text-warning" : "text-danger")}>
+            {margin}%
+          </div>
+          <span className="text-sm text-white/40 font-medium block">
+            กำไรต่อหน่วย: \u0E3F{(form.priceProject - form.costWAC).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </span>
+        </GlassCard>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      <NexusPageLayout
+        header={headerContent}
+        leftContent={leftContent}
+        rightSidebar={rightSidebar}
+      />
       <Toast
         message={toast.message}
         isVisible={toast.isVisible}
         type={toast.type}
         onClose={() => setToast((prev) => ({ ...prev, isVisible: false }))}
       />
-    </div>
+    </>
   );
 }
 

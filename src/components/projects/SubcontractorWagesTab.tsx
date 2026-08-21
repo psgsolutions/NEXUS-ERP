@@ -83,7 +83,7 @@ export function SubcontractorWagesTab() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEvaluationModalOpen, setIsEvaluationModalOpen] = useState(false);
   const [selectedWO, setSelectedWO] = useState<WorkOrder | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "warning" } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -202,7 +202,7 @@ export function SubcontractorWagesTab() {
     }
   };
 
-  const showToast = (message: string, type: "success" | "error" | "info") => {
+  const showToast = (message: string, type: "success" | "error" | "warning") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
@@ -550,7 +550,7 @@ export function SubcontractorWagesTab() {
 
       {/* Toast */}
       {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+        <Toast isVisible={true} message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
     </div>
   );

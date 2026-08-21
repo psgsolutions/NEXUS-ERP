@@ -13,7 +13,7 @@ export default function ProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("inventory");
-
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   const handleCreateNew = () => {
     router.push('/inventory/products/new');

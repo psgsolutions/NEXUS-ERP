@@ -67,6 +67,12 @@ export default function ProcurementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [toast, setToast] = useState({ message: "", isVisible: false });
+  const [isSupplierOpen, setIsSupplierOpen] = useState(false);
+  const [isPROpen, setIsPROpen] = useState(false);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isExpenseOpen, setIsExpenseOpen] = useState(false);
+  const [isWHTOpen, setIsWHTOpen] = useState(false);
 
   const { data: initialSuppliers } = useRealtimeCollection<any>('suppliers');
   const { data: initialPRs } = useRealtimeCollection<any>('purchase_requests');

@@ -31,7 +31,7 @@ export default function NewExpensePage() {
 
   const handleBack = async () => {
     if (isDirty) {
-      if (await showConfirm("เธเธธเธ“เธกเธตเธเธฒเธฃเธเธฃเธญเธเธเนเธญเธกเธนเธฅเธเนเธฒเธเนเธงเน เธ•เนเธญเธเธเธฒเธฃเธขเธเน€เธฅเธดเธเนเธฅเธฐเธขเนเธญเธเธเธฅเธฑเธเนเธ”เธขเนเธกเนเธเธฑเธเธ—เธถเธเธซเธฃเธทเธญเนเธกเน?")) {
+      if (await showConfirm("เธเธธณมีเธเธฒเธฃเธเธฃเธญเธเธเนเธญเธกเธนเธฅเธเนเธฒเธเนเธงเน เธ•เนเธญเธเธเธฒเธฃเธขเธเน€เธฅเธดเธเนเธฅเธฐเธขเนเธญเธเธเธฅเธฑเธเนเธ”เธขเนเธกเนเธเธฑเธเธ—เธถเธหรือเนเธกเน?")) {
         router.back();
       }
     } else {
@@ -40,7 +40,7 @@ export default function NewExpensePage() {
   };
 
   const handleCommit = async () => {
-    if (!form.poId) return void showAlert("เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเธญเนเธฒเธเธญเธดเธ PO");
+    if (!form.poId) return void showAlert("เธเธฃเธธณเธฒเธฃเธฐเธเธธเธญเนเธฒเธเธญเธดเธ PO");
     if (form.amount <= 0) return void showAlert("เธเธณเธเธงเธเน€เธเธดเธเธ•เนเธญเธเธกเธฒเธเธเธงเนเธฒ 0");
     if (!user || !currentCompanyId) return;
 
@@ -55,7 +55,7 @@ export default function NewExpensePage() {
       await setDoc(expenseRef, expenseData);
       await auditService.logCreate(user.uid, currentCompanyId, "PROCURE_EXPENSE", "NEW", expenseData);
       
-      showAlert("เธเธฑเธเธ—เธถเธเนเธเธชเธณเธเธฑเธเธเนเธฒเธขเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง", "System Notification", "info");
+      showAlert("เธเธฑเธเธ—เธถเธเนเธเธชเธณเธเธฑเธเธเนเธฒเธขเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนว", "System Notification", "info");
       router.push("/procurement");
     } catch (err: any) {
       console.error(err);
@@ -90,7 +90,7 @@ export default function NewExpensePage() {
           disabled={isSubmitting}
         >
           {isSubmitting ? <RefreshCw className="animate-spin mr-2" size={14} /> : <CheckCircle2 size={14} className="mr-2" />}
-          เธเธฑเธเธ—เธถเธเนเธเธชเธณเธเธฑเธเธเนเธฒเธข
+          เธเธฑเธเธ—เธถเธเนเธเธชเธณเธเธฑเธเธเนาย
         </PillButton>
       </div>
     </>
@@ -104,7 +104,7 @@ export default function NewExpensePage() {
             <Receipt size={32} />
           </div>
           <div>
-            <h2 className="text-xl font-black text-white uppercase">เธเธฑเธเธ—เธถเธเธเนเธฒเธขเธเนเธฒเนเธเนเธเนเธฒเธขเธเธฑเธ”เธเธทเนเธญ</h2>
+            <h2 className="text-xl font-black text-white uppercase">เธเธฑเธเธ—เธถเธเธเนเธฒเธขเธเนเธฒเนเธเนเธเนเธฒเธขเธเธฑเธ”เธเธทเนอ</h2>
             <p className="text-[12px] text-white/40 uppercase tracking-widest mt-1">Create Expense Voucher for PO</p>
           </div>
         </div>
@@ -125,7 +125,7 @@ export default function NewExpensePage() {
           </div>
 
           <div className="grid grid-cols-2 gap-8">
-            <Field label="เธเธณเธเธงเธเน€เธเธดเธเธเนเธญเธเธซเธฑเธ เธ“ เธ—เธตเนเธเนเธฒเธข (เธเธฒเธ—) * (Amount Before Tax)" required>
+            <Field label="เธเธณเธเธงเธเน€เธเธดเธเธเนเธญเธเธซเธฑเธ ณ เธ—เธตเนเธเนเธฒเธข (เธาท) * (Amount Before Tax)" required>
               <PillInput 
                 type="number"
                 value={form.amount} 
@@ -133,16 +133,16 @@ export default function NewExpensePage() {
                 className="w-full h-11 px-6 rounded-full font-mono font-bold tracking-tight text-right text-emerald-400 border-emerald-500/30 bg-white/[0.02]" 
               />
             </Field>
-            <Field label="เธญเธฑเธ•เธฃเธฒเธซเธฑเธ เธ“ เธ—เธตเนเธเนเธฒเธข (%) (WHT Rate)">
+            <Field label="เธญเธฑเธ•เธฃเธฒเธซเธฑเธ ณ เธ—เธตเนเธเนเธฒเธข (%) (WHT Rate)">
               <CreatableCombobox 
                 value={form.whtRate?.toString() || "0"} 
                 onChange={(val) => setForm({...form, whtRate: Number(val)})}
                 options={[
                   { value: "0", label: "0% (เธขเธเน€เธงเนเธ)" },
                   { value: "1", label: "1% (เธเนเธฒเธเธเธชเนเธ)" },
-                  { value: "2", label: "2% (เธเนเธฒเนเธเธฉเธ“เธฒ)" },
-                  { value: "3", label: "3% (เธเนเธฒเธเธฃเธดเธเธฒเธฃ)" },
-                  { value: "5", label: "5% (เธเนเธฒเน€เธเนเธฒ)" }
+                  { value: "2", label: "2% (เธเนเธฒเนเธเธฉณเธฒ)" },
+                  { value: "3", label: "3% (เธเนเธฒเธเธฃเธดเธาร)" },
+                  { value: "5", label: "5% (เธเนเธฒเน€เธเนา)" }
                 ]}
                 allowCustom={true}
                 className="h-11"
@@ -158,18 +158,18 @@ export default function NewExpensePage() {
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
       <div className="space-y-1 border-b border-white/5 pb-4">
         <h5 className="text-[13px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2">
-          เธชเธฃเธธเธเธขเธญเธ”เธเธณเธฃเธฐ (Payment Summary)
+          เธชเธฃเธธเธยอดเธเธณเธฃเธฐ (Payment Summary)
         </h5>
       </div>
 
       <div className="p-6 rounded-3xl bg-black/40 border border-white/5 flex flex-col items-center">
-        <span className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-4">เธขเธญเธ”เธเธณเธฃเธฐเธชเธธเธ—เธเธด (Net Amount)</span>
+        <span className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-4">ยอดเธเธณเธฃเธฐเธชเธธเธ—เธเธด (Net Amount)</span>
         <span className="text-3xl font-black text-white font-mono tracking-tight">
-          เธฟ{((form.amount || 0) * (1 - (form.whtRate || 0)/100)).toLocaleString(undefined, {minimumFractionDigits: 2})}
+          ฿{((form.amount || 0) * (1 - (form.whtRate || 0)/100)).toLocaleString(undefined, {minimumFractionDigits: 2})}
         </span>
         {form.whtRate > 0 && (
           <span className="text-[11px] text-danger mt-4 font-mono font-bold tracking-tight text-center">
-            * เธซเธฑเธเธ เธฒเธฉเธต เธ“ เธ—เธตเนเธเนเธฒเธข {form.whtRate}%<br/> = เธฟ{((form.amount || 0) * ((form.whtRate || 0)/100)).toLocaleString(undefined, {minimumFractionDigits: 2})}
+            * เธซเธฑเธภาษี ณ เธ—เธตเนเธเนเธฒเธข {form.whtRate}%<br/> = ฿{((form.amount || 0) * ((form.whtRate || 0)/100)).toLocaleString(undefined, {minimumFractionDigits: 2})}
           </span>
         )}
       </div>
@@ -181,7 +181,7 @@ export default function NewExpensePage() {
           disabled={isSubmitting}
         >
           {isSubmitting ? <RefreshCw className="animate-spin mr-2" size={16} /> : <CheckCircle2 size={16} className="mr-2" />}
-          เธเธฑเธเธ—เธถเธเนเธเธชเธณเธเธฑเธเธเนเธฒเธข
+          เธเธฑเธเธ—เธถเธเนเธเธชเธณเธเธฑเธเธเนาย
         </PillButton>
       </div>
     </div>

@@ -49,7 +49,7 @@ export default function POSPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
-  const { user } = useAuth();
+  const { user, companyId } = useAuth();
 
   React.useEffect(() => {
     const handleFullscreenChange = () => {
@@ -130,8 +130,8 @@ export default function POSPage() {
     }));
 
     const result = await processPOSBatchCheckout({
-      companyId: user.companyId,
-      userId: user.uid,
+      companyId: companyId,
+      userId: user?.uid || 'SYSTEM',
       items: checkoutItems,
       vatType: 'EXCLUSIVE', // Assuming EXCLUSIVE for now, can be configured
       cashAccountId: '1111-00' // Assuming Cash Account Code

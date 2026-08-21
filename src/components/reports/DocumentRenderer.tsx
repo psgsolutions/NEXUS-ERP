@@ -273,8 +273,8 @@ export function DocumentRenderer({ template, data, mode = "print" }: DocumentRen
           tableOriginalH = tableBlock.position.h || 40;
           const rowCount = Math.max(1, normalizedItems.length);
           
-          const rowHeight = template.globalStyles?.tableRowHeight || 34;
-          const gapBelow = template.globalStyles?.tableGapBelow ?? 5;
+          const rowHeight = (template.globalStyles as any)?.tableRowHeight || 34;
+          const gapBelow = (template.globalStyles as any)?.tableGapBelow ?? 5;
           
           // Header (36px) + Rows 
           tableActualH = 36 + (rowCount * rowHeight); 

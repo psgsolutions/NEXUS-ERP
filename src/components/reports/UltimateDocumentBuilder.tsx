@@ -164,7 +164,7 @@ interface TextSegment {
   value: string;
 }
 
-function parseTextToSegments(text: string): TextSegment[] {
+export function parseTextToSegments(text: string): TextSegment[] {
   if (!text) return [];
   const segments: TextSegment[] = [];
   const regex = /(\{\{[^{}]+\}\})/g;
@@ -185,10 +185,12 @@ function parseTextToSegments(text: string): TextSegment[] {
   return segments;
 }
 
-function compileSegmentsToText(segments: TextSegment[], module: keyof typeof MODULE_VARIABLES, isPreview: boolean = false): string {
+export function compileSegmentsToText(segments: TextSegment[], module: keyof typeof MODULE_VARIABLES, isPreview: boolean = false, dataOverrides?: any): string {
   return segments.map(seg => {
     if (seg.type === "VARIABLE") {
-      if (isPreview) {
+      if (dataOverrides && dataOverrides[seg.value] !== undefined) {
+        return String(dataOverrides[seg.value]);
+      } else if (isPreview) {
         const variables = MODULE_VARIABLES[module] || [];
         const match = variables.find(v => v.value.includes(seg.value));
         return match ? match.mock : `{{${seg.value}}}`;

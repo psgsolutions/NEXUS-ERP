@@ -142,3 +142,14 @@
 - เมื่อผู้ใช้พิมพ์คำว่า "ok" เพียงคำเดียว ให้ถือว่าผู้ใช้พอใจและชอบในเวอร์ชันนี้ และคุณต้องรันคำสั่งเพื่อบันทึกโค้ดเป็นเวอร์ชันใหม่ (เช่น `git commit`) ทันที ห้ามตกหล่นเด็ดขาด
   - **ข้อบังคับเพิ่มเติม:** เมื่อบันทึกเสร็จแล้ว ต้องแจ้ง "เลขเวอร์ชัน (Commit Hash)" กลับมาให้ผู้ใช้ทราบทุกครั้ง เพื่อความสะดวกในการย้อนกลับ (Revert/Checkout)
   - หากมีกรณีที่เวอร์ชันไหนไม่สามารถย้อนกลับได้แล้ว (เช่น โครงสร้างพังทลาย, ติด Conflict หนัก, หรือเสีย History) ต้องแจ้งให้ผู้ใช้ทราบทันที
+
+
+- **มาตรฐานฟีเจอร์ความฉลาดเพิ่มเติม (Intelligence Upgrades) สำหรับ DocumentItemsTable:**
+  1. **Predictive Inventory Context:** เพิ่มกลไก "Stock Threshold Alert" หรือแนะนำสินค้าที่ขายบ่อย (Frequent Items) ขึ้นมาเป็นรายการแรกเมื่อกดค้นหา
+  2. **Intelligent Unit Conversion:** Auto-Unit Logic หากสินค้าถูกขายในหลายหน่วย (เช่น ชิ้น, กล่อง) ระบบต้องปรับราคา (Price per Unit) ให้สัมพันธ์กับหน่วยนั้นทันทีผ่าน Conversion Rate
+  3. **Smart Margin Inspector:** (Real-time GP Gauge) ให้มีมาตรวัดกำไรแบบ Live ในฝั่ง Summary Panel เสมอ เพื่อปกป้อง Margin ก่อนกดส่งอนุมัติ
+  4. **Keyboard Navigation Flow:** ฝังกฎ "Enter-to-Next-to-Add" ที่สมบูรณ์แบบ (ค้นหา ➔ จำนวน ➔ ราคา ➔ ส่วนลด ➔ สร้างแถวใหม่พร้อมวางโฟกัสที่ช่องค้นหาของแถวใหม่) โดยไม่ให้เสียจังหวะ
+  5. **Auto-Delete Empty Rows:** หากแถวไม่มีการคีย์ชื่อหรือจำนวน เมื่อเสียโฟกัสให้ลบแถวนั้นทิ้งอัตโนมัติ
+  6. **Real-time Calculation & Bubble Up:** ทุกการแก้ไข จำนวน/ราคา/ส่วนลด ต้องรันการคำนวณและส่งค่า (Bubble up) ไปที่แผง Summary Panel เสมอ ห้ามแสดงยอดรวมใหญ่ๆ ที่ท้ายตาราง
+  7. **Smart Search (Tenant Isolation):** เชื่อม Firestore `products` ผ่าน `useRealtimeCollection` พร้อมจำกัด `.where('companyId', '==', currentCompanyId)` และ `isDeleted == false`
+  8. **Strict Layout (PSG V3.1):** Data Rows ต้องใช้ `min-h-[36px]` padding `py-1`, ฟิลด์กรอกเป็น `h-9 px-6 rounded-full`, ปุ่มเพิ่มลดซ่อนอยู่ด้านขวา (Hover to show), ห้ามมีตัวอักษรเอียง (Non-italic 100%)

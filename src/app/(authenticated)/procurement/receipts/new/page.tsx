@@ -59,7 +59,7 @@ export default function NewGoodsReceiptPage() {
 
   const handleBack = async () => {
     if (isDirty) {
-      if (await showConfirm("เธเธธเธ“เธกเธตเธเธฒเธฃเธเธฃเธญเธเธเนเธญเธกเธนเธฅเธเนเธฒเธเนเธงเน เธ•เนเธญเธเธเธฒเธฃเธขเธเน€เธฅเธดเธเนเธฅเธฐเธขเนเธญเธเธเธฅเธฑเธเนเธ”เธขเนเธกเนเธเธฑเธเธ—เธถเธเธซเธฃเธทเธญเนเธกเน?")) {
+      if (await showConfirm("เธเธธณมีเธเธฒเธฃเธเธฃเธญเธเธเนเธญเธกเธนเธฅเธเนเธฒเธเนเธงเน เธ•เนเธญเธเธเธฒเธฃเธขเธเน€เธฅเธดเธเนเธฅเธฐเธขเนเธญเธเธเธฅเธฑเธเนเธ”เธขเนเธกเนเธเธฑเธเธ—เธถเธหรือเนเธกเน?")) {
         router.back();
       }
     } else {
@@ -69,7 +69,7 @@ export default function NewGoodsReceiptPage() {
 
   // Mock loading items from PO
   const loadPOItems = () => {
-    if (!header.poRef) return void showAlert("เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเน€เธฅเธเธ—เธตเนเนเธเธชเธฑเนเธเธเธทเนเธญ");
+    if (!header.poRef) return void showAlert("เธเธฃเธธณเธฒเธฃเธฐเธเธธเน€เธฅเธเธ—เธตเนเนเธเธชเธฑเนเธเธเธทเนอ");
     setItems([
       { id: 1, name: "Aruba AP-505", qtyOrdered: 10, qtyReceived: 10, unit: "Unit", warehouse: "Main", serials: "" },
       { id: 2, name: "CAT6 Cable 305m", qtyOrdered: 5, qtyReceived: 5, unit: "Roll", warehouse: "Main", serials: "" }
@@ -83,7 +83,7 @@ export default function NewGoodsReceiptPage() {
   };
 
   const handleSave = async () => {
-    if (items.length === 0) return void showAlert("เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเน€เธฅเธเธ—เธตเนเนเธเธชเธฑเนเธเธเธทเนเธญเนเธฅเธฐเธ•เธฃเธงเธเธชเธญเธเธฃเธฒเธขเธเธฒเธฃเธเธฑเธชเธ”เธธเธเนเธญเธเธเธฑเธเธ—เธถเธ");
+    if (items.length === 0) return void showAlert("เธเธฃเธธณเธฒเธฃเธฐเธเธธเน€เธฅเธเธ—เธตเนเนเธเธชเธฑเนเธเธเธทเนเธญเนเธฅเธฐเธ•เธฃเธงเธเธชเธญเธเธฃเธฒเธขเธเธฒเธฃเธเธฑเธชเธ”เธธเธเนเธญเธเธเธฑเธเธ—เธถเธ");
     if (!user || !currentCompanyId) return;
     
     try {
@@ -97,11 +97,11 @@ export default function NewGoodsReceiptPage() {
       });
       await auditService.logCreate(user.uid, currentCompanyId, "PROCURE_GR", "NEW", data);
       
-      showAlert(`เธเธฑเธเธ—เธถเธเธเธฒเธฃเธฃเธฑเธเธชเธดเธเธเนเธฒเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง`, "System Notification", "info");
+      showAlert(`เธเธฑเธเธ—เธถเธเธเธฒเธฃเธฃเธฑเธเธชเธดเธเธเนเธฒเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนว`, "System Notification", "info");
       router.push("/procurement");
     } catch (err: any) {
       console.error(err);
-      showAlert(`เธเธดเธเธเนเธเนเธญเธกเธนเธฅเธฅเนเธกเน€เธซเธฅเธง: ${err.message}`, "System Notification", "error");
+      showAlert(`เธเธดเธเธเนเธเนเธญเธกเธนเธฅเธฅเนมเหลว: ${err.message}`, "System Notification", "error");
     }
   };
 
@@ -130,7 +130,7 @@ export default function NewGoodsReceiptPage() {
           เธขเธเน€เธฅเธดเธ
         </PillButton>
         <PillButton className="h-9 px-6 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 shadow-[0_0_12px_rgba(6,182,212,0.15)]" onClick={handleSave}>
-          <ShieldCheck size={14} className="mr-2" /> เธขเธทเธเธขเธฑเธเธฃเธฑเธเธชเธดเธเธเนเธฒ
+          <ShieldCheck size={14} className="mr-2" /> เธขเธทเธเธขเธฑเธเธฃเธฑเธเธชเธดเธเธเนา
         </PillButton>
       </div>
     </>
@@ -154,7 +154,7 @@ export default function NewGoodsReceiptPage() {
                 </div>
                 <PillButton onClick={loadPOItems} className="px-6 h-11 rounded-full shadow-[0_0_12px_rgba(6,182,212,0.15)] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
                    <Search size={16} className="mr-2" />
-                   เธ”เธถเธเธเนเธญเธกเธนเธฅ
+                   เธ”เธถเธเธเนอมูล
                 </PillButton>
               </div>
             </Field>
@@ -175,7 +175,7 @@ export default function NewGoodsReceiptPage() {
                <PillInput 
                 value={header.deliveryNote}
                 onChange={(e) => setHeader({...header, deliveryNote: e.target.value})}
-                placeholder="เธฃเธฐเธเธธเน€เธฅเธเธ—เธตเนเธเธฒเธเน€เธญเธเธชเธฒเธฃเธเธนเนเธเนเธฒ..." 
+                placeholder="เธฃเธฐเธเธธเน€เธฅเธเธ—เธตเนเธเธฒเธเน€เธญเธเธชเธฒเธฃเธเธนเนเธเนา..." 
                 className="w-full h-11 px-6 rounded-full text-cyan-400 font-bold font-mono bg-white/[0.02]" 
               />
             </Field>
@@ -205,7 +205,7 @@ export default function NewGoodsReceiptPage() {
           <div className="flex justify-between items-center border-b border-white/5 pb-4">
             <h4 className="text-[14px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2">
               <Package size={18} className="text-cyan-400" />
-              เธฃเธฒเธขเธเธฒเธฃเธเธฑเธชเธ”เธธเธ—เธตเนเธฃเธฑเธเน€เธเนเธฒ
+              เธฃเธฒเธขเธเธฒเธฃเธเธฑเธชเธ”เธธเธ—เธตเนเธฃเธฑเธเน€เธเนา
             </h4>
             <span className="text-[12px] font-black text-cyan-400 uppercase tracking-widest">เธ•เธฃเธงเธเธเธฑเธเนเธฅเธฐเธฃเธฐเธเธธ Serial Number</span>
           </div>
@@ -214,7 +214,7 @@ export default function NewGoodsReceiptPage() {
             {items.length === 0 ? (
                 <div className="p-20 border border-dashed border-white/10 rounded-3xl flex flex-col items-center justify-center text-center space-y-4 bg-white/[0.01]">
                   <Package size={64} className="text-white/5" />
-                  <p className="text-[13px] text-white/40 font-black uppercase tracking-widest">เธขเธฑเธเนเธกเนเธกเธตเธฃเธฒเธขเธเธฒเธฃเธเธฑเธชเธ”เธธ (เธเธฃเธธเธ“เธฒเธ”เธถเธเธเนเธญเธกเธนเธฅเธเธฒเธ PO)</p>
+                  <p className="text-[13px] text-white/40 font-black uppercase tracking-widest">เธขเธฑเธเนเธกเนมีเธฃเธฒเธขเธเธฒเธฃเธเธฑเธชเธ”เธธ (เธเธฃเธธณเธฒเธ”เธถเธเธเนเธญเธกเธนเธฅเธเธฒเธ PO)</p>
                </div>
             ) : (
               items.map((item) => (
@@ -226,7 +226,7 @@ export default function NewGoodsReceiptPage() {
                         </div>
                         <div>
                            <p className="text-[15px] font-black text-white uppercase">{item.name}</p>
-                           <p className="text-[11px] text-white/40 font-black uppercase tracking-widest mt-1">เธชเธฑเนเธเธเธทเนเธญ: {item.qtyOrdered} {item.unit}</p>
+                           <p className="text-[11px] text-white/40 font-black uppercase tracking-widest mt-1">เธชเธฑเนเธเธเธทเนอ: {item.qtyOrdered} {item.unit}</p>
                         </div>
                      </div>
                      <div className="flex items-center gap-6">
@@ -266,14 +266,14 @@ export default function NewGoodsReceiptPage() {
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
       <div className="space-y-1 border-b border-white/5 pb-4">
         <h5 className="text-[13px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2">
-          เธชเธฃเธธเธเธเธฒเธฃเธฃเธฑเธเธเธฑเธชเธ”เธธ
+          เธชเธฃเธธเธเธเธฒเธฃเธฃเธฑเธเธัสดุ
         </h5>
       </div>
 
        <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 space-y-6">
         <div className="space-y-5">
           <NexusDataField label="เธชเธ–เธฒเธเธฐเธเธฒเธฃเธฃเธฑเธ" value={items.some(i => i.qtyReceived < i.qtyOrdered) ? "PARTIAL" : (items.length > 0 ? "COMPLETE" : "WAITING")} highlight />
-          <NexusDataField label="เธเธณเธเธงเธเธฃเธฒเธขเธเธฒเธฃ" value={`${items.length} เธฃเธฒเธขเธเธฒเธฃ`} />
+          <NexusDataField label="เธเธณเธเธงเธเธฃเธฒเธขเธาร" value={`${items.length} เธฃเธฒเธขเธาร`} />
           <NexusDataField label="เธเธฅเธฑเธเธเธฅเธฒเธขเธ—เธฒเธ" value={header.warehouse.split(' ')[0]} />
         </div>
       </div>
@@ -281,14 +281,14 @@ export default function NewGoodsReceiptPage() {
        <div className="p-5 rounded-3xl bg-cyan-500/5 border border-cyan-500/10 flex items-start gap-3">
          <CheckCircle2 className="text-cyan-400 flex-shrink-0 mt-0.5" size={16} />
          <p className="text-[11px] text-cyan-400/80 font-bold uppercase leading-relaxed tracking-widest">
-            เธเธฒเธฃเธฃเธฑเธเธชเธดเธเธเนเธฒเธเธฐเธ—เธณเธเธฒเธฃเน€เธเธดเนเธกเธชเธ•เนเธญเธเนเธเธเธฅเธฑเธ {header.warehouse.split(' ')[0]} เธญเธฑเธ•เนเธเธกเธฑเธ•เธดเนเธฅเธฐเธญเธฑเธเน€เธ”เธ•เธชเธ–เธฒเธเธฐเนเธเธชเธฑเนเธเธเธทเนเธญ (PO) เน€เธเนเธเธฃเธฑเธเนเธฅเนเธง
+            เธเธฒเธฃเธฃเธฑเธเธชเธดเธเธเนเธฒเธเธฐเธ—เธณเธเธฒเธฃเน€เธเธดเนเธกเธชเธ•เนเธญเธเนเธเธเธฅเธฑเธ {header.warehouse.split(' ')[0]} เธญเธฑเธ•เนเธเธกเธฑเธ•เธดเนเธฅเธฐเธญเธฑเธเน€เธ”เธ•เธชเธ–เธฒเธเธฐเนเธเธชเธฑเนเธเธเธทเนเธญ (PO) เน€เธเนเธเธฃเธฑเธเนเธฅเนว
          </p>
       </div>
 
       <div className="space-y-4 pt-2">
         <PillButton className="w-full h-11 rounded-full font-black uppercase tracking-widest shadow-[0_0_12px_rgba(6,182,212,0.15)] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-[12px]" onClick={handleSave}>
           <ShieldCheck size={16} className="mr-2" />
-          เธขเธทเธเธขเธฑเธเธเธฒเธฃเธฃเธฑเธเธชเธดเธเธเนเธฒ
+          เธขเธทเธเธขเธฑเธเธเธฒเธฃเธฃเธฑเธเธชเธดเธเธเนา
         </PillButton>
       </div>
     </div>

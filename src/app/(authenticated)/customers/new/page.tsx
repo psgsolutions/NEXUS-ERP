@@ -112,9 +112,9 @@ export default function CustomerDataEntryPage() {
       };
 
       setFormData(sanitizedData);
-      showAlert('info', 'OCR สำเร็จ', 'AI ดึงข้อมูลและแปลงเลขไทยเป็นอารบิกเรียบร้อยแล้ว');
+      showAlert('AI ดึงข้อมูลและแปลงเลขไทยเป็นอารบิกเรียบร้อยแล้ว', 'OCR สำเร็จ', 'info');
     } catch (error) {
-      showAlert('error', 'ข้อผิดพลาด', 'ไม่สามารถอ่านภาพได้');
+      showAlert('ไม่สามารถอ่านภาพได้', 'ข้อผิดพลาด', 'error');
     } finally {
       setIsScanning(false);
     }
@@ -122,7 +122,7 @@ export default function CustomerDataEntryPage() {
 
   const handleSave = async () => {
     if (!formData.customerName || !formData.taxId) {
-      showAlert('error', 'ข้อมูลไม่ครบ', 'กรุณาระบุชื่อลูกค้า และเลขประจำตัวผู้เสียภาษี');
+      showAlert('กรุณาระบุชื่อลูกค้า และเลขประจำตัวผู้เสียภาษี', 'ข้อมูลไม่ครบ', 'error');
       return;
     }
 
@@ -137,11 +137,11 @@ export default function CustomerDataEntryPage() {
         status: 'ACTIVE'
       });
       
-      showAlert('success', 'บันทึกข้อมูลสำเร็จ', 'เพิ่มลูกค้าเข้าสู่ระบบเรียบร้อย');
+      showAlert('เพิ่มลูกค้าเข้าสู่ระบบเรียบร้อย', 'บันทึกข้อมูลสำเร็จ', 'info');
       router.push('/customers');
     } catch (error) {
       console.error(error);
-      showAlert('error', 'เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้');
+      showAlert('ไม่สามารถบันทึกข้อมูลได้', 'เกิดข้อผิดพลาด', 'error');
     } finally {
       setIsSaving(false);
     }

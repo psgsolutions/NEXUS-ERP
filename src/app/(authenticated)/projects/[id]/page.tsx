@@ -53,7 +53,7 @@ export default function ProjectDetailPage() {
   const [activeTab, setActiveTab] = useState("timeline");
   
   // Quotation Integration States
-  const [isQuotationOpen, setIsQuotationOpen] = useState(false);
+  
   const [quotationInitialData, setQuotationInitialData] = useState<any>(null);
   const [toast, setToast] = useState({ message: "", isVisible: false });
 
@@ -146,7 +146,7 @@ export default function ProjectDetailPage() {
       items: aggregatedItems
     });
 
-    setIsQuotationOpen(true);
+    router.push("/sales/quotations/new");
     showToast("ดึงรายการอุปกรณ์และงบประมาณจากตัวโครงการออกใบเสนอราคาสำเร็จ!");
   };
 
@@ -819,15 +819,7 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* QuotationModal popups for direct customization */}
-      <QuotationModal 
-        isOpen={isQuotationOpen}
-        onClose={() => setIsQuotationOpen(false)}
-        initialData={quotationInitialData}
-        onSave={async (data) => {
-          setIsQuotationOpen(false);
-          showToast(`อนุมัติออกใบเสนอราคาเพิ่มเติมสำเร็จ: ${data.subject}`);
-        }}
-      />
+      
 
       <Toast 
         message={toast.message} 

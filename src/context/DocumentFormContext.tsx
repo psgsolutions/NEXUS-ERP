@@ -38,7 +38,7 @@ export function DocumentFormProvider({ children }: { children: React.ReactNode }
     docDate: new Date().toISOString().split("T")[0],
     customerId: "",
     customerName: "",
-    taxMode: "VAT_EXCLUDED",
+    taxMode: "VAT_EXCLUDED" as "VAT_EXCLUDED" | "VAT_INCLUDED" | "NON_VAT",
   });
 
   const [items, setItems] = useState<DocumentItem[]>([]);

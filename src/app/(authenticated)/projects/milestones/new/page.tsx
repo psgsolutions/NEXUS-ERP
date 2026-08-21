@@ -109,16 +109,16 @@ export default function MilestoneNewPage() {
   const [toast, setToast] = useState({ message: "", isVisible: false });
 
   // Quotation Integration States
-  const [isQuotationOpen, setIsQuotationOpen] = useState(false);
+  
   const [quotationInitialData, setQuotationInitialData] = useState<any>(null);
 
   // Kit Editor States
-  const [isKitEditorOpen, setIsKitEditorOpen] = useState(false);
+  
   const [kitEditorInitialData, setKitEditorInitialData] = useState<any>(null);
   const [dbProducts, setDbProducts] = useState<any[]>([]);
 
   // Contractor States
-  const [isContractorModalOpen, setIsContractorModalOpen] = useState(false);
+  
   const [selectedContractor, setSelectedContractor] = useState<any>(null);
   const [dbContractors, setDbContractors] = useState<any[]>([]);
   useEffect(() => {
@@ -477,7 +477,7 @@ export default function MilestoneNewPage() {
     });
 
     setActiveModal(null); // Close project modal
-    setIsQuotationOpen(true); // Open QuotationModal automatically!
+    router.push("/sales/quotations/new"); // Open QuotationModal automatically!
     showToast("ดึงข้อมูลอุปกรณ์และงานค่าใช้จ่ายออกใบเสนอราคาสำเร็จ!");
   };
 

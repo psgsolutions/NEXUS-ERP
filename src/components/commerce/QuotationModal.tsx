@@ -337,7 +337,7 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
                         <div>
                            <p className="text-[11px] uppercase font-black tracking-widest text-white/60 mb-1">Profitability Forecast</p>
                            <p className={cn("text-[15px] font-bold", rainbow.text)}>
-                               GP: {financials.gpPercent}% | Total Profit: {formatCurrency(financials.gpTotal)}
+                               GP: {financials.gpPercent}% | Total Profit: {formatCurrency(financials.profit)}
                            </p>
                         </div>
                     </div>

@@ -261,7 +261,7 @@ function RenderBlockPreview({ block }: { block: FormBlock }) {
           <h1 className={cn("font-bold text-slate-800", `text-${p.titleSize || '2xl'}`)}>{p.titleText || 'DOCUMENT TITLE'}</h1>
           <p className="text-slate-500 mt-1">{p.companyName || 'Company Name Co., Ltd.'}</p>
           <p className="text-sm text-slate-400">{p.address || '123 Main St, City, Country'}</p>
-          <p className="text-sm text-slate-400 mt-2 font-mono">DOC: {{documentCode}} | DATE: {{date}}</p>
+          <p className="text-sm text-slate-400 mt-2 font-mono">DOC: {`{{documentCode}}`} | DATE: {`{{date}}`}</p>
         </div>
       </div>
     );

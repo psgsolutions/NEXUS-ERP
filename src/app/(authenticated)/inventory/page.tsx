@@ -575,12 +575,9 @@ export default function InventoryPage() {
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
       
       {/* Side-Sheets & Modals */}
-      <AddProductSheet 
-        isOpen={isAddSheetOpen} 
-        onClose={() => setIsAddSheetOpen(false)} 
-      />
       
       
+
 
       
 
@@ -677,7 +674,7 @@ export default function InventoryPage() {
             ) : (
               <PillButton 
                 className="gap-2 h-9 text-xs shadow-neon-teal"
-                onClick={() => setIsAddSheetOpen(true)}
+                onClick={() => router.push("/inventory/products/new")}
               >
                 <Plus size={16} /> เพิ่มสินค้า
               </PillButton>

@@ -88,7 +88,6 @@ export default function FormRenderer({ template, values, onChange, disabled = fa
                   onChange={(e) => handleFieldChange(field.id, e.target.value)}
                   disabled={disabled}
                   className="w-full text-white"
-                  required={isRequired}
                 />
               ) : field.type === "number" ? (
                 <PillInput

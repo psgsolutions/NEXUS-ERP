@@ -284,7 +284,7 @@ export default function NewPurchaseOrderPage() {
                 <option value="THB">THB - Thai Baht (฿)</option>
                 <option value="USD">USD - US Dollar ($)</option>
                 <option value="EUR">EUR - Euro (€)</option>
-                <option value="JPY">JPY - Japanese Yen (¥)</option>
+                <option value="JPY">JPY - Japanese Yen (ฅ)</option>
               </PillSelect>
             </Field>
 

@@ -491,7 +491,7 @@ export default function ProjectsPage() {
   const headerContent = (
     <div className="flex-1 w-full">
       {/* Compact Module Header — icon + title + inline metric chips on same plane */}
-      <header className="p-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-5 bg-black/20 shrink-0">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5 shrink-0 w-full">
         <div className="flex items-center gap-4 shrink-0">
           <div className="w-10 h-10 rounded-2xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
             <Briefcase size={22} />
@@ -530,7 +530,7 @@ export default function ProjectsPage() {
             </div>
           </div>
         </div>
-      </header>
+      </div>
     </div>
   );
 
@@ -764,6 +764,10 @@ export default function ProjectsPage() {
         onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
       />
     </div>
+  );
+
+  return (
+    <NexusPageLayout header={headerContent} leftContent={leftContent} />
   );
 }
 

@@ -47,7 +47,7 @@ export default function NewInventoryInPage() {
   const handleBack = async () => {
     const isDirty = items.length > 0 || header.supplierId !== "" || header.poRef !== "";
     if (isDirty) {
-      if (await showConfirm("เธเธธเธ“เธกเธตเธเธฒเธฃเธเธฃเธญเธเธเนเธญเธกเธนเธฅเธเนเธฒเธเนเธงเน เธ•เนเธญเธเธเธฒเธฃเธขเนเธญเธเธเธฅเธฑเธเนเธ”เธขเนเธกเนเธเธฑเธเธ—เธถเธเนเธเนเธซเธฃเธทเธญเนเธกเน?")) {
+      if (await showConfirm("คุณมีการกรอกข้อมูลค้างไว้ ต้องการย้อนกลับโดยไม่บันทึกใช่หรือไม่?")) {
         router.back();
       }
     } else {
@@ -56,18 +56,18 @@ export default function NewInventoryInPage() {
   };
 
   const handleSave = () => {
-    if (items.length === 0) return void showAlert("เธเธฃเธธเธ“เธฒเน€เธเธดเนเธกเธฃเธฒเธขเธเธฒเธฃเธชเธดเธเธเนเธฒเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเธฃเธฑเธเน€เธเนเธฒ");
+    if (items.length === 0) return void showAlert("กรุณาเพิ่มรายการสินค้าที่ต้องการรับเข้า");
     // Simulate API Call
-    showAlert("เธเธฑเธเธ—เธถเธเธฃเธฑเธเธชเธดเธเธเนเธฒเน€เธเนเธฒเธเธฅเธฑเธเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง");
+    showAlert("บันทึกรับสินค้าเข้าคลังเรียบร้อยแล้ว");
     router.push("/inventory");
   };
 
   const fetchPOItems = () => {
-    if (!header.poRef) return void showAlert("เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเน€เธฅเธเธ—เธตเนเนเธเธชเธฑเนเธเธเธทเนเธญ");
+    if (!header.poRef) return void showAlert("กรุณาระบุเลขที่ใบสั่งซื้อ");
     // Mock PO Data
     setItems([
-      { id: "ITEM-001", productId: "PROD-004", name: "เธเธฅเนเธญเธเธงเธเธเธฃเธเธดเธ” AI", qty: 10, unit: "เธ•เธฑเธง", price: 5000, cost: 2500 },
-      { id: "ITEM-002", productId: "PROD-005", name: "เน€เธเธฃเธทเนเธญเธเธชเนเธเธเธฅเธฒเธขเธเธดเนเธงเธกเธทเธญ", qty: 5, unit: "เน€เธเธฃเธทเนเธญเธ", price: 3000, cost: 1500 }
+      { id: "ITEM-001", productId: "PROD-004", name: "กล้องวงจรปิด AI", qty: 10, unit: "ตัว", price: 5000, cost: 2500 },
+      { id: "ITEM-002", productId: "PROD-005", name: "เครื่องสแกนลายนิ้วมือ", qty: 5, unit: "เครื่อง", price: 3000, cost: 1500 }
     ]);
     setHeader(prev => ({ ...prev, supplierId: "SUP-001" }));
   };
@@ -83,7 +83,7 @@ export default function NewInventoryInPage() {
         <div>
           <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-0.5">INVENTORY OPS V7.5</p>
           <div className="flex items-center">
-            <h1 className="text-xl font-black uppercase tracking-tight text-white">เธฃเธฑเธเธชเธดเธเธเนเธฒเน€เธเนเธฒเธเธฅเธฑเธ (Goods Receipt)</h1>
+            <h1 className="text-xl font-black uppercase tracking-tight text-white">รับสินค้าเข้าคลัง (Goods Receipt)</h1>
             <DocumentStepper steps={["Draft", "Pending", "Received"]} currentStep={0} />
           </div>
         </div>
@@ -92,8 +92,8 @@ export default function NewInventoryInPage() {
       <div className="flex items-center gap-3">
         <PillTabs 
           tabs={[
-            { id: "manual", label: "เธฃเธฑเธเน€เธเนเธฒเธ”เนเธงเธขเธ•เธเน€เธญเธ", icon: <Package size={14} /> },
-            { id: "po", label: "เธฃเธฑเธเธเธฒเธเนเธเธชเธฑเนเธเธเธทเนเธญ (PO)", icon: <FileText size={14} /> }
+            { id: "manual", label: "รับเข้าด้วยตนเอง", icon: <Package size={14} /> },
+            { id: "po", label: "รับจากใบสั่งซื้อ (PO)", icon: <FileText size={14} /> }
           ]}
           activeTab={activeTab}
           onTabChange={(tab) => {
@@ -105,10 +105,10 @@ export default function NewInventoryInPage() {
           }}
         />
         <PillButton variant="ghost" className="h-9 px-6 rounded-full text-white/50 hover:text-white" onClick={handleBack}>
-          เธขเธเน€เธฅเธดเธ
+          ยกเลิก
         </PillButton>
         <PillButton className="h-9 px-6 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.15)]" onClick={handleSave}>
-          <ShieldCheck size={14} className="mr-2" /> เธเธฑเธเธ—เธถเธเธฃเธฑเธเน€เธเนเธฒเธเธฅเธฑเธ
+          <ShieldCheck size={14} className="mr-2" /> บันทึกรับเข้าคลัง
         </PillButton>
       </div>
     </>
@@ -120,70 +120,70 @@ export default function NewInventoryInPage() {
         
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-6">
-            <Field label="เธงเธฑเธเธ—เธตเนเธ—เธณเธฃเธฒเธขเธเธฒเธฃ *">
+            <Field label="วันที่ทำรายการ (Date) *">
               <NexusDatePicker value={header.date} 
                 onChange={(e) => setHeader({...header, date: e.target.value})} 
                 className="w-full h-9 rounded-full px-6" 
               />
             </Field>
-            <Field label="เธเธฅเธฑเธเธชเธดเธเธเนเธฒเธเธฅเธฒเธขเธ—เธฒเธ (Warehouse) *">
+            <Field label="คลังสินค้า (Warehouse)">
               <PillSelect 
                 value={header.warehouseId} 
                 onChange={(e) => setHeader({...header, warehouseId: e.target.value})} 
                 className="w-full text-cyan-400 border-cyan-500/30 font-bold h-9 rounded-full px-6"
               >
-                <option value="WH-01">WH-01 : Main Warehouse (เธชเธณเธเธฑเธเธเธฒเธเนเธซเธเน)</option>
-                <option value="WH-02">WH-02 : Branch 1 (เธชเธฒเธเธฒ 1)</option>
-                <option value="WH-03">WH-03 : Project Store (เธซเธเนเธงเธขเธเธฒเธเนเธเธฃเธเธเธฒเธฃ)</option>
+                <option value="WH-01">WH-01 : Main Warehouse (สำนักงานใหญ่)</option>
+                <option value="WH-02">WH-02 : Branch 1 (สาขา 1)</option>
+                <option value="WH-03">WH-03 : Project Store (หน่วยงานโครงการ)</option>
               </PillSelect>
             </Field>
           </div>
 
           {activeTab === "po" ? (
             <div className="grid grid-cols-2 gap-6">
-              <Field label="เธญเนเธฒเธเธญเธดเธเนเธเธชเธฑเนเธเธเธทเนเธญ (PO Reference) *">
+              <Field label="อ้างอิงใบสั่งซื้อ (PO Reference) *">
                 <div className="flex gap-2">
                   <PillInput 
                     value={header.poRef} 
                     onChange={(e) => setHeader({...header, poRef: e.target.value})} 
-                    placeholder="เน€เธเนเธ PO-2604-0012" 
+                    placeholder="เช่น PO-2604-0012" 
                     className="w-full text-amber-400 border-amber-500/30 h-9 rounded-full px-6 font-mono text-[13px]" 
                   />
                   <PillButton onClick={fetchPOItems} className="shrink-0 bg-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-black h-9 rounded-full px-6">
-                    <Search size={16} className="mr-2" /> เธ”เธถเธเธเนเธญเธกเธนเธฅ
+                    <Search size={16} className="mr-2" /> ดึงข้อมูล
                   </PillButton>
                 </div>
               </Field>
-              <Field label="เธเธนเนเธเธฑเธ”เธเธณเธซเธเนเธฒเธข (Supplier)">
+              <Field label="ผู้จัดจำหน่าย (Supplier)">
                 <PillSelect 
                   value={header.supplierId} 
                   onChange={(e) => setHeader({...header, supplierId: e.target.value})} 
                   className="w-full h-9 rounded-full px-6 opacity-60"
                   disabled={true}
                 >
-                  <option value="">-- เธญเนเธฒเธเธญเธดเธเธเธฒเธ PO --</option>
+                  <option value="">-- อ้างอิงจาก PO --</option>
                   <option value="SUP-001">Thai Equipment Co., Ltd.</option>
                 </PillSelect>
               </Field>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-6">
-              <Field label="เธเธนเนเธเธฑเธ”เธเธณเธซเธเนเธฒเธข (Supplier) *">
+              <Field label="ผู้จัดจำหน่าย (Supplier) *">
                 <PillSelect 
                   value={header.supplierId} 
                   onChange={(e) => setHeader({...header, supplierId: e.target.value})} 
                   className="w-full h-9 rounded-full px-6"
                 >
-                  <option value="">เน€เธฅเธทเธญเธเธเธนเนเธเนเธฒ...</option>
+                  <option value="">เลือกคู่ค้า...</option>
                   <option value="SUP-001">Thai Equipment Co., Ltd.</option>
                   <option value="SUP-002">Global Tech Industries Inc.</option>
                 </PillSelect>
               </Field>
-              <Field label="เน€เธญเธเธชเธฒเธฃเธญเนเธฒเธเธญเธดเธ (Ref. No.)">
+              <Field label="เอกสารอ้างอิง (Ref. No.)">
                 <PillInput 
                   value={header.reference} 
                   onChange={(e) => setHeader({...header, reference: e.target.value})} 
-                  placeholder="เน€เธเนเธ INV-0012" 
+                  placeholder="เช่น INV-0012" 
                   className="w-full h-9 rounded-full px-6 font-mono text-[13px]" 
                 />
               </Field>
@@ -194,7 +194,7 @@ export default function NewInventoryInPage() {
         <div className="space-y-6 pt-6 border-t border-white/5">
           <div className="flex items-center gap-2 mb-2">
             <Truck size={16} className="text-white/40" />
-            <h4 className="text-[13px] font-black text-white/60 uppercase tracking-widest">เธฃเธฒเธขเธเธฒเธฃเธชเธดเธเธเนเธฒ (Items)</h4>
+            <h4 className="text-[13px] font-black text-white/60 uppercase tracking-widest">รายการสินค้า (Items)</h4>
           </div>
           <DocumentItemsTable 
             items={items}
@@ -203,12 +203,12 @@ export default function NewInventoryInPage() {
         </div>
 
         <div className="space-y-6 pt-6 border-t border-white/5">
-          <Field label="เธซเธกเธฒเธขเน€เธซเธ•เธธ (Remarks)">
+          <Field label="หมายเหตุ (Remarks)">
             <textarea 
               className="w-full h-24 rounded-2xl bg-white/[0.03] border border-white/10 text-white text-[14px] p-4 focus:outline-none focus:border-cyan-400/40 transition-all custom-scrollbar"
               value={header.note}
               onChange={(e) => setHeader({...header, note: e.target.value})}
-              placeholder="เธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”เน€เธเธดเนเธกเน€เธ•เธดเธก (เธ–เนเธฒเธกเธต)..."
+              placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)..."
             />
           </Field>
         </div>
@@ -220,21 +220,21 @@ export default function NewInventoryInPage() {
   const rightSidebar = (
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
       <div className="space-y-1 border-b border-white/5 pb-4">
-        <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">เธชเธฃเธธเธเธเธฒเธฃเธฃเธฑเธเน€เธเนเธฒ</p>
+        <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">สรุปการรับเข้า</p>
         <h5 className="text-[13px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2">Receipt Summary</h5>
       </div>
 
       <div className="relative z-10 space-y-4">
         <div className="flex justify-between items-center pb-4 border-b border-white/5">
-          <span className="text-[11px] text-white/60 font-black uppercase tracking-widest">เธเธณเธเธงเธเธฃเธฒเธขเธเธฒเธฃ</span>
-          <span className="text-[14px] font-mono font-bold text-white">{items.length} เธฃเธฒเธขเธเธฒเธฃ</span>
+          <span className="text-[11px] text-white/60 font-black uppercase tracking-widest">จำนวนรายการ</span>
+          <span className="text-[14px] font-mono font-bold text-white">{items.length} รายการ</span>
         </div>
         <div className="flex justify-between items-center pb-4 border-b border-white/5">
-          <span className="text-[11px] text-white/60 font-black uppercase tracking-widest">เธเธณเธเธงเธเธเธดเนเธเธฃเธงเธก</span>
-          <span className="text-[14px] font-mono font-bold text-white">{items.reduce((acc, i) => acc + (i.qty || 0), 0)} เธเธดเนเธ</span>
+          <span className="text-[11px] text-white/60 font-black uppercase tracking-widest">จำนวนชิ้นรวม</span>
+          <span className="text-[14px] font-mono font-bold text-white">{items.reduce((acc, i) => acc + (i.qty || 0), 0)} ชิ้น</span>
         </div>
         <div className="flex justify-between items-end pt-2">
-          <span className="text-[12px] text-white/80 font-black uppercase tracking-widest">เธกเธนเธฅเธเนเธฒเธ•เนเธเธ—เธธเธเธฃเธงเธก</span>
+          <span className="text-[12px] text-white/80 font-black uppercase tracking-widest">มูลค่าต้นทุนรวม</span>
           <span className="text-xl font-mono font-black text-emerald-400 drop-shadow-neon text-right">{formatCurrency(totalCost)}</span>
         </div>
       </div>
@@ -242,7 +242,7 @@ export default function NewInventoryInPage() {
       <div className="space-y-4 pt-6 border-t border-white/5 relative z-10">
         <PillButton className="w-full h-11 rounded-full font-black uppercase tracking-[0.2em] shadow-[0_0_12px_rgba(16,185,129,0.15)] bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30 text-[12px]" onClick={handleSave}>
           <ShieldCheck size={18} className="mr-2" />
-          เธเธฑเธเธ—เธถเธเธฃเธฑเธเน€เธเนเธฒเธเธฅเธฑเธ
+          บันทึกรับเข้าคลัง
         </PillButton>
       </div>
       

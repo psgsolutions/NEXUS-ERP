@@ -40,13 +40,16 @@ export function calculateMagneticSnap(
   for (const el of elements) {
     if (el.id === activeId || el.properties?.visible === false) continue;
 
+    const elWidth = Number(el.size.width);
+    const elHeight = Number(el.size.height);
+
     const elLeft = el.position.x;
-    const elRight = el.position.x + el.size.width;
-    const elCenterX = el.position.x + el.size.width / 2;
+    const elRight = el.position.x + elWidth;
+    const elCenterX = el.position.x + elWidth / 2;
 
     const elTop = el.position.y;
-    const elBottom = el.position.y + el.size.height;
-    const elCenterY = el.position.y + el.size.height / 2;
+    const elBottom = el.position.y + elHeight;
+    const elCenterY = el.position.y + elHeight / 2;
 
     // --- X Axis Snapping ---
     if (!xSnapped) {
@@ -67,7 +70,7 @@ export function calculateMagneticSnap(
             x1: sp.target,
             y1: Math.min(currentPos.y, el.position.y) - 50,
             x2: sp.target,
-            y2: Math.max(currentPos.y + activeSize.height, el.position.y + el.size.height) + 50,
+            y2: Math.max(currentPos.y + activeSize.height, el.position.y + elHeight) + 50,
             direction: 'vertical'
           });
           break;
@@ -93,7 +96,7 @@ export function calculateMagneticSnap(
           lines.push({
             x1: Math.min(currentPos.x, el.position.x) - 50,
             y1: sp.target,
-            x2: Math.max(currentPos.x + activeSize.width, el.position.x + el.size.width) + 50,
+            x2: Math.max(currentPos.x + activeSize.width, el.position.x + elWidth) + 50,
             y2: sp.target,
             direction: 'horizontal'
           });

@@ -109,16 +109,16 @@ export default function ProjectNewPage() {
   const [toast, setToast] = useState({ message: "", isVisible: false });
 
   // Quotation Integration States
-  const [isQuotationOpen, setIsQuotationOpen] = useState(false);
+  
   const [quotationInitialData, setQuotationInitialData] = useState<any>(null);
 
   // Kit Editor States
-  const [isKitEditorOpen, setIsKitEditorOpen] = useState(false);
+  
   const [kitEditorInitialData, setKitEditorInitialData] = useState<any>(null);
   const [dbProducts, setDbProducts] = useState<any[]>([]);
 
   // Contractor States
-  const [isContractorModalOpen, setIsContractorModalOpen] = useState(false);
+  
   const [selectedContractor, setSelectedContractor] = useState<any>(null);
   const [dbContractors, setDbContractors] = useState<any[]>([]);
   useEffect(() => {
@@ -477,7 +477,7 @@ export default function ProjectNewPage() {
     });
 
     setActiveModal(null); // Close project modal
-    setIsQuotationOpen(true); // Open QuotationModal automatically!
+    router.push("/sales/quotations/new"); // Open QuotationModal automatically!
     showToast("ดึงข้อมูลอุปกรณ์และงานค่าใช้จ่ายออกใบเสนอราคาสำเร็จ!");
   };
 
@@ -660,7 +660,7 @@ export default function ProjectNewPage() {
                                       <div className={`transition-all duration-300 overflow-hidden shrink-0 ${catalogActiveSubTab === "packages" ? "w-full sm:w-auto opacity-100" : "w-0 opacity-0 pointer-events-none"}`}>
                                         <button
                                           type="button"
-                                          onClick={() => setIsKitEditorOpen(true)}
+                                          onClick={() => router.push("/inventory/products/new")}
                                           className="h-9 px-6 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/30 transition-all text-sm font-medium uppercase tracking-wider flex items-center justify-center gap-1.5 whitespace-nowrap w-full"
                                         >
                                           <Plus size={12} /> สร้างชุดงาน 🛠️
@@ -830,7 +830,7 @@ export default function ProjectNewPage() {
                                                          ]
                                                        });
                                                        setActiveModal(null);
-                                                       setIsQuotationOpen(true);
+                                                       router.push("/sales/quotations/new");
                                                        showToast(`ดึงชุดงาน "${pkg.name}" ออกใบเสนอราคาสำเร็จ!`);
                                                      }}
                                                      className="p-1.5 rounded-full bg-nexus-teal/10 hover:bg-nexus-teal text-nexus-teal hover:text-black border border-nexus-teal/20 transition-all flex items-center justify-center"

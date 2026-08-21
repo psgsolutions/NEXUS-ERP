@@ -21,6 +21,7 @@ import {
   cn 
 } from "@/components/ui/Base";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { where } from "firebase/firestore";
 import { formatCurrency } from "@/lib/erp-logic";
 import { useAuth } from "@/context/AuthContext";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
@@ -34,7 +35,7 @@ export default function NewAssetDepreciationPage() {
   const [period, setPeriod] = useState("เมษายน 2569");
   const { companyId: currentCompanyId } = useAuth();
   
-  const { data: assets } = useRealtimeCollection("assets", currentCompanyId ? [{ field: 'companyId', operator: '==', value: currentCompanyId }] : []);
+  const { data: assets } = useRealtimeCollection("assets", currentCompanyId ? [where('companyId', '==', currentCompanyId)] : []);
 
   const totalAssets = assets?.length || 0;
   const totalBookValue = assets?.reduce((sum, a) => sum + (a.netBookValue || 0), 0) || 0;

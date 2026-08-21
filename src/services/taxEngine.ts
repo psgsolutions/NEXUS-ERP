@@ -28,13 +28,13 @@ export const TaxEngine = {
     snapshot.forEach((doc) => {
       const data = doc.data() as JournalEntry;
       if (data.status === 'posted') {
-        const inputLine = data.lines?.find(l => l.accountId === '1151-00') || data.items?.find((i: any) => i.accountCode === '1151-00');
+        const inputLine = data.lines?.find(l => l.accountId === '1151-00') || (data as any).items?.find((i: any) => i.accountCode === '1151-00');
         if (inputLine && (inputLine.debit > 0)) {
           inputVatTransactions.push(data);
           totalInputVat += inputLine.debit;
         }
 
-        const outputLine = data.lines?.find(l => l.accountId === '2121-00') || data.items?.find((i: any) => i.accountCode === '2121-00');
+        const outputLine = data.lines?.find(l => l.accountId === '2121-00') || (data as any).items?.find((i: any) => i.accountCode === '2121-00');
         if (outputLine && (outputLine.credit > 0)) {
           outputVatTransactions.push(data);
           totalOutputVat += outputLine.credit;

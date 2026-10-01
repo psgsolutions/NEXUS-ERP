@@ -50,7 +50,7 @@ Sequential document IDs must never collide or jump numbers, even under high conc
   // Core mechanism inside runTransaction
   const counterRef = doc(db, "counters", scopedCounterId);
   const nextSeq = (counterSnap.data().seq || 0) + 1;
-  transaction.set(counterRef, { seq: nextSeq, year: yy, company_id: companyId }, { merge: true });
+  transaction.set(counterRef, { seq: nextSeq, year: yy, companyId: companyId }, { merge: true });
   return nextSeq;
   ```
 

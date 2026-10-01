@@ -48,7 +48,7 @@
 ---
 
 ## 3. ตรรกะทางเทคนิค (Atomic Sequence ID)
-- **Multi-tenancy Isolation**: ระบบตัวนับเลข (Counter) จะถูกแยกขาดตาม `company_id`
+- **Multi-tenancy Isolation**: ระบบตัวนับเลข (Counter) จะถูกแยกขาดตาม `companyId`
 - **Atomic Transaction**: ใช้ระบบ Firestore Transaction ในการดึงเลขถัดไป เพื่อป้องกันเลขซ้ำเมื่อมีผู้ใช้งานบันทึกพร้อมกัน
 - **Immutable Sequence**: เมื่อรหัสถูกสร้างและบันทึกแล้ว ห้ามเปลี่ยนรหัสโดยเด็ดขาด
 

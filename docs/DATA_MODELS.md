@@ -47,7 +47,7 @@
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `entry_id` | string | รหัสรายการบัญชี |
-| `company_id` | string | รหัสบริษัทที่เกิดรายการ |
+| `companyId` | string | รหัสบริษัทที่เกิดรายการ |
 | `date` | timestamp | วันที่เกิดรายการ |
 | `description` | string | คำอธิบายรายการ |
 | `reference` | string | เอกสารอ้างอิง (เช่น SO-24-001) |

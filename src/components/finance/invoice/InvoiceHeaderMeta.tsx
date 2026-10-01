@@ -10,13 +10,13 @@ export function InvoiceHeaderMeta() {
 
   return (
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl space-y-4">
-      <h3 className="text-xs font-black text-nexus-teal uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2 mb-4 not-italic">
+      <h3 className="text-xs font-semibold text-nexus-teal uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2 mb-4 not-italic">
         <ShieldCheck size={14} /> ข้อมูลเอกสาร
       </h3>
       
       <div className="space-y-4">
         <div className="space-y-1">
-          <label className="text-[11px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+          <label className="text-[11px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
             <ShoppingCart size={12} className="text-nexus-teal" /> อ้างอิงใบสั่งขาย <span className="text-red-500 font-bold">*</span> (Select SO)
           </label>
           <SmartSelect
@@ -32,7 +32,7 @@ export function InvoiceHeaderMeta() {
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="text-[11px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+            <label className="text-[11px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
               วันที่ออก (Issue Date)
             </label>
             <PillInput 
@@ -43,7 +43,7 @@ export function InvoiceHeaderMeta() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+            <label className="text-[11px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
               <Calendar size={12} className="text-nexus-teal" /> วันครบกำหนด <span className="text-red-500 font-bold">*</span> (Due Date)
             </label>
             <PillInput 

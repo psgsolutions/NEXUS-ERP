@@ -37,9 +37,8 @@ export function SecurityGuard({
         <div className="opacity-40 grayscale pointer-events-none">
           {children}
         </div>
-        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-danger text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
-          <ShieldAlert size={12} className="inline mr-1" />
-          ADMIN ONLY
+        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950/90 backdrop-blur-md border border-cyan-500/40 text-cyan-100 font-mono tracking-wider text-[10px] px-2 py-1 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.15)] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-[9999]">
+          <span className="font-bold text-danger">RESTRICTED:</span> {actionLabel}
         </div>
       </div>
     );
@@ -59,7 +58,7 @@ export function SecurityGuard({
                 <div className="p-2 rounded-lg bg-danger/10 border border-danger/20">
                   <AlertCircle size={24} />
                 </div>
-                <h3 className="text-xl font-black uppercase tracking-widest">Security Alert</h3>
+                <h3 className="text-xl font-semibold uppercase tracking-widest">Security Alert</h3>
               </div>
               
               <p className="text-white/60 text-sm leading-relaxed">

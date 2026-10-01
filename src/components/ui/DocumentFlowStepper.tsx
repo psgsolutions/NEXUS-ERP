@@ -15,8 +15,8 @@ export function DocumentFlowStepper({ activeTab, onStepClick, steps }: DocumentF
   const activeIndex = steps.findIndex((s) => s.id === activeTab);
 
   return (
-    <div className="w-full relative pb-12 pt-1 h-[70px]">
-      <div className="flex items-center w-full justify-between relative">
+    <div className="w-full relative h-[50px] flex items-start justify-end pt-2 mt-1 pr-6">
+      <div className="flex items-center gap-[60px] xl:gap-[80px] relative">
         {/* Background Line */}
         <div className="absolute top-1/2 left-0 w-full h-[2px] bg-white/5 -translate-y-1/2 z-0 rounded-full"></div>
 
@@ -42,15 +42,15 @@ export function DocumentFlowStepper({ activeTab, onStepClick, steps }: DocumentF
                 className={cn(
                   "w-7 h-7 rounded-full flex items-center justify-center transition-all duration-500",
                   isActive
-                    ? "bg-nexus-teal text-black shadow-[0_0_15px_rgba(20,163,204,0.6)] scale-110"
+                    ? "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md shadow-[0_0_15px_rgba(20,163,204,0.6)] scale-110"
                     : isPast
                     ? "bg-black text-nexus-teal border border-nexus-teal"
-                    : "bg-[#111] text-white/20 border border-white/10 group-hover:border-white/30 hover:text-white/60 hover:bg-white/[0.05]"
+                    : "bg-surface-1 text-white/20 border border-white/10 group-hover:border-white/30 hover:text-white/60 hover:bg-white/[0.05]"
                 )}
               >
                 {step.icon}
               </div>
-              <div className="absolute top-10 left-1/2 -translate-x-1/2 text-center w-32">
+              <div className="absolute top-8 left-1/2 -translate-x-1/2 text-center w-32">
                 <p
                   className={cn(
                     "text-[11px] font-medium transition-colors duration-300",

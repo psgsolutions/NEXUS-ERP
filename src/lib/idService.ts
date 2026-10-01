@@ -1,85 +1,92 @@
-import { db } from "./firebase-client";
-import { Firestore, doc, runTransaction, serverTimestamp } from "firebase/firestore";
+import { auth } from "./firebase-client";
 import { IdType, romanizeThai } from "@/lib/utils";
+import { apiFetch } from "@/lib/api-client";
 
 /**
- * @fileOverview Isolated PSG-ID Protocol V8.5
- * ระบบรันเลขที่เอกสารแบบ Atomic Transaction แยกสารบบตามบริษัท 100%
- * บังคับใช้ Company Scoping เพื่อป้องกันการปนกันของลำดับเลข
+ * @fileOverview Configurable Numbering Engine Client Bridge V9.0
+ * ระบบสนับสนุนการรันเลขที่เอกสารผ่าน Configurable Numbering Engine
  */
 
 export const idService = {
   /**
-   * ดึงลำดับถัดไปจากฐานข้อมูลโดยแยก Counter ตามบริษัทปฏิบัติการ
+   * เรียก API Server Route สำหรับออกเลขเอกสารที่เป็น Atomic Transaction
    */
-  async getNextSequence(dbInstance: Firestore, type: IdType, companyId: string, context?: string): Promise<number> {
+  async generateDocumentNumber(type: string, companyId: string, contextOpts?: { mnemonic?: string; brandCode?: string; categoryCode?: string }): Promise<{ documentNumber: string; counterId: string }> {
     if (!companyId) {
-      throw new Error("APO ID System Alert: Company ID is strictly required for atomic sequence generation.");
+      throw new Error("Company ID is required for generating document numbers.");
     }
-
-    const now = new Date();
-    const yy = now.getFullYear().toString().slice(-2);
-    
-    let counterBaseId = '';
-    
-    switch (type) {
-      case 'SKU':
-        let cat = 'GEN';
-        if (context) {
-          const isThai = /[\u0E00-\u0E7F]/.test(context);
-          const processedContext = isThai ? romanizeThai(context) : context;
-          const cleanCat = processedContext.replace(/[^A-Z0-9]/g, '');
-          cat = (cleanCat.substring(0, 3) || 'GEN').toUpperCase();
-        }
-        counterBaseId = `SKU-${cat}`;
-        break;
-      default:
-        const prefix = (type === 'CRM' || type === 'CUS') ? 'CUS' : type;
-        counterBaseId = `${prefix}-${yy}`; 
-        break;
-    }
-
-    // 🔥 Atomic Isolation: Scoped Counter ID (Separated per company)
-    const scopedCounterId = `${companyId}_${counterBaseId}`;
-    const counterRef = doc(dbInstance, "counters", scopedCounterId);
 
     try {
-      return await runTransaction(dbInstance, async (transaction) => {
-        const counterSnap = await transaction.get(counterRef);
-        let currentSeq = 0;
-        
-        if (counterSnap.exists()) {
-          const data = counterSnap.data();
-          // รีเซ็ตเลขเมื่อข้ามปี (ยกเว้น SKU ที่ต้องการรันยาว)
-          if (type !== 'SKU' && data.year && data.year !== yy) {
-            currentSeq = 0;
-          } else {
-            currentSeq = data.seq || 0;
-          }
-        }
-        
-        const nextSeq = currentSeq + 1;
-        
-        transaction.set(counterRef, { 
-          seq: nextSeq, 
-          updatedAt: serverTimestamp(),
-          type: type,
-          year: yy,
-          company_id: companyId,
-          is_deleted: false,
-          _v: 1
-        }, { merge: true });
-        
-        return nextSeq;
+      const res = await apiFetch(`/api/documents/${type}/generate-number`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, contextOpts }),
       });
-    } catch (error) {
-      console.error("Atomic ID Generation Error:", error);
-      return Math.floor(Math.random() * 9999);
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to generate number (status ${res.status})`);
+      }
+
+      const data = await res.json();
+      return {
+        documentNumber: data.documentNumber,
+        counterId: data.counterId,
+      };
+    } catch (err) {
+      // ห้ามสุ่มเลขแทน: เลขเอกสารต้องไม่ซ้ำและตรวจสอบย้อนหลังได้ ให้ผู้เรียกแจ้งผู้ใช้แล้วลองใหม่
+      console.error(`Error calling generateDocumentNumber API for ${type}:`, err);
+      throw err;
     }
   },
 
   /**
-   * จัดรูปแบบ ID ตามมาตรฐาน V8.5: PREFIX-YY-[MNEMONIC]-SEQ
+   * Counter document ID (คงรูปแบบเดิม `${companyId}_${counterBaseId}` เพื่อให้ต่อเลขจาก counter ที่มีอยู่แล้ว)
+   * SKU แยกตามหมวดและไม่รีเซ็ตรายปี, เอกสารอื่นแยกตามปี
+   */
+  counterId(type: IdType, companyId: string, context?: string): string {
+    const yy = new Date().getFullYear().toString().slice(-2);
+
+    if (type === 'SKU') {
+      let cat = 'GEN';
+      if (context) {
+        const isThai = /[\u0E00-\u0E7F]/.test(context);
+        const processedContext = isThai ? romanizeThai(context) : context;
+        const cleanCat = processedContext.replace(/[^A-Z0-9]/g, '');
+        cat = (cleanCat.substring(0, 3) || 'GEN').toUpperCase();
+      }
+      return `${companyId}_SKU-${cat}`;
+    }
+
+    const prefix = (type === 'CRM' || type === 'CUS') ? 'CUS' : type;
+    return `${companyId}_${prefix}-${yy}`;
+  },
+
+  /**
+   * ขอลำดับถัดไปจาก server (POST /api/sequence/next)
+   * collection `counters` ถูกล็อกไม่ให้ client เขียน ฝั่ง server ให้ใช้ nextCounterSequence() จาก sequence-server.ts
+   */
+  async getNextSequence(type: IdType, companyId: string, context?: string): Promise<number> {
+    if (!companyId) {
+      throw new Error("APO ID System Alert: Company ID is strictly required for atomic sequence generation.");
+    }
+
+    const res = await apiFetch("/api/sequence/next", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ companyId, type, context }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || typeof data.sequence !== "number") {
+      // ห้ามสุ่มเลขแทน: เลขที่ไม่ได้บันทึกใน counter จะชนกับเลขจริงในภายหลัง
+      throw new Error(data.error || `ออกเลขเอกสารไม่สำเร็จ (status ${res.status})`);
+    }
+    return data.sequence;
+  },
+
+  /**
+   * จัดรูปแบบ ID ตามมาตรฐาน V9.0
    */
   formatId(type: IdType, sequence: number, context?: string): string {
     const yy = new Date().getFullYear().toString().slice(-2);

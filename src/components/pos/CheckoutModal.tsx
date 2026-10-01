@@ -25,7 +25,7 @@ export function CheckoutModal({ isOpen, grandTotal, onConfirmPayment, onClose }:
   return (
     <div className="fixed inset-0 z-[6000] flex items-center justify-center p-6">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose} />
-      <div className="relative w-full max-w-lg border border-nexus-teal/30 bg-[#0D0D0D] p-6 rounded-2xl shadow-[0_0_50px_rgba(16,187,168,0.15)] text-white animate-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-lg border border-nexus-teal/30 bg-surface-0 p-6 rounded-2xl shadow-[0_0_50px_rgba(16,187,168,0.15)] text-white animate-in zoom-in-95 duration-200">
         
         {/* Header ยึดธีม Sci-Fi */}
         <div className="flex justify-between items-center border-b border-nexus-teal/20 pb-4 mb-4">
@@ -74,7 +74,7 @@ export function CheckoutModal({ isOpen, grandTotal, onConfirmPayment, onClose }:
         </div>
 
         {/* แผงแสดงผลเงินทอนตัวตรงลดความผิดพลาดพนักงาน */}
-        <div className="mb-6 bg-[#0a0a0c] p-4 rounded-xl border border-white/5">
+        <div className="mb-6 bg-surface-0 p-4 rounded-xl border border-white/5">
           <p className="text-[11px] font-medium uppercase tracking-widest text-white/40 mb-1">เงินทอนลูกค้า</p>
           <p className={`text-3xl font-mono font-black tracking-tight ${changeAmount >= 0 ? 'text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.4)]' : 'text-danger drop-shadow-[0_0_8px_rgba(248,113,113,0.4)]'}`}>
             {changeAmount >= 0 

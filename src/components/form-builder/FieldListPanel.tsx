@@ -54,20 +54,20 @@ export const FieldListPanel: React.FC<FieldListPanelProps> = ({
   );
 
   return (
-    <div className="w-72 bg-[#050505]/60 backdrop-blur-2xl border-r border-white/5 flex flex-col h-full flex-shrink-0 overflow-hidden shadow-[4px_0_24px_rgba(0,0,0,0.5)] z-40 relative">
+    <div className="w-72 bg-surface-0/60 backdrop-blur-2xl border-r border-white/5 flex flex-col h-full flex-shrink-0 overflow-hidden shadow-[4px_0_24px_rgba(0,0,0,0.5)] z-40 relative">
       <div className="absolute inset-0 bg-gradient-to-b from-nexus-teal/5 via-transparent to-transparent pointer-events-none" />
 
       {/* ── Header ─────────────────────────────────────────────── */}
       <div className="relative px-3 py-2.5 bg-white/[0.02] border-b border-white/5 flex-shrink-0">
         <div className="flex items-center gap-2 mb-1.5">
           <Database size={13} className="text-nexus-teal" />
-          <span className="text-[11px] font-black text-white/70 uppercase tracking-widest">Field List</span>
-          <span className="ml-auto text-[9px] font-black text-white/20 uppercase tracking-widest border border-white/10 px-1.5 py-0.5 rounded">
+          <span className="text-[11px] font-semibold text-white/70 uppercase tracking-widest">Field List</span>
+          <span className="ml-auto text-[9px] font-semibold text-white/20 uppercase tracking-widest border border-white/10 px-1.5 py-0.5 rounded">
             {template.elements.filter(e => e.properties?.controlSource).length} bound
           </span>
         </div>
         <p className="text-[9px] text-white/25 leading-relaxed">
-          กด <span className="text-nexus-teal font-black">+</span> เพื่อเพิ่ม Label+Data Box ลงฟอร์มทันที
+          กด <span className="text-nexus-teal font-semibold">+</span> เพื่อเพิ่ม Label+Data Box ลงฟอร์มทันที
         </p>
       </div>
 
@@ -117,7 +117,7 @@ export const FieldListPanel: React.FC<FieldListPanelProps> = ({
             <div className="mx-2 mt-2 mb-1 px-3 py-2 rounded-lg bg-nexus-teal/5 border border-nexus-teal/15 flex items-start gap-2">
               <MousePointerClick size={13} className="text-nexus-teal flex-shrink-0 mt-0.5" />
               <p className="text-[9px] text-nexus-teal/70 leading-relaxed">
-                กดปุ่ม <span className="font-black text-nexus-teal">+</span> ข้างชื่อ Field เพื่อเพิ่ม Label + Data Box ลงบนฟอร์มอัตโนมัติ
+                กดปุ่ม <span className="font-semibold text-nexus-teal">+</span> ข้างชื่อ Field เพื่อเพิ่ม Label + Data Box ลงบนฟอร์มอัตโนมัติ
               </p>
             </div>
 
@@ -203,7 +203,7 @@ export const FieldListPanel: React.FC<FieldListPanelProps> = ({
               </div>
             ) : (
               <div className="rounded-xl border border-white/5 overflow-hidden">
-                <div className="px-3 py-1.5 bg-white/[0.02] text-[9px] font-black text-white/30 uppercase tracking-widest border-b border-white/5">
+                <div className="px-3 py-1.5 bg-white/[0.02] text-[9px] font-semibold text-white/30 uppercase tracking-widest border-b border-white/5">
                   Fields ที่ใช้บนฟอร์ม ({usedKeys.size})
                 </div>
                 {Array.from(usedKeys).map(key => {

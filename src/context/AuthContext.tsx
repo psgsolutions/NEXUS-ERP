@@ -28,11 +28,30 @@ const AuthContext = createContext<AuthContextType>({
   switchCompany: () => {},
 });
 
+// Mock login (ใช้กับสคริปต์ทดสอบเช่น scripts/layout-audit.ts) เปิดเฉพาะตอน `next dev` เท่านั้น
+// ใน production build จะไม่มีทางล็อกอินผ่าน localStorage ได้
+const MOCK_AUTH_ENABLED = process.env.NODE_ENV === "development";
+
+const readMockUser = (): any | null => {
+  if (!MOCK_AUTH_ENABLED || typeof window === "undefined") return null;
+  const mock = localStorage.getItem("nexus_mock_auth_user");
+  if (!mock) return null;
+  try { return JSON.parse(mock); } catch (e) { return null; }
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [companyId, setCompanyId] = useState<string | null>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<FirebaseUser | null>(() => readMockUser());
+  const [companyId, setCompanyId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return readMockUser()?.companyId || localStorage.getItem('selectedCompanyId') || 'COM-NEXUS-01';
+    }
+    return null;
+  });
+  const [role, setRole] = useState<string | null>(() => {
+    const mock = readMockUser();
+    return mock ? (mock.role || 'ADMIN') : null;
+  });
+  const [loading, setLoading] = useState<boolean>(() => !readMockUser());
 
   const switchCompany = (newCompanyId: string) => {
     setCompanyId(newCompanyId);
@@ -45,9 +64,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      
       if (user) {
+        setUser(user);
         // [1] Optimistic UI: Set defaults based on LocalStorage & Email to unblock loading immediately
         const cachedCompanyId = localStorage.getItem("selectedCompanyId") || "COM-NEXUS-01";
         let defaultRole = "ADMIN";
@@ -98,9 +116,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Keep optimistic defaults
         }
       } else {
-        setCompanyId(null);
-        setRole(null);
-        setLoading(false);
+        const mock = readMockUser();
+        if (mock) {
+          setUser(mock as any);
+          setCompanyId(mock.companyId || localStorage.getItem('selectedCompanyId') || 'COM-NEXUS-01');
+          setRole(mock.role || 'ADMIN');
+          setLoading(false);
+        } else {
+          setUser(null);
+          setCompanyId(null);
+          setRole(null);
+          setLoading(false);
+        }
       }
     });
 

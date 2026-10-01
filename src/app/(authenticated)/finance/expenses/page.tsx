@@ -22,14 +22,24 @@ export default function ExpensesPage() {
     <div className="p-5 space-y-3 animate-in fade-in duration-700 max-w-[1200px] mx-auto">
       
       {/* Header Section */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <p className="tactical-label !text-nexus-teal drop-shadow-neon">Paypers AI Integration</p>
-          <h1 className="text-3xl font-bold text-white tracking-tight">จัดการค่าใช้จ่ายหน้างาน</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-nexus-teal/15 flex items-center justify-center text-nexus-teal border border-nexus-teal/30">
+            <Receipt size={20} />
+          </div>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">จัดการค่าใช้จ่ายหน้างาน</h1>
+              <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+                EXPENSES
+              </span>
+            </div>
+            <p className="text-sm text-white/60 font-medium mt-1">สแกนใบเสร็จค่าใช้จ่าย ตรวจสอบและส่งขออนุมัติค่าใช้จ่ายหน้างาน</p>
+          </div>
         </div>
-        <div className="flex gap-3">
-          <PillButton variant="glass" className="px-6">
-             <Receipt size={18} />
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+          <PillButton variant="glass" className="h-8 px-4 text-xs font-bold flex items-center gap-1.5">
+             <Receipt size={14} />
              สรุปรายงานเดือนนี้
           </PillButton>
         </div>
@@ -43,13 +53,13 @@ export default function ExpensesPage() {
            <div className="flex gap-2 p-1 bg-white/5 rounded-full w-fit border border-white/5 shadow-inner h-11">
               <button 
                 onClick={() => setActiveTab("scan")}
-                className={cn("px-6 h-full rounded-full text-sm font-medium uppercase transition-all", activeTab === "scan" ? "bg-nexus-teal text-black shadow-neon-teal" : "text-white/40")}
+                className={cn("px-6 h-full rounded-full text-sm font-medium uppercase transition-all", activeTab === "scan" ? "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md shadow-neon-teal font-bold" : "text-white/40")}
               >
                 สแกนใบเสร็จ
               </button>
               <button 
                 onClick={() => setActiveTab("pending")}
-                className={cn("px-6 h-full rounded-full text-sm font-medium uppercase transition-all", activeTab === "pending" ? "bg-nexus-blue text-white shadow-neon-blue" : "text-white/40")}
+                className={cn("px-6 h-full rounded-full text-sm font-medium uppercase transition-all", activeTab === "pending" ? "bg-nexus-blue/20 text-nexus-blue border border-nexus-blue/40 backdrop-blur-md shadow-neon-blue font-bold" : "text-white/40")}
               >
                 รออนุมัติ (3)
               </button>

@@ -39,15 +39,15 @@ export function VoiceBIButton() {
             )}
             
             {/* Tooltip */}
-            <div className="absolute right-20 bg-black/80 border border-white/10 px-4 py-2 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-               <p className="text-[10px] font-black text-white uppercase tracking-widest">Ask NEXUS AI (Voice)</p>
+            <div className="absolute right-20 bg-slate-950/90 backdrop-blur-md border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)] px-4 py-2 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[9999]">
+              <p className="text-[11px] font-mono text-cyan-100 tracking-wider">Ask NEXUS AI (Voice)</p>
             </div>
          </button>
       </div>
 
       {showAnalysis && (
         <div className="fixed inset-0 z-[110] bg-black/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-500">
-           <div className="max-w-xl w-full bg-[#0D0D0D] border border-white/10 rounded-2xl p-12 relative overflow-hidden">
+           <div className="max-w-xl w-full bg-surface-0 border border-white/10 rounded-2xl p-12 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-8">
                  <button onClick={() => setShowAnalysis(false)} className="text-white/20 hover:text-white">
                     <X size={24} />
@@ -60,7 +60,7 @@ export function VoiceBIButton() {
                        <Sparkles size={24} />
                     </div>
                     <div>
-                       <h4 className="text-xl font-black text-white uppercase tracking-tight">AI Voice Query Results</h4>
+                       <h4 className="text-xl font-semibold text-white uppercase tracking-tight">AI Voice Query Results</h4>
                        <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">"ขอสรุปกำไรรายไตรมาสของโครงการ LED Wall"</p>
                     </div>
                  </div>
@@ -71,7 +71,7 @@ export function VoiceBIButton() {
                  </div>
 
                  <div className="p-6 rounded-2xl bg-nexus-teal/5 border border-nexus-teal/10 space-y-3">
-                    <div className="flex items-center gap-2 text-[10px] font-black text-nexus-teal uppercase tracking-widest">
+                    <div className="flex items-center gap-2 text-[10px] font-semibold text-nexus-teal uppercase tracking-widest">
                        <Activity size={14} /> AI Recommendation
                     </div>
                     <p className="text-[12px] text-white/70 font-medium leading-relaxed">
@@ -91,7 +91,7 @@ function AnalysisCard({ icon, label, value }: { icon: React.ReactNode, label: st
     <div className="p-6 rounded-xl bg-white/[0.02] border border-white/5 space-y-3">
        <div className="text-white/20">{icon}</div>
        <div>
-          <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">{label}</p>
+          <p className="text-[10px] font-semibold text-white/20 uppercase tracking-widest">{label}</p>
           <p className="text-xl font-black text-white mt-1">{value}</p>
        </div>
     </div>

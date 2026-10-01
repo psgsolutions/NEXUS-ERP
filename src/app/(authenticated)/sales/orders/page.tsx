@@ -4,10 +4,15 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { PillButton, NexusTable, NexusTableRow, NexusTableCell, NexusSearchInput, StatusBadge, GlassCard } from "@/components/ui/Base";
-import { Plus, FileCheck, Calendar, Building2, Search, DollarSign, Clock, CheckCircle2, Truck, PackageCheck } from "lucide-react";
+import { Plus, FileCheck, Calendar, Building2, Search, DollarSign, Clock, CheckCircle2, Truck, PackageCheck, FileText } from "lucide-react";
+import { DocumentFlowService } from "@/services/documentFlow.service";
+import { useAuth } from "@/context/AuthContext";
+import { useSystemDialog } from "@/context/DialogContext";
 
 export default function SalesOrderDashboardPage() {
   const router = useRouter();
+  const { companyId, user } = useAuth();
+  const { showAlert } = useSystemDialog();
   const [searchTerm, setSearchTerm] = useState("");
   const { data: orders, loading } = useRealtimeCollection("sales_orders");
 
@@ -59,24 +64,31 @@ export default function SalesOrderDashboardPage() {
       {/* ── Main Content (Left) ── */}
       <div className="flex-1 flex flex-col gap-4">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-nexus-teal/15 flex items-center justify-center text-nexus-teal shadow-neon-teal/20">
-              <FileCheck size={24} />
+            <div className="w-10 h-10 rounded-full bg-nexus-teal/15 flex items-center justify-center text-nexus-teal border border-nexus-teal/30">
+              <FileCheck size={20} />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-white tracking-widest uppercase">ใบสั่งขาย (Sales Orders)</h1>
-              <p className="text-white/40 text-[13px] mt-1">ติดตามสถานะการจัดส่ง, การเปิดบิล และงวดงานของลูกค้า</p>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">ใบสั่งขาย</h1>
+                <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+                  SALES-ORDERS
+                </span>
+              </div>
+              <p className="text-sm text-white/60 font-medium mt-1">ติดตามสถานะการจัดส่ง การเปิดบิล และงวดงานของลูกค้า</p>
             </div>
           </div>
           
-          <PillButton 
-            onClick={() => router.push('/sales/orders/new')}
-            
-            className="text-nexus-teal border-nexus-teal/20 hover:bg-transparent shadow-neon-teal/10 px-6 h-11"
-          >
-            <Plus size={16} className="mr-2" /> สร้างใบสั่งขาย
-          </PillButton>
+          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+            <PillButton 
+              variant="confirm"
+              onClick={() => router.push('/sales/orders/new')}
+              className="h-8 px-5 font-bold text-xs"
+            >
+              <Plus size={14} className="mr-1.5" /> สร้างใบสั่งขาย
+            </PillButton>
+          </div>
         </div>
 
         {/* Control Bar */}
@@ -146,12 +158,31 @@ export default function SalesOrderDashboardPage() {
                     <NexusTableCell>
                       <div className="flex gap-2">
                         <PillButton 
-                           
                           className="h-8 px-4 text-[10px] text-nexus-blue border-nexus-blue/20 hover:bg-transparent"
                           onClick={() => router.push(`/sales/orders/${so.id}`)}
                         >
                           เปิดดู
                         </PillButton>
+                        {(so.status === 'DELIVERED' || so.status === 'delivered') && (
+                          <PillButton 
+                            variant="save"
+                            className="h-8 px-4 text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 backdrop-blur-md hover:bg-emerald-500/30"
+                            onClick={async () => {
+                              try {
+                                const result = await DocumentFlowService.issueTaxInvoiceAndBillingNoteFromSO(
+                                  companyId || "COMP-001",
+                                  so,
+                                  user?.uid || "OPERATOR"
+                                );
+                                showAlert(`ออกใบกำกับภาษี (${result.taxInvoiceNo}) และใบวางบิล (${result.billingNoteNo}) เรียบร้อยแล้ว`);
+                              } catch (err: any) {
+                                showAlert(`เกิดข้อผิดพลาด: ${err.message}`);
+                              }
+                            }}
+                          >
+                            <FileText size={12} className="mr-1" /> ออกใบกำกับภาษี
+                          </PillButton>
+                        )}
                       </div>
                     </NexusTableCell>
                   </NexusTableRow>
@@ -165,19 +196,19 @@ export default function SalesOrderDashboardPage() {
       {/* ── Summary Column (Right) ── */}
       <div className="xl:w-[25%] shrink-0 sticky top-[96px] space-y-4">
         <GlassCard className="p-4 space-y-4">
-          <h3 className="text-base font-black text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4">
+          <h3 className="text-base font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4">
             <DollarSign size={16} className="text-nexus-teal" /> สรุปใบสั่งขาย
           </h3>
           
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/15 rounded-2xl p-4 text-center border border-white/10">
-              <div className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
+              <div className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
                 <FileCheck size={10} /> ออเดอร์ทั้งหมด
               </div>
               <div className="text-2xl font-mono text-white">{total}</div>
             </div>
             <div className="bg-transparent rounded-2xl p-4 text-center border border-nexus-blue/20">
-              <div className="text-[10px] font-black text-nexus-blue/60 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
+              <div className="text-[10px] font-semibold text-nexus-blue/60 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
                 <Clock size={10} /> กำลังดำเนินการ
               </div>
               <div className="text-2xl font-mono text-nexus-blue">{openCount}</div>
@@ -185,7 +216,7 @@ export default function SalesOrderDashboardPage() {
           </div>
 
           <div className="bg-nexus-teal/5 rounded-2xl p-4 text-center border border-nexus-teal/10 mt-2">
-            <div className="text-[10px] font-black text-nexus-teal/60 uppercase tracking-widest mb-1">ยอดขายสุทธิทั้งหมด</div>
+            <div className="text-[10px] font-semibold text-nexus-teal/60 uppercase tracking-widest mb-1">ยอดขายสุทธิทั้งหมด</div>
             <div className="text-xl font-mono text-nexus-teal font-bold truncate">
               ฿{totalValue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
             </div>
@@ -200,19 +231,19 @@ export default function SalesOrderDashboardPage() {
 
           <div className="space-y-2 mt-4 pt-4 border-t border-white/5">
             <div className="flex justify-between items-center bg-white/[0.02] p-3 rounded-xl border border-white/5">
-              <span className="text-[11px] font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-white/60 uppercase tracking-widest flex items-center gap-2">
                 <Clock size={12} className="text-white/40" /> รอส่งมอบ (Open)
               </span>
               <span className="font-mono text-white/60 text-sm">{openCount}</span>
             </div>
             <div className="flex justify-between items-center bg-warning/5 p-3 rounded-xl border border-warning/10">
-              <span className="text-[11px] font-black text-warning/80 uppercase tracking-widest flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-warning/80 uppercase tracking-widest flex items-center gap-2">
                 <Truck size={12} /> ส่งมอบแล้ว (Delivered)
               </span>
               <span className="font-mono text-warning text-sm">{deliveryCount}</span>
             </div>
             <div className="flex justify-between items-center bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/10">
-              <span className="text-[11px] font-black text-emerald-400/80 uppercase tracking-widest flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-emerald-400/80 uppercase tracking-widest flex items-center gap-2">
                 <PackageCheck size={12} /> ปิดจ๊อบ (Completed)
               </span>
               <span className="font-mono text-emerald-400 text-sm">{completedCount}</span>

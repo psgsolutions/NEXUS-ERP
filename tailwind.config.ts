@@ -11,6 +11,9 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        "surface-0": "var(--surface-0)",
+        "surface-1": "var(--surface-1)",
+        "surface-2": "var(--surface-2)",
         "nexus-blue": "#0090FF",
         "nexus-teal": "#00FFD1",
         danger: "#FF3B30",

@@ -1,6 +1,7 @@
 'use client'; // คำสั่งบอกว่านี่คือโค้ดฝั่งหน้าจอผู้ใช้งาน
 
 import { useEffect, useState } from 'react';
+import { apiFetch } from "@/lib/api-client";
 
 export default function DocumentsPage() {
     const [documents, setDocuments] = useState<any[]>([]);
@@ -8,7 +9,7 @@ export default function DocumentsPage() {
 
     // เมื่อเปิดหน้าเว็บขึ้นมา ให้วิ่งไปสั่งข้อมูลจาก API ทันที
     useEffect(() => {
-        fetch('/api/documents')
+        apiFetch('/api/documents')
             .then((res) => res.json())
             .then((result) => {
                 if (result.success) {

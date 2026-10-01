@@ -55,13 +55,13 @@ export function TemplateArchitectModal({ isOpen, onClose, templateName }: Templa
       title={`ออกแบบต้นแบบ: ${templateName}`}
       maxWidth="max-w-[1600px]"
     >
-      <div className="flex h-[80vh] divide-x divide-white/5 bg-[#0D0D0D]">
+      <div className="flex h-[80vh] divide-x divide-white/5 bg-surface-0">
         {/* Left: Control Panel */}
-        <div className="w-[450px] flex flex-col p-8 bg-[#0F0F12] flex-shrink-0">
+        <div className="w-[450px] flex flex-col p-8 bg-surface-1 flex-shrink-0">
            <div className="flex-1 space-y-10 overflow-y-auto custom-scrollbar pr-4">
               <div className="space-y-1">
-                 <p className="text-[10px] font-black text-nexus-teal uppercase tracking-[0.2em]">Neural Template Engine</p>
-                 <h4 className="text-xl font-black text-white uppercase tracking-tight">แผงควบคุมสถาปนิก</h4>
+                 <p className="text-[10px] font-semibold text-nexus-teal uppercase tracking-[0.2em]">Neural Template Engine</p>
+                 <h4 className="text-xl font-semibold text-white uppercase tracking-tight">แผงควบคุมสถาปนิก</h4>
               </div>
 
               <PillTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
@@ -69,13 +69,13 @@ export function TemplateArchitectModal({ isOpen, onClose, templateName }: Templa
               {activeTab === "layout" && (
                 <div className="space-y-8 animate-in fade-in duration-500">
                    <div className="space-y-4">
-                      <div className="flex items-center gap-3 text-white/40"><ImageIcon size={16} /><span className="text-[11px] font-black uppercase tracking-widest">ส่วนหัวเอกสาร</span></div>
+                      <div className="flex items-center gap-3 text-white/40"><ImageIcon size={16} /><span className="text-[11px] font-semibold uppercase tracking-widest">ส่วนหัวเอกสาร</span></div>
                       <div className="grid grid-cols-2 gap-3">
                          <ConfigToggle label="แสดงโลโก้บริษัท" active={config.showLogo} onClick={() => setConfig({...config, showLogo: !config.showLogo})} />
                          <ConfigToggle label="แสดงเลขผู้เสียภาษี" active={config.showTaxId} onClick={() => setConfig({...config, showTaxId: !config.showTaxId})} />
                       </div>
                       <div className="space-y-2">
-                         <label className="text-[10px] font-black text-white/20 uppercase tracking-widest ml-1">การวางตำแหน่งโลโก้</label>
+                         <label className="text-[10px] font-semibold text-white/20 uppercase tracking-widest ml-1">การวางตำแหน่งโลโก้</label>
                          <div className="flex gap-2">
                             {["left", "center", "right"].map(pos => (
                                <button 
@@ -94,7 +94,7 @@ export function TemplateArchitectModal({ isOpen, onClose, templateName }: Templa
                    </div>
 
                    <div className="space-y-4">
-                      <div className="flex items-center gap-3 text-white/40"><Columns size={16} /><span className="text-[11px] font-black uppercase tracking-widest">ตารางข้อมูล</span></div>
+                      <div className="flex items-center gap-3 text-white/40"><Columns size={16} /><span className="text-[11px] font-semibold uppercase tracking-widest">ตารางข้อมูล</span></div>
                       <div className="grid grid-cols-2 gap-3">
                          {["ITEM", "QTY", "UNIT", "PRICE", "DISCOUNT", "TAX", "TOTAL"].map(col => (
                            <ConfigToggle 
@@ -117,7 +117,7 @@ export function TemplateArchitectModal({ isOpen, onClose, templateName }: Templa
               {activeTab === "content" && (
                 <div className="space-y-8 animate-in fade-in duration-500">
                    <div className="space-y-4">
-                      <div className="flex items-center gap-3 text-white/40"><AlignLeft size={16} /><span className="text-[11px] font-black uppercase tracking-widest">หมายเหตุท้ายเอกสาร</span></div>
+                      <div className="flex items-center gap-3 text-white/40"><AlignLeft size={16} /><span className="text-[11px] font-semibold uppercase tracking-widest">หมายเหตุท้ายเอกสาร</span></div>
                       <textarea 
                         className="w-full h-32 rounded-xl bg-white/[0.03] border border-white/10 text-white text-sm p-4 focus:outline-none focus:border-nexus-teal/40 transition-all"
                         value={config.footerNote}
@@ -125,9 +125,9 @@ export function TemplateArchitectModal({ isOpen, onClose, templateName }: Templa
                       />
                    </div>
                    <div className="space-y-4">
-                      <div className="flex items-center gap-3 text-white/40"><CheckCircle2 size={16} /><span className="text-[11px] font-black uppercase tracking-widest">การเซ็นอนุมัติ</span></div>
+                      <div className="flex items-center gap-3 text-white/40"><CheckCircle2 size={16} /><span className="text-[11px] font-semibold uppercase tracking-widest">การเซ็นอนุมัติ</span></div>
                       <div className="flex items-center justify-between">
-                         <span className="text-[11px] font-black text-white/30 uppercase">จำนวนช่องลงนาม</span>
+                         <span className="text-[11px] font-semibold text-white/30 uppercase">จำนวนช่องลงนาม</span>
                          <div className="flex gap-2">
                             {[1, 2, 3].map(n => (
                                <button 
@@ -159,7 +159,7 @@ export function TemplateArchitectModal({ isOpen, onClose, templateName }: Templa
         </div>
 
         {/* Right: Live Preview */}
-        <div className="flex-1 bg-[#151518] p-12 overflow-y-auto custom-scrollbar flex items-start justify-center">
+        <div className="flex-1 bg-surface-1 p-12 overflow-y-auto custom-scrollbar flex items-start justify-center">
            <div className="w-[800px] bg-white text-black min-h-[1100px] shadow-2xl p-16 origin-top transform transition-transform duration-500 scale-95 hover:scale-100">
               {/* Document Header */}
               <div className={cn("flex flex-col gap-6", config.logoAlign === "center" ? "items-center text-center" : config.logoAlign === "right" ? "items-end text-right" : "items-start text-left")}>
@@ -176,7 +176,7 @@ export function TemplateArchitectModal({ isOpen, onClose, templateName }: Templa
               </div>
 
               <div className="mt-12 flex justify-between items-end border-b-2 border-black pb-4">
-                 <h2 className="text-2xl font-black uppercase tracking-tighter">{templateName.split(" (")[0]}</h2>
+                 <h2 className="text-2xl font-semibold uppercase tracking-tighter">{templateName.split(" (")[0]}</h2>
                  <div className="text-right">
                     <p className="text-[10px] font-bold text-gray-400 uppercase">Document No.</p>
                     <p className="text-sm font-bold">QT-2026-XXXX</p>
@@ -188,7 +188,7 @@ export function TemplateArchitectModal({ isOpen, onClose, templateName }: Templa
                  <thead>
                     <tr className="bg-gray-100 border-y border-gray-200">
                        {config.columns.map(col => (
-                         <th key={col} className="p-3 text-[10px] font-black text-gray-600 text-left uppercase tracking-widest">{col}</th>
+                         <th key={col} className="p-3 text-[10px] font-semibold text-gray-600 text-left uppercase tracking-widest">{col}</th>
                        ))}
                     </tr>
                  </thead>
@@ -209,7 +209,7 @@ export function TemplateArchitectModal({ isOpen, onClose, templateName }: Templa
               {/* Footer Preview */}
               <div className="mt-20 grid grid-cols-2 gap-20">
                  <div className="space-y-4">
-                    <p className="text-[10px] font-black text-gray-400 uppercase">Terms & Notes</p>
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase">Terms & Notes</p>
                     <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{config.footerNote}</p>
                  </div>
                  <div className="flex flex-col gap-10">
@@ -240,7 +240,7 @@ function ConfigToggle({ label, active, onClick }: { label: string, active: boole
         active ? "bg-nexus-teal/10 border-nexus-teal/30 text-white" : "bg-white/[0.02] border-white/5 text-white/20 hover:text-white/40"
       )}
     >
-      <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+      <span className="text-[10px] font-semibold uppercase tracking-widest">{label}</span>
       <div className={cn(
         "w-4 h-4 rounded-full border flex items-center justify-center transition-all",
         active ? "bg-nexus-teal border-nexus-teal" : "bg-transparent border-white/10"

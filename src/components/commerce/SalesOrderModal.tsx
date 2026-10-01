@@ -110,13 +110,13 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
       title="เปิดใบสั่งขาย"
       maxWidth="max-w-[1600px]"
     >
-      <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
+      <div className="flex h-full divide-x divide-white/5 bg-surface-0">
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           <div className="max-w-4xl mx-auto space-y-8">
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
               <div className="space-y-1">
-                <p className="text-[12px] font-black text-nexus-blue uppercase tracking-[0.2em]">โหมดพาณิชย์ (COMMERCE_PROT_V3.1)</p>
-                <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกใบสั่งขาย</h4>
+                <p className="text-[12px] font-semibold text-nexus-blue uppercase tracking-[0.2em]">โหมดพาณิชย์ (COMMERCE_PROT_V3.1)</p>
+                <h4 className="text-xl font-semibold text-white uppercase tracking-tight">บันทึกใบสั่งขาย</h4>
               </div>
               <PillTabs 
                 tabs={tabs}
@@ -172,7 +172,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
                         type="number"
                         value={header.depositAmount}
                         onChange={(e) => setHeader({...header, depositAmount: parseFloat(e.target.value) || 0})}
-                        className="w-full text-nexus-teal font-black" 
+                        className="w-full text-nexus-teal font-semibold" 
                       />
                     </Field>
                     <Field label="สถานะการชำระเงิน">
@@ -193,7 +193,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
               {activeTab === "items" && (
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-[12px] font-black text-white/30 uppercase tracking-[0.2em]">รายการสินค้าที่สั่งซื้อ</h4>
+                    <h4 className="text-[12px] font-semibold text-white/30 uppercase tracking-[0.2em]">รายการสินค้าที่สั่งซื้อ</h4>
                     <PillButton variant="glass" onClick={addItem}>
                       <Plus size={14} /> เพิ่มรายการ
                     </PillButton>
@@ -258,7 +258,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
               {activeTab === "logistics" && (
                 <div className="space-y-10">
                   <div className="space-y-6">
-                    <div className="flex items-center gap-3 text-nexus-blue"><Truck size={18} /><h4 className="text-[13px] font-black uppercase tracking-widest">ข้อมูลการจัดส่งสินค้า</h4></div>
+                    <div className="flex items-center gap-3 text-nexus-blue"><Truck size={18} /><h4 className="text-[13px] font-semibold uppercase tracking-widest">ข้อมูลการจัดส่งสินค้า</h4></div>
                     <div className="space-y-6">
                        <Field label="วิธีการจัดส่ง">
                           <PillSelect 
@@ -298,10 +298,10 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
           </div>
         </div>
 
-        <div className="w-[380px] flex flex-col bg-[#0F0F12] p-8 flex-shrink-0">
+        <div className="w-[380px] flex flex-col bg-surface-1 p-8 flex-shrink-0">
           <div className="flex-1 space-y-10">
             <div className="space-y-1">
-              <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">สรุปมูลค่าใบสั่งขาย</p>
+              <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">สรุปมูลค่าใบสั่งขาย</p>
               <h5 className="text-sm font-black text-white uppercase tracking-tight">Order Summary</h5>
             </div>
 
@@ -352,7 +352,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
 function Field({ label, children }: { label: string, children: React.ReactNode }) {
   return (
     <div className="space-y-3">
-      <label className="text-[12px] font-black text-white/30 uppercase tracking-widest ml-1">{label}</label>
+      <label className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">{label}</label>
       {children}
     </div>
   );

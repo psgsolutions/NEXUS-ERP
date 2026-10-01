@@ -11,7 +11,7 @@ export { cn };
 
 /** 
  * [PSG-STANDARD-V2.9] 
- * - Height: h-9 (36px) (LOCKED for ALL Action Elements)
+ * - Height: h-8 (32px) (LOCKED for ALL Action Elements)
  * - Radius: rounded-full (LOCKED for Strategic Precision)
  * - Density: Compact Layout (Zero-Scroll Intent)
  * - Aesthetics: Neon-Glass Glassmorphism
@@ -22,21 +22,21 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   size?: number | string;
 }
 
-export function PillButton({ className, variant = "primary", ...props }: ButtonProps) {
+export function PillButton({ className, variant = "glass", ...props }: ButtonProps) {
   const variants = {
-    primary: "bg-nexus-teal/15 text-nexus-teal border border-nexus-teal/20 font-bold shadow-[0_0_15px_rgba(0,255,209,0.1)] hover:bg-nexus-teal/30 hover:text-white active:scale-95",
-    save: "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 font-bold shadow-[0_0_15px_rgba(16,185,129,0.1)] hover:bg-emerald-500/30 hover:text-white active:scale-95",
-    confirm: "bg-nexus-blue/15 text-nexus-blue border border-nexus-blue/20 font-bold shadow-[0_0_15px_rgba(0,195,255,0.1)] hover:bg-nexus-blue/30 hover:text-white active:scale-95",
-    warning: "bg-warning/15 text-warning border border-warning/20 font-bold shadow-[0_0_15px_rgba(255,193,7,0.1)] hover:bg-warning/30 hover:text-white active:scale-95",
-    danger: "bg-danger/15 text-danger border border-danger/20 font-bold shadow-[0_0_15px_rgba(244,67,54,0.1)] hover:bg-danger/30 hover:text-white active:scale-95",
+    primary: "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 font-bold backdrop-blur-md glow-accent-hover hover:bg-nexus-teal/35 hover:text-white hover:border-nexus-teal/60 active:scale-95 transition-all duration-300",
+    save: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold backdrop-blur-md shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:bg-emerald-500/35 hover:text-white active:scale-95",
+    confirm: "bg-nexus-blue/20 text-nexus-blue border border-nexus-blue/40 font-bold backdrop-blur-md shadow-[0_0_15px_rgba(0,195,255,0.15)] hover:bg-nexus-blue/35 hover:text-white active:scale-95",
+    warning: "bg-warning/20 text-warning border border-warning/40 font-bold backdrop-blur-md shadow-[0_0_15px_rgba(255,193,7,0.15)] hover:bg-warning/35 hover:text-white active:scale-95",
+    danger: "bg-danger/20 text-danger border border-danger/40 font-bold backdrop-blur-md shadow-[0_0_15px_rgba(244,67,54,0.15)] hover:bg-danger/35 hover:text-white active:scale-95",
     glass: "bg-white/10 text-white font-bold border border-white/20 hover:bg-white/20 active:scale-95 backdrop-blur-md",
-    ghost: "bg-white/5 text-white/80 font-bold hover:text-white hover:bg-white/10 border border-transparent active:scale-95"
+    ghost: "bg-white/5 text-white/80 font-bold hover:text-white hover:bg-white/10 border border-transparent active:scale-95 backdrop-blur-sm"
   };
 
   return (
     <button
       className={cn(
-        "h-9 px-6 rounded-full font-black text-[13px] transition-all flex items-center justify-center gap-2 uppercase tracking-wider whitespace-nowrap flex-shrink-0",
+        "h-8 px-5 rounded-full font-black text-[12px] transition-all flex items-center justify-center gap-2 uppercase tracking-wider whitespace-nowrap flex-shrink-0",
         variants[variant],
         className
       )}
@@ -45,17 +45,21 @@ export function PillButton({ className, variant = "primary", ...props }: ButtonP
   );
 }
 
-export function PillInput({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      className={cn(
-        "h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all placeholder:text-white/10 backdrop-blur-sm truncate w-full",
-        className
-      )}
-      {...props}
-    />
-  );
-}
+export const PillInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+  ({ className, ...props }, ref) => {
+    return (
+      <input
+        ref={ref}
+        className={cn(
+          "h-8 px-5 py-1 leading-normal rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all placeholder:text-white/30 backdrop-blur-sm truncate w-full",
+          className
+        )}
+        {...props}
+      />
+    );
+  }
+);
+PillInput.displayName = "PillInput";
 
 export function NexusSearchInput({ 
   placeholder = "ค้นหาข้อมูล...", 
@@ -81,7 +85,7 @@ export function NexusSearchInput({
         value={value}
         onChange={onChange}
         className={cn(
-          "w-full h-9 pl-12 pr-14 rounded-full bg-white/[0.02] border border-white/5",
+          "w-full h-8 pl-10 pr-12 py-1 leading-normal rounded-full bg-white/[0.02] border border-white/5",
           "text-white text-[13px] font-bold tracking-wide",
           "focus:outline-none focus:border-nexus-teal/30 focus:bg-white/[0.05] focus:shadow-[0_0_30px_rgba(0,255,209,0.05)]",
           "transition-all duration-500 placeholder:text-white/10 placeholder:font-black placeholder:uppercase placeholder:tracking-widest",
@@ -90,7 +94,7 @@ export function NexusSearchInput({
       />
       <div className="absolute right-5 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
         {kbd && (
-          <div className="px-2 py-0.5 rounded border border-white/10 bg-white/5 text-[9px] font-black text-white/20 uppercase tracking-tighter">
+          <div className="px-2 py-0.5 rounded border border-white/10 bg-white/5 text-[9px] font-semibold text-white/20 uppercase tracking-tighter">
             {kbd}
           </div>
         )}
@@ -100,15 +104,17 @@ export function NexusSearchInput({
   );
 }
 
-export function PillSelect({ className, children, value, onChange, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+export function PillSelect({ className, children, value, onChange, placeholder = "เลือกรายการ...", ...props }: React.SelectHTMLAttributes<HTMLSelectElement> & { placeholder?: string }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const optionRefs = React.useRef<(HTMLDivElement | null)[]>([]);
 
   // Parse children to get labels and values
   const options = React.Children.map(children, (child) => {
     if (React.isValidElement(child) && child.type === "option") {
       return {
-        value: child.props.value || child.props.children,
+        value: child.props.value !== undefined ? child.props.value : child.props.children,
         label: child.props.children,
         className: child.props.className
       };
@@ -116,7 +122,19 @@ export function PillSelect({ className, children, value, onChange, ...props }: R
     return null;
   })?.filter(Boolean) || [];
 
-  const selectedOption = options.find(opt => opt.value === value) || options[0];
+  const selectedOption = options.find(opt => opt.value === value && opt.value !== "");
+
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && highlightedIndex >= 0 && optionRefs.current[highlightedIndex]) {
+      optionRefs.current[highlightedIndex]?.scrollIntoView({
+        block: "nearest",
+      });
+    }
+  }, [highlightedIndex, isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -128,17 +146,72 @@ export function PillSelect({ className, children, value, onChange, ...props }: R
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleSelectOption = (optValue: any) => {
+    if (onChange) {
+      const event = { target: { value: optValue } } as any;
+      onChange(event);
+    }
+    setIsOpen(false);
+    setHighlightedIndex(-1);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (props.disabled) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!isOpen) {
+        setIsOpen(true);
+        setHighlightedIndex(0);
+      } else {
+        setHighlightedIndex((prev) => {
+          if (options.length <= 0) return -1;
+          if (prev < 0 || prev >= options.length - 1) return 0;
+          return prev + 1;
+        });
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!isOpen) {
+        setIsOpen(true);
+        setHighlightedIndex(options.length - 1);
+      } else {
+        setHighlightedIndex((prev) => {
+          if (options.length <= 0) return -1;
+          if (prev <= 0) return options.length - 1;
+          return prev - 1;
+        });
+      }
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (!isOpen) {
+        setIsOpen(true);
+        setHighlightedIndex(-1);
+      } else if (highlightedIndex >= 0 && highlightedIndex < options.length) {
+        handleSelectOption(options[highlightedIndex].value);
+      }
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setIsOpen(false);
+      setHighlightedIndex(-1);
+    }
+  };
+
   return (
-    <div className={cn("relative", isOpen && "z-[9999]")} ref={containerRef}>
+    <div className={cn("relative", isOpen && "z-[99999]")} ref={containerRef}>
       <div
+        tabIndex={props.disabled ? -1 : 0}
+        onKeyDown={handleKeyDown}
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "h-9 w-full px-6 pr-10 rounded-full bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold focus-within:border-nexus-teal/40 focus-within:bg-white/[0.06] transition-all cursor-pointer flex items-center justify-between group backdrop-blur-sm",
+          "h-8 w-full px-5 pr-9 py-1 leading-normal rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-bold focus:outline-none focus:border-nexus-teal/60 focus:ring-1 focus:ring-nexus-teal/40 transition-all cursor-pointer flex items-center justify-between group backdrop-blur-sm",
+          (!value || !selectedOption) && "text-white/30 font-normal",
+          value && selectedOption && "text-white font-bold",
           isOpen && "border-nexus-teal/40 bg-white/[0.06]",
           className
         )}
       >
-        <span className="truncate pr-2">{selectedOption?.label || "เลือกรายการ..."}</span>
+        <span className="truncate pr-2 pt-1">{selectedOption?.label || placeholder}</span>
         <ChevronDown 
           className={cn(
             "absolute right-4 top-1/2 -translate-y-1/2 text-white/20 transition-all pointer-events-none",
@@ -149,22 +222,19 @@ export function PillSelect({ className, children, value, onChange, ...props }: R
       </div>
 
       {isOpen && (
-        <div className="absolute top-full left-0 w-full mt-2 z-[500] bg-[#0D0D0D]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9)] p-1.5 animate-in fade-in slide-in-from-top-2 duration-200 max-h-[300px] overflow-y-auto custom-scrollbar">
+        <div className="absolute top-full left-0 w-full mt-2 z-[99999] bg-surface-0/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9)] p-1.5 animate-in fade-in slide-in-from-top-2 duration-200 max-h-[300px] overflow-y-auto custom-scrollbar">
           {options.map((opt: any, idx: number) => (
             <div
               key={idx}
-              onClick={() => {
-                if (onChange) {
-                  const event = { target: { value: opt.value } } as any;
-                  onChange(event);
-                }
-                setIsOpen(false);
-              }}
+              ref={(el) => { optionRefs.current[idx] = el; }}
+              onClick={() => handleSelectOption(opt.value)}
               className={cn(
-                "w-full px-4 py-2.5 rounded-xl text-left text-[13px] font-bold transition-all cursor-pointer flex items-center justify-between group",
-                opt.value === value 
-                  ? "bg-nexus-teal/20 text-nexus-teal font-black" 
-                  : "text-white/90 hover:bg-white/10 hover:text-white"
+                "w-full px-4 py-2.5 rounded-xl text-left text-[14px] font-medium transition-all cursor-pointer flex items-center justify-between group border",
+                highlightedIndex === idx
+                  ? "bg-white/15 border-nexus-teal/60 text-white font-bold ring-1 ring-nexus-teal/40 shadow-neon-teal"
+                  : opt.value === value 
+                    ? "bg-nexus-teal/20 border-nexus-teal/30 text-nexus-teal font-black" 
+                    : "border-transparent text-white/90 hover:bg-white/10 hover:text-white"
               )}
             >
               <span className="truncate pr-2">{opt.label}</span>
@@ -199,19 +269,36 @@ export function PillCheckbox({ label, className, ...props }: React.InputHTMLAttr
           <polyline points="20 6 9 17 4 12" />
         </svg>
       </div>
-      {label && <span className="text-[12px] font-black text-white/40 uppercase tracking-widest group-hover:text-white transition-colors">{label}</span>}
+      {label && <span className="text-[12px] font-semibold text-white/40 uppercase tracking-widest group-hover:text-white transition-colors">{label}</span>}
     </label>
   );
 }
 
-export function GlassCard({ className, children }: { className?: string; children: React.ReactNode }) {
+export function GlassCard({ 
+  className, 
+  children,
+  accentColor
+}: { 
+  className?: string; 
+  children: React.ReactNode;
+  accentColor?: "teal" | "blue" | "purple" | "emerald" | "amber" | "rose";
+}) {
+  const accentBorders = {
+    teal: "border-l-4 border-l-nexus-teal",
+    blue: "border-l-4 border-l-nexus-blue",
+    purple: "border-l-4 border-l-purple-500",
+    emerald: "border-l-4 border-l-emerald-500",
+    amber: "border-l-4 border-l-amber-500",
+    rose: "border-l-4 border-l-rose-500"
+  };
+
   return (
     <div
       className={cn(
-        "bg-[#0a0a0c]/60 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden relative group",
+        "bg-neutral-900/90 backdrop-blur-3xl border border-white/15 rounded-3xl shadow-2xl overflow-hidden relative group/card",
         "before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/[0.05] before:to-transparent before:pointer-events-none",
-        "after:absolute after:inset-0 after:bg-[url('https://grainy-gradients.vercel.app/noise.svg')] after:opacity-[0.03] after:pointer-events-none",
-        "hover:border-white/20 transition-all duration-700",
+        "hover:border-white/25 transition-all duration-300",
+        accentColor && accentBorders[accentColor],
         className
       )}
     >
@@ -245,18 +332,20 @@ export function DocumentStatusBadge({ status }: { status: DocumentStatus | strin
   );
 }
 
-export function StatusBadge({ status, label }: { status: "active" | "inactive" | "pending" | "danger", label: string }) {
+export function StatusBadge({ status, label, className }: { status: "active" | "inactive" | "pending" | "danger" | "warning", label: string, className?: string }) {
   const styles = {
-    active: "bg-nexus-teal/10 text-nexus-teal border-nexus-teal/20",
+    active: "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md glow-accent shadow-[0_0_15px_rgba(0,255,209,0.25)]",
     inactive: "bg-white/5 text-white/40 border-white/10",
-    pending: "bg-warning/10 text-warning border-warning/20",
-    danger: "bg-danger/10 text-danger border-danger/20",
+    pending: "bg-warning/10 text-warning border-warning/20 shadow-[0_0_12px_rgba(255,193,7,0.15)]",
+    warning: "bg-warning/10 text-warning border-warning/20 shadow-[0_0_12px_rgba(255,193,7,0.15)]",
+    danger: "bg-danger/10 text-danger border-danger/20 shadow-[0_0_12px_rgba(255,59,48,0.15)]",
   };
 
   return (
     <span className={cn(
-      "px-3 py-0.5 rounded-full text-[11px] font-black uppercase border tracking-widest whitespace-nowrap",
-      styles[status]
+      "px-3 py-0.5 rounded-full text-[11px] font-bold uppercase border tracking-widest whitespace-nowrap",
+      styles[status],
+      className
     )}>
       {label}
     </span>
@@ -442,9 +531,11 @@ export function NexusTable({
     <div className="w-full max-h-[600px] overflow-auto custom-scrollbar rounded-2xl border border-white/5 bg-black/[0.15] backdrop-blur-md relative">
       <table className={cn("w-full border-collapse", minWidth, className)}>
         <thead className="sticky top-0 z-20">
-          <tr className="bg-[#0D0D0D]/95 border-b border-white/5 h-12 shadow-sm">
+          <tr className="bg-surface-0/95 border-b border-white/5 h-12 shadow-sm">
             {headers.map((header, i) => {
               const lowerHeader = header.toLowerCase();
+              
+              // Right Aligned: Financials, Quantities, Document IDs
               const isRightAligned = 
                 header.includes("มูลค่า") || 
                 header.includes("คงเหลือ") || 
@@ -464,10 +555,11 @@ export function NexusTable({
                 header.includes("ราคา") ||
                 header.includes("ยอด") ||
                 header.includes("รวม") ||
-                header.includes("รหัส") ||
-                lowerHeader.includes("sku") ||
-                lowerHeader.includes("code");
+                header.includes("เครดิต") ||
+                (header.includes("รหัส") && !header.includes("สินค้า") && !header.includes("ลูกค้า") && !lowerHeader.includes("sku")) ||
+                (header.includes("เลขที่") && !header.includes("13 หลัก") && !header.includes("ผู้เสียภาษี"));
 
+              // Center Aligned: Status, Dates, Actions, SKUs, Tax IDs
               const isCenterAligned = 
                 !isRightAligned && (
                 header.includes("สถานะ") || 
@@ -475,6 +567,11 @@ export function NexusTable({
                 header.includes("ประเภท") || 
                 header.includes("การกระทำ") || 
                 header.includes("แอคชั่น") || 
+                header.includes("จัดการ") ||
+                header.includes("รหัสสินค้า") ||
+                header.includes("รหัสลูกค้า") ||
+                lowerHeader.includes("sku") ||
+                header.includes("13 หลัก") ||
                 lowerHeader.includes("status") || 
                 lowerHeader.includes("date") || 
                 lowerHeader.includes("type") || 
@@ -530,22 +627,36 @@ export function NexusTableCell({
   mono = false,
   wrap = false,
   colSpan,
-  align
+  align,
+  variant,
+  title,
+  maxWidth
 }: { 
   children: React.ReactNode, 
   className?: string, 
   mono?: boolean,
   wrap?: boolean,
   colSpan?: number,
-  align?: "left" | "center" | "right"
+  align?: "left" | "center" | "right",
+  variant?: "text" | "code" | "numeric",
+  title?: string,
+  maxWidth?: string
 }) {
+  const tooltipText = title || (typeof children === "string" || typeof children === "number" ? String(children) : undefined);
+  const isTruncated = variant === "text" || variant === "code" || !!maxWidth;
+
   return (
     <td 
       colSpan={colSpan}
+      title={isTruncated || title ? tooltipText : undefined}
       className={cn(
         "px-6 text-[14px] font-normal text-white/80 transition-colors duration-300",
         wrap ? "whitespace-normal break-words leading-relaxed py-3" : "whitespace-nowrap",
-        mono && "font-mono text-nexus-teal tracking-normal font-black [font-style:normal!important]",
+        mono && "font-mono text-nexus-teal tracking-normal font-bold [font-style:normal!important]",
+        variant === "code" && "font-mono text-nexus-teal max-w-[180px] truncate",
+        variant === "text" && "max-w-[280px] truncate",
+        variant === "numeric" && "font-mono text-right min-w-[100px]",
+        maxWidth && maxWidth,
         align === "center" && "text-center",
         align === "right" && "text-right",
         align === "left" && "text-left",
@@ -604,7 +715,7 @@ export function StrategicRow({ children, onClick, className }: { children: React
       onClick={onClick}
       className={cn(
         "group cursor-pointer transition-all duration-500",
-        "bg-[#0D0D0D]/60 hover:bg-white/[0.04] border border-white/5",
+        "bg-surface-0/60 hover:bg-white/[0.04] border border-white/5",
         className
       )}
     >
@@ -656,6 +767,42 @@ export function StrategicStatus({ status, label }: { status: "pending" | "succes
     )}>
       {label}
     </span>
+  );
+}
+
+/* Signature Ambient Background Glow - Shared System Identity */
+export function SignatureGlow({ 
+  color = "teal", 
+  size = "md",
+  className 
+}: { 
+  color?: "teal" | "blue" | "emerald" | "amber" | "rose" | "purple" | string;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+}) {
+  const sizeClasses = 
+    size === "sm" ? "w-16 h-16 blur-[30px]" :
+    size === "lg" ? "w-32 h-32 blur-[60px]" :
+    "w-20 h-20 blur-[40px]";
+
+  const colorClasses = 
+    color === "teal" ? "bg-nexus-teal" :
+    color === "blue" ? "bg-nexus-blue" :
+    color === "emerald" ? "bg-emerald-500" :
+    color === "amber" ? "bg-amber-500" :
+    color === "rose" ? "bg-rose-500" :
+    color === "purple" ? "bg-purple-500" :
+    color.startsWith("bg-") ? color : `bg-${color}`;
+
+  return (
+    <div 
+      className={cn(
+        "absolute -right-4 -top-4 rounded-full opacity-0 group-hover:opacity-15 transition-all duration-1000 pointer-events-none z-0",
+        sizeClasses,
+        colorClasses,
+        className
+      )} 
+    />
   );
 }
 
@@ -722,7 +869,7 @@ export function MasterMetricCard({
     return (
       <div 
         className={cn(
-          "group relative flex items-center gap-5 p-5 rounded-2xl bg-[#0a0a0c]/60 backdrop-blur-xl border overflow-hidden transition-all duration-500",
+          "group relative flex items-center gap-5 p-5 rounded-2xl bg-surface-0/60 backdrop-blur-xl border overflow-hidden transition-all duration-500",
           "hover:bg-white/[0.04] shadow-lg",
           onClick && "cursor-pointer active:scale-95",
           theme.border,
@@ -733,7 +880,7 @@ export function MasterMetricCard({
         onClick={onClick}
       >
         {/* Dynamic Background Glow */}
-        <div className={cn("absolute -right-4 -top-4 w-20 h-20 blur-[40px] opacity-0 group-hover:opacity-10 transition-all duration-1000 rounded-full", color.replace('text-', 'bg-'))} />
+        <SignatureGlow color={color.replace('text-', '')} size="md" />
 
         <div className={cn(
           "w-9 h-9 rounded-full flex items-center justify-center transition-all flex-shrink-0 border border-white/5",
@@ -742,7 +889,7 @@ export function MasterMetricCard({
           {React.cloneElement(icon as React.ReactElement, { size: 18 })}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.15em] leading-none truncate group-hover:text-white/40 transition-colors">{label}</p>
+          <p className="text-[11px] font-semibold text-white/20 uppercase tracking-[0.15em] leading-none truncate group-hover:text-white/40 transition-colors">{label}</p>
           <p className="text-2xl font-black text-white mt-2 leading-none tracking-tight mono-numbers truncate">{value}</p>
         </div>
         
@@ -762,14 +909,14 @@ export function MasterMetricCard({
 
   return (
     <div className={cn(
-      "group relative p-8 rounded-[2rem] bg-[#0a0a0c]/60 backdrop-blur-xl border border-white/5 overflow-hidden transition-all duration-700",
+      "group relative p-8 rounded-[2rem] bg-surface-0/60 backdrop-blur-xl border border-white/5 overflow-hidden transition-all duration-700",
       "hover:bg-white/[0.04] hover:border-white/20 hover:-translate-y-1 shadow-2xl",
       onClick && "cursor-pointer active:scale-95",
       neon,
       className
     )} onClick={onClick}>
       {/* Dynamic Background Glow */}
-      <div className={cn("absolute -right-4 -top-4 w-32 h-32 blur-[60px] opacity-0 group-hover:opacity-10 transition-all duration-1000 rounded-full", color.replace('text-', 'bg-'))} />
+      <SignatureGlow color={color.replace('text-', '')} size="lg" />
       
       <div className="relative z-10 flex items-start justify-between">
         <div className="space-y-6">
@@ -780,7 +927,7 @@ export function MasterMetricCard({
           {React.cloneElement(icon as React.ReactElement, { size: 18 })}
         </div>
           <div className="space-y-1">
-             <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.2em] group-hover:text-white/40 transition-colors">{label}</p>
+             <p className="text-[11px] font-semibold text-white/20 uppercase tracking-[0.2em] group-hover:text-white/40 transition-colors">{label}</p>
              <div className="text-3xl font-black text-white tracking-tighter flex items-baseline gap-1 mono-numbers">
                {value}
              </div>
@@ -815,18 +962,18 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "max-w-[160
       <div className="fixed inset-0 bg-black/95 backdrop-blur-3xl" onClick={onClose} />
       
       <div className={cn(
-        "relative w-full max-w-[95vw] h-[85vh] bg-[#0D0D0D] overflow-hidden shadow-[0_0_150px_rgba(0,0,0,1)] rounded-2xl border border-white/10 flex flex-col z-[100001] animate-in zoom-in-95 slide-in-from-bottom-2 duration-300 ease-out",
+        "relative w-full max-w-[95vw] h-[85vh] bg-surface-0 overflow-hidden shadow-[0_0_150px_rgba(0,0,0,1)] rounded-2xl border border-white/10 flex flex-col z-[100001] animate-in zoom-in-95 slide-in-from-bottom-2 duration-300 ease-out",
         maxWidth
       )}>
         {/* Tactical Header */}
-        <div className="h-20 flex items-center justify-between px-10 bg-[#0F0F12] border-b border-white/10 flex-shrink-0">
+        <div className="h-20 flex items-center justify-between px-10 bg-surface-0/90 border-b border-white/10 flex-shrink-0">
           <div className="flex items-center gap-6">
              <div className="w-12 h-12 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shadow-neon-teal/20">
                 <Sparkles size={24} />
              </div>
              <div>
-                <h3 className="text-xl font-black text-white uppercase tracking-tight leading-none">{title}</h3>
-                <p className="text-[12px] font-bold text-nexus-teal/40 uppercase mt-2 tracking-[0.3em] leading-none">MASTER.STRATEGIC.V3.1_STRICT</p>
+                <h3 className="text-xl font-bold text-white uppercase tracking-tight leading-none">{title}</h3>
+                <p className="text-[12px] font-semibold text-nexus-teal/60 uppercase mt-2 tracking-[0.3em] leading-none">MASTER.STRATEGIC.V3.1_STRICT</p>
              </div>
           </div>
           <button 
@@ -859,7 +1006,7 @@ export function SlideOver({ isOpen, onClose, title, children }: { isOpen: boolea
       />
       <div 
         className={cn(
-          "fixed inset-y-0 right-0 z-[101] w-full max-w-md bg-[#0a0a0c] border-l border-white/10 shadow-2xl transform transition-transform duration-300 ease-in-out",
+          "fixed inset-y-0 right-0 z-[101] w-full max-w-md bg-surface-2 border-l border-white/10 shadow-2xl transform transition-transform duration-300 ease-in-out",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
@@ -900,7 +1047,7 @@ export function Toast({ message, isVisible, onClose, type = "success" }: { messa
       "bg-warning/20 border-warning/30 text-warning"
     )}>
       <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
-      <span className="text-[14px] font-black uppercase tracking-widest">{message}</span>
+      <span className="text-[14px] font-semibold uppercase tracking-widest">{message}</span>
       <button onClick={onClose} className="ml-4 p-1 bg-nexus-teal/15 text-nexus-teal border border-nexus-teal/20 hover:bg-nexus-teal/30 hover:text-white rounded-full transition-all">
         <X size={14} />
       </button>
@@ -922,7 +1069,7 @@ export function PillBackButton({ onClick }: { onClick: () => void }) {
 export function NexusDataField({ label, value, highlight = false, className, color }: { label: string, value: string, highlight?: boolean, className?: string, color?: string }) {
   return (
     <div className={cn("flex justify-between items-center py-3 border-b border-white/5 last:border-0", className)}>
-       <span className="text-[12px] font-black text-white/20 uppercase tracking-widest">{label}</span>
+       <span className="text-[12px] font-semibold text-white/20 uppercase tracking-widest">{label}</span>
        <span className={cn("text-[14px] font-black", highlight ? "text-nexus-teal drop-shadow-neon" : "text-white/80", color)}>{value}</span>
     </div>
   );
@@ -970,7 +1117,7 @@ export function CreatableCombobox({
   );
 
   return (
-    <div className={cn("relative w-full", isOpen && "z-[9999]")} ref={containerRef}>
+    <div className={cn("relative w-full", isOpen && "z-[99999]")} ref={containerRef}>
       <div
         onClick={() => {
           setIsOpen(!isOpen);
@@ -993,7 +1140,7 @@ export function CreatableCombobox({
       </div>
 
       {isOpen && (
-        <div className="absolute top-full left-0 w-full mt-2 z-[500] bg-[#0D0D0D]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9)] p-1.5 animate-in fade-in slide-in-from-top-2 duration-200 max-h-[300px] overflow-y-auto custom-scrollbar flex flex-col gap-1">
+        <div className="absolute top-full left-0 w-full mt-2 z-[99999] bg-surface-0/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9)] p-1.5 animate-in fade-in slide-in-from-top-2 duration-200 max-h-[300px] overflow-y-auto custom-scrollbar flex flex-col gap-1">
           <input 
             autoFocus
             type="text"
@@ -1073,7 +1220,7 @@ export function NexusDatePicker({
 // [PSG-STANDARD-V3] Full Page Layout
 export function NexusPageLayout({ header, leftContent, rightSidebar }: { header: React.ReactNode, leftContent: React.ReactNode, rightSidebar: React.ReactNode }) {
   return (
-    <div className="flex flex-col h-full bg-[#050505] p-4 sm:p-6 gap-6 min-h-screen overflow-x-hidden">
+    <div className="flex flex-col h-full bg-surface-0 p-4 sm:p-6 gap-6 min-h-screen overflow-x-hidden">
       {header}
       <div className="flex flex-col xl:flex-row gap-6 relative items-start">
         <div className="flex-1 w-full xl:w-[75%] min-w-0">

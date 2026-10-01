@@ -145,14 +145,14 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
       title="คู่ค้า"
       maxWidth="max-w-[1300px]"
     >
-      <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
+      <div className="flex h-full divide-x divide-white/5 bg-surface-0">
         {/* INPUT CANVAS */}
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           <div className="max-w-4xl mx-auto space-y-10">
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
               <div className="space-y-1">
-                <p className="text-[12px] font-black text-nexus-blue uppercase tracking-[0.2em]" title="ระบบบริหารคู่ค้า">SUPPLIER</p>
-                <h4 className="text-xl font-black text-white uppercase tracking-tight">คู่ค้า</h4>
+                <p className="text-[12px] font-semibold text-nexus-blue uppercase tracking-[0.2em]" title="ระบบบริหารคู่ค้า">SUPPLIER</p>
+                <h4 className="text-xl font-semibold text-white uppercase tracking-tight">คู่ค้า</h4>
               </div>
               <PillTabs 
                 tabs={[
@@ -168,7 +168,7 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
               {activeTab === "profile" && (
                 <div className="space-y-10 animate-in fade-in slide-in-from-left-4">
                   <section className="space-y-6">
-                    <h3 className="text-[12px] font-black text-nexus-blue uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><Zap size={16} /> ข้อมูลทั่วไป</h3>
+                    <h3 className="text-[12px] font-semibold text-nexus-blue uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><Zap size={16} /> ข้อมูลทั่วไป</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <Field label="ชื่อคู่ค้า *">
                         <PillInput value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} placeholder="ระบุชื่อเต็ม..." className="w-full" />
@@ -188,7 +188,7 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
                   </section>
 
                   <section className="space-y-6 pt-6 border-t border-white/5">
-                    <h3 className="text-[12px] font-black text-white/40 uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><MapPin size={16} /> พิกัดและการติดต่อ</h3>
+                    <h3 className="text-[12px] font-semibold text-white/40 uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><MapPin size={16} /> พิกัดและการติดต่อ</h3>
                     <SmartAddressPicker onSelect={handleSmartAddress} />
                     <div className="grid grid-cols-2 gap-8 mt-6">
                       <Field label="จังหวัด">
@@ -221,7 +221,7 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
               {activeTab === "bank" && (
                 <div className="space-y-10 animate-in fade-in slide-in-from-right-4">
                   <section className="space-y-6">
-                    <h3 className="text-[12px] font-black text-warning uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><Landmark size={16} /> วิธีการชำระเงินและข้อมูลการเงิน</h3>
+                    <h3 className="text-[12px] font-semibold text-warning uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><Landmark size={16} /> วิธีการชำระเงินและข้อมูลการเงิน</h3>
                     <div className="grid grid-cols-1 gap-8">
                       <Field label="วิธีการรับเงิน / ชำระเงิน *">
                         <PillSelect value={form.payment_method} onChange={(e) => setForm({...form, payment_method: e.target.value})} className="w-full font-black text-nexus-teal">
@@ -303,7 +303,7 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
         </div>
 
         {/* SIDEBAR */}
-        <div className="w-[350px] bg-[#0F0F12] p-8 flex flex-col shrink-0 border-l border-white/5 overflow-y-auto custom-scrollbar">
+        <div className="w-[350px] bg-surface-1 p-8 flex flex-col shrink-0 border-l border-white/5 overflow-y-auto custom-scrollbar">
           <div className="flex-1 space-y-10">
             {isLocked && (
               <PillButton onClick={() => setIsLocked(false)} className="w-full shadow-neon-blue bg-nexus-blue/20 text-nexus-blue border border-nexus-blue/30">
@@ -313,7 +313,7 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
 
             <div className="p-8 rounded-[3rem] bg-white/[0.03] border border-white/10 space-y-8 shadow-2xl">
               <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                <h4 className="text-[11px] font-black text-white/40 uppercase tracking-widest">นโยบายการจัดซื้อ</h4>
+                <h4 className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">นโยบายการจัดซื้อ</h4>
                 <Target size={18} className="text-nexus-blue animate-pulse" />
               </div>
               <div className="space-y-6">
@@ -327,7 +327,7 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
                   </PillSelect>
                 </Field>
                 <div className="p-5 bg-white/[0.02] rounded-[2rem] border border-white/5 flex flex-col items-center gap-2">
-                   <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Supplier Rating</span>
+                   <span className="text-[10px] font-semibold text-white/20 uppercase tracking-widest">Supplier Rating</span>
                    <div className="flex gap-1 text-warning">
                       {[1,2,3,4,5].map(i => <Star key={i} size={14} fill={i <= form.rating ? "currentColor" : "none"} />)}
                    </div>
@@ -359,7 +359,7 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
 function Field({ label, children }: { label: string, children: React.ReactNode }) {
   return (
     <div className="space-y-3">
-      <label className="text-[12px] font-black text-white/30 uppercase tracking-widest ml-1">{label}</label>
+      <label className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">{label}</label>
       {children}
     </div>
   );

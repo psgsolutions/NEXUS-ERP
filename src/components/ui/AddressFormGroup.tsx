@@ -73,12 +73,12 @@ export function AddressFormGroup({
         <div className="mb-4">
           <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-1">ประเภทที่อยู่</label>
           <select 
-            className="w-full h-8 px-4 rounded-full bg-white/5 border border-white/10 text-white text-[11px] font-bold outline-none"
+            className="w-full h-9 px-4 rounded-full bg-white/5 border border-white/10 text-white text-[11px] font-bold outline-none"
             value={typeValue || ""}
             onChange={(e) => onTypeChange(e.target.value)}
           >
             {typeOptions.map(opt => (
-              <option key={opt.value} value={opt.value} className="bg-[#1A1A20] text-white">
+              <option key={opt.value} value={opt.value} className="bg-surface-2 text-white">
                 {opt.label}
               </option>
             ))}
@@ -90,7 +90,7 @@ export function AddressFormGroup({
         <div className="col-span-6 md:col-span-8 space-y-1">
           <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-1">บ้านเลขที่ / อาคาร / ชั้น</label>
           <PillInput 
-            className="w-full h-8" 
+            className="w-full h-9" 
             value={value.addressNo || ""} 
             onChange={(e) => handleChange({...value, addressNo: e.target.value})} 
             placeholder="เช่น 99/9 อาคาร A ชั้น 5"
@@ -98,18 +98,18 @@ export function AddressFormGroup({
         </div>
         <div className="col-span-6 md:col-span-4 space-y-1">
           <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-1">หมู่ที่</label>
-          <PillInput className="w-full h-8" value={value.moo || ""} onChange={(e) => handleChange({...value, moo: e.target.value})} placeholder="ถ้ามี..." />
+          <PillInput className="w-full h-9" value={value.moo || ""} onChange={(e) => handleChange({...value, moo: e.target.value})} placeholder="ถ้ามี..." />
         </div>
       </div>
 
       <div className="grid grid-cols-12 gap-2">
         <div className="col-span-6 space-y-1">
           <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-1">ตรอก / ซอย</label>
-          <PillInput className="w-full h-8" value={value.soi || ""} onChange={(e) => handleChange({...value, soi: e.target.value})} placeholder="ถ้ามี..." />
+          <PillInput className="w-full h-9" value={value.soi || ""} onChange={(e) => handleChange({...value, soi: e.target.value})} placeholder="ถ้ามี..." />
         </div>
         <div className="col-span-6 space-y-1">
           <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-1">ถนน</label>
-          <PillInput className="w-full h-8" value={value.road || ""} onChange={(e) => handleChange({...value, road: e.target.value})} placeholder="ถ้ามี..." />
+          <PillInput className="w-full h-9" value={value.road || ""} onChange={(e) => handleChange({...value, road: e.target.value})} placeholder="ถ้ามี..." />
         </div>
       </div>
 
@@ -117,7 +117,7 @@ export function AddressFormGroup({
         <div className="col-span-6 md:col-span-3 space-y-1">
           <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-1">แขวง / ตำบล</label>
           <ThaiAddressAutocomplete 
-            className="w-full h-8" 
+            className="w-full h-9" 
             value={value.subDistrict || ""} 
             onChange={(e) => handleChange({...value, subDistrict: e.target.value})}
             onSelect={(s) => handleChange({...value, subDistrict: s.subDistrict, district: s.district, province: s.province, zipCode: s.zipCode})}
@@ -127,7 +127,7 @@ export function AddressFormGroup({
         <div className="col-span-6 md:col-span-3 space-y-1">
           <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-1">เขต / อำเภอ</label>
           <ThaiAddressAutocomplete 
-            className="w-full h-8" 
+            className="w-full h-9" 
             value={value.district || ""} 
             onChange={(e) => handleChange({...value, district: e.target.value})}
             onSelect={(s) => handleChange({...value, subDistrict: s.subDistrict, district: s.district, province: s.province, zipCode: s.zipCode})}
@@ -137,7 +137,7 @@ export function AddressFormGroup({
         <div className="col-span-6 md:col-span-3 space-y-1">
           <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-1">จังหวัด</label>
           <ThaiAddressAutocomplete 
-            className="w-full h-8" 
+            className="w-full h-9" 
             value={value.province || ""} 
             onChange={(e) => handleChange({...value, province: e.target.value})}
             onSelect={(s) => handleChange({...value, subDistrict: s.subDistrict, district: s.district, province: s.province, zipCode: s.zipCode})}
@@ -147,7 +147,7 @@ export function AddressFormGroup({
         <div className="col-span-6 md:col-span-3 space-y-1">
           <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-1">รหัสไปรษณีย์</label>
           <ThaiAddressAutocomplete 
-            className="w-full h-8" 
+            className="w-full h-9" 
             value={value.zipCode || ""} 
             onChange={(e) => handleChange({...value, zipCode: e.target.value})}
             onSelect={(s) => handleChange({...value, subDistrict: s.subDistrict, district: s.district, province: s.province, zipCode: s.zipCode})}

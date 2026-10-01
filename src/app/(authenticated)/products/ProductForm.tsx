@@ -140,7 +140,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialData, onClose }
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between border-b border-white/5 pb-4">
-        <h2 className="text-lg font-black text-white uppercase tracking-widest">
+        <h2 className="text-lg font-semibold text-white uppercase tracking-widest">
           {initialData ? 'แก้ไขข้อมูลสินค้า/ค่าแรง' : 'สร้างรายการใหม่'}
         </h2>
         <button onClick={onClose} className="text-white/40 hover:text-white">
@@ -159,12 +159,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialData, onClose }
         
         {/* ── General Info ── */}
         <div className="space-y-4">
-          <h3 className="text-xs font-black text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
+          <h3 className="text-xs font-semibold text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
             ข้อมูลทั่วไป (General)
           </h3>
           
           <div>
-            <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1 not-italic">
+            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 not-italic">
               ชื่อสินค้า/บริการ <span className="text-red-500 font-bold">*</span> (Name)
             </label>
             <PillInput 
@@ -177,7 +177,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialData, onClose }
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1 not-italic">
+              <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 not-italic">
                 ประเภท (Type)
               </label>
               <select
@@ -192,7 +192,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialData, onClose }
             </div>
             
             <div>
-              <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1 not-italic">
+              <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 not-italic">
                 หมวดหมู่ (Category)
               </label>
               <select
@@ -227,7 +227,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialData, onClose }
           )}
 
           <div>
-            <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1 not-italic">
+            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 not-italic">
               รหัสบัญชี GL (GL Account)
             </label>
             <PillInput 
@@ -248,12 +248,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialData, onClose }
 
         {/* ── Pricing Structure ── */}
         <div className="space-y-4">
-          <h3 className="text-xs font-black text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
+          <h3 className="text-xs font-semibold text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
             โครงสร้างราคา 3 ระดับ (Pricing)
           </h3>
 
           <div>
-            <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1 not-italic">
+            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 not-italic">
               ต้นทุน (Cost)
             </label>
             <PillInput 
@@ -266,7 +266,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialData, onClose }
           </div>
 
           <div>
-            <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1 not-italic">
+            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 not-italic">
               ราคาโครงการ (Project Price)
             </label>
             <PillInput 
@@ -279,7 +279,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialData, onClose }
           </div>
 
           <div>
-            <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1 not-italic">
+            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 not-italic">
               ราคาหน้าร้าน (Retail Price)
             </label>
             <PillInput 
@@ -294,7 +294,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ initialData, onClose }
 
         {/* ── Sales BOM ── */}
         <div className="col-span-1 md:col-span-2 space-y-4 pt-4 border-t border-white/5">
-          <h3 className="text-xs font-black text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
+          <h3 className="text-xs font-semibold text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
             การจัดชุดสินค้า (Sales BOM)
           </h3>
           

@@ -48,7 +48,7 @@ export function ConnectionStatus({ className = '' }: { className?: string }) {
   }
 
   return (
-    <div className={`flex items-center gap-3 rounded-full border border-white/10 bg-[#0a0a0c]/80 px-4 py-2 backdrop-blur-md shadow-lg ${className}`}>
+    <div className={`flex items-center gap-3 rounded-full border border-white/10 bg-surface-0/80 px-4 py-2 backdrop-blur-md shadow-lg ${className}`}>
       <div className="relative flex h-3 w-3 items-center justify-center">
         <div className={`absolute inline-flex h-full w-full animate-ping rounded-full ${pulseColor} opacity-75`}></div>
         <div className={`relative inline-flex h-2 w-2 rounded-full ${bgColor}`}></div>

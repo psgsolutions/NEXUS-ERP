@@ -19,6 +19,9 @@ interface DocumentFormContextType {
     customerId: string;
     customerName: string;
     taxMode: "VAT_EXCLUDED" | "VAT_INCLUDED" | "NON_VAT";
+    creditTerms?: string;
+    deliveryDate?: string;
+    whtRate?: number;
   };
   setHeader: React.Dispatch<React.SetStateAction<any>>;
   items: DocumentItem[];
@@ -26,7 +29,9 @@ interface DocumentFormContextType {
   summary: {
     subTotal: number;
     vatAmount: number;
+    whtAmount?: number;
     grandTotal: number;
+    netPayable?: number;
   };
 }
 
@@ -39,6 +44,9 @@ export function DocumentFormProvider({ children }: { children: React.ReactNode }
     customerId: "",
     customerName: "",
     taxMode: "VAT_EXCLUDED" as "VAT_EXCLUDED" | "VAT_INCLUDED" | "NON_VAT",
+    creditTerms: "",
+    deliveryDate: "",
+    whtRate: 0,
   });
 
   const [items, setItems] = useState<DocumentItem[]>([]);
@@ -53,9 +61,14 @@ export function DocumentFormProvider({ children }: { children: React.ReactNode }
       vatAmount = subTotal - subTotal / 1.07;
     }
     const grandTotal = header.taxMode === "VAT_EXCLUDED" ? subTotal + vatAmount : subTotal;
+    
+    // WHT calculation (ถ้ามี): คิดจากยอดก่อน VAT เสมอ
+    const whtBase = header.taxMode === "VAT_INCLUDED" ? subTotal - vatAmount : subTotal;
+    const whtAmount = header.whtRate ? whtBase * (header.whtRate / 100) : 0;
+    const netPayable = grandTotal - whtAmount;
 
-    return { subTotal, vatAmount, grandTotal };
-  }, [items, header.taxMode]);
+    return { subTotal, vatAmount, whtAmount, grandTotal, netPayable };
+  }, [items, header.taxMode, header.whtRate]);
 
   return (
     <DocumentFormContext.Provider

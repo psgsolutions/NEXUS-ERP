@@ -98,13 +98,13 @@ export function PaymentModal({ isOpen, onClose, onSave }: PaymentModalProps) {
       title="บันทึกการจ่ายชำระเงิน"
       maxWidth="max-w-[1600px]"
     >
-      <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
+      <div className="flex h-full divide-x divide-white/5 bg-surface-0">
         <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
           <div className="max-w-4xl mx-auto space-y-12">
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
               <div className="space-y-1">
-                <p className="text-[12px] font-black text-nexus-blue uppercase tracking-[0.2em]">โหมดเจ้าหนี้ (AP_PAYMENT_V3.0)</p>
-                <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกจ่ายเงิน</h4>
+                <p className="text-[12px] font-semibold text-nexus-blue uppercase tracking-[0.2em]">โหมดเจ้าหนี้ (AP_PAYMENT_V3.0)</p>
+                <h4 className="text-xl font-semibold text-white uppercase tracking-tight">บันทึกจ่ายเงิน</h4>
               </div>
               <PillTabs 
                  tabs={[
@@ -182,12 +182,12 @@ export function PaymentModal({ isOpen, onClose, onSave }: PaymentModalProps) {
               {activeTab === "orders" && (
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-[12px] font-black text-white/30 uppercase tracking-[0.2em]">รายการสั่งซื้อที่จ่ายชำระ</h4>
-                    <span className="text-[11px] font-black text-nexus-blue uppercase tracking-widest">ตรวจสอบยอดค้างจ่ายและหัก ณ ที่จ่าย</span>
+                    <h4 className="text-[12px] font-semibold text-white/30 uppercase tracking-[0.2em]">รายการสั่งซื้อที่จ่ายชำระ</h4>
+                    <span className="text-[11px] font-semibold text-nexus-blue uppercase tracking-widest">ตรวจสอบยอดค้างจ่ายและหัก ณ ที่จ่าย</span>
                   </div>
 
                   <div className="space-y-3">
-                    <div className="grid grid-cols-12 gap-4 px-6 text-[10px] font-black text-white/20 uppercase tracking-widest">
+                    <div className="grid grid-cols-12 gap-4 px-6 text-[10px] font-semibold text-white/20 uppercase tracking-widest">
                        <div className="col-span-3">เลขที่ PO</div>
                        <div className="col-span-3 text-right">ยอดค้างจ่าย</div>
                        <div className="col-span-3 text-right">จ่ายชำระครั้งนี้</div>
@@ -197,7 +197,7 @@ export function PaymentModal({ isOpen, onClose, onSave }: PaymentModalProps) {
                     {orders.length === 0 ? (
                        <div className="p-20 border border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center text-center space-y-4">
                           <Building size={48} className="text-white/5" />
-                          <p className="text-sm text-white/20 font-black uppercase tracking-widest">ยังไม่มีรายการค้างจ่าย (กรุณาดึงยอดค้าง)</p>
+                          <p className="text-sm text-white/20 font-semibold uppercase tracking-widest">ยังไม่มีรายการค้างจ่าย (กรุณาดึงยอดค้าง)</p>
                        </div>
                     ) : (
                       orders.map((order) => (
@@ -241,11 +241,11 @@ export function PaymentModal({ isOpen, onClose, onSave }: PaymentModalProps) {
           </div>
         </div>
 
-        <div className="w-[420px] flex flex-col bg-[#0F0F12] p-12 flex-shrink-0">
+        <div className="w-[420px] flex flex-col bg-surface-1 p-12 flex-shrink-0">
           <div className="flex-1 space-y-10">
             <div className="space-y-1">
-              <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">สรุปยอดจ่ายชำระ</p>
-              <h5 className="text-sm font-black text-white uppercase tracking-tight">Payment Allocation</h5>
+              <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">สรุปยอดจ่ายชำระ</p>
+              <h5 className="text-sm font-semibold text-white uppercase tracking-tight">Payment Allocation</h5>
             </div>
 
             <div className="p-8 rounded-2xl bg-white/[0.03] border border-white/10 space-y-6">
@@ -291,7 +291,7 @@ export function PaymentModal({ isOpen, onClose, onSave }: PaymentModalProps) {
 function Field({ label, children }: { label: string, children: React.ReactNode }) {
   return (
     <div className="space-y-3">
-      <label className="text-[12px] font-black text-white/30 uppercase tracking-widest ml-1">{label}</label>
+      <label className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">{label}</label>
       {children}
     </div>
   );

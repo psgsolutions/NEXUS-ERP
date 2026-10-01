@@ -216,7 +216,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
               <Zap size={18} className="animate-pulse" />
             </div>
             <div className="flex flex-col overflow-hidden">
-              <h2 className="text-[15px] font-black text-white uppercase tracking-tight leading-none truncate">ออกแบบชุดงานติดตั้ง</h2>
+              <h2 className="text-[15px] font-semibold text-white uppercase tracking-tight leading-none truncate">ออกแบบชุดงานติดตั้ง</h2>
               <p className="text-[10px] font-bold text-nexus-teal uppercase tracking-[0.2em] mt-1.5 opacity-80">Hybrid BOM & Labor Framework</p>
             </div>
           </div>
@@ -230,26 +230,50 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
           <div className="flex-1 flex flex-col overflow-hidden bg-zinc-950/20 min-w-0">
             <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1 min-w-0 space-y-6">
               
-              {/* Tactical Navigation Tabs */}
-              <div className="flex gap-2 p-1 bg-white/[0.02] border border-white/5 rounded-full backdrop-blur-md w-fit shadow-inner shrink-0">
-                {(["general", "bom", "labor"] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => setActiveTab(tab)}
-                    className={cn(
-                      "h-9 px-6 rounded-full text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2",
-                      activeTab === tab 
-                        ? "bg-nexus-teal text-black shadow-neon-teal" 
-                        : "text-white/40 hover:text-white hover:bg-white/5"
-                    )}
+              {/* Tactical Navigation Tabs & Controls inline on top row */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 shrink-0 pb-2">
+                <div className="flex gap-2 p-1 bg-white/[0.02] border border-white/5 rounded-full backdrop-blur-md w-fit shadow-inner">
+                  {(["general", "bom", "labor"] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setActiveTab(tab)}
+                      className={cn(
+                        "h-8 px-5 rounded-full text-[12px] font-bold uppercase tracking-wider transition-all flex items-center gap-2",
+                        activeTab === tab 
+                          ? "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md shadow-neon-teal font-black" 
+                          : "text-white/50 hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      {tab === "general" && <LayoutList size={14} />}
+                      {tab === "bom" && <Layers size={14} />}
+                      {tab === "labor" && <Wrench size={14} />}
+                      {tab === "general" ? "ข้อมูลทั่วไป" : tab === "bom" ? "รายการพัสดุ" : "โครงสร้างค่าแรง"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Control Action Buttons (Top Row) */}
+                <div className="flex items-center gap-2">
+                  <PillButton 
+                    type="button" 
+                    variant="glass" 
+                    onClick={onClose} 
+                    className="h-8 px-4 rounded-full text-[12px] font-bold uppercase text-white/70 hover:text-white border-white/10"
                   >
-                    {tab === "general" && <LayoutList size={14} />}
-                    {tab === "bom" && <Layers size={14} />}
-                    {tab === "labor" && <Wrench size={14} />}
-                    {tab === "general" ? "ข้อมูลทั่วไป" : tab === "bom" ? "รายการพัสดุ" : "โครงสร้างค่าแรง"}
-                  </button>
-                ))}
+                    ยกเลิก
+                  </PillButton>
+                  <PillButton 
+                    type="button"
+                    variant="primary"
+                    onClick={handleCommit}
+                    disabled={isLocked || isSubmitting}
+                    className="h-8 px-5 flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 size={14} />
+                    {isSubmitting ? "กำลังบันทึก..." : "บันทึกชุดงาน"}
+                  </PillButton>
+                </div>
               </div>
 
               {/* Form Content */}
@@ -261,7 +285,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                     <div className="flex flex-col lg:flex-row gap-8">
                       {/* Image uploader */}
                       <div className="w-full lg:w-64 shrink-0 space-y-2">
-                        <label className="text-[11px] font-black text-white/50 uppercase tracking-widest">รูปภาพจำลองผลงานติดตั้ง</label>
+                        <label className="text-[11px] font-semibold text-white/50 uppercase tracking-widest">รูปภาพจำลองผลงานติดตั้ง</label>
                         <div className="relative group aspect-square rounded-[2rem] bg-white/[0.02] border border-white/5 overflow-hidden shadow-2xl flex items-center justify-center">
                           {form.imageUrl ? (
                             <img src={form.imageUrl} alt="Installation Kit preview" className="w-full h-full object-cover p-2 rounded-[2rem]" />
@@ -270,7 +294,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                           )}
                           {!isLocked && (
                             <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <label htmlFor="kit-img-up" className="cursor-pointer bg-nexus-teal text-black px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-wider shadow-xl active:scale-95 transition-all">
+                              <label htmlFor="kit-img-up" className="cursor-pointer bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md hover:bg-nexus-teal/35 hover:text-white px-5 py-2 rounded-full text-[10px] font-semibold uppercase tracking-wider shadow-xl active:scale-95 transition-all">
                                 อัปโหลดรูปภาพ
                               </label>
                               <input id="kit-img-up" type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
@@ -282,7 +306,9 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                       {/* Basic details */}
                       <div className="flex-1 space-y-4 min-w-0">
                         <div className="space-y-2">
-                          <label className="text-[11px] font-black text-white/50 uppercase tracking-widest">ชื่อชุดงานติดตั้ง *</label>
+                          <label className="text-[11px] font-semibold text-white/50 uppercase tracking-widest">
+                            ชื่อชุดงานติดตั้ง <span className="text-rose-500 font-bold ml-0.5">*</span>
+                          </label>
                           <PillInput 
                             disabled={isLocked} 
                             placeholder="เช่น ชุดติดตั้ง Access Point + ท่อสายสัญญาณสำเร็จรูป..." 
@@ -294,7 +320,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <label className="text-[11px] font-black text-white/50 uppercase tracking-widest">หน่วยนับชุดงาน</label>
+                            <label className="text-[11px] font-semibold text-white/50 uppercase tracking-widest">หน่วยนับชุดงาน</label>
                             <PillSelect 
                               disabled={isLocked} 
                               value={form.unit_type} 
@@ -308,7 +334,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                           </div>
                           
                           <div className="space-y-2">
-                            <label className="text-[11px] font-black text-white/50 uppercase tracking-widest">ราคาเสนอขายแนะนำ</label>
+                            <label className="text-[11px] font-semibold text-white/50 uppercase tracking-widest">ราคาเสนอขายแนะนำ</label>
                             <NumberStepper 
                               disabled={isLocked} 
                               value={form.suggested_price} 
@@ -321,7 +347,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                         </div>
                         
                         <div className="space-y-2">
-                          <label className="text-[11px] font-black text-white/50 uppercase tracking-widest">ขอบเขตงานและรายละเอียดทางเทคนิค</label>
+                          <label className="text-[11px] font-semibold text-white/50 uppercase tracking-widest">ขอบเขตงานและรายละเอียดทางเทคนิค</label>
                           <textarea 
                             disabled={isLocked} 
                             rows={4}
@@ -363,7 +389,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                           <div className="relative w-full md:w-64 shrink-0">
                             <PillInput 
                               placeholder="พิมพ์เพื่อค้นหา..." 
-                              className="w-full pl-10 bg-[#0a0a0c] text-xs border-white/5 focus:border-nexus-teal/30" 
+                              className="w-full pl-10 bg-surface-0 text-xs border-white/5 focus:border-nexus-teal/30" 
                               value={productSearch} 
                               onChange={(e) => setProductSearch(e.target.value)} 
                             />
@@ -372,7 +398,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                         </div>
 
                         {/* Table */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar rounded-2xl border border-white/5 bg-[#09090b]/80 relative">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar rounded-2xl border border-white/5 bg-surface-1/80 relative">
                           <NexusTable headers={["รูปภาพ", "รหัสสินค้า", "ชื่อสินค้า", "ราคา", "สต็อก", "จัดการ"]}>
                             {productsLoading ? (
                               <NexusTableRow>
@@ -418,10 +444,10 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                     )}
 
                     {/* Right Cart (35%) */}
-                    <div className={cn("flex flex-col bg-[#09090b]/40 border border-white/5 rounded-[2.5rem] shadow-inner min-h-0 relative", isLocked ? "w-full" : "w-full lg:w-[35%]")}>
+                    <div className={cn("flex flex-col bg-surface-1/40 border border-white/5 rounded-[2.5rem] shadow-inner min-h-0 relative", isLocked ? "w-full" : "w-full lg:w-[35%]")}>
                       <div className="p-5 border-b border-white/5 shrink-0 flex items-center justify-between">
-                        <h3 className="text-[13px] font-black text-white uppercase tracking-wider flex items-center gap-2">
-                          ตะกร้าชุดงาน <span className="bg-nexus-teal text-black px-2 py-0.5 rounded-full text-[10px]">{form.items.length}</span>
+                        <h3 className="text-[13px] font-semibold text-white uppercase tracking-wider flex items-center gap-2">
+                          ตะกร้าชุดงาน <span className="bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 px-2 py-0.5 rounded-full text-[10px]">{form.items.length}</span>
                         </h3>
                       </div>
 
@@ -494,7 +520,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                 {activeTab === "labor" && (
                   <div className="space-y-4 animate-in fade-in duration-300 flex flex-col min-h-0">
                     <div className="flex items-center justify-between border-b border-white/5 pb-2 shrink-0">
-                      <h3 className="text-[12px] font-black text-nexus-teal uppercase flex items-center gap-2 tracking-wider italic">
+                      <h3 className="text-[12px] font-semibold text-nexus-teal uppercase flex items-center gap-2 tracking-wider italic">
                         <Wrench size={14} /> โครงสร้างบริการและงานปฏิบัติการ
                       </h3>
                       <div className="flex gap-2">
@@ -524,9 +550,9 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
 
                     {showContractorSelector && (
                       <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md rounded-[2rem] animate-in fade-in">
-                        <div className="bg-[#0a0a0c] border border-white/10 p-6 rounded-3xl w-full max-w-[400px] shadow-[0_0_50px_rgba(37,99,235,0.15)] flex flex-col max-h-[80%]">
+                        <div className="bg-surface-0 border border-white/10 p-6 rounded-3xl w-full max-w-[400px] shadow-[0_0_50px_rgba(37,99,235,0.15)] flex flex-col max-h-[80%]">
                           <div className="flex justify-between items-center mb-4">
-                            <h4 className="text-[13px] font-black text-white uppercase tracking-wider flex items-center gap-2"><Wrench size={16} className="text-nexus-blue" /> เลือกชุดค่าแรงผู้รับเหมา</h4>
+                            <h4 className="text-[13px] font-semibold text-white uppercase tracking-wider flex items-center gap-2"><Wrench size={16} className="text-nexus-blue" /> เลือกชุดค่าแรงผู้รับเหมา</h4>
                             <button onClick={() => setShowContractorSelector(false)} className="text-white/40 hover:text-white"><X size={16}/></button>
                           </div>
                           
@@ -562,7 +588,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                       </div>
                     )}
                     
-                    <div className="flex-1 border border-white/5 rounded-[2.5rem] bg-[#09090b]/40 shadow-inner overflow-hidden max-h-[380px]">
+                    <div className="flex-1 border border-white/5 rounded-[2.5rem] bg-surface-1/40 shadow-inner overflow-hidden max-h-[380px]">
                       <div className="overflow-y-auto custom-scrollbar h-full relative">
                         <NexusTable headers={["ประเภทบริการ / บริการทางวิศวกรรม", "จำนวนหน่วย", "อัตรามาตรฐาน (฿ / หน่วย)", "การทำงาน"]}>
                           {form.labor_items.length === 0 ? (
@@ -648,8 +674,9 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
               {isLocked && initialData && (
                 <PillButton 
                   type="button"
+                  variant="primary"
                   onClick={() => setIsLocked(false)} 
-                  className="w-full h-9 bg-nexus-teal text-black shadow-neon-teal font-black text-xs uppercase"
+                  className="w-full h-9 shadow-neon-teal"
                 >
                   <Edit3 size={14} /> แก้ไขการประกอบชุดงาน
                 </PillButton>
@@ -658,7 +685,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
               {/* Profit Rainbow Analysis Panel */}
               <GlassCard className="p-5 bg-zinc-950 border-white/10 shadow-2xl space-y-4">
                 <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                  <h4 className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <h4 className="text-[10px] font-semibold text-white/50 uppercase tracking-[0.2em] flex items-center gap-2">
                     <Target size={14} className="text-nexus-teal fill-current animate-pulse" /> วิเคราะห์กำไรขั้นต้น
                   </h4>
                   <div className="w-2 h-2 rounded-full bg-nexus-teal animate-ping" />
@@ -673,7 +700,7 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
                     <span>งานช่าง</span>
                     <span className="text-white/80 font-mono text-[11px]">{formatCurrency(financials.labor_cost)}</span>
                   </div>
-                  <div className="pt-2 mt-1 border-t border-white/5 flex justify-between items-center text-[11px] font-black text-white/70 uppercase">
+                  <div className="pt-2 mt-1 border-t border-white/5 flex justify-between items-center text-[11px] font-semibold text-white/70 uppercase">
                     <span>ต้นทุนรวมของชุดงาน</span>
                     <span className="text-nexus-teal font-mono text-xs font-black">{formatCurrency(financials.total_cost)}</span>
                   </div>
@@ -714,9 +741,10 @@ export function KitEditor({ isOpen, onClose, onSave, initialData, showToast }: K
             <div className="space-y-2 pt-6">
               <PillButton 
                 type="button"
+                variant="save"
                 disabled={isSubmitting || isLocked || (touched && !validation.isValid)} 
                 onClick={handleCommit} 
-                className="w-full h-9 bg-nexus-teal text-black shadow-neon-teal font-black text-xs uppercase"
+                className="w-full h-9 shadow-neon-teal"
               >
                 {isSubmitting ? (
                   <RefreshCw size={14} className="animate-spin" />

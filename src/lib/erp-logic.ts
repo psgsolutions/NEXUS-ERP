@@ -4,7 +4,7 @@
  * NEXUS ERP V3.0 - Centralized Financial Calculation Engine
  */
 
-export type VatTypeV3 = 'INCLUSIVE' | 'EXCLUSIVE' | 'NON_VAT';
+export type VatTypeV3 = 'INCLUSIVE' | 'INCLUSIVE_AUTO' | 'EXCLUSIVE' | 'NON_VAT';
 export type MarginColor = 'STRATEGIC' | 'HEALTHY' | 'TACTICAL' | 'CRITICAL';
 
 export interface LineItem {
@@ -13,74 +13,194 @@ export interface LineItem {
   costPrice: number; // ต้นทุนจริง
   projectPrice: number; // ราคาขายโครงการ
   retailPrice: number; // ราคาขายหน้าร้าน
+  whtRate?: number; // หัก ณ ที่จ่าย รายบรรทัด (เช่น 0, 1, 3, 5%)
+  itemType?: 'PRODUCT' | 'SERVICE' | 'LABOR' | 'GROUP_HEADER';
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+  isGroupHeader?: boolean;
 }
 
 export interface CalcResult {
-  subTotal: number;       // ยอดรวมก่อนภาษี
+  grossSubTotal: number;  // ยอดรวมก่อนส่วนลด
+  lineDiscountTotal: number; // ส่วนลดรวมรายบรรทัด
+  docDiscountAmount: number; // ส่วนลดระดับเอกสาร
+  totalDiscount: number;  // ส่วนลดรวมทั้งหมด
+  subTotal: number;       // ยอดรวมก่อนภาษี (หลังหักส่วนลดทั้งหมด)
   vatAmount: number;      // ภาษีมูลค่าเพิ่ม
-  grandTotal: number;     // ยอดสุทธิรวมภาษี
+  grandTotal: number;     // ยอดสุทธิรวมภาษี (SubTotal + VAT)
+  whtAmount: number;      // ยอดหัก ณ ที่จ่าย
+  netPayable: number;     // ยอดที่ต้องชำระจริง (GrandTotal - WHT)
   totalCost: number;      // ต้นทุนรวมทั้งหมด
   profitMargin: number;   // เปอร์เซ็นต์กำไรขั้นต้น
   rainbowColor: MarginColor; // สีสถานะกำไร
   thaiBahtText: string;   // อักษรไทยท้ายบิล
   isBiddingTriggered: boolean; // ตัวเปิด Canvas ประมูลอัตโนมัติ (>500k)
+  error?: string;         // ข้อผิดพลาดกรณีส่วนลดเกิน
 }
 
 /**
  * คำนวณผลลัพธ์ทางการเงินของเอกสารแบบไร้รอยต่อ (V3)
+ * คำนวณลำดับ: ส่วนลดบรรทัด -> ส่วนลดเอกสาร -> ฐานภาษี -> VAT -> WHT
  */
 export function calculateERPDocument(
   items: LineItem[], 
   vatType: VatTypeV3, 
-  isProjectContext: boolean = true
+  isProjectContext: boolean = true,
+  whtRate: number = 0,
+  vatPct: number = 7,
+  docDiscountType: 'PERCENT' | 'AMOUNT' = 'AMOUNT',
+  docDiscountValue: number = 0
 ): CalcResult {
-  let subTotal = 0;
+  let grossSubTotal = 0;
+  let lineDiscountTotal = 0;
   let totalCost = 0;
 
-  // 1. คำนวณฐานรากแยกบรรทัดเพื่อป้องกันทศนิยมเคลื่อน
-  items.forEach(item => {
+  // 1. คำนวณส่วนลดรายบรรทัด และยอดรวมขั้นต้น
+  const lineDetails = items.map(item => {
+    if (item.isGroupHeader || item.itemType === 'GROUP_HEADER') {
+      return { item, lineGross: 0, lineDisc: 0, lineNet: 0 };
+    }
     const sellPrice = isProjectContext ? item.projectPrice : item.retailPrice;
-    subTotal += sellPrice * item.qty;
-    totalCost += item.costPrice * item.qty;
+    const lineGross = sellPrice * item.qty;
+    grossSubTotal += lineGross;
+    totalCost += (item.costPrice || 0) * item.qty;
+
+    let lineDisc = 0;
+    if (item.discountType === 'PERCENT') {
+      lineDisc = lineGross * ((item.discountValue || 0) / 100);
+    } else if (item.discountType === 'AMOUNT') {
+      lineDisc = item.discountValue || 0;
+    }
+    lineDiscountTotal += lineDisc;
+    const lineNet = lineGross - lineDisc;
+
+    return { item, lineGross, lineDisc, lineNet };
   });
 
+  const netAfterLineDisc = grossSubTotal - lineDiscountTotal;
+
+  // 2. คำนวณส่วนลดระดับเอกสาร
+  let docDiscountAmount = 0;
+  if (docDiscountType === 'PERCENT') {
+    docDiscountAmount = netAfterLineDisc * ((docDiscountValue || 0) / 100);
+  } else {
+    docDiscountAmount = docDiscountValue || 0;
+  }
+
+  const totalDiscount = lineDiscountTotal + docDiscountAmount;
+
+  // ตรวจสอบกรณีส่วนลดเกินยอดรวม
+  if (totalDiscount > grossSubTotal && grossSubTotal > 0) {
+    return {
+      grossSubTotal,
+      lineDiscountTotal,
+      docDiscountAmount,
+      totalDiscount,
+      subTotal: 0,
+      vatAmount: 0,
+      grandTotal: 0,
+      whtAmount: 0,
+      netPayable: 0,
+      totalCost,
+      profitMargin: 0,
+      rainbowColor: 'CRITICAL',
+      thaiBahtText: 'ศูนย์บาทถ้วน',
+      isBiddingTriggered: false,
+      error: 'ส่วนลดรวมมากกว่ามูลค่าสินค้า/บริการ'
+    };
+  }
+
+  // 3. กระจายส่วนลดเอกสารลงรายบรรทัดเพื่อคิด ฐานภาษี และ WHT
+  let totalWhtAmount = 0;
+  lineDetails.forEach(({ item, lineNet }) => {
+    if (lineNet <= 0) return;
+    const ratio = netAfterLineDisc > 0 ? lineNet / netAfterLineDisc : 0;
+    const lineDocDisc = docDiscountAmount * ratio;
+    const effectiveLineNet = lineNet - lineDocDisc;
+
+    let lineExVat = effectiveLineNet;
+    if (vatType === 'INCLUSIVE' || vatType === 'INCLUSIVE_AUTO') {
+      lineExVat = (effectiveLineNet * 100) / (100 + vatPct);
+    }
+
+    const effectiveLineWhtRate = item.whtRate ?? whtRate;
+    const lineWht = Math.round((lineExVat * (effectiveLineWhtRate / 100)) * 100) / 100;
+    totalWhtAmount += lineWht;
+  });
+
+  let subTotal = grossSubTotal - totalDiscount;
   let vatAmount = 0;
   let grandTotal = subTotal;
 
-  // 2. แตกแขนงคิดภาษี 3 รูปแบบตาม PSG Protocol
+  // 4. คำนวณภาษีมูลค่าเพิ่ม (VAT)
   if (vatType === 'EXCLUSIVE') {
-    vatAmount = Math.round((subTotal * 0.07) * 100) / 100; // ปัดเศษทศนิยม 2 ตำแหน่ง
+    vatAmount = Math.round((subTotal * (vatPct / 100)) * 100) / 100;
     grandTotal = subTotal + vatAmount;
-  } else if (vatType === 'INCLUSIVE') {
-    const rawSub = (subTotal * 100) / 107;
+  } else if (vatType === 'INCLUSIVE' || vatType === 'INCLUSIVE_AUTO') {
+    const rawSub = (subTotal * 100) / (100 + vatPct);
     vatAmount = Math.round((subTotal - rawSub) * 100) / 100;
     subTotal = Math.round(rawSub * 100) / 100;
+    grandTotal = Math.round((subTotal + vatAmount) * 100) / 100;
   } else {
-    vatAmount = 0; // NON_VAT
+    vatAmount = 0;
+    grandTotal = subTotal;
   }
 
-  // 3. คิดกำไรขั้นต้นและสะท้อนสี Profit Rainbow
-  const profit = grandTotal - totalCost;
-  const profitMargin = grandTotal > 0 ? (profit / grandTotal) * 100 : 0;
+  // 5. คำนวณ หัก ณ ที่จ่าย (WHT) และ ยอดชำระสุทธิ
+  const whtAmount = Math.round(totalWhtAmount * 100) / 100;
+  const netPayable = grandTotal - whtAmount;
+
+  // 6. คำนวณกำไรขั้นต้น (GP%) คิดบนยอดก่อน VAT หลังส่วนลด
+  const profit = subTotal - totalCost;
+  const profitMargin = subTotal > 0 ? (profit / subTotal) * 100 : 0;
   let rainbowColor: MarginColor = 'CRITICAL';
 
-  if (profitMargin >= 40) rainbowColor = 'STRATEGIC'; // กำไรเหนือชั้น
-  else if (profitMargin >= 25) rainbowColor = 'HEALTHY';  // กำไรมาตรฐานองค์กร
-  else if (profitMargin >= 15) rainbowColor = 'TACTICAL'; // กำไรแข่งขันเหลี่ยมธุรกิจ
-  
-  // 4. เงื่อนไขอัจฉริยะ: หากมูลค่าโครงการเกิน 5 แสนบาท ปรับเข้าสู่โหมดประมูลอัตโนมัติ
+  if (profitMargin >= 40) rainbowColor = 'STRATEGIC';
+  else if (profitMargin >= 25) rainbowColor = 'HEALTHY';
+  else if (profitMargin >= 15) rainbowColor = 'TACTICAL';
+
   const isBiddingTriggered = isProjectContext && grandTotal > 500000;
 
   return {
+    grossSubTotal,
+    lineDiscountTotal,
+    docDiscountAmount,
+    totalDiscount,
     subTotal,
     vatAmount,
     grandTotal,
+    whtAmount,
+    netPayable,
     totalCost,
     profitMargin: Math.round(profitMargin * 100) / 100,
     rainbowColor,
-    thaiBahtText: arabicToThaiBaht(grandTotal),
+    thaiBahtText: arabicToThaiBaht(netPayable),
     isBiddingTriggered
   };
+}
+
+/**
+ * ตรวจสอบความถูกต้องของวันคาดว่าปิดจบกับวันที่ออกเอกสาร
+ */
+export function validateQuotationDates(docDate: string, expectedCloseDate: string): { isValid: boolean; error?: string } {
+  if (expectedCloseDate && docDate && expectedCloseDate < docDate) {
+    return {
+      isValid: false,
+      error: "วันที่คาดว่าปิดจบ ต้องไม่ก่อนวันที่ออกเอกสาร"
+    };
+  }
+  return { isValid: true };
+}
+
+/**
+ * ตรวจสอบสิทธิ์การเขียนข้อมูลสเปก/datasheet กลับไปยังฐานข้อมูลสินค้า
+ * สอดคล้องกับ Firestore Rules (SUPERADMIN, ADMIN, MANAGER, ENGINEER)
+ */
+export function canWriteBackToProductMaster(role: string | null | undefined, saveToProductRequested: boolean): boolean {
+  if (!saveToProductRequested) return false;
+  if (!role) return false;
+  const upperRole = role.toUpperCase();
+  return upperRole === "SUPERADMIN" || upperRole === "ADMIN" || upperRole === "MANAGER" || upperRole === "ENGINEER";
 }
 
 /**
@@ -237,24 +357,79 @@ export function convertNumberToThaiText(number: number): string {
 }
 
 /**
- * Formats currency to Thai Baht standard.
+ * คำนวณอัตรากำไรขั้นต้น (GP%) สำหรับรายการสินค้า 1 บรรทัด (V3)
+ * คำนวณจากราคาขายหลังส่วนลด เทียบกับต้นทุนสินค้า (คิดบนยอดก่อน VAT หลังส่วนลด)
  */
-export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('th-TH', {
-    style: 'currency',
-    currency: 'THB',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(value).replace('฿', '฿ ');
+export function calculateLineGP(price: number, cost: number): number {
+  const p = Number(price) || 0;
+  const c = Number(cost) || 0;
+  if (p <= 0) return 0;
+  const profit = p - c;
+  const gp = (profit / p) * 100;
+  return Math.round(gp * 100) / 100;
+}
+
+/**
+ * Formats currency to Thai Baht standard string with 2 decimal places.
+ */
+export function formatCurrency(value: number, decimals: number = 2): string {
+  const num = Number(value) || 0;
+  return num.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  });
 }
 
 /**
  * Returns the color mapping for the Profit Rainbow based on GP%.
  */
 export function getProfitRainbowColor(gpPercent: number) {
-  if (gpPercent >= 50) return { bg: 'bg-nexus-teal/10', border: 'border-nexus-teal/20', text: 'text-nexus-teal', label: 'STRATEGIC MARGIN (EXCELLENT)' };
-  if (gpPercent >= 30) return { bg: 'bg-nexus-blue/10', border: 'border-nexus-blue/20', text: 'text-nexus-blue', label: 'HEALTHY MARGIN (GOOD)' };
-  if (gpPercent >= 15) return { bg: 'bg-warning/10', border: 'border-warning/20', text: 'text-warning', label: 'TACTICAL MARGIN (FAIR)' };
-  if (gpPercent >= 0) return { bg: 'bg-danger/10', border: 'border-danger/20', text: 'text-danger', label: 'CRITICAL MARGIN (LOW)' };
-  return { bg: 'bg-black', border: 'border-danger', text: 'text-white', label: 'NEGATIVE MARGIN' };
+  if (gpPercent >= 50) return { bg: 'bg-nexus-teal/10', border: 'border-nexus-teal/20', text: 'text-nexus-teal', label: 'กำไรเหนือชั้น (ดีเยี่ยม)' };
+  if (gpPercent >= 30) return { bg: 'bg-nexus-blue/10', border: 'border-nexus-blue/20', text: 'text-nexus-blue', label: 'กำไรมาตรฐาน (ดี)' };
+  if (gpPercent >= 15) return { bg: 'bg-warning/10', border: 'border-warning/20', text: 'text-warning', label: 'กำไรแข่งขัน (ปานกลาง)' };
+  if (gpPercent >= 0) return { bg: 'bg-danger/10', border: 'border-danger/20', text: 'text-danger', label: 'กำไรวิกฤต (ต่ำ)' };
+  return { bg: 'bg-black', border: 'border-danger', text: 'text-white', label: 'กำไรติดลบ' };
 }
+
+export type QuotationStatus = 
+  | 'DRAFT' 
+  | 'PENDING_APPROVAL' 
+  | 'SENT' 
+  | 'ACCEPTED' 
+  | 'APPROVED'
+  | 'REJECTED' 
+  | 'EXPIRED' 
+  | 'CONVERTED_TO_SO'
+  | 'ORDERED'
+  | 'SUPERSEDED';
+
+export const QUOTATION_STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'ฉบับร่าง',
+  PENDING_APPROVAL: 'รออนุมัติ',
+  SENT: 'ส่งแล้ว',
+  ACCEPTED: 'อนุมัติแล้ว',
+  APPROVED: 'อนุมัติแล้ว',
+  REJECTED: 'ปฏิเสธ',
+  EXPIRED: 'หมดอายุ',
+  CONVERTED_TO_SO: 'แปลงเป็นใบสั่งขายแล้ว',
+  ORDERED: 'แปลงเป็นใบสั่งขายแล้ว',
+  SUPERSEDED: 'ฉบับเก่า'
+};
+
+export const QUOTATION_STATUS_COLORS: Record<string, 'inactive' | 'pending' | 'active' | 'danger' | 'warning'> = {
+  DRAFT: 'inactive',
+  PENDING_APPROVAL: 'pending',
+  SENT: 'pending',
+  ACCEPTED: 'active',
+  APPROVED: 'active',
+  REJECTED: 'danger',
+  EXPIRED: 'warning',
+  CONVERTED_TO_SO: 'active',
+  ORDERED: 'active',
+  SUPERSEDED: 'inactive'
+};
+
+export function calculateProfitAmount(subTotal: number, totalCost: number): number {
+  return Math.max(0, (Number(subTotal) || 0) - (Number(totalCost) || 0));
+}
+

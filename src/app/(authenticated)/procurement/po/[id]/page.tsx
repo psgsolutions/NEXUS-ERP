@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { 
+  ArrowLeft,
   FileCheck, 
   ChevronLeft, 
   Edit3, 
@@ -48,21 +49,29 @@ export default function PODetailPage() {
     <div className="p-10 space-y-10 max-w-[1600px] mx-auto animate-in fade-in duration-700">
       
       {/* Header with Back Button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-5">
-          <PillBackButton onClick={() => router.back()} />
-          <div className="space-y-1">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
+        <div className="flex items-center gap-4">
+          <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center">
+            <ArrowLeft size={20} />
+          </PillButton>
+          <div>
             <div className="flex items-center gap-3">
-               <StatusBadge status="pending" label="รอการอนุมัติ" />
-               <p className="text-[11px] font-medium text-white/20 uppercase tracking-widest">PO ID: {params.id || 'PO-2604-0012'}</p>
+              <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+                ใบสั่งซื้ออุปกรณ์โครงข่าย
+              </h1>
+              <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+                {params.id || 'PO-2604-0012'}
+              </span>
             </div>
-            <h1 className="text-3xl font-bold text-white tracking-tight uppercase">ใบสั่งซื้ออุปกรณ์โครงข่าย</h1>
+            <p className="text-sm text-white/60 font-medium mt-1">
+              รายละเอียดใบสั่งซื้อ รายการสินค้า สถานะการจัดส่ง และการชำระเงิน
+            </p>
           </div>
         </div>
-        <div className="flex gap-3">
-          <PillButton variant="glass" className="px-6">พิมพ์เอกสาร</PillButton>
-          <PillButton className="px-8 shadow-neon-teal">
-            <ShieldCheck size={18} />
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+          <PillButton variant="glass" className="h-8 px-4 text-xs font-bold">พิมพ์เอกสาร</PillButton>
+          <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs flex items-center gap-1.5">
+            <ShieldCheck size={14} />
             อนุมัติใบสั่งซื้อ
           </PillButton>
         </div>

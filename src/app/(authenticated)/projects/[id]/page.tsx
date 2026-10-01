@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { 
+  ArrowLeft,
   Briefcase, 
   ChevronLeft, 
   Edit3, 
@@ -26,7 +27,8 @@ import {
   Check,
   AlertTriangle,
   Trash2,
-  Plus
+  Plus,
+  Building2
 } from "lucide-react";
 import { 
   PillButton, 
@@ -44,6 +46,10 @@ import {
   Toast
 } from "@/components/ui/Base";
 import { QuotationModal } from "@/components/commerce/QuotationModal";
+import { GovernmentComplianceTab } from "@/components/projects/GovernmentComplianceTab";
+import { PrivateCommercialTab } from "@/components/projects/PrivateCommercialTab";
+import { ProjectDocumentChecklistCard } from "@/components/projects/ProjectDocumentChecklistCard";
+import { PROJECT_TYPE_CONFIGS, ProjectTypeCode } from "@/types/database";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
@@ -71,8 +77,19 @@ export default function ProjectDetailPage() {
   const [parsedResults, setParsedResults] = useState<any[] | null>(null);
   const [torFile, setTorFile] = useState<string | null>(null);
 
+  const [projectTypeCode, setProjectTypeCode] = useState<ProjectTypeCode>(4);
+  const [projectStatus, setProjectStatus] = useState<string>("Pending Approval");
+  const [projectChecklist, setProjectChecklist] = useState<any[]>([
+    { docCode: "DOC-SPEC-DS", docName: "เอกสารสเปกอุปกรณ์ (Datasheet / Specification)", isMandatory: true, isAttached: true, attachedUrl: "https://drive.google.com/spec-ds-01", category: "technical" },
+    { docCode: "DOC-MAIN-CTR", docName: "สัญญาหลักโครงการ & เงื่อนไขแบ่งงวดชำระเงิน", isMandatory: true, isAttached: false, category: "commercial" },
+    { docCode: "DOC-UAT-SIGN", docName: "เอกสารทดสอบระบบ & UAT Sign-off", isMandatory: true, isAttached: false, category: "acceptance" }
+  ]);
+
   const tabs = [
     { id: "timeline", label: "แผนงาน (TIMELINE)", icon: <Target size={14} /> },
+    { id: "checklist", label: "📋 CHECKLIST เอกสารบังคับ", icon: <CheckCircle2 size={14} /> },
+    { id: "govCompliance", label: "🏛️ ระเบียบพัสดุ & ครุภัณฑ์", icon: <ShieldCheck size={14} /> },
+    { id: "pvtCommercial", label: "🏢 สัญญาการค้า & UAT", icon: <Building2 size={14} /> },
     { id: "survey", label: "สำรวจหน้างาน (MOBILE SURVEY)", icon: <MapPin size={14} /> },
     { id: "resources", label: "พัสดุ & อุปกรณ์", icon: <Package size={14} /> },
     { id: "team", label: "ทีมงาน & ค่าแรง", icon: <Users size={14} /> },
@@ -80,6 +97,24 @@ export default function ProjectDetailPage() {
     { id: "financials", label: "การเงิน & BOQ", icon: <BarChart3 size={14} /> },
     { id: "documents", label: "เอกสารสำคัญ & TOR", icon: <FileText size={14} /> },
   ];
+
+  const handleStatusChange = (newStatus: string) => {
+    if (newStatus === "Active" || newStatus === "Completed") {
+      const typeConfig = PROJECT_TYPE_CONFIGS[projectTypeCode] || PROJECT_TYPE_CONFIGS[4];
+      const mandatoryDocs = typeConfig.requiredDocuments.filter(d => d.isMandatory);
+      const missingDocs = mandatoryDocs.filter(m => {
+        const item = projectChecklist.find(c => c.docCode === m.docCode);
+        return !item || !item.isAttached;
+      });
+
+      if (missingDocs.length > 0) {
+        showToast(`ไม่สามารถสลับเป็น ${newStatus} ได้ เนื่องจากยังขาดเอกสารบังคับ: ${missingDocs.map(d => d.docName).join(", ")}`);
+        return;
+      }
+    }
+    setProjectStatus(newStatus);
+    showToast(`ปรับเปลี่ยนสถานะโครงการเป็น ${newStatus} สำเร็จ! 🎉`);
+  };
 
   const showToast = (message: string) => {
     setToast({ message, isVisible: true });
@@ -154,30 +189,33 @@ export default function ProjectDetailPage() {
     <div className="p-10 space-y-10 max-w-[1600px] mx-auto animate-in fade-in duration-700">
       
       {/* Header with Back Button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <PillBackButton onClick={() => router.back()} />
-          <div className="space-y-1">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
+        <div className="flex items-center gap-4">
+          <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center">
+            <ArrowLeft size={20} />
+          </PillButton>
+          <div>
             <div className="flex items-center gap-3">
-               <StatusBadge status="active" label="กำลังดำเนินการ" />
-               <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">Project ID: {params.id || 'PRJ-26-001'}</p>
+              <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">ติดตั้งระบบ LED Wall - ศูนย์ประชุม</h1>
+              <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+                {params.id || 'PRJ-26-001'}
+              </span>
             </div>
-            <h1 className="text-3xl font-black text-white tracking-tight uppercase">ติดตั้งระบบ LED Wall - ศูนย์ประชุม</h1>
+            <p className="text-sm text-white/60 font-medium mt-1">
+              รายละเอียดความคืบหน้าโครงการ แผนงาน WBS จัดสรรบุคลากร และรายงานสรุปการเงิน
+            </p>
           </div>
         </div>
-        
-        {/* Header Action Buttons */}
-        <div className="flex gap-3 items-center">
-          {/* Neon Quotation Generation Button */}
-          <PillButton onClick={handleGenerateQuotation} className="h-9 px-6 rounded-full shadow-neon-teal bg-nexus-teal text-black font-black uppercase flex items-center gap-2">
-            <Zap size={16} className="animate-pulse" />
-            ออกใบเสนอราคา ⚡
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+          <PillButton variant="primary" onClick={handleGenerateQuotation} className="h-8 px-4 text-xs font-bold flex items-center gap-1.5">
+            <Zap size={14} className="animate-pulse" />
+            ออกใบเสนอราคา
           </PillButton>
-          
-          <PillButton variant="glass" className="h-9 px-6 rounded-full text-white/60 hover:text-white">Digital Signature</PillButton>
-          
-          <PillButton className="h-9 px-6 rounded-full shadow-neon-teal">
-            <Edit3 size={18} />
+          <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/70 hover:text-white">
+            ลายเซ็นดิจิทัล
+          </PillButton>
+          <PillButton variant="confirm" className="h-8 px-4 text-xs font-bold flex items-center gap-1.5">
+            <Edit3 size={14} />
             จัดการโครงการ
           </PillButton>
         </div>
@@ -188,7 +226,26 @@ export default function ProjectDetailPage() {
         {/* Left Content Area */}
         <div className="lg:col-span-3 space-y-10">
           
-          <PillTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+          {/* Top Control Bar: Tabs & Action Buttons inline on the same row */}
+          <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4 border-b border-white/5 pb-4">
+            <PillTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} className="flex-1" />
+            
+            <div className="flex items-center gap-2 shrink-0">
+              <PillButton variant="primary" onClick={handleGenerateQuotation} className="h-8 px-4 flex items-center gap-1.5">
+                <Zap size={14} className="animate-pulse" />
+                ออกใบเสนอราคา ⚡
+              </PillButton>
+              
+              <PillButton variant="glass" className="h-8 px-4 text-white/70 hover:text-white">
+                Digital Signature
+              </PillButton>
+              
+              <PillButton variant="confirm" className="h-8 px-4 flex items-center gap-1.5">
+                <Edit3 size={14} />
+                จัดการโครงการ
+              </PillButton>
+            </div>
+          </div>
 
           {activeTab === "timeline" && (
             <div className="space-y-10 animate-in slide-in-from-bottom duration-500">
@@ -202,7 +259,7 @@ export default function ProjectDetailPage() {
               {/* WBS / Task List */}
               <div className="space-y-6">
                  <div className="flex items-center justify-between px-2">
-                    <h3 className="text-sm font-black text-white/80 uppercase tracking-tight">แผนงานและสถานะรายหมวด (WBS)</h3>
+                    <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight">แผนงานและสถานะรายหมวด (WBS)</h3>
                     <PillButton variant="glass" className="h-9 px-6 rounded-full">เพิ่มงานใหม่</PillButton>
                  </div>
                  
@@ -232,12 +289,41 @@ export default function ProjectDetailPage() {
             </div>
           )}
 
+          {activeTab === "checklist" && (
+            <div className="animate-in slide-in-from-bottom duration-500">
+              <ProjectDocumentChecklistCard 
+                projectTypeCode={projectTypeCode}
+                checklist={projectChecklist}
+                onChecklistChange={(updated) => {
+                  setProjectChecklist(updated);
+                  showToast("อัปเดตสถานะ Checklist เอกสารสำเร็จ");
+                }}
+              />
+            </div>
+          )}
+
+          {activeTab === "govCompliance" && (
+            <div className="animate-in slide-in-from-bottom duration-500">
+              <GovernmentComplianceTab 
+                onSave={(updated) => showToast("บันทึกระเบียบพัสดุราชการสำเร็จ")} 
+              />
+            </div>
+          )}
+
+          {activeTab === "pvtCommercial" && (
+            <div className="animate-in slide-in-from-bottom duration-500">
+              <PrivateCommercialTab 
+                onSave={(updated) => showToast("บันทึกสัญญาการค้าและ UAT เอกชนสำเร็จ")} 
+              />
+            </div>
+          )}
+
           {activeTab === "survey" && (
             <div className="space-y-6 animate-in slide-in-from-bottom duration-500">
               <div className="flex justify-between items-center px-4">
                 <div>
-                  <h3 className="text-sm font-black text-white/80 uppercase tracking-tight">แบบฟอร์มสำรวจหน้างานและร่างจัดเตรียมอุปกรณ์ (Survey Wishlist)</h3>
-                  <p className="text-[9px] text-white/30 uppercase mt-0.5 tracking-wider font-black">Mobile-Friendly Interface สำหรับช่าง/เซลล์</p>
+                  <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight">แบบฟอร์มสำรวจหน้างานและร่างจัดเตรียมอุปกรณ์ (Survey Wishlist)</h3>
+                  <p className="text-[9px] text-white/30 uppercase mt-0.5 tracking-wider font-semibold">Mobile-Friendly Interface สำหรับช่าง/เซลล์</p>
                 </div>
                 <PillButton className="h-9 px-6 rounded-full shadow-neon-teal" onClick={() => showToast("บันทึกรายการสำรวจลงระบบ และพร้อมดึงเข้า BOQ แล้ว!")}>
                   <UploadCloud size={16} />
@@ -247,10 +333,10 @@ export default function ProjectDetailPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <GlassCard className="p-6 border-white/5 space-y-6">
-                  <h4 className="text-xs font-black text-nexus-teal uppercase">เพิ่มรายการเบื้องต้น</h4>
+                  <h4 className="text-xs font-semibold text-nexus-teal uppercase">เพิ่มรายการเบื้องต้น</h4>
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-white/50 uppercase">ชื่ออุปกรณ์ / รายละเอียด (Specifier)</label>
+                      <label className="text-[10px] font-semibold text-white/50 uppercase">ชื่ออุปกรณ์ / รายละเอียด (Specifier)</label>
                       <PillInput className="w-full" placeholder="เช่น กล้องวงจรปิด PTZ 4MP, สายไฟ..." />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -259,7 +345,7 @@ export default function ProjectDetailPage() {
                         <PillInput className="w-full text-center" type="number" placeholder="1" />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black text-white/50 uppercase">หน่วย (Unit)</label>
+                        <label className="text-[10px] font-semibold text-white/50 uppercase">หน่วย (Unit)</label>
                         <PillInput className="w-full text-center" placeholder="ตัว, เมตร, จุด..." />
                       </div>
                     </div>
@@ -270,7 +356,7 @@ export default function ProjectDetailPage() {
                 </GlassCard>
 
                 <div className="space-y-4">
-                  <h4 className="text-xs font-black text-white/70 uppercase px-2">รายการที่เลือกไว้ (Wishlist Basket)</h4>
+                  <h4 className="text-xs font-semibold text-white/70 uppercase px-2">รายการที่เลือกไว้ (Wishlist Basket)</h4>
                   <div className="space-y-2">
                     <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex justify-between items-center group hover:bg-white/[0.04] transition-colors">
                       <div className="space-y-1">
@@ -303,7 +389,7 @@ export default function ProjectDetailPage() {
                {/* 📦 Section 1: Equipment & Materials List */}
                <div className="space-y-4">
                   <div className="flex items-center justify-between px-4">
-                     <h3 className="text-sm font-black text-white/80 uppercase tracking-tight flex items-center gap-2">
+                     <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight flex items-center gap-2">
                         <Package size={16} className="text-nexus-blue animate-pulse" /> 1. รายการอุปกรณ์ & วัสดุโครงการ (Equipment & Materials)
                      </h3>
                      <PillButton className="h-9 px-6 rounded-full shadow-neon-teal">
@@ -357,7 +443,7 @@ export default function ProjectDetailPage() {
                {/* 🛠️ Section 2: Labor & Installation Services List */}
                <div className="space-y-4">
                   <div className="flex items-center justify-between px-4">
-                     <h3 className="text-sm font-black text-white/80 uppercase tracking-tight flex items-center gap-2">
+                     <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight flex items-center gap-2">
                         <Users size={16} className="text-nexus-teal animate-pulse" /> 2. รายการงานติดตั้ง & ค่าบริการปฏิบัติการ (Labor & Services)
                      </h3>
                      <PillButton variant="glass" className="h-9 px-6 rounded-full">
@@ -412,7 +498,7 @@ export default function ProjectDetailPage() {
           {activeTab === "team" && (
             <div className="space-y-6 animate-in slide-in-from-bottom duration-500">
                <div className="flex items-center justify-between px-4">
-                  <h3 className="text-sm font-black text-white/80 uppercase tracking-tight">ทีมปฏิบัติการและอัตราค่าแรง</h3>
+                  <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight">ทีมปฏิบัติการและอัตราค่าแรง</h3>
                   <PillButton className="h-9 px-6 rounded-full shadow-neon-teal">มอบหมายบุคลากร</PillButton>
                </div>
                <NexusTable headers={["วิศวกรผู้รับผิดชอบ", "บทบาท (ROLE)", "เวลาเข้างานสะสม", "อัตราค่าจ้างขั้นต้น"]}>
@@ -435,7 +521,7 @@ export default function ProjectDetailPage() {
           {activeTab === "reports" && (
             <div className="space-y-6 animate-in slide-in-from-bottom duration-500">
                <div className="flex items-center justify-between px-4">
-                  <h3 className="text-sm font-black text-white/80 uppercase tracking-tight">บันทึกรายงานบริการหน้างาน</h3>
+                  <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight">บันทึกรายงานบริการหน้างาน</h3>
                   <PillButton className="h-9 px-6 rounded-full shadow-neon-teal">ออก Report ใหม่</PillButton>
                </div>
                <NexusTable headers={["เลขที่รายงาน (SR ID)", "รายละเอียดการปฏิบัติงาน", "วิศวกรผู้รับผิดชอบ", "วันส่งมอบงาน"]}>
@@ -454,7 +540,7 @@ export default function ProjectDetailPage() {
               {/* Cost tracking metric cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="p-4 rounded-[1.5rem] bg-white/[0.02] border border-white/5 space-y-2">
-                  <span className="text-[8px] font-black text-white/30 uppercase tracking-widest block">งบประมาณโครงการ (Baseline BOQ)</span>
+                  <span className="text-[8px] font-semibold text-white/30 uppercase tracking-widest block">งบประมาณโครงการ (Baseline BOQ)</span>
                   <span className="text-xl font-black text-white font-mono block">฿2,500,000.00</span>
                 </div>
                 <div className="p-4 rounded-[1.5rem] bg-nexus-blue/5 border border-nexus-blue/15 space-y-2">
@@ -466,7 +552,7 @@ export default function ProjectDetailPage() {
                   <span className="text-xl font-black text-nexus-teal font-mono block">฿1,680,000.00</span>
                 </div>
                 <div className="p-4 rounded-[1.5rem] bg-white/[0.04] border border-white/10 space-y-2">
-                  <span className="text-[8px] font-black text-white/30 uppercase tracking-widest block">งบประมาณคงเหลือ (Variance)</span>
+                  <span className="text-[8px] font-semibold text-white/30 uppercase tracking-widest block">งบประมาณคงเหลือ (Variance)</span>
                   <span className="text-xl font-black text-white/80 font-mono block">฿650,000.00</span>
                 </div>
               </div>
@@ -478,7 +564,7 @@ export default function ProjectDetailPage() {
                     <AlertTriangle size={18} />
                   </div>
                   <div>
-                    <h5 className="text-xs font-black text-warning uppercase tracking-tight">เข้าเกณฑ์การประมูล (Auto-Bidding Detected)</h5>
+                    <h5 className="text-xs font-semibold text-warning uppercase tracking-tight">เข้าเกณฑ์การประมูล (Auto-Bidding Detected)</h5>
                     <p className="text-[10px] text-white/60 mt-0.5">ยอดรวม BOQ ทะลุเกณฑ์ 500,000 บาท ระบบทำการล็อกสถานะเป็น IsBidding เพื่อรอการประกวดราคา</p>
                   </div>
                 </div>
@@ -501,7 +587,7 @@ export default function ProjectDetailPage() {
                     <ShieldAlert size={18} />
                   </div>
                   <div>
-                    <h5 className="text-xs font-black text-white uppercase tracking-tight">ระบบระวังภัยงบประมาณบานปลาย (Availability Budget Control)</h5>
+                    <h5 className="text-xs font-semibold text-white uppercase tracking-tight">ระบบระวังภัยงบประมาณบานปลาย (Availability Budget Control)</h5>
                     <p className="text-[10px] text-white/60 mt-0.5">ยอดจองซื้อวัสดุและค่าจ้างรวมกันคิดเป็น 82.5% ของงบจัดซื้อโครงการ ระบบทำการล็อกการขอเบิกจ่ายพัสดุชั่วคราว</p>
                   </div>
                 </div>
@@ -518,8 +604,8 @@ export default function ProjectDetailPage() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center px-4">
                   <div>
-                    <h3 className="text-sm font-black text-white/80 uppercase tracking-tight">งบประมาณโครงการจัดทำและสั่งซื้อ (BOQ Ledger)</h3>
-                    <p className="text-[9px] text-white/30 uppercase mt-0.5 tracking-wider font-black">Multi-version History Audit</p>
+                    <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight">งบประมาณโครงการจัดทำและสั่งซื้อ (BOQ Ledger)</h3>
+                    <p className="text-[9px] text-white/30 uppercase mt-0.5 tracking-wider font-semibold">Multi-version History Audit</p>
                   </div>
 
                   <div className="flex gap-2">
@@ -547,7 +633,7 @@ export default function ProjectDetailPage() {
                   <NexusTable headers={["หมวดหมู่ค่าใช้จ่าย", "รายละเอียดสเปก BOQ", "จำนวน", "ทุนประมาณการ (WAC)", "ราคาเสนอขาย", "ประมาณการกำไร (GP)"]}>
                     <NexusTableRow>
                       <NexusTableCell><span className="px-2 py-0.5 rounded bg-nexus-blue/15 text-nexus-blue text-[8px] font-black font-mono">HARDWARE</span></NexusTableCell>
-                      <NexusTableCell><div className="text-xs font-black text-white">Cabinet Panel LED P2.5 Indoor</div></NexusTableCell>
+                      <NexusTableCell><div className="text-xs font-semibold text-white">Cabinet Panel LED P2.5 Indoor</div></NexusTableCell>
                       <NexusTableCell className="font-mono text-xs text-white/80">24 Units</NexusTableCell>
                       <NexusTableCell className="text-right font-mono text-xs text-white/60">฿45,000</NexusTableCell>
                       <NexusTableCell className="text-right text-nexus-teal font-mono text-xs">฿65,000</NexusTableCell>
@@ -555,7 +641,7 @@ export default function ProjectDetailPage() {
                     </NexusTableRow>
                     <NexusTableRow>
                       <NexusTableCell><span className="px-2 py-0.5 rounded bg-nexus-blue/15 text-nexus-blue text-[8px] font-black font-mono">MATERIALS</span></NexusTableCell>
-                      <NexusTableCell><div className="text-xs font-black text-white">สายนำสัญญาณ UTP CAT6 (305m)</div></NexusTableCell>
+                      <NexusTableCell><div className="text-xs font-semibold text-white">สายนำสัญญาณ UTP CAT6 (305m)</div></NexusTableCell>
                       <NexusTableCell className="font-mono text-xs text-white/80">5 Reels</NexusTableCell>
                       <NexusTableCell className="text-right font-mono text-xs text-white/60">฿3,800</NexusTableCell>
                       <NexusTableCell className="text-right text-nexus-teal font-mono text-xs">฿5,000</NexusTableCell>
@@ -577,7 +663,7 @@ export default function ProjectDetailPage() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center px-4">
                   <div>
-                    <h3 className="text-sm font-black text-white/80 uppercase tracking-tight">ความคืบหน้าวางบิลและงวดงานราชการ (Milestone-Based Billing & WBS)</h3>
+                    <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight">ความคืบหน้าวางบิลและงวดงานราชการ (Milestone-Based Billing & WBS)</h3>
                     <p className="text-[9px] text-white/30 uppercase mt-0.5 tracking-wider font-black">Contract Revenue Recognition</p>
                   </div>
                 </div>
@@ -587,7 +673,7 @@ export default function ProjectDetailPage() {
                     {milestonesBilling.map((m, idx) => (
                       <NexusTableRow key={m.id}>
                         <NexusTableCell className="font-mono text-xs text-nexus-blue font-black">{m.id}</NexusTableCell>
-                        <NexusTableCell className="text-xs font-black text-white">{m.name}</NexusTableCell>
+                        <NexusTableCell className="text-xs font-semibold text-white">{m.name}</NexusTableCell>
                         <NexusTableCell className="font-mono text-xs text-white/85 text-center">{m.pct}%</NexusTableCell>
                         <NexusTableCell className="text-right font-mono text-xs text-white">฿{m.amount.toLocaleString()}</NexusTableCell>
                         <NexusTableCell>
@@ -631,8 +717,8 @@ export default function ProjectDetailPage() {
                 {/* Left Drag & Drop Upload Zone */}
                 <GlassCard className="p-6 border-white/5 space-y-4 bg-black/15 flex flex-col justify-between min-h-[280px]">
                   <div className="space-y-2">
-                    <span className="px-2 py-0.5 rounded bg-nexus-teal/15 text-nexus-teal text-[8px] font-black tracking-widest uppercase">Gemini AI Parser</span>
-                    <h4 className="text-sm font-black text-white uppercase">วิเคราะห์เอกสารสเปก TOR</h4>
+                    <span className="px-2 py-0.5 rounded bg-nexus-teal/15 text-nexus-teal text-[8px] font-semibold tracking-widest uppercase">Gemini AI Parser</span>
+                    <h4 className="text-sm font-semibold text-white uppercase">วิเคราะห์เอกสารสเปก TOR</h4>
                     <p className="text-[10px] text-white/50 leading-relaxed">
                       วางไฟล์เอกสาร TOR หรือสัญญาจัดซื้อจัดจ้างเพื่อให้อัลกอริทึม Gemini ตรวจจับและเปรียบเทียบความสอดคล้องกับคลังสินค้าบริษัทโดยอัตโนมัติ
                     </p>
@@ -651,7 +737,7 @@ export default function ProjectDetailPage() {
                     )}
                   >
                     <UploadCloud size={24} className={cn("animate-bounce", torFile ? "text-nexus-teal" : "text-white/20")} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">
+                    <span className="text-[10px] font-semibold uppercase tracking-widest">
                       {torFile ? torFile : "คลิกเพื่ออัปโหลดไฟล์สเปก TOR"}
                     </span>
                     <span className="text-[8px] text-white/20">รองรับ PDF, DOCX สูงสุด 50MB</span>
@@ -675,13 +761,13 @@ export default function ProjectDetailPage() {
                           <div className="w-12 h-12 rounded-full border-2 border-nexus-teal/10 border-t-2 border-t-nexus-teal animate-spin" />
                           <Sparkles className="absolute inset-0 m-auto text-nexus-teal animate-pulse" size={16} />
                         </div>
-                        <span className="text-xs font-black text-nexus-teal uppercase tracking-widest text-center">{parseStep}</span>
+                        <span className="text-xs font-semibold text-nexus-teal uppercase tracking-widest text-center">{parseStep}</span>
                       </div>
                     ) : parsedResults ? (
                       <div className="space-y-4 flex-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-black text-white/30 uppercase tracking-widest block">ผลการวิเคราะห์ความสอดคล้อง (Spec Compliance Check)</span>
-                          <span className="text-[9px] font-black text-nexus-teal uppercase tracking-widest flex items-center gap-1">
+                          <span className="text-[10px] font-semibold text-white/30 uppercase tracking-widest block">ผลการวิเคราะห์ความสอดคล้อง (Spec Compliance Check)</span>
+                          <span className="text-[9px] font-semibold text-nexus-teal uppercase tracking-widest flex items-center gap-1">
                             <ShieldCheck size={12} /> ข้อมูลสเปกผ่านเกณฑ์ 100%
                           </span>
                         </div>
@@ -695,7 +781,7 @@ export default function ProjectDetailPage() {
                                   {r.match}
                                 </span>
                               </div>
-                              <div className="flex justify-between text-[9px] font-black uppercase text-white/30 tracking-wider">
+                              <div className="flex justify-between text-[9px] font-semibold uppercase text-white/30 tracking-wider">
                                 <span>รุ่นที่เสนอแนะ: {r.model}</span>
                                 <span>{r.remarks}</span>
                               </div>
@@ -706,7 +792,7 @@ export default function ProjectDetailPage() {
                     ) : (
                       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-white/20 space-y-2">
                         <Sparkles size={32} className="opacity-40" />
-                        <h5 className="text-xs font-black uppercase tracking-widest">ยังไม่มีการประมวลผลสเปก</h5>
+                        <h5 className="text-xs font-semibold uppercase tracking-widest">ยังไม่มีการประมวลผลสเปก</h5>
                         <p className="text-[10px] leading-relaxed max-w-xs">กรุณาเลือกไฟล์สเปก TOR ด้านซ้ายมือ และคลิกเพื่อทำการประมวลผลสเปกอัจฉริยะแบบเปรียบเทียบในระบบ</p>
                       </div>
                     )}
@@ -718,8 +804,8 @@ export default function ProjectDetailPage() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center px-4">
                   <div>
-                    <h3 className="text-sm font-black text-white/80 uppercase tracking-tight">คลังสัญญาโครงการแยกบริษัท (Isolated Document Vault)</h3>
-                    <p className="text-[9px] text-white/30 uppercase mt-0.5 tracking-wider font-black">Scoped with secure Tenant ID mapping</p>
+                    <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight">คลังสัญญาโครงการแยกบริษัท (Isolated Document Vault)</h3>
+                    <p className="text-[9px] text-white/30 uppercase mt-0.5 tracking-wider font-semibold">Scoped with secure Tenant ID mapping</p>
                   </div>
                 </div>
 
@@ -750,7 +836,7 @@ export default function ProjectDetailPage() {
                 <div className="flex justify-between items-center px-4">
                   <div>
                     <h3 className="text-sm font-black text-white/80 uppercase tracking-tight">ทะเบียนติดตั้ง Serial Number อุปกรณ์โครงการ (Serial Number Deployed Traceability)</h3>
-                    <p className="text-[9px] text-white/30 uppercase mt-0.5 tracking-wider font-black">Traceability Ledger Integration</p>
+                    <p className="text-[9px] text-white/30 uppercase mt-0.5 tracking-wider font-semibold">Traceability Ledger Integration</p>
                   </div>
                   <PillButton 
                     className="h-9 px-6 rounded-full shadow-neon-teal"
@@ -766,7 +852,7 @@ export default function ProjectDetailPage() {
                       <NexusTableCell className="font-mono text-xs text-nexus-teal font-black">SN-LED-40212</NexusTableCell>
                       <NexusTableCell className="text-xs font-black text-white">LED Wall P2.5 Indoor Cabinet Panel</NexusTableCell>
                       <NexusTableCell className="text-xs font-bold text-white/60">4MP / IP67 / Active</NexusTableCell>
-                      <NexusTableCell><span className="px-2 py-0.5 rounded bg-nexus-teal/15 text-nexus-teal border border-nexus-teal/20 text-[9px] font-black">ติดตั้งเสร็จสมบูรณ์</span></NexusTableCell>
+                      <NexusTableCell><span className="px-2 py-0.5 rounded bg-nexus-teal/15 text-nexus-teal border border-nexus-teal/20 text-[9px] font-semibold">ติดตั้งเสร็จสมบูรณ์</span></NexusTableCell>
                       <NexusTableCell className="text-xs font-mono text-white/40">3 ปี (ถึง 2029)</NexusTableCell>
                       <NexusTableCell className="text-xs text-white/40 font-mono">isolated_tenant</NexusTableCell>
                     </NexusTableRow>
@@ -774,7 +860,7 @@ export default function ProjectDetailPage() {
                       <NexusTableCell className="font-mono text-xs text-nexus-teal font-black">SN-ARU-0992</NexusTableCell>
                       <NexusTableCell className="text-xs font-black text-white">Aruba AP-505 Enterprise Access Point</NexusTableCell>
                       <NexusTableCell className="text-xs font-bold text-white/60">WiFi-6 / Dual-Band</NexusTableCell>
-                      <NexusTableCell><span className="px-2 py-0.5 rounded bg-nexus-blue/15 text-nexus-blue border border-nexus-blue/20 text-[9px] font-black">กำลังทดสอบสัญญาณ</span></NexusTableCell>
+                      <NexusTableCell><span className="px-2 py-0.5 rounded bg-nexus-blue/15 text-nexus-blue border border-nexus-blue/20 text-[9px] font-semibold">กำลังทดสอบสัญญาณ</span></NexusTableCell>
                       <NexusTableCell className="text-xs font-mono text-white/40">5 ปี (ถึง 2031)</NexusTableCell>
                       <NexusTableCell className="text-xs text-white/40 font-mono">isolated_tenant</NexusTableCell>
                     </NexusTableRow>
@@ -788,15 +874,15 @@ export default function ProjectDetailPage() {
         {/* Right Sidebar - Tactical Info */}
         <div className="space-y-6">
            <GlassCard className="p-8 border-white/10 bg-nexus-blue/5">
-              <h4 className="text-[11px] font-black text-nexus-blue uppercase tracking-widest mb-6">ที่ตั้งหน้างาน (SITE LOCATION)</h4>
+              <h4 className="text-[11px] font-semibold text-nexus-blue uppercase tracking-widest mb-6">ที่ตั้งหน้างาน (SITE LOCATION)</h4>
               <div className="space-y-6">
                  <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-nexus-blue/15 flex items-center justify-center text-nexus-blue border border-nexus-blue/20">
                        <MapPin size={24} />
                     </div>
                     <div>
-                       <p className="text-sm font-black text-white">ศูนย์ประชุมแห่งชาติ</p>
-                       <p className="text-[10px] font-black text-white/60 uppercase">อาคาร 1 ชั้น 2</p>
+                       <p className="text-sm font-semibold text-white">ศูนย์ประชุมแห่งชาติ</p>
+                       <p className="text-[10px] font-semibold text-white/60 uppercase">อาคาร 1 ชั้น 2</p>
                     </div>
                  </div>
                  <PillButton variant="glass" className="w-full h-9 px-6 rounded-full">เปิด Google Maps</PillButton>
@@ -804,13 +890,13 @@ export default function ProjectDetailPage() {
            </GlassCard>
 
            <GlassCard className="p-8 border-white/10">
-              <h4 className="text-[11px] font-black text-white/60 uppercase tracking-widest mb-6">งบประมาณโครงการ (Budget)</h4>
+              <h4 className="text-[11px] font-semibold text-white/60 uppercase tracking-widest mb-6">งบประมาณโครงการ (Budget)</h4>
               <div className="space-y-4">
                  <NexusDataField label="ยอดงบประมาณ" value="฿2,500,000" />
                  <NexusDataField label="ต้นทุนพัสดุ" value="฿1,850,000" className="text-danger" />
                  <NexusDataField label="ค่าแรง & อื่นๆ" value="฿150,000" className="text-danger" />
                  <div className="pt-4 border-t border-white/5 flex justify-between items-center">
-                    <span className="text-[10px] font-black text-nexus-teal uppercase">กำไรเบื้องต้น</span>
+                    <span className="text-[10px] font-semibold text-nexus-teal uppercase">กำไรเบื้องต้น</span>
                     <span className="text-lg font-black text-nexus-teal drop-shadow-neon">฿500,000</span>
                  </div>
               </div>
@@ -836,9 +922,9 @@ function MilestoneCard({ title, progress, status, tasks }: { title: string, prog
        <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
              <div className={cn("w-2 h-2 rounded-full shadow-neon", status === "เสร็จสมบูรณ์" ? "bg-nexus-teal shadow-neon-teal" : "bg-nexus-blue shadow-neon-blue")} />
-             <h4 className="text-sm font-black text-white uppercase">{title}</h4>
+             <h4 className="text-sm font-semibold text-white uppercase">{title}</h4>
           </div>
-          <span className="text-[10px] font-black text-white/60 uppercase">{status} ({progress}%)</span>
+          <span className="text-[10px] font-semibold text-white/60 uppercase">{status} ({progress}%)</span>
        </div>
        <div className="h-1 w-full bg-white/15 rounded-full overflow-hidden">
           <div className={cn("h-full opacity-50", status === "เสร็จสมบูรณ์" ? "bg-nexus-teal shadow-neon-teal" : "bg-nexus-blue shadow-neon-blue")} style={{ width: `${progress}%` }} />

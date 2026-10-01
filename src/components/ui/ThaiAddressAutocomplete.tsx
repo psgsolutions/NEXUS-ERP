@@ -83,7 +83,7 @@ export function ThaiAddressAutocomplete({
   };
 
   return (
-    <div className="relative" ref={wrapperRef}>
+    <div className={cn("relative", show && "z-[99999]")} ref={wrapperRef}>
       <PillInput 
         value={value} 
         onChange={handleInputChange} 
@@ -92,7 +92,7 @@ export function ThaiAddressAutocomplete({
         className={className}
       />
       {show && (
-        <div className="absolute top-full left-0 mt-2 min-w-[250px] bg-[#1A1A20] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[100] max-h-60 overflow-y-auto custom-scrollbar flex flex-col">
+        <div className="absolute top-full left-0 mt-2 min-w-[250px] bg-surface-2 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[99999] max-h-60 overflow-y-auto custom-scrollbar flex flex-col">
           {suggestions.map((s, idx) => (
             <button
               key={idx}

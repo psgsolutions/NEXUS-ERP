@@ -112,7 +112,7 @@ export function AsyncProductSelect({
   };
 
   return (
-    <div className={cn("relative w-full", className)} ref={dropdownRef}>
+    <div className={cn("relative w-full", isOpen && "z-[99999]", className)} ref={dropdownRef}>
       <div className={cn(
         "relative flex items-center w-full h-7 px-2 rounded-full",
         "transition-all duration-200",
@@ -153,7 +153,7 @@ export function AsyncProductSelect({
       </div>
 
       {isOpen && (
-        <div className="absolute left-0 top-[100%] z-[9999] w-[350px] mt-1 bg-black border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+        <div className="absolute left-0 top-[100%] z-[99999] w-[350px] mt-1 bg-black border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
           <div className="max-h-[220px] overflow-y-auto custom-scrollbar p-1">
             {loading ? (
               <div className="p-4 text-center text-xs text-white/40">กำลังค้นหา...</div>

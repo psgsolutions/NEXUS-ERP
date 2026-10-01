@@ -34,7 +34,7 @@ export default function RegisterUserPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#020203] text-white overflow-hidden items-center justify-center p-6">
+    <div className="min-h-screen flex bg-surface-0 text-white overflow-hidden items-center justify-center p-6">
       
       {/* Background glow */}
       <div className={cn(
@@ -186,9 +186,7 @@ export default function RegisterUserPage() {
                   * หากไม่ได้รับการยืนยันภายใน 24 ชั่วโมงนับจากนี้ บัญชีจะถูกระงับการใช้งานชั่วคราวโดยอัตโนมัติ
                 </p>
               </div>
-              <PillButton onClick={() => router.push("/login")} className={cn(
-                "h-9 px-8 font-black bg-nexus-teal text-black shadow-neon-teal"
-              )}>
+              <PillButton onClick={() => router.push("/login")} variant="primary" className="h-9 px-8 shadow-neon-teal">
                 กลับสู่หน้าเข้าสู่ระบบ
               </PillButton>
             </div>

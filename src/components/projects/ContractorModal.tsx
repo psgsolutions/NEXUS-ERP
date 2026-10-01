@@ -87,11 +87,11 @@ export function ContractorModal({ isOpen, onClose, onSave, initialData, showToas
               <Users size={18} />
             </div>
             <div className="flex flex-col overflow-hidden">
-              <h2 className="text-[15px] font-black text-white uppercase tracking-tight leading-none truncate">
+              <h2 className="text-[15px] font-semibold text-white uppercase tracking-tight leading-none truncate">
                 {initialData ? "แก้ไขข้อมูลผู้รับเหมา" : "เพิ่มผู้รับเหมาใหม่"}
               </h2>
-              <p className="text-[10px] font-bold text-nexus-blue uppercase tracking-[0.2em] mt-1.5 opacity-80">
-                Contractor & Labor Management
+              <p className="text-xs font-semibold text-nexus-blue tracking-wider mt-1.5 opacity-80">
+                การจัดการผู้รับเหมาและค่าแรง
               </p>
             </div>
           </div>
@@ -104,26 +104,50 @@ export function ContractorModal({ isOpen, onClose, onSave, initialData, showToas
         <div className="flex-1 flex flex-col min-h-0 bg-zinc-950/20">
           <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
             
-            {/* Navigation Tabs */}
-            <div className="flex gap-2 p-1 bg-white/[0.02] border border-white/5 rounded-full backdrop-blur-md w-fit shadow-inner shrink-0">
-              {(["general", "projects", "labor"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={cn(
-                    "h-9 px-6 rounded-full text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2",
-                    activeTab === tab 
-                      ? "bg-nexus-blue text-black shadow-[0_0_15px_rgba(37,99,235,0.3)]" 
-                      : "text-white/40 hover:text-white hover:bg-white/5"
-                  )}
+            {/* Navigation Tabs & Control Action Buttons inline on top row */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 shrink-0 pb-2">
+              <div className="flex gap-2 p-1 bg-white/[0.02] border border-white/5 rounded-full backdrop-blur-md w-fit shadow-inner">
+                {(["general", "projects", "labor"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveTab(tab)}
+                    className={cn(
+                      "h-8 px-5 rounded-full text-[12px] font-bold uppercase tracking-wider transition-all flex items-center gap-2",
+                      activeTab === tab 
+                        ? "bg-nexus-blue/20 text-nexus-blue border border-nexus-blue/40 backdrop-blur-md shadow-neon-blue font-black" 
+                        : "text-white/50 hover:text-white hover:bg-white/5"
+                    )}
+                  >
+                    {tab === "general" && <FileText size={14} />}
+                    {tab === "projects" && <Briefcase size={14} />}
+                    {tab === "labor" && <Wrench size={14} />}
+                    {tab === "general" ? "ข้อมูลทั่วไป" : tab === "projects" ? "ประวัติงานติดตั้ง" : "ชุดค่าแรงมาตรฐาน"}
+                  </button>
+                ))}
+              </div>
+
+              {/* Control Action Buttons (Top Row) */}
+              <div className="flex items-center gap-2">
+                <PillButton 
+                  type="button" 
+                  variant="glass" 
+                  onClick={onClose} 
+                  className="h-8 px-4 rounded-full text-[12px] font-bold uppercase text-white/70 hover:text-white border-white/10"
                 >
-                  {tab === "general" && <FileText size={14} />}
-                  {tab === "projects" && <Briefcase size={14} />}
-                  {tab === "labor" && <Wrench size={14} />}
-                  {tab === "general" ? "ข้อมูลทั่วไป" : tab === "projects" ? "ประวัติงานติดตั้ง" : "ชุดค่าแรงมาตรฐาน"}
-                </button>
-              ))}
+                  ยกเลิก
+                </PillButton>
+                <PillButton 
+                  type="button"
+                  variant="confirm"
+                  onClick={handleCommit}
+                  disabled={isSubmitting}
+                  className="h-8 px-5 flex items-center gap-1.5"
+                >
+                  <CheckCircle2 size={14} />
+                  {isSubmitting ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
+                </PillButton>
+              </div>
             </div>
 
             <div className="flex-1 transition-all duration-300">
@@ -133,7 +157,9 @@ export function ContractorModal({ isOpen, onClose, onSave, initialData, showToas
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-300">
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-[11px] font-black text-white/50 uppercase tracking-widest">ชื่อผู้รับเหมา / ทีมช่าง *</label>
+                      <label className="text-[11px] font-semibold text-white/50 uppercase tracking-widest">
+                        ชื่อผู้รับเหมา / ทีมช่าง <span className="text-rose-500 font-bold ml-0.5">*</span>
+                      </label>
                       <PillInput 
                         placeholder="ระบุชื่อบริษัท หรือชื่อทีม..." 
                         className="w-full bg-white/[0.02]" 
@@ -142,7 +168,7 @@ export function ContractorModal({ isOpen, onClose, onSave, initialData, showToas
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[11px] font-black text-white/50 uppercase tracking-widest flex items-center gap-2"><Star size={12} className="text-warning"/> เรตติ้งดาว (เต็ม 5)</label>
+                      <label className="text-[11px] font-semibold text-white/50 uppercase tracking-widest flex items-center gap-2"><Star size={12} className="text-warning"/> เรตติ้งดาว (เต็ม 5)</label>
                       <NumberStepper 
                         value={form.rating} 
                         onChange={(v) => setForm({...form, rating: Math.min(Math.max(v, 0), 5)})} 
@@ -151,7 +177,7 @@ export function ContractorModal({ isOpen, onClose, onSave, initialData, showToas
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[11px] font-black text-white/50 uppercase tracking-widest flex items-center gap-2"><MapPin size={12}/> ที่อยู่</label>
+                      <label className="text-[11px] font-semibold text-white/50 uppercase tracking-widest flex items-center gap-2"><MapPin size={12}/> ที่อยู่</label>
                       <textarea 
                         rows={3}
                         className="w-full p-4 rounded-[1.5rem] bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold focus:outline-none focus:border-nexus-blue/40 transition-all placeholder:text-white/10 resize-none" 
@@ -164,7 +190,7 @@ export function ContractorModal({ isOpen, onClose, onSave, initialData, showToas
 
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-[11px] font-black text-white/50 uppercase tracking-widest">ชื่อผู้ติดต่อหลัก</label>
+                      <label className="text-[11px] font-semibold text-white/50 uppercase tracking-widest">ชื่อผู้ติดต่อหลัก</label>
                       <PillInput 
                         placeholder="ชื่อผู้ประสานงาน..." 
                         className="w-full bg-white/[0.02]" 
@@ -173,7 +199,7 @@ export function ContractorModal({ isOpen, onClose, onSave, initialData, showToas
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[11px] font-black text-white/50 uppercase tracking-widest flex items-center gap-2"><Phone size={12}/> เบอร์โทรศัพท์</label>
+                      <label className="text-[11px] font-semibold text-white/50 uppercase tracking-widest flex items-center gap-2"><Phone size={12}/> เบอร์โทรศัพท์</label>
                       <PillInput 
                         placeholder="08X-XXX-XXXX" 
                         className="w-full bg-white/[0.02]" 
@@ -182,7 +208,7 @@ export function ContractorModal({ isOpen, onClose, onSave, initialData, showToas
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[11px] font-black text-white/50 uppercase tracking-widest flex items-center gap-2"><Mail size={12}/> อีเมล</label>
+                      <label className="text-[11px] font-semibold text-white/50 uppercase tracking-widest flex items-center gap-2"><Mail size={12}/> อีเมล</label>
                       <PillInput 
                         type="email"
                         placeholder="email@example.com" 
@@ -198,7 +224,7 @@ export function ContractorModal({ isOpen, onClose, onSave, initialData, showToas
               {/* 2. PROJECTS TAB */}
               {activeTab === "projects" && (
                 <div className="animate-in fade-in duration-300">
-                  <div className="border border-white/5 rounded-[2rem] bg-[#09090b]/40 shadow-inner overflow-hidden min-h-[300px] flex items-center justify-center">
+                  <div className="border border-white/5 rounded-[2rem] bg-surface-1/40 shadow-inner overflow-hidden min-h-[300px] flex items-center justify-center">
                     <div className="text-center text-white/30 space-y-2">
                       <Briefcase size={32} className="mx-auto opacity-50" />
                       <p className="text-xs font-bold uppercase tracking-wider">ประวัติงานติดตั้ง</p>
@@ -212,7 +238,7 @@ export function ContractorModal({ isOpen, onClose, onSave, initialData, showToas
               {activeTab === "labor" && (
                 <div className="space-y-4 animate-in fade-in duration-300">
                   <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                    <h3 className="text-[12px] font-black text-nexus-blue uppercase flex items-center gap-2 tracking-wider">
+                    <h3 className="text-[12px] font-semibold text-nexus-blue uppercase flex items-center gap-2 tracking-wider">
                       <Wrench size={14} /> โครงสร้างค่าแรงมาตรฐานของทีมนี้
                     </h3>
                     <PillButton 
@@ -227,7 +253,7 @@ export function ContractorModal({ isOpen, onClose, onSave, initialData, showToas
                     </PillButton>
                   </div>
                   
-                  <div className="border border-white/5 rounded-[2.5rem] bg-[#09090b]/40 shadow-inner overflow-hidden max-h-[380px] overflow-y-auto">
+                  <div className="border border-white/5 rounded-[2.5rem] bg-surface-1/40 shadow-inner overflow-hidden max-h-[380px] overflow-y-auto">
                     <NexusTable headers={["ประเภทบริการ / งานติดตั้ง", "หน่วยนับ", "อัตรามาตรฐาน (฿/หน่วย)", "การทำงาน"]}>
                       {form.laborRates.length === 0 ? (
                         <NexusTableRow>
@@ -301,17 +327,18 @@ export function ContractorModal({ isOpen, onClose, onSave, initialData, showToas
           <div className="p-6 border-t border-white/5 flex items-center justify-end gap-3 bg-zinc-900/60 shrink-0">
             <PillButton 
               type="button"
-              variant="ghost"
+              variant="glass"
               onClick={onClose} 
-              className="h-10 hover: px-6 font-black uppercase"
+              className="h-8 px-4 text-[11px]"
             >
               ยกเลิก
             </PillButton>
             <PillButton 
               type="button"
+              variant="confirm"
               disabled={isSubmitting} 
               onClick={handleCommit} 
-              className="h-10 px-8 bg-nexus-blue shadow-[0_0_15px_rgba(37,99,235,0.3)] font-black uppercase"
+              className="h-8 px-5 font-bold text-[12px]"
             >
               {isSubmitting ? (
                 <RefreshCw size={14} className="animate-spin" />

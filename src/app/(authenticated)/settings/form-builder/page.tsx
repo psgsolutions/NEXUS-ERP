@@ -213,10 +213,10 @@ export default function DocumentFormBuilderPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0A0A0C]">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-surface-0">
       
       {/* 1. TYPOGRAPHY & DATA BINDING TOOLBAR */}
-      <header className="h-20 bg-[#0F0F12] border-b border-white/5 px-8 flex items-center justify-between shrink-0 gap-5 z-20">
+      <header className="h-20 bg-surface-1 border-b border-white/5 px-8 flex items-center justify-between shrink-0 gap-5 z-20">
         <div className="flex items-center gap-4">
           <Link href="/settings">
             <PillButton variant="glass" className="h-9 w-9 p-0 rounded-full flex items-center justify-center">
@@ -312,7 +312,7 @@ export default function DocumentFormBuilderPage() {
       <div className="flex-1 flex overflow-hidden divide-x divide-white/5">
         
         {/* Left Side: Element Adder panel */}
-        <div className="w-80 bg-[#0F0F12] p-5 flex flex-col shrink-0 overflow-y-auto custom-scrollbar space-y-3">
+        <div className="w-80 bg-surface-1 p-5 flex flex-col shrink-0 overflow-y-auto custom-scrollbar space-y-3">
           <div className="space-y-1">
             <span className="text-[10px] text-white/20 font-normal tracking-widest uppercase">Toolbox</span>
             <h3 className="text-sm font-medium text-white uppercase tracking-wider flex items-center gap-2">
@@ -385,7 +385,7 @@ export default function DocumentFormBuilderPage() {
         </div>
 
         {/* 2. DOCUMENT CANVAS */}
-        <div className="flex-1 bg-[#151518] p-10 overflow-y-auto custom-scrollbar flex items-start justify-center">
+        <div className="flex-1 bg-surface-1 p-10 overflow-y-auto custom-scrollbar flex items-start justify-center">
           <div 
             style={{ 
               fontFamily: fontFamily === "Sarabun" ? "Sarabun, sans-serif" : fontFamily === "Prompt" ? "Prompt, sans-serif" : "Inter, sans-serif" 
@@ -556,7 +556,7 @@ export default function DocumentFormBuilderPage() {
         </div>
 
         {/* 3. LAYOUT & BORDER INSPECTOR PANEL */}
-        <div className="w-[400px] bg-[#0F0F12] p-5 flex flex-col shrink-0 overflow-y-auto custom-scrollbar space-y-3">
+        <div className="w-[400px] bg-surface-1 p-5 flex flex-col shrink-0 overflow-y-auto custom-scrollbar space-y-3">
           
           <div className="space-y-1 border-b border-white/5 pb-4">
             <span className="text-[10px] text-white/20 font-normal tracking-widest uppercase">Geometry Inspector</span>

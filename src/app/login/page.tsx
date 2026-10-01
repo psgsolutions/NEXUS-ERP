@@ -128,10 +128,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#020203] text-white overflow-hidden">
+    <div className="min-h-screen flex bg-surface-0 text-white overflow-hidden">
       
       {/* Left Side: Brand & Illustration (Split Screen) */}
-      <div className="hidden lg:flex w-1/2 relative items-center justify-center border-r border-white/5 bg-[#050508] p-12 overflow-hidden">
+      <div className="hidden lg:flex w-1/2 relative items-center justify-center border-r border-white/5 bg-surface-0 p-12 overflow-hidden">
         {/* Abstract Glow Effects */}
         <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] bg-nexus-blue/10 blur-[150px] rounded-full mix-blend-screen" />
         <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-nexus-teal/10 blur-[150px] rounded-full mix-blend-screen" />
@@ -207,9 +207,9 @@ export default function LoginPage() {
                     className="h-9 px-6 bg-white/[0.03] border-white/10 font-sans text-[14px]"
                     required
                   >
-                    <option value="" className="bg-[#0D0D0D] text-white/50">-- เลือกบริษัทที่เคยลงทะเบียน --</option>
+                    <option value="" className="bg-surface-0 text-white/50">-- เลือกบริษัทที่เคยลงทะเบียน --</option>
                     {mockCompanies.map((c) => (
-                      <option key={c.id} value={c.id} className="bg-[#0D0D0D] font-medium text-white">
+                      <option key={c.id} value={c.id} className="bg-surface-0 font-medium text-white">
                         {c.id} - {c.name}
                       </option>
                     ))}
@@ -266,8 +266,9 @@ export default function LoginPage() {
 
                 <PillButton 
                   type="submit" 
+                  variant="primary"
                   disabled={loading}
-                  className="w-full h-9 text-[13px] gap-2 shadow-neon-teal mt-6 bg-nexus-teal text-black font-black"
+                  className="w-full h-9 text-[13px] gap-2 shadow-neon-teal mt-6"
                 >
                   {loading ? <Loader2 className="animate-spin" size={16} /> : (
                     <>
@@ -304,10 +305,10 @@ export default function LoginPage() {
                     className="h-9 px-6 bg-white/[0.03] border-white/10 font-sans"
                     required
                   >
-                    <option value="" className="bg-[#0D0D0D] text-white/50">-- กรุณาเลือกสาขา --</option>
-                    <option value="HQ" className="bg-[#0D0D0D]">สำนักงานใหญ่</option>
-                    <option value="BKK" className="bg-[#0D0D0D]">สาขากรุงเทพฯ</option>
-                    <option value="CNX" className="bg-[#0D0D0D]">สาขาเชียงใหม่</option>
+                    <option value="" className="bg-surface-0 text-white/50">-- กรุณาเลือกสาขา --</option>
+                    <option value="HQ" className="bg-surface-0">สำนักงานใหญ่</option>
+                    <option value="BKK" className="bg-surface-0">สาขากรุงเทพฯ</option>
+                    <option value="CNX" className="bg-surface-0">สาขาเชียงใหม่</option>
                   </PillSelect>
                 </div>
 
@@ -319,10 +320,10 @@ export default function LoginPage() {
                     className="h-9 px-6 bg-white/[0.03] border-white/10 font-sans"
                     required
                   >
-                    <option value="" className="bg-[#0D0D0D] text-white/50">-- กรุณาเลือกแผนก --</option>
-                    <option value="WH01" className="bg-[#0D0D0D]">คลังสินค้าหลัก</option>
-                    <option value="SALES" className="bg-[#0D0D0D]">แผนกขาย</option>
-                    <option value="ADMIN" className="bg-[#0D0D0D]">ส่วนกลาง</option>
+                    <option value="" className="bg-surface-0 text-white/50">-- กรุณาเลือกแผนก --</option>
+                    <option value="WH01" className="bg-surface-0">คลังสินค้าหลัก</option>
+                    <option value="SALES" className="bg-surface-0">แผนกขาย</option>
+                    <option value="ADMIN" className="bg-surface-0">ส่วนกลาง</option>
                   </PillSelect>
                 </div>
 
@@ -337,8 +338,9 @@ export default function LoginPage() {
                   </PillButton>
                   <PillButton 
                     type="submit" 
+                    variant="primary"
                     disabled={loading}
-                    className="w-full h-9 text-[13px] shadow-neon-teal bg-nexus-teal text-black font-black"
+                    className="w-full h-9 text-[13px] shadow-neon-teal"
                   >
                     {loading ? <Loader2 className="animate-spin" size={16} /> : "เข้าสู่ระบบ"}
                   </PillButton>

@@ -50,13 +50,13 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
       title="สรุปยอดขายรายวัน (DAILY SALES SUMMARY)"
       maxWidth="max-w-[1600px]"
     >
-      <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
+      <div className="flex h-full divide-x divide-white/5 bg-surface-0">
         <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
           <div className="max-w-2xl mx-auto space-y-12">
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
               <div className="space-y-1">
-                <p className="text-[12px] font-black text-nexus-teal uppercase tracking-[0.2em]">โหมดสรุปผลการขาย (POS_REP_V3.0)</p>
-                <h4 className="text-xl font-black text-white uppercase tracking-tight">สรุปประจำวัน (Daily Briefing)</h4>
+                <p className="text-[12px] font-semibold text-nexus-teal uppercase tracking-[0.2em]">โหมดสรุปผลการขาย (POS_REP_V3.0)</p>
+                <h4 className="text-xl font-semibold text-white uppercase tracking-tight">สรุปประจำวัน (Daily Briefing)</h4>
               </div>
               <div className="flex items-center gap-4 bg-white/[0.02] border border-white/5 p-2 rounded-2xl">
                  <button onClick={() => setActiveTab("sales")} className={cn("px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === "sales" ? "bg-nexus-teal text-white shadow-neon-teal" : "text-white/20 hover:text-white/40")}>Sales</button>
@@ -74,7 +74,7 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
                   </div>
 
                   <div className="space-y-6">
-                    <h5 className="text-[12px] font-black text-white/30 uppercase tracking-widest ml-1">สัดส่วนการชำระเงิน (Payment Breakdown)</h5>
+                    <h5 className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">สัดส่วนการชำระเงิน (Payment Breakdown)</h5>
                     <div className="grid grid-cols-1 gap-4">
                        <PaymentRow icon={<Banknote size={16} />} label="เงินสด (Cash)" value={mockData.payments.cash} total={mockData.revenue} color="bg-nexus-teal" />
                        <PaymentRow icon={<CreditCard size={16} />} label="บัตรเครดิต (Credit Card)" value={mockData.payments.creditCard} total={mockData.revenue} color="bg-nexus-blue" />
@@ -86,12 +86,12 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
 
               {activeTab === "products" && (
                 <div className="space-y-6">
-                   <h5 className="text-[12px] font-black text-white/30 uppercase tracking-widest ml-1">สินค้าขายดี (Top Performing Items)</h5>
+                   <h5 className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">สินค้าขายดี (Top Performing Items)</h5>
                    <div className="space-y-3">
                       {mockData.topProducts.map((p, i) => (
                         <div key={i} className="flex items-center justify-between p-5 rounded-2xl bg-white/[0.02] border border-white/5 group hover:bg-white/[0.04] transition-all">
                            <div className="flex items-center gap-4">
-                              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/20 font-black text-[10px]">{i+1}</div>
+                              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/20 font-semibold text-[10px]">{i+1}</div>
                               <div>
                                  <p className="text-sm font-bold text-white">{p.name}</p>
                                  <p className="text-[10px] text-white/30 font-black uppercase tracking-widest">จำนวน: {p.qty} หน่วย</p>
@@ -107,11 +107,11 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
           </div>
         </div>
 
-        <div className="w-[380px] flex flex-col bg-[#0F0F12] p-10 flex-shrink-0 overflow-y-auto custom-scrollbar">
+        <div className="w-[380px] flex flex-col bg-surface-1 p-10 flex-shrink-0 overflow-y-auto custom-scrollbar">
           <div className="flex-1 space-y-8">
             <div className="space-y-1">
-              <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">สถานะรอบการขาย</p>
-              <h5 className="text-sm font-black text-white uppercase tracking-tight">Intelligence Reporting</h5>
+              <p className="text-[10px] font-semibold text-white/20 uppercase tracking-[0.2em]">สถานะรอบการขาย</p>
+              <h5 className="text-sm font-semibold text-white uppercase tracking-tight">Intelligence Reporting</h5>
             </div>
 
             <div className="p-8 rounded-xl bg-white/[0.03] border border-white/10 space-y-6">
@@ -141,7 +141,7 @@ function SummaryCard({ icon, label, value, color }: { icon: React.ReactNode, lab
     <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
        <div className="text-white/20">{icon}</div>
        <div>
-          <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">{label}</p>
+          <p className="text-[10px] font-semibold text-white/20 uppercase tracking-widest">{label}</p>
           <p className={cn("text-xl font-black mt-1", color)}>{value}</p>
        </div>
     </div>
@@ -152,7 +152,7 @@ function PaymentRow({ icon, label, value, total, color }: { icon: React.ReactNod
   const percent = (value / total * 100).toFixed(1);
   return (
     <div className="space-y-2">
-       <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest">
+       <div className="flex justify-between items-center text-[11px] font-semibold uppercase tracking-widest">
           <div className="flex items-center gap-2 text-white/60">
              {icon}
              <span>{label}</span>

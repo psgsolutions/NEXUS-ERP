@@ -1,7 +1,7 @@
 // src/lib/firebase-client.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, initializeFirestore } from "firebase/firestore";
 
 // 1. ใส่กุญแจสำหรับฝั่งหน้าเว็บ (สังเกตว่าต้องมี NEXT_PUBLIC_ นำหน้า)
 const firebaseConfig = {
@@ -18,4 +18,13 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 // 3. ส่งออกเครื่องมือฝั่ง Client
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+let firestoreDb;
+try {
+  firestoreDb = initializeFirestore(app, {
+    experimentalForceLongPolling: true
+  });
+} catch (e) {
+  firestoreDb = getFirestore(app);
+}
+
+export const db = firestoreDb;

@@ -22,6 +22,7 @@ import {
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { calculateFinancials, formatCurrency, POType, VatType } from "@/lib/erp-logic";
 import { useSystemDialog } from "@/context/DialogContext";
+import { SupplierPriceSelector } from "@/components/inventory/SupplierPriceSelector";
 
 interface PurchaseOrderModalProps {
   isOpen: boolean;
@@ -177,7 +178,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
       title="ใบสั่งซื้อ"
       maxWidth="max-w-[1500px]"
     >
-      <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
+      <div className="flex h-full divide-x divide-white/5 bg-surface-0">
         {/* INPUT CANVAS */}
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
           <div className="max-w-4xl mx-auto space-y-6">
@@ -185,9 +186,9 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
             <div className="flex flex-col gap-4 border-b border-white/5 pb-6">
               <div className="flex justify-between items-center">
                 <div className="space-y-1">
-                  <p className="text-[12px] font-black text-nexus-blue uppercase tracking-[0.2em]" title="ระบบบริหารการจัดซื้อ V7.5">PROCURE V7.5</p>
+                  <p className="text-[12px] font-semibold text-nexus-blue uppercase tracking-[0.2em]" title="ระบบบริหารการจัดซื้อ V7.5">PROCURE V7.5</p>
                   <div className="flex items-center gap-3">
-                    <h4 className="text-xl font-black text-white uppercase tracking-tight">ใบสั่งซื้อ</h4>
+                    <h4 className="text-xl font-semibold text-white uppercase tracking-tight">ใบสั่งซื้อ</h4>
                     {form.id && (
                       <span className="px-3.5 py-1 rounded-md bg-nexus-blue/10 border border-nexus-blue/30 text-[11px] font-mono font-black text-nexus-blue uppercase tracking-widest shadow-neon-blue/20 animate-in fade-in duration-300">
                         {form.id}
@@ -215,9 +216,9 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                         "h-full px-6 rounded-full flex items-center gap-2 text-[11px] font-black uppercase transition-all border",
                         form.order_type === type.id 
                           ? (
-                              type.id === 'STOCK' ? "bg-emerald-500 text-black border-emerald-500 shadow-neon-emerald" :
-                              type.id === 'PROJECT' ? "bg-amber-500 text-black border-amber-500 shadow-neon-amber" :
-                              "bg-purple-500 text-black border-purple-500 shadow-neon-purple"
+                              type.id === 'STOCK' ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 backdrop-blur-md shadow-neon-emerald" :
+                              type.id === 'PROJECT' ? "bg-amber-500/20 text-amber-400 border-amber-500/40 backdrop-blur-md shadow-neon-amber" :
+                              "bg-purple-500/20 text-purple-400 border-purple-500/40 backdrop-blur-md shadow-neon-purple"
                             )
                           : "bg-white/5 text-white/60 border-white/5 hover:border-white/20"
                       )}
@@ -255,14 +256,14 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                     "border-t-purple-500 border-x border-b border-white/5"
                   )}>
                     <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                      <h3 className="text-[12px] font-black text-nexus-blue uppercase flex items-center gap-2 italic">
+                      <h3 className="text-[12px] font-semibold text-nexus-blue uppercase flex items-center gap-2 italic">
                         <LayoutList size={16} /> 1. ข้อมูลผู้จัดจำหน่ายและเลขที่เอกสาร
                       </h3>
                       <div className={cn(
-                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                        form.order_type === 'STOCK' ? "bg-emerald-500 text-black" :
-                        form.order_type === 'PROJECT' ? "bg-amber-500 text-black" :
-                        "bg-purple-500 text-black"
+                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                        form.order_type === 'STOCK' ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40" :
+                        form.order_type === 'PROJECT' ? "bg-amber-500/20 text-amber-400 border-amber-500/40" :
+                        "bg-purple-500/20 text-purple-400 border-purple-500/40"
                       )}>
                         {ORDER_TYPES.find(t => t.id === form.order_type)?.label} MODE
                       </div>
@@ -378,7 +379,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                 <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                   {/* Currency Section */}
                   <div className="bg-white/[0.01] border border-white/5 p-6 rounded-[2.5rem] space-y-4 shadow-2xl">
-                    <h3 className="text-[12px] font-black text-nexus-blue uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic">
+                    <h3 className="text-[12px] font-semibold text-nexus-blue uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic">
                       <Globe size={16} /> 2. สกุลเงินค้าระหว่างประเทศ (CURRENCY & EXCHANGE RATE)
                     </h3>
                     
@@ -418,7 +419,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                             placeholder="1.0000" 
                             className="w-full pr-14" 
                           />
-                          <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[11px] font-black text-white/60 uppercase">
+                          <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-white/60 uppercase">
                             THB
                           </span>
                         </div>
@@ -433,7 +434,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
 
                   {/* Commercial Terms Section */}
                   <div className="bg-white/[0.01] border border-white/5 p-6 rounded-[2.5rem] space-y-4 shadow-2xl">
-                    <h3 className="text-[12px] font-black text-nexus-blue uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic">
+                    <h3 className="text-[12px] font-semibold text-nexus-blue uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic">
                       <CreditCard size={16} /> 3. เงื่อนไขข้อตกลงและเครดิตสากล (COMMERCIAL TERMS & INCOTERMS)
                     </h3>
                     
@@ -486,7 +487,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
 
                   {/* Logistics Section */}
                   <div className="bg-white/[0.01] border border-white/5 p-6 rounded-[2.5rem] space-y-4 shadow-2xl">
-                    <h3 className="text-[12px] font-black text-nexus-blue uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic">
+                    <h3 className="text-[12px] font-semibold text-nexus-blue uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic">
                       <Truck size={16} /> 4. การจัดการขนส่งสากล (LOGISTICS & SHIPPING)
                     </h3>
                     
@@ -543,9 +544,9 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                   <div className="flex justify-between items-center">
                     <div className="space-y-1">
-                      <h4 className="text-[12px] font-black text-white/50 uppercase tracking-[0.2em]">รายการสั่งซื้อสินค้า</h4>
-                      <p className="text-[10px] text-white/40 uppercase font-black tracking-widest">
-                        ป้อนราคาทุนในสกุลเงินที่เลือก: <span className="text-nexus-blue font-black">{form.currency}</span>
+                      <h4 className="text-[12px] font-semibold text-white/50 uppercase tracking-[0.2em]">รายการสั่งซื้อสินค้า</h4>
+                      <p className="text-[10px] text-white/40 uppercase font-semibold tracking-widest">
+                        ป้อนราคาทุนในสกุลเงินที่เลือก: <span className="text-nexus-blue font-semibold">{form.currency}</span>
                       </p>
                     </div>
                     {/* Add Item Button: Standardized to compact h-9 px-6 rounded-full */}
@@ -571,17 +572,17 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                         )} />
 
                         <div className="col-span-5 space-y-1.5">
-                          <label className="text-[10px] font-black text-white/55 uppercase tracking-widest ml-1">ชื่อพัสดุ / สเปกสินค้า</label>
+                          <label className="text-[10px] font-semibold text-white/55 uppercase tracking-widest ml-1">ชื่อพัสดุ / สเปกสินค้า</label>
                           <PillInput className="w-full bg-transparent border-white/5 font-black text-[14px] h-9" value={item.name} onChange={(e) => updateItem(item.id, "name", e.target.value)} />
                         </div>
                         
                         <div className="col-span-3 space-y-1.5">
-                          <label className="text-[10px] font-black text-white/55 uppercase tracking-widest text-center block">จำนวน</label>
+                          <label className="text-[10px] font-semibold text-white/55 uppercase tracking-widest text-center block">จำนวน</label>
                           <NumberStepper value={item.qty} unit={item.unit || "ชิ้น"} onChange={(v) => updateItem(item.id, "qty", v)} />
                         </div>
                         
                         <div className="col-span-3 space-y-1.5">
-                          <label className="text-[10px] font-black text-white/55 uppercase tracking-widest text-right block">
+                          <label className="text-[10px] font-semibold text-white/55 uppercase tracking-widest text-right block">
                             ราคาทุนต่อหน่วย ({form.currency})
                           </label>
                           <NumberStepper 
@@ -590,6 +591,14 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                             step={form.currency === "THB" ? 100 : 10} 
                             onChange={(v) => updateItem(item.id, "price", v)} 
                           />
+                          {(item.productId || item.name) && (
+                            <div className="flex justify-end mt-1">
+                              <SupplierPriceSelector
+                                productId={item.productId || item.name}
+                                onSelectPrice={(v) => updateItem(item.id, "price", v)}
+                              />
+                            </div>
+                          )}
                           {form.currency !== "THB" && (
                             <div className="text-[10px] font-bold text-white/50 text-right mt-1 mr-1">
                               ≈ ฿ {((item.price || 0) * form.exchange_rate).toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2})} THB
@@ -606,7 +615,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                     ))}
                     
                     {form.items.length === 0 && (
-                      <div className="p-16 text-center border-2 border-dashed border-white/5 rounded-[2.5rem] text-white/30 uppercase font-black text-[12px] tracking-[0.3em] italic">
+                      <div className="p-16 text-center border-2 border-dashed border-white/5 rounded-[2.5rem] text-white/30 uppercase font-semibold text-[12px] tracking-[0.3em] italic">
                          Awaiting Purchase Items...
                       </div>
                     )}
@@ -619,7 +628,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
                   <div className="bg-white/[0.01] border border-white/5 p-6 rounded-[2.5rem] space-y-4 shadow-2xl">
                     <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                      <h3 className="text-[12px] font-black text-nexus-blue uppercase flex items-center gap-2 italic">
+                      <h3 className="text-[12px] font-semibold text-nexus-blue uppercase flex items-center gap-2 italic">
                         <FileText size={16} /> 5. ข้อตกลงและเงื่อนไขสัญญาแนบท้าย (TERMS & CONDITIONS)
                       </h3>
                       
@@ -664,7 +673,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
         </div>
 
         {/* SIDEBAR */}
-        <div className="w-[340px] bg-[#0F0F12] p-6 flex flex-col shrink-0 border-l border-white/5 overflow-y-auto custom-scrollbar">
+        <div className="w-[340px] bg-surface-1 p-6 flex flex-col shrink-0 border-l border-white/5 overflow-y-auto custom-scrollbar">
           <div className="flex-1 space-y-6">
             {/* Start Edit Button: Standardized to compact h-9 px-6 rounded-full */}
             {isLocked && (
@@ -675,7 +684,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
 
             <div className="p-6 rounded-[2.5rem] bg-white/[0.03] border border-white/10 space-y-6 shadow-2xl">
               <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                <h4 className="text-[11px] font-black text-white/70 uppercase tracking-widest">สรุปงบประมาณการจัดซื้อ</h4>
+                <h4 className="text-[11px] font-semibold text-white/70 uppercase tracking-widest">สรุปงบประมาณการจัดซื้อ</h4>
                 <DollarSign size={16} className="text-nexus-blue animate-pulse" />
               </div>
               
@@ -699,7 +708,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                   />
                   
                   <div className="pt-4 border-t-2 border-dashed border-white/10 flex flex-col items-center">
-                    <span className="text-[11px] font-black text-primary uppercase tracking-[0.4em] mb-1 opacity-70">
+                    <span className="text-[11px] font-semibold text-primary uppercase tracking-[0.4em] mb-1 opacity-70">
                       ยอดรวมสุทธิ ({form.currency})
                     </span>
                     <div className="text-2xl font-black text-white italic font-mono drop-shadow-neon">
@@ -709,7 +718,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
 
                   {form.currency !== "THB" && (
                     <div className="mt-4 p-4 rounded-[1.5rem] bg-nexus-blue/10 border border-nexus-blue/20 text-center animate-in fade-in duration-300">
-                      <span className="text-[10px] font-black text-nexus-blue uppercase tracking-[0.2em] block mb-1">
+                      <span className="text-[10px] font-semibold text-nexus-blue uppercase tracking-[0.2em] block mb-1">
                         มูลค่ารวมในสกุลเงินบาท
                       </span>
                       <div className="text-xl font-black text-white font-mono italic">
@@ -750,7 +759,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
 function Field({ label, children }: { label: string, children: React.ReactNode }) {
   return (
     <div className="space-y-3">
-      <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">{label}</label>
+      <label className="text-[12px] font-semibold text-white/60 uppercase tracking-widest ml-1">{label}</label>
       {children}
     </div>
   );

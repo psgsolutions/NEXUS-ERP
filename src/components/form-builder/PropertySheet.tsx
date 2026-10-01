@@ -15,9 +15,9 @@ export const PropertySheet: React.FC<PropertySheetProps> = ({ selectedElement, o
 
   if (!selectedElement) {
     return (
-      <div className="w-72 bg-[#050505]/60 backdrop-blur-2xl border-l border-white/5 flex flex-col h-full flex-shrink-0 shadow-[-4px_0_24px_rgba(0,0,0,0.5)] z-40 relative">
+      <div className="w-72 bg-surface-0/60 backdrop-blur-2xl border-l border-white/5 flex flex-col h-full flex-shrink-0 shadow-[-4px_0_24px_rgba(0,0,0,0.5)] z-40 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-nexus-teal/5 via-transparent to-transparent pointer-events-none" />
-        <div className="relative px-4 py-3 bg-white/[0.02] text-[11px] font-black uppercase tracking-widest text-white/40 border-b border-white/5">
+        <div className="relative px-4 py-3 bg-white/[0.02] text-[11px] font-semibold uppercase tracking-widest text-white/40 border-b border-white/5">
           Property Sheet
         </div>
         <div className="relative p-8 text-[10px] text-white/20 text-center leading-loose">
@@ -33,13 +33,13 @@ export const PropertySheet: React.FC<PropertySheetProps> = ({ selectedElement, o
   const boundVariable = availableVariables.find(v => v.key === controlSource);
 
   return (
-    <div className="w-72 bg-[#050505]/60 backdrop-blur-2xl border-l border-white/5 flex flex-col h-full flex-shrink-0 overflow-hidden shadow-[-4px_0_24px_rgba(0,0,0,0.5)] z-40 relative">
+    <div className="w-72 bg-surface-0/60 backdrop-blur-2xl border-l border-white/5 flex flex-col h-full flex-shrink-0 overflow-hidden shadow-[-4px_0_24px_rgba(0,0,0,0.5)] z-40 relative">
       <div className="absolute inset-0 bg-gradient-to-b from-nexus-teal/5 via-transparent to-transparent pointer-events-none" />
       {/* Header */}
       <div className="relative px-3 py-2.5 bg-white/[0.02] border-b border-white/5 flex-shrink-0">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] font-black uppercase tracking-widest text-white/60">Property Sheet</span>
-          <span className="px-2 py-0.5 bg-nexus-teal/10 border border-nexus-teal/20 rounded text-[9px] text-nexus-teal uppercase tracking-widest font-black shadow-[0_0_10px_rgba(20,163,204,0.2)]">
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-white/60">Property Sheet</span>
+          <span className="px-2 py-0.5 bg-nexus-teal/10 border border-nexus-teal/20 rounded text-[9px] text-nexus-teal uppercase tracking-widest font-semibold shadow-[0_0_10px_rgba(20,163,204,0.2)]">
             {selectedElement.type}
           </span>
         </div>
@@ -87,7 +87,7 @@ export const PropertySheet: React.FC<PropertySheetProps> = ({ selectedElement, o
                 {/* ค่าปัจจุบัน */}
                 {controlSource && (
                   <div className="px-3 py-2 bg-nexus-teal/5 border-b border-nexus-teal/10">
-                    <p className="text-[9px] font-black text-nexus-teal/50 uppercase tracking-widest mb-0.5">ผูกกับ:</p>
+                    <p className="text-[9px] font-semibold text-nexus-teal/50 uppercase tracking-widest mb-0.5">ผูกกับ:</p>
                     <p className="text-[11px] font-mono text-nexus-teal font-bold">{controlSource}</p>
                     {boundVariable && (
                       <p className="text-[10px] text-nexus-teal/60 mt-0.5">→ {boundVariable.neutralValue}</p>
@@ -103,7 +103,7 @@ export const PropertySheet: React.FC<PropertySheetProps> = ({ selectedElement, o
 
                 {/* ── เลือกตาราง/Field ─────────────────────────────── */}
                 <div className="px-3 py-2 border-b border-white/5">
-                  <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2">เลือก Control Source จากฐานข้อมูล:</p>
+                  <p className="text-[9px] font-semibold text-white/30 uppercase tracking-widest mb-2">เลือก Control Source จากฐานข้อมูล:</p>
 
                   {Object.entries(DB_TABLES).map(([tableKey, table]) => (
                     <div key={tableKey} className="mb-1 border border-white/5 rounded-lg overflow-hidden">
@@ -112,7 +112,7 @@ export const PropertySheet: React.FC<PropertySheetProps> = ({ selectedElement, o
                         onClick={() => setExpandedTable(expandedTable === tableKey ? null : tableKey)}
                         className="w-full flex items-center justify-between px-2.5 py-2 bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
                       >
-                        <span className="flex items-center gap-1.5 text-[10px] font-black text-white/60 uppercase tracking-wider">
+                        <span className="flex items-center gap-1.5 text-[10px] font-semibold text-white/60 uppercase tracking-wider">
                           <span>{table.icon}</span>
                           {table.label}
                         </span>
@@ -179,7 +179,7 @@ export const PropertySheet: React.FC<PropertySheetProps> = ({ selectedElement, o
                 </PropRow>
                 <div className="px-3 py-1.5 border-b border-white/[0.04]">
                   <label className="flex items-center justify-between w-full cursor-pointer bg-nexus-teal/10 hover:bg-nexus-teal/20 border border-nexus-teal/20 rounded px-2 py-1.5 transition-colors">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-nexus-teal">อัปโหลดรูปภาพ</span>
+                    <span className="text-[9px] font-semibold uppercase tracking-widest text-nexus-teal">อัปโหลดรูปภาพ</span>
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -196,10 +196,10 @@ export const PropertySheet: React.FC<PropertySheetProps> = ({ selectedElement, o
                   <select value={selectedElement.style?.objectFit || 'contain'}
                     onChange={e => onUpdate({ style: { ...selectedElement.style, objectFit: e.target.value as any } })}
                     className="w-full bg-transparent text-white/80 focus:outline-none text-[10px]">
-                    <option value="contain" className="bg-[#111]">Contain (พอดี)</option>
-                    <option value="cover" className="bg-[#111]">Cover (เต็มกรอบ)</option>
-                    <option value="fill" className="bg-[#111]">Fill (ยืด)</option>
-                    <option value="none" className="bg-[#111]">None (ไม่ปรับ)</option>
+                    <option value="contain" className="bg-surface-1">Contain (พอดี)</option>
+                    <option value="cover" className="bg-surface-1">Cover (เต็มกรอบ)</option>
+                    <option value="fill" className="bg-surface-1">Fill (ยืด)</option>
+                    <option value="none" className="bg-surface-1">None (ไม่ปรับ)</option>
                   </select>
                 </PropRow>
               </>
@@ -233,7 +233,7 @@ export const PropertySheet: React.FC<PropertySheetProps> = ({ selectedElement, o
                     onChange={e => onUpdate({ style: { ...selectedElement.style, fontFamily: e.target.value } })}
                     className="w-full bg-black/20 border border-white/10 rounded px-2 py-1 text-white/90 focus:outline-none focus:border-nexus-teal/50 text-[10px]">
                     {['sans-serif','serif','monospace','Sarabun','Kanit','Prompt'].map(f =>
-                      <option key={f} value={f} className="bg-[#111]">{f}</option>
+                      <option key={f} value={f} className="bg-surface-1">{f}</option>
                     )}
                   </select>
                 </PropRow>
@@ -355,7 +355,7 @@ export const PropertySheet: React.FC<PropertySheetProps> = ({ selectedElement, o
 // ── Helper Components ─────────────────────────────────────────────────────────
 
 const SectionHeader = ({ label }: { label: string }) => (
-  <div className="px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.25em] border-b border-white/5 bg-white/[0.02] text-white/30">
+  <div className="px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.25em] border-b border-white/5 bg-white/[0.02] text-white/30">
     {label}
   </div>
 );
@@ -373,7 +373,7 @@ const PropRow = ({ label, children }: { label: string; children: React.ReactNode
 
 const MiniRow = ({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) => (
   <div className="px-2 py-1.5 border-r border-b border-white/[0.04] bg-white/[0.01]">
-    <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">{label}</p>
+    <p className="text-[9px] font-semibold text-white/40 uppercase tracking-widest mb-1">{label}</p>
     <input type="number" value={value} onChange={e => onChange(e.target.value)}
       className="w-full bg-black/20 border border-white/10 rounded px-2 py-1 text-white/90 focus:outline-none focus:border-nexus-teal/50 text-[11px] font-mono" />
   </div>

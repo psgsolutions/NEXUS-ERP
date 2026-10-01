@@ -32,12 +32,12 @@ export const DataPreviewPanel: React.FC<DataPreviewPanelProps> = ({
   );
 
   return (
-    <div className="w-72 bg-[#0a0a0c] border-r border-white/5 flex flex-col h-full flex-shrink-0 overflow-hidden">
+    <div className="w-72 bg-surface-0 border-r border-white/5 flex flex-col h-full flex-shrink-0 overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 bg-white/[0.02] border-b border-white/5 flex-shrink-0">
         <div className="flex items-center gap-2 mb-1">
           <Database size={13} className="text-nexus-teal" />
-          <span className="text-[11px] font-black text-white/70 uppercase tracking-widest">Data Preview</span>
+          <span className="text-[11px] font-semibold text-white/70 uppercase tracking-widest">Data Preview</span>
         </div>
         <p className="text-[10px] text-white/25 leading-relaxed">
           แก้ไขค่าด้านล่างเพื่อดูหน้าตาเอกสารจริงก่อน Preview

@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
+import { requireApiUser, authErrorResponse } from "@/lib/api-auth";
 import { adminDb } from '@/lib/firebase-admin'; // ดึงเครื่องมือที่เราเชื่อมต่อฐานข้อมูลไว้คราวที่แล้ว
 
 // ฟังก์ชันสำหรับ "ส่งรายงานสรุปข้อมูล" ออกไปให้หน้าแอปฯ
-export async function GET() {
+export async function GET(request: Request) {
     try {
         // 💡 กฎเหล็กระดับ Enterprise: จำลองบริษัทปัจจุบัน (ในระบบจริงจะดึงจาก Session)
         const currentCompanyId = "COM-NEXUS-01";
+        await requireApiUser(request, currentCompanyId);
 
         // วิ่งไปเคาะประตูคลังข้อมูล Firebase ที่ชั้นวางของชื่อ 'documents'
         const snapshot = await adminDb.collection('documents')
@@ -21,6 +23,8 @@ export async function GET() {
 
         return NextResponse.json({ success: true, data: documents });
     } catch (error: any) {
+        const authRes = authErrorResponse(error);
+        if (authRes) return authRes;
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 }

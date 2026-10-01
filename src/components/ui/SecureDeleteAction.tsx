@@ -93,7 +93,7 @@ export function SecureDeleteAction({
           <div className="p-6 rounded-2xl bg-danger/10 border border-danger/20 flex flex-col items-center justify-center text-center space-y-4">
              <ShieldAlert size={48} className="text-danger animate-pulse" />
              <div className="space-y-1">
-                <h4 className="text-lg font-black text-danger uppercase">Danger Zone</h4>
+                <h4 className="text-lg font-semibold text-danger uppercase">Danger Zone</h4>
                 <p className="text-sm font-bold text-danger/80 leading-relaxed">
                    การลบข้อมูลนี้จะเป็นการลบข้อมูลออกจากฐานข้อมูลถาวร ไม่สามารถกู้คืนได้
                 </p>

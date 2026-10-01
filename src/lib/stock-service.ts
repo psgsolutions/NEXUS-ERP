@@ -1,24 +1,31 @@
 import { db } from "./firebase-client";
-import { 
-  collection, 
-  doc, 
-  runTransaction, 
-  serverTimestamp, 
-  increment 
+import {
+  collection,
+  doc,
+  runTransaction,
+  serverTimestamp,
+  increment,
+  DocumentReference,
+  Transaction
 } from "firebase/firestore";
 import { nexusSequenceEngine } from "./sequence-engine";
-import { postToGL, ACCOUNTS } from "./financeEngine";
+import { ACCOUNTS } from "./financeEngine";
 import { Product } from "@/types";
+import { auditService } from "@/services/audit.service";
+import { assertPeriodOpen } from "./period-close-service";
+
 
 /**
- * [INV-STRATEGY-V2.0]
- * Double-Entry Stock Movement Logic
+ * [INV-STRATEGY-V2.1]
+ * Double-Entry Stock Movement & Real-time WAC Calculation Engine
+ * Project: NEXUS ERP (Intelligence OS)
  */
 
 export interface StockMovement {
   productId: string;
   type: "IN" | "OUT" | "TRANSFER";
   quantity: number;
+  unitCost?: number; // Incoming purchase cost for real-time WAC calculation
   fromLocation?: string;
   toLocation?: string;
   referenceId?: string; // PRJ-XX or PO-XX
@@ -27,104 +34,230 @@ export interface StockMovement {
   companyId: string;
 }
 
-export async function processStockMovement(movement: StockMovement) {
-  const { productId, type, quantity, fromLocation, toLocation, companyId, snList } = movement;
+/**
+ * [WAC-CALC-V1.0] Real-time Weighted Average Cost (WAC) Formula
+ * Formula: newWAC = (oldOnHand * oldWAC + receivedQty * receivedCost) / (oldOnHand + receivedQty)
+ */
+export function calculateWAC(
+  oldOnHand: number,
+  oldWAC: number,
+  receivedQty: number,
+  receivedCost: number
+): number {
+  if (receivedQty <= 0) return oldWAC;
+  const safeOldOnHand = Math.max(0, oldOnHand);
+  const totalQty = safeOldOnHand + receivedQty;
+  if (totalQty <= 0) return Math.max(0, receivedCost);
 
-  // 1. Generate Transaction ID (NXI-YYMM-XXXX)
-  const transactionId = await nexusSequenceEngine("INV", companyId);
+  const totalValue = (safeOldOnHand * oldWAC) + (receivedQty * receivedCost);
+  const newWAC = totalValue / totalQty;
+  return Number(newWAC.toFixed(4));
+}
+
+export async function processStockMovement(movement: StockMovement) {
+  const [transactionId] = await processStockMovements([movement]);
+  return transactionId;
+}
+
+/**
+ * Applies several stock movements in ONE Firestore transaction (all-or-nothing).
+ * `extraWrites` runs inside the same transaction after all reads, so callers can
+ * commit related documents (e.g. the GR document and its journal entry) atomically.
+ * IN movements do not post to the GL here: the caller that owns the source document
+ * (e.g. Goods Receipt) posts the Inventory/AP entry, so it is never booked twice.
+ */
+export async function processStockMovements(
+  movements: StockMovement[],
+  extraWrites?: (transaction: Transaction) => void | Promise<void>
+): Promise<string[]> {
+  if (movements.length === 0) return [];
+
+  const companyId = movements[0].companyId;
+  if (!companyId) {
+    throw new Error("[Tenant Isolation Violation] companyId is required for processStockMovement");
+  }
+  for (const m of movements) {
+    if (m.companyId !== companyId) {
+      throw new Error("[Tenant Isolation Violation] all movements must belong to the same companyId");
+    }
+    if (!m.productId) {
+      throw new Error("[Validation Violation] productId is required for processStockMovement");
+    }
+    if (!(m.quantity > 0)) {
+      throw new Error("[Validation Violation] quantity must be greater than 0");
+    }
+  }
+
+  await assertPeriodOpen(companyId);
+
+  // 1. Generate Transaction IDs (NXI-YYMM-XXXX)
+  const transactionIds: string[] = [];
+  for (let i = 0; i < movements.length; i++) {
+    transactionIds.push(await nexusSequenceEngine("INV", companyId));
+  }
+
+  const auditEntries: Array<{ userId: string; productId: string; before: any; after: any }> = [];
 
   await runTransaction(db, async (transaction) => {
-    // 1.5 Fetch Product Data for WAC and Balance
-    const productRef = doc(db, "products", productId);
-    const productSnap = await transaction.get(productRef);
-    if (!productSnap.exists()) throw new Error("Product not found");
-    const product = productSnap.data() as Product;
-    const unitCost = product.pricing?.costWAC || 0;
-    const totalValue = unitCost * quantity;
+    auditEntries.length = 0; // transaction callback may be retried
 
-    // 2. Update Source Location Balance (if applicable)
-    if (fromLocation) {
-      const fromBalanceRef = doc(db, `companies/${companyId}/inventory_balance`, `${fromLocation}_${productId}`);
-      const fromSnap = await transaction.get(fromBalanceRef);
-      const currentFrom = fromSnap.exists() ? fromSnap.data().quantity : 0;
-      
-      if (currentFrom < quantity) throw new Error("สต็อกไม่เพียงพอในคลังต้นทาง");
-      
-      transaction.set(fromBalanceRef, { 
-        quantity: currentFrom - quantity,
-        updatedAt: serverTimestamp() 
-      }, { merge: true });
-    }
-
-    // 3. Update Destination Location Balance (if applicable)
-    if (toLocation) {
-      const toBalanceRef = doc(db, `companies/${companyId}/inventory_balance`, `${toLocation}_${productId}`);
-      const toSnap = await transaction.get(toBalanceRef);
-      const currentTo = toSnap.exists() ? toSnap.data().quantity : 0;
-      
-      transaction.set(toBalanceRef, { 
-        quantity: currentTo + quantity,
-        updatedAt: serverTimestamp() 
-      }, { merge: true });
-    }
-
-    // 4. Update Product Master Balance (Strategic Reservation Link)
-    if (type === "OUT") {
-      transaction.update(productRef, {
-        "stockStatus.onHand": increment(-quantity),
-        "stockStatus.available": increment(-quantity), // Assume not from reserved for simple move
-        updatedAt: serverTimestamp()
-      });
-    } else if (type === "IN") {
-      transaction.update(productRef, {
-        "stockStatus.onHand": increment(quantity),
-        "stockStatus.available": increment(quantity),
-        updatedAt: serverTimestamp()
+    // 2. Read phase (Firestore requires every read before any write)
+    const products = new Map<string, {
+      ref: DocumentReference;
+      data: Product;
+      onHand: number;
+      wac: number;
+      onHandDelta: number;
+      wacChanged: boolean;
+    }>();
+    for (const productId of Array.from(new Set(movements.map(m => m.productId)))) {
+      const ref = doc(db, "products", productId);
+      const snap = await transaction.get(ref);
+      if (!snap.exists()) throw new Error(`Product not found (ID: ${productId})`);
+      const data = snap.data() as Product;
+      products.set(productId, {
+        ref,
+        data,
+        onHand: data.stockStatus?.onHand ?? 0,
+        wac: data.pricing?.costWAC ?? (data as any).costPrice ?? 0,
+        onHandDelta: 0,
+        wacChanged: false
       });
     }
 
-    // 5. Automated Double-Entry GL Posting
-    if (type === "OUT" && totalValue > 0) {
-      const journalRef = doc(collection(db, "journal_entries"));
-      transaction.set(journalRef, {
-        company_id: companyId,
-        date: new Date().toISOString(),
-        description: `เบิกพัสดุ: ${product.name} [Ref: ${movement.referenceId || transactionId}]`,
-        reference: movement.referenceId || transactionId,
-        total_amount: totalValue,
-        items: [
-          { accountCode: ACCOUNTS.COST_OF_GOODS_SOLD.code, accountName: ACCOUNTS.COST_OF_GOODS_SOLD.name, debit: totalValue, credit: 0 },
-          { accountCode: ACCOUNTS.INVENTORY.code, accountName: ACCOUNTS.INVENTORY.name, debit: 0, credit: totalValue }
-        ],
-        createdAt: serverTimestamp()
-      });
+    const balanceKeys = new Set<string>();
+    for (const m of movements) {
+      if (m.fromLocation) balanceKeys.add(`${m.fromLocation}_${m.productId}`);
+      if (m.toLocation) balanceKeys.add(`${m.toLocation}_${m.productId}`);
+    }
+    const balances = new Map<string, { ref: DocumentReference; quantity: number }>();
+    for (const key of Array.from(balanceKeys)) {
+      const ref = doc(db, `companies/${companyId}/inventory_balance`, key);
+      const snap = await transaction.get(ref);
+      balances.set(key, { ref, quantity: snap.exists() ? snap.data().quantity : 0 });
     }
 
-    // 6. Update Serial Number Statuses
-    if (snList && snList.length > 0) {
-      for (const sn of snList) {
-        const snRef = doc(db, `companies/${companyId}/serial_numbers`, sn);
-        const snStatus = type === "OUT" ? "deployed" : type === "IN" ? "available" : "available";
-        transaction.set(snRef, {
-          productId,
-          status: snStatus,
-          lastReference: movement.referenceId,
-          lastLocation: toLocation || fromLocation,
-          updatedAt: serverTimestamp()
-        }, { merge: true });
+    // 3. Apply movements in order against the in-memory state
+    movements.forEach((movement, index) => {
+      const { productId, type, quantity, unitCost, fromLocation, toLocation, snList, userId } = movement;
+      const transactionId = transactionIds[index];
+      const product = products.get(productId)!;
+      const previousOnHand = product.onHand;
+      const previousWAC = product.wac;
+
+      const currentUnitCost = unitCost !== undefined ? unitCost : previousWAC;
+      const totalValue = currentUnitCost * quantity;
+
+      // 3.1 Source / Destination Location Balance
+      if (fromLocation) {
+        const from = balances.get(`${fromLocation}_${productId}`)!;
+        if (from.quantity < quantity) throw new Error(`สต็อกไม่เพียงพอในคลังต้นทาง (${fromLocation})`);
+        from.quantity -= quantity;
       }
+      if (toLocation) {
+        balances.get(`${toLocation}_${productId}`)!.quantity += quantity;
+      }
+
+      // 3.2 Product Master Balance & Real-time WAC
+      if (type === "OUT") {
+        product.onHand -= quantity;
+        product.onHandDelta -= quantity;
+      } else if (type === "IN") {
+        product.wac = calculateWAC(previousOnHand, previousWAC, quantity, currentUnitCost);
+        product.wacChanged = true;
+        product.onHand += quantity;
+        product.onHandDelta += quantity;
+      }
+
+      // 3.3 Automated Double-Entry GL Posting (stock issue -> COGS)
+      if (type === "OUT" && totalValue > 0) {
+        const journalRef = doc(collection(db, "journal_entries"));
+        transaction.set(journalRef, {
+          companyId: companyId,
+          date: new Date().toISOString(),
+          description: `เบิกพัสดุ: ${product.data.name} [Ref: ${movement.referenceId || transactionId}]`,
+          reference: movement.referenceId || transactionId,
+          total_amount: totalValue,
+          items: [
+            { accountCode: ACCOUNTS.COST_OF_GOODS_SOLD.code, accountName: ACCOUNTS.COST_OF_GOODS_SOLD.name, debit: totalValue, credit: 0 },
+            { accountCode: ACCOUNTS.INVENTORY.code, accountName: ACCOUNTS.INVENTORY.name, debit: 0, credit: totalValue }
+          ],
+          createdAt: serverTimestamp(),
+          isDeleted: false
+        });
+      }
+
+      // 3.4 Update Serial Number Statuses
+      if (snList && snList.length > 0) {
+        for (const sn of snList) {
+          const snRef = doc(db, `companies/${companyId}/serial_numbers`, sn);
+          const snStatus = type === "OUT" ? "deployed" : "available";
+          transaction.set(snRef, {
+            productId,
+            companyId,
+            status: snStatus,
+            lastReference: movement.referenceId,
+            lastLocation: toLocation || fromLocation,
+            updatedAt: serverTimestamp(),
+            isDeleted: false
+          }, { merge: true });
+        }
+      }
+
+      // 3.5 Log Movement Record (Tenant Isolated)
+      const moveRef = doc(db, `companies/${companyId}/stock_movements`, transactionId);
+      transaction.set(moveRef, {
+        ...movement,
+        transactionId,
+        unitCost: currentUnitCost,
+        totalValue,
+        oldWAC: previousWAC,
+        newWAC: product.wac,
+        previousOnHand,
+        newOnHand: product.onHand,
+        timestamp: serverTimestamp(),
+        isDeleted: false
+      });
+
+      auditEntries.push({
+        userId: userId || "SYSTEM",
+        productId,
+        before: { onHand: previousOnHand, costWAC: previousWAC },
+        after: { onHand: product.onHand, costWAC: product.wac }
+      });
+    });
+
+    // 4. Write location balances and product masters
+    for (const balance of Array.from(balances.values())) {
+      transaction.set(balance.ref, {
+        quantity: balance.quantity,
+        updatedAt: serverTimestamp(),
+        isDeleted: false
+      }, { merge: true });
     }
 
-    // 7. Log Movement Record
-    const moveRef = doc(db, `companies/${companyId}/stock_movements`, transactionId);
-    transaction.set(moveRef, {
-      ...movement,
-      transactionId,
-      unitCost,
-      totalValue,
-      timestamp: serverTimestamp()
-    });
+    const updatedBy = movements[movements.length - 1].userId || "SYSTEM";
+    for (const product of Array.from(products.values())) {
+      const update: Record<string, any> = {
+        "stockStatus.onHand": increment(product.onHandDelta),
+        "stockStatus.available": increment(product.onHandDelta),
+        updatedAt: serverTimestamp(),
+        updatedBy
+      };
+      if (product.wacChanged) {
+        update["pricing.costWAC"] = product.wac;
+        update.costPrice = product.wac;
+      }
+      transaction.update(product.ref, update);
+    }
+
+    await extraWrites?.(transaction);
   });
 
-  return transactionId;
+  // 5. Audit Log Activity (Tenant Scoped & Strict Action Logging)
+  for (const entry of auditEntries) {
+    await auditService.logUpdate(entry.userId, companyId, "INVENTORY_WAC", entry.productId, entry.before, entry.after);
+  }
+
+  return transactionIds;
 }

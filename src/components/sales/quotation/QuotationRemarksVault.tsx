@@ -9,7 +9,7 @@ export function QuotationRemarksVault() {
   return (
     <>
       <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl space-y-2">
-        <label className="text-[13px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+        <label className="text-[13px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
           <FileSignature size={12} /> 5. หมายเหตุ / เงื่อนไข
         </label>
         <textarea
@@ -21,7 +21,7 @@ export function QuotationRemarksVault() {
       </div>
 
       <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl space-y-4">
-        <h3 className="text-xs font-black text-nexus-teal uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2 mb-4 not-italic">
+        <h3 className="text-xs font-semibold text-nexus-teal uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2 mb-4 not-italic">
           <UploadCloud size={14} /> 6. เอกสารอ้างอิง
         </h3>
         <div className="w-full border-2 border-dashed border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center text-white/40 hover:text-nexus-teal hover:border-nexus-teal/40 hover:bg-nexus-teal/5 transition-all cursor-pointer">

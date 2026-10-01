@@ -8,7 +8,7 @@ export function InvoiceRemarks() {
 
   return (
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl space-y-2">
-      <label className="text-[11px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+      <label className="text-[11px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
         <FileSignature size={12} /> หมายเหตุ / เงื่อนไข
       </label>
       <textarea

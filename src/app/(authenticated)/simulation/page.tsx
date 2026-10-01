@@ -24,7 +24,7 @@ export default function SimulationPage() {
     try {
       // 1. Generate Atomic ID
       addLog("กำลังรันเลข SKU อัตโนมัติผ่าน idService...");
-      const seq = await idService.getNextSequence(db, "SKU", companyId);
+      const seq = await idService.getNextSequence("SKU", companyId);
       const nextSku = idService.formatId("SKU", seq);
       setResultId(nextSku);
       addLog(`ได้รับรหัสพัสดุ: ${nextSku}`);
@@ -47,7 +47,7 @@ export default function SimulationPage() {
           price_pos: 25000,
           price_project: 22000
         },
-        company_id: companyId,
+        companyId: companyId,
         createdAt: Timestamp.now()
       };
 

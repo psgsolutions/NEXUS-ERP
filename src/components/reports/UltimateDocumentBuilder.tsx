@@ -959,12 +959,12 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
   if (isLoading) {
     return (
-      <div className="flex-1 bg-[#0A0A0C] flex flex-col items-center justify-center p-12 relative overflow-hidden h-full select-none">
+      <div className="flex-1 bg-surface-0 flex flex-col items-center justify-center p-12 relative overflow-hidden h-full select-none">
         <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: "radial-gradient(#fff 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
         <div className="w-16 h-16 rounded-2xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shadow-[0_0_30px_rgba(0,255,209,0.2)] animate-pulse mb-6">
           <Database size={28} className="animate-spin text-nexus-teal [animation-duration:3s]" />
         </div>
-        <h3 className="text-sm font-black text-white uppercase tracking-widest leading-none">กำลังโหลดแม่แบบเอกสาร...</h3>
+        <h3 className="text-sm font-semibold text-white uppercase tracking-widest leading-none">กำลังโหลดแม่แบบเอกสาร...</h3>
         <p className="text-[10px] text-white/30 uppercase mt-2.5 tracking-widest font-bold leading-none animate-pulse">Syncing layout with secure multi-tenant cloud storage</p>
       </div>
     );
@@ -1505,7 +1505,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
         <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${isChecked ? "bg-black border-black text-white" : "border-black/35"}`}>
           {isChecked && <Check size={8} strokeWidth={4} />}
         </div>
-        <span className="text-xs text-black/80 font-black">{label}</span>
+        <span className="text-xs text-black/80 font-semibold">{label}</span>
       </div>
     );
   };
@@ -1516,7 +1516,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
         <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 ${isChecked ? "border-black" : "border-black/35"}`}>
           {isChecked && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
         </div>
-        <span className="text-xs text-black/80 font-black">{label}</span>
+        <span className="text-xs text-black/80 font-semibold">{label}</span>
       </div>
     );
   };
@@ -1582,11 +1582,11 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
           <table className="w-full border-collapse text-[10px] sm:text-xs">
             <thead className="bg-black/5 border-b border-black/25">
               <tr>
-                <th className="p-2 text-left uppercase text-black/60 font-black">รหัสพัสดุ</th>
-                <th className="p-2 text-left uppercase text-black/60 font-black">รายละเอียดพัสดุ</th>
-                <th className="p-2 text-right uppercase text-black/60 font-black">จำนวน</th>
-                <th className="p-2 text-right uppercase text-black/60 font-black">ราคา/หน่วย</th>
-                <th className="p-2 text-right uppercase text-black/60 font-black">ยอดเงินรวม</th>
+                <th className="p-2 text-left uppercase text-black/60 font-semibold">รหัสพัสดุ</th>
+                <th className="p-2 text-left uppercase text-black/60 font-semibold">รายละเอียดพัสดุ</th>
+                <th className="p-2 text-right uppercase text-black/60 font-semibold">จำนวน</th>
+                <th className="p-2 text-right uppercase text-black/60 font-semibold">ราคา/หน่วย</th>
+                <th className="p-2 text-right uppercase text-black/60 font-semibold">ยอดเงินรวม</th>
               </tr>
             </thead>
             <tbody>
@@ -1662,11 +1662,11 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
   const selectedBlock = template.blocks.find(b => b.id === selectedBlockId) || null;
 
   return (
-    <div className="flex flex-col h-full bg-[#0A0A0C] text-white overflow-hidden relative">
+    <div className="flex flex-col h-full bg-surface-0 text-white overflow-hidden relative">
       {/* -------------------------------------------------------------
           NEON SUB-HEADER ACTION BAR
           ------------------------------------------------------------- */}
-      <div className="h-16 border-b border-white/5 bg-[#0F0F12] flex items-center justify-between px-6 z-40 flex-shrink-0">
+      <div className="h-16 border-b border-white/5 bg-surface-1 flex items-center justify-between px-6 z-40 flex-shrink-0">
         <div className="flex items-center gap-4">
           <PillButton variant="glass" className="h-9 w-9 p-0 rounded-full" onClick={onClose}>
             <ArrowLeft size={16} />
@@ -1676,7 +1676,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
               <Sparkles size={16} />
             </div>
             <div>
-              <span className="text-[10px] font-black uppercase text-nexus-teal tracking-widest block leading-none">ตัวแปรเทมเพลต: {template.targetModule}</span>
+              <span className="text-[10px] font-semibold uppercase text-nexus-teal tracking-widest block leading-none">ตัวแปรเทมเพลต: {template.targetModule}</span>
               <input 
                 value={template.templateName} 
                 onChange={(e) => setTemplate(prev => ({ ...prev, templateName: e.target.value }))}
@@ -1728,8 +1728,8 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
         {/* -------------------------------------------------------------
             LEFT TOOL PANEL (PROPERTIES, ELEMENTS, PAGE-SETUP)
             ------------------------------------------------------------- */}
-        <aside className="w-[340px] border-r border-white/5 bg-[#0F0F12]/80 backdrop-blur-xl flex flex-col z-30 overflow-hidden flex-shrink-0">
-          <div className="flex border-b border-white/5 p-2 bg-[#0a0a0c]/40 gap-1.5 flex-shrink-0">
+        <aside className="w-[340px] border-r border-white/5 bg-surface-1/80 backdrop-blur-xl flex flex-col z-30 overflow-hidden flex-shrink-0">
+          <div className="flex border-b border-white/5 p-2 bg-surface-0/40 gap-1.5 flex-shrink-0">
             <button 
               onClick={() => setActiveTab("properties")}
               className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg flex items-center justify-center gap-1.5 transition-all ${activeTab === "properties" ? "bg-nexus-teal/15 text-nexus-teal border border-nexus-teal/30 shadow-[0_0_15px_rgba(0,255,209,0.08)]" : "text-white/30 hover:text-white/60 border border-transparent"}`}
@@ -1757,11 +1757,11 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                 {selectedBlock ? (
                   <div className="space-y-6">
                     {/* SECTION 1: COORDINATES & DIMENSIONS */}
-                    <div className="bg-[#121216]/50 border border-white/5 rounded-2xl p-4 space-y-3">
-                      <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">ตำแหน่ง & ขนาด</h4>
+                    <div className="bg-surface-1/50 border border-white/5 rounded-2xl p-4 space-y-3">
+                      <h4 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">ตำแหน่ง & ขนาด</h4>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-[9px] font-black text-white/40 uppercase block mb-1">แกน X (พิกเซล)</label>
+                          <label className="text-[9px] font-semibold text-white/40 uppercase block mb-1">แกน X (พิกเซล)</label>
                           <PillInput 
                             type="number" 
                             value={selectedBlock.position.x} 
@@ -1770,7 +1770,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                           />
                         </div>
                         <div>
-                          <label className="text-[9px] font-black text-white/40 uppercase block mb-1">แกน Y (พิกเซล)</label>
+                          <label className="text-[9px] font-semibold text-white/40 uppercase block mb-1">แกน Y (พิกเซล)</label>
                           <PillInput 
                             type="number" 
                             value={selectedBlock.position.y} 
@@ -1779,7 +1779,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                           />
                         </div>
                         <div>
-                          <label className="text-[9px] font-black text-white/40 uppercase block mb-1">ความกว้าง W</label>
+                          <label className="text-[9px] font-semibold text-white/40 uppercase block mb-1">ความกว้าง W</label>
                           <PillInput 
                             type="number" 
                             value={selectedBlock.position.w} 
@@ -1788,7 +1788,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                           />
                         </div>
                         <div>
-                          <label className="text-[9px] font-black text-white/40 uppercase block mb-1">ความสูง H</label>
+                          <label className="text-[9px] font-semibold text-white/40 uppercase block mb-1">ความสูง H</label>
                           <PillInput 
                             type="number" 
                             value={selectedBlock.position.h || 0} 
@@ -1801,12 +1801,12 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                     {/* SECTION 2: TEXT STYLE PANEL (FOR TEXT-CONTAINING BLOCKS) */}
                     {(selectedBlock.type === "TEXT" || selectedBlock.type === "SIGNATURE" || selectedBlock.type === "FORM_FIELD" || selectedBlock.type === "BARCODE") && (
-                      <div className="bg-[#121216]/50 border border-white/5 rounded-2xl p-4 space-y-4">
-                        <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">รูปแบบข้อความ</h4>
+                      <div className="bg-surface-1/50 border border-white/5 rounded-2xl p-4 space-y-4">
+                        <h4 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">รูปแบบข้อความ</h4>
                         
                         {/* Font Family Dropdown */}
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-white/50 block">แบบตัวอักษร</label>
+                          <label className="text-[9px] font-semibold text-white/50 block">แบบตัวอักษร</label>
                           <PillSelect
                             value={selectedBlock.properties?.fontFamily || "Sarabun"}
                             onChange={e => updateSelectedBlock({ fontFamily: e.target.value })}
@@ -1822,7 +1822,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                         {/* Font Size & Color */}
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1">
-                            <label className="text-[9px] font-black text-white/50 block">ขนาดอักษร</label>
+                            <label className="text-[9px] font-semibold text-white/50 block">ขนาดอักษร</label>
                             <PillInput 
                               type="number" 
                               value={selectedBlock.properties?.fontSize || 12} 
@@ -1831,13 +1831,13 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[9px] font-black text-white/50 block">สีตัวอักษร</label>
+                            <label className="text-[9px] font-semibold text-white/50 block">สีตัวอักษร</label>
                             <div className="flex gap-2">
                               <input 
                                 type="color" 
                                 value={selectedBlock.properties?.textColor || "#1f2937"} 
                                 onChange={e => updateSelectedBlock({ textColor: e.target.value })}
-                                className="w-10 h-8 rounded border border-white/10 bg-[#1C1C24] p-1 cursor-pointer flex-shrink-0"
+                                className="w-10 h-8 rounded border border-white/10 bg-surface-2 p-1 cursor-pointer flex-shrink-0"
                               />
                               <PillInput 
                                 type="text"
@@ -1851,8 +1851,8 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                         {/* Typography Style Toggles (Bold, Italic, Underline, Strikethrough) */}
                         <div className="space-y-2">
-                          <label className="text-[9px] font-black text-white/50 block">ลักษณะตัวอักษร</label>
-                          <div className="flex gap-1 bg-[#0A0A0C] border border-white/5 p-1 rounded-xl">
+                          <label className="text-[9px] font-semibold text-white/50 block">ลักษณะตัวอักษร</label>
+                          <div className="flex gap-1 bg-surface-0 border border-white/5 p-1 rounded-xl">
                             {/* Bold */}
                             <button
                               onClick={() => {
@@ -1921,8 +1921,8 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                         {/* Horizontal Alignments Toggle Row */}
                         <div className="space-y-2">
-                          <label className="text-[9px] font-black text-white/50 block">การจัดแนวข้อความ</label>
-                          <div className="flex gap-1 bg-[#0A0A0C] border border-white/5 p-1 rounded-xl">
+                          <label className="text-[9px] font-semibold text-white/50 block">การจัดแนวข้อความ</label>
+                          <div className="flex gap-1 bg-surface-0 border border-white/5 p-1 rounded-xl">
                             {["left", "center", "right", "justify"].map(align => {
                               const isAlignActive = (selectedBlock.properties?.textAlign || "left") === align;
                               return (
@@ -1945,7 +1945,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                         {/* Line Height & Spacing sliders */}
                         <div className="grid grid-cols-2 gap-3 pt-1">
                           <div className="space-y-1">
-                            <label className="text-[9px] font-black text-white/50 block flex justify-between">
+                            <label className="text-[9px] font-semibold text-white/50 block flex justify-between">
                               <span>ระยะห่างบรรทัด</span>
                               <span className="text-nexus-teal font-mono">{selectedBlock.properties?.lineHeight || 1.4}</span>
                             </label>
@@ -1960,7 +1960,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[9px] font-black text-white/50 block flex justify-between">
+                            <label className="text-[9px] font-semibold text-white/50 block flex justify-between">
                               <span>ระยะห่างตัวอักษร</span>
                               <span className="text-nexus-teal font-mono">{selectedBlock.properties?.letterSpacing || 0}px</span>
                             </label>
@@ -1980,12 +1980,12 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                     {/* SECTION 3: SHAPE STYLE PANEL (FOR SHAPE BLOCK) */}
                     {selectedBlock.type === "SHAPE" && (
-                      <div className="bg-[#121216]/50 border border-white/5 rounded-2xl p-4 space-y-4">
-                        <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">รูปแบบรูปทรง</h4>
+                      <div className="bg-surface-1/50 border border-white/5 rounded-2xl p-4 space-y-4">
+                        <h4 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">รูปแบบรูปทรง</h4>
                         
                         {/* Shapetypes */}
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-white/50 block">ชนิดรูปทรง:</label>
+                          <label className="text-[9px] font-semibold text-white/50 block">ชนิดรูปทรง:</label>
                           <PillSelect 
                             value={selectedBlock.properties?.shapeType || "rect"} 
                             onChange={e => updateSelectedBlock({ shapeType: e.target.value as any })}
@@ -2000,8 +2000,8 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                         {/* Presets Colors Row */}
                         {selectedBlock.properties?.shapeType !== "line" && (
                           <div className="space-y-2">
-                            <label className="text-[9px] font-black text-white/50 block">จานสีด่วน</label>
-                            <div className="flex gap-2 p-1.5 bg-[#0A0A0C] border border-white/5 rounded-xl justify-between">
+                            <label className="text-[9px] font-semibold text-white/50 block">จานสีด่วน</label>
+                            <div className="flex gap-2 p-1.5 bg-surface-0 border border-white/5 rounded-xl justify-between">
                               {["#0d9488", "#3b82f6", "#22c55e", "#eab308", "#d97706", "#ffffff"].map(presetColor => (
                                 <button
                                   key={presetColor}
@@ -2018,13 +2018,13 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                         {/* Background Custom Fill Picker */}
                         {selectedBlock.properties?.shapeType !== "line" && (
                           <div className="space-y-1">
-                            <label className="text-[9px] font-black text-white/50 block">สีพื้นหลังสไตล์กำหนดเอง</label>
+                            <label className="text-[9px] font-semibold text-white/50 block">สีพื้นหลังสไตล์กำหนดเอง</label>
                             <div className="flex gap-2">
                               <input 
                                 type="color" 
                                 value={selectedBlock.properties?.backgroundColor || "#0d9488"} 
                                 onChange={e => updateSelectedBlock({ backgroundColor: e.target.value })}
-                                className="w-10 h-8 rounded border border-white/10 bg-[#1C1C24] p-1 cursor-pointer flex-shrink-0"
+                                className="w-10 h-8 rounded border border-white/10 bg-surface-2 p-1 cursor-pointer flex-shrink-0"
                               />
                               <PillInput 
                                 type="text"
@@ -2038,12 +2038,12 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                         {/* Border Properties (Visible only for Rectangle & Circle) */}
                         {selectedBlock.properties?.shapeType !== "line" && (
-                          <div className="space-y-3 bg-[#0A0A0C]/40 border border-white/5 rounded-xl p-3">
-                            <label className="text-[9px] font-black text-nexus-teal uppercase tracking-widest block mb-1">เส้นขอบรูปทรง</label>
+                          <div className="space-y-3 bg-surface-0/40 border border-white/5 rounded-xl p-3">
+                            <label className="text-[9px] font-semibold text-nexus-teal uppercase tracking-widest block mb-1">เส้นขอบรูปทรง</label>
                             
                             <div className="grid grid-cols-2 gap-3">
                               <div className="space-y-1">
-                                <label className="text-[8px] font-black text-white/40 block">รูปแบบเส้นขอบ</label>
+                                <label className="text-[8px] font-semibold text-white/40 block">รูปแบบเส้นขอบ</label>
                                 <PillSelect 
                                   value={selectedBlock.properties?.borderStyle || "solid"} 
                                   onChange={e => updateSelectedBlock({ borderStyle: e.target.value as any })}
@@ -2055,7 +2055,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                                 </PillSelect>
                               </div>
                               <div className="space-y-1">
-                                <label className="text-[8px] font-black text-white/40 block">ความกว้างเส้น</label>
+                                <label className="text-[8px] font-semibold text-white/40 block">ความกว้างเส้น</label>
                                 <PillInput 
                                   type="number"
                                   value={selectedBlock.properties?.borderWidth || 0}
@@ -2066,13 +2066,13 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                             </div>
 
                             <div className="space-y-1">
-                              <label className="text-[8px] font-black text-white/40 block">สีเส้นขอบ</label>
+                              <label className="text-[8px] font-semibold text-white/40 block">สีเส้นขอบ</label>
                               <div className="flex gap-2">
                                 <input 
                                   type="color" 
                                   value={selectedBlock.properties?.borderColor || "transparent"} 
                                   onChange={e => updateSelectedBlock({ borderColor: e.target.value })}
-                                  className="w-8 h-8 rounded border border-white/10 bg-[#1C1C24] p-1 cursor-pointer flex-shrink-0"
+                                  className="w-8 h-8 rounded border border-white/10 bg-surface-2 p-1 cursor-pointer flex-shrink-0"
                                 />
                                 <PillInput 
                                   type="text"
@@ -2086,7 +2086,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                             {selectedBlock.properties?.shapeType === "rect" && (
                               <div className="space-y-1">
-                                <label className="text-[8px] font-black text-white/40 block flex justify-between">
+                                <label className="text-[8px] font-semibold text-white/40 block flex justify-between">
                                   <span>มุมโค้งมน</span>
                                   <span className="text-nexus-teal font-mono">{selectedBlock.properties?.borderRadius || 0}px</span>
                                 </label>
@@ -2105,13 +2105,13 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                         {/* If type is Line, just allow color and height */}
                         {selectedBlock.properties?.shapeType === "line" && (
-                          <div className="space-y-3 bg-[#0A0A0C]/40 border border-white/5 rounded-xl p-3">
-                            <label className="text-[9px] font-black text-nexus-teal uppercase block">สีของเส้นนอน:</label>
+                          <div className="space-y-3 bg-surface-0/40 border border-white/5 rounded-xl p-3">
+                            <label className="text-[9px] font-semibold text-nexus-teal uppercase block">สีของเส้นนอน:</label>
                             <input 
                               type="color" 
                               value={selectedBlock.properties?.backgroundColor || "#0d9488"} 
                               onChange={e => updateSelectedBlock({ backgroundColor: e.target.value })}
-                              className="w-full h-8 rounded border border-white/10 bg-[#1C1C24] p-1 cursor-pointer"
+                              className="w-full h-8 rounded border border-white/10 bg-surface-2 p-1 cursor-pointer"
                             />
                           </div>
                         )}
@@ -2119,30 +2119,30 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                     )}
 
                     {/* SECTION 4: ARRANGE PANEL (ALIGNMENT, ROTATION, FLIP, LAYERING) */}
-                    <div className="bg-[#121216]/50 border border-white/5 rounded-2xl p-4 space-y-4">
-                      <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">การจัดเรียง & จัดตำแหน่ง</h4>
+                    <div className="bg-surface-1/50 border border-white/5 rounded-2xl p-4 space-y-4">
+                      <h4 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">การจัดเรียง & จัดตำแหน่ง</h4>
                       
                       {/* Align to Page Center */}
                       <div className="space-y-2">
-                        <label className="text-[9px] font-black text-white/50 block">จัดกึ่งกลางหน้ากระดาษ</label>
+                        <label className="text-[9px] font-semibold text-white/50 block">จัดกึ่งกลางหน้ากระดาษ</label>
                         <div className="grid grid-cols-3 gap-1.5">
                           <button
                             onClick={centerHorizontally}
-                            className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all"
+                            className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all"
                             title="จัดแนวตั้งกึ่งกลางซ้ายขวา"
                           >
                             แนวนอน
                           </button>
                           <button
                             onClick={centerVertically}
-                            className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all"
+                            className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all"
                             title="จัดแนวนอนกึ่งกลางบนล่าง"
                           >
                             แนวตั้ง
                           </button>
                           <button
                             onClick={centerBoth}
-                            className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all"
+                            className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all"
                             title="จัดกึ่งกลางทั้งหมด"
                           >
                             <Maximize2 size={10} /> ตรงกลาง
@@ -2152,49 +2152,49 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                       {/* Alignments (Align Left, Center H, Align Right, Align Top, Align Middle, Align Bottom) */}
                       <div className="space-y-2">
-                        <label className="text-[9px] font-black text-white/50 block">จัดตำแหน่งชิดขอบกระดาษ</label>
+                        <label className="text-[9px] font-semibold text-white/50 block">จัดตำแหน่งชิดขอบกระดาษ</label>
                         <div className="grid grid-cols-3 gap-1.5">
-                          <button onClick={() => alignBlock("left")} className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5"><AlignLeft size={10} /> ซ้าย</button>
-                          <button onClick={() => alignBlock("center")} className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5"><AlignCenter size={10} /> กลาง</button>
-                          <button onClick={() => alignBlock("right")} className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5"><AlignRight size={10} /> ขวา</button>
+                          <button onClick={() => alignBlock("left")} className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5"><AlignLeft size={10} /> ซ้าย</button>
+                          <button onClick={() => alignBlock("center")} className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5"><AlignCenter size={10} /> กลาง</button>
+                          <button onClick={() => alignBlock("right")} className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5"><AlignRight size={10} /> ขวา</button>
                           
-                          <button onClick={() => alignVertically("top")} className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5">ขอบบน</button>
-                          <button onClick={() => alignVertically("middle")} className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5">กลาง</button>
-                          <button onClick={() => alignVertically("bottom")} className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5">ขอบล่าง</button>
+                          <button onClick={() => alignVertically("top")} className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5">ขอบบน</button>
+                          <button onClick={() => alignVertically("middle")} className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5">กลาง</button>
+                          <button onClick={() => alignVertically("bottom")} className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/10 text-white/70 hover:text-nexus-teal border border-white/5 transition-all text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-0.5">ขอบล่าง</button>
                         </div>
                       </div>
 
                       {/* Z-order Layers Ordering */}
                       <div className="space-y-2">
-                        <label className="text-[9px] font-black text-white/50 block flex justify-between">
+                        <label className="text-[9px] font-semibold text-white/50 block flex justify-between">
                           <span>ความลึกเลเยอร์</span>
                           <span className="text-nexus-teal font-mono">Z:{selectedBlock.properties?.zIndex || 1}</span>
                         </label>
                         <div className="grid grid-cols-4 gap-1">
                           <button
                             onClick={bringToFront}
-                            className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black uppercase tracking-wider flex items-center justify-center"
+                            className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black uppercase tracking-wider flex items-center justify-center"
                             title="ไว้หน้าสุด"
                           >
                             หน้าสุด
                           </button>
                           <button
                             onClick={moveLayerUp}
-                            className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black uppercase tracking-wider flex items-center justify-center"
+                            className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black uppercase tracking-wider flex items-center justify-center"
                             title="ขยับขึ้น Z+1"
                           >
                             <ArrowUp size={10} />
                           </button>
                           <button
                             onClick={moveLayerDown}
-                            className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black uppercase tracking-wider flex items-center justify-center"
+                            className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black uppercase tracking-wider flex items-center justify-center"
                             title="ขยับลง Z-1"
                           >
                             <ArrowDown size={10} />
                           </button>
                           <button
                             onClick={sendToBack}
-                            className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black uppercase tracking-wider flex items-center justify-center"
+                            className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black uppercase tracking-wider flex items-center justify-center"
                             title="ไว้หลังสุด"
                           >
                             หลังสุด
@@ -2204,32 +2204,32 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                       {/* Rotation & Flip */}
                       <div className="space-y-2">
-                        <label className="text-[9px] font-black text-white/50 block">การหมุนและการสะท้อน (Rotate & Flip)</label>
+                        <label className="text-[9px] font-semibold text-white/50 block">การหมุนและการสะท้อน (Rotate & Flip)</label>
                         <div className="grid grid-cols-4 gap-1 mb-2">
                           <button
                             onClick={rotateCw}
-                            className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black flex items-center justify-center transition-all"
+                            className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black flex items-center justify-center transition-all"
                             title="หมุนตามเข็ม 90 องศา"
                           >
                             <RotateCw size={12} />
                           </button>
                           <button
                             onClick={rotateCcw}
-                            className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black flex items-center justify-center transition-all"
+                            className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black flex items-center justify-center transition-all"
                             title="หมุนทวนเข็ม 90 องศา"
                           >
                             <RotateCcw size={12} />
                           </button>
                           <button
                             onClick={flipHorizontal}
-                            className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black flex items-center justify-center transition-all"
+                            className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black flex items-center justify-center transition-all"
                             title="สะท้อนกลับแนวนอน"
                           >
                             <FlipHorizontal size={12} />
                           </button>
                           <button
                             onClick={flipVertical}
-                            className="h-8 rounded bg-[#1C1C24] hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black flex items-center justify-center transition-all"
+                            className="h-8 rounded bg-surface-2 hover:bg-nexus-teal/15 hover:text-nexus-teal border border-white/5 text-[9px] font-black flex items-center justify-center transition-all"
                             title="สะท้อนกลับแนวตั้ง"
                           >
                             <FlipVertical size={12} />
@@ -2237,7 +2237,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                         </div>
                         
                         <div className="space-y-1">
-                          <label className="text-[8px] font-black text-white/40 block flex justify-between">
+                          <label className="text-[8px] font-semibold text-white/40 block flex justify-between">
                             <span>องศาหมุนละเอียด</span>
                             <span className="text-nexus-teal font-mono">{selectedBlock.properties?.rotation || 0}°</span>
                           </label>
@@ -2256,7 +2256,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                     {/* SECTION 5: CUSTOM BLOCK UNIQUE SETTINGS (QR, BARCODE, FORMS etc.) */}
                     {/* QR Code Unique settings */}
                     {selectedBlock.type === "QR_CODE" && (
-                      <div className="bg-[#121216]/50 border border-white/5 rounded-2xl p-4 space-y-3">
+                      <div className="bg-surface-1/50 border border-white/5 rounded-2xl p-4 space-y-3">
                         <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">ค่าข้อมูล QR Code</h4>
                         <PillInput 
                           value={selectedBlock.properties?.qrValue || ""} 
@@ -2269,8 +2269,8 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                     {/* Barcode Unique settings */}
                     {selectedBlock.type === "BARCODE" && (
-                      <div className="bg-[#121216]/50 border border-white/5 rounded-2xl p-4 space-y-3">
-                        <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">รหัสบาร์โค้ด</h4>
+                      <div className="bg-surface-1/50 border border-white/5 rounded-2xl p-4 space-y-3">
+                        <h4 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">รหัสบาร์โค้ด</h4>
                         <PillInput 
                           value={selectedBlock.content || ""} 
                           onChange={e => updateSelectedBlock({ content: e.target.value })}
@@ -2282,8 +2282,8 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                     {/* Business Icon selection unique settings */}
                     {selectedBlock.type === "ICON" && (
-                      <div className="bg-[#121216]/50 border border-white/5 rounded-2xl p-4 space-y-3">
-                        <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">เลือกไอคอนมาตรฐาน</h4>
+                      <div className="bg-surface-1/50 border border-white/5 rounded-2xl p-4 space-y-3">
+                        <h4 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">เลือกไอคอนมาตรฐาน</h4>
                         <PillSelect 
                           value={selectedBlock.properties?.iconName || "Phone"} 
                           onChange={e => updateSelectedBlock({ iconName: e.target.value })}
@@ -2305,10 +2305,10 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                     {/* Form Field Elements unique settings */}
                     {selectedBlock.type === "FORM_FIELD" && (
-                      <div className="bg-[#121216]/50 border border-white/5 rounded-2xl p-4 space-y-3">
-                        <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">เครื่องมือฟอร์ม</h4>
+                      <div className="bg-surface-1/50 border border-white/5 rounded-2xl p-4 space-y-3">
+                        <h4 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">เครื่องมือฟอร์ม</h4>
                         <div className="space-y-2">
-                          <label className="text-[9px] font-black text-white/50 block">ประเภทกล่องข้อมูล:</label>
+                          <label className="text-[9px] font-semibold text-white/50 block">ประเภทกล่องข้อมูล:</label>
                           <PillSelect 
                             value={selectedBlock.properties?.formFieldType || "checkbox"} 
                             onChange={e => updateSelectedBlock({ formFieldType: e.target.value as any })}
@@ -2327,7 +2327,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                           />
                         )}
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-white/50 block">ข้อความกำกับ:</label>
+                          <label className="text-[9px] font-semibold text-white/50 block">ข้อความกำกับ:</label>
                           <PillInput 
                             value={selectedBlock.content || ""} 
                             onChange={e => updateSelectedBlock({ content: e.target.value })}
@@ -2339,8 +2339,8 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                     {/* Image block Unique settings */}
                     {selectedBlock.type === "IMAGE" && (
-                      <div className="bg-[#121216]/50 border border-white/5 rounded-2xl p-4 space-y-3">
-                        <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">ลิงก์รูปภาพ</h4>
+                      <div className="bg-surface-1/50 border border-white/5 rounded-2xl p-4 space-y-3">
+                        <h4 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">ลิงก์รูปภาพ</h4>
                         <PillInput 
                           value={selectedBlock.src || ""} 
                           onChange={e => updateSelectedBlock({ src: e.target.value })}
@@ -2352,8 +2352,8 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                     {/* Signature block Unique settings */}
                     {selectedBlock.type === "SIGNATURE" && (
-                      <div className="bg-[#121216]/50 border border-white/5 rounded-2xl p-4 space-y-3">
-                        <h4 className="text-[10px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">กล่องลายมือชื่อ</h4>
+                      <div className="bg-surface-1/50 border border-white/5 rounded-2xl p-4 space-y-3">
+                        <h4 className="text-[10px] font-semibold text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">กล่องลายมือชื่อ</h4>
                         <PillInput 
                           value={selectedBlock.content || ""} 
                           onChange={e => updateSelectedBlock({ content: e.target.value })}
@@ -2374,7 +2374,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                     </div>
                   </div>
                 ) : (
-                  <div className="border border-dashed border-white/10 rounded-2xl p-8 text-center text-white/20 uppercase font-black text-[11px] tracking-widest bg-white/[0.01] my-8 leading-relaxed">
+                  <div className="border border-dashed border-white/10 rounded-2xl p-8 text-center text-white/20 uppercase font-semibold text-[11px] tracking-widest bg-white/[0.01] my-8 leading-relaxed">
                     โปรดเลือกบล็อกบนหน้ากระดาษ<br/>เพื่อเริ่มกำหนดคุณสมบัติโครงสร้าง
                   </div>
                 )}
@@ -2384,7 +2384,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
             {/* ----------------- TAB: ELEMENTS ----------------- */}
             {activeTab === "elements" && (
               <div className="space-y-4">
-                <h4 className="text-[11px] font-black text-white/30 uppercase tracking-widest mb-2 border-b border-white/5 pb-2">เครื่องมือวาดเอกสาร & ฟอร์ม</h4>
+                <h4 className="text-[11px] font-semibold text-white/30 uppercase tracking-widest mb-2 border-b border-white/5 pb-2">เครื่องมือวาดเอกสาร & ฟอร์ม</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <button onClick={() => addNewBlock("TEXT")} className="h-24 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-nexus-teal/10 hover:border-nexus-teal/30 hover:text-nexus-teal flex flex-col items-center justify-center gap-2 text-white/60 transition-all font-black text-xs uppercase tracking-wider">
                     <Type size={20} />
@@ -2425,11 +2425,11 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
             {/* ----------------- TAB: PAGE-SETUP ----------------- */}
             {activeTab === "page-setup" && (
               <div className="space-y-6">
-                <h4 className="text-[11px] font-black text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">ตั้งค่าขนาดหน้ากระดาษ</h4>
+                <h4 className="text-[11px] font-semibold text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">ตั้งค่าขนาดหน้ากระดาษ</h4>
                 
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-white/40 uppercase block">ขนาดกระดาษมาตรฐาน:</label>
+                    <label className="text-[10px] font-semibold text-white/40 uppercase block">ขนาดกระดาษมาตรฐาน:</label>
                     <PillSelect 
                       value={template.globalStyles.pageSize} 
                       onChange={e => setTemplate(prev => ({
@@ -2446,7 +2446,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-white/40 uppercase block">การเว้นระยะขอบกระดาษ:</label>
+                    <label className="text-[10px] font-semibold text-white/40 uppercase block">การเว้นระยะขอบกระดาษ:</label>
                     <PillSelect 
                       value={template.globalStyles.margin} 
                       onChange={e => setTemplate(prev => ({
@@ -2463,7 +2463,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
 
                   {/* Watermark Diagonal text background page selection */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-white/40 uppercase block">ลายน้ำป้องกันกระดาษ:</label>
+                    <label className="text-[10px] font-semibold text-white/40 uppercase block">ลายน้ำป้องกันกระดาษ:</label>
                     <PillSelect 
                       value={template.globalStyles.watermark || "NONE"} 
                       onChange={e => setTemplate(prev => ({
@@ -2482,7 +2482,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                 </div>
 
                 <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-4 space-y-2">
-                  <h5 className="text-[10px] font-black text-nexus-teal uppercase tracking-widest flex items-center gap-1.5">
+                  <h5 className="text-[10px] font-semibold text-nexus-teal uppercase tracking-widest flex items-center gap-1.5">
                     <Info size={12} />
                     <span>คำแนะนำสัญวิทยา</span>
                   </h5>
@@ -2499,7 +2499,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
             CENTER ACTIVE CANVAS PAPER
             ------------------------------------------------------------- */}
         <main 
-          className="flex-1 bg-[#121216] overflow-auto p-12 flex justify-center custom-scrollbar relative"
+          className="flex-1 bg-surface-1 overflow-auto p-12 flex justify-center custom-scrollbar relative"
         >
           <div 
             ref={showPreview ? null : canvasRef}
@@ -2510,7 +2510,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
             {/* 1. Diagonal faint printed Page Watermark diagonal under layout elements */}
             {template.globalStyles.watermark && template.globalStyles.watermark !== "NONE" && (
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden z-0 select-none">
-                <div className="text-[100px] font-black text-black/[0.03] uppercase tracking-widest rotate-[-45deg] select-none">
+                <div className="text-[100px] font-semibold text-black/[0.03] uppercase tracking-widest rotate-[-45deg] select-none">
                   {template.globalStyles.watermark}
                 </div>
               </div>
@@ -2577,7 +2577,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                 >
                   {/* Faint Grid Dots Alignment Indicator (rendered on Canvas when selected) */}
                   {isSelected && (
-                    <div className="absolute -top-4 left-0 bg-[#0C0C0E] border border-nexus-teal/40 text-[9px] font-black text-nexus-teal px-2 py-0.5 rounded-full select-none pointer-events-none shadow-neon-teal leading-none">
+                    <div className="absolute -top-4 left-0 bg-surface-1 border border-nexus-teal/40 text-[9px] font-black text-nexus-teal px-2 py-0.5 rounded-full select-none pointer-events-none shadow-neon-teal leading-none">
                       X:{block.position.x} Y:{block.position.y}
                     </div>
                   )}
@@ -2619,12 +2619,12 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
           ------------------------------------------------------------- */}
       {showPreview && (
         <div className="fixed inset-0 z-[6000] flex items-center justify-center p-6 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300">
-          <div className="w-full h-full max-w-[900px] flex flex-col bg-[#0F0F12] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-            <div className="h-16 border-b border-white/5 px-6 flex items-center justify-between flex-shrink-0 bg-[#0A0A0C]">
+          <div className="w-full h-full max-w-[900px] flex flex-col bg-surface-1 border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
+            <div className="h-16 border-b border-white/5 px-6 flex items-center justify-between flex-shrink-0 bg-surface-0">
               <div className="flex items-center gap-3">
                 <Eye size={18} className="text-nexus-teal animate-pulse" />
                 <div>
-                  <h3 className="text-sm font-black text-white uppercase tracking-wider">โหมดจำลองเอกสารจริง</h3>
+                  <h3 className="text-sm font-semibold text-white uppercase tracking-wider">โหมดจำลองเอกสารจริง</h3>
                   <p className="text-[10px] text-white/30 uppercase mt-0.5 tracking-widest leading-none font-bold">Injecting real-world variable mock data</p>
                 </div>
               </div>
@@ -2651,7 +2651,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
             </div>
 
             {/* Simulated Canvas A4 sheet area */}
-            <div className="flex-1 overflow-y-auto p-12 flex justify-center bg-[#121216] custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-12 flex justify-center bg-surface-1 custom-scrollbar">
               <div 
                 ref={showPreview ? canvasRef : null}
                 style={{ width: paper.width, height: paper.height }}
@@ -2661,7 +2661,7 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
                 {/* 1. Diagonal Watermark diagonal in preview */}
                 {template.globalStyles.watermark && template.globalStyles.watermark !== "NONE" && (
                   <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden z-0 select-none">
-                    <div className="text-[100px] font-black text-black/[0.03] uppercase tracking-widest rotate-[-45deg] select-none">
+                    <div className="text-[100px] font-semibold text-black/[0.03] uppercase tracking-widest rotate-[-45deg] select-none">
                       {template.globalStyles.watermark}
                     </div>
                   </div>
@@ -2730,8 +2730,8 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
         <div className="fixed bottom-6 right-6 z-[8000] animate-in slide-in-from-bottom duration-300">
           <div className={`px-6 py-3.5 rounded-full border shadow-2xl flex items-center gap-3 backdrop-blur-2xl ${toast.type === "error" ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-nexus-teal/10 border-nexus-teal/20 text-nexus-teal"}`}>
             <div className={`w-2 h-2 rounded-full ${toast.type === "error" ? "bg-red-400" : "bg-nexus-teal"} animate-ping`} />
-            <span className="text-xs font-black uppercase tracking-widest">{toast.message}</span>
-            <button className="text-[10px] uppercase font-black tracking-widest pl-3 border-l border-white/10 hover:text-white" onClick={() => setToast(prev => ({ ...prev, isVisible: false }))}>ปิด</button>
+            <span className="text-xs font-semibold uppercase tracking-widest">{toast.message}</span>
+            <button className="text-[10px] uppercase font-semibold tracking-widest pl-3 border-l border-white/10 hover:text-white" onClick={() => setToast(prev => ({ ...prev, isVisible: false }))}>ปิด</button>
           </div>
         </div>
       )}

@@ -126,13 +126,13 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
       title="ลงทะเบียนพนักงานใหม่"
       maxWidth="max-w-[1600px]"
     >
-      <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
+      <div className="flex h-full divide-x divide-white/5 bg-surface-0">
         <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
           <div className="max-w-4xl mx-auto space-y-12">
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
               <div className="space-y-1">
-                <p className="text-[12px] font-black text-nexus-teal uppercase tracking-[0.2em]">โหมดจัดการบุคลากร (HR_CORE_V3.0)</p>
-                <h4 className="text-xl font-black text-white uppercase tracking-tight">ข้อมูลพนักงาน</h4>
+                <p className="text-[12px] font-semibold text-nexus-teal uppercase tracking-[0.2em]">โหมดจัดการบุคลากร (HR_CORE_V3.0)</p>
+                <h4 className="text-xl font-semibold text-white uppercase tracking-tight">ข้อมูลพนักงาน</h4>
               </div>
               <PillTabs 
                  tabs={[
@@ -151,7 +151,7 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
                   <div className="flex items-start gap-10">
                      <div className="w-40 h-48 rounded-2xl bg-white/[0.03] border border-dashed border-white/10 flex flex-col items-center justify-center gap-3 group hover:border-nexus-teal/40 transition-all cursor-pointer">
                         <Camera className="text-white/10 group-hover:text-nexus-teal transition-colors" size={32} />
-                        <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">อัปโหลดรูป</span>
+                        <span className="text-[10px] font-semibold text-white/20 uppercase tracking-widest">อัปโหลดรูป</span>
                      </div>
                      <div className="flex-1 space-y-8">
                         <div className="grid grid-cols-4 gap-6">
@@ -242,11 +242,11 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
           </div>
         </div>
 
-        <div className="w-[420px] flex flex-col bg-[#0F0F12] p-12 flex-shrink-0 overflow-y-auto custom-scrollbar">
+        <div className="w-[420px] flex flex-col bg-surface-1 p-12 flex-shrink-0 overflow-y-auto custom-scrollbar">
           <div className="flex-1 space-y-10">
             <div className="space-y-1">
-              <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">ข้อมูลอ้างอิงเบื้องต้น</p>
-              <h5 className="text-sm font-black text-white uppercase tracking-tight">Identity Guard</h5>
+              <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">ข้อมูลอ้างอิงเบื้องต้น</p>
+              <h5 className="text-sm font-semibold text-white uppercase tracking-tight">Identity Guard</h5>
             </div>
 
             <div className="p-8 rounded-2xl bg-white/[0.03] border border-white/10 space-y-6">
@@ -291,7 +291,7 @@ export function EmployeeModal({ isOpen, onClose, onSave }: EmployeeModalProps) {
 function Field({ label, children }: { label: string, children: React.ReactNode }) {
   return (
     <div className="space-y-3">
-      <label className="text-[12px] font-black text-white/30 uppercase tracking-widest ml-1">{label}</label>
+      <label className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">{label}</label>
       {children}
     </div>
   );

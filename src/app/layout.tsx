@@ -39,7 +39,7 @@ export default function RootLayout({
             <ConnectionProvider>
             <SystemAlertProvider>
               <DialogProvider>
-                <div className="relative h-screen w-full bg-[#020203] overflow-hidden">
+                <div className="relative h-screen w-full bg-surface-0 overflow-hidden">
                   {/* Unified Ambient Background */}
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(20,163,204,0.08)_0%,transparent_50%)] pointer-events-none" />
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_100%,rgba(16,187,168,0.05)_0%,transparent_50%)] pointer-events-none" />

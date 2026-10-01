@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Save, Send, Building2, Calendar, Percent, Plus } from "lucide-react";
 import { PillButton, PillInput, PillSelect, cn, NexusDatePicker } from "@/components/ui/Base";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
@@ -23,6 +23,7 @@ const MOCK_PRODUCTS = [
 
 export default function CustomerPage() {
   const router = useRouter();
+  const params = useParams();
   
   const [docDate, setDocDate] = useState(new Date().toISOString().split('T')[0]);
   const [validUntil, setValidUntil] = useState(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
@@ -46,54 +47,59 @@ export default function CustomerPage() {
   }, [items, taxType]);
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white flex flex-col font-sans relative pb-24">
+    <div className="min-h-screen bg-surface-0 text-white flex flex-col font-sans relative pb-24">
       
       {/* Top Navigation / Action Bar */}
-      <div className="sticky top-0 z-50 bg-[#0A0A0A]/80 backdrop-blur-md border-b border-white/5 p-4 flex items-center justify-between">
-         <div className="flex items-center gap-4">
-            <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/5 text-white/50 hover:text-white transition-all">
-               <ArrowLeft size={20} />
-            </button>
+      <div className="p-4 sm:p-6 pb-0">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
+          <div className="flex items-center gap-4">
+            <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center">
+              <ArrowLeft size={20} />
+            </PillButton>
             <div>
-               <p className="text-[10px] font-black text-nexus-teal uppercase tracking-widest mb-1">สร้างเอกสารใหม่</p>
-               <h1 className="text-xl font-black uppercase tracking-tight">ข้อมูลลูกค้า (Customer Profile)</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">ข้อมูลลูกค้า</h1>
+                <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+                  {params.id || 'CUST-001'}
+                </span>
+              </div>
+              <p className="text-sm text-white/60 font-medium mt-1">ข้อมูลประวัติลูกค้า วงเงินเครดิต และประวัติการทำรายการในระบบ</p>
             </div>
-         </div>
-         <div className="flex items-center gap-4">
-            <PillButton variant="ghost" className="text-white/50 hover:text-white">
-               ยกเลิก
+          </div>
+          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+            <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={() => router.back()}>
+              ยกเลิก
             </PillButton>
-            <PillButton className="bg-white/5 border-white/10 hover:bg-white/10">
-               <Save size={16} /> บันทึกร่าง
+            <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/80">
+              <Save size={14} className="mr-1.5" /> บันทึกร่าง
             </PillButton>
-            <PillButton className="bg-nexus-teal text-black hover:bg-nexus-teal/90 shadow-[0_0_20px_rgba(45,212,191,0.2)]">
-               <Send size={16} /> บันทึกและอนุมัติ
+            <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs">
+              <Send size={14} className="mr-1.5" /> บันทึกและอนุมัติ
             </PillButton>
-         </div>
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-col xl:flex-row gap-4 px-4 py-6 w-full max-w-[1800px] mx-auto">
          <div className="flex-1 space-y-4">
          
-         {/* Document Flow Tracker */}
-         
-
          {/* Customer and Dates */}
          <div className="flex flex-col gap-4">
             {/* Customer Column */}
             <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-               <h3 className="text-sm font-black uppercase tracking-widest text-white/40 flex items-center gap-2 border-b border-white/5 pb-4">
+               <div className="flex items-center justify-between border-b border-white/5 pb-4 h-[36px]">
+            <h3 className="text-sm font-semibold uppercase tracking-widest text-white/40 flex items-center gap-2 ">
                   <Building2 size={16} /> ข้อมูลลูกค้า
                </h3>
                
                <div className="space-y-4 relative">
-                  <label className="text-[11px] font-black uppercase tracking-widest text-white/30">ชื่อลูกค้า *</label>
+                  <label className="text-[11px] font-semibold uppercase tracking-widest text-white/30">ชื่อลูกค้า *</label>
                   
                   {/* Smart Dropdown Mockup */}
                   <div className="relative">
                      <div 
                         onClick={() => setIsCustomerSelectorOpen(!isCustomerSelectorOpen)}
-                        className="w-full h-12 bg-[#0D0D0D] border border-white/10 rounded-xl px-4 flex items-center justify-between cursor-pointer hover:border-nexus-teal/50 transition-all group"
+                        className="w-full h-12 bg-surface-0 border border-white/10 rounded-xl px-4 flex items-center justify-between cursor-pointer hover:border-nexus-teal/50 transition-all group"
                      >
                         <span className={cn("text-sm font-bold", customer ? "text-white" : "text-white/30")}>
                            {customer ? customer.name : "พิมพ์เพื่อค้นหาผู้ติดต่อ หรือสร้างผู้ติดต่อใหม่"}
@@ -102,7 +108,7 @@ export default function CustomerPage() {
                      </div>
                      
                      {isCustomerSelectorOpen && (
-                        <div className="absolute top-14 left-0 w-full bg-[#1A1A1A] border border-white/10 rounded-xl shadow-2xl p-2 z-50">
+                        <div className="absolute top-14 left-0 w-full bg-surface-2 border border-white/10 rounded-xl shadow-2xl p-2 z-50">
                            {MOCK_CUSTOMERS.map(c => (
                               <div 
                                  key={c.id} 
@@ -122,11 +128,11 @@ export default function CustomerPage() {
 
                   <div className="grid grid-cols-2 gap-6 pt-2">
                      <div className="space-y-2">
-                        <label className="text-[11px] font-black uppercase tracking-widest text-white/30">ที่อยู่</label>
+                        <label className="text-[11px] font-semibold uppercase tracking-widest text-white/30">ที่อยู่</label>
                         <p className="text-sm text-white/60 min-h-[40px] leading-relaxed">{customer?.address || "-"}</p>
                      </div>
                      <div className="space-y-2">
-                        <label className="text-[11px] font-black uppercase tracking-widest text-white/30">เลขประจำตัวผู้เสียภาษี</label>
+                        <label className="text-[11px] font-semibold uppercase tracking-widest text-white/30">เลขประจำตัวผู้เสียภาษี</label>
                         <p className="text-sm text-white/60">{customer?.taxId || "-"}</p>
                      </div>
                   </div>
@@ -136,28 +142,28 @@ export default function CustomerPage() {
             {/* Dates & Tax Column */}
             <div className="grid grid-cols-2 gap-4">
                <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-                  <h3 className="text-sm font-black uppercase tracking-widest text-white/40 flex items-center gap-2 border-b border-white/5 pb-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-widest text-white/40 flex items-center gap-2 border-b border-white/5 pb-4">
                      <Calendar size={16} /> วันที่เอกสาร
                   </h3>
                   <div className="space-y-6">
                      <div className="space-y-2">
-                        <label className="text-[11px] font-black uppercase tracking-widest text-white/30">วันที่ออก</label>
-                        <NexusDatePicker value={docDate} onChange={(e) => setDocDate(e.target.value)} className="w-full bg-[#0D0D0D]" />
+                        <label className="text-[11px] font-semibold uppercase tracking-widest text-white/30">วันที่ออก</label>
+                        <NexusDatePicker value={docDate} onChange={(e) => setDocDate(e.target.value)} className="w-full bg-surface-0" />
                      </div>
                      <div className="space-y-2">
-                        <label className="text-[11px] font-black uppercase tracking-widest text-white/30">วันที่ใช้ได้ถึง</label>
-                        <NexusDatePicker value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="w-full bg-[#0D0D0D]" />
+                        <label className="text-[11px] font-semibold uppercase tracking-widest text-white/30">วันที่ใช้ได้ถึง</label>
+                        <NexusDatePicker value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="w-full bg-surface-0" />
                      </div>
                   </div>
                </div>
                
                <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-                  <h3 className="text-sm font-black uppercase tracking-widest text-white/40 flex items-center gap-2 border-b border-white/5 pb-4">
+                  <h3 className="text-sm font-semibold uppercase tracking-widest text-white/40 flex items-center gap-2 border-b border-white/5 pb-4">
                      <Percent size={16} /> ข้อมูลราคาและภาษี
                   </h3>
                   <div className="space-y-2">
-                     <label className="text-[11px] font-black uppercase tracking-widest text-white/30">ประเภทราคา</label>
-                     <PillSelect value={taxType} onChange={(e) => setTaxType(e.target.value)} className="w-full bg-[#0D0D0D]">
+                     <label className="text-[11px] font-semibold uppercase tracking-widest text-white/30">ประเภทราคา</label>
+                     <PillSelect value={taxType} onChange={(e) => setTaxType(e.target.value)} className="w-full bg-surface-0">
                         <option value="exclusive">แยกภาษี (Exclusive)</option>
                         <option value="inclusive">รวมภาษี (Inclusive)</option>
                         <option value="none">ไม่มีภาษี</option>
@@ -169,9 +175,10 @@ export default function CustomerPage() {
 
             {/* Line Items Table */}
             <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-               <h3 className="text-sm font-black uppercase tracking-widest text-white/40 flex items-center gap-2 border-b border-white/5 pb-4">
+               <h3 className="text-sm font-semibold uppercase tracking-widest text-white/40 flex items-center gap-2 border-b border-white/5 pb-4">
                   รายการสินค้า / บริการ
                </h3>
+          </div>
                
                <DocumentItemsTable 
                   items={items} 
@@ -206,7 +213,7 @@ export default function CustomerPage() {
                   </div>
                )}
                <div className="flex justify-between items-end pt-4">
-                  <span className="text-base font-black text-white/70 uppercase tracking-widest">จำนวนเงินทั้งสิ้น</span>
+                  <span className="text-base font-semibold text-white/70 uppercase tracking-widest">จำนวนเงินทั้งสิ้น</span>
                   <span className="text-3xl font-black text-nexus-teal font-mono tracking-tighter">
                      {formatCurrency(summary.grandTotal)} <span className="text-lg">THB</span>
                   </span>

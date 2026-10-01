@@ -75,21 +75,27 @@ export default function NewInventoryInPage() {
   const totalCost = items.reduce((acc, i) => acc + ((i.qty || 0) * (i.cost || 0)), 0);
 
   const headerContent = (
-    <>
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <button onClick={handleBack} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-white/50 hover:text-white transition-all backdrop-blur-sm">
-          <ArrowLeft size={18} />
-        </button>
+        <PillButton variant="glass" onClick={handleBack} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
         <div>
-          <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-0.5">INVENTORY OPS V7.5</p>
-          <div className="flex items-center">
-            <h1 className="text-xl font-black uppercase tracking-tight text-white">รับสินค้าเข้าคลัง (Goods Receipt)</h1>
-            <DocumentStepper steps={["Draft", "Pending", "Received"]} currentStep={0} />
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+              บันทึกรับสินค้าเข้าคลัง
+            </h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              GR-NEW
+            </span>
           </div>
+          <p className="text-sm text-white/60 font-medium mt-1">
+            รับสินค้าเข้าคลังสินค้า อ้างอิงใบสั่งซื้อหรือรับเข้าโดยตรง
+          </p>
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
         <PillTabs 
           tabs={[
             { id: "manual", label: "รับเข้าด้วยตนเอง", icon: <Package size={14} /> },
@@ -104,14 +110,14 @@ export default function NewInventoryInPage() {
             }
           }}
         />
-        <PillButton variant="ghost" className="h-9 px-6 rounded-full text-white/50 hover:text-white" onClick={handleBack}>
+        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={handleBack}>
           ยกเลิก
         </PillButton>
-        <PillButton className="h-9 px-6 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.15)]" onClick={handleSave}>
-          <ShieldCheck size={14} className="mr-2" /> บันทึกรับเข้าคลัง
+        <PillButton variant="save" className="h-8 px-5 font-bold text-xs" onClick={handleSave}>
+          <ShieldCheck size={14} className="mr-1.5" /> บันทึกรับเข้าคลัง
         </PillButton>
       </div>
-    </>
+    </div>
   );
 
   const leftContent = (
@@ -194,7 +200,7 @@ export default function NewInventoryInPage() {
         <div className="space-y-6 pt-6 border-t border-white/5">
           <div className="flex items-center gap-2 mb-2">
             <Truck size={16} className="text-white/40" />
-            <h4 className="text-[13px] font-black text-white/60 uppercase tracking-widest">รายการสินค้า (Items)</h4>
+            <h4 className="text-[13px] font-semibold text-white/60 uppercase tracking-widest">รายการสินค้า (Items)</h4>
           </div>
           <DocumentItemsTable 
             items={items}
@@ -220,30 +226,23 @@ export default function NewInventoryInPage() {
   const rightSidebar = (
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
       <div className="space-y-1 border-b border-white/5 pb-4">
-        <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">สรุปการรับเข้า</p>
+        <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">สรุปการรับเข้า</p>
         <h5 className="text-[13px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2">Receipt Summary</h5>
       </div>
 
       <div className="relative z-10 space-y-4">
         <div className="flex justify-between items-center pb-4 border-b border-white/5">
-          <span className="text-[11px] text-white/60 font-black uppercase tracking-widest">จำนวนรายการ</span>
+          <span className="text-[11px] text-white/60 font-semibold uppercase tracking-widest">จำนวนรายการ</span>
           <span className="text-[14px] font-mono font-bold text-white">{items.length} รายการ</span>
         </div>
         <div className="flex justify-between items-center pb-4 border-b border-white/5">
-          <span className="text-[11px] text-white/60 font-black uppercase tracking-widest">จำนวนชิ้นรวม</span>
+          <span className="text-[11px] text-white/60 font-semibold uppercase tracking-widest">จำนวนชิ้นรวม</span>
           <span className="text-[14px] font-mono font-bold text-white">{items.reduce((acc, i) => acc + (i.qty || 0), 0)} ชิ้น</span>
         </div>
         <div className="flex justify-between items-end pt-2">
-          <span className="text-[12px] text-white/80 font-black uppercase tracking-widest">มูลค่าต้นทุนรวม</span>
+          <span className="text-[12px] text-white/80 font-semibold uppercase tracking-widest">มูลค่าต้นทุนรวม</span>
           <span className="text-xl font-mono font-black text-emerald-400 drop-shadow-neon text-right">{formatCurrency(totalCost)}</span>
         </div>
-      </div>
-
-      <div className="space-y-4 pt-6 border-t border-white/5 relative z-10">
-        <PillButton className="w-full h-11 rounded-full font-black uppercase tracking-[0.2em] shadow-[0_0_12px_rgba(16,185,129,0.15)] bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30 text-[12px]" onClick={handleSave}>
-          <ShieldCheck size={18} className="mr-2" />
-          บันทึกรับเข้าคลัง
-        </PillButton>
       </div>
       
       {/* Background glow */}

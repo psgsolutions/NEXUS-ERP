@@ -33,7 +33,7 @@ export function ExpenseScanner() {
               <Receipt size={20} />
             </div>
             <div>
-              <h3 className="text-sm font-black uppercase tracking-widest text-white">Expense Intelligence</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-widest text-white">Expense Intelligence</h3>
               <p className="text-[10px] text-white/40 uppercase font-bold">AI OCR & Project Mapping</p>
             </div>
           </div>
@@ -56,11 +56,11 @@ export function ExpenseScanner() {
           <div className="space-y-4 animate-in zoom-in-95 duration-300">
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-                <p className="text-[10px] text-white/40 uppercase font-black mb-1">ยอดเงิน</p>
+                <p className="text-[10px] text-white/40 uppercase font-semibold mb-1">ยอดเงิน</p>
                 <p className="text-xl font-black text-nexus-blue">฿{scanResult.amount.toLocaleString()}</p>
               </div>
               <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-                <p className="text-[10px] text-white/40 uppercase font-black mb-1">ร้านค้า</p>
+                <p className="text-[10px] text-white/40 uppercase font-semibold mb-1">ร้านค้า</p>
                 <p className="text-lg font-bold text-white leading-none">{scanResult.merchant}</p>
               </div>
             </div>
@@ -69,7 +69,7 @@ export function ExpenseScanner() {
               <div className="flex items-start gap-3">
                 <MapPin size={18} className="text-nexus-teal shrink-0" />
                 <div className="space-y-1">
-                  <p className="text-[10px] text-nexus-teal uppercase font-black">AI Prediction: Project Link</p>
+                  <p className="text-[10px] text-nexus-teal uppercase font-semibold">AI Prediction: Project Link</p>
                   <p className="text-sm font-bold text-white">Mapping to: {scanResult.predictedProjectId}</p>
                   <p className="text-[11px] text-white/60 leading-tight">
                     {scanResult.reasoning}

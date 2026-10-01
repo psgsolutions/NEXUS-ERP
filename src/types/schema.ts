@@ -36,11 +36,18 @@ export interface Company {
 export interface Product extends BaseDocument {
   productId: string; // PROD-XXXX
   sku: string;
+  productCode?: string;
   name: string;
   brand: string;
+  model?: string;
+  mainModel?: string;
+  subModel?: string;
   category: string;
+  subCategory?: string;
   minStock: number;
   currentStock: number;
+  incomeAccountId?: string;
+  expenseAccountId?: string;
 }
 
 export interface SerialNumber extends BaseDocument {
@@ -68,6 +75,10 @@ export interface Project extends BaseDocument {
     quantity: number;
     estimatedPrice?: number;
   }[];
+  subcontractorRates?: {
+    role: string;
+    dailyRate: number;
+  }[];
 }
 
 export interface ServiceReport extends BaseDocument {
@@ -92,6 +103,8 @@ export interface Quotation extends BaseDocument {
   documentNo: string; // QT-YYMM-XXXX
   isVatRegistered: boolean;
   vatType: 'Include VAT' | 'Exclude VAT' | 'Non-VAT';
+  creditTerms?: string;
+  deliveryDate?: any;
   items: {
     itemCode: string; // บังคับดึงรหัสสินค้าจากระบบ
     description: string;

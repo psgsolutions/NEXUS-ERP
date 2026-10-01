@@ -172,18 +172,30 @@ export function QuotationFormProvider({ children }: { children: React.ReactNode 
     let whtAmount = 0;
     let grandTotal = 0;
 
+    // WHT รายบรรทัด: กระจายส่วนลดท้ายบิลตามสัดส่วน และคิดจากยอดก่อน VAT
+    const discountFactor = rawSubTotal > 0 ? subAfterDiscount / rawSubTotal : 0;
+    const vatDivisor = formData.taxDisplayMode === 'VAT_INCLUDED' ? 1.07 : 1;
+    const perLineWhtSum = items.reduce((sum, item: any) => {
+      const lineTotal = item.totalAmount || ((item.quantity || 1) * (item.unitPrice || item.price || 0));
+      const lineBase = (lineTotal * discountFactor) / vatDivisor;
+      const lineWhtRate = Number(item.whtRate) || 0;
+      return sum + (lineBase * (lineWhtRate / 100));
+    }, 0);
+
+    const hasPerLineWht = items.some((item: any) => (item.whtRate || 0) > 0);
+
     if (formData.taxDisplayMode === 'VAT_EXCLUDED') {
       vatAmount = subAfterDiscount * 0.07;
-      whtAmount = subAfterDiscount * (formData.whtRate / 100);
+      whtAmount = hasPerLineWht ? perLineWhtSum : subAfterDiscount * (formData.whtRate / 100);
       grandTotal = subAfterDiscount + vatAmount - whtAmount;
     } else if (formData.taxDisplayMode === 'VAT_INCLUDED') {
       vatAmount = subAfterDiscount - (subAfterDiscount / 1.07);
       preVatAmount = subAfterDiscount - vatAmount;
-      whtAmount = preVatAmount * (formData.whtRate / 100);
+      whtAmount = hasPerLineWht ? perLineWhtSum : preVatAmount * (formData.whtRate / 100);
       grandTotal = subAfterDiscount - whtAmount;
     } else {
       vatAmount = 0;
-      whtAmount = subAfterDiscount * (formData.whtRate / 100);
+      whtAmount = hasPerLineWht ? perLineWhtSum : subAfterDiscount * (formData.whtRate / 100);
       grandTotal = subAfterDiscount - whtAmount;
     }
 

@@ -133,40 +133,46 @@ export default function NewPurchaseRequestPage() {
   const grandTotal = (vatMode === "include" ? subtotal : subtotal + vatAmount) - whtAmount;
 
   const headerContent = (
-    <>
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <button onClick={handleBack} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-white/50 hover:text-white transition-all backdrop-blur-sm">
-          <ArrowLeft size={18} />
-        </button>
+        <PillButton variant="glass" onClick={handleBack} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
         <div>
-          <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-0.5">PROCURE V7.5</p>
-          <div className="flex items-center">
-            <h1 className="text-xl font-black uppercase tracking-tight text-white">บันทึกใบขอซื้อ (New Purchase Request)</h1>
-            <DocumentStepper steps={["Draft", "Pending", "Approved", "Executing", "Completed"]} currentStep={0} />
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+              บันทึกใบขอซื้อสินค้า
+            </h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              PR-NEW
+            </span>
           </div>
+          <p className="text-sm text-white/60 font-medium mt-1">
+            สร้างคำขอซื้อพัสดุ อุปกรณ์ และบริการเพื่อเสนอขออนุมัติจัดซื้อ
+          </p>
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
         <PillTabs 
           tabs={tabs}
           activeTab={activeTab}
           onTabChange={setActiveTab}
         />
-        <PillButton variant="ghost" className="h-9 px-6 rounded-full text-white/50 hover:text-white" onClick={handleBack}>
+        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={handleBack}>
           ยกเลิก
         </PillButton>
-        <PillButton className="h-9 px-6 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 shadow-[0_0_12px_rgba(6,182,212,0.15)]" onClick={handleSave}>
-          <ShieldCheck size={14} className="mr-2" /> ส่งขออนุมัติซื้อ
+        <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" onClick={handleSave}>
+          <ShieldCheck size={14} className="mr-1.5" /> ส่งขออนุมัติซื้อ
         </PillButton>
       </div>
-    </>
+    </div>
   );
 
   const leftContent = (
-    <div className="space-y-6">
+    <div className="space-y-7">
       {activeTab === "header" && (
-        <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl space-y-10">
+        <GlassCard accentColor="teal" className="p-6 space-y-10">
           {/* User & Request Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Field label="ผู้ยื่นคำขอซื้อ">
@@ -269,7 +275,7 @@ export default function NewPurchaseRequestPage() {
 
           {/* 3. Multi-Attachment Vault */}
           <div className="space-y-4 pt-6">
-            <h4 className="text-[12px] font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
+            <h4 className="text-[12px] font-semibold text-white/60 uppercase tracking-widest flex items-center gap-2">
               <FileUp size={16} /> คลังเอกสารแนบอ้างอิง (Attachments)
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -303,24 +309,24 @@ export default function NewPurchaseRequestPage() {
               </div>
             </div>
           </div>
-        </div>
+        </GlassCard>
       )}
 
       {activeTab === "items" && (
-        <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl space-y-6">
+        <GlassCard accentColor="blue" className="p-6 space-y-6">
           <DocumentItemsTable 
             items={items}
             onChange={setItems}
           />
-        </div>
+        </GlassCard>
       )}
     </div>
   );
 
   const rightSidebar = (
-    <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-8 sticky top-0">
+    <GlassCard accentColor="purple" className="p-5 space-y-8 sticky top-0">
       <div className="space-y-1 border-b border-white/5 pb-4">
-        <h5 className="text-[13px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2">
+        <h5 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
           สรุปรายการคำขอซื้อ
         </h5>
       </div>
@@ -393,7 +399,7 @@ export default function NewPurchaseRequestPage() {
           <span className="text-cyan-400 font-mono text-2xl font-black">฿{grandTotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
         </div>
       </div>
-    </div>
+    </GlassCard>
   );
 
   return (

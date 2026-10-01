@@ -6,6 +6,7 @@ import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { PillButton, GlassCard, PillSelect, NexusDatePicker } from "@/components/ui/Base";
 import { SmartSelect } from "@/components/ui/SmartComponents";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
+import { DocumentHeader } from "@/components/document/DocumentHeader";
 import { DocumentItem } from "@/types/shared";
 import { Save, ShoppingCart, User, ArrowLeft, Calculator, Building2, Calendar } from "lucide-react";
 import { db } from "@/lib/firebase-client";
@@ -84,25 +85,31 @@ export default function CreatePurchaseOrderPage() {
   };
 
   const headerContent = (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <button onClick={() => router.back()} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-white/50 hover:text-white transition-all backdrop-blur-sm">
-          <ArrowLeft size={18} />
-        </button>
+        <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
         <div>
-          <p className="text-[10px] text-cyan-400 font-black uppercase tracking-widest mb-0.5">Procurement / Purchase Order</p>
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-black uppercase tracking-tight text-white">สร้างใบสั่งซื้อ (Purchase Order)</h1>
-            <DocumentStepper steps={["Draft", "Pending", "Approved", "Received"]} currentStep={0} />
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+              สร้างใบสั่งซื้อสินค้า
+            </h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              PO-NEW
+            </span>
           </div>
+          <p className="text-sm text-white/60 font-medium mt-1">
+            สร้างใบสั่งซื้อสินค้าไปยังผู้จำหน่าย ตรวจสอบรายการและเงื่อนไขทางการค้า
+          </p>
         </div>
       </div>
-      <div className="flex items-center gap-4">
-        <PillButton variant="glass" className="h-9 px-6 rounded-full text-[12px] uppercase tracking-widest text-white/50 hover:text-white" onClick={() => router.back()}>
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={() => router.back()}>
           ยกเลิก
         </PillButton>
-        <PillButton onClick={handleSave} disabled={loading} className="h-9 px-6 rounded-full bg-cyan-500 text-black hover:bg-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)] text-[12px] font-black uppercase tracking-widest">
-          <Save size={14} className="mr-2" /> {loading ? "กำลังบันทึก..." : "บันทึกใบสั่งซื้อ"}
+        <PillButton variant="confirm" onClick={handleSave} disabled={loading} className="h-8 px-5 font-bold text-xs">
+          <Save size={14} className="mr-1.5" /> {loading ? "กำลังบันทึก..." : "บันทึกใบสั่งซื้อ"}
         </PillButton>
       </div>
     </div>
@@ -111,15 +118,26 @@ export default function CreatePurchaseOrderPage() {
   const leftContent = (
     <div className="space-y-4 pr-2 pb-10">
       <div className="flex flex-col gap-4">
-        {/* Supplier Column */}
-        <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-          <h3 className="text-[13px] font-black uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
-            <Building2 size={16} /> ข้อมูลผู้จำหน่าย
-          </h3>
-          
-          <div className="space-y-4">
-            <Field label="ผู้จำหน่าย (Supplier) *">
-              <SmartSelect
+        <DocumentHeader 
+          docNo="PO-2026-08-001"
+          issueDate={formData.expectedDate}
+          dueDate={formData.expectedDate}
+          entityName={formData.supplierName}
+          entityLabelTh="ผู้จำหน่าย"
+          entityLabelEn="Supplier"
+          entityPlaceholder="-- ค้นหาและเลือกผู้จำหน่าย --"
+          taxId="0105558000002"
+          branch="สำนักงานใหญ่"
+          taxMode="VAT_EXCLUDED"
+          onDocNoChange={() => {}}
+          onIssueDateChange={(val) => setFormData({...formData, expectedDate: val})}
+          onDueDateChange={(val) => setFormData({...formData, expectedDate: val})}
+          onEntitySelect={() => {}}
+        />
+        
+        {/* We keep the SmartSelect logic hidden or we can use a modal/dropdown. Since DocumentHeader has onClick={onEntitySelect}, we should just render the SmartSelect wrapper or leave it for now. For simplicity, we just put the SmartSelect hidden but active or just show it below */}
+        <div className="hidden">
+           <SmartSelect
                 value={formData.supplierId}
                 onChange={(value) => {
                   const sup = suppliers?.find(s => s.id === value);
@@ -135,37 +153,31 @@ export default function CreatePurchaseOrderPage() {
                 }))}
                 placeholder="-- ค้นหาและเลือกผู้จำหน่าย --"
               />
-            </Field>
-
-            <Field label="วันที่คาดว่าจะได้รับของ (Expected Date) *">
-              <NexusDatePicker 
-                value={formData.expectedDate}
-                onChange={(e) => setFormData({...formData, expectedDate: e.target.value})}
-                className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[13px] font-bold"
-              />
-            </Field>
-          </div>
         </div>
 
         {/* Line Items Table */}
-        <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-          <h3 className="text-[13px] font-black uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
-            <ShoppingCart size={16} /> รายการสินค้า / บริการ
-          </h3>
+        <GlassCard accentColor="blue" className="p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3 h-[36px]">
+            <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-full bg-nexus-blue/10 border border-nexus-blue/30 text-[10px] text-nexus-blue font-mono font-bold">02</span>
+              <ShoppingCart size={16} /> รายการสินค้า / บริการ
+            </h3>
+          </div>
           
           <DocumentItemsTable 
             items={items} 
             onChange={setItems} 
           />
-        </div>
+        </GlassCard>
       </div>
     </div>
   );
 
   const rightSidebar = (
-    <div className="space-y-4 h-fit pb-10">
-      <GlassCard className="p-6 border-white/5 rounded-3xl bg-[#111111] shadow-2xl space-y-4 w-full">
-        <h3 className="text-[13px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4">
+    <div className="space-y-7 h-fit pb-10">
+      <GlassCard accentColor="purple" className="p-6 space-y-4 w-full">
+        <h3 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/10 pb-4">
+          <span className="px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-[10px] text-purple-400 font-mono font-bold">03</span>
           <Calculator size={16} className="text-cyan-400" /> สรุปยอด (Summary)
         </h3>
 
@@ -178,7 +190,7 @@ export default function CreatePurchaseOrderPage() {
           <span className="text-white font-mono font-bold">{vatAmount.toLocaleString(undefined, {minimumFractionDigits: 2})} บาท</span>
         </div>
         <div className="flex justify-between items-end pt-4">
-          <span className="text-[12px] font-black text-white/70 uppercase tracking-widest">ยอดรวมสุทธิ</span>
+          <span className="text-[12px] font-semibold text-white/70 uppercase tracking-widest">ยอดรวมสุทธิ</span>
           <span className="text-3xl font-black text-cyan-400 font-mono tracking-tighter">
             {netTotal.toLocaleString(undefined, {minimumFractionDigits: 2})} <span className="text-[14px]">THB</span>
           </span>

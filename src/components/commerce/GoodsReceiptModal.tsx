@@ -80,13 +80,13 @@ export function GoodsReceiptModal({ isOpen, onClose, onSave }: GoodsReceiptModal
       title="บันทึกการรับสินค้า"
       maxWidth="max-w-[1600px]"
     >
-      <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
+      <div className="flex h-full divide-x divide-white/5 bg-surface-0">
         <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
           <div className="max-w-4xl mx-auto space-y-12">
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
               <div className="space-y-1">
-                <p className="text-[12px] font-black text-nexus-teal uppercase tracking-[0.2em]">คลังพัสดุและจัดซื้อ (GR_PROT_V3.0)</p>
-                <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกรับสินค้า</h4>
+                <p className="text-[12px] font-semibold text-nexus-teal uppercase tracking-[0.2em]">คลังพัสดุและจัดซื้อ (GR_PROT_V3.0)</p>
+                <h4 className="text-xl font-semibold text-white uppercase tracking-tight">บันทึกรับสินค้า</h4>
               </div>
               <PillTabs 
                 tabs={tabs}
@@ -160,7 +160,7 @@ export function GoodsReceiptModal({ isOpen, onClose, onSave }: GoodsReceiptModal
               {activeTab === "items" && (
                 <div className="space-y-6">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-[12px] font-black text-white/30 uppercase tracking-[0.2em]">รายการพัสดุที่รับเข้า</h4>
+                    <h4 className="text-[12px] font-semibold text-white/30 uppercase tracking-[0.2em]">รายการพัสดุที่รับเข้า</h4>
                     <span className="text-[11px] font-black text-nexus-teal uppercase tracking-widest">ตรวจนับและระบุ Serial Number</span>
                   </div>
 
@@ -168,7 +168,7 @@ export function GoodsReceiptModal({ isOpen, onClose, onSave }: GoodsReceiptModal
                     {items.length === 0 ? (
                         <div className="p-20 border border-dashed border-white/5 rounded-xl flex flex-col items-center justify-center text-center space-y-4">
                           <Package size={48} className="text-white/5" />
-                          <p className="text-sm text-white/20 font-black uppercase tracking-widest">ยังไม่มีรายการพัสดุ (กรุณาดึงข้อมูลจาก PO)</p>
+                          <p className="text-sm text-white/20 font-semibold uppercase tracking-widest">ยังไม่มีรายการพัสดุ (กรุณาดึงข้อมูลจาก PO)</p>
                        </div>
                     ) : (
                       items.map((item) => (
@@ -179,13 +179,13 @@ export function GoodsReceiptModal({ isOpen, onClose, onSave }: GoodsReceiptModal
                                    <Package size={20} />
                                 </div>
                                 <div>
-                                   <p className="text-sm font-black text-white uppercase">{item.name}</p>
+                                   <p className="text-sm font-semibold text-white uppercase">{item.name}</p>
                                    <p className="text-[10px] text-white/30 font-black uppercase tracking-widest">สั่งซื้อ: {item.qtyOrdered} {item.unit}</p>
                                 </div>
                              </div>
                              <div className="flex items-center gap-6">
                                 <div className="text-right">
-                                   <label className="block text-[10px] font-black text-white/20 uppercase mb-1">จำนวนที่รับจริง</label>
+                                   <label className="block text-[10px] font-semibold text-white/20 uppercase mb-1">จำนวนที่รับจริง</label>
                                    <PillInput 
                                       type="number" 
                                       value={item.qtyReceived}
@@ -217,11 +217,11 @@ export function GoodsReceiptModal({ isOpen, onClose, onSave }: GoodsReceiptModal
           </div>
         </div>
 
-        <div className="w-[420px] flex flex-col bg-[#0F0F12] p-12 flex-shrink-0 overflow-y-auto custom-scrollbar">
+        <div className="w-[420px] flex flex-col bg-surface-1 p-12 flex-shrink-0 overflow-y-auto custom-scrollbar">
           <div className="flex-1 space-y-10">
             <div className="space-y-1">
-              <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">สรุปการรับพัสดุ</p>
-              <h5 className="text-sm font-black text-white uppercase tracking-tight">Receipt Intelligence</h5>
+              <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">สรุปการรับพัสดุ</p>
+              <h5 className="text-sm font-semibold text-white uppercase tracking-tight">Receipt Intelligence</h5>
             </div>
 
              <div className="p-8 rounded-xl bg-white/[0.03] border border-white/10 space-y-8 relative overflow-hidden group">
@@ -260,7 +260,7 @@ export function GoodsReceiptModal({ isOpen, onClose, onSave }: GoodsReceiptModal
 function Field({ label, children }: { label: string, children: React.ReactNode }) {
   return (
     <div className="space-y-3">
-      <label className="text-[12px] font-black text-white/30 uppercase tracking-widest ml-1">{label}</label>
+      <label className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">{label}</label>
       {children}
     </div>
   );

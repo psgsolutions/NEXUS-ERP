@@ -88,7 +88,7 @@ function RepairPortalContent() {
         {/* Header (Clean, Light Theme) */}
         <div className="h-24 bg-blue-600 flex flex-col items-center justify-center text-white px-6 shrink-0 relative">
           <ShieldAlert size={28} className="absolute right-6 opacity-20" />
-          <h1 className="text-xl font-black uppercase tracking-widest">NEXUS SERVICE</h1>
+          <h1 className="text-xl font-semibold uppercase tracking-widest">NEXUS SERVICE</h1>
           <p className="text-xs text-blue-100 mt-1">ระบบแจ้งซ่อมออนไลน์ (Customer Portal)</p>
         </div>
 
@@ -96,7 +96,7 @@ function RepairPortalContent() {
         <form onSubmit={handleSubmit} className="p-6 flex-1 flex flex-col gap-5">
           
           <div className="space-y-1">
-            <label className="text-sm font-black text-slate-600">เบอร์โทรศัพท์ติดต่อกลับ <span className="text-red-500">*</span></label>
+            <label className="text-sm font-semibold text-slate-600">เบอร์โทรศัพท์ติดต่อกลับ <span className="text-red-500">*</span></label>
             <input
               type="tel"
               value={formData.phoneNumber}
@@ -119,7 +119,7 @@ function RepairPortalContent() {
           </div>
 
           <div className="space-y-1 flex-1 flex flex-col">
-            <label className="text-sm font-black text-slate-600">รายละเอียดอาการเสีย <span className="text-red-500">*</span></label>
+            <label className="text-sm font-semibold text-slate-600">รายละเอียดอาการเสีย <span className="text-red-500">*</span></label>
             <textarea
               value={formData.symptom}
               onChange={e => setFormData({...formData, symptom: e.target.value})}
@@ -130,7 +130,7 @@ function RepairPortalContent() {
 
           {/* Photo Upload */}
           <div className="space-y-1">
-            <label className="text-sm font-black text-slate-600">แนบรูปภาพ (ถ้ามี)</label>
+            <label className="text-sm font-semibold text-slate-600">แนบรูปภาพ (ถ้ามี)</label>
             <input 
               type="file" 
               accept="image/*" 

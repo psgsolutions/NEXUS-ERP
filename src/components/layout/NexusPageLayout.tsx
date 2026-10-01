@@ -6,21 +6,23 @@ export default function NexusPageLayout({
   leftContent, 
   rightSidebar,
   topContent,
+  footer,
   className 
 }: { 
   header: React.ReactNode; 
   leftContent: React.ReactNode; 
   rightSidebar?: React.ReactNode; 
   topContent?: React.ReactNode;
+  footer?: React.ReactNode;
   className?: string;
 }) {
   return (
     // 1. บังคับ Full-Page และคุมพื้นหลัง Dark Theme แต่อยู่ภายในขอบเขตของ Layout หลัก (ไม่ซ้อนทับ Sidebar)
-    <div className={cn("w-full h-full min-h-[100vh] flex flex-col bg-[#0a0a0c] overflow-hidden font-sans relative z-10", className)}>
+    <div className={cn("w-full h-full min-h-[100vh] flex flex-col bg-surface-0 overflow-hidden font-sans relative z-10", className)}>
       
       {/* Header: ตรึงนิ่งสนิทตามกฎ */}
-      <header className="flex-none sticky top-0 z-50 bg-[#0a0a0c]/80 backdrop-blur-md border-b border-white/10">
-        <div className="p-4 xl:p-6 w-full">
+      <header className="flex-none sticky top-0 z-50 bg-surface-0/80 backdrop-blur-md border-b border-white/10">
+        <div className="px-4 xl:px-6 py-2.5 xl:py-3 w-full">
           {header}
         </div>
       </header>
@@ -50,6 +52,15 @@ export default function NexusPageLayout({
           </aside>
         )}
       </div>
+
+      {/* Footer: แถบคำสั่งด้านล่าง sticky */}
+      {footer && (
+        <footer className="flex-none sticky bottom-0 z-40 bg-surface-0/95 backdrop-blur-xl border-t border-white/10">
+          <div className="px-4 xl:px-6 py-3 w-full">
+            {footer}
+          </div>
+        </footer>
+      )}
     </div>
   );
 }

@@ -264,13 +264,13 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
       title="ระบบรับเข้าพัสดุ"
       maxWidth="max-w-[1600px]"
     >
-      <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
+      <div className="flex h-full divide-x divide-white/5 bg-surface-0">
         <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
           <div className="max-w-4xl mx-auto space-y-12">
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
                <div className="space-y-1">
-                  <p className="text-[12px] font-black text-nexus-teal uppercase tracking-[0.2em]">Inbound Logistics Operation</p>
-                  <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกรับสินค้าเข้าคลัง</h4>
+                  <p className="text-[12px] font-semibold text-nexus-teal uppercase tracking-[0.2em]">Inbound Logistics Operation</p>
+                  <h4 className="text-xl font-semibold text-white uppercase tracking-tight">บันทึกรับสินค้าเข้าคลัง</h4>
                </div>
                <PillTabs tabs={tabs} activeTab={sourceMode} onTabChange={setSourceMode} />
             </div>
@@ -281,7 +281,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                     <div className="space-y-8">
                        <div className="flex items-center gap-3 text-nexus-teal">
                           <Package size={18} />
-                          <h5 className="text-[13px] font-black uppercase tracking-widest">ข้อมูลสินค้า</h5>
+                          <h5 className="text-[13px] font-semibold uppercase tracking-widest">ข้อมูลสินค้า</h5>
                        </div>
                        <div className="space-y-6">
                           <div className="flex gap-4">
@@ -294,13 +294,13 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                                    <>
                                       <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
                                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                         <span className="text-[9px] font-black uppercase text-white">Change</span>
+                                         <span className="text-[9px] font-semibold uppercase text-white">Change</span>
                                       </div>
                                    </>
                                 ) : (
                                    <>
                                       <Plus size={20} className="mb-1" />
-                                      <span className="text-[9px] font-black uppercase">Upload</span>
+                                      <span className="text-[9px] font-semibold uppercase">Upload</span>
                                    </>
                                 )}
                              </div>
@@ -316,7 +316,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                                       />
                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-50">
                                          <ShieldCheck size={14} className="text-nexus-teal" />
-                                         <span className="text-[9px] font-black uppercase text-nexus-teal">System Locked</span>
+                                         <span className="text-[9px] font-semibold uppercase text-nexus-teal">System Locked</span>
                                       </div>
                                    </div>
                                 </Field>
@@ -332,7 +332,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                           
                           <div className="grid grid-cols-2 gap-4">
                              <Field label="หมวดหมู่ * (Category)">
-                                <div className="relative">
+                                <div className={cn("relative", isCatFocused && "z-[99999]")}>
                                   <div className="relative">
                                     <PillInput
                                       value={catSearch}
@@ -357,14 +357,14 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                                   </div>
                                   
                                   {isCatFocused && (
-                                    <div className="absolute top-full left-0 mt-2 w-full bg-[#0F0F12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden flex flex-col py-2 max-h-48 overflow-y-auto custom-scrollbar">
+                                    <div className="absolute top-full left-0 mt-2 w-full bg-surface-1 border border-white/10 rounded-2xl shadow-xl z-[99999] overflow-hidden flex flex-col py-2 max-h-48 overflow-y-auto custom-scrollbar">
                                        {filteredCats.map(c => (
                                           <div 
                                              key={c.id} 
                                              className="flex items-center justify-between px-4 py-2 hover:bg-white/5 cursor-pointer group transition-colors"
                                              onClick={() => handleSelectCat(c.id, c.label)}
                                           >
-                                             <span className={cn("text-xs font-black uppercase", formData.category === c.id ? "text-nexus-teal" : "text-white/70")}>{c.label}</span>
+                                             <span className={cn("text-xs font-semibold uppercase", formData.category === c.id ? "text-nexus-teal" : "text-white/70")}>{c.label}</span>
                                              {!c.isSystem && (
                                                 <button 
                                                    onClick={(e) => handleDeleteCategory(c.id, e)}
@@ -406,7 +406,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                           </Field>
                            
                            <div className="pt-2 border-t border-white/5 space-y-4 mt-2">
-                              <h6 className="text-[10px] font-black uppercase text-nexus-teal tracking-widest">หน่วยและขนาดบรรจุภัณฑ์ (UOM & Packaging)</h6>
+                              <h6 className="text-[10px] font-semibold uppercase text-nexus-teal tracking-widest">หน่วยและขนาดบรรจุภัณฑ์ (UOM & Packaging)</h6>
                               <div className="grid grid-cols-3 gap-4 bg-black/40 p-4 rounded-xl border border-white/5 items-end">
                                  <Field label="หน่วยจัดเก็บ (Package Unit)">
                                     <PillSelect value={formData.packageUnit} onChange={(e) => setFormData({...formData, packageUnit: e.target.value})} className="w-full h-9 px-6 rounded-full text-center">
@@ -429,7 +429,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                     <div className="space-y-8">
                        <div className="flex items-center gap-3 text-white">
                           <Truck size={18} />
-                          <h5 className="text-[13px] font-black uppercase tracking-widest">รับเข้า & การเงิน (Inbound & Financials)</h5>
+                          <h5 className="text-[13px] font-semibold uppercase tracking-widest">รับเข้า & การเงิน (Inbound & Financials)</h5>
                        </div>
                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-6">
                           <div className="grid grid-cols-2 gap-4">
@@ -444,7 +444,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                                 <div className="space-y-1.5">
                                    <StepperInput value={formData.qty} onChange={(val) => setFormData({...formData, qty: val})} className="font-black text-nexus-teal" />
                                    {formData.conversionRate > 1 && (
-                                      <div className="flex items-center gap-1.5 text-[9px] font-black text-white/40 uppercase tracking-widest pl-1">
+                                      <div className="flex items-center gap-1.5 text-[9px] font-semibold text-white/40 uppercase tracking-widest pl-1">
                                          <Package size={10} className="text-nexus-teal" /> สต๊อกสุทธิ: <span className="text-nexus-teal">{formData.qty * formData.conversionRate} {formData.baseUnit}</span>
                                       </div>
                                    )}
@@ -459,13 +459,13 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                              <Field label="ราคาขาย * (Selling Price)">
                                 <div className="space-y-1.5">
                                    <StepperInput value={formData.price} onChange={handlePriceChange} className="text-nexus-teal font-black" />
-                                   <div className="flex items-center gap-1.5 text-[9px] font-black text-white/30 uppercase tracking-widest pl-1">
+                                   <div className="flex items-center gap-1.5 text-[9px] font-semibold text-white/30 uppercase tracking-widest pl-1">
                                       <span className="text-nexus-teal/60">💡</span> ราคาแนะนำ (Margin 20%): ฿{(formData.cost / 0.8).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                    </div>
                                 </div>
                              </Field>
                              <div className="col-span-2 flex justify-between items-center pt-2 border-t border-white/5">
-                                <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">กำไรคาดการณ์</span>
+                                <span className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">กำไรคาดการณ์</span>
                                 <span className={cn("text-sm font-black mono-numbers", profit > 0 ? "text-nexus-teal" : "text-white/40")}>
                                    ฿{profit.toLocaleString()} <span className="text-xs">({profitMargin}%)</span>
                                </span>
@@ -497,12 +497,12 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
 
                     <div className="space-y-6">
                        <div className="flex justify-between items-center px-2">
-                          <h5 className="text-[11px] font-black text-white/40 uppercase tracking-widest">รายการที่รอการรับเข้า ({poItems.length})</h5>
+                          <h5 className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">รายการที่รอการรับเข้า ({poItems.length})</h5>
                        </div>
                        {poItems.length === 0 ? (
                           <div className="p-20 border border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center text-center space-y-4">
                              <Package size={48} className="text-white/5" />
-                             <p className="text-[11px] text-white/20 font-black uppercase tracking-widest">ยังไม่มีรายการ (กรุณาระบุเลขที่ PO)</p>
+                             <p className="text-[11px] text-white/20 font-semibold uppercase tracking-widest">ยังไม่มีรายการ (กรุณาระบุเลขที่ PO)</p>
                           </div>
                        ) : (
                           <div className="space-y-4">
@@ -512,15 +512,15 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
                                      <Package size={24} />
                                   </div>
                                   <div className="flex-1">
-                                     <p className="text-sm font-black text-white uppercase">{item.name}</p>
+                                     <p className="text-sm font-semibold text-white uppercase">{item.name}</p>
                                      <p className="text-[10px] text-white/30 font-bold uppercase mt-0.5">{item.sku} • สั่งซื้อ: {item.qtyOrdered}</p>
                                   </div>
                                   <div className="w-24">
-                                     <p className="text-[9px] font-black text-white/20 uppercase mb-1">รับจริง</p>
+                                     <p className="text-[9px] font-semibold text-white/20 uppercase mb-1">รับจริง</p>
                                      <PillInput type="number" value={item.qtyReceived} onChange={(e) => updatePoItem(item.id, "qtyReceived", Number(e.target.value))} className="w-full h-9 px-4 rounded-full text-center font-black text-nexus-teal font-mono" />
                                   </div>
                                   <div className="w-32">
-                                     <p className="text-[9px] font-black text-white/20 uppercase mb-1">ต้นทุน/หน่วย</p>
+                                     <p className="text-[9px] font-semibold text-white/20 uppercase mb-1">ต้นทุน/หน่วย</p>
                                      <PillInput type="number" value={item.cost} onChange={(e) => updatePoItem(item.id, "cost", Number(e.target.value))} className="w-full h-9 px-4 rounded-full text-center font-black font-mono text-right" />
                                   </div>
                                </div>
@@ -534,11 +534,11 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
           </div>
         </div>
 
-        <div className="w-[380px] bg-[#0F0F12] p-12 flex flex-col overflow-y-auto custom-scrollbar">
+        <div className="w-[380px] bg-surface-1 p-12 flex flex-col overflow-y-auto custom-scrollbar">
            <div className="flex-1 space-y-10">
               <div className="space-y-1">
-                <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">Validation Briefing</p>
-                <h5 className="text-sm font-black text-white uppercase tracking-tight">Stock Integrity</h5>
+                <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">Validation Briefing</p>
+                <h5 className="text-sm font-semibold text-white uppercase tracking-tight">Stock Integrity</h5>
               </div>
 
               <div className="p-8 rounded-2xl bg-nexus-teal/5 border border-nexus-teal/10 space-y-6">
@@ -576,7 +576,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
     </Modal>
 
       <Modal isOpen={show3DPicker} onClose={() => setShow3DPicker(false)} title="เครื่องมือเลือกพิกัด 3 มิติ (3D LOCATION PICKER)" maxWidth="max-w-[1400px]">
-        <div className="w-full h-[85vh] bg-[#0A0A0C] flex flex-col overflow-hidden p-6">
+        <div className="w-full h-[85vh] bg-surface-0 flex flex-col overflow-hidden p-6">
            <div className="flex-1 overflow-hidden relative rounded-2xl border border-white/5 bg-black/40">
               <Warehouse3D 
                  pickerMode={true} 
@@ -596,7 +596,7 @@ export function InventoryInModal({ isOpen, onClose, onConfirm }: InventoryInModa
 function Field({ label, children }: { label: string, children: React.ReactNode }) {
   return (
     <div className="space-y-3">
-      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">{label}</label>
+      <label className="text-[11px] font-semibold text-white/30 uppercase tracking-widest ml-1">{label}</label>
       {children}
     </div>
   );

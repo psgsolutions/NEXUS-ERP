@@ -31,7 +31,7 @@ export function QuantumRiskEngine() {
   }, [riskLevel]);
 
   return (
-    <div className="p-10 rounded-2xl bg-[#0A0A0C] border border-white/5 relative overflow-hidden group">
+    <div className="p-10 rounded-2xl bg-surface-0 border border-white/5 relative overflow-hidden group">
        {/* Animated Background Grid */}
        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#00f3ff_1px,transparent_1px)] [background-size:20px_20px] animate-pulse" />
        
@@ -46,7 +46,7 @@ export function QuantumRiskEngine() {
                    <Cpu size={32} />
                 </div>
                 <div>
-                   <h4 className="text-2xl font-black text-white uppercase tracking-tight">Quantum Risk Engine</h4>
+                   <h4 className="text-2xl font-semibold text-white uppercase tracking-tight">Quantum Risk Engine</h4>
                    <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">Business Continuity Simulation V6.0</p>
                 </div>
              </div>
@@ -56,10 +56,10 @@ export function QuantumRiskEngine() {
                    "Engaging multi-layer simulation for current fiscal period. Analysis incorporates supply chain volatility, currency fluctuation (THB/USD), and regional labor metrics."
                 </p>
                 <div className="flex gap-4">
-                   <div className="flex items-center gap-2 text-[10px] font-black text-nexus-teal uppercase tracking-widest">
+                   <div className="flex items-center gap-2 text-[10px] font-semibold text-nexus-teal uppercase tracking-widest">
                       <ShieldCheck size={14} /> AI Nodes: Online
                    </div>
-                   <div className="flex items-center gap-2 text-[10px] font-black text-nexus-blue uppercase tracking-widest">
+                   <div className="flex items-center gap-2 text-[10px] font-semibold text-nexus-blue uppercase tracking-widest">
                       <Network size={14} /> Neural Path: Active
                    </div>
                 </div>
@@ -87,7 +87,7 @@ export function QuantumRiskEngine() {
                    />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                   <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">Risk Level</p>
+                   <p className="text-[10px] font-semibold text-white/20 uppercase tracking-widest">Risk Level</p>
                    <p className={cn("text-5xl font-black transition-colors duration-1000", 
                       status === "secure" ? "text-white" :
                       status === "warning" ? "text-warning" :
@@ -99,7 +99,7 @@ export function QuantumRiskEngine() {
              </div>
 
              <div className="w-full space-y-2">
-                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                <div className="flex justify-between text-[10px] font-semibold uppercase tracking-widest">
                    <span className="text-white/20">Status:</span>
                    <span className={cn(
                       status === "secure" ? "text-nexus-teal" :

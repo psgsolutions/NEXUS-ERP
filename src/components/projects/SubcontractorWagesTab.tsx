@@ -223,7 +223,7 @@ export function SubcontractorWagesTab() {
               <Wrench className="text-nexus-teal" size={22} />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-white uppercase tracking-tight">
+              <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
                 จัดการจ่ายเงินค่าแรงช่าง
               </h1>
               <div className="flex items-center gap-2 text-xs font-bold text-nexus-teal uppercase tracking-widest mt-1">
@@ -240,7 +240,8 @@ export function SubcontractorWagesTab() {
 
         <div className="flex items-center gap-3">
           <PillButton 
-            className="h-9 px-6 rounded-full bg-nexus-teal text-black hover:bg-nexus-teal/90 shadow-neon-teal"
+            variant="primary"
+            className="h-9 px-6 shadow-neon-teal"
             onClick={() => setIsAddModalOpen(true)}
           >
             <Plus size={16} /> สร้างใบสั่งจ้างงานช่าง (WO)
@@ -250,11 +251,14 @@ export function SubcontractorWagesTab() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 relative z-10">
         <div className="lg:col-span-3 space-y-6">
-          <GlassCard className="p-0 border-white/5 overflow-hidden">
-            <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-               <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                 <Briefcase size={16} className="text-nexus-teal" /> ใบสั่งจ้างงานทั้งหมด
-               </h3>
+          <GlassCard accentColor="teal" className="p-0 overflow-hidden">
+            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/[0.04]">
+               <div className="flex items-center gap-3">
+                 <div className="w-7 h-7 rounded-lg bg-nexus-teal/20 border border-nexus-teal/40 flex items-center justify-center text-nexus-teal font-mono font-bold text-xs">01</div>
+                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                   <Briefcase size={16} className="text-nexus-teal" /> ใบสั่งจ้างงานทั้งหมด
+                 </h3>
+               </div>
                <div className="w-64">
                  <PillInput 
                    placeholder="ค้นหาชื่อผู้รับเหมา, เลขประจำตัว, หรือเบอร์โทร..." 
@@ -328,7 +332,7 @@ export function SubcontractorWagesTab() {
         </div>
 
         <div className="space-y-6">
-          <GlassCard className="p-5 border-white/5 bg-gradient-to-br from-nexus-teal/10 to-transparent">
+          <GlassCard accentColor="amber" className="p-5">
              <div className="w-10 h-10 bg-nexus-teal/20 rounded-xl flex items-center justify-center text-nexus-teal mb-4">
                 <Calculator size={20} />
              </div>
@@ -346,17 +350,17 @@ export function SubcontractorWagesTab() {
       </div>
 
       <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="เพิ่มผู้รับเหมา/ทีมช่างใหม่" maxWidth="max-w-2xl">
-        <form onSubmit={handleCreateWO} className="flex flex-col md:flex-row h-full divide-x divide-white/5 bg-[#0D0D0D] min-h-[600px] w-full">
+        <form onSubmit={handleCreateWO} className="flex flex-col md:flex-row h-full divide-x divide-white/5 bg-surface-0 min-h-[600px] w-full">
           <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
             <div className="max-w-3xl mx-auto space-y-8">
                <div className="space-y-1 border-b border-white/5 pb-6">
-                 <p className="text-[12px] font-black text-nexus-teal uppercase tracking-[0.2em]">SUBCONTRACTOR PAYOUT MODULE</p>
-                 <h4 className="text-xl font-black text-white uppercase tracking-tight">สร้างใบสั่งจ้างงานช่าง (WORK ORDER)</h4>
+                 <p className="text-[12px] font-semibold text-nexus-teal uppercase tracking-[0.2em]">SUBCONTRACTOR PAYOUT MODULE</p>
+                 <h4 className="text-xl font-semibold text-white uppercase tracking-tight">สร้างใบสั่งจ้างงานช่าง (WORK ORDER)</h4>
                </div>
                
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-3">
-                    <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ชื่อผู้รับเหมา / บริษัทช่าง <span className="text-nexus-teal">*</span></label>
+                    <label className="text-[12px] font-semibold text-white/60 uppercase tracking-widest ml-1">ชื่อผู้รับเหมา / บริษัทช่าง <span className="text-nexus-teal">*</span></label>
                     <CreatableCombobox 
                       options={contractors?.map((c: any) => ({ value: c.name, label: c.name })) || []}
                       placeholder="ค้นหาหรือสร้างใหม่..." 
@@ -366,14 +370,14 @@ export function SubcontractorWagesTab() {
                     />
                   </div>
                   <div className="space-y-3">
-                    <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">ชื่อโครงการ (Project Ref.) <span className="text-nexus-teal">*</span></label>
+                    <label className="text-[12px] font-semibold text-white/60 uppercase tracking-widest ml-1">ชื่อโครงการ (Project Ref.) <span className="text-nexus-teal">*</span></label>
                     <PillInput name="projectName" required placeholder="เช่น งานวางระบบเครือข่าย" className="w-full text-white font-bold bg-white/[0.02]" value={newWOForm.projectName} onChange={(e) => setNewWOForm({...newWOForm, projectName: e.target.value})} />
                   </div>
                </div>
 
                <div className="p-8 rounded-[2rem] bg-gradient-to-br from-white/[0.03] to-transparent border border-white/5 space-y-6">
                   <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                    <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
+                    <h3 className="text-xs font-semibold text-white uppercase tracking-widest flex items-center gap-2">
                       <DollarSign size={16} className="text-nexus-teal" /> 
                       ข้อมูลทางการเงินและการผูก Data
                     </h3>
@@ -388,11 +392,11 @@ export function SubcontractorWagesTab() {
 
                   <div className="grid grid-cols-2 gap-8">
                     <div className="space-y-3">
-                      <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">อ้างอิงใบเสนอราคา (Ref. SQ)</label>
+                      <label className="text-[12px] font-semibold text-white/60 uppercase tracking-widest ml-1">อ้างอิงใบเสนอราคา (Ref. SQ)</label>
                       <PillInput name="refDoc" placeholder="SQ-..." className="w-full font-mono not-italic bg-black/15 border-white/10 text-nexus-blue" value={newWOForm.refDoc} onChange={(e) => setNewWOForm({...newWOForm, refDoc: e.target.value})} />
                     </div>
                     <div className="space-y-3">
-                      <label className="text-[12px] font-black text-white/60 uppercase tracking-widest ml-1">มูลค่าค่าแรงรวม (THB) <span className="text-nexus-teal">*</span></label>
+                      <label className="text-[12px] font-semibold text-white/60 uppercase tracking-widest ml-1">มูลค่าค่าแรงรวม (THB) <span className="text-nexus-teal">*</span></label>
                       <PillInput name="totalLaborCost" type="number" required placeholder="0.00" className="w-full font-mono not-italic bg-black/15 border-white/10 text-white font-bold" value={newWOForm.totalLaborCost} onChange={(e) => setNewWOForm({...newWOForm, totalLaborCost: e.target.value})} />
                     </div>
                   </div>
@@ -401,11 +405,11 @@ export function SubcontractorWagesTab() {
           </div>
 
           {/* RIGHT: Strategic Sidebar */}
-          <div className="w-full md:w-[380px] flex flex-col bg-[#0F0F12] p-8 flex-shrink-0 shadow-2xl relative z-10 border-t md:border-t-0 md:border-l border-white/5">
+          <div className="w-full md:w-[380px] flex flex-col bg-surface-1 p-8 flex-shrink-0 shadow-2xl relative z-10 border-t md:border-t-0 md:border-l border-white/5">
              <div className="flex-1 space-y-8">
                 <div className="space-y-1 border-b border-white/5 pb-4">
-                  <p className="text-[12px] font-black text-white/60 uppercase tracking-[0.2em]">สรุปรายการ</p>
-                  <h5 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-2">
+                  <p className="text-[12px] font-semibold text-white/60 uppercase tracking-[0.2em]">สรุปรายการ</p>
+                  <h5 className="text-sm font-semibold text-white uppercase tracking-tight flex items-center gap-2">
                     <Wrench size={16} className="text-nexus-teal" /> การจัดสรรงบประมาณ
                   </h5>
                 </div>
@@ -425,7 +429,7 @@ export function SubcontractorWagesTab() {
                     <AlertCircle size={16} />
                   </div>
                   <div>
-                    <h4 className="text-[11px] font-black text-white uppercase tracking-widest">ระบบปันส่วนงวดงานอัตโนมัติ</h4>
+                    <h4 className="text-[11px] font-semibold text-white uppercase tracking-widest">ระบบปันส่วนงวดงานอัตโนมัติ</h4>
                     <p className="text-[10px] text-white/40 mt-1.5 font-bold leading-relaxed uppercase tracking-wider">
                       เมื่อบันทึกข้อมูล ระบบจะสร้างแผนการจ่ายมาตรฐาน 3 งวด (30% / 40% / 30%) อัตโนมัติ เพื่อนำไปใช้เป็นเกณฑ์ตรวจรับงานในขั้นตอนถัดไป
                     </p>
@@ -434,7 +438,7 @@ export function SubcontractorWagesTab() {
              </div>
 
              <div className="space-y-4 pt-8 border-t border-white/5 mt-8">
-                <PillButton type="submit" className="w-full h-10 px-6 rounded-full shadow-neon-teal bg-nexus-teal text-black uppercase tracking-[0.2em] font-black flex items-center justify-center gap-2">
+                <PillButton type="submit" variant="save" className="w-full h-10 shadow-neon-teal flex items-center justify-center gap-2">
                   <ShieldCheck size={18} /> สร้างใบสั่งจ้างงาน
                 </PillButton>
                 <PillButton type="button" onClick={() => setIsNewWOModalOpen(false)} variant="glass" className="w-full h-10 px-6 rounded-full text-white/60 hover:text-white uppercase tracking-widest font-black">
@@ -475,7 +479,7 @@ export function SubcontractorWagesTab() {
                      <div className="flex items-center gap-4">
                         <div className={cn(
                           "w-8 h-8 rounded-full flex items-center justify-center font-mono not-italic font-bold text-xs",
-                          milestone.status === 'APPROVED' || milestone.status === 'PAID' ? "bg-nexus-teal text-black" : "bg-white/15 text-white/40"
+                          milestone.status === 'APPROVED' || milestone.status === 'PAID' ? "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40" : "bg-white/15 text-white/40"
                         )}>
                            {milestone.milestoneNo}
                         </div>

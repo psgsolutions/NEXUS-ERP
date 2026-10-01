@@ -140,3 +140,138 @@ export async function createWHTFromExpense(expId: string, companyId: string, wht
 
   return whtId;
 }
+
+export interface SupplierPriceRecord {
+  supplierId: string;
+  supplierName: string;
+  price: number;
+  poCode?: string;
+  date?: string;
+  isPrimary?: boolean;
+}
+
+/**
+ * Fetches recent 2-3 supplier prices for a given product from historical purchase orders
+ * and product supplier configuration. Scopes every query with companyId and isDeleted: false.
+ */
+export async function fetchSupplierPriceHistory(productId: string, companyId: string): Promise<SupplierPriceRecord[]> {
+  if (!productId || !companyId) return [];
+
+  const results: SupplierPriceRecord[] = [];
+  const seenSuppliers = new Set<string>();
+
+  try {
+    const { getDocs, query, collection, where, doc, getDoc } = await import("firebase/firestore");
+    
+    // 1. Query past purchase_orders with companyId + isDeleted: false
+    const posRef = collection(db, "purchase_orders");
+    const q = query(
+      posRef,
+      where("companyId", "==", companyId),
+      where("isDeleted", "==", false)
+    );
+    
+    const snap = await getDocs(q);
+
+    snap.forEach((docSnap) => {
+      const poData = docSnap.data();
+      const items = poData.items || [];
+      const supplierName = poData.supplierName || poData.supplier || poData.vendor || "ผู้จำหน่ายไม่ระบุชื่อ";
+      const supplierId = poData.supplierId || supplierName;
+
+      for (const item of items) {
+        if (
+          item.productId === productId || 
+          item.sku === productId || 
+          (item.name && productId && item.name.toLowerCase() === productId.toLowerCase())
+        ) {
+          const unitPrice = Number(item.price || item.unitPrice || item.cost || 0);
+          const sKey = supplierId + ":" + supplierName;
+          
+          if (!seenSuppliers.has(sKey)) {
+            seenSuppliers.add(sKey);
+            results.push({
+              supplierId,
+              supplierName,
+              price: unitPrice,
+              poCode: poData.poCode || poData.id || docSnap.id,
+              date: poData.expectedDate || poData.date || (poData.createdAt?.toDate ? poData.createdAt.toDate().toISOString().split('T')[0] : "")
+            });
+          }
+        }
+      }
+    });
+
+    // Subcollection query with companyId + isDeleted: false fallback
+    if (results.length === 0) {
+      const subPosRef = collection(db, `companies/${companyId}/purchase_orders`);
+      const subQ = query(
+        subPosRef, 
+        where("companyId", "==", companyId),
+        where("isDeleted", "==", false)
+      );
+      const subSnap = await getDocs(subQ);
+      
+      subSnap.forEach((docSnap) => {
+        const poData = docSnap.data();
+        const items = poData.items || [];
+        const supplierName = poData.supplierName || poData.supplier || poData.vendor || "ผู้จำหน่ายไม่ระบุชื่อ";
+        const supplierId = poData.supplierId || supplierName;
+
+        for (const item of items) {
+          if (
+            item.productId === productId || 
+            item.sku === productId || 
+            (item.name && productId && item.name.toLowerCase() === productId.toLowerCase())
+          ) {
+            const unitPrice = Number(item.price || item.unitPrice || item.cost || 0);
+            const sKey = supplierId + ":" + supplierName;
+
+            if (!seenSuppliers.has(sKey)) {
+              seenSuppliers.add(sKey);
+              results.push({
+                supplierId,
+                supplierName,
+                price: unitPrice,
+                poCode: poData.poCode || poData.id || docSnap.id,
+                date: poData.expectedDate || poData.date || (poData.createdAt?.toDate ? poData.createdAt.toDate().toISOString().split('T')[0] : "")
+              });
+            }
+          }
+        }
+      });
+    }
+
+    // Fallback to Product.supplierConfig if purchase order history < 3
+    if (results.length < 3) {
+      try {
+        const prodRef = doc(db, "products", productId);
+        const prodSnap = await getDoc(prodRef);
+        if (prodSnap.exists()) {
+          const prodData = prodSnap.data();
+          if (prodData.companyId === companyId && prodData.isDeleted !== true && Array.isArray(prodData.supplierConfig)) {
+            for (const cfg of prodData.supplierConfig) {
+              const sKey = cfg.supplierId + ":" + (cfg.supplierName || cfg.supplierId);
+              if (!seenSuppliers.has(sKey)) {
+                seenSuppliers.add(sKey);
+                results.push({
+                  supplierId: cfg.supplierId,
+                  supplierName: cfg.supplierName || cfg.supplierId,
+                  price: cfg.latestCost || 0,
+                  isPrimary: cfg.isPrimary
+                });
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Product supplierConfig lookup warning:", err);
+      }
+    }
+  } catch (err) {
+    console.error("Error fetching supplier price history:", err);
+  }
+
+  return results.slice(0, 3);
+}
+

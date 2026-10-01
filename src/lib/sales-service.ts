@@ -10,6 +10,8 @@ import {
 } from "firebase/firestore";
 import { nexusSequenceEngine } from "./sequence-engine";
 import { InventoryService } from "@/services/inventoryService";
+import { assertPeriodOpen } from "./period-close-service";
+
 
 /**
  * [SALES-STRATEGY-V2.0]
@@ -98,6 +100,7 @@ export async function createSalesOrder(data: any, companyId: string) {
 }
 
 export async function convertToSalesOrder(quoteId: string, companyId: string) {
+  await assertPeriodOpen(companyId);
   const quoteRef = doc(db, `companies/${companyId}/quotations`, quoteId);
   const soId = await nexusSequenceEngine("SO", companyId);
   const jvId = await nexusSequenceEngine("FIN", companyId);
@@ -110,6 +113,10 @@ export async function convertToSalesOrder(quoteId: string, companyId: string) {
     const quoteData = quoteSnap.data() as Quotation & { totalRevenue: number };
     if (quoteData.companyId !== companyId) {
       throw new Error("SECURITY_BREACH: Access to unauthorized company records.");
+    }
+
+    if ((quoteData as any).isCompetitorQuote || (quoteData as any).isComparisonOnly || (quoteData as any).documentMode === 'competitor' || !quoteData.customerId) {
+      throw new Error("ห้ามแปลงใบเสนอราคาโหมดเอกสารคู่เทียบเป็นใบสั่งขายจริง เนื่องจากไม่มีข้อมูลลูกค้าหลักและเลขประจำตัวผู้เสียภาษีผูกไว้ 🔒");
     }
 
     // 2. 3-State Stock Lock Logic (Allocate Inventory Statuses)
@@ -147,10 +154,23 @@ export async function convertToSalesOrder(quoteId: string, companyId: string) {
     }
 
     // 3. Create Sales Order Document
+    const rawVatType = String((quoteData as any).vatType || quoteData.taxMode || 'Exclude VAT');
+    let normalizedVatType = rawVatType;
+    if (rawVatType === 'Inclusive' || rawVatType === 'Include VAT') {
+      normalizedVatType = 'Include VAT';
+    } else if (rawVatType === 'Exclusive' || rawVatType === 'Exclude VAT') {
+      normalizedVatType = 'Exclude VAT';
+    } else if (rawVatType === 'Non-VAT') {
+      normalizedVatType = 'Non-VAT';
+    }
+
     const soRef = doc(db, `companies/${companyId}/sales_orders`, soId);
     transaction.set(soRef, {
       ...quoteData,
       soId,
+      vatType: normalizedVatType,
+      taxMode: normalizedVatType,
+      isVatRegistered: (quoteData as any).isVatRegistered ?? true,
       status: "Confirmed",
       convertedAt: serverTimestamp()
     });

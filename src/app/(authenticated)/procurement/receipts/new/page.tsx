@@ -32,6 +32,7 @@ import { doc, collection, setDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
+import { apiFetch } from "@/lib/api-client";
 
 export default function NewGoodsReceiptPage() {
   const router = useRouter();
@@ -87,15 +88,26 @@ export default function NewGoodsReceiptPage() {
     if (!user || !currentCompanyId) return;
     
     try {
-      const data = { header, items };
-      const grRef = doc(collection(db, "goodsReceipts"));
-      await setDoc(grRef, {
-        ...data,
-        companyId: currentCompanyId,
-        status: "received",
-        createdAt: serverTimestamp()
+      const res = await apiFetch("/api/inventory/goods-receipt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId: currentCompanyId,
+          poRef: header.poRef,
+          supplier: header.supplier,
+          receiptDate: header.receiptDate,
+          deliveryNote: header.deliveryNote,
+          receivedBy: header.receivedBy,
+          warehouse: header.warehouse,
+          items,
+          userId: user.uid
+        })
       });
-      await auditService.logCreate(user.uid, currentCompanyId, "PROCURE_GR", "NEW", data);
+
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "เกิดข้อผิดพลาดในการบันทึกรับสินค้า");
+      }
       
       showAlert(`เธเธฑเธเธ—เธถเธเธเธฒเธฃเธฃเธฑเธเธชเธดเธเธเนเธฒเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนว`, "System Notification", "info");
       router.push("/procurement");
@@ -106,34 +118,40 @@ export default function NewGoodsReceiptPage() {
   };
 
   const headerContent = (
-    <>
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <button onClick={handleBack} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-white/50 hover:text-white transition-all backdrop-blur-sm">
-          <ArrowLeft size={18} />
-        </button>
+        <PillButton variant="glass" onClick={handleBack} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
         <div>
-          <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-0.5">GR_PROT_V3.0</p>
-          <div className="flex items-center">
-            <h1 className="text-xl font-black uppercase tracking-tight text-white">เธเธฑเธเธ—เธถเธเธฃเธฑเธเธชเธดเธเธเนเธฒ (Goods Receipt)</h1>
-            <DocumentStepper steps={["Draft", "Pending", "Received"]} currentStep={0} />
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+              บันทึกรับสินค้าจากการสั่งซื้อ
+            </h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              GR-NEW
+            </span>
           </div>
+          <p className="text-sm text-white/60 font-medium mt-1">
+            ตรวจรับสินค้าตามใบสั่งซื้อ บันทึกจำนวนที่ได้รับจริงและตรวจสอบคุณภาพ
+          </p>
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
         <PillTabs 
           tabs={tabs}
           activeTab={activeTab}
           onTabChange={setActiveTab}
         />
-        <PillButton variant="ghost" className="h-9 px-6 rounded-full text-white/50 hover:text-white" onClick={handleBack}>
-          เธขเธเน€เธฅเธดเธ
+        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={handleBack}>
+          ยกเลิก
         </PillButton>
-        <PillButton className="h-9 px-6 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 shadow-[0_0_12px_rgba(6,182,212,0.15)]" onClick={handleSave}>
-          <ShieldCheck size={14} className="mr-2" /> เธขเธทเธเธขเธฑเธเธฃเธฑเธเธชเธดเธเธเนา
+        <PillButton variant="save" className="h-8 px-5 font-bold text-xs" onClick={handleSave}>
+          <ShieldCheck size={14} className="mr-1.5" /> ยืนยันรับสินค้า
         </PillButton>
       </div>
-    </>
+    </div>
   );
 
   const leftContent = (
@@ -203,7 +221,7 @@ export default function NewGoodsReceiptPage() {
       {activeTab === "items" && (
         <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl space-y-6">
           <div className="flex justify-between items-center border-b border-white/5 pb-4">
-            <h4 className="text-[14px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2">
+            <h4 className="text-[14px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
               <Package size={18} className="text-cyan-400" />
               เธฃเธฒเธขเธเธฒเธฃเธเธฑเธชเธ”เธธเธ—เธตเนเธฃเธฑเธเน€เธเนา
             </h4>
@@ -214,7 +232,7 @@ export default function NewGoodsReceiptPage() {
             {items.length === 0 ? (
                 <div className="p-20 border border-dashed border-white/10 rounded-3xl flex flex-col items-center justify-center text-center space-y-4 bg-white/[0.01]">
                   <Package size={64} className="text-white/5" />
-                  <p className="text-[13px] text-white/40 font-black uppercase tracking-widest">เธขเธฑเธเนเธกเนมีเธฃเธฒเธขเธเธฒเธฃเธเธฑเธชเธ”เธธ (เธเธฃเธธณเธฒเธ”เธถเธเธเนเธญเธกเธนเธฅเธเธฒเธ PO)</p>
+                  <p className="text-[13px] text-white/40 font-semibold uppercase tracking-widest">เธขเธฑเธเนเธกเนมีเธฃเธฒเธขเธเธฒเธฃเธเธฑเธชเธ”เธธ (เธเธฃเธธณเธฒเธ”เธถเธเธเนเธญเธกเธนเธฅเธเธฒเธ PO)</p>
                </div>
             ) : (
               items.map((item) => (
@@ -225,13 +243,13 @@ export default function NewGoodsReceiptPage() {
                            <Package size={24} />
                         </div>
                         <div>
-                           <p className="text-[15px] font-black text-white uppercase">{item.name}</p>
+                           <p className="text-[15px] font-semibold text-white uppercase">{item.name}</p>
                            <p className="text-[11px] text-white/40 font-black uppercase tracking-widest mt-1">เธชเธฑเนเธเธเธทเนอ: {item.qtyOrdered} {item.unit}</p>
                         </div>
                      </div>
                      <div className="flex items-center gap-6">
                         <div className="text-right">
-                           <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-2">เธเธณเธเธงเธเธ—เธตเนเธฃเธฑเธเธเธฃเธดเธ</label>
+                           <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-2">เธเธณเธเธงเธเธ—เธตเนเธฃเธฑเธเธเธฃเธดเธ</label>
                            <PillInput 
                               type="number" 
                               value={item.qtyReceived}
@@ -265,7 +283,7 @@ export default function NewGoodsReceiptPage() {
   const rightSidebar = (
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
       <div className="space-y-1 border-b border-white/5 pb-4">
-        <h5 className="text-[13px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2">
+        <h5 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
           เธชเธฃเธธเธเธเธฒเธฃเธฃเธฑเธเธัสดุ
         </h5>
       </div>

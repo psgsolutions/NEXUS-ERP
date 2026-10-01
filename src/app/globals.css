@@ -4,15 +4,24 @@
 
 :root {
   --background: #0D0D0D;
+  --surface-0: #0D0D0D;   /* Base app canvas */
+  --surface-1: #0F0F12;   /* First-layer cards / panels */
+  --surface-2: #14141A;   /* Top-layer modals / popovers / dropdowns */
   --foreground: #ffffff;
   --nexus-teal: #00FFD1;
   --nexus-blue: #0090FF;
   --danger: #FF3B30;
   --warning: #FFCC00;
-  --glass-bg: rgba(10, 10, 12, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --card-radius: 0.5rem;
+  --glass-bg: rgba(15, 15, 18, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --card-radius: 1rem;
+  color-scheme: dark;
 }
+
+.bg-surface-0 { background-color: var(--surface-0); }
+.bg-surface-1 { background-color: var(--surface-1); }
+.bg-surface-2 { background-color: var(--surface-2); }
+
 
 /* [STRICT-MASTER-01] บังคับระยะห่างเป็นปกติและตัวตรง 100% ทั่วทั้งระบบ */
 * {
@@ -36,8 +45,15 @@ body {
     radial-gradient(circle at 50% 50%, rgba(0, 255, 209, 0.03) 0%, transparent 80%),
     var(--background);
   min-height: 100vh;
-  /* [STRICT-MASTER-03] ขนาดตัวอักษรพื้นฐานมาตรฐาน Master */
+  /* [STRICT-MASTER-03] ขนาดตัวอักษรพื้นฐานมาตรฐาน 14px เท่ากับ Sidebar */
+  font-size: 14px;
+  line-height: 1.5;
   @apply text-sm antialiased;
+}
+
+/* [STRICT-TYPOGRAPHY-V3.0] กฎขนาดและความหนา-บางตัวอักษรมาตรฐานเท่ากับ Sidebar (14px) */
+input, select, textarea, button, td, th {
+  font-size: 14px;
 }
 
 /* [STRICT-MASTER-OVERLAY] Scanline artifacts removed per user request */
@@ -79,13 +95,150 @@ body {
   filter: drop-shadow(0 0 8px currentColor);
 }
 
-/* Tactical Labels */
+/* [STRICT-SIGNATURE-GLOW] Standardized 40px Ambient Signature Background Glows */
+.signature-glow-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.signature-glow-ambient {
+  position: absolute;
+  top: -1rem;
+  right: -1rem;
+  width: 5rem;
+  height: 5rem;
+  border-radius: 9999px;
+  filter: blur(40px);
+  opacity: 0;
+  transition: opacity 1000ms cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.group:hover .signature-glow-ambient,
+.signature-glow-container:hover .signature-glow-ambient {
+  opacity: 0.15;
+}
+
+.signature-glow-teal {
+  background-color: var(--nexus-teal);
+}
+
+.signature-glow-blue {
+  background-color: var(--nexus-blue);
+}
+
+.signature-glow-emerald {
+  background-color: #10b981;
+}
+
+.signature-glow-amber {
+  background-color: #f59e0b;
+}
+
+.signature-glow-rose {
+  background-color: #f43f5e;
+}
+
+/* [STRICT-GLOW-ACCENT] Extracted from MasterMetricCard for Signature Micro-Interactions */
+.glow-accent {
+  position: relative;
+  z-index: 1;
+}
+.glow-accent::before {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border-radius: inherit;
+  background: inherit;
+  filter: blur(40px);
+  opacity: 0.3;
+  z-index: -1;
+  pointer-events: none;
+  transition: opacity 500ms ease;
+}
+
+.glow-accent-hover {
+  position: relative;
+  z-index: 1;
+}
+.glow-accent-hover::before {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border-radius: inherit;
+  background: inherit;
+  filter: blur(40px);
+  opacity: 0;
+  z-index: -1;
+  pointer-events: none;
+  transition: opacity 500ms ease;
+}
+.glow-accent-hover:hover::before {
+  opacity: 0.35;
+}
+
+/* Tactical & Design System Labels */
 .tactical-label {
-  font-size: 13px !important;
+  font-size: 14px !important;
   font-weight: 700;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.3);
   letter-spacing: normal !important;
+}
+
+/* [STRICT-TYPOGRAPHY-V3.2] Design System Shared Utility Tokens */
+.table-header-label {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.form-field-label {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.modal-header-title {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  text-transform: uppercase;
+}
+
+.card-section-title {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tab-option-label {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.toolbar-control-label {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.item-entity-title {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.9) !important;
 }
 
 /* Animations Disabled [USER-REQUEST] - Keeping animations none to stop movement */

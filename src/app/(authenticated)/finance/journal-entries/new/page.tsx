@@ -100,29 +100,40 @@ export default function NewJournalEntryPage() {
   };
 
   const headerContent = (
-    <>
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <button onClick={handleBack} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-white/50 hover:text-white transition-all backdrop-blur-sm">
-          <ArrowLeft size={18} />
-        </button>
+        <PillButton variant="glass" onClick={handleBack} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
         <div>
-          <p className="text-[10px] text-cyan-400 font-black uppercase tracking-widest mb-0.5">GL_PROT_V3.0</p>
-          <div className="flex items-center">
-            <h1 className="text-xl font-black uppercase tracking-tight text-white">บันทึกสมุดรายวัน (Journal Entry)</h1>
-            <DocumentStepper steps={["Draft", "Pending", "Posted"]} currentStep={0} />
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+              บันทึกสมุดรายวันทั่วไป
+            </h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              GL-ENTRY
+            </span>
           </div>
+          <p className="text-sm text-white/60 font-medium mt-1">
+            ลงบันทึกรายการบัญชีแยกประเภท เดบิตและเครดิตตามมาตรฐานระบบบัญชี
+          </p>
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <PillButton variant="ghost" className="h-9 px-6 rounded-full text-white/50 hover:text-white" onClick={handleBack}>
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={handleBack}>
           ยกเลิก
         </PillButton>
-        <PillButton className={cn("h-9 px-6 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 shadow-[0_0_12px_rgba(6,182,212,0.15)]", totals.diff !== 0 && "opacity-50 pointer-events-none grayscale")} onClick={handleSave} disabled={isSaving}>
-          <ShieldCheck size={14} className="mr-2" /> {isSaving ? "กำลังบันทึก..." : "บันทึกรายการ"}
+        <PillButton 
+          variant="confirm"
+          className={cn("h-8 px-5 font-bold text-xs", totals.diff !== 0 && "opacity-50 pointer-events-none grayscale")} 
+          onClick={handleSave} 
+          disabled={isSaving}
+        >
+          <ShieldCheck size={14} className="mr-1.5" /> {isSaving ? "กำลังบันทึก..." : "บันทึกรายการ"}
         </PillButton>
       </div>
-    </>
+    </div>
   );
 
   const leftContent = (
@@ -130,8 +141,8 @@ export default function NewJournalEntryPage() {
       <GlassCard className="p-8 space-y-8 animate-in fade-in duration-500 min-h-[60vh] border-white/5 bg-black/20">
         <div className="flex justify-between items-end border-b border-white/5 pb-8">
           <div className="space-y-1">
-            <p className="text-[12px] font-black text-cyan-400 uppercase tracking-[0.2em]">โหมดบัญชีแยกประเภท</p>
-            <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกรายวัน</h4>
+            <p className="text-[12px] font-semibold text-cyan-400 uppercase tracking-[0.2em]">โหมดบัญชีแยกประเภท</p>
+            <h4 className="text-xl font-semibold text-white uppercase tracking-tight">บันทึกรายวัน</h4>
           </div>
           <PillTabs 
              tabs={[
@@ -190,14 +201,14 @@ export default function NewJournalEntryPage() {
           {activeTab === "entries" && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
-                <h4 className="text-[12px] font-black text-white/30 uppercase tracking-[0.2em]">รายการบัญชี</h4>
+                <h4 className="text-[12px] font-semibold text-white/30 uppercase tracking-[0.2em]">รายการบัญชี</h4>
                 <PillButton variant="glass" onClick={addEntry} className="h-9 px-6 rounded-full text-xs">
                   <Plus size={14} className="mr-2" /> เพิ่มบรรทัด
                 </PillButton>
               </div>
 
               <div className="space-y-3">
-                <div className="grid grid-cols-12 gap-4 px-6 text-[10px] font-black text-white/20 uppercase tracking-widest">
+                <div className="grid grid-cols-12 gap-4 px-6 text-[10px] font-semibold text-white/20 uppercase tracking-widest">
                    <div className="col-span-5">บัญชี / รายการ</div>
                    <div className="col-span-3 text-right">เดบิต</div>
                    <div className="col-span-3 text-right">เครดิต</div>
@@ -253,7 +264,7 @@ export default function NewJournalEntryPage() {
   const rightSidebar = (
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
       <div className="space-y-1 relative z-10 border-b border-white/5 pb-4">
-        <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">ตรวจสอบความสมดุล</p>
+        <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">ตรวจสอบความสมดุล</p>
         <h5 className="text-sm font-black text-white uppercase tracking-tight">Balance Validation</h5>
       </div>
 

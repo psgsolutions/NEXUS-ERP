@@ -132,11 +132,11 @@ export function DocumentRenderer({ template, data, mode = "print" }: DocumentRen
           <table className="w-full border-collapse text-[10px] sm:text-xs">
             <thead className="bg-black/5 border-b border-black/25">
               <tr>
-                <th className="p-2 text-left uppercase text-black/60 font-black w-12">ลำดับ</th>
-                <th className="p-2 text-left uppercase text-black/60 font-black">รายการสินค้า / บริการ</th>
-                <th className="p-2 text-center uppercase text-black/60 font-black w-24">จำนวน</th>
-                <th className="p-2 text-right uppercase text-black/60 font-black w-28">ราคา/หน่วย</th>
-                <th className="p-2 text-right uppercase text-black/60 font-black w-32">ยอดเงินรวม</th>
+                <th className="p-2 text-left uppercase text-black/60 font-semibold w-12">ลำดับ</th>
+                <th className="p-2 text-left uppercase text-black/60 font-semibold">รายการสินค้า / บริการ</th>
+                <th className="p-2 text-center uppercase text-black/60 font-semibold w-24">จำนวน</th>
+                <th className="p-2 text-right uppercase text-black/60 font-semibold w-32">ราคา/หน่วย</th>
+                <th className="p-2 text-right uppercase text-black/60 font-semibold w-36">ยอดเงินรวม</th>
               </tr>
             </thead>
             <tbody>
@@ -229,7 +229,7 @@ export function DocumentRenderer({ template, data, mode = "print" }: DocumentRen
       {/* Watermark */}
       {currentGlobalStyles.watermark && currentGlobalStyles.watermark !== "NONE" && (
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden z-0 select-none">
-          <div className="text-[100px] font-black text-black/[0.03] uppercase tracking-widest rotate-[-45deg] select-none">
+          <div className="text-[100px] font-semibold text-black/[0.03] uppercase tracking-widest rotate-[-45deg] select-none">
             {currentGlobalStyles.watermark}
           </div>
         </div>

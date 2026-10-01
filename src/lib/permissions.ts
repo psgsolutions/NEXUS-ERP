@@ -65,3 +65,14 @@ export function getPermissions(role: string | null | undefined): Permission[] {
   const upperRole = role.toUpperCase() as Role;
   return ROLE_PERMISSIONS[upperRole] || [];
 }
+
+/**
+ * Check if the user role is authorized to view item costs and GP breakdown.
+ * SALES role is restricted from viewing cost data.
+ */
+export function canViewCost(role: string | null | undefined): boolean {
+  if (!role) return false;
+  const upperRole = role.toUpperCase();
+  return upperRole !== 'SALES';
+}
+

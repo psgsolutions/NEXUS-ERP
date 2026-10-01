@@ -66,7 +66,7 @@ export function DocumentFormBuilder({ currentCompanyId }: DocumentFormBuilderPro
   const thaiText = convertNumberToThaiText(grandTotal);
 
   return (
-    <div className="w-full mx-auto bg-[#0a0a0c] border border-white/10 rounded-[2rem] shadow-[0_0_40px_rgba(20,163,204,0.05)] overflow-hidden text-white flex flex-col font-sans">
+    <div className="w-full mx-auto bg-surface-0 border border-white/10 rounded-[2rem] shadow-[0_0_40px_rgba(20,163,204,0.05)] overflow-hidden text-white flex flex-col font-sans">
       
       {/* HEADER SECTION */}
       <div className="p-8 border-b border-white/5 flex flex-col lg:flex-row gap-8 bg-white/[0.01]">
@@ -74,7 +74,7 @@ export function DocumentFormBuilder({ currentCompanyId }: DocumentFormBuilderPro
         <div className="flex-1 space-y-6">
           <div className="flex items-center gap-3">
              <User className="text-nexus-teal" size={20} />
-             <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white/80">ข้อมูลลูกค้า</h3>
+             <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-white/80">ข้อมูลลูกค้า</h3>
           </div>
           <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/5 space-y-4 relative overflow-hidden group">
             {/* Simulated Data Binding note */}
@@ -138,7 +138,7 @@ export function DocumentFormBuilder({ currentCompanyId }: DocumentFormBuilderPro
         <div className="flex-1 space-y-6">
           <div className="flex items-center gap-3">
              <FileText className="text-nexus-teal" size={20} />
-             <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white/80">ข้อมูลเอกสาร</h3>
+             <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-white/80">ข้อมูลเอกสาร</h3>
           </div>
           <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/5 space-y-4 relative">
              <div className="grid grid-cols-2 gap-4 mt-2">
@@ -180,7 +180,7 @@ export function DocumentFormBuilder({ currentCompanyId }: DocumentFormBuilderPro
       {/* BODY SECTION: DYNAMIC TABLE */}
       <div className="p-8">
          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-white/80">รายการสินค้าและบริการ</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-white/80">รายการสินค้าและบริการ</h3>
             <PillButton className="h-9 px-6 rounded-full shadow-neon-teal">
                <Plus size={16} className="mr-2"/> เพิ่มรายการ
             </PillButton>
@@ -190,12 +190,12 @@ export function DocumentFormBuilder({ currentCompanyId }: DocumentFormBuilderPro
             <table className="w-full text-left border-collapse">
                <thead>
                   <tr className="border-b border-white/10 bg-white/[0.03]">
-                     <th className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-white/50 w-[80px] text-center">ลำดับ</th>
-                     <th className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-white/50">รายละเอียด</th>
-                     <th className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-white/50 w-[100px] text-center">จำนวน</th>
-                     <th className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-white/50 w-[100px] text-center">หน่วย</th>
-                     <th className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-white/50 w-[140px] text-right">ราคาต่อหน่วย</th>
-                     <th className="py-4 px-6 text-[11px] font-black uppercase tracking-widest text-white/50 w-[140px] text-right">จำนวนเงิน</th>
+                     <th className="py-4 px-6 text-[11px] font-semibold uppercase tracking-widest text-white/50 w-[80px] text-center">ลำดับ</th>
+                     <th className="py-4 px-6 text-[11px] font-semibold uppercase tracking-widest text-white/50">รายละเอียด</th>
+                     <th className="py-4 px-6 text-[11px] font-semibold uppercase tracking-widest text-white/50 w-[100px] text-center">จำนวน</th>
+                     <th className="py-4 px-6 text-[11px] font-semibold uppercase tracking-widest text-white/50 w-[100px] text-center">หน่วย</th>
+                     <th className="py-4 px-6 text-[11px] font-semibold uppercase tracking-widest text-white/50 w-[140px] text-right">ราคาต่อหน่วย</th>
+                     <th className="py-4 px-6 text-[11px] font-semibold uppercase tracking-widest text-white/50 w-[140px] text-right">จำนวนเงิน</th>
                   </tr>
                </thead>
                <tbody className="divide-y divide-white/5">
@@ -297,7 +297,7 @@ export function DocumentFormBuilder({ currentCompanyId }: DocumentFormBuilderPro
                <span className="font-mono tracking-tight text-right text-[15px]">{vat.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
             </div>
             <div className="pt-6 mt-4 border-t border-white/10 flex flex-col items-end relative z-10">
-               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-nexus-teal mb-2">จำนวนเงินรวมทั้งสิ้น</span>
+               <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-nexus-teal mb-2">จำนวนเงินรวมทั้งสิ้น</span>
                <span className="text-3xl font-mono tracking-tight text-right font-black text-white drop-shadow-[0_0_10px_rgba(20,163,204,0.5)]">
                   {grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}
                </span>

@@ -134,7 +134,7 @@ export const TemplateSelectionModal: React.FC<TemplateSelectionModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="w-full max-w-4xl bg-[#0a0a0c] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+      <div className="w-full max-w-4xl bg-surface-0 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-white/[0.02]">
@@ -143,7 +143,7 @@ export const TemplateSelectionModal: React.FC<TemplateSelectionModalProps> = ({
               <FileText size={18} />
             </div>
             <div>
-              <h2 className="text-[15px] font-black text-white uppercase tracking-widest">เลือกแม่แบบเอกสาร</h2>
+              <h2 className="text-[15px] font-semibold text-white uppercase tracking-widest">เลือกแม่แบบเอกสาร</h2>
               <p className="text-[10px] text-white/30 font-bold tracking-widest">SELECT A TEMPLATE TO BEGIN</p>
             </div>
           </div>
@@ -183,7 +183,7 @@ export const TemplateSelectionModal: React.FC<TemplateSelectionModalProps> = ({
                   </div>
                 )}
               </div>
-              <h3 className="font-black text-white/80 group-hover:text-nexus-teal transition-colors text-[13px] uppercase tracking-wide mb-1">
+              <h3 className="font-semibold text-white/80 group-hover:text-nexus-teal transition-colors text-[13px] uppercase tracking-wide mb-1">
                 {template.name}
               </h3>
               <p className="text-[10px] text-white/30 leading-relaxed">

@@ -9,6 +9,8 @@ import {
   PurchaseOrder
 } from "@/types/database";
 import { calculateERPDocument, LineItem, VatTypeV3 } from "@/lib/erp-logic";
+import { idService } from "@/lib/idService";
+import { auditService } from "@/services/audit.service";
 
 /**
  * NEXUS ERP - Document Flow Service
@@ -117,21 +119,39 @@ export const DocumentFlowService = {
       discount: item.discount
     }));
 
+    // Normalize vatType carry-over
+    const rawVatType = String(quotation.vatType || (quotation as any).taxMode || 'Exclude VAT');
+    let normalizedVatType = 'Exclude VAT';
+    if (rawVatType === 'Inclusive' || rawVatType === 'Include VAT') {
+      normalizedVatType = 'Include VAT';
+    } else if (rawVatType === 'Exclusive' || rawVatType === 'Exclude VAT') {
+      normalizedVatType = 'Exclude VAT';
+    } else if (rawVatType === 'Non-VAT') {
+      normalizedVatType = 'Non-VAT';
+    }
+
     const salesOrder: Partial<SalesOrder> = {
       id: soRef.id,
       companyId,
       orderId: `SO-${new Date().toISOString().substring(2,7).replace('-','')}-${Math.floor(Math.random() * 1000)}`,
       quotationRefNo: quotation.documentNo,
-      customerId: quotation.customerInfo.customerId,
+      referenceNo: (quotation as any).referenceNo || (quotation as any).customerPoNo || quotation.documentNo || "",
+      customerPoNo: (quotation as any).referenceNo || (quotation as any).customerPoNo || "",
+      customerSnapshot: (quotation as any).customerSnapshot || null,
+      customerId: quotation.customerInfo?.customerId || (quotation as any).customerId,
       orderDate: serverTimestamp(),
       deliveryDate: quotation.dueDate,
       items: soItems,
-      shippingAddress: quotation.customerInfo.address,
-      billingAddress: quotation.customerInfo.address,
+      shippingAddress: quotation.customerInfo?.address || "",
+      billingAddress: quotation.customerInfo?.address || "",
       shippingMethod: 'Standard',
       paymentStatus: 'pending',
       depositAmount: 0,
+      subTotal: quotation.subTotal || quotation.grandTotal,
+      vatAmount: quotation.vatAmount || 0,
       totalAmount: quotation.grandTotal,
+      vatType: normalizedVatType,
+      isVatRegistered: quotation.isVatRegistered ?? true,
       status: 'confirmed',
       createdBy: userId,
       updatedBy: userId,
@@ -216,5 +236,137 @@ export const DocumentFlowService = {
 
     await batch.commit();
     return poIds;
+  },
+
+  /**
+   * One-Click Issue Tax Invoice & Billing Note from Delivered Sales Order
+   */
+  async issueTaxInvoiceAndBillingNoteFromSO(
+    companyId: string,
+    salesOrder: SalesOrder,
+    userId: string
+  ): Promise<{ taxInvoiceId: string; taxInvoiceNo: string; billingNoteId: string; billingNoteNo: string; vatAmount: number; subTotal: number; grandTotal: number; vatType: string }> {
+    const rawVatType = String(salesOrder.vatType || (salesOrder as any).taxMode || 'Exclude VAT');
+    let normalizedVatType = 'Exclude VAT';
+    if (rawVatType === 'Inclusive' || rawVatType === 'Include VAT') {
+      normalizedVatType = 'Include VAT';
+    } else if (rawVatType === 'Non-VAT') {
+      normalizedVatType = 'Non-VAT';
+    } else {
+      normalizedVatType = 'Exclude VAT';
+    }
+
+    const baseAmount = Number(salesOrder.totalAmount || (salesOrder as any).netTotal || 0);
+
+    let subTotal = baseAmount;
+    let vatAmount = 0;
+    let grandTotal = baseAmount;
+
+    if (normalizedVatType === 'Include VAT') {
+      grandTotal = baseAmount;
+      subTotal = Number((grandTotal / 1.07).toFixed(4));
+      vatAmount = Number((grandTotal - subTotal).toFixed(4));
+    } else if (normalizedVatType === 'Exclude VAT') {
+      subTotal = baseAmount;
+      vatAmount = Number((subTotal * 0.07).toFixed(4));
+      grandTotal = Number((subTotal + vatAmount).toFixed(4));
+    } else {
+      // Non-VAT
+      subTotal = baseAmount;
+      vatAmount = 0;
+      grandTotal = baseAmount;
+    }
+
+    // Atomic Sequence Generation for Tax Invoice and Billing Note
+    const invSeq = await idService.getNextSequence('INV', companyId);
+    const taxInvoiceNo = idService.formatId('INV', invSeq);
+
+    const bnSeq = await idService.getNextSequence('BN', companyId);
+    const billingNoteNo = idService.formatId('BN', bnSeq);
+
+    const batch = writeBatch(db);
+
+    // 1. Create TaxInvoice Document
+    const invRef = doc(collection(db, `companies/${companyId}/invoices`));
+    const invoicePayload = {
+      id: invRef.id,
+      companyId,
+      invoiceId: taxInvoiceNo,
+      invoiceNo: taxInvoiceNo,
+      docNumber: taxInvoiceNo,
+      orderRefNo: salesOrder.orderId || salesOrder.id,
+      referenceNo: (salesOrder as any).referenceNo || (salesOrder as any).customerPoNo || (salesOrder as any).quotationRefNo || "",
+      customerPoNo: (salesOrder as any).customerPoNo || (salesOrder as any).referenceNo || "",
+      customerSnapshot: (salesOrder as any).customerSnapshot || null,
+      customerId: salesOrder.customerId,
+      customerName: (salesOrder as any).customerName || "",
+      issueDate: serverTimestamp(),
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      items: salesOrder.items,
+      isVatRegistered: salesOrder.isVatRegistered ?? true,
+      vatType: normalizedVatType,
+      subTotal,
+      vatAmount,
+      grandTotal,
+      paymentStatus: 'unpaid',
+      status: 'issued',
+      createdBy: userId,
+      updatedBy: userId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      isDeleted: false
+    };
+    batch.set(invRef, invoicePayload);
+
+    // 2. Create BillingNote Document
+    const bnRef = doc(collection(db, `companies/${companyId}/billing_notes`));
+    const billingNotePayload = {
+      id: bnRef.id,
+      companyId,
+      billingNoteNo,
+      docNumber: billingNoteNo,
+      invoiceRefNo: taxInvoiceNo,
+      salesOrderRefNo: salesOrder.orderId || salesOrder.id,
+      referenceNo: (salesOrder as any).referenceNo || (salesOrder as any).customerPoNo || (salesOrder as any).quotationRefNo || "",
+      customerPoNo: (salesOrder as any).customerPoNo || (salesOrder as any).referenceNo || "",
+      customerSnapshot: (salesOrder as any).customerSnapshot || null,
+      customerId: salesOrder.customerId,
+      issueDate: serverTimestamp(),
+      totalAmount: grandTotal,
+      status: 'issued',
+      createdBy: userId,
+      updatedBy: userId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      isDeleted: false
+    };
+    batch.set(bnRef, billingNotePayload);
+
+    // 3. Update Sales Order Status to COMPLETED
+    const soRef = doc(db, `companies/${companyId}/sales_orders`, salesOrder.id);
+    batch.update(soRef, { 
+      status: 'COMPLETED', 
+      invoiceNo: taxInvoiceNo,
+      billingNoteNo,
+      updatedAt: serverTimestamp(), 
+      updatedBy: userId 
+    });
+
+    await batch.commit();
+
+    // 4. Audit Log Actions
+    await auditService.logCreate(userId, companyId, "TAX_INVOICE", invRef.id, invoicePayload);
+    await auditService.logCreate(userId, companyId, "BILLING_NOTE", bnRef.id, billingNotePayload);
+
+    return {
+      taxInvoiceId: invRef.id,
+      taxInvoiceNo,
+      billingNoteId: bnRef.id,
+      billingNoteNo,
+      subTotal,
+      vatAmount,
+      grandTotal,
+      vatType: normalizedVatType
+    };
   }
 };

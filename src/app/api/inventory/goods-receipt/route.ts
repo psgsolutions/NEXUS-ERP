@@ -1,0 +1,139 @@
+import { NextResponse } from "next/server";
+import { requireApiUser, authErrorResponse } from "@/lib/api-auth";
+import { db } from "@/lib/firebase-client";
+import { collection, doc } from "firebase/firestore";
+import { assertPeriodOpen } from "@/lib/period-close-service";
+import { processStockMovements, StockMovement } from "@/lib/stock-service";
+import { AccountingEngine } from "@/services/accountingEngine";
+import { auditService } from "@/services/audit.service";
+
+/**
+ * [API-SERVER] Goods Receipt & Real-time WAC / GL Posting API
+ * Project: NEXUS ERP (Intelligence OS)
+ * Endpoint: POST /api/inventory/goods-receipt
+ */
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const {
+      companyId,
+      poRef,
+      supplier,
+      receiptDate,
+      deliveryNote,
+      receivedBy,
+      warehouse,
+      items = []
+    } = body;
+    const apiUser = await requireApiUser(request, companyId);
+    const userId = apiUser.email || apiUser.uid;
+
+    // 1. Tenant & Field Validation
+    if (!companyId) {
+      return NextResponse.json(
+        { success: false, error: "[Tenant Isolation Violation] companyId is required!" },
+        { status: 400 }
+      );
+    }
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "[Validation Error] Goods receipt items are required." },
+        { status: 400 }
+      );
+    }
+
+    const postingDate = receiptDate || new Date().toISOString();
+
+    // 2. Period Lock Check
+    await assertPeriodOpen(companyId, postingDate);
+
+    // 3. Collect Stock Movements for all received items
+    let totalReceiptAmount = 0;
+    const movements: StockMovement[] = [];
+    for (const item of items) {
+      const qty = Number(item.qtyReceived || item.qty || 0);
+      const unitPrice = Number(item.unitPrice || item.price || item.cost || 0);
+      if (qty > 0 && item.productId) {
+        totalReceiptAmount += qty * unitPrice;
+        movements.push({
+          companyId,
+          productId: item.productId,
+          type: "IN",
+          quantity: qty,
+          unitCost: unitPrice,
+          toLocation: warehouse || "Main Warehouse",
+          referenceId: poRef || deliveryNote,
+          userId
+        });
+      }
+    }
+    if (movements.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "[Validation Error] No receivable items (productId and qty > 0 required)." },
+        { status: 400 }
+      );
+    }
+
+    // 4. Goods Receipt Document
+    const grRef = doc(collection(db, `companies/${companyId}/goods_receipts`));
+    const grData = {
+      grId: grRef.id,
+      companyId,
+      poRef: poRef || "",
+      supplier: supplier || "",
+      receiptDate: postingDate,
+      deliveryNote: deliveryNote || "",
+      receivedBy,
+      warehouse: warehouse || "",
+      items,
+      totalAmount: totalReceiptAmount,
+      status: "received",
+      createdBy: userId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isDeleted: false
+    };
+
+    // 5. Stock/WAC updates, GR document and its GL entry commit in one transaction (all-or-nothing)
+    await processStockMovements(movements, async (transaction) => {
+      transaction.set(grRef, grData);
+      if (totalReceiptAmount > 0) {
+        await AccountingEngine.postGoodsReceipt({
+          companyId,
+          grnId: grRef.id,
+          supplierName: supplier || "Vendor",
+          subTotal: totalReceiptAmount,
+          vatAmount: 0,
+          totalAmount: totalReceiptAmount,
+          warehouseName: warehouse || "Main Warehouse",
+          vatType: "Non-VAT"
+        }, transaction as any);
+      }
+    });
+
+    // 6. Write Audit Log
+    await auditService.logCreate(
+      userId,
+      companyId,
+      "PROCURE_GR",
+      grRef.id,
+      grData
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: `บันทึกการรับสินค้าเรียบร้อยแล้ว (เลขที่: ${grRef.id})`,
+      grId: grRef.id,
+      totalAmount: totalReceiptAmount
+    });
+  } catch (err: any) {
+    const authRes = authErrorResponse(err);
+    if (authRes) return authRes;
+    console.error("[GOODS_RECEIPT_API_ERROR]", err);
+    return NextResponse.json(
+      { success: false, error: err.message || "เกิดข้อผิดพลาดในการบันทึกรับสินค้า" },
+      { status: 500 }
+    );
+  }
+}

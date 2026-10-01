@@ -3,6 +3,7 @@
 import React, { useState, useRef } from "react";
 import { Camera, Upload, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
 import { PillButton, cn } from "@/components/ui/Base";
+import { apiFetch } from "@/lib/api-client";
 
 interface SmartScannerProps {
   type: "business_card" | "product_label" | "quotation";
@@ -30,7 +31,7 @@ export function SmartScanner({ type, onDataExtracted, buttonLabel = "AI สแ�
         const base64String = reader.result as string;
 
         // Send to API
-        const response = await fetch('/api/ai/vision', {
+        const response = await apiFetch('/api/ai/vision', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

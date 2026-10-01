@@ -8,8 +8,8 @@ export function InvoiceSummaryPanel() {
 
   return (
     <div className="space-y-4 relative">
-      <div className="bg-[#111111] border border-white/5 rounded-3xl p-6 shadow-2xl space-y-6 sticky top-0 relative overflow-hidden">
-        <h3 className="text-sm font-black text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4 not-italic relative z-10">
+      <div className="bg-surface-1 border border-white/5 rounded-3xl p-6 shadow-2xl space-y-6 sticky top-0 relative overflow-hidden">
+        <h3 className="text-sm font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4 not-italic relative z-10">
           <Calculator size={16} className="text-nexus-teal" /> สรุปยอด
         </h3>
         

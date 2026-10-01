@@ -17,6 +17,7 @@ import {
   Plus,
   ArrowRight,
   ShieldCheck,
+  Unlock,
   Search,
   Box,
   Calculator,
@@ -58,6 +59,7 @@ import { useSystemDialog } from "@/context/DialogContext";
 import Link from "next/link";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api-client";
 
 
 const MOCK_RV = [
@@ -74,10 +76,14 @@ type FinanceSubModule = "overview" | "ar" | "ap" | "gl" | "tax" | "assets" | "ba
 export default function FinancePage() {
   const router = useRouter();
 
-  const { user, companyId } = useAuth();
+  const { user, companyId, role } = useAuth();
   const [activeTab, setActiveTab] = useState<FinanceSubModule>("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [isCloseOpen, setIsCloseOpen] = useState(false);
+  const [isReopenOpen, setIsReopenOpen] = useState(false);
+  const [reopenYear, setReopenYear] = useState("2026");
+  const [reopenMonth, setReopenMonth] = useState("April");
+  const [reopenReason, setReopenReason] = useState("");
   const [isTaxModalOpen, setIsTaxModalOpen] = useState(false);
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
   
@@ -117,7 +123,7 @@ export default function FinancePage() {
   }
 
   const financialsList = dbFinancials.map(f => ({
-    id: f.id || f.journalId || "JV-UNKNOWN",
+    id: f.journalNo || f.documentNo || f.journalId || f.id || "JV-UNKNOWN",
     date: f.date ? new Date(f.date.seconds ? f.date.seconds * 1000 : f.date).toLocaleDateString('th-TH') : "-",
     desc: f.description || "-",
     dr: f.totalDebit?.toLocaleString() || "-",
@@ -127,7 +133,7 @@ export default function FinancePage() {
 
   const arList = dbARs.map(ar => ({
     customer: ar.customerName || ar.customerId || "Unknown",
-    inv: ar.invoiceId || ar.id || "-",
+    inv: ar.invoiceNo || ar.documentNo || ar.invoiceId || ar.id || "-",
     due: ar.dueDate ? new Date(ar.dueDate.seconds ? ar.dueDate.seconds * 1000 : ar.dueDate).toLocaleDateString('th-TH') : "-",
     amount: ar.amount ? `฿${ar.amount.toLocaleString()}` : "-",
     status: ar.status || "pending"
@@ -135,7 +141,7 @@ export default function FinancePage() {
 
   const apList = dbAPs.map(ap => ({
     supplier: ap.supplierName || ap.supplierId || "Unknown",
-    po: ap.poId || ap.id || "-",
+    po: ap.poNo || ap.documentNo || ap.poId || ap.id || "-",
     payDate: ap.payDate ? new Date(ap.payDate.seconds ? ap.payDate.seconds * 1000 : ap.payDate).toLocaleDateString('th-TH') : "-",
     amount: ap.amount ? `฿${ap.amount.toLocaleString()}` : "-",
     status: ap.status || "active"
@@ -150,7 +156,7 @@ export default function FinancePage() {
   }));
 
   const assetsList = dbAssets.map(a => ({
-    id: a.id || "AST-UNKNOWN",
+    id: a.assetCode || a.assetNo || a.code || a.id || "AST-UNKNOWN",
     name: a.name || "Unknown Asset",
     cat: a.category || "UNKNOWN",
     purchase: a.purchaseValue ? `฿${a.purchaseValue.toLocaleString()}` : "-",
@@ -159,7 +165,7 @@ export default function FinancePage() {
   }));
 
   const bankList = dbBankAccounts.map(b => ({
-    id: b.id || "BNK-UNKNOWN",
+    id: b.bankCode || b.bankId || b.code || b.id || "BNK-UNKNOWN",
     bankName: b.bankName || "Unknown Bank",
     accountNo: b.accountNo || "-",
     balance: b.balance ? `฿${b.balance.toLocaleString()}` : "฿0",
@@ -167,7 +173,7 @@ export default function FinancePage() {
   }));
 
   const chequesList = dbCheques.map(c => ({
-    id: c.id || "CHQ-UNKNOWN",
+    id: c.chequeCode || c.code || c.id || "CHQ-UNKNOWN",
     chequeNo: c.chequeNo || "-",
     type: c.type === "in" ? "เช็ครับ" : "เช็คจ่าย",
     dueDate: c.dueDate ? new Date(c.dueDate.seconds ? c.dueDate.seconds * 1000 : c.dueDate).toLocaleDateString('th-TH') : "-",
@@ -218,10 +224,10 @@ export default function FinancePage() {
     { id: "overview", label: "ภาพรวม", icon: <BarChart3 size={14} /> },
     { id: "ar", label: "ลูกหนี้", icon: <ArrowDownLeft size={14} /> },
     { id: "ap", label: "เจ้าหนี้", icon: <ArrowUpRight size={14} /> },
-    { id: "bank", label: "สมุดธนาคาร", icon: <Landmark size={14} /> },
-    { id: "cheques", label: "เช็ค", icon: <CreditCard size={14} /> },
     { id: "gl", label: "สมุดรายวัน", icon: <FileText size={14} /> },
     { id: "tax", label: "ภาษี", icon: <Percent size={14} /> },
+    { id: "bank", label: "สมุดธนาคาร", icon: <Landmark size={14} /> },
+    { id: "cheques", label: "เช็ค", icon: <CreditCard size={14} /> },
     { id: "assets", label: "สินทรัพย์", icon: <Box size={14} /> },
   ];
 
@@ -237,46 +243,46 @@ export default function FinancePage() {
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
 
       {/* Compact Module Header — icon + title + inline metric chips on same plane */}
-      <header className="p-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-5 bg-black/20 shrink-0">
-        <div className="flex items-center gap-4 shrink-0">
-          <div className="w-10 h-10 rounded-2xl bg-nexus-blue/10 flex items-center justify-center text-nexus-blue shadow-lg border border-nexus-blue/10">
-            <Wallet size={22} />
+      <header className="px-6 py-2.5 min-h-[60px] border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-black/20 shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-nexus-blue/10 flex items-center justify-center text-nexus-blue shadow-lg border border-nexus-blue/10">
+            <Wallet size={20} />
           </div>
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight leading-none">ศูนย์บริหารการเงิน</h1>
-            <p className="text-sm font-medium text-white/30 uppercase mt-1.5 tracking-widest leading-none">Finance &amp; Accounting Hub</p>
+            <p className="text-sm font-medium text-white/30 uppercase mt-1 tracking-widest leading-none">Finance &amp; Accounting Hub</p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[140px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
-              <Wallet size={18} />
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
+              <Wallet size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">กระแสเงินสดสุทธิ</span>
-              <span className={cn("text-[17px] font-bold mt-1 font-mono leading-none", netCashflow >= 0 ? "text-nexus-teal" : "text-danger")}>
+              <span className={cn("text-[17px] font-bold mt-0.5 font-mono leading-none", netCashflow >= 0 ? "text-nexus-teal" : "text-danger")}>
                 ฿{netCashflow.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
           </div>
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
-              <TrendingUp size={18} />
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
+              <TrendingUp size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">กำไร (P&amp;L)</span>
-              <span className={cn("text-[17px] font-bold mt-1 font-mono leading-none", totalPL >= 0 ? "text-nexus-blue" : "text-danger")}>
+              <span className={cn("text-[17px] font-bold mt-0.5 font-mono leading-none", totalPL >= 0 ? "text-nexus-blue" : "text-danger")}>
                 ฿{totalPL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
           </div>
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-danger/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center text-danger border border-danger/20 shrink-0">
-              <AlertCircle size={18} />
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-danger/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-danger/10 flex items-center justify-center text-danger border border-danger/20 shrink-0">
+              <AlertCircle size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">ลูกหนี้ค้างชำระ</span>
-              <span className="text-[17px] font-bold text-danger mt-1 font-mono leading-none">
+              <span className="text-[17px] font-bold text-danger mt-0.5 font-mono leading-none">
                 ฿{totalAR.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
@@ -284,13 +290,57 @@ export default function FinancePage() {
         </div>
       </header>
 
-      {/* Tab Navigation */}
-      <section className="px-6 py-4 bg-black/10 border-b border-white/5 shrink-0">
+      {/* Tab Navigation & Actions */}
+      <section className="px-6 h-[56px] bg-black/10 border-b border-white/5 flex items-center justify-between shrink-0">
         <PillTabs 
           tabs={tabs} 
-          activeTab={activeTab} 
+          activeTab={activeTab}
           onTabChange={(id: any) => setActiveTab(id)} 
         />
+        <div className="flex gap-3 shrink-0">
+           <PillButton variant="confirm" className="h-8 px-5 rounded-full text-[11px] uppercase tracking-widest font-black" onClick={() => setIsCloseOpen(true)}>
+             <ShieldCheck size={14} className="mr-1.5" />
+             ปิดงวดบัญชี
+           </PillButton>
+
+           {(role?.toUpperCase() === "SUPERADMIN" || role?.toUpperCase() === "ADMIN") && (
+             <PillButton variant="danger" className="h-8 px-5 rounded-full text-[11px] uppercase tracking-widest font-black" onClick={() => setIsReopenOpen(true)}>
+               <Unlock size={14} className="mr-1.5" />
+               ปลดล็อกงวดบัญชี
+             </PillButton>
+           )}
+           
+           {(activeTab === "overview" || activeTab === "gl") && (
+             <PillButton variant="primary" onClick={() => router.push("/finance/journal-entries/new")} className="h-8 px-5 rounded-full shadow-neon-teal text-[11px] uppercase tracking-widest font-black">
+               <Plus size={14} className="mr-1.5" />
+               บันทึกรายวัน
+             </PillButton>
+           )}
+           {activeTab === "ar" && (
+             <PillButton variant="save" onClick={() => router.push("/finance/receipts/new")} className="h-8 px-5 rounded-full shadow-neon-teal text-[11px] uppercase tracking-widest font-black">
+               <Plus size={14} className="mr-1.5" />
+               รับชำระเงิน
+             </PillButton>
+           )}
+           {activeTab === "ap" && (
+             <PillButton variant="primary" onClick={() => router.push("/finance/payments/new")} className="h-8 px-5 rounded-full shadow-neon-teal text-[11px] uppercase tracking-widest font-black">
+               <Plus size={14} className="mr-1.5" />
+               จ่ายชำระเงิน
+             </PillButton>
+           )}
+           {activeTab === "tax" && (
+             <PillButton variant="confirm" onClick={() => router.push("/finance/tax-filing/new")} className="h-8 px-5 rounded-full shadow-neon-blue text-[11px] uppercase tracking-widest font-black">
+               <FileText size={14} className="mr-1.5" />
+               ยื่นแบบภาษี
+             </PillButton>
+           )}
+           {activeTab === "assets" && (
+             <PillButton variant="warning" onClick={() => router.push("/finance/assets/depreciation/new")} className="h-8 px-5 rounded-full shadow-neon-warning text-[11px] uppercase tracking-widest font-black">
+               <Calculator size={14} className="mr-1.5" />
+               ประมวลผลค่าเสื่อม
+             </PillButton>
+           )}
+        </div>
       </section>
 
       {/* Main Content Scroll Area */}
@@ -311,47 +361,10 @@ export default function FinancePage() {
               </div>
               {/* Document Sequence Visualizer */}
               {financeFlowSteps.some(s => s.id === activeTab) && (
-                <div className="flex-1 w-full max-w-3xl px-6 py-2 hidden xl:block overflow-hidden">
+                <div className="hidden xl:block">
                    <DocumentFlowStepper activeTab={activeTab} onStepClick={(id) => setActiveTab(id as any)} steps={financeFlowSteps} />
                 </div>
               )}
-              <div className="flex gap-3 shrink-0">
-                 <PillButton variant="glass" className="px-8" onClick={() => router.push("/finance/period-close/new")}>
-                   <ShieldCheck size={18} />
-                   ปิดงวดบัญชี
-                 </PillButton>
-                 
-                 {(activeTab === "overview" || activeTab === "gl") && (
-                   <PillButton onClick={() => router.push("/finance/journal-entries/new")} className="px-8 shadow-neon-teal">
-                     <Plus size={18} />
-                     บันทึกรายวัน
-                   </PillButton>
-                 )}
-                 {activeTab === "ar" && (
-                   <PillButton onClick={() => router.push("/finance/receipts/new")} className="px-8 shadow-neon-teal">
-                     <Plus size={18} />
-                     รับชำระเงิน
-                   </PillButton>
-                 )}
-                 {activeTab === "ap" && (
-                   <PillButton onClick={() => router.push("/finance/payments/new")} className="px-8 shadow-neon-teal">
-                     <Plus size={18} />
-                     จ่ายชำระเงิน
-                   </PillButton>
-                 )}
-                 {activeTab === "tax" && (
-                   <PillButton onClick={() => router.push("/finance/tax-filing/new")} className="px-8 shadow-neon-blue">
-                     <FileText size={18} />
-                     ยื่นแบบภาษี
-                   </PillButton>
-                 )}
-                 {activeTab === "assets" && (
-                   <PillButton onClick={() => router.push("/finance/assets/depreciation/new")} className="px-8 shadow-neon-warning">
-                     <Calculator size={18} />
-                     ประมวลผลค่าเสื่อม
-                   </PillButton>
-                 )}
-              </div>
             </div>
 
             {/* Tactical Command Bar */}
@@ -371,7 +384,7 @@ export default function FinancePage() {
             </div>
 
             {/* Finance Content - Conditional Rendering wrapped in standard GlassCard viewport */}
-            <GlassCard className="p-0 overflow-hidden border-white/5 min-h-[640px] flex flex-col justify-between bg-black/40">
+            <GlassCard accentColor="emerald" className="p-0 overflow-hidden min-h-[640px] flex flex-col justify-between">
               <div className="overflow-x-auto custom-scrollbar flex-1 w-full p-2">
                 {(activeTab === "overview" || activeTab === "gl") && (
                   <div className="animate-in fade-in duration-500">
@@ -447,7 +460,7 @@ export default function FinancePage() {
 
                 {activeTab === "assets" && (
                   <div className="animate-in fade-in duration-500">
-                    <NexusTable headers={["รหัสสินทรัพย์", "หมวดหมู่", "ราคาประเมิน", "ราคาทางบัญชี", "สถานะ"]}>
+                    <NexusTable headers={["รหัสสินทรัพย์", "ชื่อสินทรัพย์", "หมวดหมู่", "ราคาประเมิน", "ราคาทางบัญชี", "สถานะ"]}>
                       {assetsLoading ? (
                         <NexusTableRow>
                           <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
@@ -510,9 +523,12 @@ export default function FinancePage() {
         </div>
 
         {/* Right Sidebar Status */}
-        <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
-           <GlassCard className="p-4 border-white/10 bg-nexus-blue/5">
-              <h4 className="text-[12px] font-bold text-nexus-blue uppercase tracking-widest mb-6">ประมาณการกระแสเงินสด</h4>
+        <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-7 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
+           <GlassCard accentColor="blue" className="p-5">
+              <h4 className="text-xs font-bold text-nexus-blue uppercase tracking-widest mb-4 flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full bg-nexus-blue/10 border border-nexus-blue/30 text-[10px] text-nexus-blue font-mono font-bold">01</span>
+                ประมาณการกระแสเงินสด
+              </h4>
               <div className="space-y-3">
                  <CashFlowBar 
                     label="กระแสเงินสดรับ" 
@@ -552,25 +568,127 @@ export default function FinancePage() {
         onConfirm={async (data) => {
           if (!user || !companyId) return;
           try {
-            const saveOp = async () => {
-              const closeRef = doc(collection(db, "periodClosings"));
-              await setDoc(closeRef, {
-                ...data,
+            const res = await apiFetch("/api/accounting/period-close", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
                 companyId,
-                status: "closed",
-                createdAt: serverTimestamp()
-              });
-              await auditService.logCreate(user.uid, companyId, "FINANCE_CLOSE", "NEW", data);
-            };
-            await saveToFirestore(saveOp());
+                month: data.month,
+                year: data.year,
+                userRole: role || "ACCOUNTANT",
+                userId: user.uid
+              })
+            });
+            const result = await res.json();
+            if (!res.ok || !result.success) {
+              throw new Error(result.error || "เกิดข้อผิดพลาดในการปิดงวดบัญชี");
+            }
             setIsCloseOpen(false);
-            showAlert(`ปิดงวดบัญชี ${data.month} ${data.year} สำเร็จและล็อกข้อมูลแล้ว`, "System Notification", "info");
+            showAlert(result.message || `ปิดงวดบัญชี ${data.month} ${data.year} สำเร็จและล็อกข้อมูลแล้ว`, "การปิดงวดบัญชี", "info");
           } catch (err: any) {
             console.error(err);
-            showAlert(`ซิงค์ข้อมูลล้มเหลว: ${err.message}`, "System Notification", "error");
+            showAlert(err.message || "เกิดข้อผิดพลาดในการปิดงวดบัญชี", "การแจ้งเตือนระบบ", "error");
           }
         }}
       />
+
+      {isReopenOpen && (
+        <Modal
+          isOpen={isReopenOpen}
+          onClose={() => setIsReopenOpen(false)}
+          title="การปลดล็อกปิดงวดบัญชี (Superadmin Only)"
+        >
+          <div className="p-8 space-y-6 bg-surface-0">
+            <div className="space-y-3">
+              <label className="text-[12px] font-bold text-white/60">ปีปฏิทิน</label>
+              <PillSelect
+                value={reopenYear}
+                onChange={(e) => setReopenYear(e.target.value)}
+                className="w-full text-sm font-medium"
+              >
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
+              </PillSelect>
+            </div>
+            <div className="space-y-3">
+              <label className="text-[12px] font-bold text-white/60">เดือนที่ต้องการปลดล็อก</label>
+              <PillSelect
+                value={reopenMonth}
+                onChange={(e) => setReopenMonth(e.target.value)}
+                className="w-full text-sm font-medium"
+              >
+                <option value="January">มกราคม (January)</option>
+                <option value="February">กุมภาพันธ์ (February)</option>
+                <option value="March">มีนาคม (March)</option>
+                <option value="April">เมษายน (April)</option>
+                <option value="May">พฤษภาคม (May)</option>
+                <option value="June">มิถุนายน (June)</option>
+                <option value="July">กรกฎาคม (July)</option>
+                <option value="August">สิงหาคม (August)</option>
+                <option value="September">กันยายน (September)</option>
+                <option value="October">ตุลาคม (October)</option>
+                <option value="November">พฤศจิกายน (November)</option>
+                <option value="December">ธันวาคม (December)</option>
+              </PillSelect>
+            </div>
+            <div className="space-y-3">
+              <label className="text-[12px] font-bold text-white/60">เหตุผลในการปลดล็อกงวดบัญชี (จำเป็นต้องระบุ)</label>
+              <PillInput
+                value={reopenReason}
+                onChange={(e) => setReopenReason(e.target.value)}
+                placeholder="ระบุเหตุผลในการปลดล็อกงวด..."
+                className="w-full text-sm font-medium"
+              />
+            </div>
+            <div className="flex gap-4 pt-4">
+              <PillButton
+                variant="danger"
+                className="flex-1 h-8 rounded-full text-sm font-bold"
+                onClick={async () => {
+                  if (!user || !companyId) return;
+                  if (!reopenReason.trim()) {
+                    showAlert("กรุณาระบุเหตุผลในการปลดล็อกงวดบัญชี", "ข้อผิดพลาด", "error");
+                    return;
+                  }
+                  try {
+                    const res = await apiFetch("/api/accounting/period-reopen", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        companyId,
+                        year: reopenYear,
+                        month: reopenMonth,
+                        reopenReason,
+                        userRole: role || "SUPERADMIN",
+                        userId: user.uid
+                      })
+                    });
+                    const result = await res.json();
+                    if (!res.ok || !result.success) {
+                      throw new Error(result.error || "เกิดข้อผิดพลาดในการปลดล็อกงวดบัญชี");
+                    }
+                    setIsReopenOpen(false);
+                    setReopenReason("");
+                    showAlert(result.message || `ปลดล็อกงวดบัญชี ${reopenMonth} ${reopenYear} สำเร็จ`, "แจ้งเตือนระบบ", "info");
+                  } catch (err: any) {
+                    console.error(err);
+                    showAlert(err.message || "เกิดข้อผิดพลาดในการปลดล็อกงวดบัญชี", "ข้อผิดพลาด", "error");
+                  }
+                }}
+              >
+                ยืนยันการปลดล็อกงวด
+              </PillButton>
+              <PillButton
+                variant="glass"
+                className="h-8 rounded-full text-sm font-bold"
+                onClick={() => setIsReopenOpen(false)}
+              >
+                ยกเลิก
+              </PillButton>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       
 
@@ -637,13 +755,13 @@ function AssetRow({ id, name, cat, purchase, bookValue, status }: { id: string, 
   return (
     <NexusTableRow>
       <NexusTableCell>
-         <p className="font-mono text-xs text-warning font-medium tracking-tighter">{id}</p>
-         <p className="font-bold text-white/80">{name}</p>
+         <p className="font-mono text-xs text-warning font-medium tracking-tighter text-center w-full">{id}</p>
+         <p className="w-full font-bold text-white/80">{name}</p>
       </NexusTableCell>
-      <NexusTableCell className="w-[180px] text-sm font-medium text-white/40 uppercase tracking-widest">{cat}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-white mono-numbers">{purchase}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-warning mono-numbers">{bookValue}</NexusTableCell>
-      <NexusTableCell className="w-[180px]"><StatusBadge status={status} label="ปกติ" /></NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-sm font-medium text-white/40 uppercase tracking-widest">{cat}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white mono-numbers">{purchase}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-warning mono-numbers">{bookValue}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center"><StatusBadge status={status} label="ปกติ" /></NexusTableCell>
     </NexusTableRow>
   );
 }
@@ -651,16 +769,16 @@ function AssetRow({ id, name, cat, purchase, bookValue, status }: { id: string, 
 function FinancialRow({ id, date, desc, dr, cr, status }: { id: string, date: string, desc: string, dr: string, cr: string, status: "active" | "pending" }) {
   return (
     <NexusTableRow>
-      <NexusTableCell className="w-[140px]">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <Link href={`/finance/journal/${id}`} className="block">
-           <p className="font-mono text-xs text-nexus-blue font-medium tracking-tighter">{id}</p>
+           <p className="font-mono text-xs text-nexus-blue font-medium tracking-tighter text-center w-full">{id}</p>
         </Link>
       </NexusTableCell>
-      <NexusTableCell className="w-[180px] text-sm font-medium text-white/40 uppercase tracking-widest">{date}</NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80 group-hover:text-white transition-colors whitespace-nowrap">{desc}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-white/60 font-mono">{dr}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-white/60 font-mono">{cr}</NexusTableCell>
-      <NexusTableCell className="w-[180px]">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-sm font-medium text-white/40 uppercase tracking-widest">{date}</NexusTableCell>
+      <NexusTableCell className="w-full font-bold text-white/80 group-hover:text-white transition-colors">{desc}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white/60 font-mono">{dr}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white/60 font-mono">{cr}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={status} label="บันทึกแล้ว" />
       </NexusTableCell>
     </NexusTableRow>
@@ -670,11 +788,11 @@ function FinancialRow({ id, date, desc, dr, cr, status }: { id: string, date: st
 function ARRow({ customer, inv, due, amount, status }: { customer: string, inv: string, due: string, amount: string, status: any }) {
   return (
     <NexusTableRow>
-      <NexusTableCell className="font-bold text-white">{customer}</NexusTableCell>
-      <NexusTableCell className="w-[140px] font-mono text-[10px] text-nexus-teal tracking-tighter">{inv}</NexusTableCell>
-      <NexusTableCell className="w-[180px] text-sm font-medium text-white/40 uppercase tracking-widest">{due}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-white mono-numbers">{amount}</NexusTableCell>
-      <NexusTableCell className="w-[180px]"><StatusBadge status={status} label={status === "pending" ? "รอชำระ" : "เกินกำหนด"} /></NexusTableCell>
+      <NexusTableCell className="w-full font-bold text-white">{customer}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[10px] text-nexus-teal tracking-tighter">{inv}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-sm font-medium text-white/40 uppercase tracking-widest">{due}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white mono-numbers">{amount}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center"><StatusBadge status={status} label={status === "pending" ? "รอชำระ" : "เกินกำหนด"} /></NexusTableCell>
     </NexusTableRow>
   );
 }
@@ -682,11 +800,11 @@ function ARRow({ customer, inv, due, amount, status }: { customer: string, inv: 
 function APRow({ supplier, po, payDate, amount, status }: { supplier: string, po: string, payDate: string, amount: string, status: any }) {
   return (
     <NexusTableRow>
-      <NexusTableCell className="font-bold text-white">{supplier}</NexusTableCell>
-      <NexusTableCell className="w-[140px] font-mono text-[10px] text-nexus-blue tracking-tighter">{po}</NexusTableCell>
-      <NexusTableCell className="w-[180px] text-sm font-medium text-white/40 uppercase tracking-widest">{payDate}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-white mono-numbers">{amount}</NexusTableCell>
-      <NexusTableCell className="w-[180px]"><StatusBadge status={status} label={status === "active" ? "อนุมัติจ่าย" : "รอตรวจรับ"} /></NexusTableCell>
+      <NexusTableCell className="w-full font-bold text-white">{supplier}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[10px] text-nexus-blue tracking-tighter">{po}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-sm font-medium text-white/40 uppercase tracking-widest">{payDate}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white mono-numbers">{amount}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center"><StatusBadge status={status} label={status === "active" ? "อนุมัติจ่าย" : "รอตรวจรับ"} /></NexusTableCell>
     </NexusTableRow>
   );
 }
@@ -694,11 +812,11 @@ function APRow({ supplier, po, payDate, amount, status }: { supplier: string, po
 function TaxRow({ type, month, base, tax, status }: { type: string, month: string, base: string, tax: string, status: any }) {
   return (
     <NexusTableRow>
-      <NexusTableCell className="font-bold text-white">{type}</NexusTableCell>
-      <NexusTableCell className="w-[180px] text-sm font-medium text-white/40 uppercase tracking-widest">{month}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-white/20 mono-numbers">{base}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-nexus-teal mono-numbers">{tax}</NexusTableCell>
-      <NexusTableCell className="w-[180px]"><StatusBadge status={status} label="สมบูรณ์" /></NexusTableCell>
+      <NexusTableCell className="w-full font-bold text-white">{type}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-sm font-medium text-white/40 uppercase tracking-widest">{month}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white/20 mono-numbers">{base}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-nexus-teal mono-numbers">{tax}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center"><StatusBadge status={status} label="สมบูรณ์" /></NexusTableCell>
     </NexusTableRow>
   );
 }
@@ -721,13 +839,13 @@ function CashFlowBar({ label, inAmount, outAmount, isRisk }: { label: string, in
 function BankRow({ id, bankName, accountNo, balance, status }: any) {
   return (
     <NexusTableRow>
-      <NexusTableCell className="w-[140px]">
-         <p className="font-mono text-xs text-nexus-blue font-medium tracking-tighter">{id}</p>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
+         <p className="font-mono text-xs text-nexus-blue font-medium tracking-tighter text-center w-full">{id}</p>
       </NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80">{bankName}</NexusTableCell>
-      <NexusTableCell className="w-[180px] font-mono text-[11px] text-white/40 tracking-widest">{accountNo}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-white mono-numbers">{balance}</NexusTableCell>
-      <NexusTableCell className="w-[180px]"><StatusBadge status={status} label={status === "active" ? "ใช้งาน" : "ปิดใช้งาน"} /></NexusTableCell>
+      <NexusTableCell className="w-full font-bold text-white/80">{bankName}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[11px] text-white/40 tracking-widest">{accountNo}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white mono-numbers">{balance}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center"><StatusBadge status={status} label={status === "active" ? "ใช้งาน" : "ปิดใช้งาน"} /></NexusTableCell>
     </NexusTableRow>
   );
 }
@@ -735,14 +853,14 @@ function BankRow({ id, bankName, accountNo, balance, status }: any) {
 function ChequeRow({ id, chequeNo, type, dueDate, amount, status }: any) {
   return (
     <NexusTableRow>
-      <NexusTableCell className="w-[140px]">
-         <p className="font-mono text-xs text-warning font-medium tracking-tighter">{id}</p>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
+         <p className="font-mono text-xs text-warning font-medium tracking-tighter text-center w-full">{id}</p>
       </NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80">{chequeNo}</NexusTableCell>
-      <NexusTableCell className="w-[150px] font-bold text-[11px] uppercase tracking-widest text-white/40">{type}</NexusTableCell>
-      <NexusTableCell className="w-[120px] text-sm font-medium text-white/40 uppercase tracking-widest">{dueDate}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-white mono-numbers">{amount}</NexusTableCell>
-      <NexusTableCell className="w-[180px]">
+      <NexusTableCell className="w-full font-bold text-white/80">{chequeNo}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-bold text-[11px] uppercase tracking-widest text-white/40">{type}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-sm font-medium text-white/40 uppercase tracking-widest">{dueDate}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white mono-numbers">{amount}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={status === "Cleared" ? "active" : "pending"} label={status === "Cleared" ? "ผ่านเช็คแล้ว" : "รอขึ้นเงิน"} />
       </NexusTableCell>
     </NexusTableRow>

@@ -35,10 +35,10 @@ export function DocumentViewerModal({ isOpen, onClose, documentData, documentTyp
       title={`ระบบออกเอกสาร: ${documentType}`}
       maxWidth="max-w-[1200px]"
     >
-      <div className="flex flex-col h-[85vh] bg-[#0D0D0D]">
+      <div className="flex flex-col h-[85vh] bg-surface-0">
         
         {/* Tool Bar */}
-        <div className="flex justify-between items-center p-4 border-b border-white/10 bg-[#111111]">
+        <div className="flex justify-between items-center p-4 border-b border-white/10 bg-surface-1">
           <div className="space-y-1">
             <h4 className="text-sm font-bold text-nexus-teal uppercase tracking-widest">{documentData.docNo}</h4>
             <p className="text-[11px] text-white/40">เอกสารพร้อมพิมพ์</p>
@@ -54,7 +54,7 @@ export function DocumentViewerModal({ isOpen, onClose, documentData, documentTyp
         </div>
 
         {/* PDF Viewer */}
-        <div className="flex-1 bg-[#1A1A1A] relative">
+        <div className="flex-1 bg-surface-2 relative">
           {isMounted && (
             <PDFViewer width="100%" height="100%" className="border-0">
               <NexusDocumentTemplate data={documentData} />

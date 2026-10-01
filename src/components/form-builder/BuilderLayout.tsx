@@ -181,7 +181,7 @@ export const BuilderLayout: React.FC = () => {
   const selectedElement = template?.elements.find(e => e.id === selectedElementId);
 
   return (
-    <div className="h-[calc(100vh-4rem)] w-full flex flex-col bg-[#080809] overflow-hidden font-sans">
+    <div className="h-[calc(100vh-4rem)] w-full flex flex-col bg-surface-0 overflow-hidden font-sans">
 
       <TemplateSelectionModal
         isOpen={isModalOpen}
@@ -199,7 +199,7 @@ export const BuilderLayout: React.FC = () => {
       {template && (
         <>
           {/* ── Top Bar ─────────────────────────────────────────────── */}
-          <div className="relative flex items-center justify-between px-4 py-3 bg-[#050505]/60 backdrop-blur-2xl border-b border-white/5 flex-shrink-0 h-14 z-50">
+          <div className="relative flex items-center justify-between px-4 py-3 bg-surface-0/60 backdrop-blur-2xl border-b border-white/5 flex-shrink-0 h-14 z-50">
             {/* Subtle gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-r from-nexus-teal/5 via-transparent to-purple-500/5 pointer-events-none" />
             <div className="flex items-center gap-3">
@@ -212,13 +212,13 @@ export const BuilderLayout: React.FC = () => {
               <span className="text-white/10">|</span>
               <div className="flex items-center gap-1.5 text-nexus-teal/80">
                 <FileText size={14} />
-                <span className="text-[11px] font-black uppercase tracking-widest">{template.name}</span>
+                <span className="text-[11px] font-semibold uppercase tracking-widest">{template.name}</span>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               {isSaved && (
-                <span className="px-3 py-1 bg-nexus-teal/10 border border-nexus-teal/20 text-nexus-teal text-[10px] font-black uppercase tracking-widest rounded-full">
+                <span className="px-3 py-1 bg-nexus-teal/10 border border-nexus-teal/20 text-nexus-teal text-[10px] font-semibold uppercase tracking-widest rounded-full">
                   ✓ บันทึกแล้ว
                 </span>
               )}
@@ -294,7 +294,7 @@ export const BuilderLayout: React.FC = () => {
             )}
 
             {/* ── Canvas Area ─────────────────────────────────────── */}
-            <div className="flex-1 overflow-auto p-8 bg-[#0d0d10] flex items-start justify-center">
+            <div className="flex-1 overflow-auto p-8 bg-surface-1 flex items-start justify-center">
               <Canvas
                 elements={template.elements}
                 onUpdateElement={handleUpdateElement}

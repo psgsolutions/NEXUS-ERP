@@ -131,13 +131,13 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
   };
 
   return (
-    <div className="flex h-full flex-col bg-[#0A0A0C]">
+    <div className="flex h-full flex-col bg-surface-0">
       {/* Action Subheader */}
-      <div className="h-16 flex items-center justify-between px-10 border-b border-white/5 bg-[#0F0F12] flex-shrink-0">
+      <div className="h-16 flex items-center justify-between px-10 border-b border-white/5 bg-surface-1 flex-shrink-0">
         <div className="flex items-center gap-4">
           <div className="text-white/40 flex items-center gap-2">
             <Layers size={16} className="text-nexus-teal" />
-            <span className="text-[12px] font-black uppercase tracking-widest">โหมดออกแบบเทมเพลตฟอร์ม</span>
+            <span className="text-[12px] font-semibold uppercase tracking-widest">โหมดออกแบบเทมเพลตฟอร์ม</span>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -154,13 +154,13 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
       <div className="flex-1 flex overflow-hidden divide-x divide-white/5">
         {/* Left Side: General Settings & Dynamic Fields list */}
         <div className="flex-1 overflow-y-auto p-10 custom-scrollbar space-y-8">
-          <GlassCard className="p-6 bg-[#0a0a0c]/80 border-white/5">
-            <h4 className="text-[12px] font-black text-nexus-teal uppercase tracking-widest mb-6 flex items-center gap-2">
+          <GlassCard className="p-6 bg-surface-0/80 border-white/5">
+            <h4 className="text-[12px] font-semibold text-nexus-teal uppercase tracking-widest mb-6 flex items-center gap-2">
               <Sparkles size={16} /> 1. ตั้งค่าข้อมูลพื้นฐานเทมเพลต
             </h4>
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[12px] font-black text-white/30 uppercase tracking-widest">ชื่อแบบฟอร์มรายงาน *</label>
+                <label className="text-[12px] font-semibold text-white/30 uppercase tracking-widest">ชื่อแบบฟอร์มรายงาน *</label>
                 <PillInput 
                   value={title} 
                   onChange={(e) => setTitle(e.target.value)} 
@@ -169,7 +169,7 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[12px] font-black text-white/30 uppercase tracking-widest">โมดูลเชื่อมโยง</label>
+                <label className="text-[12px] font-semibold text-white/30 uppercase tracking-widest">โมดูลเชื่อมโยง</label>
                 <PillSelect 
                   value={module} 
                   onChange={(e) => setModule(e.target.value)} 
@@ -187,7 +187,7 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
           {/* Fields Management */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h4 className="text-[12px] font-black text-nexus-blue uppercase tracking-widest flex items-center gap-2">
+              <h4 className="text-[12px] font-semibold text-nexus-blue uppercase tracking-widest flex items-center gap-2">
                 <ListPlus size={16} /> 2. จัดการฟิลด์ข้อมูลไดนามิก ({fields.length} ฟิลด์)
               </h4>
               <PillButton onClick={handleAddField} className="h-8 px-4 text-[11px] shadow-neon-teal">
@@ -196,7 +196,7 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
             </div>
 
             {fields.length === 0 ? (
-              <div className="border border-dashed border-white/10 rounded-2xl p-16 text-center text-white/20 uppercase font-black text-[12px] tracking-widest bg-white/[0.01]">
+              <div className="border border-dashed border-white/10 rounded-2xl p-16 text-center text-white/20 uppercase font-semibold text-[12px] tracking-widest bg-white/[0.01]">
                 ไม่มีฟิลด์ข้อมูล กรุณากดปุ่ม "เพิ่มฟิลด์ข้อมูล" เพื่อเริ่มต้นออกแบบ
               </div>
             ) : (
@@ -207,7 +207,7 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
                     className={`p-4 rounded-xl border transition-all duration-300 ${
                       editingFieldId === field.id 
                         ? "bg-white/[0.04] border-nexus-teal/30 shadow-[0_0_20px_rgba(0,255,209,0.03)]" 
-                        : "bg-[#0c0c0e] border-white/5 hover:border-white/10"
+                        : "bg-surface-1 border-white/5 hover:border-white/10"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-4">
@@ -237,15 +237,15 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
                       {/* Field summary overview */}
                       <div className="flex-1 grid grid-cols-4 gap-4" onClick={() => setEditingFieldId(editingFieldId === field.id ? null : field.id)}>
                         <div className="col-span-2 cursor-pointer">
-                          <p className="text-[11px] text-white/30 font-black uppercase tracking-wider">ชื่อหัวข้อฟิลด์ / Label</p>
-                          <p className="text-[13px] font-black text-white mt-1">{field.label || "ไม่มีหัวข้อ"}</p>
+                          <p className="text-[11px] text-white/30 font-semibold uppercase tracking-wider">ชื่อหัวข้อฟิลด์ / Label</p>
+                          <p className="text-[13px] font-semibold text-white mt-1">{field.label || "ไม่มีหัวข้อ"}</p>
                         </div>
                         <div className="cursor-pointer">
-                          <p className="text-[11px] text-white/30 font-black uppercase tracking-wider">ประเภทข้อมูล</p>
+                          <p className="text-[11px] text-white/30 font-semibold uppercase tracking-wider">ประเภทข้อมูล</p>
                           <p className="text-[11px] font-mono font-black text-nexus-teal uppercase tracking-widest mt-1.5">{field.type}</p>
                         </div>
                         <div className="cursor-pointer">
-                          <p className="text-[11px] text-white/30 font-black uppercase tracking-wider">การจัด Layout</p>
+                          <p className="text-[11px] text-white/30 font-semibold uppercase tracking-wider">การจัด Layout</p>
                           <p className="text-[11px] font-bold text-white/60 mt-1.5">{field.gridSpan} คอลัมน์ (Span {field.gridSpan})</p>
                         </div>
                       </div>
@@ -271,7 +271,7 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
                     {editingFieldId === field.id && (
                       <div className="mt-4 pt-4 border-t border-white/5 grid grid-cols-4 gap-4 animate-in fade-in duration-300">
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black text-white/30 uppercase tracking-widest">หัวข้อแสดงผล / Label *</label>
+                          <label className="text-[10px] font-semibold text-white/30 uppercase tracking-widest">หัวข้อแสดงผล / Label *</label>
                           <PillInput 
                             value={field.label}
                             onChange={(e) => handleUpdateField(field.id, { label: e.target.value })}
@@ -279,7 +279,7 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black text-white/30 uppercase tracking-widest">รหัสตัวแปร / Field ID *</label>
+                          <label className="text-[10px] font-semibold text-white/30 uppercase tracking-widest">รหัสตัวแปร / Field ID *</label>
                           <PillInput 
                             value={field.id}
                             onChange={(e) => handleUpdateField(field.id, { id: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "") })}
@@ -288,7 +288,7 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black text-white/30 uppercase tracking-widest">ประเภทข้อมูล</label>
+                          <label className="text-[10px] font-semibold text-white/30 uppercase tracking-widest">ประเภทข้อมูล</label>
                           <PillSelect 
                             value={field.type}
                             onChange={(e) => handleUpdateField(field.id, { type: e.target.value as any })}
@@ -302,7 +302,7 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
                           </PillSelect>
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black text-white/30 uppercase tracking-widest">ขนาดหน้าจอ</label>
+                          <label className="text-[10px] font-semibold text-white/30 uppercase tracking-widest">ขนาดหน้าจอ</label>
                           <PillSelect 
                             value={field.gridSpan}
                             onChange={(e) => handleUpdateField(field.id, { gridSpan: parseInt(e.target.value) as any })}
@@ -318,7 +318,7 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
                         {/* Extra configurations depending on field type */}
                         {field.type === "dropdown" && (
                           <div className="col-span-4 space-y-1.5 bg-white/[0.01] border border-white/5 rounded-xl p-3">
-                            <label className="text-[10px] font-black text-nexus-teal uppercase tracking-widest">ระบุตัวเลือก * แยกรายการด้วยเครื่องหมายจุลภาค</label>
+                            <label className="text-[10px] font-semibold text-nexus-teal uppercase tracking-widest">ระบุตัวเลือก * แยกรายการด้วยเครื่องหมายจุลภาค</label>
                             <PillInput 
                               value={field.options?.join(", ") || ""}
                               onChange={(e) => handleUpdateField(field.id, { options: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
@@ -345,24 +345,24 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
         </div>
 
         {/* Right Side: Live Visual rendering preview */}
-        <div className="w-[450px] bg-[#0E0E11]/80 backdrop-blur-3xl overflow-y-auto p-10 flex flex-col custom-scrollbar flex-shrink-0">
+        <div className="w-[450px] bg-surface-1/80 backdrop-blur-3xl overflow-y-auto p-10 flex flex-col custom-scrollbar flex-shrink-0">
           <div className="flex-1 space-y-8">
             <div className="flex items-center gap-3 border-b border-white/5 pb-4">
               <FileText size={18} className="text-nexus-teal" />
               <div>
-                <h5 className="text-[12px] font-black text-white uppercase tracking-widest">การแสดงผลตัวอย่าง</h5>
+                <h5 className="text-[12px] font-semibold text-white uppercase tracking-widest">การแสดงผลตัวอย่าง</h5>
                 <p className="text-[10px] text-white/30 uppercase mt-1 tracking-wider">PSG standard layout alignment</p>
               </div>
             </div>
 
             <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/10 space-y-6">
               <div className="border-b border-white/5 pb-3">
-                <span className="px-2 py-0.5 rounded bg-nexus-teal/10 border border-nexus-teal/20 text-[9px] text-nexus-teal font-black uppercase tracking-widest">เทมเพลต: {module}</span>
-                <h3 className="text-md font-black text-white mt-2 leading-none uppercase">{title || "ชื่อฟอร์มตัวอย่าง"}</h3>
+                <span className="px-2 py-0.5 rounded bg-nexus-teal/10 border border-nexus-teal/20 text-[9px] text-nexus-teal font-semibold uppercase tracking-widest">เทมเพลต: {module}</span>
+                <h3 className="text-md font-semibold text-white mt-2 leading-none uppercase">{title || "ชื่อฟอร์มตัวอย่าง"}</h3>
               </div>
 
               {fields.length === 0 ? (
-                <div className="text-center py-10 text-[11px] font-black uppercase tracking-widest text-white/15">
+                <div className="text-center py-10 text-[11px] font-semibold uppercase tracking-widest text-white/15">
                   รอรับข้อมูลเพื่อจำลองฟอร์ม...
                 </div>
               ) : (
@@ -376,7 +376,7 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
                     
                     return (
                       <div key={f.id} className={`${spanClass} space-y-1.5`}>
-                        <label className="text-[10px] font-black text-white/30 uppercase tracking-widest">
+                        <label className="text-[10px] font-semibold text-white/30 uppercase tracking-widest">
                           {f.label || "ฟิลด์ข้อมูล"} {f.required && <span className="text-danger">*</span>}
                         </label>
                         {f.type === "dropdown" ? (
@@ -391,7 +391,7 @@ export default function FormBuilder({ initialTemplate, onSaveSuccess, onClose }:
                         ) : f.type === "number" ? (
                           <PillInput type="number" placeholder="0.00" className="w-full font-mono" disabled />
                         ) : f.type === "table" ? (
-                          <div className="w-full p-3 rounded-xl border border-white/10 bg-white/[0.01] text-center text-[10px] font-black text-white/20 uppercase tracking-widest">
+                          <div className="w-full p-3 rounded-xl border border-white/10 bg-white/[0.01] text-center text-[10px] font-semibold text-white/20 uppercase tracking-widest">
                             [ + ] Dynamic Table Placeholder
                           </div>
                         ) : (

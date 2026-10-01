@@ -57,23 +57,23 @@ export default function DashboardPage() {
 
   return (
     <div className={cn(
-      "p-6 space-y-6 max-w-[1800px] mx-auto animate-in fade-in duration-700",
+      "px-6 py-3.5 space-y-4 max-w-[1800px] mx-auto animate-in fade-in duration-700",
       neuralEnabled && "blur-[0.5px] brightness-110 contrast-125"
     )}>
       
       {/* --- TOP COMMAND HEADER --- */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
             <SystemHealthIndicator />
-            <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[12px] text-white/40 font-medium uppercase flex items-center gap-2 tracking-widest">
+            <div className="px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-[12px] text-white/40 font-medium uppercase flex items-center gap-2 tracking-widest">
               <div className="w-1.5 h-1.5 rounded-full bg-nexus-teal shadow-neon-teal animate-pulse" />
               โหนด: NEXUS-BKK-GLOBAL
             </div>
             <div className="flex gap-2">
                <div 
                   onClick={() => setViewMode(viewMode === "standard" ? "quantum" : "standard")}
-                  className={cn("px-4 py-1.5 rounded-full border text-[11px] font-medium uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
+                  className={cn("px-3.5 py-1 rounded-full border text-[11px] font-medium uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
                      viewMode === "quantum" ? "bg-warning/20 border-warning text-warning shadow-neon-warning" : "bg-nexus-blue/10 border-nexus-blue/20 text-nexus-blue"
                   )}
                >
@@ -82,7 +82,7 @@ export default function DashboardPage() {
                </div>
                <div 
                   onClick={() => setViewMode(viewMode === "macro" ? "standard" : "macro")}
-                  className={cn("px-4 py-1.5 rounded-full border text-[11px] font-medium uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
+                  className={cn("px-3.5 py-1 rounded-full border text-[11px] font-medium uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
                      viewMode === "macro" ? "bg-nexus-blue/20 border-nexus-blue text-nexus-blue shadow-neon-blue" : "bg-white/5 border-white/10 text-white/40"
                   )}
                >
@@ -91,7 +91,7 @@ export default function DashboardPage() {
                </div>
                <div 
                   onClick={() => setViewMode(viewMode === "temporal" ? "standard" : "temporal")}
-                  className={cn("px-4 py-1.5 rounded-full border text-[11px] font-medium uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
+                  className={cn("px-3.5 py-1 rounded-full border text-[11px] font-medium uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
                      viewMode === "temporal" ? "bg-nexus-teal/20 border-nexus-teal text-nexus-teal shadow-neon-teal" : "bg-white/5 border-white/10 text-white/40"
                   )}
                >
@@ -100,7 +100,7 @@ export default function DashboardPage() {
                </div>
                <div 
                   onClick={() => setNeuralEnabled(!neuralEnabled)}
-                  className={cn("px-4 py-1.5 rounded-full border text-[11px] font-medium uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
+                  className={cn("px-3.5 py-1 rounded-full border text-[11px] font-medium uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
                      neuralEnabled ? "bg-danger/20 border-danger text-danger shadow-neon-danger" : "bg-white/5 border-white/10 text-white/40"
                   )}
                >
@@ -109,12 +109,12 @@ export default function DashboardPage() {
                </div>
             </div>
           </div>
-          <div className="flex items-center gap-5">
-            <div className="w-14 h-14 bg-nexus-teal/20 border border-nexus-teal/20 rounded-xl flex items-center justify-center shadow-neon-teal">
-              <Zap size={28} className="text-nexus-teal drop-shadow-md" />
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 bg-nexus-teal/20 border border-nexus-teal/20 rounded-xl flex items-center justify-center shadow-neon-teal">
+              <Zap size={22} className="text-nexus-teal drop-shadow-md" />
             </div>
             <div>
-              <p className="text-[14px] font-medium text-white/20 uppercase tracking-[0.2em] mb-1 ml-1" title="หน้าหลักควบคุมการปฏิบัติงานรวม">หน้าแรก</p>
+              <p className="text-[14px] font-medium text-white/20 uppercase tracking-[0.2em] mb-0.5 ml-0.5" title="หน้าหลักควบคุมการปฏิบัติงานรวม">หน้าแรก</p>
               <h1 className="text-3xl font-bold text-white tracking-tighter leading-none uppercase">ภาพรวมระบบ</h1>
             </div>
           </div>
@@ -126,7 +126,7 @@ export default function DashboardPage() {
               className="w-80 hidden xl:block"
               kbd="CTRL+K"
             />
-          <div className="relative">
+          <div className={cn("relative", isCreateMenuOpen && "z-[99999]")}>
             <PillButton 
               className="px-8 shadow-neon-teal" 
               onClick={() => setIsCreateMenuOpen(!isCreateMenuOpen)}
@@ -136,7 +136,7 @@ export default function DashboardPage() {
             </PillButton>
             
             {isCreateMenuOpen && (
-              <div className="absolute top-full right-0 mt-3 w-56 bg-[#0a0a0c]/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in slide-in-from-top-2 duration-200">
+              <div className="absolute top-full right-0 mt-3 w-56 bg-surface-0/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[99999] animate-in slide-in-from-top-2 duration-200">
                 <div className="p-2 space-y-1">
                   <div 
                     onClick={() => router.push('/projects?action=new')}
@@ -289,14 +289,14 @@ export default function DashboardPage() {
           </div>
 
           {/* Revenue Intelligence Graph */}
-          <GlassCard className="p-4 h-[420px] relative overflow-hidden group border-white/5 rounded-2xl">
+          <GlassCard accentColor="teal" className="p-5 h-[420px] relative overflow-hidden group">
             <div className="flex items-center justify-between mb-10">
                <div className="space-y-1">
-                  <h3 className="text-sm font-medium text-white uppercase flex items-center gap-2 tracking-[0.2em]">
+                  <h3 className="text-sm font-bold text-white uppercase flex items-center gap-2 tracking-[0.2em]">
                      <Activity size={16} className="text-nexus-teal animate-pulse" />
                      การวิเคราะห์และพยากรณ์ข้อมูลธุรกิจ
                   </h3>
-                  <p className="text-sm text-white/20 uppercase font-medium tracking-widest mt-2">การวิเคราะห์การเติบโตของรายได้ (Q2 2026)</p>
+                  <p className="text-xs text-white/40 uppercase font-medium tracking-widest mt-1">การวิเคราะห์การเติบโตของรายได้ (Q2 2026)</p>
                </div>
                <div className="flex gap-5">
                   <div className="flex items-center gap-3">
@@ -349,13 +349,13 @@ export default function DashboardPage() {
 
           {/* Bottom Operational Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-             <GlassCard className="p-4 border-white/5 bg-[#0a0a0c]/40 rounded-2xl">
-                <div className="flex items-center justify-between mb-8">
-                   <h3 className="text-sm font-medium text-white uppercase tracking-widest flex items-center gap-3">
+             <GlassCard accentColor="blue" className="p-5">
+                <div className="flex items-center justify-between mb-6">
+                   <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-3">
                       <Briefcase size={16} className="text-nexus-blue" />
                       ความคืบหน้าโครงการติดตั้ง
                    </h3>
-                   <span className="text-[14px] font-medium text-white/20 uppercase tracking-widest">งานที่ดำเนินการอยู่</span>
+                   <span className="text-xs font-bold text-white/40 uppercase tracking-widest">งานที่ดำเนินการอยู่</span>
                 </div>
                 <div className="space-y-3">
                    <ProjectProgressRow name="ติดตั้ง LED Wall - ศูนย์ประชุม" progress={75} id="PRJ-26-001" status="กำลังดำเนินการ" />
@@ -364,20 +364,20 @@ export default function DashboardPage() {
                 </div>
              </GlassCard>
 
-             <GlassCard className="p-4 border-white/5 bg-[#0a0a0c]/40 rounded-2xl">
-                <div className="flex items-center justify-between mb-8">
-                   <h3 className="text-sm font-medium text-white uppercase tracking-widest flex items-center gap-3">
+             <GlassCard accentColor="purple" className="p-5">
+                <div className="flex items-center justify-between mb-6">
+                   <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-3">
                       <Package size={16} className="text-nexus-teal" />
                       การติดตามพัสดุและสินค้าคงคลัง
                    </h3>
-                   <span className="text-[14px] font-medium text-white/20 uppercase tracking-widest">สต็อกวิกฤต</span>
+                   <span className="text-xs font-bold text-white/40 uppercase tracking-widest">สต็อกวิกฤต</span>
                 </div>
                 <div className="space-y-5">
                    <StockAlertRow item="Aruba AP-505" stock={2} min={10} trend="down" />
                    <StockAlertRow item="Cat6 Cable 305m" stock={5} min={20} trend="down" />
                    <StockAlertRow item="Cisco C9200L" stock={1} min={2} trend="stable" />
                 </div>
-                <PillButton variant="glass" className="w-full mt-8 border-white/5 hover: uppercase text-[10px] tracking-widest">
+                <PillButton variant="glass" className="w-full mt-6 border-white/10 hover:border-nexus-teal text-white text-xs font-bold uppercase tracking-widest">
                    ดูสต็อกทั้งหมด
                    <ChevronRight size={14} className="ml-2" />
                 </PillButton>
@@ -386,11 +386,11 @@ export default function DashboardPage() {
         </div>
 
         {/* RIGHT: TACTICAL SIDEBAR */}
-        <div className="w-full xl:w-[476px] flex-shrink-0 space-y-3">
+        <div className="w-full xl:w-[476px] flex-shrink-0 space-y-4">
            {/* System Activity Feed (Moved up due to Quick Operations relocation) */}
-           <GlassCard className="border-white/10 flex flex-col rounded-2xl overflow-hidden">
-              <div className="p-5 border-b border-white/5 flex flex-wrap items-center justify-between bg-white/[0.02] gap-4">
-                 <h3 className="text-sm font-medium text-white uppercase tracking-widest flex items-center gap-3 min-w-0">
+           <GlassCard accentColor="amber" className="flex flex-col overflow-hidden">
+              <div className="p-5 border-b border-white/10 flex flex-wrap items-center justify-between bg-white/[0.04] gap-4">
+                 <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-3 min-w-0">
                     <Bell size={16} className="text-warning flex-shrink-0 animate-pulse" />
                     <span className="truncate">บันทึกกิจกรรมและความปลอดภัย</span>
                  </h3>
@@ -411,7 +411,7 @@ export default function DashboardPage() {
            </GlassCard>
 
            {/* AI Performance Insight */}
-           <GlassCard className="p-4 border-white/10 bg-nexus-blue/5 rounded-2xl relative overflow-hidden">
+           <GlassCard accentColor="emerald" className="p-5 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-5 opacity-5">
                  <Cpu size={80} />
               </div>

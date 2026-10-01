@@ -76,37 +76,44 @@ export default function NewAssetDepreciationPage() {
   };
 
   const headerContent = (
-    <>
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <button onClick={handleBack} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-white/50 hover:text-white transition-all backdrop-blur-sm">
-          <ArrowLeft size={18} />
-        </button>
+        <PillButton variant="glass" onClick={handleBack} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
         <div>
-          <p className="text-[10px] text-cyan-400 font-black uppercase tracking-widest mb-0.5">ASSET_DEPRECIATION_V1.0</p>
-          <div className="flex items-center">
-            <h1 className="text-xl font-black uppercase tracking-tight text-white">ระบบคำนวณค่าเสื่อมราคาสินทรัพย์ (Asset Depreciation)</h1>
-            <DocumentStepper steps={["Review", "Posted"]} currentStep={step - 1} />
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+              ระบบคำนวณค่าเสื่อมราคาสินทรัพย์
+            </h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              ASSET-DEP
+            </span>
           </div>
+          <p className="text-sm text-white/60 font-medium mt-1">
+            คำนวณและบันทึกบัญชีค่าเสื่อมราคาสินทรัพย์รายงวดอัตโนมัติตามมาตรฐานบัญชี
+          </p>
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
         {step === 1 ? (
-           <PillButton className="h-9 px-6 rounded-full shadow-[0_0_12px_rgba(6,182,212,0.15)] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-black text-[12px] hover:bg-cyan-500/20" onClick={() => setStep(2)}>
-              ดำเนินการต่อ <ArrowRight size={14} className="ml-2" />
-           </PillButton>
+          <PillButton variant="primary" className="h-8 px-5 font-bold text-xs" onClick={() => setStep(2)}>
+            ดำเนินการต่อ <ArrowRight size={14} className="ml-1.5" />
+          </PillButton>
         ) : (
-           <PillButton 
-             className={cn("h-9 px-6 rounded-full shadow-[0_0_12px_rgba(234,179,8,0.15)] bg-warning/10 hover:bg-warning/20 border border-warning/20 text-warning text-[12px] font-black", isSaving && "opacity-50 pointer-events-none grayscale")} 
-             onClick={handleConfirm}
-             disabled={isSaving}
-           >
-              <ShieldCheck size={14} className={cn("mr-2", isSaving && "animate-pulse")} />
-              {isSaving ? "กำลังประมวลผล..." : "ยืนยันการประมวลผล"}
-           </PillButton>
+          <PillButton 
+            variant="confirm"
+            className="h-8 px-5 font-bold text-xs" 
+            onClick={handleConfirm}
+            disabled={isSaving}
+          >
+            <ShieldCheck size={14} className={cn("mr-1.5", isSaving && "animate-pulse")} />
+            {isSaving ? "กำลังประมวลผล..." : "ยืนยันการประมวลผล"}
+          </PillButton>
         )}
       </div>
-    </>
+    </div>
   );
 
   const leftContent = (
@@ -118,7 +125,7 @@ export default function NewAssetDepreciationPage() {
               <TrendingDown size={32} />
            </div>
            <div>
-              <h4 className="text-2xl font-black text-white uppercase tracking-tight">ประมวลผลค่าเสื่อมราคาประจำเดือน</h4>
+              <h4 className="text-2xl font-semibold text-white uppercase tracking-tight">ประมวลผลค่าเสื่อมราคาประจำเดือน</h4>
               <p className="text-[13px] font-bold text-white/30 uppercase tracking-[0.2em] mt-1">Automated Depreciation Posting</p>
            </div>
         </div>
@@ -140,15 +147,15 @@ export default function NewAssetDepreciationPage() {
             </div>
 
             <div className="space-y-8">
-               <h5 className="text-[14px] font-black text-white/40 uppercase tracking-widest ml-1">ประมาณการค่าเสื่อมราคา (Depreciation Estimate)</h5>
+               <h5 className="text-[14px] font-semibold text-white/40 uppercase tracking-widest ml-1">ประมาณการค่าเสื่อมราคา (Depreciation Estimate)</h5>
                <div className="p-10 rounded-[3.5rem] bg-white/[0.02] border border-white/5 space-y-10">
                   <div className="flex justify-between items-end">
                      <div className="space-y-2">
-                        <p className="text-[12px] font-black text-white/40 uppercase tracking-[0.2em]">ยอดค่าเสื่อมรวบรวมงวดนี้</p>
+                        <p className="text-[12px] font-semibold text-white/40 uppercase tracking-[0.2em]">ยอดค่าเสื่อมรวบรวมงวดนี้</p>
                         <p className="text-5xl font-black text-warning drop-shadow-[0_0_15px_rgba(234,179,8,0.2)] font-mono tracking-tight">{formatCurrency(assetSummary.depreciationAmount)}</p>
                      </div>
                      <div className="text-right space-y-2">
-                        <p className="text-[12px] font-black text-white/40 uppercase tracking-[0.2em]">มูลค่าทางบัญชีรวมหลังหัก</p>
+                        <p className="text-[12px] font-semibold text-white/40 uppercase tracking-[0.2em]">มูลค่าทางบัญชีรวมหลังหัก</p>
                         <p className="text-2xl font-black text-white/80 font-mono tracking-tight">{formatCurrency(assetSummary.totalBookValue - assetSummary.depreciationAmount)}</p>
                      </div>
                   </div>
@@ -168,7 +175,7 @@ export default function NewAssetDepreciationPage() {
                 <History size={64} />
              </div>
              <div className="space-y-6">
-                <h4 className="text-3xl font-black text-white uppercase tracking-tight">ยืนยันการบันทึกค่าเสื่อมราคา?</h4>
+                <h4 className="text-3xl font-semibold text-white uppercase tracking-tight">ยืนยันการบันทึกค่าเสื่อมราคา?</h4>
                 <p className="text-[14px] text-white/40 font-bold leading-relaxed max-w-lg mx-auto">
                    ระบบจะทำการสร้างรายการบัญชี เพื่อบันทึกค่าใช้จ่ายค่าเสื่อมราคา และลดยอดสินทรัพย์สะสมในฐานข้อมูลหลักอย่างถาวร
                 </p>
@@ -183,7 +190,7 @@ export default function NewAssetDepreciationPage() {
   const rightSidebar = (
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
        <div className="space-y-1 border-b border-white/5 pb-4 relative z-10">
-         <h5 className="text-[13px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2">
+         <h5 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
            Account Matrix
          </h5>
        </div>

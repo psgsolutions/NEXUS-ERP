@@ -9,13 +9,13 @@ export function InvoiceCustomerSection() {
 
   return (
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl space-y-4">
-      <h3 className="text-xs font-black text-nexus-teal uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2 mb-4 not-italic">
+      <h3 className="text-xs font-semibold text-nexus-teal uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2 mb-4 not-italic">
         <Building2 size={14} /> ข้อมูลลูกค้า
       </h3>
       
       <div className="space-y-4">
         <div className="space-y-1">
-          <label className="text-[11px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+          <label className="text-[11px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
             ชื่อลูกค้า (Customer Name)
           </label>
           <input 
@@ -28,7 +28,7 @@ export function InvoiceCustomerSection() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-[11px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+          <label className="text-[11px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
             เลขผู้เสียภาษี / ที่อยู่ (Tax ID & Address)
           </label>
           <input 
@@ -41,7 +41,7 @@ export function InvoiceCustomerSection() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-[11px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+          <label className="text-[11px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
             รูปแบบภาษี <span className="text-red-500 font-bold">*</span> (Tax Display Mode)
           </label>
           <div className="flex bg-white/15 p-1 rounded-full w-full h-9">

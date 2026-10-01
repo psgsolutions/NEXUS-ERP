@@ -162,6 +162,25 @@ export default function ProjectsPage() {
     return () => unsubscribeCont();
   }, [companyId]);
 
+  const [dbProjects, setDbProjects] = useState<any[]>([]);
+
+  useEffect(() => {
+    const currentCid = companyId || "COMP-001";
+    const qProjects = query(
+      collection(db, `companies/${currentCid}/projects`)
+    );
+
+    const unsubscribeProj = onSnapshot(qProjects, (snapshot) => {
+      const items: any[] = [];
+      snapshot.forEach((docSnap) => {
+        items.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setDbProjects(items);
+    });
+
+    return () => unsubscribeProj();
+  }, [companyId]);
+
   // Active search ID for live product suggestions
   const [activeSearchId, setActiveSearchId] = useState<number | null>(null);
 
@@ -282,7 +301,22 @@ export default function ProjectsPage() {
     { id: "4", task: "ทดสอบระบบและ UAT", start: "2026-05-01", end: "2026-05-10", progress: 0, status: "pending" as const },
   ];
 
-  const filteredProjects = initialProjects.filter(p => 
+  const formattedDbProjects = useMemo(() => {
+    return dbProjects.map((p) => ({
+      id: p.projectId || p.id,
+      name: p.projectName || p.title || "โครงการไม่มีชื่อ",
+      progress: p.status === "Active" ? 15 : p.status === "Completed" ? 100 : 0,
+      team: p.resources ? `${p.resources.length} คน` : "1 คน",
+      deadline: p.endDate || "30 มิ.ย.",
+      status: p.status === "Pending Approval" ? "pending" : p.status === "Active" ? "active" : p.status === "Completed" ? "completed" : "pending"
+    }));
+  }, [dbProjects]);
+
+  const combinedProjects = useMemo(() => {
+    return [...formattedDbProjects, ...initialProjects];
+  }, [formattedDbProjects, initialProjects]);
+
+  const filteredProjects = combinedProjects.filter(p => 
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     p.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -488,62 +522,82 @@ export default function ProjectsPage() {
     { id: "contractors", label: "ผู้รับเหมา", icon: <Users size={14} /> },
   ];
 
-  const headerContent = (
-    <div className="flex-1 w-full">
-      {/* Compact Module Header — icon + title + inline metric chips on same plane */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5 shrink-0 w-full">
-        <div className="flex items-center gap-4 shrink-0">
-          <div className="w-10 h-10 rounded-2xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
-            <Briefcase size={22} />
+  return (
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
+      {/* Compact Module Header */}
+      <header className="px-6 py-2.5 min-h-[60px] border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-black/20 shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
+            <Briefcase size={20} />
           </div>
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight leading-none">ศูนย์บริหารโครงการ</h1>
-            <p className="text-sm font-medium text-white/30 uppercase mt-1.5 tracking-widest leading-none">Project Management Hub</p>
+            <p className="text-xs font-semibold text-white/60 mt-1 tracking-wider leading-none">ศูนย์รวมการจัดการโครงการ</p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
-              <Activity size={18} />
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
+              <Activity size={16} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">โครงการ Active</span>
-              <span className="text-[17px] font-bold text-nexus-teal mt-1 mono-numbers leading-none">12 งาน</span>
+              <span className="text-xs font-semibold text-white/60 tracking-wider leading-none">โครงการที่กำลังดำเนินการ</span>
+              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">12 งาน</span>
             </div>
           </div>
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
-              <DollarSign size={18} />
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
+              <DollarSign size={16} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">งบประมาณรวม</span>
-              <span className="text-[17px] font-bold text-nexus-blue mt-1 mono-numbers leading-none">฿8.5M</span>
+              <span className="text-xs font-semibold text-white/60 tracking-wider leading-none">งบประมาณรวม</span>
+              <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none">฿8.5M</span>
             </div>
           </div>
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-white/20 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white border border-white/10 shrink-0">
-              <Users size={18} />
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-white/20 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white border border-white/10 shrink-0">
+              <Users size={16} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">วิศวกรหน้างาน</span>
-              <span className="text-[17px] font-bold text-white mt-1 mono-numbers leading-none">24 คน</span>
+              <span className="text-xs font-semibold text-white/60 tracking-wider leading-none">วิศวกรหน้างาน</span>
+              <span className="text-[17px] font-bold text-white mt-0.5 mono-numbers leading-none">24 คน</span>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
+      </header>
 
-  const leftContent = (
-    <div className="flex-1 flex flex-col h-full bg-transparent">
-
-      {/* Tab Navigation */}
-      <section className="px-6 py-4 bg-black/10 border-b border-white/5 shrink-0">
+      {/* Tab Navigation & Actions */}
+      <section className="px-6 h-[56px] bg-black/10 border-b border-white/5 flex items-center justify-between shrink-0">
         <PillTabs 
           tabs={tabs} 
           activeTab={activeTab} 
           onTabChange={(id: any) => setActiveTab(id)} 
         />
+        <div className="flex gap-3 shrink-0">
+           <PillButton variant="confirm" className="h-8 px-5 shadow-neon-blue" onClick={() => setActiveTab("report")}>
+             <ClipboardList size={14} className="mr-1.5" />
+             รายงานบริการ
+           </PillButton>
+           
+           {activeTab === "list" && (
+             <PillButton variant="primary" onClick={() => { setModalActiveTab("basic"); router.push("/projects/new"); }} className="h-8 px-5 shadow-neon-teal">
+               <Plus size={14} className="mr-1.5" />
+               เริ่มโครงการใหม่
+             </PillButton>
+           )}
+           {activeTab === "planning" && (
+             <PillButton variant="primary" onClick={() => router.push("/projects/milestones/new")} className="h-8 px-5 shadow-neon-teal">
+               <Target size={14} className="mr-1.5" />
+               เพิ่มเป้าหมาย
+             </PillButton>
+           )}
+           {activeTab === "report" && (
+             <PillButton variant="primary" onClick={() => router.push("/projects/reports/new")} className="h-8 px-5 shadow-neon-teal">
+               <FileText size={14} className="mr-1.5" />
+               บันทึกงานใหม่
+             </PillButton>
+           )}
+        </div>
       </section>
 
       {/* Main Content Scroll Area */}
@@ -558,34 +612,9 @@ export default function ProjectsPage() {
               <div className="flex items-center gap-4">
                  <Activity className="text-nexus-teal" size={24} />
                  <div className="space-y-0.5">
-                    <p className="text-sm font-medium text-white/60 uppercase tracking-widest">สถานะการติดตั้งโครงสร้างพื้นฐาน (เขตกรุงเทพฯ)</p>
-                    <h2 className="text-xl font-bold text-white uppercase">ทะเบียนข้อมูล</h2>
+                    <p className="text-xs font-semibold text-white/60 tracking-wider">สถานะการติดตั้งโครงสร้างพื้นฐาน (เขตกรุงเทพฯ)</p>
+                    <h2 className="text-xl font-bold text-white">ทะเบียนข้อมูล</h2>
                  </div>
-              </div>
-              <div className="flex gap-3">
-                 <PillButton variant="glass" className="h-9 px-6 rounded-full" onClick={() => setActiveTab("report")}>
-                   <ClipboardList size={18} />
-                   Service Report
-                 </PillButton>
-                 
-                 {activeTab === "list" && (
-                   <PillButton onClick={() => { setModalActiveTab("basic"); router.push("/projects/new"); }} className="h-9 px-6 rounded-full shadow-neon-teal">
-                     <Plus size={18} />
-                     เริ่มโครงการใหม่
-                   </PillButton>
-                 )}
-                 {activeTab === "planning" && (
-                   <PillButton onClick={() => router.push("/projects/milestones/new")} className="h-9 px-6 rounded-full shadow-neon-teal">
-                     <Target size={18} />
-                     เพิ่มเป้าหมาย
-                   </PillButton>
-                 )}
-                 {activeTab === "report" && (
-                   <PillButton onClick={() => router.push("/projects/reports/new")} className="h-9 px-6 rounded-full shadow-neon-teal">
-                     <FileText size={18} />
-                     บันทึกงานใหม่
-                   </PillButton>
-                 )}
               </div>
             </div>
 
@@ -599,18 +628,18 @@ export default function ProjectsPage() {
                  kbd="F"
                />
                <div className="flex items-center gap-2 pr-1.5">
-                  <PillButton variant="glass" className="h-9 w-9 p-0 rounded-full border-white/5 hover:border-nexus-teal/30 hover:bg-nexus-teal/5">
-                    <Filter size={18} className="text-white/40" />
+                  <PillButton variant="glass" className="h-8 w-8 p-0 rounded-full border-white/5 hover:border-nexus-teal/30 hover:bg-nexus-teal/5">
+                    <Filter size={16} className="text-white/40" />
                   </PillButton>
                </div>
             </div>
 
             {/* List / Planning / Report / Costing Content - Conditional Rendering wrapped in standard GlassCard viewport */}
-            <GlassCard className="p-0 overflow-hidden border-white/5 min-h-[640px] flex flex-col justify-between bg-black/40">
+            <GlassCard accentColor="teal" className="p-0 overflow-hidden min-h-[640px] flex flex-col justify-between">
               <div className="overflow-x-auto custom-scrollbar flex-1 w-full p-2">
                 {activeTab === "list" && (
                   <div className="animate-in fade-in duration-500">
-                    <NexusTable headers={["รหัสโครงการ", "ความคืบหน้า", "ทีมงาน", "กำหนดการ", "สถานะ"]}>
+                    <NexusTable headers={["รหัสโครงการ", "ชื่อโครงการ", "ความคืบหน้า", "ทีมงาน", "กำหนดการ", "สถานะ"]}>
                       {filteredProjects.map(prj => (
                         <ProjectRow 
                           key={prj.id}
@@ -655,19 +684,19 @@ export default function ProjectsPage() {
                 {activeTab === "contractors" && (
                   <div className="animate-in fade-in duration-500 space-y-3">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-white tracking-wider flex items-center gap-2">
                         <Users size={16} className="text-nexus-blue" />
                         ทำเนียบผู้รับเหมา และทีมช่างติดตั้ง
                       </h3>
                       <PillButton
                         type="button"
+                        variant="confirm"
                         onClick={() => {
                           setSelectedContractor(null);
                           router.push("/procurement/suppliers/new");
                         }}
-                        className="h-9 px-6 bg-nexus-blue text-white shadow-[0_0_15px_rgba(37,99,235,0.3)] text-xs font-bold uppercase rounded-full"
                       >
-                        <Plus size={14} /> เพิ่มทีมช่างใหม่
+                        <Plus size={14} className="mr-1.5" /> เพิ่มทีมช่างใหม่
                       </PillButton>
                     </div>
 
@@ -696,17 +725,17 @@ export default function ProjectsPage() {
                               </div>
                             </div>
                             <h4 className="text-[13px] font-bold text-white mb-1 truncate">{cont.name}</h4>
-                            <div className="text-[11px] text-white/50 font-bold mb-4 flex items-center gap-2">
+                            <div className="text-xs text-white/60 font-medium mb-4 flex items-center gap-2">
                               <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>
-                              Active Partner
+                              พันธมิตรที่พร้อมทำงาน
                             </div>
                             
                             <div className="space-y-1.5 border-t border-white/5 pt-4">
-                              <div className="flex items-center gap-2 text-[10px] text-white/40">
-                                <Phone size={12} className="text-white/20"/> {cont.phone || "-"}
+                              <div className="flex items-center gap-2 text-xs text-white/60">
+                                <Phone size={12} className="text-white/40"/> {cont.phone || "-"}
                               </div>
-                              <div className="flex items-center justify-between text-[10px] text-white/40 mt-1">
-                                <span className="flex items-center gap-2"><Wrench size={12} className="text-white/20"/> ชุดค่าแรงมาตรฐาน</span>
+                              <div className="flex items-center justify-between text-xs text-white/60 mt-1">
+                                <span className="flex items-center gap-2"><Wrench size={12} className="text-white/40"/> ชุดค่าแรงมาตรฐาน</span>
                                 <span className="font-mono text-nexus-blue">{cont.laborRates?.length || 0} รายการ</span>
                               </div>
                             </div>
@@ -718,9 +747,9 @@ export default function ProjectsPage() {
                 )}
               </div>
 
-              <div className="p-4 border-t border-white/5 bg-black/10 flex items-center justify-between text-xs text-white/30 font-bold">
-                <span>สตรีมข้อมูลคลาวด์สด • NEXUS Real-time Engine</span>
-                <span>PSG Master UI Standard V3.1</span>
+              <div className="p-4 border-t border-white/5 bg-black/10 flex items-center justify-between text-xs text-white/60 font-semibold">
+                <span>สตรีมข้อมูลคลาวด์สด • ระบบประมวลผล NEXUS Real-time</span>
+                <span>มาตรฐานระบบ PSG Master V3.1</span>
               </div>
             </GlassCard>
           </div>
@@ -728,9 +757,9 @@ export default function ProjectsPage() {
         </div>
 
         {/* Right Sidebar Status */}
-        <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
-           <GlassCard className="p-4 border-white/10 bg-nexus-teal/5">
-              <h4 className="text-sm font-medium text-nexus-teal uppercase tracking-widest mb-6">ดัชนีชี้วัดสุขภาพโครงการ</h4>
+        <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-4 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
+           <GlassCard accentColor="blue" className="p-5">
+              <h4 className="text-sm font-bold text-nexus-teal uppercase tracking-widest mb-6">ดัชนีชี้วัดสุขภาพโครงการ</h4>
               <div className="space-y-3">
                  <HealthItem label="อัตราการใช้งบประมาณ" value="72%" color="bg-nexus-teal" />
                  <HealthItem label="ความสำเร็จของงาน" value="85%" color="bg-nexus-blue" />
@@ -738,8 +767,8 @@ export default function ProjectsPage() {
               </div>
            </GlassCard>
 
-           <GlassCard className="p-4 border-white/10">
-              <h4 className="text-sm font-medium text-white/60 uppercase tracking-widest mb-6">กำหนดการสำคัญที่ใกล้ถึง</h4>
+           <GlassCard accentColor="purple" className="p-5">
+              <h4 className="text-sm font-bold text-white/60 uppercase tracking-widest mb-6">กำหนดการสำคัญที่ใกล้ถึง</h4>
               <div className="space-y-3">
                  <DeadlineItem title="ติดตั้ง Core Switch" date="พรุ่งนี้" project="PRJ-26-001" />
                  <DeadlineItem title="ส่งมอบงานลูกค้า" date="28 เม.ย." project="PRJ-26-002" />
@@ -749,15 +778,6 @@ export default function ProjectsPage() {
       </div>
       </div>
       </div>
-
-      
-
-      
-
-
-
-      
-
       <Toast 
         message={toast.message} 
         isVisible={toast.isVisible} 
@@ -765,23 +785,24 @@ export default function ProjectsPage() {
       />
     </div>
   );
-
-  return (
-    <NexusPageLayout header={headerContent} leftContent={leftContent} />
-  );
 }
 
 function ProjectRow({ id, name, progress, team, deadline, status }: { id: string, name: string, progress: number, team: string, deadline: string, status: "active" | "completed" | "delayed" }) {
   return (
     <NexusTableRow>
-      <NexusTableCell>
-        <Link href={`/projects/${id}`} className="block">
-           <p className="font-mono text-xs text-nexus-blue font-medium tracking-tighter">{id}</p>
-           <p className="text-sm font-bold text-white/80 group-hover:text-white transition-colors whitespace-nowrap">{name}</p>
-        </Link>
-      </NexusTableCell>
-      <NexusTableCell className="w-48">
-         <div className="space-y-1.5">
+        <NexusTableCell align="right" className="w-[1%] whitespace-nowrap align-middle pr-6">
+          <Link href={`/projects/${id}`} className="block">
+             <span className="font-mono text-[13px] text-nexus-blue font-medium tracking-tight">{id}</span>
+          </Link>
+        </NexusTableCell>
+        <NexusTableCell className="w-full">
+          <Link href={`/projects/${id}`} className="block">
+             <span className="text-[13px] font-bold text-white/80 group-hover:text-white transition-colors 
+whitespace-nowrap">{name}</span>
+          </Link>
+        </NexusTableCell>
+      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap align-middle">
+         <div className="space-y-1.5 w-32 mx-auto">
             <div className="flex justify-between items-center text-xs font-medium text-white/40 uppercase">
                <span>ความคืบหน้า</span>
                <span className="text-white/75">{progress}%</span>
@@ -791,11 +812,11 @@ function ProjectRow({ id, name, progress, team, deadline, status }: { id: string
             </div>
          </div>
       </NexusTableCell>
-      <NexusTableCell className="text-sm font-medium text-white/60 uppercase">{team}</NexusTableCell>
-      <NexusTableCell className="text-sm font-medium text-white/60 uppercase">{deadline}</NexusTableCell>
-      <NexusTableCell>
-        <StatusBadge status={status === "active" ? "active" : status === "completed" ? "active" : "danger"} label={status === "active" ? "กำลังดำเนินการ" : status === "completed" ? "เสร็จสิ้น" : "ล่าช้า"} />
-      </NexusTableCell>
+      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap text-sm font-medium text-white/60 uppercase">{team}</NexusTableCell>
+      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap text-sm font-medium text-white/60 uppercase">{deadline}</NexusTableCell>
+        <NexusTableCell align="center" className="w-[1%] whitespace-nowrap">
+          <StatusBadge status={status === "active" ? "active" : status === "completed" ? "active" : "danger"} label={status === "active" ? "กำลังดำเนินการ" : status === "completed" ? "เสร็จสิ้น" : "ล่าช้า"} />
+        </NexusTableCell>
     </NexusTableRow>
   );
 }
@@ -803,11 +824,11 @@ function ProjectRow({ id, name, progress, team, deadline, status }: { id: string
 function MilestoneRow({ name, project, due, weight, status }: { name: string, project: string, due: string, weight: string, status: string }) {
   return (
     <NexusTableRow>
-      <NexusTableCell className="font-bold text-white/80">{name}</NexusTableCell>
-      <NexusTableCell className="w-[140px] font-mono text-sm text-nexus-blue font-medium tracking-tighter">{project}</NexusTableCell>
-      <NexusTableCell className="w-[180px] text-sm font-medium text-white/60 uppercase tracking-widest">{due}</NexusTableCell>
-      <NexusTableCell className="w-[120px] text-sm font-medium text-nexus-teal uppercase tracking-widest">{weight}</NexusTableCell>
-      <NexusTableCell className="w-[180px]">
+      <NexusTableCell className="w-full font-bold text-white/80">{name}</NexusTableCell>
+      <NexusTableCell align="right" className="w-[1%] whitespace-nowrap align-middle pr-6 font-mono text-sm text-nexus-blue font-medium tracking-tight">{project}</NexusTableCell>
+      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap text-sm font-medium text-white/60 uppercase tracking-widest">{due}</NexusTableCell>
+      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap text-sm font-medium text-nexus-teal uppercase tracking-widest">{weight}</NexusTableCell>
+      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap">
         <StatusBadge status={status as any} label={status === "active" ? "ดำเนินการอยู่" : "รอดำเนินการ"} />
       </NexusTableCell>
     </NexusTableRow>
@@ -817,11 +838,11 @@ function MilestoneRow({ name, project, due, weight, status }: { name: string, pr
 function ReportRow({ id, project, tech, date, status }: { id: string, project: string, tech: string, date: string, status: string }) {
   return (
     <NexusTableRow>
-      <NexusTableCell className="w-[140px] font-mono text-sm text-nexus-teal font-medium tracking-tighter">{id}</NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80">{project}</NexusTableCell>
-      <NexusTableCell className="w-[180px] text-sm font-medium text-white/60 uppercase tracking-widest">{tech}</NexusTableCell>
-      <NexusTableCell className="w-[180px] text-sm font-medium text-white/60 uppercase tracking-widest">{date}</NexusTableCell>
-      <NexusTableCell className="w-[180px]">
+      <NexusTableCell align="right" className="w-[1%] whitespace-nowrap pr-6 font-mono text-sm text-nexus-teal font-medium tracking-tight">{id}</NexusTableCell>
+      <NexusTableCell className="w-full font-bold text-white/80">{project}</NexusTableCell>
+      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap text-sm font-medium text-white/60 uppercase tracking-widest">{tech}</NexusTableCell>
+      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap text-sm font-medium text-white/60 uppercase tracking-widest">{date}</NexusTableCell>
+      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap">
         <StatusBadge status={status as any} label="เซ็นแล้ว" />
       </NexusTableCell>
     </NexusTableRow>
@@ -831,12 +852,12 @@ function ReportRow({ id, project, tech, date, status }: { id: string, project: s
 function CostRow({ name, budget, actual, balance, margin }: { name: string, budget: string, actual: string, balance: string, margin: string }) {
   return (
     <NexusTableRow>
-      <NexusTableCell className="font-bold text-white/80">{name}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-white/60 mono-numbers">{budget}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-danger mono-numbers">{actual}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-nexus-teal mono-numbers">{balance}</NexusTableCell>
-      <NexusTableCell className="w-[120px] text-right">
-        <span className="px-3 py-1 rounded-full bg-nexus-teal/10 text-nexus-teal text-sm font-medium">{margin}</span>
+      <NexusTableCell className="w-full font-bold text-white/80">{name}</NexusTableCell>
+      <NexusTableCell align="right" className="w-[1%] whitespace-nowrap font-bold text-white/60 tracking-tight font-mono">{budget}</NexusTableCell>
+      <NexusTableCell align="right" className="w-[1%] whitespace-nowrap font-bold text-danger tracking-tight font-mono">{actual}</NexusTableCell>
+      <NexusTableCell align="right" className="w-[1%] whitespace-nowrap font-bold text-nexus-teal tracking-tight font-mono">{balance}</NexusTableCell>
+      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap">
+        <span className="px-3 py-1 rounded-full  text-nexus-teal text-sm font-medium">{margin}</span>
       </NexusTableCell>
     </NexusTableRow>
   );

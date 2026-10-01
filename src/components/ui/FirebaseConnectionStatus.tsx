@@ -23,21 +23,14 @@ export function FirebaseConnectionStatus() {
   }, []);
 
   if (isOnline) {
-    return (
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full">
-        <Wifi size={14} className="text-green-500" />
-        <span className="text-[10px] font-bold text-green-500 uppercase tracking-widest">
-          Database Connected
-        </span>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-full animate-pulse">
+    <div className="flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-full animate-pulse">
       <WifiOff size={14} className="text-red-500" />
-      <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest">
-        Connection Lost
+      <span className="text-[12px] font-bold text-red-500 uppercase tracking-widest">
+        การเชื่อมต่อขาดหาย
       </span>
     </div>
   );

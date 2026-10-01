@@ -60,9 +60,24 @@ import { useAuth } from "@/context/AuthContext";
 import { auditService } from "@/services/audit.service";
 import { db } from "@/lib/firebase-client";
 import { collection, query, where, onSnapshot, doc, setDoc } from "firebase/firestore";
-import { createQuotation, convertToSalesOrder, createSalesOrder, autoGenerateOrdersFromSO, createInvoiceFromSO, createReceiptFromInvoice } from "@/lib/sales-service";
+import { createQuotation, createSalesOrder, autoGenerateOrdersFromSO, createInvoiceFromSO, createReceiptFromInvoice } from "@/lib/sales-service";
+
+export async function handleConvertSOApi(quoteId: string, companyId: string) {
+  const res = await apiFetch("/api/sales/convert-so", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ quoteId, companyId })
+  });
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || "เกิดข้อผิดพลาดในการแปลงใบสั่งขาย");
+  }
+  return data.soId;
+}
+
 import { nexusSequenceEngine } from "@/lib/sequence-engine";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api-client";
 
 
 const MOCK_QUOTATIONS = [
@@ -109,14 +124,14 @@ export default function SalesPage() {
   };
 
   const tabs = [
-    { id: "quotations", label: "ใบเสนอราคา", icon: <FileText size={14} /> },
-    { id: "orders", label: "ใบสั่งขาย", icon: <ClipboardList size={14} /> },
-    { id: "invoices", label: "ใบแจ้งหนี้", icon: <Receipt size={14} /> },
-    { id: "billing", label: "ใบวางบิล", icon: <FileText size={14} /> },
-    { id: "receipts", label: "ใบเสร็จรับเงิน", icon: <Landmark size={14} /> },
-    { id: "cndn", label: "ใบลดหนี้/เพิ่มหนี้", icon: <Receipt size={14} /> },
+    { id: "quotations", label: "ใบเสนอราคา (Quotations)", icon: <FileText size={14} /> },
+    { id: "orders", label: "ใบสั่งขาย (Sales Orders)", icon: <ClipboardList size={14} /> },
+    { id: "invoices", label: "ใบแจ้งหนี้ (Invoices)", icon: <Receipt size={14} /> },
+    { id: "billing", label: "ใบวางบิล (Billing Notes)", icon: <FileText size={14} /> },
+    { id: "receipts", label: "ใบเสร็จรับเงิน (Receipts)", icon: <Landmark size={14} /> },
+    { id: "cndn", label: "ใบลดหนี้ / เพิ่มหนี้ (CN/DN)", icon: <Receipt size={14} /> },
     { id: "crm", label: "ข้อมูลลูกค้า", icon: <Users size={14} /> },
-    { id: "opportunities", label: "โอกาสการขาย", icon: <Target size={14} /> },
+    { id: "opportunities", label: "ติดตามงานขาย (Sales Pipeline)", icon: <Target size={14} /> },
   ];
 
   const salesFlowSteps = [
@@ -185,8 +200,8 @@ export default function SalesPage() {
       snap.forEach(doc => {
         const d = doc.data();
         list.push({ 
-          id: doc.id, 
-          customerNameRaw: d.customerId || d.customer || "Hospital A",
+          id: d.documentNo || d.quoteNo || d.quotationNo || doc.id,
+            customerNameRaw: d.customerId || d.customer || "Hospital A",
           title: d.subject || d.title || "Upgrade LED Wall",
           value: `฿${(d.totalRevenue || 0).toLocaleString()}`,
           status: d.status === "Approved" ? "active" : d.status === "Draft" ? "pending" : "danger",
@@ -205,8 +220,8 @@ export default function SalesPage() {
       snap.forEach(doc => {
         const d = doc.data();
         list.push({ 
-          id: doc.id, 
-          customerNameRaw: d.customer || d.customerId || "PSG Solutions",
+          id: d.documentNo || d.soNo || d.orderNo || doc.id,
+            customerNameRaw: d.customer || d.customerId || "PSG Solutions",
           date: d.convertedAt ? new Date(d.convertedAt.seconds * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           total: `฿${(d.totalRevenue || 0).toLocaleString()}`,
           status: d.status === "Confirmed" ? "paid" : d.status === "Pending" ? "partial" : "partial",
@@ -225,9 +240,9 @@ export default function SalesPage() {
       snap.forEach(doc => {
         const d = doc.data();
         list.push({ 
-          id: doc.id, 
-          customerNameRaw: d.customer || d.customerId || "Unknown",
-          date: d.issuedAt ? new Date(d.issuedAt.seconds * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          id: d.documentNo || d.invoiceNo || d.invNo || doc.id,
+            customerNameRaw: d.customer || d.customerId || "Unknown",
+            date: d.issuedAt ? new Date(d.issuedAt.seconds * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           total: `฿${(d.totalRevenue || 0).toLocaleString()}`,
           status: d.status === "Paid" ? "paid" : "pending",
           ...d
@@ -245,9 +260,9 @@ export default function SalesPage() {
       snap.forEach(doc => {
         const d = doc.data();
         list.push({ 
-          id: doc.id, 
-          customerNameRaw: d.customer || d.customerId || "Unknown",
-          date: d.paymentDate ? new Date(d.paymentDate.seconds * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          id: d.documentNo || d.receiptNo || doc.id,
+            customerNameRaw: d.customer || d.customerId || "Unknown",
+            date: d.paymentDate ? new Date(d.paymentDate.seconds * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           total: `฿${(d.totalRevenue || 0).toLocaleString()}`,
           status: "paid",
           ...d
@@ -265,10 +280,11 @@ export default function SalesPage() {
       snap.forEach(doc => {
         const d = doc.data();
         list.push({ 
-          id: doc.id, 
-          customerNameRaw: d.customer || d.customerId || "Unknown",
-          date: d.issueDate ? new Date(d.issueDate.seconds * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          dueDate: d.dueDate ? new Date(d.dueDate.seconds * 1000).toISOString().split('T')[0] : "-",
+          id: d.documentNo || d.billingNo || doc.id,
+            customerNameRaw: d.customer || d.customerId || "Unknown",
+            date: d.issueDate ? new Date(d.issueDate.seconds * 1000).toISOString().split('T')[0] : new 
+Date().toISOString().split('T')[0],
+            dueDate: d.dueDate ? new Date(d.dueDate.seconds * 1000).toISOString().split('T')[0] : "-",
           total: `฿${(d.totalAmount || 0).toLocaleString()}`,
           status: d.status || "active",
           ...d
@@ -286,10 +302,11 @@ export default function SalesPage() {
       snap.forEach(doc => {
         const d = doc.data();
         list.push({ 
-          id: doc.id, 
-          customerNameRaw: d.customer || d.customerId || "Unknown",
-          date: d.issueDate ? new Date(d.issueDate.seconds * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          total: `฿${(d.totalAmount || 0).toLocaleString()}`,
+          id: d.documentNo || d.cndnNo || doc.id,
+            customerNameRaw: d.customer || d.customerId || "Unknown",
+            date: d.issueDate ? new Date(d.issueDate.seconds * 1000).toISOString().split('T')[0] : new 
+Date().toISOString().split('T')[0],
+            total: `฿${(d.totalAmount || 0).toLocaleString()}`,
           type: d.type || "CN",
           status: d.status || "active",
           ...d
@@ -404,54 +421,86 @@ export default function SalesPage() {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
       {/* Compact Module Header — icon + title + inline metric chips on same plane */}
-      <header className="p-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-5 bg-black/20 shrink-0">
-        <div className="flex items-center gap-4 shrink-0">
-          <div className="w-10 h-10 rounded-2xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
-            <ClipboardList size={22} />
+      <header className="px-6 py-2.5 min-h-[60px] border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-black/20 shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
+            <ClipboardList size={20} />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white tracking-tight leading-none">ทะเบียนลูกค้าและการขาย</h1>
-            <p className="text-[11px] font-medium text-white/30 uppercase mt-1.5 tracking-widest leading-none">CRM &amp; Sales Management System</p>
+            <h1 className="text-lg font-bold text-white tracking-tight leading-none">ระบบบริหารงานขายและลูกค้าสัมพันธ์</h1>
+            <p className="text-[11px] font-medium text-white/30 uppercase mt-1 tracking-widest leading-none">CRM &amp; Sales Management System</p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
-              <Target size={18} />
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
+              <Target size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">ยอดขายเป้าหมาย</span>
-              <span className="text-[17px] font-bold text-nexus-teal mt-1 mono-numbers leading-none">฿2.4M</span>
+              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">฿2.4M</span>
             </div>
           </div>
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
-              <TrendingUp size={18} />
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
+              <TrendingUp size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">Win Rate</span>
-              <span className="text-[17px] font-bold text-nexus-blue mt-1 mono-numbers leading-none">68%</span>
+              <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none">68%</span>
             </div>
           </div>
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-white/20 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white border border-white/10 shrink-0">
-              <MessageSquare size={18} />
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-white/20 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white border border-white/10 shrink-0">
+              <MessageSquare size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">กิจกรรมวันนี้</span>
-              <span className="text-[17px] font-bold text-white mt-1 mono-numbers leading-none">12</span>
+              <span className="text-[17px] font-bold text-white mt-0.5 mono-numbers leading-none">12</span>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Tab Navigation (Stepper) */}
-      <section className="px-6 py-4 bg-black/10 border-b border-white/5 shrink-0">
+      {/* Tab Navigation (Stepper) & Actions */}
+      <section className="px-6 h-[56px] bg-black/10 border-b border-white/5 flex items-center justify-between shrink-0">
         <PillTabs 
           tabs={tabs} 
           activeTab={activeTab} 
           onTabChange={(id: any) => setActiveTab(id)} 
         />
+        <div className="flex gap-3 shrink-0">
+          {activeTab === "crm" && (
+            <PillButton variant="primary" onClick={() => { setSelectedItem(null); setSelectedCustomer(null); router.push("/customers/new"); }} className="h-8 px-5 shadow-neon-teal">
+              <Plus size={14} className="mr-1.5" />
+              เพิ่มลูกค้าใหม่
+            </PillButton>
+          )}
+          {activeTab === "quotations" && (
+            <PillButton variant="primary" onClick={() => { setSelectedItem(null); router.push("/sales/quotations/new"); }} className="h-8 px-5 shadow-neon-teal">
+              <FileText size={14} className="mr-1.5" />
+              สร้างใบเสนอราคา
+            </PillButton>
+          )}
+          {activeTab === "orders" && (
+            <PillButton variant="primary" onClick={() => { setSelectedItem(null); router.push("/sales/orders/new"); }} className="h-8 px-5 shadow-neon-teal">
+              <Receipt size={14} className="mr-1.5" />
+              เปิดใบสั่งขาย
+            </PillButton>
+          )}
+          {activeTab === "invoices" && (
+            <PillButton variant="confirm" onClick={() => { showToast("เลือกใบสั่งขายที่ต้องการสร้างใบแจ้งหนี้จากแท็บ SO"); setActiveTab("orders"); }} className="h-8 px-5 shadow-neon-blue">
+              <Receipt size={14} className="mr-1.5" />
+              ดึงจาก SO
+            </PillButton>
+          )}
+          {activeTab === "receipts" && (
+            <PillButton variant="save" onClick={() => { showToast("เลือกใบแจ้งหนี้ที่ต้องการรับชำระเงินจากแท็บ INV"); setActiveTab("invoices"); }} className="h-8 px-5 shadow-neon-teal">
+              <Landmark size={14} className="mr-1.5" />
+              รับชำระจาก INV
+            </PillButton>
+          )}
+        </div>
       </section>
 
       {/* Main Content Scroll Area */}
@@ -462,10 +511,10 @@ export default function SalesPage() {
         <div className="flex-1 w-full space-y-3">
           <div className="space-y-3">
 
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
-               <div className="flex items-center gap-4 shrink-0 min-w-[250px]">
-                  <div className="w-12 h-12 rounded-xl bg-nexus-teal/10 border border-nexus-teal/20 flex items-center justify-center text-nexus-teal">
-                    {activeTab === "crm" ? <Users size={24} /> : 
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+               <div className="flex items-center gap-4 shrink-0 min-w-[140px]">
+                  <div className="text-nexus-teal flex items-center justify-center">
+                     {activeTab === "crm" ? <Users size={24} /> : 
                      activeTab === "opportunities" ? <Target size={24} /> :
                      activeTab === "quotations" ? <FileText size={24} /> :
                      activeTab === "orders" ? <ClipboardList size={24} /> :
@@ -479,7 +528,7 @@ export default function SalesPage() {
                      </p>
                      <h2 className="text-xl font-bold text-white uppercase">
                         {activeTab === "crm" && "ข้อมูลลูกค้า"}
-                        {activeTab === "opportunities" && "โอกาสการขาย"}
+                        {activeTab === "opportunities" && "ติดตามงานขาย (Sales Pipeline)"}
                         {activeTab === "quotations" && "ใบเสนอราคา"}
                         {activeTab === "orders" && "ใบสั่งขาย"}
                         {activeTab === "invoices" && "ใบแจ้งหนี้"}
@@ -492,43 +541,10 @@ export default function SalesPage() {
 
                {/* Document Sequence Visualizer */}
               {salesFlowSteps.some(s => s.id === activeTab) && (
-                <div className="flex-1 w-full max-w-3xl px-6 py-2 hidden xl:block overflow-hidden">
+                <div className="hidden xl:block">
                    <DocumentFlowStepper activeTab={activeTab} onStepClick={(id) => setActiveTab(id as any)} steps={salesFlowSteps} />
                 </div>
               )}
-
-               <div className="flex gap-3 shrink-0">
-                  {activeTab === "crm" && (
-                    <PillButton onClick={() => { setSelectedItem(null); setSelectedCustomer(null); router.push("/customers/new"); }} className="px-6 rounded-full shadow-neon-teal">
-                      <Plus size={18} />
-                      เพิ่มลูกค้าใหม่
-                    </PillButton>
-                  )}
-                  {activeTab === "quotations" && (
-                    <PillButton onClick={() => { setSelectedItem(null); router.push("/sales/quotations/new"); }} className="px-6 rounded-full shadow-neon-teal">
-                      <FileText size={18} />
-                      สร้างใบเสนอราคา
-                    </PillButton>
-                  )}
-                  {activeTab === "orders" && (
-                    <PillButton onClick={() => { setSelectedItem(null); router.push("/sales/orders/new"); }} className="px-6 rounded-full shadow-neon-teal">
-                      <Receipt size={18} />
-                      เปิดใบสั่งขาย
-                    </PillButton>
-                  )}
-                  {activeTab === "invoices" && (
-                    <PillButton onClick={() => { showToast("เลือกใบสั่งขายที่ต้องการสร้างใบแจ้งหนี้จากแท็บ SO"); setActiveTab("orders"); }} className="px-6 rounded-full shadow-neon-blue">
-                      <Receipt size={18} />
-                      ดึงจาก SO
-                    </PillButton>
-                  )}
-                  {activeTab === "receipts" && (
-                    <PillButton onClick={() => { showToast("เลือกใบแจ้งหนี้ที่ต้องการรับชำระเงินจากแท็บ INV"); setActiveTab("invoices"); }} className="px-6 rounded-full shadow-neon-teal">
-                      <Landmark size={18} />
-                      รับชำระจาก INV
-                    </PillButton>
-                  )}
-               </div>
             </div>
 
             {/* Tactical Command Bar */}
@@ -548,7 +564,7 @@ export default function SalesPage() {
             </div>
 
             {/* CRM / Quotation / Order Content - Conditional Rendering wrapped in standard GlassCard viewport */}
-            <GlassCard className="p-0 overflow-hidden border-white/5 min-h-[640px] flex flex-col justify-between bg-black/40">
+            <GlassCard accentColor="teal" className="p-0 overflow-hidden min-h-[640px] flex flex-col justify-between">
               <div className="overflow-x-auto custom-scrollbar flex-1 w-full p-2">
                 {activeTab === "crm" && (
                   <div className="animate-in fade-in duration-500">
@@ -580,7 +596,8 @@ export default function SalesPage() {
                 {activeTab === "quotations" && (
                   <div className="animate-in fade-in duration-500">
                     <NexusTable 
-                      headers={["เลขที่ใบเสนอราคา", "ลูกค้า / ไซต์งาน", "หัวข้อโครงการ", "มูลค่าสุทธิ", "สถานะ", "จัดการ"]}
+                      className="table-fixed"
+                      headers={["เลขที่ใบเสนอราคา", "ชื่อลูกค้า", "ชื่อโครงการ", "มูลค่าสุทธิ", "สถานะ", "จัดการ"]}
                       columnWidths={["w-[140px]", "w-auto", "w-auto", "w-[150px]", "w-[140px]", "w-[100px]"]}
                     >
                       {filteredQuotations.map(q => (
@@ -726,7 +743,7 @@ export default function SalesPage() {
 
         <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
            {activeTab === "crm" && selectedCustomer ? (
-             <GlassCard className="p-4 border-white/10 bg-nexus-blue/5">
+             <GlassCard accentColor="blue" className="p-5">
                 <div className="flex justify-between items-start mb-6">
                   <div>
                     <h4 className="text-[14px] font-bold text-white">{selectedCustomer.name}</h4>
@@ -797,7 +814,7 @@ export default function SalesPage() {
                    )}
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-white/10 flex flex-col gap-3">
+                <div className="mt-6 pt-6 border-t border-white/5 flex flex-col gap-3">
                    <PillButton size="sm" variant="glass" onClick={() => { setSelectedItem(selectedCustomer); router.push("/customers/new"); }} className="w-full border-white/20 hover:border-nexus-teal shadow-none">
                      <FileText size={14} className="mr-2" />
                      ดู / แก้ไขข้อมูลทั้งหมด
@@ -808,7 +825,7 @@ export default function SalesPage() {
                 </div>
              </GlassCard>
            ) : activeTab === "quotations" && selectedItem ? (
-             <GlassCard className="p-4 border-white/10 bg-nexus-teal/5">
+             <GlassCard className="p-4 border-white/5 ">
                 <div className="flex justify-between items-start mb-6">
                   <div>
                     <h4 className="text-[14px] font-bold text-white">{selectedItem.title}</h4>
@@ -852,7 +869,7 @@ export default function SalesPage() {
                    </div>
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-white/10 flex flex-col gap-3">
+                <div className="mt-6 pt-6 border-t border-white/5 flex flex-col gap-3">
                    <PillButton size="sm" variant="glass" onClick={() => router.push("/sales/quotations/new")} className="w-full border-white/20 hover:border-nexus-teal shadow-none">
                      <FileText size={14} className="mr-2" />
                      ดู / แก้ไขใบเสนอราคา
@@ -867,7 +884,7 @@ export default function SalesPage() {
                 </div>
              </GlassCard>
            ) : activeTab === "orders" && selectedItem ? (
-             <GlassCard className="p-4 border-white/10 bg-nexus-blue/5">
+             <GlassCard className="p-4 border-white/5 ">
                 <div className="flex justify-between items-start mb-6">
                   <div>
                     <h4 className="text-[14px] font-bold text-white">{selectedItem.customer}</h4>
@@ -887,7 +904,7 @@ export default function SalesPage() {
                    </div>
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-white/10 flex flex-col gap-3">
+                <div className="mt-6 pt-6 border-t border-white/5 flex flex-col gap-3">
                    <PillButton size="sm" variant="glass" onClick={() => router.push("/sales/orders/new")} className="w-full border-white/20 hover:border-nexus-blue shadow-none">
                      <Receipt size={14} className="mr-2" />
                      ดู / แก้ไขใบสั่งขาย
@@ -903,7 +920,7 @@ export default function SalesPage() {
              </GlassCard>
            ) : (
              <>
-               <GlassCard className="p-4 border-white/10 bg-nexus-blue/5">
+               <GlassCard className="p-4 border-white/5 ">
                   <h4 className="text-[12px] font-medium text-nexus-blue uppercase tracking-widest mb-6">ขั้นตอนการปิดการขาย</h4>
                   <div className="space-y-3">
                      <PipelineStage label="ร่าง" count={5} value="฿1.2M" />
@@ -912,9 +929,9 @@ export default function SalesPage() {
                   </div>
                </GlassCard>
 
-               <GlassCard className="p-4 border-white/10">
+               <GlassCard className="p-4 border-white/5">
                   <h4 className="text-[12px] font-medium text-white/20 uppercase tracking-widest mb-6 flex items-center gap-2">
-                     <Bell size={14} className="text-warning animate-pulse" />
+                     <Bell size={14} className="text-warning" />
                      แจ้งเตือนการติดตามงาน
                   </h4>
                   <div className="space-y-3">
@@ -953,14 +970,14 @@ export default function SalesPage() {
 function CustomerRow({ id, name, industry, taxId, status, role, companyId, onClick }: { id: string, name: string, industry: string, taxId: string, status: "active" | "inactive", role: string, companyId: string, onClick?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[120px] font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80 group-hover:text-white transition-colors">{name}</NexusTableCell>
-      <NexusTableCell className="w-[160px] text-[13px] font-medium text-white/60">{industry}</NexusTableCell>
-      <NexusTableCell className="w-[160px] font-mono text-xs text-white/30 text-left">{taxId}</NexusTableCell>
-      <NexusTableCell className="text-center w-[100px]">
+      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
+      <NexusTableCell className="font-bold text-white/80 group-hover:text-white transition-colors w-full">{name}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-white/60">{industry}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-xs text-white/30">{taxId}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={status} label={status === "active" ? "ใช้งาน" : "ปิดใช้งาน"} />
       </NexusTableCell>
-      <NexusTableCell className="w-[80px] text-right">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
          {(role === "ADMIN" || role === "SUPERADMIN") && (
            <div onClick={(e) => e.stopPropagation()} className="inline-block">
              <SecureDeleteAction 
@@ -979,14 +996,14 @@ function CustomerRow({ id, name, industry, taxId, status, role, companyId, onCli
 function QuotationRow({ id, customer, title, value, status, companyId, onClick }: { id: string, customer: string, title: string, value: string, status: string, companyId: string, onClick?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[140px] text-nexus-teal tracking-tighter" mono>{id}</NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80">{customer}</NexusTableCell>
-      <NexusTableCell className="text-[14px] font-bold text-white/40 whitespace-nowrap">{title}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right text-white" mono>{value}</NexusTableCell>
-      <NexusTableCell className="text-center w-[140px]">
+      <NexusTableCell className="w-[140px] whitespace-nowrap align-middle text-center text-nexus-teal tracking-tighter" mono>{id}</NexusTableCell>
+      <NexusTableCell className="font-bold text-white/80 truncate">{customer}</NexusTableCell>
+      <NexusTableCell className="text-[14px] font-bold text-white/40 truncate text-left">{title}</NexusTableCell>
+      <NexusTableCell className="w-[150px] whitespace-nowrap text-right text-white" mono>{value}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={status === "Approved" || status === "active" ? "active" : status === "Draft" || status === "pending" ? "pending" : "danger"} label={status === "Approved" || status === "active" ? "ส่งแล้ว" : status === "Draft" || status === "pending" ? "ร่าง" : "ยกเลิก"} />
       </NexusTableCell>
-      <NexusTableCell className="w-[100px] text-right">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-block">
           <SecureDeleteAction collectionName={`companies/${companyId}/quotations`} documentId={id} displayName={title} compact />
         </div>
@@ -998,14 +1015,14 @@ function QuotationRow({ id, customer, title, value, status, companyId, onClick }
 function SalesOrderRow({ id, customer, date, total, status, companyId, onClick }: { id: string, customer: string, date: string, total: string, status: string, companyId: string, onClick?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[140px] font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80">{customer}</NexusTableCell>
-      <NexusTableCell className="w-[180px] text-[13px] font-medium text-white/40 uppercase tracking-widest">{date}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right text-white" mono>{total}</NexusTableCell>
-      <NexusTableCell className="text-center w-[140px]">
+      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
+      <NexusTableCell className="font-bold text-white/80 w-full">{customer}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-white/40 uppercase tracking-widest">{date}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white" mono>{total}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={status === "Confirmed" || status === "paid" ? "paid" : "partial"} label={status === "Confirmed" || status === "paid" ? "ชำระเงินแล้ว" : "รอดำเนินการ"} />
       </NexusTableCell>
-      <NexusTableCell className="w-[100px] text-right">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-block">
           <SecureDeleteAction collectionName={`companies/${companyId}/sales_orders`} documentId={id} displayName={customer} compact />
         </div>
@@ -1017,16 +1034,16 @@ function SalesOrderRow({ id, customer, date, total, status, companyId, onClick }
 function InvoiceRow({ id, soRef, customer, date, dueDate, total, status, companyId, onClick }: { id: string, soRef: string, customer: string, date: string, dueDate: string, total: string, status: string, companyId: string, onClick?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[140px] font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
-      <NexusTableCell className="w-[140px] font-mono text-[13px] text-white/40">{soRef}</NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80">{customer}</NexusTableCell>
-      <NexusTableCell className="w-[120px] text-[13px] font-medium text-white/40">{date}</NexusTableCell>
-      <NexusTableCell className="w-[120px] text-[13px] font-medium text-warning">{dueDate}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right text-white" mono>{total}</NexusTableCell>
-      <NexusTableCell className="text-center w-[120px]">
+      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[13px] text-white/40">{soRef}</NexusTableCell>
+      <NexusTableCell className="font-bold text-white/80 w-full">{customer}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-white/40">{date}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-warning">{dueDate}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white" mono>{total}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={status === "Paid" || status === "paid" ? "paid" : "pending"} label={status === "Paid" || status === "paid" ? "ชำระแล้ว" : "รอชำระ"} />
       </NexusTableCell>
-      <NexusTableCell className="w-[100px] text-right">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-block">
           <SecureDeleteAction collectionName={`companies/${companyId}/invoices`} documentId={id} displayName={customer} compact />
         </div>
@@ -1038,15 +1055,15 @@ function InvoiceRow({ id, soRef, customer, date, dueDate, total, status, company
 function BillingNoteRow({ id, customer, date, dueDate, total, status, companyId, onClick }: any) {
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[140px] font-mono text-[13px] text-warning font-medium tracking-tighter">{id}</NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80">{customer}</NexusTableCell>
-      <NexusTableCell className="w-[120px] text-[13px] font-medium text-white/40">{date}</NexusTableCell>
-      <NexusTableCell className="w-[120px] text-[13px] font-medium text-warning">{dueDate}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right text-white" mono>{total}</NexusTableCell>
-      <NexusTableCell className="text-center w-[120px]">
+      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-warning font-medium tracking-tighter">{id}</NexusTableCell>
+      <NexusTableCell className="font-bold text-white/80 w-full">{customer}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-white/40">{date}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-warning">{dueDate}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white" mono>{total}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={status === "Paid" ? "paid" : "pending"} label={status === "Paid" ? "รับชำระแล้ว" : "รอดำเนินการ"} />
       </NexusTableCell>
-      <NexusTableCell className="w-[100px] text-right">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-block">
           <SecureDeleteAction collectionName={`companies/${companyId}/billing_notes`} documentId={id} displayName={id} compact />
         </div>
@@ -1058,15 +1075,15 @@ function BillingNoteRow({ id, customer, date, dueDate, total, status, companyId,
 function CndnRow({ id, customer, type, date, total, status, companyId, onClick }: any) {
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[140px] font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80">{customer}</NexusTableCell>
-      <NexusTableCell className="w-[100px] font-bold text-[11px] uppercase tracking-widest text-white/40">{type}</NexusTableCell>
-      <NexusTableCell className="w-[120px] text-[13px] font-medium text-white/40">{date}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right text-white" mono>{total}</NexusTableCell>
-      <NexusTableCell className="text-center w-[120px]">
+      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
+      <NexusTableCell className="font-bold text-white/80 w-full">{customer}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-bold text-[11px] uppercase tracking-widest text-white/40">{type}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-white/40">{date}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white" mono>{total}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={status === "Applied" ? "active" : "pending"} label={status === "Applied" ? "ใช้สิทธิ์แล้ว" : "ยังไม่ได้ใช้"} />
       </NexusTableCell>
-      <NexusTableCell className="w-[100px] text-right">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-block">
           <SecureDeleteAction collectionName={`companies/${companyId}/cndn`} documentId={id} displayName={id} compact />
         </div>
@@ -1078,15 +1095,15 @@ function CndnRow({ id, customer, type, date, total, status, companyId, onClick }
 function ReceiptRow({ id, invRef, customer, date, total, status, companyId, onClick }: any) {
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[140px] font-mono text-[13px] text-emerald-400 font-medium tracking-tighter">{id}</NexusTableCell>
-      <NexusTableCell className="w-[140px] font-mono text-[13px] text-white/40">{invRef}</NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80">{customer}</NexusTableCell>
-      <NexusTableCell className="w-[120px] text-[13px] font-medium text-white/40">{date}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right text-emerald-400" mono>{total}</NexusTableCell>
-      <NexusTableCell className="text-center w-[120px]">
+      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-emerald-400 font-medium tracking-tighter">{id}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[13px] text-white/40">{invRef}</NexusTableCell>
+      <NexusTableCell className="font-bold text-white/80 w-full">{customer}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-white/40">{date}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-emerald-400" mono>{total}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status="paid" label="รับชำระแล้ว" />
       </NexusTableCell>
-      <NexusTableCell className="w-[100px] text-right">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-block">
           <SecureDeleteAction collectionName={`companies/${companyId}/receipts`} documentId={id} displayName={id} compact />
         </div>

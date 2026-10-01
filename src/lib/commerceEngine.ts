@@ -63,7 +63,7 @@ export const processCheckout = async (data: CheckoutData) => {
   const salesRef = collection(db, "sales_orders");
   await addDoc(salesRef, {
     so_id: soId,
-    company_id: companyId,
+    companyId: companyId,
     items,
     total_amount: total,
     total_cogs: totalCogs,

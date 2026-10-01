@@ -494,109 +494,126 @@ export default function MilestoneNewPage() {
   const headerContent = (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <button onClick={() => router.back()} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
-          <ArrowLeft size={18} />
-        </button>
+        <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white uppercase tracking-widest">
-            เพิ่มเป้าหมาย / งวดงาน
-          </h1>
-          <p className="text-sm text-white/40 font-medium">กำหนดรายละเอียดงวดงานเพื่อใช้ในการติดตามและเรียกเก็บเงิน</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+              เพิ่มเป้าหมายและงวดงาน
+            </h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              MILESTONE
+            </span>
+          </div>
+          <p className="text-sm text-white/60 font-medium mt-1">กำหนดรายละเอียดงวดงานเพื่อใช้ในการติดตามและเรียกเก็บเงิน</p>
         </div>
+      </div>
+
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+        <PillButton variant="glass" onClick={() => router.back()} className="h-8 px-4 text-xs font-bold text-white/50">
+          ยกเลิก
+        </PillButton>
+        <PillButton variant="confirm" onClick={() => router.back()} className="h-8 px-5 font-bold text-xs">
+          ยืนยันการบันทึก
+        </PillButton>
       </div>
     </div>
   );
 
 
   const leftContent = (
-    <div className="space-y-6">
-      <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl">
-        <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="space-y-3">
-                           <div className="flex items-center gap-3 text-nexus-teal"><Target size={18} /><h4 className="text-[13px] font-bold uppercase tracking-widest">กำหนดเป้าหมายโครงการ</h4></div>
-                           
-                           <div className="grid grid-cols-2 gap-5">
-                              <div className="space-y-3">
-                                 <div className="space-y-2">
-                                    <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ชื่อเป้าหมาย / กิจกรรมสำคัญ *</label>
-                                    <PillInput placeholder="เช่น สรุปแบบติดตั้ง, ส่งมอบเฟส 1..." className="w-full" />
-                                 </div>
-                                 <div className="space-y-2">
-                                    <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">เชื่อมโยงกับโครงการ</label>
-                                    <PillSelect className="w-full px-6">
-                                       <option>เลือกโครงการ...</option>
-                                       <option>PRJ-26-001: LED Wall</option>
-                                       <option>PRJ-26-002: Network Upgrade</option>
-                                    </PillSelect>
-                                 </div>
-                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                       <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">กำหนดส่ง</label>
-                                       <PillInput type="date" className="w-full" />
-                                    </div>
-                                    <div className="space-y-2">
-                                       <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">น้ำหนักความสำคัญ (Weight %)</label>
-                                       <PillInput type="number" placeholder="0" className="w-full text-nexus-teal font-bold" />
-                                    </div>
-                                 </div>
-                              </div>
+    <div className="space-y-8 pb-20">
+      <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl transition-all border-l-4 border-l-nexus-teal hover:border-white/25">
+        <div className="p-4 sm:p-5 flex items-center justify-between bg-white/[0.04] border-b border-white/10 select-none">
+          <div className="flex items-center gap-3">
+            <span className="px-2.5 py-1 rounded-xl bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 font-mono font-black text-xs shadow-sm">
+              01
+            </span>
+            <div className="flex items-center gap-2 text-nexus-teal">
+              <Target size={20} />
+              <h3 className="text-base font-bold uppercase tracking-wider text-white">
+                1. ข้อมูลเป้าหมายและงวดงานโครงการ
+              </h3>
+            </div>
+          </div>
+        </div>
 
-                              <div className="space-y-3">
-                                 <div className="space-y-2">
-                                    <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">รายละเอียดและเกณฑ์การวัดผล</label>
-                                    <textarea 
-                                       className="w-full h-[108px] rounded-lg bg-white/[0.03] border border-white/10 text-white text-[14px] font-bold p-5 focus:outline-none focus:border-nexus-teal/40 transition-all"
-                                       placeholder="ระบุสิ่งที่ต้องทำให้สำเร็จเพื่อให้ Milestone นี้ผ่าน..."
-                                    />
-                                 </div>
-                                 <div className="space-y-2">
-                                    <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ผู้รับผิดชอบ</label>
-                                    <PillSelect className="w-full px-6">
-                                       <option>ระบุผู้รับผิดชอบ...</option>
-                                       <option>Somchai J. (Engineer)</option>
-                                       <option>Kriangkrai M. (Lead)</option>
-                                    </PillSelect>
-                                 </div>
-                                 <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
-                                    <div className="w-10 h-6 bg-white/10 rounded-full relative cursor-pointer p-1">
-                                       <div className="w-4 h-4 bg-white/20 rounded-full" />
-                                    </div>
-                                    <div>
-                                       <p className="text-sm font-medium text-white uppercase tracking-widest">เส้นตายวิกฤต</p>
-                                       <p className="text-xs text-white/40 font-bold uppercase tracking-widest">หากล่าช้าจะส่งผลต่อโครงการทั้งหมด</p>
-                                    </div>
-                                 </div>
-                              </div>
-                           </div>
-                        </div>
-                     </div>
+        <div className="p-6 space-y-8 animate-in fade-in duration-300">
+          <div className="grid grid-cols-2 gap-5">
+            <div className="space-y-3">
+                <div className="space-y-2">
+                   <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">
+                     ชื่อเป้าหมาย / กิจกรรมสำคัญ <span className="text-rose-500 font-bold ml-0.5">*</span>
+                   </label>
+                   <PillInput placeholder="เช่น สรุปแบบติดตั้ง, ส่งมอบเฟส 1..." className="w-full" />
+                </div>
+               <div className="space-y-2">
+                  <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">เชื่อมโยงกับโครงการ</label>
+                  <PillSelect className="w-full px-6">
+                     <option>เลือกโครงการ...</option>
+                     <option>PRJ-26-001: LED Wall</option>
+                     <option>PRJ-26-002: Network Upgrade</option>
+                  </PillSelect>
+               </div>
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                     <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">กำหนดส่ง</label>
+                     <PillInput type="date" className="w-full" />
+                  </div>
+                  <div className="space-y-2">
+                     <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">น้ำหนักความสำคัญ (Weight %)</label>
+                     <PillInput type="number" placeholder="0" className="w-full text-nexus-teal font-bold" />
+                  </div>
+               </div>
+            </div>
+
+            <div className="space-y-3">
+               <div className="space-y-2">
+                  <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">รายละเอียดและเกณฑ์การวัดผล</label>
+                  <textarea 
+                     className="w-full h-[108px] rounded-lg bg-white/[0.03] border border-white/10 text-white text-[14px] font-bold p-5 focus:outline-none focus:border-nexus-teal/40 transition-all"
+                     placeholder="ระบุสิ่งที่ต้องทำให้สำเร็จเพื่อให้ Milestone นี้ผ่าน..."
+                  />
+               </div>
+               <div className="space-y-2">
+                  <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ผู้รับผิดชอบ</label>
+                  <PillSelect className="w-full px-6">
+                     <option>ระบุผู้รับผิดชอบ...</option>
+                     <option>Somchai J. (Engineer)</option>
+                     <option>Kriangkrai M. (Lead)</option>
+                  </PillSelect>
+               </div>
+               <div className="flex items-center gap-4 p-4 rounded-2xl bg-black/30 border border-white/10">
+                  <div className="w-10 h-6 bg-white/10 rounded-full relative cursor-pointer p-1">
+                     <div className="w-4 h-4 bg-white/20 rounded-full" />
+                  </div>
+                  <div>
+                     <p className="text-sm font-medium text-white uppercase tracking-widest">เส้นตายวิกฤต</p>
+                     <p className="text-xs text-white/40 font-bold uppercase tracking-widest">หากล่าช้าจะส่งผลต่อโครงการทั้งหมด</p>
+                  </div>
+               </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 
 
   const rightSidebar = (
-    <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-8 sticky top-0">
-      <div className="space-y-1 border-b border-white/5 pb-4">
-        <h5 className="text-[13px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2">
+    <div className="bg-neutral-900/90 border border-white/15 rounded-3xl p-5 shadow-2xl space-y-8 sticky top-0 border-t-4 border-t-nexus-teal">
+      <div className="space-y-1 border-b border-white/10 pb-4">
+        <h5 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
           สรุปการทำรายการ
         </h5>
       </div>
       
-      <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 space-y-6">
+      <div className="p-6 rounded-3xl bg-black/30 border border-white/10 space-y-6">
         <div className="space-y-5">
           <NexusDataField label="สถานะเริ่มต้น" value="Draft" />
           <NexusDataField label="ประเภท" value={projectType} />
         </div>
-      </div>
-
-      <div className="space-y-3 pt-6 border-t border-white/5">
-        <PillButton className="w-full h-11 rounded-full border border-white/10 hover:bg-white/5 text-white text-[12px] font-bold tracking-widest" onClick={() => router.back()}>
-          ยกเลิกรายการ
-        </PillButton>
-        <PillButton className="w-full h-11 rounded-full font-black uppercase tracking-widest shadow-[0_0_12px_rgba(6,182,212,0.15)] border border-cyan-500/30 bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/40 text-[12px]" onClick={() => router.back()}>
-          ยืนยันการบันทึก
-        </PillButton>
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { 
+import {
+  ArrowLeft, 
   ScanBarcode, 
   ChevronLeft, 
   Edit3, 
@@ -15,7 +16,7 @@ import {
   Database,
   Calendar,
   AlertCircle
-} from "lucide-react";
+} from 'lucide-react';
 import { 
   PillButton, 
   GlassCard, 
@@ -44,21 +45,27 @@ export default function SerialDetailPage() {
   ];
 
   const headerContent = (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
-      <div className="flex items-center gap-6">
-        <PillBackButton onClick={() => router.back()} />
-        <div className="space-y-1">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
+      <div className="flex items-center gap-4">
+        <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
+        <div>
           <div className="flex items-center gap-3">
-             <StatusBadge status="active" label="ON SITE / ACTIVE" />
-             <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">Serial Number: {params.id || 'SN-ARUBA-000123'}</p>
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">Aruba AP-505 (SN-000123)</h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              {params.id || 'SN-000123'}
+            </span>
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tight uppercase">Aruba AP-505 (SN-000123)</h1>
+          <p className="text-sm text-white/60 font-medium mt-1">
+            ประวัติการใช้งาน ข้อมูลการรับประกัน และสเปกทางเทคนิคของหมายเลขซีเรียล
+          </p>
         </div>
       </div>
-      <div className="flex gap-3">
-        <PillButton variant="glass" className="px-6">แจ้งเคลมพัสดุ</PillButton>
-        <PillButton className="px-8 shadow-neon-teal">
-          <Edit3 size={18} />
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold">แจ้งเคลมพัสดุ</PillButton>
+        <PillButton variant="confirm" className="h-8 px-4 text-xs font-bold flex items-center gap-1.5">
+          <Edit3 size={14} />
           จัดการสถานะ SN
         </PillButton>
       </div>
@@ -80,7 +87,7 @@ export default function SerialDetailPage() {
 
           {/* Movement History */}
           <div className="space-y-6">
-             <h3 className="text-sm font-black text-white uppercase tracking-tight px-4">Timeline การเคลื่อนย้ายพัสดุ</h3>
+             <h3 className="text-sm font-semibold text-white uppercase tracking-tight px-4">Timeline การเคลื่อนย้ายพัสดุ</h3>
              <div className="space-y-4">
                 <HistoryItem 
                   date="26/04/2026" 
@@ -113,7 +120,7 @@ export default function SerialDetailPage() {
   const rightSidebar = (
     <div className="space-y-6">
        <GlassCard className="p-8 border-white/10 bg-nexus-teal/5">
-          <h4 className="text-[11px] font-black text-nexus-teal uppercase tracking-widest mb-6">ข้อมูลการรับประกัน (WARRANTY)</h4>
+          <h4 className="text-[11px] font-semibold text-nexus-teal uppercase tracking-widest mb-6">ข้อมูลการรับประกัน (WARRANTY)</h4>
           <div className="space-y-6">
              <NexusDataField label="เริ่มการรับประกัน" value="20/04/2026" />
              <NexusDataField label="สิ้นสุดการรับประกัน" value="20/04/2029" highlight />
@@ -125,7 +132,7 @@ export default function SerialDetailPage() {
        </GlassCard>
 
        <GlassCard className="p-8 border-white/10">
-          <h4 className="text-[11px] font-black text-white/20 uppercase tracking-widest mb-6">โครงการที่เกี่ยวข้อง</h4>
+          <h4 className="text-[11px] font-semibold text-white/20 uppercase tracking-widest mb-6">โครงการที่เกี่ยวข้อง</h4>
           <div className="space-y-4">
              <LinkedProject label="โครงการหลัก" id="PRJ-26-001" />
              <LinkedProject label="งานแจ้งซ่อม (MA)" id="None" />
@@ -163,11 +170,11 @@ function HistoryItem({ date, action, location, user, status }: { date: string, a
              <h4 className="text-sm font-black text-white">{action}</h4>
           </div>
           <div className="flex flex-wrap gap-4">
-             <div className="flex items-center gap-2 text-[10px] font-black text-white/40 uppercase">
+             <div className="flex items-center gap-2 text-[10px] font-semibold text-white/40 uppercase">
                 <MapPin size={12} className="text-nexus-blue" />
                 {location}
              </div>
-             <div className="flex items-center gap-2 text-[10px] font-black text-white/40 uppercase">
+             <div className="flex items-center gap-2 text-[10px] font-semibold text-white/40 uppercase">
                 <User size={12} className="text-nexus-teal" />
                 {user}
              </div>
@@ -181,7 +188,7 @@ function LinkedProject({ label, id }: { label: string, id: string }) {
   return (
     <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 group hover:bg-white/[0.05] transition-all cursor-pointer">
        <div>
-          <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">{label}</p>
+          <p className="text-[9px] font-semibold text-white/20 uppercase tracking-widest">{label}</p>
           <p className="text-xs font-bold text-white group-hover:text-nexus-blue transition-colors">{id}</p>
        </div>
        <ArrowUpRight size={14} className="text-white/20 group-hover:text-nexus-blue transition-colors" />

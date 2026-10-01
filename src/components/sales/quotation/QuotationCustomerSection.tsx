@@ -10,7 +10,7 @@ export function QuotationCustomerSection() {
 
   return (
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl space-y-4">
-      <h3 className="text-xs font-black text-nexus-teal uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2 mb-4 not-italic">
+      <h3 className="text-xs font-semibold text-nexus-teal uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2 mb-4 not-italic">
         <Building2 size={14} /> 2. ข้อมูลลูกค้าและที่อยู่
       </h3>
       
@@ -18,7 +18,7 @@ export function QuotationCustomerSection() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-3 space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-[13px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+              <label className="text-[13px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
                 ชื่อลูกค้า <span className="text-red-500 font-bold">*</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer group">
@@ -40,7 +40,7 @@ export function QuotationCustomerSection() {
                 value={formData.customerName}
                 onChange={(e) => setFormData({...formData, customerName: e.target.value, customerId: ''})}
                 placeholder="พิมพ์ชื่อลูกค้า (คู่เทียบ)"
-                className="h-7 py-0 leading-relaxed border-orange-500/30 bg-orange-500/5 text-orange-100"
+                className="h-9 py-0 leading-relaxed border-orange-500/30 bg-orange-500/5 text-orange-100"
               />
             ) : (
               <AsyncCustomerSelect
@@ -48,60 +48,60 @@ export function QuotationCustomerSection() {
                 onChange={handleCustomerChange}
                 displayValue={formData.customerName}
                 placeholder="-- ค้นหาและเลือกลูกค้า --"
-                className="h-7 py-0 leading-relaxed"
+                className="h-9 py-0 leading-relaxed"
               />
             )}
           </div>
 
           <div className="md:col-span-1 space-y-1">
-            <label className="text-[13px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+            <label className="text-[13px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
               เลขประจำตัวผู้เสียภาษี
             </label>
             <PillInput 
               value={formData.customerTaxId}
               onChange={(e) => setFormData({...formData, customerTaxId: e.target.value})}
-              className="h-7 py-0 leading-relaxed font-mono"
+              className="h-9 py-0 leading-relaxed font-mono"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-1">
-            <label className="text-[13px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+            <label className="text-[13px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
               รหัสสาขา
             </label>
             <PillInput 
               value={formData.customerBranch}
               onChange={(e) => setFormData({...formData, customerBranch: e.target.value})}
-              className="h-7 py-0 leading-relaxed font-mono tracking-tight"
+              className="h-9 py-0 leading-relaxed font-mono tracking-tight"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-[13px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+            <label className="text-[13px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
               ชื่อผู้ติดต่อ
             </label>
             <PillInput 
               value={formData.contactPerson || ''}
               onChange={(e) => setFormData({...formData, contactPerson: e.target.value})}
               placeholder="เช่น คุณสมชาย"
-              className="h-7 py-0 leading-relaxed"
+              className="h-9 py-0 leading-relaxed"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-[13px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+            <label className="text-[13px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
               เงื่อนไขการชำระเงิน
             </label>
             <PillInput 
               value={formData.paymentTerms}
               onChange={(e) => setFormData({...formData, paymentTerms: e.target.value})}
               placeholder="เช่น เครดิต 30 วัน"
-              className="h-7 py-0 leading-relaxed"
+              className="h-9 py-0 leading-relaxed"
             />
           </div>
         </div>
 
         <div className="space-y-1">
-          <label className="text-[13px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+          <label className="text-[13px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
             ที่อยู่สำหรับออกบิล
           </label>
           <textarea
@@ -113,7 +113,7 @@ export function QuotationCustomerSection() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-[13px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+          <label className="text-[13px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
             สถานที่จัดส่ง / หน้างาน
           </label>
           <textarea
@@ -125,7 +125,7 @@ export function QuotationCustomerSection() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-[13px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+          <label className="text-[13px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
             รูปแบบภาษี <span className="text-red-500 font-bold">*</span>
           </label>
           <div className="flex flex-col xl:flex-row items-start xl:items-center gap-2">

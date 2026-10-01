@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { 
   PieChart,
   MonitorSmartphone,
@@ -66,11 +67,11 @@ export default function AuthenticatedLayout({
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0D0D0D] text-white selection:bg-nexus-teal/30">
+    <div className="flex h-screen overflow-hidden bg-surface-0 text-white selection:bg-nexus-teal/30">
       <CommandPalette />
       
       {/* [1] Sidebar - Full Intelligence OS Structure */}
-      <aside className="w-[240px] hidden lg:flex flex-col border-r border-white/5 bg-[#0a0a0c] relative flex-shrink-0 z-[100]">
+      <aside className="w-[240px] hidden lg:flex flex-col border-r border-white/5 bg-surface-0 relative flex-shrink-0 z-[100]">
         <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
           {/* Brand Header */}
           <div className="flex items-center gap-3 mb-4">
@@ -78,8 +79,8 @@ export default function AuthenticatedLayout({
               <Zap size={20} className="text-nexus-teal fill-current drop-shadow-md" />
             </div>
             <div>
-              <h2 className="font-black text-lg leading-none tracking-tight">NEXUS ERP</h2>
-              <p className="text-[13px] font-bold text-nexus-teal uppercase tracking-[0.2em] mt-1 drop-shadow-neon">Intelligence OS</p>
+              <h2 className="font-semibold text-lg leading-none tracking-tight">NEXUS ERP</h2>
+              <p className="text-[14px] leading-none font-bold text-nexus-teal uppercase tracking-[0.2em] mt-1 drop-shadow-neon">Intelligence OS</p>
             </div>
           </div>
 
@@ -94,9 +95,9 @@ export default function AuthenticatedLayout({
             </NavGroup>
 
             {/* OPERATIONS TIER */}
-            <NavGroup title="การปฏิบัติงาน (OPERATIONS)">
+            <NavGroup title="การปฏิบัติงาน">
               <SideLink href="/dashboard" icon={<PieChart size={20} />} label="ภาพรวม" active={pathname === "/dashboard"} title="Dashboard" />
-              <SideLink href="/sales" icon={<BadgeDollarSign size={20} />} label="บัญชีการเงิน" active={pathname === "/sales"} title="Accounting" />
+              <SideLink href="/sales" icon={<BadgeDollarSign size={20} />} label="งานขาย" active={pathname === "/sales"} title="Sales" />
               <SideLink href="/projects" icon={<FolderKanban size={20} />} label="โครงการ" active={pathname === "/projects"} title="Projects" />
               <SideLink href="/hr" icon={<UsersRound size={20} />} label="บุคลากร" active={pathname === "/hr"} title="HR" />
               <SideLink href="/inventory" icon={<Warehouse size={20} />} label="คลังสินค้า" active={pathname === "/inventory"} title="Inventory" />
@@ -104,13 +105,13 @@ export default function AuthenticatedLayout({
             </NavGroup>
 
             {/* MANAGEMENT TIER */}
-            <NavGroup title="การบริหาร (MANAGEMENT)">
+            <NavGroup title="การบริหารจัดการ">
               <SideLink href="/finance" icon={<Landmark size={20} />} label="บัญชีแยกประเภท" active={pathname === "/finance"} title="GL" />
               <SideLink href="/ai" icon={<Bot size={20} />} label="วิเคราะห์ข้อมูล" active={pathname === "/ai"} title="AI Analytics" />
             </NavGroup>
 
             {/* SYSTEM TIER */}
-            <NavGroup title="ระบบ (SYSTEM)">
+            <NavGroup title="ระบบงาน">
               <SideLink href="/settings" icon={<Settings size={20} />} label="ตั้งค่า" active={pathname?.startsWith("/settings")} title="Settings" />
             </NavGroup>
           </nav>
@@ -123,16 +124,16 @@ export default function AuthenticatedLayout({
                 <UserCog size={18} />
              </div>
              <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-black text-white truncate uppercase leading-none">{user?.email?.split('@')[0] || 'ผู้ใช้งาน'}</p>
-                <p className="text-[10px] font-bold text-nexus-teal uppercase tracking-widest mt-1 leading-none">{role || 'ไม่มีสิทธิ์'}</p>
+                <p className="text-[12px] font-semibold text-white truncate uppercase leading-none">{user?.email?.split('@')[0] || 'ผู้ใช้งาน'}</p>
+                <p className="text-[11px] font-bold text-nexus-teal uppercase tracking-widest mt-1 leading-none">{role || 'ไม่มีสิทธิ์'}</p>
              </div>
           </div>
           
-          <ConnectionStatus className="w-full justify-center text-[10px] py-1 bg-white/[0.02] border-white/5" />
+          <ConnectionStatus className="w-full justify-center text-[11px] py-1 bg-white/[0.02] border-white/5" />
           
           <button 
             onClick={handleLogout}
-            className="flex items-center justify-center gap-2 w-full rounded-full text-[11px] font-bold text-white/40 hover:text-danger hover:bg-danger/15 transition-all uppercase tracking-widest py-1.5"
+            className="flex items-center justify-center gap-2 w-full rounded-full text-[12px] leading-none font-bold text-white/40 hover:text-danger hover:bg-danger/15 transition-all uppercase tracking-widest py-1.5"
           >
             <LogOut size={14} />
             ออกจากระบบ
@@ -142,7 +143,7 @@ export default function AuthenticatedLayout({
 
       {/* Main Command Center Area */}
       <div className="flex-1 flex flex-col overflow-hidden relative min-w-0">
-        <header className="h-16 border-b border-white/5 bg-[#0a0a0c]/80 backdrop-blur-xl flex items-center justify-between px-4 md:px-5">
+        <header className="h-16 border-b border-white/5 bg-surface-0/80 backdrop-blur-xl flex items-center justify-between px-4 md:px-5">
           <div className="flex items-center gap-4 md:gap-6">
             <div className="flex items-center gap-4 border-r border-white/10 pr-5">
                <div className="flex items-center gap-3">
@@ -194,18 +195,18 @@ export default function AuthenticatedLayout({
                </div>
 
                {isProfileOpen && (
-                 <div className="absolute top-full right-0 mt-3 w-72 z-[2000] bg-[#0A0A0C]/90 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9)] p-2 duration-200">
+                 <div className="absolute top-full right-0 mt-3 w-72 z-[99999] bg-surface-0/90 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9)] p-2 duration-200">
                     {/* Top Accent Line */}
                     <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-nexus-teal via-nexus-blue to-nexus-teal rounded-t-2xl" />
                     
                     {/* User Identity Info Card */}
                     <div className="p-4 border-b border-white/5 mb-2 mt-1 bg-white/[0.01] rounded-xl border border-white/[0.02]">
-                       <p className="text-[9px] font-black text-white/20 uppercase tracking-widest mb-1">USER ACCESS CREDENTIAL</p>
+                       <p className="text-[9px] font-semibold text-white/20 uppercase tracking-widest mb-1">USER ACCESS CREDENTIAL</p>
                        <p className="text-[13px] font-black text-white truncate uppercase font-mono tracking-tight">{user?.email || 'admin@nexus.os'}</p>
                        
                        <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2 text-[10px]">
                           <span className="font-bold text-white/30 uppercase tracking-wider">LEVEL:</span>
-                          <span className="font-black text-nexus-teal uppercase tracking-widest bg-nexus-teal/10 px-2 py-0.5 rounded border border-nexus-teal/20">
+                          <span className="font-semibold text-nexus-teal uppercase tracking-widest bg-nexus-teal/10 px-2 py-0.5 rounded border border-nexus-teal/20">
                              {role || 'SYSTEM_ADMIN'}
                           </span>
                        </div>
@@ -218,11 +219,11 @@ export default function AuthenticatedLayout({
 
                     <button className="w-full h-9 flex items-center gap-3 px-4 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-all text-left group">
                        <UserCog size={15} className="text-white/20 group-hover:text-nexus-blue transition-colors" />
-                       <span className="text-[11px] font-black uppercase tracking-wider">ตั้งค่าโปรไฟล์</span>
+                       <span className="text-[11px] font-semibold uppercase tracking-wider">ตั้งค่าโปรไฟล์</span>
                     </button>
                     <button className="w-full h-9 flex items-center gap-3 px-4 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-all text-left group">
                        <ShieldCheck size={15} className="text-white/20 group-hover:text-nexus-teal transition-colors" />
-                       <span className="text-[11px] font-black uppercase tracking-wider">ความปลอดภัย</span>
+                       <span className="text-[11px] font-semibold uppercase tracking-wider">ความปลอดภัย</span>
                     </button>
                     
                     <div className="h-px bg-white/5 my-2 mx-2" />
@@ -232,7 +233,7 @@ export default function AuthenticatedLayout({
                        className="w-full h-9 flex items-center gap-3 px-4 rounded-xl text-white/60 hover:text-danger hover:bg-danger/10 transition-all text-left group"
                     >
                        <LogOut size={15} className="text-white/20 group-hover:text-danger transition-colors" />
-                       <span className="text-[11px] font-black uppercase tracking-wider">ออกจากระบบ</span>
+                       <span className="text-[11px] font-semibold uppercase tracking-wider">ออกจากระบบ</span>
                     </button>
                  </div>
                )}
@@ -240,7 +241,7 @@ export default function AuthenticatedLayout({
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-[#020203] bg-nexus-grid relative custom-scrollbar">
+        <main className="flex-1 overflow-y-auto bg-surface-0 bg-nexus-grid relative custom-scrollbar">
           {/* Ambient Light Effect */}
           <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-nexus-teal/5 blur-[120px] rounded-full pointer-events-none -translate-y-1/2" />
           <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-nexus-blue/5 blur-[120px] rounded-full pointer-events-none translate-y-1/2" />
@@ -270,36 +271,60 @@ function NavGroup({ title, children }: { title: string; children: React.ReactNod
 }
 
 function SideLink({ href, icon, label, active, title }: { href: string; icon: any; label: string; active?: boolean; title?: string }) {
-  return (
-    <Link 
-      href={href}
-      className={cn(
-        "flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all group relative",
-        active 
-          ? "bg-nexus-teal/15 text-nexus-teal border border-nexus-teal/20" 
-          : "text-white/40 hover:text-white hover:bg-white/15"
-      )}
-    >
-      <div className={cn(
-        "transition-all duration-300 flex-shrink-0",
-        active ? "text-nexus-teal drop-shadow-neon" : "group-hover:text-white"
-      )}>
-        {React.cloneElement(icon as React.ReactElement, { size: 18 })}
-      </div>
-      <span className={cn(
-        "text-[13px] font-bold transition-all duration-300",
-        active ? "text-white" : "text-white/40 group-hover:text-white/60"
-      )}>{label}</span>
-      
-      {active && (
-        <div className="absolute left-0 w-1 h-5 bg-nexus-teal rounded-r-full shadow-neon-teal" />
-      )}
+  const [isHovered, setIsHovered] = useState(false);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const linkRef = useRef<HTMLAnchorElement>(null);
 
-      {title && (
-        <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#111] border border-white/10 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 z-[100] whitespace-nowrap transform -translate-x-2 group-hover:translate-x-0 hidden lg:block">
-          <p className="text-[10px] font-mono text-nexus-teal uppercase tracking-widest leading-none drop-shadow-neon">{title}</p>
+  const handleMouseEnter = () => {
+    if (linkRef.current) {
+      setRect(linkRef.current.getBoundingClientRect());
+    }
+    setIsHovered(true);
+  };
+
+  return (
+    <>
+      <Link 
+        ref={linkRef}
+        href={href}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setIsHovered(false)}
+        className={cn(
+          "flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all group relative",
+          active 
+            ? "bg-nexus-teal/15 text-nexus-teal border border-nexus-teal/20" 
+            : "text-white/40 hover:text-white hover:bg-white/15"
+        )}
+      >
+        <div className={cn(
+          "transition-all duration-300 flex-shrink-0",
+          active ? "text-nexus-teal drop-shadow-neon" : "group-hover:text-white"
+        )}>
+          {React.cloneElement(icon as React.ReactElement, { size: 18 })}
         </div>
+        <span className={cn(
+          "text-[14px] leading-none font-bold transition-all duration-300",
+          active ? "text-white" : "text-white/40 group-hover:text-white/60"
+        )}>{label}</span>
+        
+        {active && (
+          <div className="absolute left-0 w-1 h-5 bg-nexus-teal rounded-r-full shadow-neon-teal" />
+        )}
+      </Link>
+
+      {title && isHovered && rect && typeof window !== "undefined" && createPortal(
+        <div 
+          className="fixed px-3 py-1.5 bg-slate-950/90 backdrop-blur-md border border-cyan-500/40 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.15)] pointer-events-none z-[9999] whitespace-nowrap animate-in fade-in zoom-in-95 duration-200 hidden lg:block"
+          style={{
+            top: rect.top + (rect.height / 2),
+            left: rect.right + 12,
+            transform: 'translateY(-50%)'
+          }}
+        >
+          <p className="text-[10px] font-mono text-cyan-100 uppercase tracking-widest leading-none drop-shadow-neon">{title}</p>
+        </div>,
+        document.body
       )}
-    </Link>
+    </>
   );
 }

@@ -15,7 +15,7 @@ export function EntitySelector() {
   ];
 
   return (
-    <div className="relative">
+    <div className={cn("relative", isOpen && "z-[99999]")}>
        <div 
           onClick={() => setIsOpen(!isOpen)}
           className="mb-2 p-3 rounded-xl bg-white/[0.03] border border-white/10 relative group cursor-pointer hover:bg-white/[0.06] transition-all overflow-hidden"
@@ -27,15 +27,15 @@ export function EntitySelector() {
                 {selectedEntity.id === "gl" ? <Globe size={20} /> : <ShieldCheck size={20} />}
              </div>
              <div className="flex-1 min-w-0 text-left">
-                <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-1">{selectedEntity.type}</p>
-                <p className="text-[13px] font-black text-white uppercase leading-tight break-words">{selectedEntity.name}</p>
+                <p className="text-[11px] font-bold text-white/20 uppercase tracking-widest mb-1">{selectedEntity.type}</p>
+                <p className="text-[14px] font-semibold text-white uppercase leading-tight break-words">{selectedEntity.name}</p>
              </div>
              <ChevronRight size={14} className={cn("text-white/20 group-hover:text-white transition-transform", isOpen && "rotate-90")} />
           </div>
        </div>
 
        {isOpen && (
-         <div className="absolute top-full left-0 w-full mt-2 z-[200] bg-[#121215] border border-white/10 rounded-2xl shadow-2xl p-2 animate-in fade-in slide-in-from-top-2 duration-300">
+         <div className="absolute top-full left-0 w-full mt-2 z-[99999] bg-surface-2 border border-white/10 rounded-2xl shadow-2xl p-2 animate-in fade-in slide-in-from-top-2 duration-300">
             {entities.map((entity) => (
                <button 
                   key={entity.id}
@@ -47,7 +47,7 @@ export function EntitySelector() {
                >
                   <div className={cn("w-2 h-2 rounded-full", entity.id === selectedEntity.id ? "bg-nexus-teal shadow-neon-teal" : "bg-white/20")} />
                   <div>
-                     <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">{entity.type}</p>
+                     <p className="text-[10px] font-semibold text-white/20 uppercase tracking-widest">{entity.type}</p>
                      <p className={cn("text-[12px] font-black uppercase transition-colors", entity.id === selectedEntity.id ? "text-white" : "text-white/60 group-hover:text-white")}>
                         {entity.name}
                      </p>

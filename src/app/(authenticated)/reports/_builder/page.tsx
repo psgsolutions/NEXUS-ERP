@@ -185,9 +185,9 @@ export default function DocumentBuilderPage() {
     };
   }, []);
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] bg-[#0A0A0C] text-white overflow-hidden relative h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar">
+    <div className="flex flex-col h-[calc(100vh-64px)] bg-surface-0 text-white overflow-hidden relative h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar">
       {/* ACTION BAR */}
-      <div className="h-16 border-b border-white/5 bg-[#0F0F12] flex items-center justify-between px-6 z-40 flex-shrink-0">
+      <div className="h-16 border-b border-white/5 bg-surface-1 flex items-center justify-between px-6 z-40 flex-shrink-0">
         <div className="flex items-center gap-4">
           <Link href="/reports/templates">
             <PillButton  className="h-9 w-9 p-0 rounded-full"><ArrowLeft size={16} /></PillButton>
@@ -223,7 +223,7 @@ export default function DocumentBuilderPage() {
       <div className="flex-1 flex overflow-hidden">
         
         {/* LEFT SIDEBAR: PROPERTIES */}
-        <aside className="w-[320px] border-r border-white/5 bg-[#0F0F12]/80 backdrop-blur-xl flex flex-col z-30 overflow-y-auto custom-scrollbar">
+        <aside className="w-[320px] border-r border-white/5 bg-surface-1/80 backdrop-blur-xl flex flex-col z-30 overflow-y-auto custom-scrollbar">
           <div className="p-5 border-b border-white/5">
             <h3 className="text-[11px] font-medium text-white/60 uppercase tracking-widest mb-4 flex items-center gap-2"><Sliders size={14} className="text-nexus-teal"/> PROPERTIES</h3>
             {selectedBlock ? (
@@ -327,7 +327,7 @@ export default function DocumentBuilderPage() {
 
         {/* CENTER CANVAS AREA */}
         <main 
-          className="flex-1 bg-[#121216] overflow-auto p-12 flex justify-center custom-scrollbar relative"
+          className="flex-1 bg-surface-1 overflow-auto p-12 flex justify-center custom-scrollbar relative"
         >
           {/* Paper element */}
           <div 
@@ -417,7 +417,7 @@ export default function DocumentBuilderPage() {
         </main>
 
         {/* RIGHT SIDEBAR: TOOLBOX */}
-        <aside className="w-[80px] border-l border-white/5 bg-[#0F0F12]/80 backdrop-blur-xl flex flex-col items-center py-6 gap-4 z-30">
+        <aside className="w-[80px] border-l border-white/5 bg-surface-1/80 backdrop-blur-xl flex flex-col items-center py-6 gap-4 z-30">
           <button onClick={() => addNewBlock("text")} title="Add Text" className="w-12 h-12 rounded-xl bg-white/15 hover:bg-nexus-teal/20 text-white/60 hover:text-nexus-teal flex items-center justify-center transition-all"><Type size={18} /></button>
           <button onClick={() => addNewBlock("image")} title="Add Image" className="w-12 h-12 rounded-xl bg-white/15 hover:bg-nexus-teal/20 text-white/60 hover:text-nexus-teal flex items-center justify-center transition-all"><ImageIcon size={18} /></button>
           <button onClick={() => addNewBlock("line")} title="Add Line" className="w-12 h-12 rounded-xl bg-white/15 hover:bg-nexus-teal/20 text-white/60 hover:text-nexus-teal flex items-center justify-center transition-all"><Minus size={18} /></button>

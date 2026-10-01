@@ -160,54 +160,79 @@ export default function ProcurementPage() {
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
 
       {/* Compact Module Header — icon + title + inline metric chips on same plane */}
-      <header className="p-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-5 bg-black/20 shrink-0">
-        <div className="flex items-center gap-4 shrink-0">
-          <div className="w-10 h-10 rounded-2xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
-            <ShoppingCart size={22} />
+      <header className="px-6 py-2.5 min-h-[60px] border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-black/20 shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
+            <ShoppingCart size={20} />
           </div>
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight leading-none">ระบบบริหารงานจัดซื้อ</h1>
-            <p className="text-sm font-medium text-white/30 uppercase mt-1.5 tracking-widest leading-none">Purchasing &amp; Procurement System</p>
+            <p className="text-sm font-medium text-white/30 uppercase mt-1 tracking-widest leading-none">Purchasing &amp; Procurement System</p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
-              <ShoppingBag size={18} />
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
+              <ShoppingBag size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">ยอดสั่งซื้อเดือนนี้</span>
-              <span className="text-[17px] font-bold text-nexus-teal mt-1 mono-numbers leading-none">฿1.8M</span>
+              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">฿1.8M</span>
             </div>
           </div>
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
-              <Clock size={18} />
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
+              <Clock size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">Avg. Lead Time</span>
-              <span className="text-[17px] font-bold text-nexus-blue mt-1 mono-numbers leading-none">4.2 Days</span>
+              <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none">4.2 Days</span>
             </div>
           </div>
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-warning/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center text-warning border border-warning/20 shrink-0">
-              <AlertCircle size={18} />
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-warning/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center text-warning border border-warning/20 shrink-0">
+              <AlertCircle size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">รออนุมัติพิเศษ</span>
-              <span className="text-[17px] font-bold text-warning mt-1 mono-numbers leading-none">2 ฉบับ</span>
+              <span className="text-[17px] font-bold text-warning mt-0.5 mono-numbers leading-none">2 ฉบับ</span>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Tab Navigation */}
-      <section className="px-6 py-4 bg-black/10 border-b border-white/5 shrink-0">
+      {/* Tab Navigation & Actions */}
+      <section className="px-6 h-[56px] bg-black/10 border-b border-white/5 flex items-center justify-between shrink-0">
         <PillTabs 
           tabs={tabs} 
           activeTab={activeTab} 
           onTabChange={(id: any) => setActiveTab(id)} 
         />
+        <div className="flex gap-3 shrink-0">
+           <PillButton 
+              variant="primary"
+              className="h-8 px-5 shadow-neon-teal"
+              onClick={() => {
+                 if (activeTab === "suppliers") router.push("/procurement/suppliers/new");
+                 else if (activeTab === "pr") router.push("/procurement/requests/new");
+                 else if (activeTab === "receipt") router.push("/inventory/in/new");
+                 else if (activeTab === "expense") router.push("/finance/expense-claims/new");
+                 else if (activeTab === "wht") router.push("/procurement/wht/new");
+                 else router.push("/procurement/orders/new");
+              }} 
+           >
+              {activeTab === "suppliers" ? <UserPlus size={14} className="mr-1.5" /> : 
+               activeTab === "pr" ? <ClipboardList size={14} className="mr-1.5" /> : 
+               activeTab === "receipt" ? <Truck size={14} className="mr-1.5" /> : 
+               <ShoppingCart size={14} className="mr-1.5" />}
+              {
+                 activeTab === "suppliers" ? "ลงทะเบียนคู่ค้าใหม่" : 
+                 activeTab === "pr" ? "เปิดใบขอซื้อ" : 
+                 activeTab === "receipt" ? "บันทึกรับสินค้า" :
+                 "ออกใบสั่งซื้อ"
+              }
+           </PillButton>
+        </div>
       </section>
 
       {/* Main Content Scroll Area */}
@@ -215,10 +240,10 @@ export default function ProcurementPage() {
       <div className="p-5 space-y-3 max-w-[1800px] mx-auto">
 
       <div className="flex flex-col xl:flex-row items-start gap-4">
-        <div className="flex-1 w-full space-y-10">
+        <div className="flex-1 w-full space-y-3">
           
           <div className="space-y-3">
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
               <div className="flex items-center gap-4 shrink-0">
                  <Activity className="text-nexus-teal" size={24} />
                   <div className="space-y-0.5">
@@ -228,33 +253,10 @@ export default function ProcurementPage() {
               </div>
               {/* Document Sequence Visualizer */}
               {procurementFlowSteps.some(s => s.id === activeTab) && (
-                <div className="flex-1 w-full max-w-3xl px-6 py-2 hidden xl:block overflow-hidden">
+                <div className="hidden xl:block">
                    <DocumentFlowStepper activeTab={activeTab} onStepClick={(id) => setActiveTab(id as any)} steps={procurementFlowSteps} />
                 </div>
               )}
-              <div className="flex gap-3 shrink-0">
-                 <PillButton 
-                    onClick={() => {
-                       if (activeTab === "suppliers") router.push("/procurement/suppliers/new");
-                       else if (activeTab === "pr") router.push("/procurement/requests/new");
-                       else if (activeTab === "receipt") router.push("/inventory/in/new");
-                       else if (activeTab === "expense") router.push("/finance/expense-claims/new");
-                       else if (activeTab === "wht") router.push("/procurement/wht/new");
-                       else router.push("/procurement/orders/new");
-                    }} 
-                 >
-                    {activeTab === "suppliers" ? <UserPlus size={20} /> : 
-                     activeTab === "pr" ? <ClipboardList size={20} /> : 
-                     activeTab === "receipt" ? <Truck size={20} /> : 
-                     <ShoppingCart size={20} />}
-                    {
-                       activeTab === "suppliers" ? "ลงทะเบียนคู่ค้าใหม่" : 
-                       activeTab === "pr" ? "เปิดใบขอซื้อ" : 
-                       activeTab === "receipt" ? "บันทึกรับสินค้า" :
-                       "ออกใบสั่งซื้อ"
-                    }
-                 </PillButton>
-              </div>
             </div>
 
             {/* Tactical Command Bar */}
@@ -278,7 +280,7 @@ export default function ProcurementPage() {
                </div>
             </div>
 
-            <GlassCard className="p-0 overflow-hidden border-white/5 min-h-[640px] flex flex-col justify-between bg-black/40">
+            <GlassCard accentColor="teal" className="p-0 overflow-hidden min-h-[640px] flex flex-col justify-between">
                <div className="overflow-x-auto custom-scrollbar flex-1 w-full">
                  {activeTab === "suppliers" ? (
                     <NexusTable headers={["รหัสคู่ค้า", "ชื่อคู่ค้า / นิติบุคคล", "หมวดหมู่", "เบอร์โทรศัพท์", "สถานะ"]}>
@@ -361,9 +363,12 @@ export default function ProcurementPage() {
         </div>
 
         {/* Right Sidebar Status */}
-        <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
-           <GlassCard className="p-4 border-white/10 bg-nexus-teal/5 rounded-lg">
-              <h4 className="text-sm font-medium text-nexus-teal uppercase tracking-widest mb-6">ดัชนีชี้วัดประสิทธิภาพคู่ค้า</h4>
+        <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-7 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
+           <GlassCard accentColor="blue" className="p-5">
+              <h4 className="text-xs font-bold text-nexus-teal uppercase tracking-widest mb-4 flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-[10px] text-nexus-teal font-mono font-bold">01</span>
+                ดัชนีชี้วัดประสิทธิภาพคู่ค้า
+              </h4>
               <div className="space-y-3">
                  <PerformanceItem label="Cisco Thailand" score={98} />
                  <PerformanceItem label="Aruba Solutions" score={85} />
@@ -371,8 +376,11 @@ export default function ProcurementPage() {
               </div>
            </GlassCard>
 
-           <GlassCard className="p-4 border-white/10 rounded-lg">
-              <h4 className="text-sm font-medium text-white/60 uppercase tracking-widest mb-6">แนวโน้มราคาตลาด</h4>
+           <GlassCard accentColor="purple" className="p-5">
+              <h4 className="text-xs font-bold text-white/70 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-[10px] text-purple-400 font-mono font-bold">02</span>
+                แนวโน้มราคาตลาด
+              </h4>
               <div className="space-y-3">
                  <PriceTrendItem item="CAT6 Cable 305m" change="-2.4%" trend="down" />
                  <PriceTrendItem item="Core Switch 24P" change="+5.1%" trend="up" />
@@ -408,13 +416,13 @@ export default function ProcurementPage() {
 function SupplierRow({ id, name, category, phone, status, onClick }: { id: string, name: string, category: string, phone: string, status: "active" | "inactive", onClick?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[140px]">
-         <p className="font-mono text-sm text-nexus-blue font-medium tracking-tighter">{id}</p>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
+         <p className="font-mono text-sm text-nexus-blue font-medium tracking-tighter text-center w-full">{id}</p>
       </NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80 group-hover:text-white transition-colors">{name}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-sm font-medium text-white/60 uppercase tracking-[0.1em]">{category}</NexusTableCell>
-      <NexusTableCell className="w-[150px] font-mono text-[12px] text-white/60">{phone}</NexusTableCell>
-      <NexusTableCell className="w-[120px]">
+      <NexusTableCell className="w-full font-bold text-white/80 group-hover:text-white transition-colors">{name}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-sm font-medium text-white/60 uppercase tracking-[0.1em]">{category}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[12px] text-white/60">{phone}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={status} label={status === "active" ? "ใช้งาน" : "ระงับ"} />
       </NexusTableCell>
     </NexusTableRow>
@@ -424,14 +432,14 @@ function SupplierRow({ id, name, category, phone, status, onClick }: { id: strin
 function GRRow({ id, po, supplier, date, warehouse, status, onClick }: { id: string, po: string, supplier: string, date: string, warehouse: string, status: "active" | "pending" | "danger", onClick?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[140px]">
-         <p className="font-mono text-sm text-nexus-teal font-medium tracking-tighter">{id}</p>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
+         <p className="font-mono text-sm text-nexus-teal font-medium tracking-tighter text-center w-full">{id}</p>
       </NexusTableCell>
-      <NexusTableCell className="w-[150px] font-mono text-[10px] text-white/60 uppercase tracking-widest">{po}</NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80 group-hover:text-white transition-colors">{supplier}</NexusTableCell>
-      <NexusTableCell className="w-[120px] text-white/60 font-bold">{date}</NexusTableCell>
-      <NexusTableCell className="w-[120px] text-sm font-medium text-white/40 uppercase">{warehouse}</NexusTableCell>
-      <NexusTableCell className="w-[120px]">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[10px] text-white/60 uppercase tracking-widest">{po}</NexusTableCell>
+      <NexusTableCell className="w-full font-bold text-white/80 group-hover:text-white transition-colors">{supplier}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-white/60 font-bold">{date}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-sm font-medium text-white/40 uppercase">{warehouse}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={status} label={status === "active" ? "รับครบ" : "รับบางส่วน"} />
       </NexusTableCell>
     </NexusTableRow>
@@ -441,14 +449,14 @@ function GRRow({ id, po, supplier, date, warehouse, status, onClick }: { id: str
 function PRRow({ id, requester, dept, project, amount, status, onClick }: { id: string, requester: string, dept: string, project: string, amount: string, status: "active" | "pending" | "danger", onClick?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[140px]">
-         <p className="font-mono text-sm text-nexus-purple font-medium tracking-tighter">{id}</p>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
+         <p className="font-mono text-sm text-nexus-purple font-medium tracking-tighter text-center w-full">{id}</p>
       </NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80 group-hover:text-white transition-colors">{requester}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-sm font-medium text-white/60 uppercase tracking-[0.1em]">{dept}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-white/60 font-bold">{project}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-white mono-numbers">{amount}</NexusTableCell>
-      <NexusTableCell className="w-[120px]">
+      <NexusTableCell className="w-full font-bold text-white/80 group-hover:text-white transition-colors">{requester}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-sm font-medium text-white/60 uppercase tracking-[0.1em]">{dept}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-white/60 font-bold">{project}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white mono-numbers">{amount}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={status} label={status === "active" ? "อนุมัติแล้ว" : "รออนุมัติ"} />
       </NexusTableCell>
     </NexusTableRow>
@@ -461,21 +469,21 @@ function PORow({ id, vendor, totalAmount, amount, approval, status, companyId, o
   
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[140px]">
-         <p className="font-mono text-[12px] text-purple-400 font-medium tracking-tighter">{id}</p>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
+         <p className="font-mono text-[12px] text-purple-400 font-medium tracking-tighter text-center w-full">{id}</p>
       </NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80">{vendor}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-white mono-numbers">{displayAmount}</NexusTableCell>
-      <NexusTableCell className="w-[180px]">
+      <NexusTableCell className="w-full font-bold text-white/80">{vendor}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white mono-numbers">{displayAmount}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div className="flex items-center gap-2">
            <div className={cn("w-1.5 h-1.5 rounded-full", isApproved ? "bg-nexus-teal" : "bg-amber-400")} />
            <span className="text-[11px] font-medium text-white/60">{approval || status}</span>
         </div>
       </NexusTableCell>
-      <NexusTableCell className="text-center w-[120px]">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={isApproved ? "active" : "pending"} label={isApproved ? "รอดำเนินการ" : "รออนุมัติ"} />
       </NexusTableCell>
-      <NexusTableCell className="w-[140px] text-right">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-end gap-2">
           {onExpenseCreate && isApproved && (
              <button onClick={onExpenseCreate} className="px-2 py-1 text-[10px] bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500 hover:text-white transition-colors">รับ+ตั้งหนี้</button>
@@ -493,19 +501,19 @@ function ExpenseRow({ id, poRef, vendor, supplier, totalAmount, amount, status, 
   const isPaid = status?.includes("Paid") || status === "paid";
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[140px]">
-         <p className="font-mono text-[12px] text-nexus-teal font-medium tracking-tighter">{id}</p>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
+         <p className="font-mono text-[12px] text-nexus-teal font-medium tracking-tighter text-center w-full">{id}</p>
       </NexusTableCell>
-      <NexusTableCell className="w-[140px] font-mono text-[11px] text-white/40">{poRef || "-"}</NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80">{displayVendor}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-white mono-numbers">{displayAmount}</NexusTableCell>
-      <NexusTableCell className="text-center w-[120px]">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[11px] text-white/40">{poRef || "-"}</NexusTableCell>
+      <NexusTableCell className="w-full font-bold text-white/80">{displayVendor}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white mono-numbers">{displayAmount}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={isPaid ? "active" : "pending"} label={isPaid ? "ชำระแล้ว" : "รอจ่ายเงิน"} />
       </NexusTableCell>
-      <NexusTableCell className="w-[140px] text-right">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-end gap-2">
           {onWhtCreate && !isPaid && (
-             <button onClick={onWhtCreate} className="px-2 py-1 text-[10px] bg-nexus-blue/20 text-nexus-blue rounded hover:bg-nexus-blue hover:text-white transition-colors">จ่าย+หัก WHT</button>
+             <button onClick={onWhtCreate} className="px-2 py-1 text-[10px]  text-nexus-blue rounded hover:bg-nexus-blue hover:text-white transition-colors">จ่าย+หัก WHT</button>
           )}
           <SecureDeleteAction collectionName="expenses" documentId={id} displayName={id} compact />
         </div>
@@ -517,17 +525,17 @@ function ExpenseRow({ id, poRef, vendor, supplier, totalAmount, amount, status, 
 function WHTRow({ id, expenseId, expRef, vendor, baseAmount, taxAmount, status, companyId, onClick }: any) {
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[140px]">
-         <p className="font-mono text-[12px] text-amber-500 font-medium tracking-tighter">{id}</p>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
+         <p className="font-mono text-[12px] text-amber-500 font-medium tracking-tighter text-center w-full">{id}</p>
       </NexusTableCell>
-      <NexusTableCell className="w-[140px] font-mono text-[11px] text-white/40">{expRef || expenseId || "-"}</NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80">{vendor || "-"}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-white/60 mono-numbers">฿{baseAmount?.toLocaleString() || "0.00"}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-warning mono-numbers">฿{taxAmount?.toLocaleString() || "0.00"}</NexusTableCell>
-      <NexusTableCell className="text-center w-[120px]">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[11px] text-white/40">{expRef || expenseId || "-"}</NexusTableCell>
+      <NexusTableCell className="w-full font-bold text-white/80">{vendor || "-"}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white/60 mono-numbers">฿{baseAmount?.toLocaleString() || "0.00"}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-warning mono-numbers">฿{taxAmount?.toLocaleString() || "0.00"}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status="active" label={status === 'filed' ? "ยื่นแบบแล้ว" : "ออกเอกสารแล้ว"} />
       </NexusTableCell>
-      <NexusTableCell className="w-[100px] text-right">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-block">
           <SecureDeleteAction collectionName="withholding_taxes" documentId={id} displayName={id} compact />
         </div>
@@ -556,7 +564,7 @@ function PriceTrendItem({ item, change, trend }: { item: string, change: string,
        <div className="flex items-center gap-3">
           <div className={cn(
             "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
-            trend === "down" ? "bg-nexus-teal/10 text-nexus-teal" : "bg-danger/10 text-danger"
+            trend === "down" ? " text-nexus-teal" : "bg-danger/10 text-danger"
           )}>
              {trend === "down" ? <TrendingDown size={14} /> : <TrendingDown size={14} className="rotate-180" />}
           </div>

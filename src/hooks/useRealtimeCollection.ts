@@ -37,8 +37,9 @@ export function useRealtimeCollection<T = any>(
       }
       
       // Enforce soft-delete rule globally (NEXUS Schema V3.0)
-      queryConstraints.push(where('isDeleted', '==', false));
-      
+      // Removed the query-level constraint to prevent Firebase Index errors. 
+      // The client-side snapshot loop already filters `if (data.isDeleted !== true)`
+      // queryConstraints.push(where('isDeleted', '==', false));      
       queryConstraints.push(...constraints);
 
       const q = query(colRef, ...queryConstraints);

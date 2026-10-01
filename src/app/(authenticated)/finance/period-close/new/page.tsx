@@ -59,37 +59,44 @@ export default function NewPeriodClosePage() {
   };
 
   const headerContent = (
-    <>
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <button onClick={handleBack} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-white/50 hover:text-white transition-all backdrop-blur-sm">
-          <ArrowLeft size={18} />
-        </button>
+        <PillButton variant="glass" onClick={handleBack} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
         <div>
-          <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-0.5">FISCAL_PERIOD_V1.0</p>
-          <div className="flex items-center">
-            <h1 className="text-xl font-black uppercase tracking-tight text-white">การปิดงวดบัญชี (Period Close)</h1>
-            <DocumentStepper steps={["Review", "Locked"]} currentStep={step - 1} />
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+              การปิดงวดบัญชี
+            </h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              PERIOD-CLOSE
+            </span>
           </div>
+          <p className="text-sm text-white/60 font-medium mt-1">
+            ตรวจสอบความพร้อมและยืนยันการปิดงวดบัญชีรายเดือน
+          </p>
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
         {step === 1 ? (
-           <PillButton className="h-9 px-6 rounded-full shadow-[0_0_12px_rgba(6,182,212,0.15)] font-black border border-cyan-500/20 bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 text-[12px]" onClick={() => setStep(2)}>
-              ดำเนินการต่อ <ArrowRight size={14} className="ml-2" />
-           </PillButton>
+          <PillButton variant="primary" className="h-8 px-5 font-bold text-xs" onClick={() => setStep(2)}>
+            ดำเนินการต่อ <ArrowRight size={14} className="ml-1.5" />
+          </PillButton>
         ) : (
-           <PillButton 
-             className={cn("h-9 px-6 rounded-full shadow-[0_0_12px_rgba(234,179,8,0.15)] bg-warning/10 text-warning border border-warning/20 font-black text-[12px] hover:bg-warning/20", isSaving && "opacity-50 pointer-events-none grayscale")} 
-             onClick={handleConfirm}
-             disabled={isSaving}
-           >
-              <ShieldCheck size={14} className={cn("mr-2", isSaving && "animate-pulse")} />
-              {isSaving ? "กำลังล็อก..." : "ยืนยันและล็อก"}
-           </PillButton>
+          <PillButton 
+            variant="confirm"
+            className={cn("h-8 px-5 font-bold text-xs", isSaving && "opacity-50 pointer-events-none grayscale")} 
+            onClick={handleConfirm}
+            disabled={isSaving}
+          >
+            <ShieldCheck size={14} className={cn("mr-1.5", isSaving && "animate-pulse")} />
+            {isSaving ? "กำลังล็อก..." : "ยืนยันและล็อก"}
+          </PillButton>
         )}
       </div>
-    </>
+    </div>
   );
 
   const leftContent = (
@@ -101,7 +108,7 @@ export default function NewPeriodClosePage() {
               <Calendar size={32} />
            </div>
            <div>
-              <h4 className="text-2xl font-black text-white uppercase tracking-tight">ปิดงวดบัญชีรายเดือน</h4>
+              <h4 className="text-2xl font-semibold text-white uppercase tracking-tight">ปิดงวดบัญชีรายเดือน</h4>
               <p className="text-[13px] font-bold text-white/30 uppercase tracking-[0.2em] mt-1">Fiscal Period Execution</p>
            </div>
         </div>
@@ -127,7 +134,7 @@ export default function NewPeriodClosePage() {
             </div>
 
             <div className="space-y-6">
-               <h5 className="text-[11px] font-black text-white/40 uppercase tracking-widest">ระบบตรวจสอบความพร้อม (Readiness Check)</h5>
+               <h5 className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">ระบบตรวจสอบความพร้อม (Readiness Check)</h5>
                <div className="space-y-4">
                   <CheckItem label="รายการรายวันที่ยังไม่ผ่านเช็ค" value={checks.unpostedJVs === 0 ? "ผ่าน" : `${checks.unpostedJVs} รายการ`} status={checks.unpostedJVs === 0 ? "pass" : "fail"} />
                   <CheckItem label="ยอดสมดุลผังบัญชี" value={checks.unbalancedAccounts === 0 ? "สมดุล" : "ไม่สมดุล"} status={checks.unbalancedAccounts === 0 ? "pass" : "fail"} />
@@ -143,7 +150,7 @@ export default function NewPeriodClosePage() {
                 <Lock size={64} />
              </div>
              <div className="space-y-6">
-                <h4 className="text-3xl font-black text-white uppercase tracking-tight">ยืนยันการปิดงวดบัญชี?</h4>
+                <h4 className="text-3xl font-semibold text-white uppercase tracking-tight">ยืนยันการปิดงวดบัญชี?</h4>
                 <p className="text-[14px] text-white/40 font-bold leading-relaxed max-w-lg mx-auto">
                    เมื่อปิดงวดบัญชีแล้ว คุณจะไม่สามารถบันทึกหรือแก้ไขรายการใดๆ ในเดือน <span className="text-cyan-400">{period.month} {period.year}</span> ได้อีกต่อไป 
                    เว้นแต่จะได้รับการอนุมัติปลดล็อกพิเศษจากระดับบริหาร
@@ -159,17 +166,17 @@ export default function NewPeriodClosePage() {
   const rightSidebar = (
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
        <div className="space-y-1 relative z-10 border-b border-white/5 pb-4">
-         <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">ลำดับขั้น</p>
-         <h5 className="text-sm font-black text-white uppercase tracking-tight">Close Process</h5>
+         <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">ลำดับขั้น</p>
+         <h5 className="text-sm font-semibold text-white uppercase tracking-tight">Close Process</h5>
        </div>
        
        <div className="space-y-4 relative z-10">
           <div className={cn("p-6 rounded-3xl transition-all border", step === 1 ? "bg-cyan-500/10 border-cyan-500/20" : "bg-white/[0.02] border-white/5 opacity-40")}>
-             <p className="text-[11px] font-black text-cyan-400 uppercase tracking-widest mb-2">Step 1</p>
+             <p className="text-[11px] font-semibold text-cyan-400 uppercase tracking-widest mb-2">Step 1</p>
              <p className="text-[13px] font-bold text-white">ตรวจสอบความถูกต้อง</p>
           </div>
           <div className={cn("p-6 rounded-3xl transition-all border", step === 2 ? "bg-warning/10 border-warning/20" : "bg-white/[0.02] border-white/5 opacity-40")}>
-             <p className="text-[11px] font-black text-warning uppercase tracking-widest mb-2">Step 2</p>
+             <p className="text-[11px] font-semibold text-warning uppercase tracking-widest mb-2">Step 2</p>
              <p className="text-[13px] font-bold text-white">ล็อกบัญชีแยกประเภท</p>
           </div>
        </div>

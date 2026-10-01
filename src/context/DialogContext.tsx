@@ -67,7 +67,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
   const dialogContent = isOpen && mounted && typeof document !== "undefined" ? createPortal(
     <div className="fixed inset-0 flex items-center justify-center p-6 animate-in fade-in duration-200" style={{ zIndex: 9999999 }}>
       <div className="absolute inset-0 bg-black/80 backdrop-blur-3xl" onClick={() => config.type === "confirm" ? handleClose(false) : handleClose()} />
-      <div className="relative w-full max-w-md bg-[#0a0a0c]/80 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl p-8 flex flex-col gap-6 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300" style={{ zIndex: 10000000 }}>
+      <div className="relative w-full max-w-md bg-surface-0/80 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl p-8 flex flex-col gap-6 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300" style={{ zIndex: 10000000 }}>
 
             <div className="flex items-start gap-4">
                <div className={cn(
@@ -79,7 +79,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
                   {config.alertType === 'error' ? <X size={24} /> : config.alertType === 'warning' ? <AlertTriangle size={24} /> : <Info size={24} />}
                </div>
                <div className="space-y-2 flex-1 pt-1">
-                 <h3 className="text-lg font-black text-white uppercase tracking-tight leading-none">{config.title}</h3>
+                 <h3 className="text-lg font-semibold text-white uppercase tracking-tight leading-none">{config.title}</h3>
                  <p className="text-[14px] text-white/70 font-bold leading-relaxed">{config.message}</p>
                </div>
             </div>

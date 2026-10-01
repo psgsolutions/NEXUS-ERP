@@ -23,7 +23,7 @@ export default function ProtectedLayout({
 
   if (loading) {
     return (
-      <div className="h-screen w-full bg-[#09090b] flex flex-col items-center justify-center gap-4 text-nexus-blue">
+      <div className="h-screen w-full bg-surface-1 flex flex-col items-center justify-center gap-4 text-nexus-blue">
         <Loader2 className="w-12 h-12 animate-spin" />
         <p className="text-[11px] font-medium uppercase tracking-[0.3em] animate-pulse">กำลังตรวจสอบสิทธิ์การเข้าถึง...</p>
       </div>

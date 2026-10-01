@@ -84,10 +84,10 @@ export function TacticalQuickAction() {
                   : "bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10"
               )}
             >
-              <span className="text-xs font-black uppercase tracking-widest">{item.label}</span>
+              <span className="text-xs font-semibold uppercase tracking-widest">{item.label}</span>
               <div className={cn(
                 "p-1.5 rounded-lg border",
-                item.isAI ? "bg-nexus-teal text-black border-nexus-teal" : "bg-white/10 border-white/10"
+                item.isAI ? "bg-nexus-teal/20 text-nexus-teal border-nexus-teal/40" : "bg-white/10 border-white/10"
               )}>
                 {item.icon}
               </div>

@@ -140,7 +140,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onClose
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between border-b border-white/5 pb-4">
-        <h2 className="text-lg font-black text-white uppercase tracking-widest">
+        <h2 className="text-lg font-semibold text-white uppercase tracking-widest">
           {initialData ? 'แก้ไขข้อมูลลูกค้า' : 'สร้างลูกค้าใหม่'}
         </h2>
         <button onClick={onClose} className="text-white/40 hover:text-white">
@@ -158,12 +158,12 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onClose
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Identity */}
         <div className="space-y-4">
-          <h3 className="text-xs font-black text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
+          <h3 className="text-xs font-semibold text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
             ข้อมูลตัวตน (Identity)
           </h3>
           
           <div>
-            <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1 not-italic">
+            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 not-italic">
               ชื่อลูกค้า <span className="text-red-500 font-bold">*</span> (Customer Name)
             </label>
             <PillInput 
@@ -175,7 +175,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onClose
           </div>
 
           <div>
-            <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1 not-italic">
+            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 not-italic">
               เกรดลูกค้า (Grade)
             </label>
             <select
@@ -193,12 +193,12 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onClose
 
         {/* Tax/Finance */}
         <div className="space-y-4">
-          <h3 className="text-xs font-black text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
+          <h3 className="text-xs font-semibold text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
             ภาษี/การเงิน (Tax & Finance)
           </h3>
 
           <div>
-            <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1 not-italic">
+            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 not-italic">
               เลขประจำตัวผู้เสียภาษี 13 หลัก (Tax ID)
             </label>
             <PillInput 
@@ -212,7 +212,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onClose
           </div>
 
           <div>
-            <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1 not-italic">
+            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 not-italic">
               เครดิตเทอม (วัน) (Credit Term)
             </label>
             <PillInput 
@@ -228,13 +228,13 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onClose
 
         {/* Contact Info */}
         <div className="col-span-1 md:col-span-2 space-y-4">
-          <h3 className="text-xs font-black text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
+          <h3 className="text-xs font-semibold text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
             ข้อมูลติดต่อ (Contact Info)
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1 not-italic">
+              <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 not-italic">
                 เบอร์โทรศัพท์ (Phone)
               </label>
               <PillInput 
@@ -247,7 +247,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onClose
               />
             </div>
             <div>
-              <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1 not-italic">
+              <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 not-italic">
                 อีเมล (Email)
               </label>
               <PillInput 
@@ -261,7 +261,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, onClose
           </div>
 
           <div>
-            <label className="block text-[11px] font-black text-white/40 uppercase tracking-widest mb-1 not-italic">
+            <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 not-italic">
               ที่อยู่ (Address)
             </label>
             <textarea

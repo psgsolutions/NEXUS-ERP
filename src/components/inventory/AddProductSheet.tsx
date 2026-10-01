@@ -50,12 +50,17 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
   const [formData, setFormData] = useState({
     supplierId: "SUPP-001",
     poRef: "",
-    warehouseId: "WH-01",
+    defaultWarehouseId: "WH-01",
     sku: "",
     name: "",
+    brand: "NEXUS",
+    model: "",
+    supplierSku: "",
+    mpn: "",
     barcode: "",
     category: "general",
-    rackLocation: "",
+    defaultRackLocation: "",
+    lifecycleStatus: "ACTIVE" as "DRAFT" | "ACTIVE" | "PHASE_OUT" | "OBSOLETE",
     qty: 1,
     cost: 0,
     price: 0,
@@ -198,12 +203,17 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
       setFormData({
         supplierId: "SUPP-001",
         poRef: "",
-        warehouseId: "WH-01",
+        defaultWarehouseId: "WH-01",
         sku: generatedSku,
         name: "",
+        brand: "NEXUS",
+        model: "",
+        supplierSku: "",
+        mpn: "",
         barcode: "",
         category: "general",
-        rackLocation: "",
+        defaultRackLocation: "",
+        lifecycleStatus: "ACTIVE",
         qty: 1,
         cost: 0,
         price: 0,
@@ -281,24 +291,34 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
             sku: formData.sku,
             barcode: formData.barcode,
             name: formData.name,
+            brand: formData.brand || "NEXUS",
+            model: formData.model || "",
             category: formData.category,
-            brand: "NEXUS",
-            unit: formData.baseUnit, // Base unit stored as main product unit
+            unit: formData.baseUnit,
             packageUnit: formData.packageUnit,
             conversionRate: formData.conversionRate,
-            warehouseId: formData.warehouseId,
-            rackLocation: formData.rackLocation || "WH-01-A1",
+            defaultWarehouseId: formData.defaultWarehouseId,
+            defaultRackLocation: formData.defaultRackLocation || "WH-01-A1",
+            lifecycleStatus: formData.lifecycleStatus,
             supplierId: formData.supplierId,
+            supplierConfig: [
+              {
+                supplierId: formData.supplierId,
+                supplierSku: formData.supplierSku || "",
+                mpn: formData.mpn || "",
+                latestCost: formData.cost,
+                leadTimeDays: 3,
+                isPrimary: true
+              }
+            ],
+            costWAC: formData.cost,
+            pricePOS: formData.price,
+            priceProject: formData.price * 1.2,
             imageUrl: formData.imageUrl || "",
             stockStatus: {
               onHand: totalQty,
               reserved: 0,
               available: totalQty
-            },
-            pricing: {
-              costWAC: formData.cost,
-              pricePOS: formData.price,
-              priceProject: formData.price * 1.2
             },
             updatedAt: new Date(),
             isDeleted: false
@@ -313,7 +333,7 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
             productId: prodId,
             quantity: totalQty,
             fromLocation: "EXTERNAL",
-            toLocation: formData.rackLocation || "WH-01-A1",
+            toLocation: formData.defaultRackLocation || "WH-01-A1",
             userId: user.displayName || "system",
             createdAt: new Date()
           });
@@ -364,8 +384,9 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
                 pricePOS: existingProd?.pricing?.pricePOS || Number(((item.cost || 0) / 0.8).toFixed(2)),
                 priceProject: existingProd?.pricing?.priceProject || Number(((item.cost || 0) / 0.8).toFixed(2)) * 1.2
               },
-              warehouseId: formData.warehouseId || (existingProd as any)?.warehouseId || "WH-01",
-              rackLocation: formData.rackLocation || (existingProd as any)?.rackLocation || "WH-01-A1",
+              defaultWarehouseId: formData.defaultWarehouseId || (existingProd as any)?.defaultWarehouseId || "WH-01",
+              defaultRackLocation: formData.defaultRackLocation || (existingProd as any)?.defaultRackLocation || "WH-01-A1",
+              lifecycleStatus: formData.lifecycleStatus || (existingProd as any)?.lifecycleStatus || "ACTIVE",
               supplierId: formData.supplierId,
               updatedAt: new Date(),
               isDeleted: false
@@ -380,7 +401,7 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
               productId: prodId,
               quantity: item.qtyReceived,
               fromLocation: "EXTERNAL",
-              toLocation: formData.rackLocation || "WH-01-A1",
+              toLocation: formData.defaultRackLocation || "WH-01-A1",
               userId: user.displayName || "system",
               createdAt: new Date()
             });
@@ -407,14 +428,14 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
       title="เพิ่มสินค้า"
       maxWidth="max-w-[1600px]"
     >
-      <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
+      <div className="flex h-full divide-x divide-white/5 bg-surface-0">
         {/* Left main form pane */}
         <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
           <div className="max-w-4xl mx-auto space-y-12">
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
                <div className="space-y-1">
-                  <p className="text-[12px] font-black text-nexus-teal uppercase tracking-[0.2em]">Inbound Logistics Operation / New Product Registration</p>
-                  <h4 className="text-xl font-black text-white uppercase tracking-tight">ระบุข้อมูลพื้นฐานและพิกัดจัดเก็บสินค้า</h4>
+                  <p className="text-[12px] font-semibold text-nexus-teal uppercase tracking-[0.2em]">Inbound Logistics Operation / New Product Registration</p>
+                  <h4 className="text-xl font-semibold text-white uppercase tracking-tight">ระบุข้อมูลพื้นฐานและพิกัดจัดเก็บสินค้า</h4>
                </div>
                <PillTabs tabs={tabs} activeTab={sourceMode} onTabChange={setSourceMode} />
             </div>
@@ -426,7 +447,7 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
                         <div className="flex items-center justify-between">
                            <div className="flex items-center gap-3 text-nexus-teal">
                               <Package size={18} />
-                              <h5 className="text-[13px] font-black uppercase tracking-widest">ข้อมูลสินค้า</h5>
+                              <h5 className="text-[13px] font-semibold uppercase tracking-widest">ข้อมูลสินค้า</h5>
                            </div>
                            <SmartScanner 
                              type="product_label"
@@ -451,13 +472,13 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
                                    <>
                                       <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
                                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                         <span className="text-[9px] font-black uppercase text-white">Change</span>
+                                         <span className="text-[9px] font-semibold uppercase text-white">Change</span>
                                       </div>
                                    </>
                                 ) : (
                                    <>
                                       <Plus size={20} className="mb-1" />
-                                      <span className="text-[9px] font-black uppercase">Upload</span>
+                                      <span className="text-[9px] font-semibold uppercase">Upload</span>
                                    </>
                                 )}
                              </div>
@@ -473,7 +494,7 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
                                       />
                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-50">
                                          <ShieldCheck size={14} className="text-nexus-teal" />
-                                         <span className="text-[9px] font-black uppercase text-nexus-teal">System Locked</span>
+                                         <span className="text-[9px] font-semibold uppercase text-nexus-teal">System Locked</span>
                                       </div>
                                    </div>
                                 </Field>
@@ -483,13 +504,40 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
                              </div>
                           </div>
                           
-                          <Field label="ชื่อสินค้า * (Product Name)">
-                             <PillInput value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full h-9 px-6 rounded-full" placeholder="ระบุชื่อพัสดุ / สินค้าใหม่..." />
-                          </Field>
+                          <div className="grid grid-cols-3 gap-3">
+                             <div className="col-span-2">
+                                <Field label="ชื่อสินค้า * (Product Name)">
+                                   <PillInput value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full h-9 px-6 rounded-full" placeholder="ระบุชื่อพัสดุ / สินค้าใหม่..." />
+                                </Field>
+                             </div>
+                             <div>
+                                <Field label="ยี่ห้อ (Brand)">
+                                   <PillInput value={formData.brand} onChange={(e) => setFormData({...formData, brand: e.target.value})} className="w-full h-9 px-4 rounded-full" placeholder="NEXUS" />
+                                </Field>
+                             </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-3">
+                             <div>
+                                <Field label="รุ่นสินค้า (Model)">
+                                   <PillInput value={formData.model} onChange={(e) => setFormData({...formData, model: e.target.value})} className="w-full h-9 px-4 rounded-full font-mono text-[13px]" placeholder="เช่น C930e" />
+                                </Field>
+                             </div>
+                             <div>
+                                <Field label="รหัสของผู้จำหน่าย (Vendor SKU)">
+                                   <PillInput value={formData.supplierSku} onChange={(e) => setFormData({...formData, supplierSku: e.target.value})} className="w-full h-9 px-4 rounded-full font-mono text-[13px]" placeholder="SKU-SUPP-123" />
+                                </Field>
+                             </div>
+                             <div>
+                                <Field label="รหัสผู้ผลิต (MPN)">
+                                   <PillInput value={formData.mpn} onChange={(e) => setFormData({...formData, mpn: e.target.value})} className="w-full h-9 px-4 rounded-full font-mono text-[13px]" placeholder="Part Number..." />
+                                </Field>
+                             </div>
+                          </div>
                           
                           <div className="grid grid-cols-2 gap-4">
                              <Field label="หมวดหมู่ * (Category)">
-                                <div className="relative">
+                                <div className={cn("relative", isCatFocused && "z-[99999]")}>
                                   <div className="relative">
                                     <PillInput
                                       value={catSearch}
@@ -514,14 +562,14 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
                                   </div>
                                   
                                   {isCatFocused && (
-                                    <div className="absolute top-full left-0 mt-2 w-full bg-[#0F0F12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden flex flex-col py-2 max-h-48 overflow-y-auto custom-scrollbar">
+                                    <div className="absolute top-full left-0 mt-2 w-full bg-surface-1 border border-white/10 rounded-2xl shadow-xl z-[99999] overflow-hidden flex flex-col py-2 max-h-48 overflow-y-auto custom-scrollbar">
                                        {filteredCats.map(c => (
                                           <div 
                                              key={c.id} 
                                              className="flex items-center justify-between px-4 py-2 hover:bg-white/5 cursor-pointer group transition-colors"
                                              onClick={() => handleSelectCat(c.id, c.label)}
                                           >
-                                             <span className={cn("text-xs font-black uppercase", formData.category === c.id ? "text-nexus-teal" : "text-white/70")}>{c.label}</span>
+                                             <span className={cn("text-xs font-semibold uppercase", formData.category === c.id ? "text-nexus-teal" : "text-white/70")}>{c.label}</span>
                                              {!c.isSystem && (
                                                 <button 
                                                    onClick={(e) => handleDeleteCategory(c.id, e)}
@@ -545,25 +593,35 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
                                   )}
                                 </div>
                              </Field>
-                             <Field label="คลังสินค้า (Warehouse)">
-                                <PillSelect value={formData.warehouseId} onChange={(e) => setFormData({...formData, warehouseId: e.target.value, rackLocation: ""})} className="w-full h-9 px-6 rounded-full font-bold">
+                             <Field label="คลังสินค้ารับเข้าเริ่มต้น (Default Warehouse)">
+                                <PillSelect value={formData.defaultWarehouseId} onChange={(e) => setFormData({...formData, defaultWarehouseId: e.target.value, defaultRackLocation: ""})} className="w-full h-9 px-6 rounded-full font-bold">
                                    {warehouses?.map(wh => <option key={wh.id} value={wh.id}>{wh.name}</option>)}
                                 </PillSelect>
                              </Field>
                           </div>
                           
-                          <Field label="พิกัดจัดเก็บ (Rack Location)">
-                             <div className="flex gap-2">
-                                <PillInput value={formData.rackLocation} onChange={(e) => setFormData({...formData, rackLocation: e.target.value})} placeholder="สแกนบาร์โค้ดพิกัด หรือ เลือกจากแผนผัง 3D..." className="flex-1 h-9 px-6 rounded-full font-mono font-bold text-nexus-teal" />
-                                <PillButton variant="glass" onClick={() => setShow3DPicker(true)} className="px-6 h-9 rounded-full hover:text-nexus-teal hover:border-nexus-teal/30 flex items-center gap-2">
-                                   <MapPin size={16} className="text-nexus-teal" />
-                                   <span>เลือกพิกัด 3D</span>
-                                </PillButton>
-                             </div>
-                          </Field>
+                          <div className="grid grid-cols-2 gap-4">
+                             <Field label="ตำแหน่งรับเข้าเริ่มต้น (Default Rack Location)">
+                                <div className="flex gap-2">
+                                   <PillInput value={formData.defaultRackLocation} onChange={(e) => setFormData({...formData, defaultRackLocation: e.target.value})} placeholder="สแกนบาร์โค้ดพิกัด หรือ เลือกจากแผนผัง 3D..." className="flex-1 h-9 px-6 rounded-full font-mono font-bold text-nexus-teal" />
+                                   <PillButton variant="glass" onClick={() => setShow3DPicker(true)} className="px-6 h-9 rounded-full hover:text-nexus-teal hover:border-nexus-teal/30 flex items-center gap-2">
+                                      <MapPin size={16} className="text-nexus-teal" />
+                                      <span>เลือกพิกัด 3D</span>
+                                   </PillButton>
+                                </div>
+                             </Field>
+                             <Field label="สถานะสินค้า (Lifecycle Status)">
+                                <PillSelect value={formData.lifecycleStatus} onChange={(e) => setFormData({...formData, lifecycleStatus: e.target.value as any})} className="w-full h-9 px-6 rounded-full font-bold text-center">
+                                   <option value="DRAFT">ร่างข้อมูล (DRAFT)</option>
+                                   <option value="ACTIVE">เปิดใช้งานปกติ (ACTIVE)</option>
+                                   <option value="PHASE_OUT">เลิกสั่งซื้อ (PHASE_OUT)</option>
+                                   <option value="OBSOLETE">ยกเลิก (OBSOLETE)</option>
+                                </PillSelect>
+                             </Field>
+                          </div>
                            
                            <div className="pt-2 border-t border-white/5 space-y-4 mt-2">
-                              <h6 className="text-[10px] font-black uppercase text-nexus-teal tracking-widest">หน่วยและขนาดบรรจุภัณฑ์ (UOM & Packaging)</h6>
+                              <h6 className="text-[10px] font-semibold uppercase text-nexus-teal tracking-widest">หน่วยและขนาดบรรจุภัณฑ์ (UOM & Packaging)</h6>
                               <div className="grid grid-cols-3 gap-4 bg-black/40 p-4 rounded-xl border border-white/5 items-end">
                                  <Field label="หน่วยจัดเก็บ (Package Unit)">
                                     <PillSelect value={formData.packageUnit} onChange={(e) => setFormData({...formData, packageUnit: e.target.value})} className="w-full h-9 px-6 rounded-full text-center">
@@ -586,7 +644,7 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
                     <div className="space-y-8">
                        <div className="flex items-center gap-3 text-white">
                           <Truck size={18} />
-                          <h5 className="text-[13px] font-black uppercase tracking-widest">รับเข้า & การเงิน (Inbound & Financials)</h5>
+                          <h5 className="text-[13px] font-semibold uppercase tracking-widest">รับเข้า & การเงิน (Inbound & Financials)</h5>
                        </div>
                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-6">
                           <div className="grid grid-cols-2 gap-4">
@@ -601,7 +659,7 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
                                 <div className="space-y-1.5">
                                    <StepperInput value={formData.qty} onChange={(val) => setFormData({...formData, qty: val})} className="font-black text-nexus-teal" />
                                    {formData.conversionRate > 1 && (
-                                      <div className="flex items-center gap-1.5 text-[9px] font-black text-white/40 uppercase tracking-widest pl-1">
+                                      <div className="flex items-center gap-1.5 text-[9px] font-semibold text-white/40 uppercase tracking-widest pl-1">
                                          <Package size={10} className="text-nexus-teal" /> สต๊อกสุทธิ: <span className="text-nexus-teal">{formData.qty * formData.conversionRate} {formData.baseUnit}</span>
                                       </div>
                                    )}
@@ -616,13 +674,13 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
                              <Field label="ราคาขาย * (Selling Price)">
                                 <div className="space-y-1.5">
                                    <StepperInput value={formData.price} onChange={handlePriceChange} className="text-nexus-teal font-black" />
-                                   <div className="flex items-center gap-1.5 text-[9px] font-black text-white/30 uppercase tracking-widest pl-1">
+                                   <div className="flex items-center gap-1.5 text-[9px] font-semibold text-white/30 uppercase tracking-widest pl-1">
                                       <span className="text-nexus-teal/60">💡</span> ราคาแนะนำ (Margin 20%): ฿{(formData.cost / 0.8).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                    </div>
                                 </div>
                              </Field>
                              <div className="col-span-2 flex justify-between items-center pt-2 border-t border-white/5">
-                                <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">กำไรคาดการณ์</span>
+                                <span className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">กำไรคาดการณ์</span>
                                 <span className={cn("text-sm font-black mono-numbers", profit > 0 ? "text-nexus-teal" : "text-white/40")}>
                                    ฿{profit.toLocaleString()} <span className="text-xs">({profitMargin}%)</span>
                                </span>
@@ -654,12 +712,12 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
 
                     <div className="space-y-6">
                        <div className="flex justify-between items-center px-2">
-                          <h5 className="text-[11px] font-black text-white/40 uppercase tracking-widest">รายการที่รอการรับเข้า ({poItems.length})</h5>
+                          <h5 className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">รายการที่รอการรับเข้า ({poItems.length})</h5>
                        </div>
                        {poItems.length === 0 ? (
                           <div className="p-20 border border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center text-center space-y-4">
                              <Package size={48} className="text-white/5" />
-                             <p className="text-[11px] text-white/20 font-black uppercase tracking-widest">ยังไม่มีรายการ (กรุณาระบุเลขที่ PO)</p>
+                             <p className="text-[11px] text-white/20 font-semibold uppercase tracking-widest">ยังไม่มีรายการ (กรุณาระบุเลขที่ PO)</p>
                           </div>
                        ) : (
                           <div className="space-y-4">
@@ -669,15 +727,15 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
                                      <Package size={24} />
                                   </div>
                                   <div className="flex-1">
-                                     <p className="text-sm font-black text-white uppercase">{item.name}</p>
+                                     <p className="text-sm font-semibold text-white uppercase">{item.name}</p>
                                      <p className="text-[10px] text-white/30 font-bold uppercase mt-0.5">{item.sku} • สั่งซื้อ: {item.qtyOrdered}</p>
                                   </div>
                                   <div className="w-24">
-                                     <p className="text-[9px] font-black text-white/20 uppercase mb-1">รับจริง</p>
+                                     <p className="text-[9px] font-semibold text-white/20 uppercase mb-1">รับจริง</p>
                                      <PillInput type="number" value={item.qtyReceived} onChange={(e) => updatePoItem(item.id, "qtyReceived", Number(e.target.value))} className="w-full h-9 px-4 rounded-full text-center font-black text-nexus-teal font-mono" />
                                   </div>
                                   <div className="w-32">
-                                     <p className="text-[9px] font-black text-white/20 uppercase mb-1">ต้นทุน/หน่วย</p>
+                                     <p className="text-[9px] font-semibold text-white/20 uppercase mb-1">ต้นทุน/หน่วย</p>
                                      <PillInput type="number" value={item.cost} onChange={(e) => updatePoItem(item.id, "cost", Number(e.target.value))} className="w-full h-9 px-4 rounded-full text-center font-black font-mono text-right" />
                                   </div>
                                </div>
@@ -692,11 +750,11 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
         </div>
 
         {/* Right validation & summary sidebar */}
-        <div className="w-[380px] bg-[#0F0F12] p-12 flex flex-col overflow-y-auto custom-scrollbar shrink-0">
+        <div className="w-[380px] bg-surface-1 p-12 flex flex-col overflow-y-auto custom-scrollbar shrink-0">
            <div className="flex-1 space-y-10">
               <div className="space-y-1">
-                <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">Validation Briefing</p>
-                <h5 className="text-sm font-black text-white uppercase tracking-tight">Stock Integrity</h5>
+                <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">Validation Briefing</p>
+                <h5 className="text-sm font-semibold text-white uppercase tracking-tight">Stock Integrity</h5>
               </div>
 
               <div className="p-8 rounded-2xl bg-nexus-teal/5 border border-nexus-teal/10 space-y-6">
@@ -729,13 +787,13 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
     </Modal>
 
     <Modal isOpen={show3DPicker} onClose={() => setShow3DPicker(false)} title="เครื่องมือเลือกพิกัด 3 มิติ (3D LOCATION PICKER)" maxWidth="max-w-[1400px]">
-      <div className="w-full h-[85vh] bg-[#0A0A0C] flex flex-col overflow-hidden p-6">
+      <div className="w-full h-[85vh] bg-surface-0 flex flex-col overflow-hidden p-6">
          <div className="flex-1 overflow-hidden relative rounded-2xl border border-white/5 bg-black/40">
             <Warehouse3D 
                pickerMode={true} 
-               initialWarehouseId={formData.warehouseId} 
+               initialWarehouseId={formData.defaultWarehouseId} 
                onSelectLocation={(loc, whId) => {
-                  setFormData({...formData, rackLocation: loc, warehouseId: whId});
+                  setFormData({...formData, defaultRackLocation: loc, defaultWarehouseId: whId});
                   setShow3DPicker(false);
                }} 
             />
@@ -749,7 +807,7 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
 function Field({ label, children }: { label: string, children: React.ReactNode }) {
   return (
     <div className="space-y-3">
-      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">{label}</label>
+      <label className="text-[11px] font-semibold text-white/30 uppercase tracking-widest ml-1">{label}</label>
       {children}
     </div>
   );

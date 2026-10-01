@@ -15,7 +15,7 @@ export type IdType =
   | 'PUR' | 'LOG' | 'INV' | 'REC' | 'GRN' 
   | 'SO'  | 'WHS' | 'STK' | 'ISS' | 'TRF' 
   | 'POS' | 'AUD' | 'COMP' | 'EMP' | 'ICT'
-  | 'GL';
+  | 'GL'  | 'BN'  | 'TAX';
 
 /**
  * Romanize Thai characters to English (Karaoke style) for Mnemonics

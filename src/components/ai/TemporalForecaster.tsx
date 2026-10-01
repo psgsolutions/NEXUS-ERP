@@ -24,7 +24,7 @@ export function TemporalForecaster() {
   const current = projections[selectedYear as keyof typeof projections];
 
   return (
-    <div className="p-12 rounded-2xl bg-[#050505] border border-white/5 relative overflow-hidden group">
+    <div className="p-12 rounded-2xl bg-surface-0 border border-white/5 relative overflow-hidden group">
        {/* Background Temporal Distortion (CSS Animation) */}
        <div className="absolute inset-0 opacity-[0.02] pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-br from-nexus-teal via-transparent to-nexus-blue animate-pulse" />
@@ -38,7 +38,7 @@ export function TemporalForecaster() {
                    <Timer size={32} className="text-nexus-teal animate-spin-slow" />
                 </div>
                 <div>
-                   <h4 className="text-2xl font-black text-white uppercase tracking-tight">Temporal Forecasting Engine</h4>
+                   <h4 className="text-2xl font-semibold text-white uppercase tracking-tight">Temporal Forecasting Engine</h4>
                    <p className="text-[11px] font-bold text-white/20 uppercase tracking-[0.4em]">Multi-Decade AI Projection V8.0</p>
                 </div>
              </div>
@@ -50,7 +50,7 @@ export function TemporalForecaster() {
                       onClick={() => setSelectedYear(year)}
                       className={cn(
                         "px-8 py-3 rounded-full text-[12px] font-black transition-all",
-                        selectedYear === year ? "bg-nexus-teal text-black shadow-neon-teal" : "text-white/20 hover:text-white"
+                        selectedYear === year ? "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md shadow-neon-teal" : "text-white/20 hover:text-white"
                       )}
                    >
                       {year}
@@ -69,16 +69,16 @@ export function TemporalForecaster() {
              <div className="absolute top-0 left-0 w-1 h-full bg-nexus-teal shadow-neon-teal opacity-50" />
              <div className="flex items-center gap-3">
                 <Sparkles size={18} className="text-nexus-teal" />
-                <h5 className="text-[11px] font-black text-nexus-teal uppercase tracking-widest">Temporal Intelligence Insight</h5>
+                <h5 className="text-[11px] font-semibold text-nexus-teal uppercase tracking-widest">Temporal Intelligence Insight</h5>
              </div>
              <p className="text-xl font-medium text-white/80 leading-relaxed max-w-3xl">
                 "{current.insight}"
              </p>
              <div className="pt-6 flex gap-8">
-                <div className="flex items-center gap-2 text-[10px] font-black text-white/20 uppercase tracking-widest">
+                <div className="flex items-center gap-2 text-[10px] font-semibold text-white/20 uppercase tracking-widest">
                    <Target size={14} /> Confidence: 92.4%
                 </div>
-                <div className="flex items-center gap-2 text-[10px] font-black text-white/20 uppercase tracking-widest">
+                <div className="flex items-center gap-2 text-[10px] font-semibold text-white/20 uppercase tracking-widest">
                    <Zap size={14} /> Delta Variance: 4.2%
                 </div>
              </div>
@@ -93,7 +93,7 @@ function TemporalMetricCard({ label, value, icon, color = "text-white" }: { labe
     <div className="p-8 rounded-2xl bg-white/[0.01] border border-white/5 space-y-4 hover:bg-white/[0.03] transition-all group/card">
        <div className="text-white/10 group-hover/card:text-white transition-colors">{icon}</div>
        <div>
-          <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">{label}</p>
+          <p className="text-[10px] font-semibold text-white/20 uppercase tracking-widest">{label}</p>
           <p className={cn("text-4xl font-black mt-2", color)}>{value}</p>
        </div>
     </div>

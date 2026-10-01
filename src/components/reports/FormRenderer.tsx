@@ -66,7 +66,7 @@ export default function FormRenderer({ template, values, onChange, disabled = fa
           // Standard Input Renderer
           return (
             <div key={field.id} className={cn(spanClass, "space-y-2.5")}>
-              <label className="text-[12px] font-black text-white/30 uppercase tracking-widest block">
+              <label className="text-[12px] font-semibold text-white/30 uppercase tracking-widest block">
                 {field.label} {isRequired && <span className="text-danger">*</span>}
               </label>
 
@@ -100,9 +100,9 @@ export default function FormRenderer({ template, values, onChange, disabled = fa
                   required={isRequired}
                 />
               ) : field.type === "table" ? (
-                <div className="col-span-4 border border-white/5 bg-[#0a0a0c]/60 rounded-2xl p-6 space-y-4 shadow-xl">
+                <div className="col-span-4 border border-white/5 bg-surface-0/60 rounded-2xl p-6 space-y-4 shadow-xl">
                   <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                    <span className="text-[11px] font-black text-nexus-teal uppercase tracking-widest flex items-center gap-2">
+                    <span className="text-[11px] font-semibold text-nexus-teal uppercase tracking-widest flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-nexus-teal shadow-neon-teal animate-pulse" />
                       รายละเอียดรายการย่อยในตาราง / Dynamic Sub-table
                     </span>

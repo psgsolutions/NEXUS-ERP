@@ -24,12 +24,12 @@ const COLOR_MAP: Record<string, string> = {
 
 export const Ribbon: React.FC<RibbonProps> = ({ onAddElement }) => {
   return (
-    <div className="relative w-full bg-[#050505]/60 backdrop-blur-2xl border-b border-white/5 flex items-center px-4 h-20 flex-shrink-0 gap-2 overflow-x-auto z-40">
+    <div className="relative w-full bg-surface-0/60 backdrop-blur-2xl border-b border-white/5 flex items-center px-4 h-20 flex-shrink-0 gap-2 overflow-x-auto z-40">
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent pointer-events-none" />
 
       {/* Section Label */}
       <div className="flex flex-col items-center border-r border-white/5 pr-4 mr-2 h-full justify-center flex-shrink-0">
-        <span className="text-[9px] text-white/20 uppercase tracking-[0.25em] font-black whitespace-nowrap">Controls</span>
+        <span className="text-[9px] text-white/20 uppercase tracking-[0.25em] font-semibold whitespace-nowrap">Controls</span>
       </div>
 
       {/* Control Buttons */}
@@ -46,7 +46,7 @@ export const Ribbon: React.FC<RibbonProps> = ({ onAddElement }) => {
               <span className={`transition-all ${iconGlow}`}>{ctrl.icon}</span>
             </div>
             <div className="text-left">
-              <div className="text-[11px] font-black uppercase tracking-widest text-white group-hover:text-inherit transition-colors">{ctrl.label}</div>
+              <div className="text-[11px] font-semibold uppercase tracking-widest text-white group-hover:text-inherit transition-colors">{ctrl.label}</div>
               <div className="text-[9px] font-bold text-white/25 mt-0.5">{ctrl.sub}</div>
             </div>
           </button>
@@ -58,7 +58,7 @@ export const Ribbon: React.FC<RibbonProps> = ({ onAddElement }) => {
 
       {/* Helper tip */}
       <div className="flex flex-col justify-center flex-shrink-0">
-        <p className="text-[9px] font-black text-white/15 uppercase tracking-widest">วิธีใช้</p>
+        <p className="text-[9px] font-semibold text-white/15 uppercase tracking-widest">วิธีใช้</p>
         <p className="text-[9px] text-white/20 mt-0.5 leading-relaxed">
           คลิกปุ่มเพื่อเพิ่ม Element<br />
           ลาก Element เพื่อย้ายตำแหน่ง<br />

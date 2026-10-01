@@ -45,54 +45,54 @@ export default function SupportPage() {
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
       
       {/* Compact Module Header — icon + title + inline metric chips on same plane */}
-      <header className="p-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-5 bg-black/20 shrink-0">
-        <div className="flex items-center gap-4 shrink-0">
-          <div className="w-10 h-10 rounded-2xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
-            <LifeBuoy size={22} />
+      <header className="px-6 py-2.5 min-h-[60px] border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-black/20 shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
+            <LifeBuoy size={20} />
           </div>
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight leading-none">งานบริการและแจ้งซ่อม</h1>
-            <p className="text-[11px] font-medium text-white/30 uppercase mt-1.5 tracking-widest leading-none">SUPPORT HUB</p>
+            <p className="text-[11px] font-medium text-white/30 uppercase mt-1 tracking-widest leading-none">SUPPORT HUB</p>
           </div>
         </div>
 
         {/* Compact Metrics Row */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Card 1: Ticket Active */}
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
-              <Zap size={18} />
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
+              <Zap size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">Ticket Active</span>
-              <span className="text-[17px] font-bold text-nexus-teal mt-1 mono-numbers leading-none">{activeTicketsCount}</span>
+              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">{activeTicketsCount}</span>
             </div>
           </div>
           {/* Card 2: Response Time */}
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
-              <Clock size={18} />
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
+              <Clock size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">Response Time</span>
-              <span className="text-[17px] font-bold text-nexus-blue mt-1 mono-numbers leading-none">0m</span>
+              <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none">0m</span>
             </div>
           </div>
           {/* Card 3: SLA Risk */}
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-danger/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center text-danger border border-danger/20 shrink-0">
-              <AlertCircle size={18} />
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-danger/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-danger/10 flex items-center justify-center text-danger border border-danger/20 shrink-0">
+              <AlertCircle size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">SLA Risk</span>
-              <span className="text-[17px] font-bold text-danger mt-1 mono-numbers leading-none">0</span>
+              <span className="text-[17px] font-bold text-danger mt-0.5 mono-numbers leading-none">0</span>
             </div>
           </div>
         </div>
       </header>
 
       {/* Tab Navigation */}
-      <section className="px-6 py-4 bg-black/10 border-b border-white/5 shrink-0">
+      <section className="px-6 h-[56px] bg-black/10 border-b border-white/5 flex items-center justify-between shrink-0">
         <PillTabs 
           tabs={[
              { id: "tickets", label: "รายการแจ้งซ่อม", icon: <MessageSquare size={14} /> },
@@ -122,13 +122,13 @@ export default function SupportPage() {
               </div>
               <div className="flex gap-3">
                  {activeView === "tickets" && (
-                   <PillButton onClick={() => setIsCreateOpen(true)} className="px-8 shadow-neon-teal">
+                   <PillButton variant="primary" onClick={() => setIsCreateOpen(true)} className="px-8 shadow-neon-teal">
                      <Plus size={18} />
                      เปิด Ticket ใหม่
                    </PillButton>
                  )}
                  {activeView === "pm" && (
-                   <PillButton onClick={() => setIsCreateOpen(true)} className="px-8 shadow-neon-teal">
+                   <PillButton variant="primary" onClick={() => setIsCreateOpen(true)} className="px-8 shadow-neon-teal">
                      <Plus size={18} />
                      สร้างแผน PM
                    </PillButton>
@@ -202,7 +202,7 @@ export default function SupportPage() {
         title={activeView === "tickets" ? "เปิดบันทึกแจ้งซ่อม" : "กำหนดแผนซ่อมบำรุง"}
         maxWidth="max-w-7xl"
       >
-        <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
+        <div className="flex h-full divide-x divide-white/5 bg-surface-0">
            <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
               <div className="max-w-4xl mx-auto space-y-12">
                  <PillTabs 
@@ -458,7 +458,7 @@ export default function SupportPage() {
                  </div>
               </div>
            </div>
-           <div className="w-[420px] flex flex-col bg-[#0F0F12] p-12 flex-shrink-0">
+           <div className="w-[420px] flex flex-col bg-surface-1 p-12 flex-shrink-0">
               <div className="flex-1 space-y-3">
                  <div className="p-5 rounded-xl bg-white/[0.03] border border-white/10 space-y-3">
                     <div className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-nexus-teal animate-ping" /><h5 className="text-[14px] font-medium text-white/60 uppercase tracking-widest">Ticket Intelligence</h5></div>

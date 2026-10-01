@@ -494,155 +494,176 @@ export default function ReportNewPage() {
   const headerContent = (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <button onClick={() => router.back()} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
-          <ArrowLeft size={18} />
-        </button>
+        <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white uppercase tracking-widest">
-            สร้างรายงานประจำวัน (Daily Report)
-          </h1>
-          <p className="text-sm text-white/40 font-medium">รายงานความคืบหน้า ปัญหา และทรัพยากรที่ใช้ในไซต์งาน</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+              สร้างรายงานประจำวัน
+            </h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              DAILY-RPT
+            </span>
+          </div>
+          <p className="text-sm text-white/60 font-medium mt-1">รายงานความคืบหน้า ปัญหา และทรัพยากรที่ใช้ในไซต์งานประจำวัน</p>
         </div>
+      </div>
+
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+        <PillButton variant="glass" onClick={() => router.back()} className="h-8 px-4 text-xs font-bold text-white/50">
+          ยกเลิก
+        </PillButton>
+        <PillButton variant="confirm" onClick={() => router.back()} className="h-8 px-5 font-bold text-xs">
+          ยืนยันการบันทึก
+        </PillButton>
       </div>
     </div>
   );
 
 
   const leftContent = (
-    <div className="space-y-6">
-      <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl">
-        <div className="space-y-10 animate-in fade-in duration-500">
-                        <PillTabs 
-                           tabs={[
-                              { id: "work", label: "การทำงาน" },
-                              { id: "parts", label: "วัสดุ" },
-                              { id: "sign", label: "ส่งมอบ" }
-                           ]}
-                           activeTab={modalActiveTab === "basic" ? "work" : modalActiveTab}
-                           onTabChange={setModalActiveTab}
-                        />
+    <div className="space-y-8 pb-20">
+      <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl transition-all border-l-4 border-l-nexus-teal hover:border-white/25">
+        <div className="p-4 sm:p-5 flex items-center justify-between bg-white/[0.04] border-b border-white/10 select-none">
+          <div className="flex items-center gap-3">
+            <span className="px-2.5 py-1 rounded-xl bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 font-mono font-black text-xs shadow-sm">
+              01
+            </span>
+            <div className="flex items-center gap-2 text-nexus-teal">
+              <FileText size={20} />
+              <h3 className="text-base font-bold uppercase tracking-wider text-white">
+                1. ข้อมูลและรายละเอียดรายงานประจำวัน
+              </h3>
+            </div>
+          </div>
+        </div>
 
-                        <div className="space-y-3">
-                           {(modalActiveTab === "work" || modalActiveTab === "basic") && (
-                              <div className="grid grid-cols-2 gap-5 animate-in slide-in-from-left-4 duration-500">
-                                 <div className="space-y-3">
-                                    <div className="space-y-2">
-                                       <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">หัวข้องาน / รายการที่ปฏิบัติ *</label>
-                                       <PillInput placeholder="เช่น ติดตั้ง Core Switch, ตรวจเช็คระบบ..." className="w-full" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                       <div className="space-y-2">
-                                          <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ประเภทงาน</label>
-                                          <PillSelect className="w-full px-6">
-                                             <option>Installation (ติดตั้ง)</option>
-                                             <option>Maintenance (บำรุงรักษา)</option>
-                                             <option>Repair (ซ่อมแซม)</option>
-                                             <option>Survey (สำรวจหน้างาน)</option>
-                                          </PillSelect>
-                                       </div>
-                                       <div className="space-y-2">
-                                          <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">วันที่ปฏิบัติงาน</label>
-                                          <PillInput type="date" className="w-full" />
-                                       </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                       <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">โครงการที่เกี่ยวข้อง</label>
-                                       <PillSelect className="w-full px-6">
-                                          <option>ระบุโครงการ...</option>
-                                          <option>PRJ-26-001: LED Wall</option>
-                                       </PillSelect>
-                                    </div>
-                                 </div>
-                                 <div className="space-y-2">
-                                    <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">รายละเอียดการทำงาน</label>
-                                    <textarea 
-                                       className="w-full h-[220px] rounded-lg bg-white/[0.03] border border-white/10 text-white text-[14px] font-bold p-5 focus:outline-none focus:border-nexus-teal/40 transition-all"
-                                       placeholder="ระบุรายละเอียดงานที่ทำ ผลการดำเนินงาน และปัญหาที่พบ..."
-                                    />
-                                 </div>
-                              </div>
-                           )}
+        <div className="p-6 space-y-8 animate-in fade-in duration-300">
+          <PillTabs 
+             tabs={[
+                { id: "work", label: "การทำงาน" },
+                { id: "parts", label: "วัสดุ" },
+                { id: "sign", label: "ส่งมอบ" }
+             ]}
+             activeTab={modalActiveTab === "basic" ? "work" : modalActiveTab}
+             onTabChange={setModalActiveTab}
+          />
 
-                           {modalActiveTab === "parts" && (
-                              <div className="space-y-3 animate-in slide-in-from-right-4 duration-500">
-                                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 w-full">
-                                    <h4 className="text-[13px] font-bold text-white uppercase tracking-widest">รายการพัสดุและอุปกรณ์ที่ใช้</h4>
-                                    <PillButton variant="glass" className="h-9 px-6 rounded-full"><Plus size={14} /> เพิ่มรายการ</PillButton>
-                                 </div>
-                                 <div className="rounded-lg border border-white/5 overflow-hidden">
-                                    <NexusTable headers={["SKU / สินค้า", "S/N Number", "จำนวน", "Action"]}>
-                                       <NexusTableRow>
-                                          <NexusTableCell>CAT6 Cable (Box)</NexusTableCell>
-                                          <NexusTableCell className="text-white/40">-</NexusTableCell>
-                                          <NexusTableCell>1</NexusTableCell>
-                                          <NexusTableCell><PillButton variant="ghost" className="w-8 p-0 text-danger"><X size={14} /></PillButton></NexusTableCell>
-                                       </NexusTableRow>
-                                       <NexusTableRow>
-                                          <NexusTableCell>Cisco Catalyst 9200</NexusTableCell>
-                                          <NexusTableCell className="text-nexus-blue font-mono text-[10px]">SN-SW-2600412</NexusTableCell>
-                                          <NexusTableCell>1</NexusTableCell>
-                                          <NexusTableCell><PillButton variant="ghost" className="w-8 p-0 text-danger"><X size={14} /></PillButton></NexusTableCell>
-                                       </NexusTableRow>
-                                    </NexusTable>
-                                 </div>
-                              </div>
-                           )}
+          <div className="space-y-3">
+             {(modalActiveTab === "work" || modalActiveTab === "basic") && (
+                <div className="grid grid-cols-2 gap-5 animate-in slide-in-from-left-4 duration-500">
+                   <div className="space-y-3">
+                       <div className="space-y-2">
+                          <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">
+                            หัวข้องาน / รายการที่ปฏิบัติ <span className="text-rose-500 font-bold ml-0.5">*</span>
+                          </label>
+                          <PillInput placeholder="เช่น ติดตั้ง Core Switch, ตรวจเช็คระบบ..." className="w-full" />
+                       </div>
+                      <div className="grid grid-cols-2 gap-4">
+                         <div className="space-y-2">
+                            <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ประเภทงาน</label>
+                            <PillSelect className="w-full px-6">
+                               <option>Installation (ติดตั้ง)</option>
+                               <option>Maintenance (บำรุงรักษา)</option>
+                               <option>Repair (ซ่อมแซม)</option>
+                               <option>Survey (สำรวจหน้างาน)</option>
+                            </PillSelect>
+                         </div>
+                         <div className="space-y-2">
+                            <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">วันที่ปฏิบัติงาน</label>
+                            <PillInput type="date" className="w-full" />
+                         </div>
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">โครงการที่เกี่ยวข้อง</label>
+                         <PillSelect className="w-full px-6">
+                            <option>ระบุโครงการ...</option>
+                            <option>PRJ-26-001: LED Wall</option>
+                         </PillSelect>
+                      </div>
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">รายละเอียดการทำงาน</label>
+                      <textarea 
+                         className="w-full h-[220px] rounded-lg bg-white/[0.03] border border-white/10 text-white text-[14px] font-bold p-5 focus:outline-none focus:border-nexus-teal/40 transition-all"
+                         placeholder="ระบุรายละเอียดงานที่ทำ ผลการดำเนินงาน และปัญหาที่พบ..."
+                      />
+                   </div>
+                </div>
+             )}
 
-                           {modalActiveTab === "sign" && (
-                              <div className="grid grid-cols-2 gap-12 animate-in fade-in duration-500">
-                                 <div className="space-y-3">
-                                    <h4 className="text-[13px] font-bold text-white uppercase tracking-widest">ภาพถ่ายหน้างาน</h4>
-                                    <div className="grid grid-cols-2 gap-4">
-                                       <div className="aspect-video rounded-2xl border border-dashed border-white/10 flex flex-col items-center justify-center gap-2 hover:bg-white/5 cursor-pointer transition-all">
-                                          <Plus size={24} className="text-white/20" />
-                                          <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">อัปโหลดรูปภาพ</span>
-                                       </div>
-                                    </div>
-                                 </div>
-                                 <div className="space-y-3">
-                                    <h4 className="text-[13px] font-bold text-white uppercase tracking-widest">การเซ็นรับงาน</h4>
-                                    <div className="aspect-[4/3] rounded-xl bg-white/[0.02] border border-white/10 relative flex flex-col items-center justify-center">
-                                       <div className="absolute inset-0 flex items-center justify-center text-white/10 pointer-events-none">
-                                          <p className="text-[12px] font-bold uppercase tracking-[0.5em]">SIGNATURE AREA</p>
-                                       </div>
-                                       <div className="absolute bottom-6 w-3/4 h-px bg-white/10" />
-                                    </div>
-                                    <div className="space-y-2">
-                                       <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ชื่อผู้อนุมัติรับงาน</label>
-                                       <PillInput placeholder="ระบุชื่อลูกค้า..." className="w-full text-center" />
-                                    </div>
-                                 </div>
-                              </div>
-                           )}
-                        </div>
-                     </div>
+             {modalActiveTab === "parts" && (
+                <div className="space-y-3 animate-in slide-in-from-right-4 duration-500">
+                   <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 w-full">
+                      <h4 className="text-[13px] font-bold text-white uppercase tracking-widest">รายการพัสดุและอุปกรณ์ที่ใช้</h4>
+                      <PillButton variant="glass" className="h-9 px-6 rounded-full"><Plus size={14} /> เพิ่มรายการ</PillButton>
+                   </div>
+                   <div className="rounded-lg border border-white/5 overflow-hidden">
+                      <NexusTable headers={["SKU / สินค้า", "S/N Number", "จำนวน", "Action"]}>
+                         <NexusTableRow>
+                            <NexusTableCell>CAT6 Cable (Box)</NexusTableCell>
+                            <NexusTableCell className="text-white/40">-</NexusTableCell>
+                            <NexusTableCell>1</NexusTableCell>
+                            <NexusTableCell><PillButton variant="ghost" className="w-8 p-0 text-danger"><X size={14} /></PillButton></NexusTableCell>
+                         </NexusTableRow>
+                         <NexusTableRow>
+                            <NexusTableCell>Cisco Catalyst 9200</NexusTableCell>
+                            <NexusTableCell className="text-nexus-blue font-mono text-[10px]">SN-SW-2600412</NexusTableCell>
+                            <NexusTableCell>1</NexusTableCell>
+                            <NexusTableCell><PillButton variant="ghost" className="w-8 p-0 text-danger"><X size={14} /></PillButton></NexusTableCell>
+                         </NexusTableRow>
+                      </NexusTable>
+                   </div>
+                </div>
+             )}
+
+             {modalActiveTab === "sign" && (
+                <div className="grid grid-cols-2 gap-12 animate-in fade-in duration-500">
+                   <div className="space-y-3">
+                      <h4 className="text-[13px] font-bold text-white uppercase tracking-widest">ภาพถ่ายหน้างาน</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                         <div className="aspect-video rounded-2xl border border-dashed border-white/10 flex flex-col items-center justify-center gap-2 hover:bg-white/5 cursor-pointer transition-all">
+                            <Plus size={24} className="text-white/20" />
+                            <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">อัปโหลดรูปภาพ</span>
+                         </div>
+                      </div>
+                   </div>
+                   <div className="space-y-3">
+                      <h4 className="text-[13px] font-bold text-white uppercase tracking-widest">การเซ็นรับงาน</h4>
+                      <div className="aspect-[4/3] rounded-xl bg-white/[0.02] border border-white/10 relative flex flex-col items-center justify-center">
+                         <div className="absolute inset-0 flex items-center justify-center text-white/10 pointer-events-none">
+                            <p className="text-[12px] font-bold uppercase tracking-[0.5em]">SIGNATURE AREA</p>
+                         </div>
+                         <div className="absolute bottom-6 w-3/4 h-px bg-white/10" />
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-[12px] font-bold text-white/60 uppercase tracking-widest ml-1">ชื่อผู้อนุมัติรับงาน</label>
+                         <PillInput placeholder="ระบุชื่อลูกค้า..." className="w-full text-center" />
+                      </div>
+                   </div>
+                </div>
+             )}
+          </div>
+        </div>
       </div>
     </div>
   );
 
 
   const rightSidebar = (
-    <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-8 sticky top-0">
-      <div className="space-y-1 border-b border-white/5 pb-4">
-        <h5 className="text-[13px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2">
+    <div className="bg-neutral-900/90 border border-white/15 rounded-3xl p-5 shadow-2xl space-y-8 sticky top-0 border-t-4 border-t-nexus-teal">
+      <div className="space-y-1 border-b border-white/10 pb-4">
+        <h5 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
           สรุปการทำรายการ
         </h5>
       </div>
       
-      <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 space-y-6">
+      <div className="p-6 rounded-3xl bg-black/30 border border-white/10 space-y-6">
         <div className="space-y-5">
           <NexusDataField label="สถานะเริ่มต้น" value="Draft" />
           <NexusDataField label="ประเภท" value={projectType} />
         </div>
-      </div>
-
-      <div className="space-y-3 pt-6 border-t border-white/5">
-        <PillButton className="w-full h-11 rounded-full border border-white/10 hover:bg-white/5 text-white text-[12px] font-bold tracking-widest" onClick={() => router.back()}>
-          ยกเลิกรายการ
-        </PillButton>
-        <PillButton className="w-full h-11 rounded-full font-black uppercase tracking-widest shadow-[0_0_12px_rgba(6,182,212,0.15)] border border-cyan-500/30 bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/40 text-[12px]" onClick={() => router.back()}>
-          ยืนยันการบันทึก
-        </PillButton>
       </div>
     </div>
   );

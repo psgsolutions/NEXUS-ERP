@@ -87,44 +87,44 @@ export default function SalesOrderPage() {
   };
 
   const headerContent = (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <button onClick={() => router.back()} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-white/50 hover:text-white transition-all backdrop-blur-sm">
-          <ArrowLeft size={18} />
-        </button>
+        <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
         <div>
-          <p className="text-[10px] text-cyan-400 font-black uppercase tracking-widest mb-0.5">สร้างเอกสารใหม่</p>
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-black uppercase tracking-tight text-white">ใบสั่งขาย (Sales Order)</h1>
-            <DocumentStepper steps={["Draft", "Pending", "Approved"]} currentStep={0} />
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">สร้างใบสั่งขายใหม่</h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              SO-NEW
+            </span>
           </div>
+          <p className="text-sm text-white/60 font-medium mt-1">สร้างใบสั่งขาย ระบุรายการสินค้า บริการ และเงื่อนไขการส่งมอบ</p>
         </div>
       </div>
-      <div className="flex items-center gap-4">
-        <PillButton className="h-9 px-4 rounded-full bg-[#E5004D]/10 text-[#E5004D] border border-[#E5004D]/20 hover:bg-[#E5004D]/20 shadow-[0_0_15px_rgba(229,0,77,0.15)] mr-2 text-[12px] font-black uppercase tracking-widest">
-          <Sparkles size={14} className="mr-2" /> AI Scan
-        </PillButton>
-        <PillButton variant="glass" className="h-9 px-6 rounded-full text-[12px] uppercase tracking-widest text-white/50 hover:text-white" onClick={() => router.back()}>
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+        <DocumentStepper steps={["ร่าง", "รออนุมัติ", "อนุมัติแล้ว"]} currentStep={0} />
+        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={() => router.back()}>
           ยกเลิก
         </PillButton>
-        <PillButton className="h-9 px-6 rounded-full bg-white/5 border-white/10 hover:bg-white/10 text-[12px] font-black uppercase tracking-widest">
-          <Save size={14} className="mr-2" /> บันทึกร่าง
+        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/80">
+          <Save size={14} className="mr-1.5" /> บันทึกร่าง
         </PillButton>
-        <PillButton className="h-9 px-6 rounded-full bg-cyan-500 text-black hover:bg-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)] text-[12px] font-black uppercase tracking-widest">
-          <Send size={14} className="mr-2" /> บันทึกและอนุมัติ
+        <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs">
+          <Send size={14} className="mr-1.5" /> บันทึกและอนุมัติ
         </PillButton>
       </div>
     </div>
   );
 
   const leftContent = (
-    <div className="space-y-4 pr-2 pb-10">
+    <div className="space-y-6 pr-2 pb-10">
       
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-6">
         {/* Customer Column */}
-        <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-          <h3 className="text-[13px] font-black uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
-            <Building2 size={16} /> ข้อมูลลูกค้า
+        <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-nexus-teal hover:border-white/25">
+          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
+            <Building2 size={16} className="text-nexus-teal" /> ข้อมูลลูกค้า
           </h3>
           
           <div className="space-y-4 relative">
@@ -142,7 +142,7 @@ export default function SalesOrderPage() {
                 </div>
                 
                 {isCustomerSelectorOpen && (
-                  <div className="absolute top-11 left-0 w-full bg-[#1A1A1A] border border-white/10 rounded-xl shadow-2xl p-2 z-50">
+                  <div className="absolute top-11 left-0 w-full bg-surface-2 border border-white/10 rounded-xl shadow-2xl p-2 z-50">
                     {MOCK_CUSTOMERS.map(c => (
                       <div 
                         key={c.id} 
@@ -221,9 +221,9 @@ export default function SalesOrderPage() {
 
         {/* Dates & Tax & Terms Column */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-            <h3 className="text-[13px] font-black uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
-              <Calendar size={16} /> เงื่อนไขและโครงการ
+          <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-nexus-blue hover:border-white/25">
+            <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
+              <Calendar size={16} className="text-nexus-blue" /> เงื่อนไขและโครงการ
             </h3>
             <div className="space-y-4">
               <Field label="วันที่ออก *">
@@ -252,9 +252,9 @@ export default function SalesOrderPage() {
             </div>
           </div>
           
-          <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-            <h3 className="text-[13px] font-black uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
-              <Percent size={16} /> ข้อมูลราคาและภาษี
+          <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-purple-500 hover:border-white/25">
+            <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
+              <Percent size={16} className="text-purple-400" /> ข้อมูลราคาและภาษี
             </h3>
             <div className="space-y-4">
               <Field label="ประเภทราคา *">
@@ -264,13 +264,13 @@ export default function SalesOrderPage() {
                   <option value="none">ไม่มีภาษี</option>
                 </PillSelect>
               </Field>
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-black/30 border border-white/10 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] text-white/40 uppercase tracking-widest font-black">สกุลเงินเอกสาร</p>
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">สกุลเงินเอกสาร</p>
                   <p className="text-[13px] text-white font-bold mt-1">THB - บาทไทย</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] text-white/40 uppercase tracking-widest font-black">อัตราแลกเปลี่ยน</p>
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">อัตราแลกเปลี่ยน</p>
                   <p className="text-[13px] text-white font-mono mt-1">1.00000</p>
                 </div>
               </div>
@@ -279,8 +279,8 @@ export default function SalesOrderPage() {
         </div>
 
         {/* Line Items Table */}
-        <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-          <h3 className="text-[13px] font-black uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
+        <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-emerald-500 hover:border-white/25">
+          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
             รายการสินค้า / บริการ
           </h3>
           
@@ -291,21 +291,21 @@ export default function SalesOrderPage() {
         </div>
 
         {/* Multi-Attachment Vault */}
-        <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-          <div className="flex items-center justify-between border-b border-white/5 pb-4">
-            <h3 className="text-[13px] font-black uppercase tracking-widest text-white/80 flex items-center gap-2">
-              <Paperclip size={16} /> เอกสารแนบ (Attachments)
+        <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-amber-500 hover:border-white/25">
+          <div className="flex items-center justify-between border-b border-white/10 pb-4 h-[36px]">
+            <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2">
+              <Paperclip size={16} className="text-amber-400" /> เอกสารแนบ (Attachments)
             </h3>
             <label className="cursor-pointer">
               <input type="file" multiple className="hidden" onChange={handleFileUpload} />
-              <div className="h-8 px-4 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 text-[11px] font-black uppercase tracking-widest flex items-center transition-all">
+              <div className="h-8 px-4 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 text-[11px] font-semibold uppercase tracking-widest flex items-center transition-all">
                 <Plus size={12} className="mr-2" /> เพิ่มไฟล์แนบ
               </div>
             </label>
           </div>
           
           {attachments.length === 0 ? (
-            <div className="w-full py-8 rounded-2xl border border-dashed border-white/10 flex flex-col items-center justify-center text-white/30 bg-white/[0.01]">
+            <div className="w-full py-8 rounded-2xl border border-dashed border-white/10 flex flex-col items-center justify-center text-white/30 bg-black/30">
               <Paperclip size={24} className="mb-2 opacity-30" />
               <p className="text-[12px] font-bold">ลากไฟล์มาวาง หรือคลิกเพื่ออัปโหลด (Drag & Drop)</p>
               <p className="text-[10px] font-mono mt-1 opacity-50">รองรับ PDF, JPG, PNG ขนาดไม่เกิน 10MB</p>
@@ -342,17 +342,17 @@ export default function SalesOrderPage() {
       
       {/* Credit Limit Checking Card */}
       <GlassCard className={cn(
-        "p-5 border-white/5 rounded-3xl shadow-2xl w-full flex flex-col gap-3 transition-colors",
-        isCreditExceeded ? "bg-red-500/10 border-red-500/20" : "bg-[#111111]"
+        "p-5 border-white/15 rounded-3xl shadow-2xl w-full flex flex-col gap-3 transition-colors border-t-4 border-t-nexus-teal",
+        isCreditExceeded ? "bg-red-500/10 border-red-500/30" : "bg-neutral-900/90"
       )}>
         <div className="flex justify-between items-center pb-3 border-b border-white/5">
           <span className="text-[11px] font-black uppercase tracking-widest text-white/40">วงเงินเครดิต (Credit Limit)</span>
           {isCreditExceeded ? (
-            <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-red-400">
+            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-red-400">
               <AlertTriangle size={12} /> เกินวงเงิน
             </span>
           ) : (
-            <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-400">
+            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-emerald-400">
               <ShieldCheck size={12} /> อนุมัติได้
             </span>
           )}
@@ -381,7 +381,7 @@ export default function SalesOrderPage() {
       </GlassCard>
 
       {/* Summary Card */}
-      <GlassCard className="p-6 border-white/5 rounded-3xl bg-[#111111] shadow-2xl space-y-4 w-full">
+      <GlassCard className="p-6 border-white/5 rounded-3xl bg-surface-1 shadow-2xl space-y-4 w-full">
         <div className="flex justify-between items-center text-[13px]">
           <span className="text-white/40 font-bold uppercase tracking-widest text-[11px]">มูลค่ารวมก่อนภาษี (Subtotal)</span>
           <span className="text-white font-mono font-bold">{formatCurrency(summary.subtotal)} บาท</span>
@@ -405,7 +405,7 @@ export default function SalesOrderPage() {
           </div>
         )}
         <div className="flex justify-between items-end pt-4">
-          <span className="text-[12px] font-black text-white/70 uppercase tracking-widest">จำนวนเงินทั้งสิ้น</span>
+          <span className="text-[12px] font-semibold text-white/70 uppercase tracking-widest">จำนวนเงินทั้งสิ้น</span>
           <span className={cn(
             "text-3xl font-black font-mono tracking-tighter",
             isCreditExceeded ? "text-red-400" : "text-cyan-400"

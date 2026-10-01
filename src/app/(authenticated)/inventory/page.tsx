@@ -150,7 +150,7 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
-      <GlassCard className="w-full max-w-[1200px] border-nexus-teal/20 shadow-2xl flex flex-col h-[90vh] bg-[#09090b]/95 p-0 overflow-hidden">
+      <GlassCard className="w-full max-w-[1200px] border-nexus-teal/20 shadow-2xl flex flex-col h-[90vh] bg-surface-1/95 p-0 overflow-hidden">
         {/* Header */}
         <div className="p-5 border-b border-white/5 flex justify-between items-center shrink-0 bg-black/40">
           <div>
@@ -212,7 +212,7 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
                 <div className="relative w-full md:w-64 shrink-0">
                   <PillInput 
                     placeholder="พิมพ์เพื่อค้นหา..." 
-                    className="w-full pl-10 bg-[#0a0a0c] text-xs border-white/5 focus:border-nexus-teal/30" 
+                    className="w-full pl-10 bg-surface-0 text-xs border-white/5 focus:border-nexus-teal/30" 
                     value={productSearch} 
                     onChange={(e) => setProductSearch(e.target.value)} 
                   />
@@ -220,7 +220,7 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar rounded-2xl border border-white/5 bg-[#09090b]/80 relative">
+              <div className="flex-1 overflow-y-auto custom-scrollbar rounded-2xl border border-white/5 bg-surface-1/80 relative">
                 <NexusTable headers={["รูปภาพ", "รหัสสินค้า", "ชื่อสินค้า", "ราคา", "สต็อก", "จัดการ"]}>
                   {filteredProducts.length === 0 ? (
                     <NexusTableRow>
@@ -261,10 +261,10 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
             </div>
 
             {/* Right Pane: Cart (35%) */}
-            <div className="w-full lg:w-[35%] flex flex-col bg-[#09090b]/40 border border-white/5 rounded-[2.5rem] shadow-inner min-h-0 relative">
+            <div className="w-full lg:w-[35%] flex flex-col bg-surface-1/40 border border-white/5 rounded-[2.5rem] shadow-inner min-h-0 relative">
               <div className="p-5 border-b border-white/5 shrink-0 flex items-center justify-between">
                 <h3 className="text-[13px] font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  พัสดุที่เลือก <span className="bg-nexus-teal text-black px-2 py-0.5 rounded-full text-[10px]">{selectedProducts.length}</span>
+                  พัสดุที่เลือก <span className="bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 px-2 py-0.5 rounded-full text-[10px]">{selectedProducts.length}</span>
                 </h3>
               </div>
 
@@ -582,51 +582,51 @@ export default function InventoryPage() {
       
 
       {/* Module Header with Compact Summaries aligned on the same horizontal plane */}
-      <header className="p-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-5 bg-black/20">
-        <div className="flex items-center gap-4 shrink-0">
-          <div className="w-10 h-10 rounded-2xl bg-nexus-blue/10 flex items-center justify-center text-nexus-blue shadow-lg border border-nexus-blue/10">
-            <Package size={22} />
+      <header className="px-6 py-2.5 min-h-[60px] border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-black/20 shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-nexus-blue/10 flex items-center justify-center text-nexus-blue shadow-lg border border-nexus-blue/10">
+            <Package size={20} />
           </div>
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight leading-none">คลังสินค้าและพัสดุ</h1>
-            <p className="text-sm font-medium text-white/30 uppercase mt-1.5 tracking-widest leading-none">Intelligence OS for Modern Business</p>
+            <p className="text-sm font-medium text-white/30 uppercase mt-1 tracking-widest leading-none">Intelligence OS for Modern Business</p>
           </div>
         </div>
 
         {/* Aligned summaries in identical horizontal plane */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[140px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
-              <Package size={18} />
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
+              <Package size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">สต็อกคงคลัง</span>
-              <span className="text-[17px] font-bold text-nexus-teal mt-1 mono-numbers leading-none">{totalQty.toLocaleString()} EA</span>
+              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">{totalQty.toLocaleString()} EA</span>
             </div>
           </div>
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[150px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
-              <DollarSign size={18} />
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
+              <DollarSign size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">มูลค่ารวม</span>
-              <span className="text-[17px] font-bold text-nexus-blue mt-1 mono-numbers leading-none">฿{totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+              <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none">฿{totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
             </div>
           </div>
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-warning/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center text-warning border border-warning/20 shrink-0">
-              <ShieldAlert size={18} />
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-warning/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center text-warning border border-warning/20 shrink-0">
+              <ShieldAlert size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">สต็อกต่ำกว่าเกณฑ์</span>
-              <span className="text-[17px] font-bold text-warning mt-1 mono-numbers leading-none">{lowStockCount} SKU</span>
+              <span className="text-[17px] font-bold text-warning mt-0.5 mono-numbers leading-none">{lowStockCount} SKU</span>
             </div>
           </div>
         </div>
       </header>
 
       {/* Tab Navigation and Toolbars */}
-      <section className="px-6 py-4 bg-black/10 border-b border-white/5 flex flex-col xl:flex-row items-center justify-between gap-4">
+      <section className="px-6 h-[56px] bg-black/10 border-b border-white/5 flex items-center justify-between shrink-0">
         <PillTabs 
           tabs={[
             { id: "items", label: "รายการพัสดุ", icon: <Package size={14} /> },
@@ -649,34 +649,36 @@ export default function InventoryPage() {
         />
         
         {activeTab !== "layout" && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <PillButton 
-              variant="glass"
-              className="gap-2 h-9 text-xs border-nexus-blue/20 text-nexus-blue hover:"
+              variant="confirm"
+              className="gap-1.5 shadow-neon-blue"
               onClick={() => router.push("/inventory/out/new")}
             >
-              <ArrowLeftRight size={16} /> โอนย้ายสต็อก
+              <ArrowLeftRight size={14} /> โอนย้ายสต็อก
             </PillButton>
             <PillButton 
-              variant="glass"
-              className="gap-2 h-9 text-xs border-nexus-teal/20 text-nexus-teal hover:"
+              variant="primary"
+              className="gap-1.5 shadow-neon-teal"
               onClick={() => router.push("/inventory/in/new")}
             >
-              <Plus size={16} /> รับสินค้าเข้าคลัง
+              <Plus size={14} /> รับสินค้าเข้าคลัง
             </PillButton>
             {activeTab === "kits" ? (
               <PillButton 
-                className="gap-2 h-9 text-xs shadow-neon-teal"
+                variant="primary"
+                className="gap-1.5 shadow-neon-teal"
                 onClick={() => setIsAddKitOpen(true)}
               >
-                <Plus size={16} /> สร้างชุดอุปกรณ์
+                <Plus size={14} /> สร้างชุดอุปกรณ์
               </PillButton>
             ) : (
               <PillButton 
-                className="gap-2 h-9 text-xs shadow-neon-teal"
+                variant="primary"
+                className="gap-1.5 shadow-neon-teal"
                 onClick={() => router.push("/inventory/products/new")}
               >
-                <Plus size={16} /> เพิ่มสินค้า
+                <Plus size={14} /> เพิ่มสินค้า
               </PillButton>
             )}
           </div>
@@ -684,59 +686,63 @@ export default function InventoryPage() {
       </section>
 
       {/* Main Content Viewport */}
-      <main className="flex-1 overflow-y-auto p-5 relative custom-scrollbar">
+      <main className="flex-1 overflow-y-auto relative custom-scrollbar">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(20,163,204,0.03)_0%,transparent_50%)] pointer-events-none" />
 
         {/* 3D Digital Twin Layout Tab */}
         {activeTab === "layout" && (
-          <div className="relative z-10 w-full animate-in fade-in duration-500">
+          <div className="relative z-10 w-full animate-in fade-in duration-500 p-5">
             <Warehouse3D />
           </div>
         )}
 
         {/* Non-layout Tabs (Items, Assets, Serials, History) wrapped in the exact identical dual-column container */}
         {activeTab !== "layout" && (
-          <div className="flex flex-col xl:flex-row gap-4 items-start relative z-10 w-full animate-in fade-in duration-500">
-            
-            {/* Left Content Column */}
+          <div className="p-5 space-y-3 max-w-[1800px] mx-auto w-full relative z-10">
+            <div className="flex flex-col xl:flex-row gap-4 items-start w-full animate-in fade-in duration-500">
+              
+              {/* Left Content Column */}
             <div className="flex-1 w-full space-y-3">
               
-              {/* Search Toolbar inside Left Column */}
-              <GlassCard className="p-4 flex items-center justify-between gap-4 border-white/5 bg-black/35">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                  <PillInput 
-                    placeholder={
-                      activeTab === "items" ? "ค้นหา SKU หรือชื่อพัสดุ..." :
-                      activeTab === "assets" ? "ค้นหาชื่อสินทรัพย์ ผู้รับผิดชอบ หรือ พิกัด..." :
-                      activeTab === "serials" ? "ค้นหาซีเรียล หรือรหัสพัสดุ..." :
-                      activeTab === "kits" ? "ค้นหาชุดอุปกรณ์ BOM..." :
-                      "ค้นหาเลขประวัติ ความเคลื่อนไหว..."
-                    } 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-11 h-9" 
-                  />
-                </div>
-                
-                <span className="text-xs text-white/30 uppercase tracking-widest font-medium hidden sm:block">
-                  {activeTab === "items" ? `ค้นพบ ${filteredProducts.length} รายการ` :
-                   activeTab === "assets" ? `ค้นพบ ${filteredAssets.length} รายการ` :
-                   activeTab === "serials" ? `ค้นพบ ${filteredSerials.length} รายการ` :
-                   activeTab === "kits" ? `ค้นพบ ${filteredKits.length} รายการ` :
-                   `สตรีมประวัติล่าสุด ${filteredMovements.length} ล็อก`}
-                </span>
-              </GlassCard>
+              {/* Tactical Command Bar */}
+              <div className="flex flex-col md:flex-row items-center gap-4 bg-white/[0.01] p-1.5 rounded-full border border-white/5 backdrop-blur-md">
+                 <NexusSearchInput 
+                   placeholder={
+                     activeTab === "items" ? "ค้นหา SKU หรือชื่อพัสดุ..." :
+                     activeTab === "assets" ? "ค้นหาชื่อสินทรัพย์ ผู้รับผิดชอบ หรือ พิกัด..." :
+                     activeTab === "serials" ? "ค้นหาซีเรียล หรือรหัสพัสดุ..." :
+                     activeTab === "kits" ? "ค้นหาชุดอุปกรณ์ BOM..." :
+                     "ค้นหาเลขประวัติ ความเคลื่อนไหว..."
+                   } 
+                   value={searchQuery}
+                   onChange={(e) => setSearchQuery(e.target.value)}
+                   className="flex-1"
+                   kbd="F"
+                 />
+                 <div className="flex items-center gap-4 pr-1.5">
+                    <span className="text-[11px] text-white/30 uppercase tracking-widest font-bold hidden sm:block px-2">
+                      {activeTab === "items" ? `ค้นพบ ${filteredProducts.length} รายการ` :
+                       activeTab === "assets" ? `ค้นพบ ${filteredAssets.length} รายการ` :
+                       activeTab === "serials" ? `ค้นพบ ${filteredSerials.length} รายการ` :
+                       activeTab === "kits" ? `ค้นพบ ${filteredKits.length} รายการ` :
+                       `สตรีมประวัติล่าสุด ${filteredMovements.length} ล็อก`}
+                    </span>
+                    <div className="w-px h-4 bg-white/10 hidden sm:block"></div>
+                    <PillButton variant="glass" className="h-9 w-9 p-0 rounded-full border-white/5 hover:border-nexus-teal/30 hover:bg-nexus-teal/5">
+                      <Filter size={18} className="text-white/40" />
+                    </PillButton>
+                 </div>
+              </div>
 
               {/* Data Table Grid inside identical height board */}
-              <GlassCard className="p-0 overflow-hidden border-white/5 min-h-[640px] flex flex-col justify-between bg-black/40">
+              <GlassCard accentColor="teal" className="p-0 overflow-hidden min-h-[640px] flex flex-col justify-between">
                 <div className="overflow-x-auto custom-scrollbar flex-1 w-full">
                   
                   {/* Items List Table */}
                   {activeTab === "items" && (
                     <NexusTable 
                       headers={["รหัสสินค้า", "ชื่อพัสดุ / ทรัพยากร", "หมวดหมู่พัสดุ", "จำนวนคงเหลือ", "สถานะสต็อก", "ราคาทุนเฉลี่ย WAC"]}
-                      minWidth="min-w-[700px]"
+                      minWidth="min-w-[140px]"
                     >
                       {loading ? (
                         <NexusTableRow className="bg-transparent hover:bg-transparent pointer-events-none">
@@ -766,11 +772,11 @@ export default function InventoryPage() {
                               )}
                               onClick={() => setSelectedProductId(selectedProductId === item.id ? null : item.id)}
                             >
-                              <NexusTableCell className="text-nexus-blue text-xs font-bold tracking-tighter" mono>
+                              <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center text-nexus-blue text-xs font-bold tracking-tighter" mono>
                                 {item.sku}
                               </NexusTableCell>
                               <NexusTableCell>
-                                <div className="font-bold text-white group-hover:text-nexus-teal transition-colors text-sm">{item.name}</div>
+                                <div className="w-full font-bold text-white group-hover:text-nexus-teal transition-colors text-sm">{item.name}</div>
                                 {item.brand && <div className="text-xs text-white/20 font-bold uppercase mt-0.5">{item.brand}</div>}
                               </NexusTableCell>
                               <NexusTableCell>
@@ -778,13 +784,13 @@ export default function InventoryPage() {
                                   {item.category}
                                 </span>
                               </NexusTableCell>
-                              <NexusTableCell className="text-right font-bold text-white" mono>
+                              <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white" mono>
                                 {(item.stockStatus?.onHand || 0).toLocaleString()}
                               </NexusTableCell>
-                              <NexusTableCell className="text-center">
+                              <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
                                 <StatusBadge status={statusType} label={statusLabel} />
                               </NexusTableCell>
-                              <NexusTableCell className="text-right text-white/60 font-bold" mono>
+                              <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white/60 font-bold" mono>
                                 ฿{(item.pricing?.costWAC || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </NexusTableCell>
                             </NexusTableRow>
@@ -798,7 +804,7 @@ export default function InventoryPage() {
                   {activeTab === "assets" && (
                     <NexusTable
                       headers={["รหัสสินทรัพย์", "ชื่อสินทรัพย์", "หมวดหมู่สินทรัพย์", "ผู้ดูแล / ผู้ถือครอง", "มูลค่าประเมิน", "สถานะ"]}
-                      minWidth="min-w-[700px]"
+                      minWidth="min-w-[140px]"
                     >
                       {filteredAssets.length === 0 ? (
                         <NexusTableRow className="bg-transparent hover:bg-transparent pointer-events-none">
@@ -815,12 +821,12 @@ export default function InventoryPage() {
                             )}
                             onClick={() => setSelectedAssetId(selectedAssetId === asset.id ? null : asset.id)}
                           >
-                            <NexusTableCell className="text-nexus-blue text-xs font-bold tracking-tighter" mono>{asset.id}</NexusTableCell>
-                            <NexusTableCell className="font-bold text-white group-hover:text-nexus-blue transition-colors text-sm">{asset.name}</NexusTableCell>
-                            <NexusTableCell className="text-xs font-bold text-white/40 uppercase">{asset.category}</NexusTableCell>
-                            <NexusTableCell className="text-xs font-bold text-white/60">{asset.custodian}</NexusTableCell>
-                            <NexusTableCell className="text-right font-bold text-white/80" mono>฿{asset.value.toLocaleString()}</NexusTableCell>
-                            <NexusTableCell className="text-center">
+                            <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center text-nexus-blue text-xs font-bold tracking-tighter" mono>{asset.id}</NexusTableCell>
+                            <NexusTableCell className="w-full font-bold text-white group-hover:text-nexus-blue transition-colors text-sm">{asset.name}</NexusTableCell>
+                            <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-xs font-bold text-white/40 uppercase">{asset.category}</NexusTableCell>
+                            <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-xs font-bold text-white/60">{asset.custodian}</NexusTableCell>
+                            <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white/80" mono>฿{asset.value.toLocaleString()}</NexusTableCell>
+                            <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
                               <StatusBadge status={asset.status === "active" ? "active" : "inactive"} label={asset.status === "active" ? "พร้อมใช้งาน" : "ไม่ทำงาน"} />
                             </NexusTableCell>
                           </NexusTableRow>
@@ -833,7 +839,7 @@ export default function InventoryPage() {
                   {activeTab === "serials" && (
                     <NexusTable
                       headers={["หมายเลขซีเรียล", "ชื่อรายการสินค้า", "สถานะการลงทะเบียน", "วันหมดอายุรับประกัน", "พิกัดแร็ค / จุดจัดเก็บ"]}
-                      minWidth="min-w-[700px]"
+                      minWidth="min-w-[140px]"
                     >
                       {filteredSerials.length === 0 ? (
                         <NexusTableRow className="bg-transparent hover:bg-transparent pointer-events-none">
@@ -850,9 +856,9 @@ export default function InventoryPage() {
                             )}
                             onClick={() => setSelectedSerialSn(selectedSerialSn === s.sn ? null : s.sn)}
                           >
-                            <NexusTableCell className="text-nexus-teal text-xs font-bold tracking-tighter" mono>{s.sn}</NexusTableCell>
-                            <NexusTableCell className="font-bold text-white text-sm">{s.name}</NexusTableCell>
-                            <NexusTableCell className="text-center">
+                            <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center text-nexus-teal text-xs font-bold tracking-tighter" mono>{s.sn}</NexusTableCell>
+                            <NexusTableCell className="w-full font-bold text-white text-sm">{s.name}</NexusTableCell>
+                            <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
                               <StatusBadge 
                                 status={
                                   s.status === "available" ? "active" : 
@@ -866,8 +872,8 @@ export default function InventoryPage() {
                                 } 
                               />
                             </NexusTableCell>
-                            <NexusTableCell className="text-xs text-white/40" mono>{s.expiry}</NexusTableCell>
-                            <NexusTableCell className="text-xs font-bold text-white/50" mono>{s.location}</NexusTableCell>
+                            <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-xs text-white/40" mono>{s.expiry}</NexusTableCell>
+                            <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-xs font-bold text-white/50" mono>{s.location}</NexusTableCell>
                           </NexusTableRow>
                         ))
                       )}
@@ -878,7 +884,7 @@ export default function InventoryPage() {
                   {activeTab === "history" && (
                     <NexusTable
                       headers={["เลขที่ธุรกรรม", "ประเภทธุรกรรม", "รายการพัสดุ", "จำนวน", "เส้นทางจัดส่ง / โอนย้าย", "ผู้บันทึกรายการ"]}
-                      minWidth="min-w-[700px]"
+                      minWidth="min-w-[140px]"
                     >
                       {filteredMovements.length === 0 ? (
                         <NexusTableRow className="bg-transparent hover:bg-transparent pointer-events-none">
@@ -899,19 +905,19 @@ export default function InventoryPage() {
                               )}
                               onClick={() => setSelectedMovementId(selectedMovementId === move.id ? null : move.id)}
                             >
-                              <NexusTableCell className="text-nexus-teal text-xs font-bold tracking-tighter" mono>{move.transactionId}</NexusTableCell>
+                              <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center text-nexus-teal text-xs font-bold tracking-tighter" mono>{move.transactionId}</NexusTableCell>
                               <NexusTableCell>
                                 <StatusBadge 
                                   status={move.type === "IN" ? "active" : move.type === "OUT" ? "danger" : "pending"} 
                                   label={move.type} 
                                 />
                               </NexusTableCell>
-                              <NexusTableCell className="font-bold text-white group-hover:text-nexus-teal transition-colors text-sm">{name}</NexusTableCell>
-                              <NexusTableCell className="text-right font-bold text-white" mono>{move.quantity}</NexusTableCell>
-                              <NexusTableCell className="text-xs text-white/40 uppercase" mono>
+                              <NexusTableCell className="w-full font-bold text-white group-hover:text-nexus-teal transition-colors text-sm">{name}</NexusTableCell>
+                              <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white" mono>{move.quantity}</NexusTableCell>
+                              <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-xs text-white/40 uppercase" mono>
                                 {move.fromLocation || "EXTERNAL"} → {move.toLocation || "MAIN-WH"}
                               </NexusTableCell>
-                              <NexusTableCell className="text-xs font-bold text-white/50 whitespace-nowrap">{move.userId || "System"}</NexusTableCell>
+                              <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-xs font-bold text-white/50">{move.userId || "System"}</NexusTableCell>
                             </NexusTableRow>
                           );
                         })
@@ -923,7 +929,7 @@ export default function InventoryPage() {
                   {activeTab === "kits" && (
                     <NexusTable 
                       headers={["รหัสชุดอุปกรณ์", "ชื่อชุดอุปกรณ์ BOM", "รายละเอียด / ส่วนประกอบ", "ราคาทุนสะสม WAC", "ราคาขายแนะนำ", "อัตรากำไร"]}
-                      minWidth="min-w-[700px]"
+                      minWidth="min-w-[140px]"
                     >
                       {filteredKits.length === 0 ? (
                         <NexusTableRow className="bg-transparent hover:bg-transparent pointer-events-none">
@@ -944,11 +950,11 @@ export default function InventoryPage() {
                               )}
                               onClick={() => setSelectedKitId(selectedKitId === kit.id ? null : kit.id)}
                             >
-                              <NexusTableCell className="text-nexus-blue text-xs font-bold tracking-tighter" mono>
+                              <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center text-nexus-blue text-xs font-bold tracking-tighter" mono>
                                 {kit.id}
                               </NexusTableCell>
                               <NexusTableCell>
-                                <div className="font-bold text-white group-hover:text-nexus-teal transition-colors text-sm">{kit.name}</div>
+                                <div className="w-full font-bold text-white group-hover:text-nexus-teal transition-colors text-sm">{kit.name}</div>
                                 <div className="text-[10px] text-white/40 mt-1 whitespace-nowrap">{kit.description}</div>
                               </NexusTableCell>
                               <NexusTableCell>
@@ -956,13 +962,13 @@ export default function InventoryPage() {
                                   {kit.components.length} ส่วนประกอบ ({kit.components.filter((c: any) => c.type === 'service').length} บริการ)
                                 </span>
                               </NexusTableCell>
-                              <NexusTableCell className="text-right font-bold text-white" mono>
+                              <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white" mono>
                                 ฿{kit.aggregateCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                               </NexusTableCell>
-                              <NexusTableCell className="text-right text-nexus-teal font-bold" mono>
+                              <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-nexus-teal font-bold" mono>
                                 ฿{kit.aggregatePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                               </NexusTableCell>
-                              <NexusTableCell className="text-right text-nexus-blue font-bold" mono>
+                              <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-nexus-blue font-bold" mono>
                                 {marginPercent.toFixed(1)}%
                               </NexusTableCell>
                             </NexusTableRow>
@@ -1008,11 +1014,11 @@ export default function InventoryPage() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="p-4 rounded-xl bg-nexus-teal/5 border border-nexus-teal/10 flex flex-col justify-between">
+                        <div className="p-4 rounded-xl  border border-nexus-teal/10 flex flex-col justify-between">
                           <span className="text-sm font-medium text-white/30 uppercase tracking-widest">ในคลังพร้อมใช้</span>
                           <span className="text-2xl font-medium text-nexus-teal mt-1 mono-numbers">{selectedProduct.stockStatus?.onHand || 0}</span>
                         </div>
-                        <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col justify-between">
+                        <div className="p-4 rounded-xl bg-white/5 border border-white/5 flex flex-col justify-between">
                           <span className="text-sm font-medium text-white/30 uppercase tracking-widest">ต้นทุน</span>
                           <span className="text-sm font-medium text-white mt-2 truncate mono-numbers">฿{(selectedProduct.pricing?.costWAC || 0).toLocaleString()}</span>
                         </div>
@@ -1061,8 +1067,8 @@ export default function InventoryPage() {
                       <p className="text-sm font-medium text-white/50 mt-1 leading-relaxed">คลิกเลือกรายการพัสดุในตารางเพื่อวิเคราะห์คลังพิกัด ดึงข้อมูล WAC และกระจายพิกัด 3D แบบเรียลไทม์</p>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-nexus-blue/5 border border-nexus-blue/15 space-y-3">
-                      <p className="text-xs font-medium text-nexus-blue uppercase tracking-widest flex items-center gap-1.5 animate-pulse">
+                    <div className="p-4 rounded-xl  border border-nexus-blue/15 space-y-3">
+                      <p className="text-xs font-medium text-nexus-blue uppercase tracking-widest flex items-center gap-1.5">
                         <Cpu size={12} className="animate-spin" /> NEXUS Auto-Scan AI
                       </p>
                       <p className="text-sm text-white/70 leading-relaxed font-medium">
@@ -1114,7 +1120,7 @@ export default function InventoryPage() {
                         </button>
                       </div>
 
-                      <div className="p-4 rounded-xl bg-nexus-blue/5 border border-nexus-blue/10 space-y-2">
+                      <div className="p-4 rounded-xl  border border-nexus-blue/10 space-y-2">
                         <span className="text-sm font-medium text-white/30 uppercase tracking-widest block">มูลค่าประเมินสินทรัพย์</span>
                         <span className="text-2xl font-medium text-white mono-numbers">฿{selectedAsset.value.toLocaleString()}</span>
                       </div>
@@ -1174,7 +1180,7 @@ export default function InventoryPage() {
                         </button>
                       </div>
 
-                      <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2 text-center">
+                      <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-2 text-center">
                         <span className="text-sm font-medium text-white/30 uppercase tracking-widest block">สถานะประกัน</span>
                         <span className="text-xs font-medium text-nexus-teal uppercase tracking-widest flex items-center justify-center gap-1">
                           <ShieldCheck size={14} /> ACTIVE / อยู่ในระยะประกัน
@@ -1262,7 +1268,7 @@ export default function InventoryPage() {
                       <p className="text-sm font-medium text-white/50 mt-1 leading-relaxed">บันทึกเหตุการณ์รับเข้า-จ่ายออก และโอนย้ายพัสดุแบบ Real-time ตรวจสอบย้อนกลับและสอบทานบัญชีได้ 100%</p>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-nexus-teal/5 border border-nexus-teal/10 space-y-2 text-xs font-medium">
+                    <div className="p-4 rounded-xl  border border-nexus-teal/10 space-y-2 text-xs font-medium">
                       <p className="text-nexus-teal uppercase tracking-widest text-xs font-medium">Logistics Ledger Security</p>
                       <p className="text-white/70 leading-relaxed font-medium">
                         ทุกธุรกรรมคลังพัสดุจะถูกเข้ารหัสลายเซ็นดิจิทัล ผูกกับบัญชีผู้ใช้และบันทึกเวลาสากล ป้องกันการแก้ไขหรือลบประวัติโดยพลการ
@@ -1292,11 +1298,11 @@ export default function InventoryPage() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="p-4 rounded-xl bg-nexus-teal/5 border border-nexus-teal/10 flex flex-col justify-between">
+                        <div className="p-4 rounded-xl  border border-nexus-teal/10 flex flex-col justify-between">
                           <span className="text-sm font-medium text-white/30 uppercase tracking-widest">ราคาทุนรวม</span>
                           <span className="text-[14px] font-medium text-nexus-teal mt-1 mono-numbers">฿{selectedKit.aggregateCost.toLocaleString()}</span>
                         </div>
-                        <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col justify-between">
+                        <div className="p-4 rounded-xl bg-white/5 border border-white/5 flex flex-col justify-between">
                           <span className="text-sm font-medium text-white/30 uppercase tracking-widest">ราคาเสนอขาย</span>
                           <span className="text-[14px] font-medium text-white mt-1 mono-numbers">฿{selectedKit.aggregatePrice.toLocaleString()}</span>
                         </div>
@@ -1309,7 +1315,7 @@ export default function InventoryPage() {
                             <div key={cidx} className="p-3 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5 hover:bg-white/[0.04] transition-colors">
                               <div className="flex justify-between items-start gap-2">
                                 <span className="text-xs font-medium text-white leading-snug">{comp.name}</span>
-                                <span className="px-1.5 py-0.5 rounded bg-white/5 text-sm text-white/40 border border-white/10 font-mono font-medium shrink-0">
+                                <span className="px-1.5 py-0.5 rounded bg-white/5 text-sm text-white/40 border border-white/5 font-mono font-medium shrink-0">
                                   x{comp.qty}
                                 </span>
                               </div>
@@ -1336,7 +1342,7 @@ export default function InventoryPage() {
                       <p className="text-sm font-medium text-white/50 mt-1 leading-relaxed">รวบรวมพัสดุ Hardware, Materials และงานบริการ รวมเป็นชุดอุปกรณ์พร้อมขาย เพื่อความสะดวกในการออก BOQ และประมูลงานภาครัฐ</p>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-nexus-teal/5 border border-nexus-teal/10 space-y-2 text-xs font-medium">
+                    <div className="p-4 rounded-xl  border border-nexus-teal/10 space-y-2 text-xs font-medium">
                       <p className="text-nexus-teal uppercase tracking-widest text-xs font-medium">e-Bidding Integration Tool</p>
                       <p className="text-white/70 leading-relaxed font-medium">
                         การจัดกลุ่มสินค้าช่วยให้ออกแบบงบประมาณ ได้เร็วขึ้น 80% ป้องกันการตกหล่นของรายการอุปกรณ์เสริมและงานเดินสาย
@@ -1349,6 +1355,7 @@ export default function InventoryPage() {
 
             </div>
           </div>
+        </div>
         )}
       </main>
 

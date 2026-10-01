@@ -303,7 +303,7 @@ export default function ReportsPage() {
       </div>
 
       {/* 3. Filtering & Control Dashboard Area */}
-      <GlassCard className="p-4 bg-[#0a0a0c]/80 border-white/5 space-y-3">
+      <GlassCard className="p-4 bg-surface-0/80 border-white/5 space-y-3">
         <div className="flex items-center justify-between border-b border-white/5 pb-4">
           <div className="flex items-center gap-3 text-white/60">
             <ListFilter size={18} className="text-nexus-teal" />
@@ -382,7 +382,7 @@ export default function ReportsPage() {
       </GlassCard>
 
       {/* 4. Beautiful Unified Table Layout (PSG UI V3.1 Standards) */}
-      <GlassCard className="p-4 bg-[#0a0a0c] border-white/5">
+      <GlassCard className="p-4 bg-surface-0 border-white/5">
         <div className="flex items-center gap-3 mb-6">
           <Layers size={18} className="text-nexus-teal" />
           <h3 className="text-xs font-bold text-white/60 uppercase tracking-widest">
@@ -494,7 +494,7 @@ export default function ReportsPage() {
           title={`รายละเอียดข้อมูลเอกสาร: ${activeSubmission.submissionId}`}
           maxWidth="max-w-4xl"
         >
-          <div className="p-5 space-y-3 bg-[#0a0a0c]">
+          <div className="p-5 space-y-3 bg-surface-0">
             <div className="flex justify-between items-center border-b border-white/5 pb-4">
               <div>
                 <span className="px-2 py-0.5 rounded bg-nexus-blue/10 border border-nexus-blue/20 text-xs text-nexus-blue font-medium uppercase tracking-widest">
@@ -530,7 +530,7 @@ export default function ReportsPage() {
           title={`กรอกข้อมูลเอกสารใหม่: ${selectedTemplate.title}`}
           maxWidth="max-w-4xl"
         >
-          <div className="p-5 space-y-3 bg-[#0a0a0c]">
+          <div className="p-5 space-y-3 bg-surface-0">
             <p className="text-xs text-white/30 border-b border-white/5 pb-4 uppercase tracking-widest font-bold">
               กรุณาระบุรายละเอียดให้ครบถ้วนก่อนบันทึกข้อมูลธุรกรรมเข้าสู่ระบบ Multi-tenant
             </p>

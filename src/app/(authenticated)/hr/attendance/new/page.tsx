@@ -58,28 +58,40 @@ export default function NewAttendancePage() {
   };
 
   const headerContent = (
-    <>
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <button onClick={handleBack} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-white/50 hover:text-white transition-all backdrop-blur-sm">
-          <ArrowLeft size={18} />
-        </button>
+        <PillButton variant="glass" onClick={handleBack} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
         <div>
-          <p className="text-[10px] text-cyan-400 font-black uppercase tracking-widest mb-0.5">HR_CLOCK_V2.0</p>
-          <div className="flex items-center">
-            <h1 className="text-xl font-black uppercase tracking-tight text-white">บันทึกเวลาเข้า/ออกงาน (Attendance)</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+              บันทึกเวลาเข้าและออกงาน
+            </h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              ATTENDANCE
+            </span>
           </div>
+          <p className="text-sm text-white/60 font-medium mt-1">
+            ลงเวลาเข้างาน ออกงาน หรือปฏิบัติหน้าที่นอกสถานที่ของบุคลากร
+          </p>
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        {/* Placeholder for header actions if needed */}
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={handleBack}>
+          ยกเลิก
+        </PillButton>
+        <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" onClick={handleConfirm}>
+          <ShieldCheck size={14} className="mr-1.5" /> บันทึกเวลา
+        </PillButton>
       </div>
-    </>
+    </div>
   );
 
   const leftContent = (
     <div className="space-y-4">
-      <GlassCard className="p-8 space-y-12 min-h-[60vh] flex flex-col items-center justify-center border-white/5 bg-black/20">
+      <GlassCard accentColor="teal" className="p-8 space-y-12 min-h-[60vh] flex flex-col items-center justify-center">
         
         <div className="flex flex-col items-center text-center space-y-4 mt-8">
           <div className="w-24 h-24 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400 border border-cyan-500/20 shadow-[0_0_24px_rgba(6,182,212,0.15)]">
@@ -89,7 +101,7 @@ export default function NewAttendancePage() {
              <h4 className="text-5xl font-black text-white font-mono tracking-tight drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
                 {currentTime.toLocaleTimeString('en-US', { hour12: false })}
              </h4>
-             <p className="text-[14px] font-black text-white/30 uppercase tracking-[0.3em]">
+             <p className="text-[14px] font-semibold text-white/30 uppercase tracking-[0.3em]">
                 {currentTime.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}
              </p>
           </div>
@@ -147,10 +159,10 @@ export default function NewAttendancePage() {
   );
 
   const rightSidebar = (
-    <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
+    <GlassCard accentColor="blue" className="p-5 space-y-6 sticky top-0 relative overflow-hidden">
       <div className="space-y-1 relative z-10 border-b border-white/5 pb-4">
-        <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">Security Verification</p>
-        <h5 className="text-sm font-black text-white uppercase tracking-tight">Identity Guard</h5>
+        <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">Security Verification</p>
+        <h5 className="text-sm font-semibold text-white uppercase tracking-tight">Identity Guard</h5>
       </div>
 
       <div className="relative z-10 aspect-square w-full rounded-[2rem] bg-white/[0.02] border border-dashed border-white/10 flex flex-col items-center justify-center text-center p-8 space-y-4 group hover:border-cyan-500/40 transition-all cursor-pointer">
@@ -158,7 +170,7 @@ export default function NewAttendancePage() {
             <Fingerprint size={48} />
          </div>
          <div className="space-y-1">
-            <p className="text-[12px] font-black text-white uppercase tracking-widest">แตะลายนิ้วมือเพื่อยืนยัน</p>
+            <p className="text-[12px] font-semibold text-white uppercase tracking-widest">แตะลายนิ้วมือเพื่อยืนยัน</p>
             <p className="text-[10px] text-white/20 font-bold uppercase">หรือใช้ระบบจดจำใบหน้า</p>
          </div>
       </div>
@@ -188,7 +200,7 @@ export default function NewAttendancePage() {
       </div>
       
       <div className="absolute bottom-0 right-0 w-48 h-48 bg-cyan-500/10 blur-[60px] translate-x-1/4 translate-y-1/4 rounded-full pointer-events-none" />
-    </div>
+    </GlassCard>
   );
 
   return (

@@ -9,7 +9,7 @@ export function QuotationSummaryPanel() {
   return (
     <div className="lg:w-[25%] shrink-0 sticky top-[96px] space-y-4">
       <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl space-y-6">
-        <h3 className="text-sm font-black text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4 not-italic">
+        <h3 className="text-sm font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4 not-italic">
           <Calculator size={16} className="text-nexus-teal" /> สรุปยอดและภาษี
         </h3>
         
@@ -69,7 +69,7 @@ export function QuotationSummaryPanel() {
 
         <div className="pt-4 border-t border-nexus-teal/20 space-y-2">
           <div className="flex justify-between items-center text-nexus-teal">
-            <span className="text-sm font-black tracking-widest uppercase not-italic">ยอดสุทธิ</span>
+            <span className="text-sm font-semibold tracking-widest uppercase not-italic">ยอดสุทธิ</span>
             <span className="text-2xl font-black font-mono tracking-tight">฿ {summary.grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
           </div>
           <div className="text-xs text-right font-black text-nexus-teal/60 bg-transparent px-3 py-1.5 rounded-full not-italic">

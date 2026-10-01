@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, CalendarDays, Wallet, ArrowLeft, Save, RefreshCw } from "lucide-react";
+import { FileText, CalendarDays, Wallet, ArrowLeft, Save, RefreshCw, CheckCircle2 } from "lucide-react";
 import { PillButton, PillInput, NexusDatePicker, GlassCard, PillSelect } from "@/components/ui/Base";
 import { useSystemDialog } from "@/context/DialogContext";
 import { useAuth } from "@/context/AuthContext";
@@ -52,20 +52,32 @@ export default function NewBillingNotePage() {
   };
 
   const headerContent = (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <button onClick={() => router.back()} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-white/50 hover:text-white transition-all backdrop-blur-sm">
-          <ArrowLeft size={18} />
-        </button>
+        <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
         <div>
-          <p className="text-[10px] text-cyan-400 font-black uppercase tracking-widest mb-0.5">Sales / Billing Note</p>
-          <div className="flex items-center">
-            <h1 className="text-xl font-black uppercase tracking-tight text-white flex items-center gap-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
               สร้างใบวางบิล
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">DRAFT</span>
             </h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              BILLING-NOTE
+            </span>
           </div>
+          <p className="text-sm text-white/60 font-medium mt-1">
+            รวบรวมใบแจ้งหนี้และออกใบวางบิลเพื่อเรียกเก็บเงินจากลูกค้าตามรอบ
+          </p>
         </div>
+      </div>
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={() => router.back()}>
+          ยกเลิก
+        </PillButton>
+        <PillButton variant="confirm" onClick={handleCommit} disabled={isSubmitting} className="h-8 px-5 font-bold text-xs">
+          <CheckCircle2 size={14} className="mr-1.5" /> {isSubmitting ? "กำลังบันทึก..." : "บันทึกใบวางบิล"}
+        </PillButton>
       </div>
     </div>
   );
@@ -136,8 +148,8 @@ export default function NewBillingNotePage() {
   );
 
   const rightSidebar = (
-    <GlassCard className="p-6 border-white/5 bg-[#111111] shadow-2xl space-y-6 sticky top-0 relative overflow-hidden rounded-3xl">
-        <h3 className="text-[13px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4 relative z-10">
+    <GlassCard className="p-6 border-white/5 bg-surface-1 shadow-2xl space-y-6 sticky top-0 relative overflow-hidden rounded-3xl">
+        <h3 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4 relative z-10">
            <Wallet size={16} className="text-cyan-400" /> วางบิล
         </h3>
         

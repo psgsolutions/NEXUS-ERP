@@ -99,7 +99,8 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
     if (!form.customer && !form.subject) return void showAlert("กรุณาระบุข้อมูลหัวข้อโครงการและลูกค้า");
     setIsSubmitting(true);
     try {
-      await onSave({ ...form, financials });
+      const mappedVatType = form.taxMode === "Inclusive" ? "Include VAT" : form.taxMode === "Exclusive" ? "Exclude VAT" : "Non-VAT";
+      await onSave({ ...form, vatType: mappedVatType, financials });
       setIsLocked(true);
     } finally {
       setIsSubmitting(false);
@@ -124,17 +125,17 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
       title="ใบเสนอราคา (Quotation)"
       maxWidth="max-w-[1200px]"
     >
-      <div className="flex flex-col h-full bg-[#0D0D0D] relative overflow-hidden">
+      <div className="flex flex-col h-full bg-surface-0 relative overflow-hidden">
         
         {/* STICKY HEADER ACTIONS */}
-        <div className="sticky top-0 z-50 flex justify-between items-center px-8 py-4 bg-[#0D0D0D]/90 backdrop-blur-xl border-b border-white/5">
+        <div className="sticky top-0 z-50 flex justify-between items-center px-8 py-4 bg-surface-0/90 backdrop-blur-xl border-b border-white/5">
           <div className="flex items-center gap-4">
              {isLocked ? (
                <PillButton onClick={() => setIsLocked(false)} className="h-9 px-6 rounded-full shadow-neon-blue bg-nexus-blue/20 text-nexus-blue border border-nexus-blue/30">
                  <Edit3 size={16} className="mr-2" /> แก้ไขข้อมูล
                </PillButton>
              ) : (
-                <span className="text-[12px] font-black text-white/40 uppercase tracking-widest flex items-center gap-2">
+                <span className="text-[12px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-nexus-teal animate-pulse" /> Editing Mode
                 </span>
              )}
@@ -171,14 +172,14 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
             <div className="flex justify-between items-start border-b border-white/5 pb-5">
               <div className="space-y-2">
                 <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 mb-3 shadow-xl">
-                   <div className="text-nexus-blue font-black text-2xl tracking-tighter">PSG</div>
+                   <div className="text-nexus-blue font-semibold text-2xl tracking-tighter">PSG</div>
                 </div>
-                <h4 className="text-lg font-black text-white uppercase tracking-tight">PSG Solutions Co., Ltd. (Head Office)</h4>
+                <h4 className="text-lg font-semibold text-white uppercase tracking-tight">PSG Solutions Co., Ltd. (Head Office)</h4>
                 <p className="text-[12px] text-white/40 font-bold">บริษัท พีเอสจี โซลูชั่น จำกัด (สำนักงานใหญ่)</p>
               </div>
               <div className="text-right space-y-4">
                  <div className="inline-block bg-nexus-blue/10 border border-nexus-blue/20 rounded-xl px-6 py-3 shadow-neon-blue">
-                    <p className="text-[12px] font-black text-nexus-blue uppercase tracking-widest mb-1">ใบเสนอราคา / Quotation</p>
+                    <p className="text-[12px] font-semibold text-nexus-blue uppercase tracking-widest mb-1">ใบเสนอราคา / Quotation</p>
                     <p className="text-lg font-mono text-white font-black">{initialData?.id || "QTA-DRAFT-001"}</p>
                  </div>
               </div>
@@ -252,7 +253,7 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
                         <option value="60 Days">เครดิต 60 วัน</option>
                       </PillSelect>
                     </Field>
-                    <Field label="ระบบภาษี (Tax System)">
+                    <Field label="ระบบภาษี">
                       <PillSelect 
                         value={form.taxMode}
                         onChange={(e) => setForm({...form, taxMode: e.target.value as VatType})}
@@ -286,7 +287,7 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
                 <div className="flex items-center justify-between px-2">
                     <div className="flex items-center gap-3">
                         <Layers className="text-nexus-blue" size={20} />
-                        <h4 className="text-[13px] font-black text-white/80 uppercase tracking-[0.2em]">รายการสินค้า / บริการ</h4>
+                        <h4 className="text-[13px] font-semibold text-white/80 uppercase tracking-[0.2em]">รายการสินค้า / บริการ</h4>
                     </div>
                     {!isLocked && (
                       <SmartScanner 

@@ -43,7 +43,7 @@ export function BillingNoteModal({ isOpen, onClose, onSave, initialData }: Billi
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="ใบวางบิล / ใบแจ้งหนี้">
-      <div className="flex flex-col h-full bg-[#0D0D0D]">
+      <div className="flex flex-col h-full bg-surface-0">
         <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar">
           <div className="flex items-center gap-4 border-b border-white/5 pb-4">
             <div className="p-3 bg-nexus-blue/10 rounded-2xl text-nexus-blue border border-nexus-blue/20">

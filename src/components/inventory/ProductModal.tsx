@@ -102,14 +102,14 @@ export function ProductModal({ isOpen, onClose, onSave, initialData }: ProductMo
       title="สินค้า / พัสดุ"
       maxWidth="max-w-[1300px]"
     >
-      <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
+      <div className="flex h-full divide-x divide-white/5 bg-surface-0">
         {/* INPUT CANVAS */}
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           <div className="max-w-4xl mx-auto space-y-10">
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
               <div className="space-y-1">
-                <p className="text-[12px] font-black text-nexus-blue uppercase tracking-[0.2em]" title="ระบบบริหารคลังพัสดุ V2.9">STOCK V2.9</p>
-                <h4 className="text-xl font-black text-white uppercase tracking-tight">สินค้า</h4>
+                <p className="text-[12px] font-semibold text-nexus-blue uppercase tracking-[0.2em]" title="ระบบบริหารคลังพัสดุ V2.9">STOCK V2.9</p>
+                <h4 className="text-xl font-semibold text-white uppercase tracking-tight">สินค้า</h4>
               </div>
               <PillTabs 
                 tabs={[
@@ -126,12 +126,12 @@ export function ProductModal({ isOpen, onClose, onSave, initialData }: ProductMo
               {activeTab === "info" && (
                 <div className="space-y-10 animate-in fade-in slide-in-from-left-4">
                   <section className="space-y-6">
-                    <h3 className="text-[12px] font-black text-nexus-blue uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><Zap size={16} /> 1. อัตลักษณ์พัสดุ</h3>
+                    <h3 className="text-[12px] font-semibold text-nexus-blue uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><Zap size={16} /> 1. อัตลักษณ์พัสดุ</h3>
                     <div className="flex gap-10">
                       {/* VISUAL ASSET PREVIEW */}
                       <div className="w-64 h-64 bg-white/[0.03] border border-white/5 rounded-[3rem] flex flex-col items-center justify-center gap-4 relative overflow-hidden group">
                         <Package size={64} className="text-white/10 group-hover:text-nexus-teal transition-all duration-700" />
-                        <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">Visual Asset</span>
+                        <span className="text-[10px] font-semibold text-white/20 uppercase tracking-widest">Visual Asset</span>
                         <div className="absolute inset-0 bg-nexus-teal/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
 
@@ -161,7 +161,7 @@ export function ProductModal({ isOpen, onClose, onSave, initialData }: ProductMo
               {activeTab === "pricing" && (
                 <div className="space-y-10 animate-in fade-in slide-in-from-right-4">
                   <section className="space-y-6">
-                    <h3 className="text-[12px] font-black text-warning uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><DollarSign size={16} /> โครงสร้างราคาและต้นทุน</h3>
+                    <h3 className="text-[12px] font-semibold text-warning uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><DollarSign size={16} /> โครงสร้างราคาและต้นทุน</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-white/[0.02] p-8 rounded-[2rem] border border-white/5">
                       <Field label="ราคาเสนอโครงการ">
                         <NumberStepper value={form.price_project} onChange={(v) => setForm({...form, price_project: v})} unit="฿" step={100} />
@@ -186,7 +186,7 @@ export function ProductModal({ isOpen, onClose, onSave, initialData }: ProductMo
               {activeTab === "stock" && (
                 <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4">
                   <section className="space-y-6">
-                    <h3 className="text-[12px] font-black text-nexus-teal uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><Box size={16} /> การควบคุมระดับพัสดุ</h3>
+                    <h3 className="text-[12px] font-semibold text-nexus-teal uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><Box size={16} /> การควบคุมระดับพัสดุ</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <Field label="ระดับสต็อกปัจจุบัน">
                         <NumberStepper value={form.qty_on_hand} onChange={(v) => setForm({...form, qty_on_hand: v})} unit={form.unit} />
@@ -203,7 +203,7 @@ export function ProductModal({ isOpen, onClose, onSave, initialData }: ProductMo
         </div>
 
         {/* SIDEBAR */}
-        <div className="w-[350px] bg-[#0F0F12] p-8 flex flex-col shrink-0 border-l border-white/5 overflow-y-auto custom-scrollbar">
+        <div className="w-[350px] bg-surface-1 p-8 flex flex-col shrink-0 border-l border-white/5 overflow-y-auto custom-scrollbar">
           <div className="flex-1 space-y-10">
             {isLocked && (
               <PillButton onClick={() => setIsLocked(false)} className="w-full shadow-neon-blue bg-nexus-blue/20 text-nexus-blue border border-nexus-blue/30">
@@ -213,14 +213,14 @@ export function ProductModal({ isOpen, onClose, onSave, initialData }: ProductMo
 
             <div className="p-8 rounded-[3rem] bg-white/[0.03] border border-white/10 space-y-8 shadow-2xl">
               <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                <h4 className="text-[11px] font-black text-white/40 uppercase tracking-widest">สถานะทรัพยากร</h4>
+                <h4 className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">สถานะทรัพยากร</h4>
                 <BarChart3 size={18} className="text-nexus-blue" />
               </div>
               <div className="space-y-6">
                 <NexusDataField label="รหัส SKU" value={form.sku || "PENDING"} />
                 <NexusDataField label="มูลค่าคงคลังรวม" value={formatCurrency(form.qty_on_hand * form.cost_avg)} />
                 <div className="pt-6 border-t border-white/10 flex flex-col items-center">
-                   <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-2">Inventory Status</span>
+                   <span className="text-[10px] font-semibold text-white/20 uppercase tracking-[0.2em] mb-2">Inventory Status</span>
                    <div className={cn(
                      "px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest",
                      form.qty_on_hand > form.qty_min ? "bg-nexus-teal/10 text-nexus-teal border border-nexus-teal/20" : "bg-danger/10 text-danger border border-danger/20"
@@ -255,7 +255,7 @@ export function ProductModal({ isOpen, onClose, onSave, initialData }: ProductMo
 function Field({ label, children }: { label: string, children: React.ReactNode }) {
   return (
     <div className="space-y-3">
-      <label className="text-[12px] font-black text-white/30 uppercase tracking-widest ml-1">{label}</label>
+      <label className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">{label}</label>
       {children}
     </div>
   );

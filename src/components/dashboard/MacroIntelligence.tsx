@@ -32,11 +32,11 @@ export function MacroIntelligence() {
                    <Sparkles size={24} />
                 </div>
                 <div>
-                   <h4 className="text-xl font-black text-white uppercase tracking-tight">Macro Intelligence Engine</h4>
+                   <h4 className="text-xl font-semibold text-white uppercase tracking-tight">Macro Intelligence Engine</h4>
                    <p className="text-[10px] font-bold text-nexus-blue uppercase tracking-[0.3em]">Global Market Analysis V7.0</p>
                 </div>
              </div>
-             <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/5 text-[10px] font-black text-white/40 uppercase tracking-widest">
+             <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/5 text-[10px] font-semibold text-white/40 uppercase tracking-widest">
                 <Zap size={14} className="text-nexus-blue animate-pulse" /> Source: Bloomberg Terminal Node
              </div>
           </div>
@@ -45,7 +45,7 @@ export function MacroIntelligence() {
              {trends.map((trend) => (
                 <div key={trend.id} className="p-6 rounded-xl bg-black/40 border border-white/5 space-y-4 hover:border-nexus-blue/30 transition-all group/card">
                    <div className="flex justify-between items-start">
-                      <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">{trend.label}</p>
+                      <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest">{trend.label}</p>
                       <div className={cn("p-1 rounded-full", trend.status === "positive" ? "text-nexus-teal" : "text-danger")}>
                          {trend.status === "positive" ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
                       </div>

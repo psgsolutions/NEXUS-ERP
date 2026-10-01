@@ -34,18 +34,18 @@ export function ProfitForecaster({ data }: { data: ProjectCosting }) {
              <div className="w-8 h-8 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20">
                 <DollarSign size={16} />
              </div>
-             <h4 className="text-sm font-black text-white uppercase tracking-widest">Financial Health Forecast</h4>
+             <h4 className="text-sm font-bold text-white tracking-wider">ประมาณการสุขภาพการเงินโครงการ</h4>
           </div>
 
           <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/5 space-y-8">
              <div className="grid grid-cols-2 gap-8">
-                <NexusDataField label="Budgeted Revenue" value={`฿${data.budget.toLocaleString()}`} />
-                <NexusDataField label="Actual Spend (TD)" value={`฿${data.actualSpend.toLocaleString()}`} color="text-danger" />
+                <NexusDataField label="ประมาณการรายรับตามงบประมาณ" value={`฿${data.budget.toLocaleString()}`} />
+                <NexusDataField label="รายจ่ายจริงสะสมจนถึงปัจจุบัน" value={`฿${data.actualSpend.toLocaleString()}`} color="text-danger" />
              </div>
              <div className="pt-8 border-t border-white/5 space-y-4">
                 <div className="flex justify-between items-end">
-                   <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Projected Profit Margin</p>
-                   <p className={cn("text-3xl font-black drop-shadow-neon", isOverBudget ? "text-danger" : "text-nexus-teal")}>
+                   <p className="text-xs font-semibold text-white/60 tracking-wider">ประมาณการอัตรากำไรขั้นต้น</p>
+                   <p className={cn("text-3xl font-bold drop-shadow-neon", isOverBudget ? "text-danger" : "text-nexus-teal")}>
                       {profitMargin.toFixed(1)}%
                    </p>
                 </div>
@@ -65,31 +65,31 @@ export function ProfitForecaster({ data }: { data: ProjectCosting }) {
              <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20">
                 <Sparkles size={16} />
              </div>
-             <h4 className="text-sm font-black text-white uppercase tracking-widest">AI Intelligence Insights</h4>
+             <h4 className="text-sm font-bold text-white tracking-wider">วิเคราะห์อัจฉริยะ AI</h4>
           </div>
 
           <div className={cn("p-8 rounded-2xl border space-y-6", isOverBudget ? "bg-danger/5 border-danger/20" : "bg-nexus-teal/5 border-nexus-teal/20")}>
              <div className="flex items-start gap-4">
                 {isOverBudget ? <AlertCircle className="text-danger shrink-0" size={24} /> : <TrendingUp className="text-nexus-teal shrink-0" size={24} />}
                 <div className="space-y-2">
-                   <p className="text-sm font-black text-white uppercase tracking-tight">
-                      {isOverBudget ? "Budget Overrun Warning" : "Optimal Efficiency Detected"}
+                   <p className="text-sm font-bold text-white">
+                      {isOverBudget ? "คำเตือน: งบประมาณเกินกำหนด" : "ตรวจพบประสิทธิภาพยอดเยี่ยม"}
                    </p>
-                   <p className="text-[12px] text-white/60 font-medium leading-relaxed">
+                   <p className="text-xs text-white/80 font-normal leading-relaxed">
                       {isOverBudget 
-                        ? `Projected final cost (฿${data.estimatedTotal.toLocaleString()}) exceeds budget by ฿${(data.estimatedTotal - data.budget).toLocaleString()}. Recommended: Audit equipment WIP in Rayong site.`
-                        : `Current burn rate is 12% below industry average. Project is on track for a high-margin completion.`
+                        ? `ประมาณการต้นทุนรวมสุดท้าย (฿${data.estimatedTotal.toLocaleString()}) เกินงบประมาณที่ตั้งไว้ ฿${(data.estimatedTotal - data.budget).toLocaleString()} แนะนำให้ตรวจสอบรายละเอียดค่าใช้จ่ายอุปกรณ์เพิ่มเติม`
+                        : `อัตราการใช้งบประมาณปัจจุบันต่ำกว่าค่าเฉลี่ย 12% โครงการมีแนวโน้มปิดงานด้วยอัตรากำไรสูง`
                       }
                    </p>
                 </div>
              </div>
              
              <div className="pt-4 flex gap-2">
-                <button className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black text-white hover:bg-white/10 transition-colors uppercase">
-                   View Cost Breakdown
+                <button className="h-8 px-4 rounded-full bg-white/5 border border-white/10 text-xs font-bold text-white hover:bg-white/10 transition-colors">
+                   ดูรายละเอียดสัดส่วนต้นทุน
                 </button>
-                <button className="px-4 py-2 rounded-xl bg-nexus-blue/20 border border-nexus-blue/40 text-[10px] font-black text-nexus-blue hover:bg-nexus-blue/40 transition-colors uppercase">
-                   Simulate Savings
+                <button className="h-8 px-4 rounded-full bg-nexus-blue/20 border border-nexus-blue/40 text-xs font-bold text-nexus-blue hover:bg-nexus-blue/40 transition-colors">
+                   จำลองการลดต้นทุน
                 </button>
              </div>
           </div>

@@ -91,40 +91,53 @@ export default function NewEmployeePage() {
   };
 
   const headerContent = (
-    <>
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <button onClick={handleBack} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-white/50 hover:text-white transition-all backdrop-blur-sm">
-          <ArrowLeft size={18} />
-        </button>
+        <PillButton variant="glass" onClick={handleBack} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
         <div>
-          <p className="text-[10px] text-cyan-400 font-black uppercase tracking-widest mb-0.5">HR_CORE_V3.0</p>
-          <div className="flex items-center">
-            <h1 className="text-xl font-black uppercase tracking-tight text-white">เพิ่มพนักงานใหม่ (New Employee)</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+              ลงทะเบียนพนักงานใหม่
+            </h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              HR-EMP
+            </span>
           </div>
+          <p className="text-sm text-white/60 font-medium mt-1">
+            บันทึกข้อมูลประวัติพนักงาน ข้อมูลการจ้างงาน แผนก ตำแหน่ง และสิทธิประโยชน์
+          </p>
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        {/* Actions can go here if needed */}
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+        <PillButton variant="glass" onClick={handleBack} className="h-8 px-4 text-xs font-bold text-white/50">
+          ยกเลิก
+        </PillButton>
+        <PillButton variant="confirm" onClick={handleSave} className="h-8 px-5 font-bold text-xs">
+          <ShieldCheck size={14} className="mr-1.5" />
+          บันทึกข้อมูลพนักงาน
+        </PillButton>
       </div>
-    </>
+    </div>
   );
 
   const leftContent = (
     <div className="space-y-4 pr-2 pb-10">
-      <GlassCard className="p-8 space-y-12 animate-in fade-in duration-500 min-h-[60vh]">
+      <GlassCard accentColor="teal" className="p-8 space-y-12 animate-in fade-in duration-500 min-h-[60vh]">
         
         {/* Section 1: Basic Info */}
         <div className="space-y-8">
            <div className="flex items-center gap-2 border-b border-white/5 pb-4">
              <UserPlus className="text-cyan-400" size={20} />
-             <h4 className="text-[14px] font-black text-white uppercase tracking-widest">ข้อมูลพนักงาน (Basic Info)</h4>
+             <h4 className="text-[14px] font-semibold text-white uppercase tracking-widest">ข้อมูลพนักงาน (Basic Info)</h4>
            </div>
 
            <div className="flex flex-col md:flex-row items-start gap-10">
               <div className="w-40 h-48 rounded-2xl bg-white/[0.03] border border-dashed border-white/10 flex flex-col items-center justify-center gap-3 group hover:border-cyan-500/40 transition-all cursor-pointer">
                  <Camera className="text-white/10 group-hover:text-cyan-400 transition-colors" size={32} />
-                 <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">อัปโหลดรูป</span>
+                 <span className="text-[10px] font-semibold text-white/20 uppercase tracking-widest">อัปโหลดรูป</span>
               </div>
               <div className="flex-1 space-y-8">
                  <div className="grid grid-cols-4 gap-6">
@@ -157,7 +170,7 @@ export default function NewEmployeePage() {
         <div className="space-y-8 pt-4">
            <div className="flex items-center gap-2 border-b border-white/5 pb-4">
              <Briefcase className="text-cyan-400" size={20} />
-             <h4 className="text-[14px] font-black text-white uppercase tracking-widest">การจ้างงานและตำแหน่ง (Job & Contract)</h4>
+             <h4 className="text-[14px] font-semibold text-white uppercase tracking-widest">การจ้างงานและตำแหน่ง (Job & Contract)</h4>
            </div>
 
            <div className="grid grid-cols-2 gap-8">
@@ -191,7 +204,7 @@ export default function NewEmployeePage() {
         <div className="space-y-8 pt-4">
            <div className="flex items-center gap-2 border-b border-white/5 pb-4">
              <Wallet className="text-cyan-400" size={20} />
-             <h4 className="text-[14px] font-black text-white uppercase tracking-widest">ข้อมูลการเงิน (Financial)</h4>
+             <h4 className="text-[14px] font-semibold text-white uppercase tracking-widest">ข้อมูลการเงิน (Financial)</h4>
            </div>
 
            <div className="grid grid-cols-2 gap-8">
@@ -224,10 +237,10 @@ export default function NewEmployeePage() {
   );
 
   const rightSidebar = (
-    <GlassCard className="p-6 space-y-8 sticky top-0 shadow-2xl bg-[#111111] border-white/5 rounded-3xl overflow-hidden">
+    <GlassCard accentColor="blue" className="p-6 space-y-8 sticky top-0 shadow-2xl">
       <div className="space-y-1 relative z-10 border-b border-white/5 pb-4">
-        <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">ข้อมูลอ้างอิงเบื้องต้น</p>
-        <h5 className="text-sm font-black text-white uppercase tracking-tight">Identity Guard</h5>
+        <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">ข้อมูลอ้างอิงเบื้องต้น</p>
+        <h5 className="text-sm font-semibold text-white uppercase tracking-tight">Identity Guard</h5>
       </div>
 
       <div className="space-y-4 relative z-10">
@@ -253,16 +266,6 @@ export default function NewEmployeePage() {
             <CheckCircle2 className={formData.salary ? "text-cyan-400" : "text-white/10"} size={14} />
             <span className="text-[11px] font-bold text-white/40 uppercase tracking-widest">ระบุฐานเงินเดือน</span>
          </div>
-      </div>
-
-      <div className="space-y-4 pt-6 border-t border-white/5 relative z-10">
-        <PillButton className="w-full h-11 px-6 rounded-full font-black uppercase tracking-[0.2em] shadow-[0_0_12px_rgba(6,182,212,0.15)] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-[12px]" onClick={handleSave}>
-          <ShieldCheck size={18} className="mr-2" />
-          บันทึกข้อมูลพนักงาน
-        </PillButton>
-        <PillButton variant="glass" className="w-full h-11 px-6 rounded-full uppercase tracking-widest text-[11px] text-white/40 hover:text-white" onClick={handleBack}>
-          ยกเลิก
-        </PillButton>
       </div>
       
       <div className="absolute bottom-0 right-0 w-48 h-48 bg-cyan-500/10 blur-[60px] translate-x-1/4 translate-y-1/4 rounded-full pointer-events-none" />

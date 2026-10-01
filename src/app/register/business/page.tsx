@@ -56,7 +56,7 @@ export default function RegisterBusinessPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#020203] text-white overflow-hidden items-center justify-center p-6">
+    <div className="min-h-screen flex bg-surface-0 text-white overflow-hidden items-center justify-center p-6">
       
       {/* Background glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-nexus-teal/5 blur-[150px] rounded-full pointer-events-none mix-blend-screen" />
@@ -138,8 +138,8 @@ export default function RegisterBusinessPage() {
                 <div className="col-span-1 space-y-2">
                   <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-2">ประเภทนิติบุคคล</label>
                   <PillSelect value={juristicType} onChange={(e) => setJuristicType(e.target.value)} className="h-9 px-4 bg-white/[0.03] border-white/10 font-sans text-nexus-teal">
-                    <option value="บริษัทจำกัด" className="bg-[#0D0D0D]">บริษัทจำกัด</option>
-                    <option value="หจก" className="bg-[#0D0D0D]">ห้างหุ้นส่วนจำกัด</option>
+                    <option value="บริษัทจำกัด" className="bg-surface-0">บริษัทจำกัด</option>
+                    <option value="หจก" className="bg-surface-0">ห้างหุ้นส่วนจำกัด</option>
                   </PillSelect>
                 </div>
                 <div className="col-span-2 space-y-2">
@@ -157,7 +157,7 @@ export default function RegisterBusinessPage() {
               </div>
 
               <div className="pt-4">
-                <PillButton type="submit" className="w-full h-9 bg-nexus-teal text-black shadow-neon-teal font-black text-[13px]">
+                <PillButton type="submit" variant="primary" className="w-full h-9 shadow-neon-teal text-[13px]">
                   ถัดไป <ArrowRight size={16} />
                 </PillButton>
               </div>
@@ -221,11 +221,11 @@ export default function RegisterBusinessPage() {
               <div className="space-y-2 pt-2">
                 <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-2">จำนวนพนักงานในกิจการ</label>
                 <PillSelect value={employeeCount} onChange={(e) => setEmployeeCount(e.target.value)} className="h-9 px-4 bg-white/[0.03] border-white/10 font-sans max-w-[200px]">
-                  <option value="" className="bg-[#0D0D0D]">ระบุจำนวน...</option>
-                  <option value="1-5" className="bg-[#0D0D0D]">1 - 5 คน</option>
-                  <option value="6-20" className="bg-[#0D0D0D]">6 - 20 คน</option>
-                  <option value="21-50" className="bg-[#0D0D0D]">21 - 50 คน</option>
-                  <option value="51+" className="bg-[#0D0D0D]">51 คนขึ้นไป</option>
+                  <option value="" className="bg-surface-0">ระบุจำนวน...</option>
+                  <option value="1-5" className="bg-surface-0">1 - 5 คน</option>
+                  <option value="6-20" className="bg-surface-0">6 - 20 คน</option>
+                  <option value="21-50" className="bg-surface-0">21 - 50 คน</option>
+                  <option value="51+" className="bg-surface-0">51 คนขึ้นไป</option>
                 </PillSelect>
               </div>
 
@@ -233,7 +233,7 @@ export default function RegisterBusinessPage() {
                 <PillButton type="button" variant="ghost" onClick={() => setStep(1)} className="px-6 text-white/60">
                   ย้อนกลับ
                 </PillButton>
-                <PillButton type="submit" disabled={loading} className="flex-1 h-9 bg-nexus-teal text-black shadow-neon-teal font-black text-[13px]">
+                <PillButton type="submit" variant="primary" disabled={loading} className="flex-1 h-9 shadow-neon-teal text-[13px]">
                   {loading ? <Loader2 className="animate-spin" size={16} /> : "ยืนยันการสร้างกิจการ"}
                 </PillButton>
               </div>
@@ -258,7 +258,7 @@ export default function RegisterBusinessPage() {
               <p className="text-white/50 text-sm mb-8">
                 รหัสบริษัทอ้างอิง: <span className="text-nexus-teal font-mono bg-nexus-teal/10 px-2 py-0.5 rounded">NEXUS-{Math.floor(Math.random() * 1000).toString().padStart(3, '0')}</span>
               </p>
-              <PillButton onClick={() => router.push("/login")} className="h-9 px-8 bg-nexus-teal text-black shadow-neon-teal font-black">
+              <PillButton onClick={() => router.push("/login")} variant="primary" className="h-9 px-8 shadow-neon-teal">
                 กลับสู่หน้าเข้าสู่ระบบ
               </PillButton>
             </div>

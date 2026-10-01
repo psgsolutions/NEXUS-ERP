@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import {
+  ArrowLeft,
   Package,
   ChevronLeft,
   Edit3,
@@ -25,7 +26,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Info
-} from "lucide-react";
+} from 'lucide-react';
 import {
   PillButton,
   GlassCard,
@@ -271,49 +272,51 @@ export default function ProductDetailPage() {
   }
 
   const headerContent = (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
-      <div className="flex items-center gap-6">
-        <PillBackButton onClick={() => router.back()} />
-        <div className="space-y-1">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
+      <div className="flex items-center gap-4">
+        <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
+        <div>
           <div className="flex items-center gap-3">
-            <StatusBadge status={stockStatus} label={stockLabel} />
-            <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">
-              ID: {productId}
-            </p>
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+              {product.name}
+            </h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              {product.sku || productId}
+            </span>
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tight uppercase">
-            {product.name}
-          </h1>
-          <p className="text-[11px] font-medium text-nexus-teal uppercase mt-1 tracking-widest font-mono">
-            {product.sku}
+          <p className="text-sm text-white/60 font-medium mt-1">
+            รายละเอียดข้อมูลสินค้า สต็อกคงเหลือ ต้นทุน และประวัติการเคลื่อนไหวสินค้าในระบบ
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
         {isEditMode ? (
           <>
             <PillButton
-              variant="ghost"
-              className="gap-2 h-9 text-xs border-white/10"
+              variant="glass"
+              className="h-8 px-4 text-xs font-bold text-white/50"
               onClick={handleCancel}
               disabled={isSaving}
             >
               ยกเลิก
             </PillButton>
             <PillButton
-              className="gap-2 h-9 text-xs shadow-neon-teal"
+              variant="save"
+              className="h-8 px-5 font-bold text-xs"
               onClick={handleSave}
               disabled={isSaving}
             >
-              {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+              {isSaving ? <RefreshCw size={14} className="animate-spin mr-1.5" /> : <Save size={14} className="mr-1.5" />}
               บันทึกข้อมูล
             </PillButton>
           </>
         ) : (
           <PillButton
-            variant="glass"
-            className="gap-2 h-9 text-xs border-nexus-blue/20 text-nexus-blue hover:text-white"
+            variant="confirm"
+            className="h-8 px-4 text-xs font-bold flex items-center gap-1.5"
             onClick={() => setIsEditMode(true)}
           >
             <Edit3 size={14} /> แก้ไขข้อมูล
@@ -676,18 +679,18 @@ export default function ProductDetailPage() {
               ) : (
                 movements.map((move) => (
                   <NexusTableRow key={move.id}>
-                    <NexusTableCell mono className="w-36">{move.transactionId}</NexusTableCell>
-                    <NexusTableCell className="text-center w-24">
-    <StatusBadge
+                    <NexusTableCell variant="code">{move.transactionId}</NexusTableCell>
+                    <NexusTableCell align="center">
+                      <StatusBadge
                         status={move.type === "IN" ? "active" : move.type === "OUT" ? "danger" : "pending"}
                         label={move.type}
                       />
-  </NexusTableCell>
+                    </NexusTableCell>
                     <NexusTableCell mono className="w-20 text-right">{move.quantity}</NexusTableCell>
-                    <NexusTableCell className="font-mono text-[10px] text-white/40 uppercase">
+                    <NexusTableCell variant="text" className="font-mono text-[10px] text-white/40 uppercase">
                       {move.fromLocation || "EXTERNAL"} &rarr; {move.toLocation || "MAIN-WH"}
                     </NexusTableCell>
-                    <NexusTableCell className="w-36 text-xs font-bold text-white/50">{move.userId || "System"}</NexusTableCell>
+                    <NexusTableCell variant="text" className="text-xs font-semibold text-white/50">{move.userId || "System"}</NexusTableCell>
                   </NexusTableRow>
                 ))
               )}

@@ -43,7 +43,7 @@ export function WHTModal({ isOpen, onClose, onSave, initialData }: WHTModalProps
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="หนังสือรับรองการหักภาษี ณ ที่จ่าย (50 ทวิ)">
-      <div className="flex flex-col h-full bg-[#0D0D0D]">
+      <div className="flex flex-col h-full bg-surface-0">
         <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar">
           <div className="flex items-center gap-4 border-b border-white/5 pb-4">
             <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500 border border-amber-500/20">

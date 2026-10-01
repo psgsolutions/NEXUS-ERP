@@ -102,16 +102,16 @@ export function ExpenseClaimModal({ isOpen, onClose, onSave }: ExpenseClaimModal
       title="เบิกเงินภายใน"
       maxWidth="max-w-[1200px]"
     >
-      <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
+      <div className="flex h-full divide-x divide-white/5 bg-surface-0">
         <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
           <div className="max-w-3xl mx-auto space-y-10">
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
               <div className="space-y-1">
-                <p className="text-[12px] font-black text-nexus-teal uppercase tracking-[0.2em]">รายการเบิกเงินภายใน</p>
-                <h4 className="text-xl font-black text-white uppercase tracking-tight">Internal Expense Claim</h4>
+                <p className="text-[12px] font-semibold text-nexus-teal uppercase tracking-[0.2em]">รายการเบิกเงินภายใน</p>
+                <h4 className="text-xl font-semibold text-white uppercase tracking-tight">Internal Expense Claim</h4>
               </div>
               <div className="text-right">
-                 <p className="text-[10px] font-black text-white/30 uppercase tracking-widest">รหัสใบเบิก</p>
+                 <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest">รหัสใบเบิก</p>
                  <p className="text-lg font-mono font-black text-white/80">{formData.claimId}</p>
               </div>
             </div>
@@ -193,7 +193,7 @@ export function ExpenseClaimModal({ isOpen, onClose, onSave }: ExpenseClaimModal
 
               <div className="space-y-4">
                  <div className="flex justify-between items-center">
-                    <h5 className="text-[12px] font-black text-white/50 uppercase tracking-widest">หลักฐานใบเสร็จ</h5>
+                    <h5 className="text-[12px] font-semibold text-white/50 uppercase tracking-widest">หลักฐานใบเสร็จ</h5>
                     <PillButton variant="glass" onClick={handleUploadReceipt} className="h-8 text-[11px] px-4">
                       <Camera size={14} /> แนบรูปภาพ
                     </PillButton>
@@ -226,10 +226,10 @@ export function ExpenseClaimModal({ isOpen, onClose, onSave }: ExpenseClaimModal
           </div>
         </div>
 
-        <div className="w-[360px] flex flex-col bg-[#0F0F12] p-10 flex-shrink-0">
+        <div className="w-[360px] flex flex-col bg-surface-1 p-10 flex-shrink-0">
           <div className="flex-1 space-y-8">
             <div className="space-y-1">
-              <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">สรุปรายการ</p>
+              <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">สรุปรายการ</p>
               <h5 className="text-sm font-black text-white uppercase tracking-tight">Claim Summary</h5>
             </div>
 
@@ -250,7 +250,8 @@ export function ExpenseClaimModal({ isOpen, onClose, onSave }: ExpenseClaimModal
 
           <div className="space-y-4 pt-10 border-t border-white/5">
             <PillButton 
-              className={cn("w-full px-8 shadow-neon-teal uppercase tracking-[0.2em] bg-nexus-teal text-black", (formData.subtotal <= 0 || isSaving) && "opacity-50 pointer-events-none grayscale")} 
+              variant="save"
+              className={cn("w-full px-8 shadow-neon-teal uppercase tracking-[0.2em]", (formData.subtotal <= 0 || isSaving) && "opacity-50 pointer-events-none grayscale")} 
               onClick={handleSave}
               disabled={isSaving}
             >
@@ -275,7 +276,7 @@ export function ExpenseClaimModal({ isOpen, onClose, onSave }: ExpenseClaimModal
 function Field({ label, children }: { label: string, children: React.ReactNode }) {
   return (
     <div className="space-y-3">
-      <label className="text-[12px] font-black text-white/30 uppercase tracking-widest ml-1">{label}</label>
+      <label className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">{label}</label>
       {children}
     </div>
   );

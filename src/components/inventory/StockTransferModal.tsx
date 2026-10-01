@@ -75,13 +75,13 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
       title="ระบบโอนย้ายพัสดุระหว่างคลัง"
       maxWidth="max-w-[1600px]"
     >
-      <div className="flex h-full divide-x divide-white/5 bg-[#0D0D0D]">
+      <div className="flex h-full divide-x divide-white/5 bg-surface-0">
         <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
           <div className="max-w-4xl mx-auto space-y-12">
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
                <div className="space-y-1">
-                  <p className="text-[12px] font-black text-nexus-blue uppercase tracking-[0.2em]">Inter-Warehouse Logistics</p>
-                  <h4 className="text-xl font-black text-white uppercase tracking-tight">บันทึกโอนย้ายพัสดุ</h4>
+                  <p className="text-[12px] font-semibold text-nexus-blue uppercase tracking-[0.2em]">Inter-Warehouse Logistics</p>
+                  <h4 className="text-xl font-semibold text-white uppercase tracking-tight">บันทึกโอนย้ายพัสดุ</h4>
                </div>
             </div>
 
@@ -89,7 +89,7 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                <div className="space-y-8">
                   <div className="flex items-center gap-3 text-nexus-blue">
                      <MapPin size={18} />
-                     <h5 className="text-[13px] font-black uppercase tracking-widest">1. เส้นทางการโอนย้าย</h5>
+                     <h5 className="text-[13px] font-semibold uppercase tracking-widest">1. เส้นทางการโอนย้าย</h5>
                   </div>
                   <div className="space-y-6">
                      <div className="grid grid-cols-2 gap-4">
@@ -141,7 +141,7 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                <div className="space-y-8">
                   <div className="flex items-center gap-3 text-white">
                      <Package size={18} />
-                     <h5 className="text-[13px] font-black uppercase tracking-widest">2. รายการพัสดุ</h5>
+                     <h5 className="text-[13px] font-semibold uppercase tracking-widest">2. รายการพัสดุ</h5>
                   </div>
                   <div className="space-y-6">
                      <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/5 space-y-6">
@@ -159,12 +159,12 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                         </Field>
                         
                         <div className="space-y-3">
-                           <p className="text-[10px] font-black text-white/20 uppercase tracking-widest ml-1">รายละเอียดการโอน</p>
+                           <p className="text-[10px] font-semibold text-white/20 uppercase tracking-widest ml-1">รายละเอียดการโอน</p>
                            {selectedProduct && (
                              <div className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/5 group hover:border-nexus-blue/30 transition-all">
                                 <div className="space-y-1">
-                                   <p className="text-sm font-black text-white">{selectedProduct.name}</p>
-                                   <p className="text-[10px] text-white/20 uppercase font-black tracking-widest">คงเหลือในคลัง: {selectedProduct.stockStatus?.onHand || 0} หน่วย</p>
+                                   <p className="text-sm font-semibold text-white">{selectedProduct.name}</p>
+                                   <p className="text-[10px] text-white/20 uppercase font-semibold tracking-widest">คงเหลือในคลัง: {selectedProduct.stockStatus?.onHand || 0} หน่วย</p>
                                 </div>
                                 <div className="flex items-center gap-4">
                                    <PillInput 
@@ -185,11 +185,11 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
           </div>
         </div>
 
-        <div className="w-[380px] bg-[#0F0F12] p-12 flex flex-col border-l border-white/5 overflow-y-auto custom-scrollbar">
+        <div className="w-[380px] bg-surface-1 p-12 flex flex-col border-l border-white/5 overflow-y-auto custom-scrollbar">
            <div className="flex-1 space-y-10">
               <div className="space-y-1">
-                <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">Logistics Intelligence</p>
-                <h5 className="text-sm font-black text-white uppercase tracking-tight">Security & Audit</h5>
+                <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">Logistics Intelligence</p>
+                <h5 className="text-sm font-semibold text-white uppercase tracking-tight">Security & Audit</h5>
               </div>
 
               <div className="p-8 rounded-2xl bg-nexus-blue/5 border border-nexus-blue/20 space-y-6">
@@ -231,7 +231,7 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
 function Field({ label, children }: { label: string, children: React.ReactNode }) {
   return (
     <div className="space-y-3">
-      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">{label}</label>
+      <label className="text-[11px] font-semibold text-white/30 uppercase tracking-widest ml-1">{label}</label>
       {children}
     </div>
   );

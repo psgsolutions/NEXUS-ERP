@@ -47,31 +47,31 @@ export default function ProductsPage() {
   const headerContent = (
     <>
       {/* Compact Module Header */}
-      <header className="px-4 xl:p-6 py-3 min-h-[76px] border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-black/15 shrink-0">
-        <div className="flex items-center gap-4 shrink-0">
-          <div className="w-10 h-10 rounded-2xl bg-nexus-teal/15 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
-            <Package size={22} />
+      <header className="px-4 xl:px-6 py-2.5 min-h-[60px] border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-black/15 shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-nexus-teal/15 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
+            <Package size={20} />
           </div>
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight leading-none uppercase">คลังสินค้าและบริการ</h1>
-            <p className="text-[11px] font-medium text-white/30 uppercase mt-1.5 tracking-widest leading-none">Product Master Data</p>
+            <p className="text-[11px] font-medium text-white/30 uppercase mt-1 tracking-widest leading-none">Product Master Data</p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="px-4 py-2 bg-black/15 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
-             <div className="w-10 h-10 rounded-xl bg-nexus-teal/15 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
-                <Box size={18} />
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="px-4 py-1.5 bg-black/15 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
+             <div className="w-8 h-8 rounded-lg bg-nexus-teal/15 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
+                <Box size={16} />
              </div>
              <div className="flex flex-col justify-center">
                 <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">มูลค่าต้นทุนรวม</span>
-                <span className="text-[17px] font-bold text-nexus-teal mt-1 mono-numbers leading-none">฿{totalStockValue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}</span>
+                <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">฿{totalStockValue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}</span>
              </div>
           </div>
         </div>
       </header>
 
       {/* Tab Navigation */}
-      <section className="px-6 py-2 bg-black/10 border-b border-white/5 shrink-0 flex flex-col lg:flex-row items-center justify-between gap-4">
+      <section className="px-6 h-[56px] bg-black/10 border-b border-white/5 flex items-center justify-between shrink-0">
         <PillTabs 
           tabs={tabs} 
           activeTab={activeTab} 
@@ -79,6 +79,7 @@ export default function ProductsPage() {
         />
         <div className="flex gap-3 shrink-0">
           <PillButton 
+            variant="primary"
             onClick={handleCreateNew}
             className="px-5 h-9 text-[12px]"
           >
@@ -139,21 +140,21 @@ export default function ProductsPage() {
                           setIsFormOpen(true);
                         }}
                       >
-                        <NexusTableCell className="font-mono text-nexus-teal text-[11px] uppercase tracking-wider">
+                        <NexusTableCell align="center" className="w-[1%] whitespace-nowrap font-mono text-nexus-teal text-[11px] uppercase tracking-wider">
                           {displayCode}
                         </NexusTableCell>
                         
-                        <NexusTableCell>
+                        <NexusTableCell className="w-full">
                           <div className="font-bold text-white text-[13px]">{displayName}</div>
                           {p.salesBom?.length > 0 && (
-                            <div className="text-[10px] text-white/40 mt-1 flex items-center gap-1 font-black uppercase tracking-wider">
+                            <div className="text-[10px] text-white/40 mt-1 flex items-center gap-1 font-semibold uppercase tracking-wider">
                               <Box size={10} /> BOM: {p.salesBom.length} items
                             </div>
                           )}
                         </NexusTableCell>
                         
-                        <NexusTableCell>
-                          <div className="flex items-center gap-2">
+                        <NexusTableCell align="center" className="w-[1%] whitespace-nowrap">
+                          <div className="flex items-center gap-2 justify-center">
                             <span className={`text-[9px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest inline-flex items-center gap-1 ${
                               isLabor ? 'bg-transparent border border-warning/20 text-warning' : 'bg-blue-500/10 border border-blue-500/20 text-blue-400'
                             }`}>
@@ -161,26 +162,26 @@ export default function ProductsPage() {
                               {isLabor ? 'ค่าแรง' : 'สินค้า'}
                             </span>
                             {p.subjectToWHT && (
-                              <span className="text-[9px] px-2 py-1 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full font-black tracking-widest">
+                              <span className="text-[9px] px-2 py-1 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full font-semibold tracking-widest">
                                 WHT
                               </span>
                             )}
                           </div>
                         </NexusTableCell>
                         
-                        <NexusTableCell className="text-right font-mono text-[12px] text-red-400/70">
+                        <NexusTableCell align="right" className="w-[1%] whitespace-nowrap font-mono text-[12px] text-red-400/70 tracking-tight">
                           {Number(displayCost).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
                         </NexusTableCell>
                         
-                        <NexusTableCell className="text-right font-mono text-[12px] text-blue-400/70">
+                        <NexusTableCell align="right" className="w-[1%] whitespace-nowrap font-mono text-[12px] text-blue-400/70 tracking-tight">
                           {Number(displayProjectPrice).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
                         </NexusTableCell>
                         
-                        <NexusTableCell className="text-right font-mono text-[13px] font-bold text-nexus-teal">
+                        <NexusTableCell align="right" className="w-[1%] whitespace-nowrap font-mono text-[13px] font-bold text-nexus-teal tracking-tight">
                           {Number(displayRetailPrice).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
                         </NexusTableCell>
 
-                        <NexusTableCell>
+                        <NexusTableCell align="center" className="w-[1%] whitespace-nowrap">
                           <PillButton 
                              
                             className="h-8 px-4 text-[10px] text-nexus-blue border-nexus-blue/20 hover:bg-transparent"
@@ -206,17 +207,17 @@ export default function ProductsPage() {
   const rightSidebarContent = (
       <div className="space-y-4">
         <GlassCard className="p-4 space-y-4">
-          <h3 className="text-base font-black text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4">
+          <h3 className="text-base font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4">
             <Box size={16} className="text-nexus-teal" /> ภาพรวมคลังสินค้า
           </h3>
           
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/15 rounded-2xl p-4 text-center border border-white/10">
-              <div className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">รวมทุกรายการ</div>
+              <div className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1">รวมทุกรายการ</div>
               <div className="text-2xl font-mono text-white">{total}</div>
             </div>
             <div className="bg-transparent rounded-2xl p-4 text-center border border-nexus-teal/20">
-              <div className="text-[10px] font-black text-nexus-teal/60 uppercase tracking-widest mb-1">
+              <div className="text-[10px] font-semibold text-nexus-teal/60 uppercase tracking-widest mb-1">
                 มูลค่าต้นทุน
               </div>
               <div className="text-lg font-mono text-nexus-teal truncate" title={`฿${totalStockValue.toLocaleString('th-TH')}`}>
@@ -227,19 +228,19 @@ export default function ProductsPage() {
 
           <div className="space-y-2 mt-4">
             <div className="flex justify-between items-center bg-white/[0.02] p-3 rounded-xl border border-white/5">
-              <span className="text-[11px] font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-white/60 uppercase tracking-widest flex items-center gap-2">
                 <Box size={14} className="text-blue-400" /> สินค้า (Product)
               </span>
               <span className="font-mono text-blue-400 text-sm">{productCount}</span>
             </div>
             <div className="flex justify-between items-center bg-white/[0.02] p-3 rounded-xl border border-warning/10">
-              <span className="text-[11px] font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-white/60 uppercase tracking-widest flex items-center gap-2">
                 <Wrench size={14} className="text-warning" /> เธเนเธฒเนเธฃเธ (Labor)
               </span>
               <span className="font-mono text-warning text-sm">{laborCount}</span>
             </div>
             <div className="flex justify-between items-center bg-red-500/5 p-3 rounded-xl border border-red-500/10">
-              <span className="text-[11px] font-black text-red-400/80 uppercase tracking-widest flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-red-400/80 uppercase tracking-widest flex items-center gap-2">
                 <ShieldAlert size={12} /> เธฃเธฒเธขเธเธฒเธฃเธ•เธดเธ” WHT
               </span>
               <span className="font-mono text-red-400 text-sm">{whtCount}</span>

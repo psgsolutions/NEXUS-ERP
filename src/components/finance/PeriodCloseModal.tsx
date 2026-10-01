@@ -62,7 +62,7 @@ export function PeriodCloseModal({ isOpen, onClose, onConfirm }: PeriodCloseModa
       title="การปิดงวดบัญชี"
       maxWidth="max-w-[1600px]"
     >
-      <div className="flex h-full bg-[#0D0D0D]">
+      <div className="flex h-full bg-surface-0">
         <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
           <div className="max-w-2xl mx-auto space-y-12">
             <div className="space-y-4">
@@ -71,7 +71,7 @@ export function PeriodCloseModal({ isOpen, onClose, onConfirm }: PeriodCloseModa
                     <Calendar size={24} />
                  </div>
                  <div>
-                    <h4 className="text-xl font-black text-white uppercase tracking-tight">ปิดงวดบัญชีรายเดือน</h4>
+                    <h4 className="text-xl font-semibold text-white uppercase tracking-tight">ปิดงวดบัญชีรายเดือน</h4>
                     <p className="text-[12px] font-bold text-white/30 uppercase tracking-[0.2em]">Fiscal Period Execution</p>
                  </div>
               </div>
@@ -81,14 +81,14 @@ export function PeriodCloseModal({ isOpen, onClose, onConfirm }: PeriodCloseModa
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="grid grid-cols-2 gap-8 p-8 rounded-2xl bg-white/[0.02] border border-white/5">
                    <div className="space-y-3">
-                      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">ปีปฏิทิน</label>
+                      <label className="text-[11px] font-semibold text-white/30 uppercase tracking-widest ml-1">ปีปฏิทิน</label>
                       <PillSelect value={period.year} onChange={(e) => setPeriod({...period, year: e.target.value})} className="w-full px-6">
                         <option>2025</option>
                         <option>2026</option>
                       </PillSelect>
                    </div>
                    <div className="space-y-3">
-                      <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1">เดือนที่ต้องการปิด</label>
+                      <label className="text-[11px] font-semibold text-white/30 uppercase tracking-widest ml-1">เดือนที่ต้องการปิด</label>
                       <PillSelect value={period.month} onChange={(e) => setPeriod({...period, month: e.target.value})} className="w-full px-6 text-nexus-blue font-black">
                         <option>January</option>
                         <option>February</option>
@@ -100,7 +100,7 @@ export function PeriodCloseModal({ isOpen, onClose, onConfirm }: PeriodCloseModa
                 </div>
 
                 <div className="space-y-6">
-                   <h5 className="text-[12px] font-black text-white/20 uppercase tracking-widest">ระบบตรวจสอบความพร้อม</h5>
+                   <h5 className="text-[12px] font-semibold text-white/20 uppercase tracking-widest">ระบบตรวจสอบความพร้อม</h5>
                    <div className="space-y-3">
                       <CheckItem label="รายการรายวันที่ยังไม่ผ่านเช็ค" value={checks.unpostedJVs === 0 ? "ผ่าน" : `${checks.unpostedJVs} รายการ`} status={checks.unpostedJVs === 0 ? "pass" : "fail"} />
                       <CheckItem label="ยอดสมดุลผังบัญชี" value={checks.unbalancedAccounts === 0 ? "สมดุล" : "ไม่สมดุล"} status={checks.unbalancedAccounts === 0 ? "pass" : "fail"} />
@@ -116,7 +116,7 @@ export function PeriodCloseModal({ isOpen, onClose, onConfirm }: PeriodCloseModa
                     <Lock size={48} />
                  </div>
                  <div className="space-y-4">
-                    <h4 className="text-2xl font-black text-white uppercase tracking-tight">ยืนยันการปิดงวดบัญชี?</h4>
+                    <h4 className="text-2xl font-semibold text-white uppercase tracking-tight">ยืนยันการปิดงวดบัญชี?</h4>
                     <p className="text-sm text-white/40 font-bold leading-relaxed max-w-md mx-auto">
                        เมื่อปิดงวดบัญชีแล้ว คุณจะไม่สามารถบันทึกหรือแก้ไขรายการใดๆ ในเดือน {period.month} {period.year} ได้อีกต่อไป 
                        เว้นแต่จะได้รับการอนุมัติปลดล็อกพิเศษ
@@ -146,19 +146,19 @@ export function PeriodCloseModal({ isOpen, onClose, onConfirm }: PeriodCloseModa
         </div>
 
         {step === 1 && (
-          <div className="w-[320px] bg-[#0F0F12] p-12 flex flex-col border-l border-white/5 overflow-y-auto custom-scrollbar">
+          <div className="w-[320px] bg-surface-1 p-12 flex flex-col border-l border-white/5 overflow-y-auto custom-scrollbar">
              <div className="flex-1 space-y-8">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">ลำดับขั้น</p>
-                  <h5 className="text-sm font-black text-white uppercase">Close Process</h5>
+                  <p className="text-[10px] font-semibold text-white/20 uppercase tracking-[0.2em]">ลำดับขั้น</p>
+                  <h5 className="text-sm font-semibold text-white uppercase">Close Process</h5>
                 </div>
                 <div className="space-y-4">
                    <div className="p-4 rounded-2xl bg-nexus-blue/10 border border-nexus-blue/20">
-                      <p className="text-[10px] font-black text-nexus-blue uppercase tracking-widest mb-1">Step 1</p>
+                      <p className="text-[10px] font-semibold text-nexus-blue uppercase tracking-widest mb-1">Step 1</p>
                       <p className="text-xs font-bold text-white">ตรวจสอบความถูกต้อง</p>
                    </div>
                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 opacity-40">
-                      <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Step 2</p>
+                      <p className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1">Step 2</p>
                       <p className="text-xs font-bold text-white">ล็อกบัญชีแยกประเภท</p>
                    </div>
                 </div>

@@ -27,21 +27,21 @@ export function GanttChart({ milestones }: GanttChartProps) {
           {/* Left Side: Task List */}
           <div className="bg-black/20">
              <div className="h-14 border-b border-white/5 flex items-center px-8">
-                <span className="text-[10px] font-black text-white/20 uppercase tracking-widest">ชื่อแผนงาน</span>
+                <span className="text-xs font-semibold text-white/60 tracking-wider">ชื่อแผนงาน</span>
              </div>
              <div className="divide-y divide-white/5">
                 {milestones.map((m) => (
                    <div key={m.id} className="h-16 flex flex-col justify-center px-8 space-y-1">
-                      <p className="text-[12px] font-black text-white uppercase tracking-tight truncate">{m.task}</p>
+                      <p className="text-sm font-bold text-white tracking-tight truncate">{m.task}</p>
                       <div className="flex items-center gap-2">
-                         <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded-full", 
+                         <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", 
                             m.status === "completed" ? "bg-nexus-teal/10 text-nexus-teal" :
                             m.status === "in-progress" ? "bg-nexus-blue/10 text-nexus-blue" :
                             "bg-white/5 text-white/40"
                          )}>
-                            {m.status.toUpperCase()}
+                            {m.status === "completed" ? "เสร็จสิ้น" : m.status === "in-progress" ? "กำลังดำเนินการ" : "รอดำเนินการ"}
                          </span>
-                         <span className="text-[9px] font-bold text-white/20">{m.progress}%</span>
+                         <span className="text-xs font-semibold text-white/60">{m.progress}%</span>
                       </div>
                    </div>
                 ))}
@@ -53,7 +53,7 @@ export function GanttChart({ milestones }: GanttChartProps) {
              <div className="min-w-[800px]">
                 <div className="h-14 border-b border-white/5 grid grid-cols-4 divide-x divide-white/5">
                    {months.map((month) => (
-                      <div key={month} className="flex items-center justify-center text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">
+                      <div key={month} className="flex items-center justify-center text-xs font-semibold text-white/60 tracking-wider">
                          {month} 2569
                       </div>
                    ))}
@@ -86,8 +86,8 @@ export function GanttChart({ milestones }: GanttChartProps) {
                             />
                             
                             {/* Tooltip on Hover */}
-                            <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black border border-white/10 px-3 py-1.5 rounded-lg whitespace-nowrap z-50">
-                               <p className="text-[10px] font-black text-white">{m.progress}% Complete</p>
+                            <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950/90 backdrop-blur-md border border-cyan-500/40 px-3 py-1.5 rounded-xl whitespace-nowrap z-[9999] shadow-[0_0_15px_rgba(6,182,212,0.15)]">
+                                <p className="text-xs font-bold text-cyan-100">เสร็จสมบูรณ์ {m.progress}%</p>
                             </div>
                          </div>
                       </div>

@@ -38,6 +38,7 @@ import { usePOSHardware } from "@/hooks/usePOSHardware";
 import { CheckoutModal } from "@/components/pos/CheckoutModal";
 import { processPOSBatchCheckout } from "@/services/posBatch.service";
 import { useAuth } from "@/context/AuthContext";
+import { apiFetch } from "@/lib/api-client";
 
 export default function POSPage() {
   const [cart, setCart] = useState<any[]>([]);
@@ -129,19 +130,24 @@ export default function POSPage() {
       retailPrice: item.pricing?.pricePOS || item.price || 0
     }));
 
-    const result = await processPOSBatchCheckout({
-      companyId: companyId,
-      userId: user?.uid || 'SYSTEM',
-      items: checkoutItems,
-      vatType: 'EXCLUSIVE', // Assuming EXCLUSIVE for now, can be configured
-      cashAccountId: '1111-00' // Assuming Cash Account Code
+    const res = await apiFetch("/api/pos/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        companyId: companyId,
+        userId: user?.uid || 'SYSTEM',
+        items: checkoutItems,
+        vatType: 'EXCLUSIVE',
+        cashAccountId: '1111-00'
+      })
     });
+    const result = await res.json();
 
-    if (result.success) {
+    if (res.ok && result.success) {
       setIsCheckoutOpen(false);
       setSuccessTxId(result.transactionId);
     } else {
-      alert("เกิดข้อผิดพลาดในการทำรายการ กรุณาลองใหม่อีกครั้ง");
+      alert(result.error || "เกิดข้อผิดพลาดในการทำรายการ กรุณาลองใหม่อีกครั้ง");
     }
   };
 
@@ -149,7 +155,7 @@ export default function POSPage() {
     <div 
        
       className={cn(
-        "flex bg-[#0D0D0D] overflow-hidden border-white/5 transition-all duration-300",
+        "flex bg-surface-0 overflow-hidden border-white/5 transition-all duration-300",
         isFullscreen ? "h-screen w-screen max-w-full fixed inset-0 z-[5000]" : "h-[calc(100vh-140px)] max-w-[1800px] mx-auto border rounded-2xl shadow-2xl"
       )}
     >
@@ -275,7 +281,7 @@ export default function POSPage() {
       </div>
 
       {/* Right Sidebar - Checkout & Summary */}
-      <div className="w-[550px] flex flex-col bg-[#0F0F12] border-l border-white/5 overflow-hidden shrink-0">
+      <div className="w-[550px] flex flex-col bg-surface-1 border-l border-white/5 overflow-hidden shrink-0">
          {/* Cart Header */}
          <div className="p-5 border-b border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -337,7 +343,7 @@ export default function POSPage() {
          </div>
 
          {/* Summary & Checkout */}
-         <div className="p-5 bg-[#0a0a0c] border-t border-white/5 space-y-5">
+         <div className="p-5 bg-surface-0 border-t border-white/5 space-y-5">
             <div className="space-y-3">
                <div className="flex justify-between items-center text-[14px] font-medium text-white/40 uppercase tracking-widest">
                   <span>ราคาพัสดุรวม</span>
@@ -378,7 +384,7 @@ export default function POSPage() {
       {successTxId && (
          <div className="fixed inset-0 z-[7000] flex items-center justify-center p-5">
             <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={() => { setCart([]); setSuccessTxId(null); }} />
-            <div className="relative w-full max-w-md p-10 rounded-xl bg-[#0D0D0D] border border-nexus-teal/20 text-center space-y-3 animate-in zoom-in-95 duration-300">
+            <div className="relative w-full max-w-md p-10 rounded-xl bg-surface-0 border border-nexus-teal/20 text-center space-y-3 animate-in zoom-in-95 duration-300">
                <div className="w-24 h-24 rounded-full bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 mx-auto shadow-neon-teal">
                   <Zap size={48} />
                </div>
@@ -407,7 +413,7 @@ export default function POSPage() {
       {selectedProductDetail && (
          <div className="fixed inset-0 z-[6000] flex items-center justify-center p-5">
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedProductDetail(null)} />
-            <div className="relative w-full max-w-md p-5 rounded-2xl bg-[#0D0D0D] border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="relative w-full max-w-md p-5 rounded-2xl bg-surface-0 border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
                <button 
                  onClick={() => setSelectedProductDetail(null)}
                  className="absolute top-5 right-6 text-white/40 hover:text-white transition-colors"

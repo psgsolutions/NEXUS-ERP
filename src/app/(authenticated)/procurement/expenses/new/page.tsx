@@ -66,45 +66,52 @@ export default function NewExpensePage() {
   };
 
   const headerContent = (
-    <>
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <button onClick={handleBack} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-white/50 hover:text-white transition-all backdrop-blur-sm">
-          <ArrowLeft size={18} />
-        </button>
+        <PillButton variant="glass" onClick={handleBack} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
         <div>
-          <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-0.5">Procurement Expenses</p>
-          <div className="flex items-center">
-            <h1 className="text-xl font-black uppercase tracking-tight text-white">เนเธเธชเธณเธเธฑเธเธเนเธฒเธข (Expense Voucher)</h1>
-            <DocumentStepper steps={["Draft", "Pending", "Paid"]} currentStep={0} />
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+              บันทึกใบสำคัญจ่าย
+            </h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              EXP-VOUCHER
+            </span>
           </div>
+          <p className="text-sm text-white/60 font-medium mt-1">
+            บันทึกค่าใช้จ่ายและใบสำคัญจ่ายสำหรับการจัดซื้อและบริการ
+          </p>
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
-        <PillButton variant="ghost" className="h-9 px-6 rounded-full text-white/50 hover:text-white" onClick={handleBack}>
-          เธขเธเน€เธฅเธดเธ
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={handleBack}>
+          ยกเลิก
         </PillButton>
         <PillButton 
-          className="h-9 px-6 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 shadow-[0_0_12px_rgba(6,182,212,0.15)]" 
+          variant="save"
+          className="h-8 px-5 font-bold text-xs" 
           onClick={handleCommit} 
           disabled={isSubmitting}
         >
-          {isSubmitting ? <RefreshCw className="animate-spin mr-2" size={14} /> : <CheckCircle2 size={14} className="mr-2" />}
-          เธเธฑเธเธ—เธถเธเนเธเธชเธณเธเธฑเธเธเนาย
+          {isSubmitting ? <RefreshCw className="animate-spin mr-1.5" size={14} /> : <CheckCircle2 size={14} className="mr-1.5" />}
+          บันทึกใบสำคัญจ่าย
         </PillButton>
       </div>
-    </>
+    </div>
   );
 
   const leftContent = (
     <div className="space-y-4">
-      <GlassCard className="p-10 space-y-12 bg-black/20 border-white/5 shadow-2xl rounded-3xl">
+      <GlassCard accentColor="teal" className="p-10 space-y-12">
         <div className="flex items-center gap-4 border-b border-white/5 pb-8">
           <div className="p-4 bg-cyan-500/10 rounded-2xl text-cyan-400 border border-cyan-500/20">
             <Receipt size={32} />
           </div>
           <div>
-            <h2 className="text-xl font-black text-white uppercase">เธเธฑเธเธ—เธถเธเธเนเธฒเธขเธเนเธฒเนเธเนเธเนเธฒเธขเธเธฑเธ”เธเธทเนอ</h2>
+            <h2 className="text-xl font-semibold text-white uppercase">เธเธฑเธเธ—เธถเธเธเนเธฒเธขเธเนเธฒเนเธเนเธเนเธฒเธขเธเธฑเธ”เธเธทเนอ</h2>
             <p className="text-[12px] text-white/40 uppercase tracking-widest mt-1">Create Expense Voucher for PO</p>
           </div>
         </div>
@@ -155,9 +162,9 @@ export default function NewExpensePage() {
   );
 
   const rightSidebar = (
-    <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
+    <GlassCard accentColor="blue" className="p-5 space-y-6 sticky top-0">
       <div className="space-y-1 border-b border-white/5 pb-4">
-        <h5 className="text-[13px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2">
+        <h5 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
           เธชเธฃเธธเธยอดเธเธณเธฃเธฐ (Payment Summary)
         </h5>
       </div>
@@ -184,7 +191,7 @@ export default function NewExpensePage() {
           เธเธฑเธเธ—เธถเธเนเธเธชเธณเธเธฑเธเธเนาย
         </PillButton>
       </div>
-    </div>
+    </GlassCard>
   );
 
   return (

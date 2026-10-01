@@ -19,15 +19,27 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 
 export default function UsersPage() {
   const headerContent = (
-    <div className="flex items-center justify-between w-full">
-      <div className="space-y-1">
-        <p className="tactical-label !text-nexus-teal drop-shadow-neon mb-0">Team & Security Access</p>
-        <h1 className="text-xl font-bold text-white tracking-tight uppercase">จัดการผู้ใช้งานและสิทธิ์ (Users & Roles)</h1>
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
+      <div className="flex items-center gap-4">
+        <div className="w-10 h-10 rounded-full bg-nexus-teal/15 flex items-center justify-center text-nexus-teal border border-nexus-teal/30">
+          <Users size={20} />
+        </div>
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">จัดการผู้ใช้งานและสิทธิ์</h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              USERS-ROLES
+            </span>
+          </div>
+          <p className="text-sm text-white/60 font-medium mt-1">กำหนดบทบาท สิทธิ์การเข้าถึง และจัดการบัญชีผู้ใช้งานในระบบ</p>
+        </div>
       </div>
-      <PillButton className="px-6 shadow-neon-teal bg-nexus-teal text-black">
-        <UserPlus size={18} className="mr-2" />
-        เพิ่มผู้ใช้งานใหม่
-      </PillButton>
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+        <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs">
+          <UserPlus size={14} className="mr-1.5" />
+          เพิ่มผู้ใช้งานใหม่
+        </PillButton>
+      </div>
     </div>
   );
 
@@ -35,7 +47,7 @@ export default function UsersPage() {
     <div className="space-y-6 pb-10">
       {/* Internal Navigation Tabs (Settings context) */}
       <div className="flex gap-2 p-1 bg-white/5 rounded-full w-fit border border-white/5 shadow-inner h-11">
-         <button className="flex items-center gap-2 px-6 h-full rounded-full text-sm font-medium uppercase bg-nexus-teal text-black shadow-neon-teal">
+         <button className="flex items-center gap-2 px-6 h-full rounded-full text-sm font-medium uppercase bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md shadow-neon-teal">
             <Users size={16} /> ผู้ใช้งานทั้งหมด
          </button>
          <button className="flex items-center gap-2 px-6 h-full rounded-full text-sm font-medium uppercase text-white/40 hover:text-white hover:bg-white/5">
@@ -62,7 +74,7 @@ export default function UsersPage() {
            </div>
         </div>
         
-        <GlassCard className="overflow-hidden border-white/5 bg-black/20">
+        <GlassCard accentColor="teal" className="p-0 overflow-hidden">
           <NexusTable 
             headers={["ผู้ใช้งาน", "อีเมล", "บทบาท", "แผนก", "สถานะ", ""]}
             minWidth="min-w-[900px]"
@@ -102,10 +114,10 @@ export default function UsersPage() {
   );
 
   const rightSidebar = (
-    <GlassCard className="p-6 space-y-6 sticky top-0 bg-[#111111] shadow-2xl border-white/5 rounded-3xl overflow-hidden">
+    <GlassCard accentColor="blue" className="p-6 space-y-6 sticky top-0 relative overflow-hidden">
       <div className="space-y-1 relative z-10 border-b border-white/5 pb-4">
-        <p className="text-[12px] font-black text-white/20 uppercase tracking-[0.2em]">Security Overview</p>
-        <h5 className="text-sm font-black text-white uppercase tracking-tight">System Access Guard</h5>
+        <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">Security Overview</p>
+        <h5 className="text-sm font-semibold text-white uppercase tracking-tight">System Access Guard</h5>
       </div>
       
       <div className="space-y-4 relative z-10">

@@ -9,7 +9,7 @@ import { PillButton } from '@/components/ui/Base';
 import { SmartSelect, NumberInput } from '@/components/ui/SmartComponents';
 import { DocumentItemsTable } from '@/components/commerce/DocumentItemsTable';
 import { DocumentItem } from '@/types/shared';
-import { FileText, Save, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, FileText, Save, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { InvoiceDocument } from '@/types/invoice';
 
@@ -178,16 +178,34 @@ export default function NewInvoicePage() {
         {/* ── Main Form Column (Left) ── */}
         <div className="flex-1 flex flex-col gap-6">
           
-          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
             <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-black text-white uppercase tracking-widest flex items-center gap-2">
-                <FileText className="text-nexus-cyan" /> สร้างใบแจ้งหนี้ (Invoice)
-              </h1>
+              <PillButton variant="glass" onClick={() => window.history.back()} className="w-10 h-10 p-0 flex items-center justify-center">
+                <ArrowLeft size={20} />
+              </PillButton>
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+                    สร้างใบแจ้งหนี้
+                  </h1>
+                  <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+                    INV-NEW
+                  </span>
+                </div>
+                <p className="text-sm text-white/60 font-medium mt-1">
+                  บันทึกและออกใบแจ้งหนี้ อ้างอิงใบสั่งขายและคำนวณภาษีมูลค่าเพิ่ม
+                </p>
+              </div>
             </div>
             
-            <PillButton onClick={handleSave} variant="primary" disabled={loading} className="shadow-[0_0_15px_rgba(45,212,191,0.3)] bg-nexus-cyan text-gray-900 font-bold hover:bg-teal-400">
-              <Save size={16} /> {loading ? 'กำลังบันทึก...' : 'บันทึกใบแจ้งหนี้'}
-            </PillButton>
+            <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+              <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={() => window.history.back()}>
+                ยกเลิก
+              </PillButton>
+              <PillButton variant="confirm" onClick={handleSave} disabled={loading} className="h-8 px-5 font-bold text-xs">
+                <Save size={14} className="mr-1.5" /> {loading ? 'กำลังบันทึก...' : 'บันทึกใบแจ้งหนี้'}
+              </PillButton>
+            </div>
           </div>
 
           {/* Header Form */}
@@ -195,7 +213,7 @@ export default function NewInvoicePage() {
             
             {/* Auto-fill from SO */}
             <div className="space-y-1 md:col-span-2">
-              <label className="text-[11px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1">
+              <label className="text-[11px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1">
                 <CheckCircle2 size={12} className="text-nexus-cyan" /> อ้างอิงใบสั่งขาย (Ref SO) - ดึงข้อมูลอัตโนมัติ
               </label>
               <SmartSelect
@@ -211,7 +229,7 @@ export default function NewInvoicePage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
+              <label className="text-[11px] font-semibold text-white/40 uppercase tracking-widest flex items-center gap-1 not-italic">
                 ชื่อลูกค้า <span className="text-red-500 font-bold">*</span> (Customer Name)
               </label>
               <SmartSelect
@@ -233,7 +251,7 @@ export default function NewInvoicePage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-black text-white/40 uppercase tracking-widest not-italic">
+              <label className="text-[11px] font-semibold text-white/40 uppercase tracking-widest not-italic">
                 เงื่อนไขการชำระเงิน (Payment Terms)
               </label>
               <SmartSelect
@@ -253,7 +271,7 @@ export default function NewInvoicePage() {
 
           {/* Line Items */}
           <div className="flex-1 flex flex-col gap-2">
-            <h3 className="text-xs font-black text-nexus-cyan uppercase tracking-widest">รายการสินค้า (Items)</h3>
+            <h3 className="text-xs font-semibold text-nexus-cyan uppercase tracking-widest">รายการสินค้า (Items)</h3>
             <DocumentItemsTable items={items} onChange={setItems} />
           </div>
         </div>
@@ -262,7 +280,7 @@ export default function NewInvoicePage() {
         <div className="xl:w-[25%] shrink-0 sticky top-[96px] space-y-4">
           
           <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-black text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4">
+            <h3 className="text-base font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4">
               สรุปข้อมูล (Summary)
             </h3>
             
@@ -322,7 +340,7 @@ export default function NewInvoicePage() {
 
             <div className="mt-4 pt-4 border-t border-nexus-cyan/20">
               <div className="flex justify-between items-center text-nexus-cyan">
-                <span className="text-sm font-black tracking-widest uppercase">ยอดชำระสุทธิ</span>
+                <span className="text-sm font-semibold tracking-widest uppercase">ยอดชำระสุทธิ</span>
                 <span className="text-2xl font-black font-mono">{grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
               </div>
             </div>

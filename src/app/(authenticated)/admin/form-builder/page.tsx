@@ -102,7 +102,7 @@ export default function FormBuilderPage() {
             <LayoutTemplate size={24} />
           </div>
           <div>
-            <h1 className="text-xl font-black text-white uppercase tracking-widest">Document Form Builder</h1>
+            <h1 className="text-xl font-semibold text-white uppercase tracking-widest">Document Form Builder</h1>
             <p className="text-xs text-white/40 not-italic">Ultimate Dynamic Layout Designer</p>
           </div>
         </div>
@@ -143,7 +143,7 @@ export default function FormBuilderPage() {
         
         {/* ── Left: Toolbox ── */}
         <div className="w-64 border-r border-white/5 bg-slate-900/30 p-4 flex flex-col gap-2 overflow-y-auto shrink-0">
-          <h3 className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-2 border-b border-white/5 pb-2">
+          <h3 className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-2 border-b border-white/5 pb-2">
             Add Components (Stack Layout)
           </h3>
           {TOOLBOX_ITEMS.map(item => (
@@ -203,7 +203,7 @@ export default function FormBuilderPage() {
 
         {/* ── Right: Properties ── */}
         <div className="w-72 border-l border-white/5 bg-slate-900/30 p-4 overflow-y-auto shrink-0 flex flex-col gap-6">
-          <h3 className="text-[10px] font-black text-white/40 uppercase tracking-widest border-b border-white/5 pb-2 flex items-center gap-2">
+          <h3 className="text-[10px] font-semibold text-white/40 uppercase tracking-widest border-b border-white/5 pb-2 flex items-center gap-2">
             <Settings2 size={14} /> Properties
           </h3>
           
@@ -296,8 +296,8 @@ function RenderBlockPreview({ block }: { block: FormBlock }) {
               <th className="border border-slate-300 p-2 text-left">Description</th>
               <th className="border border-slate-300 p-2 text-right w-24">Qty</th>
               {p.showUnit && <th className="border border-slate-300 p-2 text-left w-20">Unit</th>}
-              <th className="border border-slate-300 p-2 text-right w-32">Unit Price</th>
-              <th className="border border-slate-300 p-2 text-right w-32">Amount</th>
+              <th className="border border-slate-300 p-2 text-right w-36">Unit Price</th>
+              <th className="border border-slate-300 p-2 text-right w-36">Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -404,8 +404,8 @@ function PropertiesPanel({ block, onChange }: { block: FormBlock, onChange: (pro
         <div>
           <label className="text-xs font-bold text-white mb-1 mt-4 block">Alignment</label>
           <div className="flex bg-white/15 rounded-full p-1">
-            <button className={cn("flex-1 text-xs py-1 rounded-full", p.align === 'split' ? "bg-nexus-teal text-black" : "text-white")} onClick={() => onChange({ align: 'split'})}>Split L/R</button>
-            <button className={cn("flex-1 text-xs py-1 rounded-full", p.align === 'center' ? "bg-nexus-teal text-black" : "text-white")} onClick={() => onChange({ align: 'center'})}>Center</button>
+            <button className={cn("flex-1 text-xs py-1 rounded-full", p.align === 'split' ? "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md" : "text-white/40")} onClick={() => onChange({ align: 'split'})}>Split L/R</button>
+            <button className={cn("flex-1 text-xs py-1 rounded-full", p.align === 'center' ? "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md" : "text-white/40")} onClick={() => onChange({ align: 'center'})}>Center</button>
           </div>
         </div>
       </div>
@@ -418,8 +418,8 @@ function PropertiesPanel({ block, onChange }: { block: FormBlock, onChange: (pro
         <div>
           <label className="text-xs font-bold text-white mb-1 block">Header Color</label>
           <div className="flex bg-white/15 rounded-full p-1">
-            <button className={cn("flex-1 text-xs py-1 rounded-full", p.headerColor === 'light' ? "bg-nexus-teal text-black" : "text-white")} onClick={() => onChange({ headerColor: 'light'})}>Light</button>
-            <button className={cn("flex-1 text-xs py-1 rounded-full", p.headerColor === 'dark' ? "bg-nexus-teal text-black" : "text-white")} onClick={() => onChange({ headerColor: 'dark'})}>Dark</button>
+            <button className={cn("flex-1 text-xs py-1 rounded-full", p.headerColor === 'light' ? "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md" : "text-white/40")} onClick={() => onChange({ headerColor: 'light'})}>Light</button>
+            <button className={cn("flex-1 text-xs py-1 rounded-full", p.headerColor === 'dark' ? "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md" : "text-white/40")} onClick={() => onChange({ headerColor: 'dark'})}>Dark</button>
           </div>
         </div>
         <div className="flex items-center gap-2 mt-4">
@@ -489,9 +489,9 @@ function PropertiesPanel({ block, onChange }: { block: FormBlock, onChange: (pro
         <div>
           <label className="text-xs font-bold text-white mb-1 mt-4 block">Alignment</label>
           <div className="flex bg-white/15 rounded-full p-1">
-            <button className={cn("flex-1 text-xs py-1 rounded-full", p.align === 'left' ? "bg-nexus-teal text-black" : "text-white")} onClick={() => onChange({ align: 'left'})}>Left</button>
-            <button className={cn("flex-1 text-xs py-1 rounded-full", p.align === 'center' ? "bg-nexus-teal text-black" : "text-white")} onClick={() => onChange({ align: 'center'})}>Center</button>
-            <button className={cn("flex-1 text-xs py-1 rounded-full", p.align === 'right' ? "bg-nexus-teal text-black" : "text-white")} onClick={() => onChange({ align: 'right'})}>Right</button>
+            <button className={cn("flex-1 text-xs py-1 rounded-full", p.align === 'left' ? "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md" : "text-white/40")} onClick={() => onChange({ align: 'left'})}>Left</button>
+            <button className={cn("flex-1 text-xs py-1 rounded-full", p.align === 'center' ? "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md" : "text-white/40")} onClick={() => onChange({ align: 'center'})}>Center</button>
+            <button className={cn("flex-1 text-xs py-1 rounded-full", p.align === 'right' ? "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md" : "text-white/40")} onClick={() => onChange({ align: 'right'})}>Right</button>
           </div>
         </div>
       </div>

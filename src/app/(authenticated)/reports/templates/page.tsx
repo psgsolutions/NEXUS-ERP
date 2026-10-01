@@ -108,38 +108,41 @@ export default function TemplatesPage() {
     <div className="p-5 space-y-3 animate-in fade-in duration-700 max-w-7xl mx-auto">
       
       {/* 1. Page Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-5">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
+        <div className="flex items-center gap-4">
           <Link href="/reports">
-            <PillButton variant="glass" className="h-10 w-10 p-0 rounded-full">
-              <ArrowLeft size={16} />
+            <PillButton variant="glass" className="w-10 h-10 p-0 flex items-center justify-center">
+              <ArrowLeft size={20} />
             </PillButton>
           </Link>
           <div>
-            <div className="flex gap-2 mb-2">
-              <span className="px-2 py-0.5 rounded bg-nexus-blue/10 border border-nexus-blue/20 text-[12px] text-nexus-blue font-medium uppercase tracking-widest">
-                โมดูลรายงานอัจฉริยะ
-              </span>
-              <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[12px] text-white/40 font-medium uppercase tracking-widest">
-                การตั้งค่าระบบหลังบ้าน
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+                จัดการแม่แบบแบบฟอร์มเอกสาร
+              </h1>
+              <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+                TEMPLATES
               </span>
             </div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-              จัดการแม่แบบแบบฟอร์มเอกสาร
-            </h1>
+            <p className="text-sm text-white/60 font-medium mt-1">
+              ปรับแต่งและจัดการแม่แบบเอกสารสำหรับพิมพ์และส่งออกในระบบ
+            </p>
           </div>
         </div>
 
-        <PillButton 
-          onClick={() => {
-            setEditingTemplate(null);
-            setIsBuilderOpen(true);
-          }} 
-          className="px-8 shadow-neon-teal text-black"
-        >
-          <Plus size={18} />
-          สร้างแม่แบบฟอร์มใหม่
-        </PillButton>
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+          <PillButton 
+            variant="confirm"
+            onClick={() => {
+              setEditingTemplate(null);
+              setIsBuilderOpen(true);
+            }} 
+            className="h-8 px-5 font-bold text-xs"
+          >
+            <Plus size={14} className="mr-1.5" />
+            สร้างแม่แบบฟอร์มใหม่
+          </PillButton>
+        </div>
       </div>
 
       {/* 2. Statistical Metric Cards */}
@@ -166,7 +169,7 @@ export default function TemplatesPage() {
       </div>
 
       {/* 3. Standardized Resilient Table */}
-      <GlassCard className="p-4 bg-[#0a0a0c] border-white/5">
+      <GlassCard className="p-4 bg-surface-0 border-white/5">
         <div className="flex items-center gap-3 mb-6">
           <Layers size={18} className="text-nexus-teal" />
           <h3 className="text-sm font-medium text-white/60 uppercase tracking-widest">

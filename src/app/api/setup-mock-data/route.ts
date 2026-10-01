@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { requireApiUser, authErrorResponse } from '@/lib/api-auth';
 
-export async function POST() {
+export async function POST(request: Request) {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ success: false, error: 'Not available in production' }, { status: 404 });
+  }
+
   try {
+    const apiUser = await requireApiUser(request);
+    if (apiUser.role !== 'SUPERADMIN') {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
+
     const mockProducts = [
       // ข้อมูลของบริษัท A (Tenant A)
       { name: 'MacBook Pro M3', price: 79900, stock: 15, companyId: 'company_A', isDeleted: false },
@@ -39,6 +49,8 @@ export async function POST() {
     }, { status: 200 });
     
   } catch (error: any) {
+    const authRes = authErrorResponse(error);
+    if (authRes) return authRes;
     return NextResponse.json({ 
       status: 'error', 
       message: error.message 

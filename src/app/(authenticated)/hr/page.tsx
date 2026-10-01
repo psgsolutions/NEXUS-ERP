@@ -139,51 +139,51 @@ export default function HRPage() {
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
 
       {/* Compact Module Header — icon + title + inline metric chips on same plane */}
-      <header className="p-6 border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-5 bg-black/20 shrink-0">
-        <div className="flex items-center gap-4 shrink-0">
-          <div className="w-10 h-10 rounded-2xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
-            <Users size={22} />
+      <header className="px-6 py-2.5 min-h-[60px] border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-black/20 shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
+            <Users size={20} />
           </div>
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight leading-none">ศูนย์บริหารบุคลากร</h1>
-            <p className="text-[11px] font-medium text-white/30 uppercase mt-1.5 tracking-widest leading-none">Human Capital Management Hub</p>
+            <p className="text-[11px] font-medium text-white/30 uppercase mt-1 tracking-widest leading-none">Human Capital Management Hub</p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
-              <Users size={18} />
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
+              <Users size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">พนักงานทั้งหมด</span>
-              <span className="text-[17px] font-bold text-nexus-teal mt-1 mono-numbers leading-none">48 คน</span>
+              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">48 คน</span>
             </div>
           </div>
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
-              <CalendarCheck size={18} />
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
+              <CalendarCheck size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">มาทำงานวันนี้</span>
-              <span className="text-[17px] font-bold text-nexus-teal mt-1 mono-numbers leading-none">45 คน</span>
+              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">45 คน</span>
             </div>
           </div>
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
-              <MapPin size={18} />
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
+              <MapPin size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">ทำงานหน้างาน</span>
-              <span className="text-[17px] font-bold text-nexus-blue mt-1 mono-numbers leading-none">12 คน</span>
+              <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none">12 คน</span>
             </div>
           </div>
-          <div className="px-5 py-3 bg-black/40 border border-white/5 rounded-2xl flex items-center gap-3 min-w-[110px] transition-all hover:border-white/20 hover:bg-white/[0.03]">
-            <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white border border-white/10 shrink-0">
-              <Clock size={18} />
+          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-white/20 hover:bg-white/[0.03]">
+            <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white border border-white/10 shrink-0">
+              <Clock size={16} />
             </div>
             <div className="flex flex-col justify-center">
               <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">เข้าสาย</span>
-              <span className="text-[17px] font-bold text-white mt-1 mono-numbers leading-none">0 คน</span>
+              <span className="text-[17px] font-bold text-white mt-0.5 mono-numbers leading-none">0 คน</span>
             </div>
           </div>
         </div>
@@ -206,11 +206,12 @@ export default function HRPage() {
                  </div>
               </div>
               <div className="flex gap-3">
-                 <PillButton variant="glass" className="h-9 px-6 rounded-full" onClick={() => showToast("กำลังดึงข้อมูลสลิปเงินเดือนระบบ Digital...")}>
+                 <PillButton variant="confirm" className="h-9 px-6 rounded-full" onClick={() => showToast("กำลังดึงข้อมูลสลิปเงินเดือนระบบ Digital...")}>
                    <ClipboardList size={18} />
                    สลิปเงินเดือน
                  </PillButton>
                  <PillButton 
+                    variant="primary"
                     onClick={() => {
                        if (activeTab === "profiles") router.push("/hr/employees/new");
                        else if (activeTab === "attendance") router.push("/hr/attendance/new");
@@ -247,11 +248,11 @@ export default function HRPage() {
             </div>
 
             {/* Profile / Attendance / Payroll Content - Conditional Rendering wrapped in standard GlassCard viewport */}
-            <GlassCard className="p-0 overflow-hidden border-white/5 min-h-[640px] flex flex-col justify-between bg-black/40">
+            <GlassCard accentColor="teal" className="p-0 overflow-hidden min-h-[640px] flex flex-col justify-between">
               <div className="overflow-x-auto custom-scrollbar flex-1 w-full p-2">
                 {activeTab === "profiles" && (
                   <div className="animate-in fade-in duration-500">
-                    <NexusTable headers={["รหัสพนักงาน", "ตำแหน่ง", "แผนก", "สถานที่ทำงาน", "สถานะ", "จัดการ"]}>
+                    <NexusTable headers={["รหัสพนักงาน", "ชื่อ-สกุล", "ตำแหน่ง", "แผนก", "สถานที่ทำงาน", "สถานะ", "จัดการ"]}>
                       {employeesLoading ? (
                         <NexusTableRow>
                           <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
@@ -332,9 +333,9 @@ export default function HRPage() {
         </div>
 
         {/* Right Sidebar Status */}
-        <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
-           <GlassCard className="p-4 border-white/10 bg-nexus-teal/5">
-              <h4 className="text-[12px] font-medium text-nexus-teal uppercase tracking-widest mb-6">ดัชนีสุขภาพบุคลากร</h4>
+        <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-4 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
+           <GlassCard accentColor="blue" className="p-5">
+              <h4 className="text-xs font-bold text-nexus-teal uppercase tracking-widest mb-6">ดัชนีสุขภาพบุคลากร</h4>
               <div className="space-y-3">
                  <HRMetricItem label="ความพึงพอใจพนักงาน" value="92%" />
                  <HRMetricItem label="การพัฒนาทักษะ" value="78%" />
@@ -342,8 +343,8 @@ export default function HRPage() {
               </div>
            </GlassCard>
 
-           <GlassCard className="p-4 border-white/10">
-              <h4 className="text-[12px] font-medium text-white/20 uppercase tracking-widest mb-6">บันทึกเวลาเข้างานล่าสุด</h4>
+           <GlassCard accentColor="purple" className="p-5">
+              <h4 className="text-xs font-bold text-white/60 uppercase tracking-widest mb-6">บันทึกเวลาเข้างานล่าสุด</h4>
               <div className="space-y-3">
                  <AttendanceFeedItem name="Somchai R." location="ศูนย์ประชุมฯ" time="08:15 AM" />
                  <AttendanceFeedItem name="Kriangkrai M." location="อาคาร PTT" time="08:42 AM" />
@@ -353,13 +354,6 @@ export default function HRPage() {
       </div>
       </div>
       </div>
-
-      {/* HR Management Modals */}
-      
-
-      
-
-      
     </div>
   );
 }
@@ -368,24 +362,24 @@ function EmployeeRow({ id, name, role, dept, location, status }: { id: string, n
   const router = useRouter();
   return (
     <NexusTableRow onClick={() => router.push(`/hr/employees/${id}`)}>
-      <NexusTableCell className="w-[300px]">
-        <div className="block">
-           <p className="font-mono text-[12px] text-nexus-blue font-medium tracking-tighter">{id}</p>
-           <p className="font-bold text-white/80 group-hover:text-white transition-colors">{name}</p>
-        </div>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center align-middle">
+           <span className="font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</span>
       </NexusTableCell>
-      <NexusTableCell className="w-[180px] text-[12px] font-medium text-white/40 uppercase tracking-widest">{role}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-[12px] font-medium text-white/40 uppercase tracking-widest">{dept}</NexusTableCell>
+      <NexusTableCell className="w-full">
+           <span className="font-bold text-white/80 group-hover:text-white transition-colors">{name}</span>
+      </NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-white/40 uppercase tracking-widest">{role}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-white/40 uppercase tracking-widest">{dept}</NexusTableCell>
       <NexusTableCell>
          <div className="flex items-center gap-2">
             <MapIcon size={12} className="text-nexus-blue" />
             <span className="text-[11px] font-medium text-white/60 uppercase">{location}</span>
          </div>
       </NexusTableCell>
-      <NexusTableCell className="text-center w-[180px]">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={status} label="ปฏิบัติงาน" />
       </NexusTableCell>
-      <NexusTableCell className="w-[80px]">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
          <div onClick={(e) => e.stopPropagation()}>
             <SecureDeleteAction collectionName="employees" documentId={id} displayName={name} compact />
          </div>
@@ -397,11 +391,11 @@ function EmployeeRow({ id, name, role, dept, location, status }: { id: string, n
 function AttendanceRow({ name, time, loc, type, status }: { name: string, time: string, loc: string, type: string, status: any }) {
   return (
     <NexusTableRow>
-      <NexusTableCell className="font-bold text-white">{name}</NexusTableCell>
-      <NexusTableCell className="w-[180px] text-[12px] font-medium text-white/40 uppercase tracking-widest">{time}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-[12px] font-medium text-nexus-blue uppercase tracking-widest">{loc}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-[12px] font-medium text-nexus-teal uppercase tracking-widest">{type}</NexusTableCell>
-      <NexusTableCell className="text-center w-[180px]">
+      <NexusTableCell className="w-full font-bold text-white">{name}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-white/40 uppercase tracking-widest">{time}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-nexus-blue uppercase tracking-widest">{loc}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-nexus-teal uppercase tracking-widest">{type}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={status} label="บันทึกแล้ว" />
       </NexusTableCell>
     </NexusTableRow>
@@ -411,13 +405,13 @@ function AttendanceRow({ name, time, loc, type, status }: { name: string, time: 
 function PayrollRow({ period, count, total, status }: { period: string, count: number, total: string, status: any }) {
   return (
     <NexusTableRow>
-      <NexusTableCell className="font-bold text-white">{period}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-[12px] font-medium text-white/40 uppercase tracking-widest">{count} คน</NexusTableCell>
-      <NexusTableCell className="w-[180px] text-right font-bold text-nexus-teal mono-numbers">{total}</NexusTableCell>
-      <NexusTableCell className="text-center w-[180px]">
+      <NexusTableCell className="w-full font-bold text-white">{period}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-white/40 uppercase tracking-widest">{count} คน</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-nexus-teal mono-numbers">{total}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={status} label={status === "active" ? "โอนแล้ว" : "รอดำเนินการ"} />
       </NexusTableCell>
-      <NexusTableCell className="w-[120px]"><PillButton variant="glass" className="px-4 text-[10px]">ดาวน์โหลด</PillButton></NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center"><PillButton variant="glass" className="px-4 text-[10px]">ดาวน์โหลด</PillButton></NexusTableCell>
     </NexusTableRow>
   );
 }
@@ -439,7 +433,7 @@ function HRMetricItem({ label, value }: { label: string, value: string }) {
 function AttendanceFeedItem({ name, location, time }: { name: string, location: string, time: string }) {
   return (
     <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5 group hover:bg-white/[0.05] transition-all">
-       <div className="w-10 h-10 rounded-xl bg-nexus-blue/10 flex items-center justify-center text-nexus-blue group-hover:shadow-neon-blue transition-all">
+       <div className="w-10 h-10 rounded-xl  flex items-center justify-center text-nexus-blue group-hover:shadow-neon-blue transition-all">
           <Clock size={16} />
        </div>
        <div className="flex-1 min-w-0">
@@ -455,14 +449,14 @@ function ExpenseRow({ id, date, employeeName, description, amount, status, onApp
   
   return (
     <NexusTableRow>
-      <NexusTableCell className="w-[120px] font-mono text-[11px] text-white/50">{date}</NexusTableCell>
-      <NexusTableCell className="font-bold text-white">{employeeName}</NexusTableCell>
-      <NexusTableCell className="text-[12px] text-white/70">{description}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-right font-bold text-warning mono-numbers">฿{amount.toLocaleString()}</NexusTableCell>
-      <NexusTableCell className="text-center w-[180px]">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[11px] text-white/50">{date}</NexusTableCell>
+      <NexusTableCell className="w-full font-bold text-white">{employeeName}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-[12px] text-white/70">{description}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-warning mono-numbers">฿{amount.toLocaleString()}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={isPending ? "pending" : "active"} label={isPending ? "รออนุมัติ" : "อนุมัติแล้ว"} />
       </NexusTableCell>
-      <NexusTableCell className="w-[150px]">
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         {isPending && (
           <div className="flex gap-2">
             <PillButton className="h-7 px-3 text-[10px] bg-nexus-teal shadow-neon-teal" onClick={onApprove}>Approve</PillButton>

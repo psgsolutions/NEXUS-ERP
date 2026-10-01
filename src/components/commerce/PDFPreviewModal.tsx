@@ -40,7 +40,7 @@ export function PDFPreviewModal({ isOpen, onClose, blocks, data }: PDFPreviewMod
       title={`ตัวอย่างเอกสาร PDF (NEXUS Engine)`}
       maxWidth="max-w-[1000px]"
     >
-      <div className="flex flex-col h-[80vh] bg-[#0D0D0D]">
+      <div className="flex flex-col h-[80vh] bg-surface-0">
         {mounted && blocks && blocks.length > 0 ? (
           <PDFViewer width="100%" height="100%" className="border-0 bg-white">
             {/* @ts-ignore */}

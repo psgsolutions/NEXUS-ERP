@@ -71,7 +71,7 @@ export function ShiftCloseModal({ isOpen, onClose, onConfirm }: ShiftCloseModalP
       title="ปิดกะการขายและปิดยอด (SHIFT & PERIOD CLOSE)"
       maxWidth="max-w-[1600px]"
     >
-      <div className="flex h-full bg-[#0D0D0D]">
+      <div className="flex h-full bg-surface-0">
         <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
           <div className="max-w-2xl mx-auto space-y-12">
             <div className="space-y-4">
@@ -80,7 +80,7 @@ export function ShiftCloseModal({ isOpen, onClose, onConfirm }: ShiftCloseModalP
                     <Lock size={24} />
                  </div>
                  <div>
-                    <h4 className="text-xl font-black text-white uppercase tracking-tight">ปิดรอบการขายประจำวัน</h4>
+                    <h4 className="text-xl font-semibold text-white uppercase tracking-tight">ปิดรอบการขายประจำวัน</h4>
                     <p className="text-[12px] font-bold text-white/30 uppercase tracking-[0.2em]">Terminal Settlement Operation</p>
                  </div>
               </div>
@@ -89,10 +89,10 @@ export function ShiftCloseModal({ isOpen, onClose, onConfirm }: ShiftCloseModalP
             {step === 1 && (
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="space-y-6">
-                   <h5 className="text-[12px] font-black text-white/30 uppercase tracking-widest ml-1">1. ตรวจนับเงินสดในลิ้นชัก</h5>
+                   <h5 className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">1. ตรวจนับเงินสดในลิ้นชัก</h5>
                    <div className="p-10 rounded-2xl bg-white/[0.02] border border-white/5 space-y-8">
                       <div className="space-y-3">
-                         <label className="text-[11px] font-black text-white/30 uppercase tracking-widest ml-1 text-center block">ระบุจำนวนเงินสดที่นับได้จริง *</label>
+                         <label className="text-[11px] font-semibold text-white/30 uppercase tracking-widest ml-1 text-center block">ระบุจำนวนเงินสดที่นับได้จริง *</label>
                          <PillInput 
                            type="number" 
                            value={cashInDrawer}
@@ -104,14 +104,14 @@ export function ShiftCloseModal({ isOpen, onClose, onConfirm }: ShiftCloseModalP
                       
                       <div className="grid grid-cols-2 gap-4">
                          <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
-                            <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">ยอดเงินสดในระบบ</p>
+                            <p className="text-[10px] font-semibold text-white/20 uppercase tracking-widest">ยอดเงินสดในระบบ</p>
                             <p className="text-xl font-black text-white mt-1">฿{systemData.expectedCash.toLocaleString()}</p>
                          </div>
                          <div className={cn(
                            "p-6 rounded-2xl border",
                            cashDiff === 0 ? "bg-nexus-teal/5 border-nexus-teal/20" : "bg-danger/5 border-danger/20"
                          )}>
-                            <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">ผลต่าง</p>
+                            <p className="text-[10px] font-semibold text-white/20 uppercase tracking-widest">ผลต่าง</p>
                             <p className={cn("text-xl font-black mt-1", cashDiff === 0 ? "text-nexus-teal" : "text-danger")}>
                                {cashDiff > 0 ? "+" : ""}{cashDiff.toLocaleString()}
                             </p>
@@ -121,7 +121,7 @@ export function ShiftCloseModal({ isOpen, onClose, onConfirm }: ShiftCloseModalP
                 </div>
 
                 <div className="space-y-6">
-                   <h5 className="text-[12px] font-black text-white/20 uppercase tracking-widest">ระบบตรวจสอบความพร้อม</h5>
+                   <h5 className="text-[12px] font-semibold text-white/20 uppercase tracking-widest">ระบบตรวจสอบความพร้อม</h5>
                    <div className="space-y-3">
                       <CheckItem label="รายการที่ยังไม่ชำระ" value="0 รายการ" status="pass" />
                       <CheckItem label="การซิงค์ข้อมูลกับระบบคลัง" value="สมบูรณ์" status="pass" />
@@ -136,7 +136,7 @@ export function ShiftCloseModal({ isOpen, onClose, onConfirm }: ShiftCloseModalP
                     <History size={48} />
                  </div>
                  <div className="space-y-4">
-                    <h4 className="text-2xl font-black text-white uppercase tracking-tight">ยืนยันการปิดยอดและส่งข้อมูล?</h4>
+                    <h4 className="text-2xl font-semibold text-white uppercase tracking-tight">ยืนยันการปิดยอดและส่งข้อมูล?</h4>
                     <p className="text-sm text-white/40 font-bold leading-relaxed max-w-md mx-auto">
                        ระบบจะทำการปิดกะการขายของเครื่อง Terminal 01 และทำการ Post ยอดขายรายวันเข้าสู่ระบบบัญชีและหักสต็อกพัสดุถาวร
                     </p>
@@ -156,19 +156,19 @@ export function ShiftCloseModal({ isOpen, onClose, onConfirm }: ShiftCloseModalP
         </div>
 
         {step === 1 && (
-          <div className="w-[320px] bg-[#0F0F12] p-12 flex flex-col border-l border-white/5 overflow-y-auto custom-scrollbar">
+          <div className="w-[320px] bg-surface-1 p-12 flex flex-col border-l border-white/5 overflow-y-auto custom-scrollbar">
              <div className="flex-1 space-y-8">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">ลำดับขั้น</p>
-                  <h5 className="text-sm font-black text-white uppercase tracking-tight">Settlement Process</h5>
+                  <p className="text-[10px] font-semibold text-white/20 uppercase tracking-[0.2em]">ลำดับขั้น</p>
+                  <h5 className="text-sm font-semibold text-white uppercase tracking-tight">Settlement Process</h5>
                 </div>
                 <div className="space-y-4">
                    <div className="p-4 rounded-2xl bg-danger/10 border border-danger/20">
-                      <p className="text-[10px] font-black text-danger uppercase tracking-widest mb-1">Step 1</p>
+                      <p className="text-[10px] font-semibold text-danger uppercase tracking-widest mb-1">Step 1</p>
                       <p className="text-xs font-bold text-white">ตรวจนับเงินสด</p>
                    </div>
                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 opacity-40">
-                      <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Step 2</p>
+                      <p className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1">Step 2</p>
                       <p className="text-xs font-bold text-white">ส่งข้อมูลเข้าบัญชี</p>
                    </div>
                 </div>

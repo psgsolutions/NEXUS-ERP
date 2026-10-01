@@ -3,6 +3,8 @@ import { db } from "@/lib/firebase-client";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { JournalEntry } from "@/types/database";
 import { WriteBatch, doc } from "firebase/firestore";
+import { assertPeriodOpen } from "@/lib/period-close-service";
+
 
 /**
  * Nexus Accounting Engine V3.0
@@ -46,6 +48,8 @@ export const AccountingEngine = {
         credit: data.vatAmount
       });
     }
+
+    await assertPeriodOpen(data.companyId);
 
     const journalEntry: Partial<JournalEntry> = {
       companyId: data.companyId,
@@ -109,6 +113,8 @@ export const AccountingEngine = {
       });
     }
 
+    await assertPeriodOpen(data.companyId);
+
     const journalEntry: Partial<JournalEntry> = {
       companyId: data.companyId,
       date: serverTimestamp(),
@@ -169,6 +175,8 @@ export const AccountingEngine = {
       });
     }
 
+    await assertPeriodOpen(data.companyId);
+
     const journalEntry: Partial<JournalEntry> = {
       companyId: data.companyId,
       date: serverTimestamp(),
@@ -228,6 +236,8 @@ export const AccountingEngine = {
       });
     }
 
+    await assertPeriodOpen(data.companyId);
+
     const journalEntry: Partial<JournalEntry> = {
       companyId: data.companyId,
       date: serverTimestamp(),
@@ -259,6 +269,8 @@ export const AccountingEngine = {
     documentId: string;
     cogsAmount: number;
   }, batch?: WriteBatch) {
+    await assertPeriodOpen(data.companyId);
+
     const items = [
       {
         accountCode: '5111-00', // COGS

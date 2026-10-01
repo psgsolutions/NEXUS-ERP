@@ -176,25 +176,31 @@ export default function CreateInvoicePage() {
   };
 
   const headerContent = (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <button onClick={() => router.back()} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] text-white/50 hover:text-white transition-all backdrop-blur-sm">
-          <ArrowLeft size={18} />
-        </button>
+        <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
         <div>
-          <p className="text-[10px] text-cyan-400 font-black uppercase tracking-widest mb-0.5">FINANCE V7.5</p>
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-black uppercase tracking-tight text-white">ออกใบแจ้งหนี้ / วางบิล (Invoice)</h1>
-            <DocumentStepper steps={["Draft", "Pending", "Approved"]} currentStep={0} />
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
+              ออกใบแจ้งหนี้และวางบิล
+            </h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
+              INV-NEW
+            </span>
           </div>
+          <p className="text-sm text-white/60 font-medium mt-1">
+            สร้างใบแจ้งหนี้ อ้างอิงใบสั่งขาย คำนวณภาษีและส่งวางบิลลูกค้า
+          </p>
         </div>
       </div>
-      <div className="flex items-center gap-4">
-        <PillButton variant="glass" className="h-9 px-6 rounded-full text-[12px] uppercase tracking-widest text-white/50 hover:text-white" onClick={() => router.back()}>
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={() => router.back()}>
           ยกเลิก
         </PillButton>
-        <PillButton onClick={handleSave} disabled={loading} className="h-9 px-6 rounded-full bg-cyan-500 text-black hover:bg-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)] text-[12px] font-black uppercase tracking-widest">
-          <CheckCircle2 size={14} className="mr-2" /> {loading ? 'กำลังบันทึก...' : 'บันทึกเอกสาร'}
+        <PillButton variant="confirm" onClick={handleSave} disabled={loading} className="h-8 px-5 font-bold text-xs">
+          <CheckCircle2 size={14} className="mr-1.5" /> {loading ? 'กำลังบันทึก...' : 'บันทึกเอกสาร'}
         </PillButton>
       </div>
     </div>
@@ -204,7 +210,8 @@ export default function CreateInvoicePage() {
     <div className="space-y-4 pr-2 pb-10">
       {/* 1. Document Header & Security */}
       <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-        <h3 className="text-[13px] font-black uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
+        <div className="flex items-center justify-between border-b border-white/5 pb-4 h-[36px]">
+            <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 ">
           <ShieldCheck size={16} /> ข้อมูลเอกสาร (Document Header)
         </h3>
         
@@ -245,7 +252,7 @@ export default function CreateInvoicePage() {
 
       {/* 2. Customer Profile */}
       <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-        <h3 className="text-[13px] font-black uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
+        <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
           <Building2 size={16} /> ข้อมูลลูกค้า (Customer Profile)
         </h3>
         
@@ -298,17 +305,18 @@ export default function CreateInvoicePage() {
 
       {/* 3. Line Items */}
       <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-        <h3 className="text-[13px] font-black uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
+        <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
           <ShoppingCart size={16} /> รายการสินค้า / บริการ
           <span className="text-[10px] text-cyan-400/80 ml-2">(Partial Billing Allowed)</span>
         </h3>
+          </div>
         
         <DocumentItemsTable items={items} onChange={setItems} />
       </div>
 
       {/* 6. Footer Remarks */}
       <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-        <h3 className="text-[13px] font-black uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
+        <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
           <FileSignature size={16} /> หมายเหตุ / เงื่อนไข (Remarks)
         </h3>
         <textarea
@@ -323,7 +331,7 @@ export default function CreateInvoicePage() {
 
   const rightSidebar = (
     <div className="space-y-4 h-fit pb-10">
-      <GlassCard className="p-6 border-white/5 rounded-3xl bg-[#111111] shadow-2xl space-y-4 w-full">
+      <GlassCard className="p-6 border-white/5 rounded-3xl bg-surface-1 shadow-2xl space-y-4 w-full">
         <div className="flex justify-between items-center text-[13px]">
           <span className="text-white/40 font-bold uppercase tracking-widest text-[11px]">มูลค่ารวม (Subtotal)</span>
           <span className="text-white font-mono font-bold tracking-tight text-right">฿ {rawSubTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
@@ -377,7 +385,7 @@ export default function CreateInvoicePage() {
         </div>
 
         <div className="flex flex-col items-end pt-4 space-y-1">
-          <span className="text-[12px] font-black text-white/70 uppercase tracking-widest">ยอดสุทธิ</span>
+          <span className="text-[12px] font-semibold text-white/70 uppercase tracking-widest">ยอดสุทธิ</span>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-black text-cyan-400 font-mono tracking-tighter text-right drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
               ฿ {grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}

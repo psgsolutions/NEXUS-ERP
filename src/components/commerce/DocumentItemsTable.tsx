@@ -1,43 +1,58 @@
 "use client";
 
-import React, { useState, useMemo, useRef, useEffect } from "react";
-import { Plus, Minus, Trash2, Search, X, ChevronUp, ChevronDown, CornerDownRight, AlignLeft } from "lucide-react";
-import { where } from "firebase/firestore";
-import { PillButton, cn } from "@/components/ui/Base";
-import { NumberStepper } from "@/components/ui/NumberStepper";
-import { formatCurrency } from "@/lib/erp-logic";
+import React, { useState, useMemo } from "react";
+import { Plus, Trash2, Search, ChevronUp, ChevronDown, CornerDownRight, AlignLeft, Copy, AlertTriangle } from "lucide-react";
+import { PillButton, Modal, cn } from "@/components/ui/Base";
+import { formatCurrency, calculateLineGP } from "@/lib/erp-logic";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { useAuth } from "@/context/AuthContext";
+import { can, canViewCost } from "@/lib/permissions";
+import { SupplierPriceSelector } from "@/components/inventory/SupplierPriceSelector";
+import { SciFiDropdownPortal } from "@/components/ui/SmartComponents";
 
 export interface DocumentItemsTableProps {
   items: any[];
   onChange: (newItems: any[], summary?: { subtotal: number, taxAmount: number, grandTotal: number }) => void;
   isLocked?: boolean;
+  taxType?: any;
+  priceDeviationWarningPercent?: number;
 }
+
+const DEFAULT_PRODUCT_CATALOG = [
+  { id: "prd-001", sku: "PRD-2606-0001", name: "สินค้า A (กล่อง)", unit: "กล่อง", price: 450.00, cost: 300.00, currentStock: 50, itemType: "PRODUCT" },
+  { id: "prd-002", sku: "PRD-2606-0019", name: "สินค้า B (อัน)", unit: "อัน", price: 120.00, cost: 80.00, currentStock: 100, itemType: "PRODUCT" },
+  { id: "prd-003", sku: "PRD-2606-0058", name: "สินค้า C (ตัว)", unit: "ตัว", price: 15000.00, cost: 11000.00, currentStock: 0, itemType: "PRODUCT" }
+];
+
+export const ITEM_GRID =
+  "grid items-center gap-x-2 " +
+  "grid-cols-[36px_90px_110px_minmax(180px,1fr)_32px_60px_60px_90px_90px_60px_100px_54px]";
 
 const CompactVerticalStepperInput = ({ value, onChange, min = 0 }: { value: number, onChange: (val: number) => void, min?: number }) => {
   return (
-    <div className="relative flex items-center bg-transparent border border-transparent hover:bg-white/[0.02] hover:border-white/10 rounded-full h-9 w-full group/stepper transition-colors focus-within:border-nexus-teal/50 focus-within:bg-white/[0.02]">
+    <div className="relative flex items-center bg-transparent border border-white/20 hover:border-white/30 rounded-full h-8 w-full group/stepper transition-colors focus-within:border-nexus-teal/50 focus-within:bg-white/[0.02]">
       <input 
         type="number"
         value={value === 0 ? "" : value}
         onChange={(e) => onChange(Math.max(min, Number(e.target.value) || 0))}
         onFocus={(e) => e.target.select()}
-        className="flex-1 w-full h-full bg-transparent text-right font-mono text-[13px] font-black text-white pr-7 pl-2 focus:outline-none placeholder:text-white/20 rounded-full not-italic [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        className="flex-1 w-full h-full bg-transparent text-center font-mono text-[13px] font-black text-white px-1 focus:outline-none placeholder:text-white/70 rounded-full not-italic [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         min={min}
       />
-      <div className="absolute right-1 top-1 bottom-1 flex flex-col items-center justify-between w-5 opacity-0 group-hover/stepper:opacity-100 focus-within:opacity-100 transition-opacity bg-black/20 rounded-full overflow-hidden border border-white/5">
+      <div className="absolute right-1 top-1 bottom-1 flex flex-col items-center justify-between w-4 opacity-0 group-hover/stepper:opacity-100 focus-within:opacity-100 transition-opacity bg-black/40 rounded-full overflow-hidden border border-white/10">
         <button 
+          type="button"
           onClick={() => onChange(value + 1)}
-          className="w-full h-1/2 flex items-center justify-center text-nexus-teal/70 hover:text-white hover:bg-nexus-teal/20 transition-all"
+          className="w-full h-1/2 flex items-center justify-center text-nexus-teal hover:text-white hover:bg-nexus-teal/20 transition-all"
         >
-          <ChevronUp size={10} strokeWidth={3} />
+          <ChevronUp size={9} strokeWidth={3} />
         </button>
         <button 
+          type="button"
           onClick={() => onChange(Math.max(min, value - 1))}
-          className="w-full h-1/2 flex items-center justify-center text-nexus-teal/70 hover:text-white hover:bg-nexus-teal/20 transition-all"
+          className="w-full h-1/2 flex items-center justify-center text-nexus-teal hover:text-white hover:bg-nexus-teal/20 transition-all"
         >
-          <ChevronDown size={10} strokeWidth={3} />
+          <ChevronDown size={9} strokeWidth={3} />
         </button>
       </div>
     </div>
@@ -51,360 +66,729 @@ const InlineRow = ({
   updateItemFields,
   onProductSelected,
   removeItem,
+  duplicateItem,
   addSubItem,
   isLocked, 
-  availableProducts 
+  availableProducts,
+  priceDeviationWarningPercent = 10
 }: any) => {
-  const rowRef = useRef<HTMLDivElement>(null);
-  const [activeSearchField, setActiveSearchField] = useState<'sku' | 'name' | null>(!item.productId && !item.name ? 'name' : null);
+  const { role, checkPermission } = useAuth();
+  const canEditProduct = checkPermission ? checkPermission("inventory:edit") : can(role, "inventory:edit");
+  const canSeeCost = canViewCost(role);
+  const [activeSearchField, setActiveSearchField] = useState<'sku' | 'name' | null>(null);
   const [searchTerm, setSearchTerm] = useState(item.productId ? item.name : "");
   const [isEditingPrice, setIsEditingPrice] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const matchedProduct = useMemo(() => {
+    if (!item.productId && !item.sku) return null;
+    return availableProducts.find((p: any) => p.id === item.productId || (item.sku && (p.sku === item.sku || p.code === item.sku)));
+  }, [availableProducts, item.productId, item.sku]);
+
+  const standardPrice = matchedProduct ? Number(matchedProduct.price || 0) : 0;
+  const thresholdPrice = standardPrice > 0 ? standardPrice * (1 - (priceDeviationWarningPercent || 10) / 100) : 0;
+  const isBelowStandard = standardPrice > 0 && Number(item.price || 0) > 0 && Number(item.price || 0) < thresholdPrice;
+  const deviationPercent = isBelowStandard ? Math.round(((standardPrice - Number(item.price || 0)) / standardPrice) * 100) : 0;
+
   const filteredProducts = useMemo(() => {
-    if (!searchTerm) return availableProducts;
-    const lower = searchTerm.toLowerCase();
-    return availableProducts.filter((p: any) => 
-      p.name.toLowerCase().includes(lower) || 
-      (p.sku && p.sku.toLowerCase().includes(lower))
-    );
-  }, [availableProducts, searchTerm]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (rowRef.current && !rowRef.current.contains(event.target as Node)) {
-        if (activeSearchField) {
-          setActiveSearchField(null);
-          if (!item.productId && (!searchTerm || searchTerm.trim() === "")) {
-            removeItem(item.id);
-          } else if (!item.productId && searchTerm.trim() !== "") {
-            updateItem(item.id, "name", searchTerm);
-          }
-        }
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside, { capture: true });
-    return () => document.removeEventListener("mousedown", handleClickOutside, { capture: true });
-  }, [activeSearchField, item.productId, searchTerm, item.id, removeItem, updateItem]);
-
-  const renderDropdown = (widthClass: string) => (
-    <div className={cn("absolute z-50 top-[calc(100%+8px)] bg-[#0A1118]/95 backdrop-blur-xl border border-nexus-teal/20 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.8),_0_0_20px_rgba(0,255,255,0.1)] overflow-hidden", widthClass)}>
-      <div className="max-h-[260px] overflow-y-auto custom-scrollbar">
-        {filteredProducts.length > 0 ? (
-          <div className="py-2">
-            {filteredProducts.map((p: any) => (
-              <div 
-                key={p.id}
-                onClick={() => handleSelectProduct(p)}
-                className="flex items-center gap-3 px-4 py-2 hover:bg-nexus-teal/10 cursor-pointer transition-colors"
-              >
-                <div className="w-[100px] shrink-0 text-left">
-                  <span className="font-mono text-[11px] text-nexus-teal">{p.sku || p.id}</span>
-                </div>
-                <div className="flex-1 truncate">
-                  <span className="font-bold text-[12px] text-white flex items-center gap-2">
-                    {p.name}
-                    {p.currentStock !== undefined && (
-                      <span className="text-[9px] font-normal text-nexus-teal/50 bg-nexus-teal/10 px-1.5 py-0.5 rounded-sm">
-                        คงเหลือ: {p.currentStock}
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <div className="w-24 text-right shrink-0">
-                  <span className="font-mono text-[12px] text-white/80">{formatCurrency(p.price)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="p-4 text-center text-[11px] text-nexus-teal/50 font-mono">
-            ไม่พบข้อมูลสินค้า
-          </div>
-        )}
-      </div>
-    </div>
-  );
+    if (!searchTerm || !searchTerm.trim()) return availableProducts;
+    const lower = searchTerm.trim().toLowerCase();
+    
+    if (item.productId && (lower === (item.name || "").toLowerCase() || lower === (item.sku || "").toLowerCase())) {
+      return availableProducts;
+    }
+    
+    return availableProducts.filter((p: any) => {
+      const skuMatch = (p.sku || p.productCode || p.code || p.id || "").toLowerCase().includes(lower);
+      const nameMatch = (p.name || p.productName || "").toLowerCase().includes(lower);
+      return skuMatch || nameMatch;
+    });
+  }, [availableProducts, searchTerm, item.productId, item.name, item.sku]);
 
   const handleSelectProduct = (product: any) => {
+    const pId = product.id;
+    const pSku = product.sku || product.productCode || product.code || product.id;
+    const pName = product.name || product.productName || "Unnamed Product";
+    const pUnit = product.unit || product.productUnit || "ชิ้น";
+    const pPrice = product.price ?? product.unitPrice ?? product.retailPrice ?? product.pricing?.pricePOS ?? product.pricing?.priceProject ?? 0;
+    const pCost = product.cost ?? product.costPrice ?? product.costWAC ?? product.pricing?.costWAC ?? 0;
+    const pStock = product.currentStock ?? product.stock ?? product.quantity ?? 0;
+    const pItemType = product.itemType || "PRODUCT";
+
+    const selectedObj = {
+      productId: pId,
+      sku: pSku,
+      name: pName,
+      unit: pUnit,
+      price: pPrice,
+      cost: pCost,
+      costPrice: pCost,
+      currentStock: pStock,
+      itemType: pItemType,
+      whtRate: pItemType === 'SERVICE' || pItemType === 'LABOR' ? 3 : 0,
+      details: product.details || product.description || "",
+      datasheetUrl: product.datasheetUrl || ""
+    };
+
     if (onProductSelected) {
-      onProductSelected(item.id, product);
+      onProductSelected(item.id, selectedObj);
     } else {
-      updateItemFields(item.id, {
-        productId: product.id,
-        sku: product.sku || product.id,
-        name: product.name,
-        unit: product.unit || "ชิ้น",
-        price: product.price,
-        cost: product.cost || 0,
-        incomeAccountId: product.incomeAccountId || null,
-        expenseAccountId: product.expenseAccountId || null,
-        currentStock: product.currentStock
-      });
+      updateItemFields(item.id, selectedObj);
     }
-    setSearchTerm(product.name);
+    setSearchTerm(pName);
     setActiveSearchField(null);
   };
 
-  return (
-    <>
-      <div ref={rowRef} className={cn("group relative flex gap-2 items-center px-2 py-1 min-h-[36px] hover:bg-white/[0.02] border-b border-white/5 transition-colors", item.isSubItem ? "pl-8 bg-white/[0.01]" : "", activeSearchField ? "z-50" : "z-10")}>
-        <div className="w-10 text-center font-mono text-[13px] text-white/40 shrink-0 flex items-center justify-center gap-1">
-        {item.isSubItem && <CornerDownRight size={12} className="text-nexus-teal/50" />}
-        {!item.isSubItem && (index + 1)}
-      </div>
-      
-      <div className="w-32 shrink-0 text-center relative z-20">
-        {!isLocked ? (
-          activeSearchField === 'sku' ? (
-            <div className="relative w-full">
-              <input
-                type="text"
-                autoFocus
-                placeholder="ค้นหารหัส..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full h-9 px-2 bg-black/40 border border-nexus-teal/30 rounded-full text-center font-mono text-[12px] text-nexus-teal focus:outline-none focus:border-nexus-teal shadow-[0_0_15px_rgba(0,255,255,0.1)] transition-all"
-              />
-              {renderDropdown("left-0 w-[400px]")}
-            </div>
-          ) : (
-            <div 
-              onClick={() => {
-                setSearchTerm(item.sku || "");
-                setActiveSearchField('sku');
-              }}
-              className="w-full h-9 px-2 rounded-full bg-transparent border border-transparent hover:bg-white/[0.02] hover:border-white/10 text-center font-mono text-[12px] text-nexus-teal cursor-text flex items-center justify-center transition-colors"
-            >
-              {item.sku ? <span>{item.sku}</span> : <span className="text-white/20 not-italic font-sans text-[11px]">รหัสสินค้า</span>}
-            </div>
-          )
-        ) : (
-          <p className="font-mono text-[13px] text-nexus-teal truncate px-2 not-italic" title={item.sku}>{item.sku || "-"}</p>
-        )}
-      </div>
+  const isGroupHeader = item.itemType === 'GROUP_HEADER';
+  const hasDetails = !!(item.details || item.datasheetUrl);
 
-      <div className="flex-1 relative z-10">
-        {!isLocked ? (
-          activeSearchField === 'name' ? (
-            <div className="relative w-full">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-nexus-teal/50" />
-              <input
-                type="text"
-                autoFocus
-                placeholder="ค้นหาชื่อสินค้า..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full h-9 pl-9 pr-4 bg-black/40 border border-nexus-teal/30 rounded-full text-[12px] text-white font-bold focus:outline-none focus:border-nexus-teal shadow-[0_0_15px_rgba(0,255,255,0.1)] transition-all"
-              />
-              {renderDropdown("left-0 w-[500px] max-w-[80vw]")}
-            </div>
-          ) : (
-            <div 
-              className={cn("w-full h-9 flex items-center px-3 rounded-full border border-transparent bg-transparent transition-colors cursor-text hover:bg-white/[0.02] hover:border-white/10")}
-              onClick={() => {
-                setSearchTerm(item.name);
-                setActiveSearchField('name');
-              }}
-            >
-              <p className={cn("flex-1 font-bold text-[12px] truncate flex items-center gap-2", !item.name ? "text-white/40" : "text-white")}>
-                <span>{item.name || "ระบุชื่อสินค้า..."}</span>
-                {item.currentStock !== undefined && (
-                  <span className="text-[9px] font-normal text-nexus-teal/50 whitespace-nowrap">
-                    (เหลือ: {item.currentStock})
-                  </span>
-                )}
-              </p>
-              <button 
-                onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }} 
-                className={cn("p-1.5 rounded-full transition-colors ml-2", isExpanded ? "bg-nexus-teal/20 text-nexus-teal" : "text-nexus-teal/50 hover:text-nexus-teal hover:bg-nexus-teal/10")}
-                title="รายละเอียดสินค้าเพิ่มเติม"
-              >
-                <AlignLeft size={14} />
-              </button>
-            </div>
-          )
-        ) : (
-          <p className="font-bold text-[12px] text-white px-3 truncate">{item.name}</p>
-        )}
-      </div>
-      
-      <div className="w-20 shrink-0">
-        {!isLocked ? (
-          <CompactVerticalStepperInput 
-            value={item.qty} 
-            onChange={(val) => updateItem(item.id, "qty", val)}
-            min={1}
-          />
-        ) : (
-          <div className="text-center"><span className="font-mono text-[13px] text-white/80 not-italic">{item.qty}</span></div>
-        )}
-      </div>
-      
-      <div className="w-20 shrink-0">
-        {!isLocked ? (
-          <input 
+  const lineSubtotal = (Number(item.qty) || 0) * (Number(item.price) || 0);
+  const lineDiscountVal = Number(item.discountValue) || 0;
+  const lineDiscountAmt = item.discountType === 'PERCENT'
+    ? lineSubtotal * (lineDiscountVal / 100)
+    : lineDiscountVal;
+  const lineFinalAmount = Math.max(0, lineSubtotal - lineDiscountAmt);
+  const lineGP = calculateLineGP(item.price, item.cost ?? item.costPrice ?? 0);
+
+  const handleItemTypeChange = (newType: string) => {
+    let defaultWht = item.whtRate;
+    if (newType === 'PRODUCT') defaultWht = 0;
+    else if (newType === 'SERVICE' || newType === 'LABOR') defaultWht = 3;
+    else if (newType === 'GROUP_HEADER') defaultWht = 0;
+
+    updateItemFields(item.id, {
+      itemType: newType,
+      whtRate: defaultWht,
+      ...(newType === 'GROUP_HEADER' ? { qty: 0, price: 0 } : {})
+    });
+  };
+
+  if (isGroupHeader) {
+    return (
+      <div className="px-3 py-2 bg-nexus-teal/10 border-b border-nexus-teal/20 border-l-4 border-l-nexus-teal flex items-center justify-between gap-3 my-1">
+        <div className="flex items-center gap-2 flex-1">
+          <span className="text-[12px] font-bold text-nexus-teal uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-nexus-teal/20 border border-nexus-teal/30">
+            หัวข้อกลุ่ม
+          </span>
+          <input
             type="text"
-            value={item.unit || ""}
-            onChange={(e) => updateItem(item.id, "unit", e.target.value)}
-            className="w-full h-9 px-2 rounded-full bg-transparent border border-transparent hover:bg-white/[0.02] hover:border-white/10 focus:bg-white/[0.02] text-center font-bold text-[12px] text-white/80 focus:outline-none focus:border-nexus-teal transition-colors not-italic"
-          />
-        ) : (
-          <div className="text-center"><p className="font-bold text-[12px] text-white/60 not-italic">{item.unit || "ชิ้น"}</p></div>
-        )}
-      </div>
-      
-      <div className="w-24 shrink-0">
-        {!isLocked ? (
-          isEditingPrice ? (
-            <input 
-              type="number"
-              autoFocus
-              value={item.price === 0 ? "" : item.price}
-              onChange={(e) => updateItem(item.id, "price", Number(e.target.value) || 0)}
-              onFocus={(e) => e.target.select()}
-              onBlur={() => setIsEditingPrice(false)}
-              className="w-full h-9 px-2 rounded-full bg-transparent border border-transparent hover:bg-white/[0.02] hover:border-white/10 focus:bg-white/[0.02] text-right font-mono text-[13px] text-white/80 focus:outline-none focus:border-nexus-teal transition-colors not-italic [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-          ) : (
-            <input 
-              type="text"
-              readOnly
-              value={item.price ? item.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : ""}
-              onClick={() => setIsEditingPrice(true)}
-              onFocus={() => setIsEditingPrice(true)}
-              className="w-full h-9 px-2 rounded-full bg-transparent border border-transparent hover:bg-white/[0.02] hover:border-white/10 text-right font-mono text-[13px] text-white/80 focus:outline-none transition-colors not-italic cursor-text"
-            />
-          )
-        ) : (
-          <div className="text-right"><p className="font-mono text-[13px] text-white/80 not-italic">{item.price ? item.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : "0.00"}</p></div>
-        )}
-      </div>
-      
-      <div className="w-24 text-right shrink-0">
-        <p className="font-mono text-[14px] font-black text-nexus-teal not-italic">{(item.qty * item.price).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-      </div>
-
-      <div className="w-[52px] shrink-0 flex justify-end gap-1">
-        {!isLocked && !item.isSubItem && (
-          <button 
-            onClick={() => addSubItem(item.id)}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-nexus-teal/5 text-nexus-teal/60 hover:text-nexus-teal hover:bg-nexus-teal/20 transition-all opacity-0 group-hover:opacity-100"
-            title="เพิ่มรายการย่อย"
-          >
-            <Plus size={14} strokeWidth={3} />
-          </button>
-        )}
-        {!isLocked && (
-          <button 
-            onClick={() => removeItem(item.id)}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-danger/5 text-danger/60 hover:text-danger hover:bg-danger/20 transition-all opacity-0 group-hover:opacity-100"
-            title="ลบรายการ"
-          >
-            <Trash2 size={14} />
-          </button>
-        )}
-      </div>
-    </div>
-    
-    {/* Accordion Details */}
-    {isExpanded && (
-      <div className="px-14 py-4 bg-black/40 border-b border-white/5 flex gap-6 relative z-0 shadow-inner">
-        <div className="absolute left-4 top-0 bottom-0 w-[1px] bg-white/5" />
-        <div className="flex-1 space-y-2">
-          <label className="text-[10px] uppercase text-nexus-teal font-black tracking-widest flex items-center gap-1">
-            <AlignLeft size={10} /> รายละเอียดสินค้าเพิ่มเติม (Specifications)
-          </label>
-          <textarea 
-            value={item.details || ""} 
-            onChange={(e) => updateItem(item.id, "details", e.target.value)}
+            value={item.name || ""}
+            onChange={(e) => updateItem(item.id, "name", e.target.value)}
             disabled={isLocked}
-            className="w-full bg-white/[0.02] border border-white/10 rounded-xl p-3 text-[12px] text-white/80 focus:outline-none focus:border-nexus-teal/50 transition-colors custom-scrollbar" 
-            rows={3} 
-            placeholder="ระบุสเปก, รุ่น, สี, ขนาด หรือรายละเอียดอื่นๆ..."
+            placeholder="ระบุชื่อหัวข้อกลุ่ม (เช่น: หมวดหมู่อุปกรณ์เครือข่าย)..."
+            className="flex-1 bg-transparent text-[13px] font-bold text-white focus:outline-none placeholder:text-white/70"
           />
         </div>
-        <div className="flex-1 space-y-2">
-          <label className="text-[10px] uppercase text-nexus-teal font-black tracking-widest flex items-center gap-1">
-            ลิงก์เอกสารอ้างอิง (Datasheet URL)
-          </label>
-          <input 
-            type="url"
-            value={item.datasheetUrl || ""} 
-            onChange={(e) => updateItem(item.id, "datasheetUrl", e.target.value)}
-            disabled={isLocked}
-            className="w-full bg-white/[0.02] border border-white/10 rounded-full px-4 h-9 text-[12px] text-white/80 focus:outline-none focus:border-nexus-teal/50 transition-colors" 
-            placeholder="https://..."
-          />
-          <p className="text-[10px] text-white/30 px-2 mt-2 leading-relaxed">
-            *ข้อมูลรายละเอียดและลิงก์นี้จะถูกบันทึกกลับไปยังฐานข้อมูลสินค้านี้โดยอัตโนมัติ
+        <div className="flex items-center gap-1">
+          {!isLocked && (
+            <>
+              <button 
+                type="button"
+                onClick={() => duplicateItem(item.id)}
+                className="p-1 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                title="ทำซ้ำแถว"
+              >
+                <Copy size={13} />
+              </button>
+              <button 
+                type="button"
+                onClick={() => removeItem(item.id)}
+                className="p-1 rounded-full text-danger/60 hover:text-danger hover:bg-danger/10 transition-colors"
+                title="ลบแถว"
+              >
+                <Trash2 size={13} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div 
+        className={cn(
+          ITEM_GRID, 
+          "px-2 py-1 min-h-[40px] hover:bg-white/[0.02] border-b border-white/5 transition-colors", 
+          item.isSubItem ? "pl-6 bg-white/[0.01]" : ""
+        )}
+      >
+        {/* Col 1: ลำดับ */}
+        <div className="text-center font-mono text-[13px] text-white/60 shrink-0 flex items-center justify-center gap-1">
+          {item.isSubItem && <CornerDownRight size={12} className="text-nexus-teal/50" />}
+          {!item.isSubItem && (index + 1)}
+        </div>
+
+        {/* Col 2: ประเภทบรรทัด */}
+        <div className="text-center">
+          {!isLocked ? (
+            <select
+              value={item.itemType || 'PRODUCT'}
+              onChange={(e) => handleItemTypeChange(e.target.value)}
+              className="w-full h-8 px-1 rounded-full bg-black/30 border border-white/15 text-center font-bold text-[12px] text-nexus-teal focus:outline-none focus:border-nexus-teal transition-colors"
+            >
+              <option value="PRODUCT" className="bg-neutral-900 text-white">สินค้า</option>
+              <option value="SERVICE" className="bg-neutral-900 text-white">บริการ</option>
+              <option value="LABOR" className="bg-neutral-900 text-white">ค่าแรง</option>
+              <option value="GROUP_HEADER" className="bg-neutral-900 text-white">หัวข้อกลุ่ม</option>
+            </select>
+          ) : (
+            <span className="text-[12px] font-bold text-white/70">
+              {item.itemType === 'SERVICE' ? 'บริการ' : item.itemType === 'LABOR' ? 'ค่าแรง' : 'สินค้า'}
+            </span>
+          )}
+        </div>
+        
+        {/* Col 3: รหัสสินค้า (Dropdown Tab & Smart Search) */}
+        <div className="text-center relative">
+          {!isLocked ? (
+            <SciFiDropdownPortal
+              isOpen={activeSearchField === 'sku'}
+              onClose={() => {
+                setActiveSearchField(null);
+                if (!item.productId && searchTerm && searchTerm.trim() !== "") {
+                  updateItem(item.id, "sku", searchTerm.trim());
+                }
+              }}
+              align="left"
+              className="w-[440px] max-w-[90vw] p-2 bg-surface-2/95 backdrop-blur-xl border border-nexus-teal/30 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_20px_rgba(0,255,255,0.2)]"
+              trigger={
+                <div 
+                  onClick={() => {
+                    setSearchTerm(item.sku || "");
+                    setActiveSearchField('sku');
+                  }}
+                  className={cn(
+                    "w-full h-8 px-2 rounded-full bg-black/30 border flex items-center justify-between gap-1 transition-all cursor-pointer group/trigger",
+                    activeSearchField === 'sku' ? "border-nexus-teal ring-1 ring-nexus-teal/50 bg-black/50" : "border-white/15 hover:border-nexus-teal/40 hover:bg-white/[0.04]"
+                  )}
+                >
+                  <input
+                    type="text"
+                    placeholder="เลือก/ค้นหารหัส..."
+                    value={activeSearchField === 'sku' ? searchTerm : (item.sku || "")}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      if (activeSearchField !== 'sku') setActiveSearchField('sku');
+                    }}
+                    onFocus={() => {
+                      setSearchTerm(item.sku || "");
+                      setActiveSearchField('sku');
+                    }}
+                    className="w-full bg-transparent text-center font-mono text-[12px] text-nexus-teal font-bold focus:outline-none placeholder:text-white/70 placeholder:font-sans placeholder:font-normal truncate cursor-text"
+                  />
+                  <ChevronDown size={12} className={cn("text-nexus-teal/60 group-hover/trigger:text-nexus-teal shrink-0 transition-transform duration-200", activeSearchField === 'sku' && "rotate-180 text-nexus-teal")} />
+                </div>
+              }
+            >
+              <div className="p-2 border-b border-white/10 text-[12px] font-bold text-nexus-teal uppercase tracking-wider flex items-center justify-between">
+                <span>เลือกรายการสินค้า (Product Catalog)</span>
+                <span className="text-[12px] text-white/60 font-mono">{filteredProducts.length} รายการ</span>
+              </div>
+              <div className="max-h-[260px] overflow-y-auto custom-scrollbar p-1 space-y-1">
+                {filteredProducts.length > 0 ? (
+                  filteredProducts.map((p: any) => {
+                    const displaySku = p.sku || p.productCode || p.code || p.id;
+                    const displayName = p.name || p.productName || "Unnamed Product";
+                    const displayPrice = p.price ?? p.unitPrice ?? p.retailPrice ?? p.pricing?.pricePOS ?? p.pricing?.priceProject ?? 0;
+                    const displayStock = p.currentStock ?? p.stock ?? p.quantity;
+
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleSelectProduct(p);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-xl text-[12px] hover:bg-nexus-teal/15 border border-transparent hover:border-nexus-teal/30 flex items-center justify-between gap-2 transition-all cursor-pointer group/item"
+                      >
+                        <div className="w-[110px] shrink-0 font-mono text-[12px] text-nexus-teal font-bold truncate">
+                          {displaySku}
+                        </div>
+                        <div className="flex-1 truncate">
+                          <span className="font-bold text-white group-hover/item:text-nexus-teal flex items-center gap-2">
+                            <span className="truncate">{displayName}</span>
+                            {displayStock !== undefined && (
+                              <span className={cn("text-[12px] font-normal border px-2 py-0.5 rounded-full whitespace-nowrap shrink-0", displayStock === 0 ? "text-danger bg-danger/10 border-danger/30 font-bold" : "text-nexus-teal/70 bg-nexus-teal/10 border-nexus-teal/20")}>
+                                {displayStock === 0 ? "⚠️ สินค้าหมดคลัง" : `คลัง: ${displayStock}`}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                        <div className="text-right shrink-0 font-mono text-[12px] font-bold text-white/90">
+                          {formatCurrency(displayPrice)}
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="p-4 text-center text-[12px] text-nexus-teal/50 font-mono">
+                    ไม่พบข้อมูลสินค้าในฐานข้อมูล
+                  </div>
+                )}
+              </div>
+            </SciFiDropdownPortal>
+          ) : (
+            <p className="font-mono text-[12px] text-nexus-teal truncate px-1 not-italic" title={item.sku}>{item.sku || "-"}</p>
+          )}
+        </div>
+
+        {/* Col 4: รายการสินค้า (Name + Badges) */}
+        <div className="relative flex flex-col justify-center">
+          {!isLocked ? (
+            <SciFiDropdownPortal
+              isOpen={activeSearchField === 'name'}
+              onClose={() => {
+                setActiveSearchField(null);
+                if (!item.productId && searchTerm && searchTerm.trim() !== "") {
+                  updateItem(item.id, "name", searchTerm.trim());
+                }
+              }}
+              align="left"
+              className="w-[500px] max-w-[90vw] p-2 bg-surface-2/95 backdrop-blur-xl border border-nexus-teal/30 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.95),0_0_20px_rgba(0,255,255,0.2)]"
+              trigger={
+                <div 
+                  onClick={() => {
+                    setSearchTerm(item.name || "");
+                    setActiveSearchField('name');
+                  }}
+                  className={cn(
+                    "w-full h-8 px-2.5 rounded-full bg-black/30 border flex items-center justify-between gap-2 transition-all cursor-pointer group/trigger",
+                    activeSearchField === 'name' ? "border-nexus-teal ring-1 ring-nexus-teal/50 bg-black/50" : "border-white/15 hover:border-nexus-teal/40 hover:bg-white/[0.04]"
+                  )}
+                >
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                    <Search size={12} className="text-nexus-teal/60 shrink-0" />
+                    <input
+                      type="text"
+                      placeholder="เลือก/ค้นหาชื่อสินค้า..."
+                      value={activeSearchField === 'name' ? searchTerm : (item.name || "")}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        if (activeSearchField !== 'name') setActiveSearchField('name');
+                      }}
+                      onFocus={() => {
+                        setSearchTerm(item.name || "");
+                        setActiveSearchField('name');
+                      }}
+                      className="w-full bg-transparent text-[12px] text-white font-bold focus:outline-none placeholder:text-white/70 placeholder:font-normal truncate cursor-text"
+                    />
+                  </div>
+                  <ChevronDown size={12} className={cn("text-nexus-teal/60 group-hover/trigger:text-nexus-teal shrink-0 transition-transform duration-200", activeSearchField === 'name' && "rotate-180 text-nexus-teal")} />
+                </div>
+              }
+            >
+              <div className="p-2 border-b border-white/10 text-[12px] font-bold text-nexus-teal uppercase tracking-wider flex items-center justify-between">
+                <span>เลือกรายการสินค้า (Product Catalog)</span>
+                <span className="text-[12px] text-white/60 font-mono">{filteredProducts.length} รายการ</span>
+              </div>
+              <div className="max-h-[260px] overflow-y-auto custom-scrollbar p-1 space-y-1">
+                {filteredProducts.length > 0 ? (
+                  filteredProducts.map((p: any) => {
+                    const displaySku = p.sku || p.productCode || p.code || p.id;
+                    const displayName = p.name || p.productName || "Unnamed Product";
+                    const displayPrice = p.price ?? p.unitPrice ?? p.retailPrice ?? p.pricing?.pricePOS ?? p.pricing?.priceProject ?? 0;
+                    const displayStock = p.currentStock ?? p.stock ?? p.quantity;
+
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleSelectProduct(p);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-xl text-[12px] hover:bg-nexus-teal/15 border border-transparent hover:border-nexus-teal/30 flex items-center justify-between gap-2 transition-all cursor-pointer group/item"
+                      >
+                        <div className="w-[110px] shrink-0 font-mono text-[12px] text-nexus-teal font-bold truncate">
+                          {displaySku}
+                        </div>
+                        <div className="flex-1 truncate">
+                          <span className="font-bold text-white group-hover/item:text-nexus-teal flex items-center gap-2">
+                            <span className="truncate">{displayName}</span>
+                            {displayStock !== undefined && (
+                              <span className={cn("text-[12px] font-normal border px-2 py-0.5 rounded-full whitespace-nowrap shrink-0", displayStock === 0 ? "text-danger bg-danger/10 border-danger/30 font-bold" : "text-nexus-teal/70 bg-nexus-teal/10 border-nexus-teal/20")}>
+                                {displayStock === 0 ? "⚠️ สินค้าหมดคลัง" : `คลัง: ${displayStock}`}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                        <div className="text-right shrink-0 font-mono text-[12px] font-bold text-white/90">
+                          {formatCurrency(displayPrice)}
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="p-4 text-center text-[12px] text-nexus-teal/50 font-mono">
+                    ไม่พบข้อมูลสินค้าในฐานข้อมูล
+                  </div>
+                )}
+              </div>
+            </SciFiDropdownPortal>
+          ) : (
+            <p className="font-bold text-[12px] text-white px-2 truncate">{item.name}</p>
+          )}
+
+          {/* Row Badges: Stock & GP */}
+          <div className="flex items-center gap-2 mt-0.5 px-1">
+            {item.currentStock !== undefined && item.itemType === 'PRODUCT' && (
+              item.currentStock === 0 ? (
+                <span className="text-[12px] font-bold text-danger bg-danger/10 border border-danger/30 rounded-full px-2 py-0.2 whitespace-nowrap">
+                  ⚠️ สินค้าหมดคลัง
+                </span>
+              ) : (
+                <span className="text-[12px] font-mono text-nexus-teal bg-nexus-teal/10 border border-nexus-teal/20 rounded-full px-2 py-0.2 whitespace-nowrap">
+                  คลัง: {item.currentStock}
+                </span>
+              )
+            )}
+            {canSeeCost && Number(item.price || 0) > 0 && (
+              <span className={cn("text-[12px] font-mono font-bold px-2 py-0.2 rounded-full border whitespace-nowrap", lineGP >= 0 ? "text-nexus-blue bg-nexus-blue/10 border-nexus-blue/30" : "text-danger bg-danger/10 border-danger/30")}>
+                GP {lineGP.toFixed(1)}%
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Col 5: ไอคอนรายละเอียด (≡ + Glowing dot) */}
+        <div className="flex justify-center items-center">
+          <button 
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }} 
+            className={cn("relative p-1.5 rounded-full transition-colors", isExpanded ? "bg-nexus-teal/20 text-nexus-teal" : "text-nexus-teal/50 hover:text-nexus-teal hover:bg-nexus-teal/10")}
+            title="รายละเอียดสินค้าและสเปก"
+          >
+            <AlignLeft size={14} />
+            {hasDetails && (
+              <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-nexus-teal shadow-[0_0_8px_rgba(34,211,238,0.9)] animate-pulse" />
+            )}
+          </button>
+        </div>
+        
+        {/* Col 6: จำนวน */}
+        <div className="flex justify-center items-center">
+          {!isLocked ? (
+            <CompactVerticalStepperInput 
+              value={item.qty} 
+              onChange={(val) => updateItem(item.id, "qty", val)}
+              min={1}
+            />
+          ) : (
+            <div className="text-center"><span className="font-mono text-[13px] text-white/80 not-italic">{item.qty}</span></div>
+          )}
+        </div>
+        
+        {/* Col 7: หน่วย */}
+        <div className="flex justify-center items-center">
+          {!isLocked ? (
+            <input 
+              type="text"
+              value={item.unit || ""}
+              onChange={(e) => updateItem(item.id, "unit", e.target.value)}
+              className="w-full h-8 px-1 rounded-full bg-black/20 border border-white/20 hover:border-white/30 focus:bg-white/[0.02] text-center font-bold text-[12px] text-white/80 focus:outline-none focus:border-nexus-teal transition-colors not-italic"
+            />
+          ) : (
+            <div className="text-center"><p className="font-bold text-[12px] text-white/60 not-italic">{item.unit || "ชิ้น"}</p></div>
+          )}
+        </div>
+        
+        {/* Col 8: ราคาต่อหน่วย */}
+        <div className="flex flex-col items-end gap-0.5">
+          {!isLocked ? (
+            isEditingPrice ? (
+              <input 
+                type="number"
+                autoFocus
+                value={item.price === 0 ? "" : item.price}
+                onChange={(e) => updateItem(item.id, "price", Number(e.target.value) || 0)}
+                onFocus={(e) => e.target.select()}
+                onBlur={() => setIsEditingPrice(false)}
+                className="w-full h-8 px-1.5 rounded-full bg-black/20 border border-white/20 hover:border-white/30 focus:bg-white/[0.02] text-right font-mono text-[12px] text-white/80 focus:outline-none focus:border-nexus-teal transition-colors not-italic [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+            ) : (
+              <input 
+                type="text"
+                readOnly
+                value={item.price ? item.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : ""}
+                onClick={() => setIsEditingPrice(true)}
+                onFocus={() => setIsEditingPrice(true)}
+                className="w-full h-8 px-1.5 rounded-full bg-black/20 border border-white/20 hover:border-white/30 text-right font-mono text-[12px] text-white/80 focus:outline-none transition-colors not-italic cursor-text"
+              />
+            )
+          ) : (
+            <div className="text-right"><p className="font-mono text-[12px] text-white/80 not-italic">{item.price ? item.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : "0.00"}</p></div>
+          )}
+          {!isLocked && (item.productId || item.name) && (
+            <SupplierPriceSelector
+              productId={item.productId || item.name}
+              onSelectPrice={(price) => updateItem(item.id, "price", price)}
+            />
+          )}
+          {isBelowStandard && (
+            <div className="text-[12px] font-bold text-[#FFCC00] bg-[#FFCC00]/10 border border-[#FFCC00]/30 rounded-full px-2 py-0.5 whitespace-nowrap flex items-center gap-1 mt-0.5">
+              <span>⚠️ ต่ำกว่าราคามาตรฐาน {deviationPercent}%</span>
+            </div>
+          )}
+        </div>
+        
+        {/* Col 9: ส่วนลดรายบรรทัด (% / ฿) */}
+        <div className="flex justify-center items-center">
+          {!isLocked ? (
+            <div className="flex items-center w-full h-8 bg-black/20 border border-white/20 hover:border-white/30 rounded-full p-0.5 focus-within:border-nexus-teal">
+              <button
+                type="button"
+                onClick={() => updateItem(item.id, "discountType", item.discountType === 'AMOUNT' ? 'PERCENT' : 'AMOUNT')}
+                className="w-5 h-6 rounded-full bg-nexus-teal/20 hover:bg-nexus-teal/30 text-nexus-teal text-[12px] font-black flex items-center justify-center transition-colors shrink-0"
+                title="สลับประเภทส่วนลด (% หรือ บาท)"
+              >
+                {item.discountType === 'AMOUNT' ? '฿' : '%'}
+              </button>
+              <input 
+                type="number"
+                value={item.discountValue === 0 ? "" : item.discountValue}
+                onChange={(e) => updateItem(item.id, "discountValue", Number(e.target.value) || 0)}
+                placeholder="0"
+                onFocus={(e) => e.target.select()}
+                className="w-full bg-transparent text-right font-mono text-[12px] text-white px-1 focus:outline-none placeholder:text-white/70 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+            </div>
+          ) : (
+            <div className="text-center font-mono text-[12px] text-white/60">
+              {item.discountValue ? `${item.discountValue}${item.discountType === 'AMOUNT' ? '฿' : '%'}` : '-'}
+            </div>
+          )}
+        </div>
+
+        {/* Col 10: WHT % */}
+        <div className="flex justify-center items-center">
+          {!isLocked ? (
+            <select 
+              value={item.whtRate || 0}
+              onChange={(e) => updateItem(item.id, "whtRate", Number(e.target.value) || 0)}
+              className="w-full h-8 px-1 rounded-full bg-black/20 border border-white/20 hover:border-white/30 text-center font-mono text-[12px] text-white/80 focus:outline-none focus:border-nexus-teal transition-colors"
+            >
+              <option value={0} className="bg-neutral-900 text-white">0%</option>
+              <option value={1} className="bg-neutral-900 text-white">1%</option>
+              <option value={2} className="bg-neutral-900 text-white">2%</option>
+              <option value={3} className="bg-neutral-900 text-white">3%</option>
+              <option value={5} className="bg-neutral-900 text-white">5%</option>
+            </select>
+          ) : (
+            <div className="text-center"><p className="font-mono text-[12px] text-white/60">{item.whtRate || 0}%</p></div>
+          )}
+        </div>
+
+        {/* Col 11: จำนวนเงินสุทธิ */}
+        <div className="text-right">
+          <p className="font-mono text-[13px] font-black text-nexus-teal not-italic">
+            {lineFinalAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
           </p>
         </div>
 
-        {/* Sales Insights Box */}
-        <div className="w-[220px] shrink-0 bg-white/[0.01] border border-white/5 rounded-xl p-3 space-y-2 h-max">
-           <label className="text-[10px] uppercase text-white/50 font-black tracking-widest flex items-center gap-1 border-b border-white/5 pb-2 mb-2">
-             ข้อมูลเชิงลึก (Sales Insights)
-           </label>
-           
-           <div className="flex justify-between items-center">
-             <span className="text-[11px] text-white/60">คงเหลือในคลัง:</span>
-             <span className={cn("text-[12px] font-mono font-bold", (item.currentStock || 0) > 0 ? "text-nexus-teal" : "text-danger")}>
-               {item.currentStock || 0} {item.unit || "ชิ้น"}
-             </span>
-           </div>
-           
-           <div className="flex justify-between items-center">
-             <span className="text-[11px] text-white/60">ต้นทุนเฉลี่ย:</span>
-             <span className="text-[12px] font-mono font-bold text-white/80">
-               ฿{(item.cost || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}
-             </span>
-           </div>
-           
-           <div className="flex justify-between items-center pt-2 border-t border-white/5 mt-1">
-             <span className="text-[11px] text-white/60">กำไรคาดการณ์:</span>
-             <span className={cn("text-[13px] font-mono font-black", 
-                item.unitPrice > (item.cost || 0) ? "text-nexus-blue" : "text-danger"
-             )}>
-               {item.unitPrice > 0 ? (((item.unitPrice - (item.cost || 0)) / item.unitPrice) * 100).toFixed(1) : "0.0"}%
-             </span>
-           </div>
+        {/* Col 12: Action Column (Copy + Trash) */}
+        <div className="flex justify-center items-center gap-1">
+          {!isLocked && (
+            <>
+              <button 
+                type="button"
+                onClick={() => duplicateItem(item.id)}
+                className="w-6 h-6 flex items-center justify-center rounded-full bg-nexus-teal/10 text-nexus-teal/70 hover:text-nexus-teal hover:bg-nexus-teal/20 transition-all opacity-0 group-hover:opacity-100"
+                title="ทำซ้ำรายการ"
+              >
+                <Copy size={12} />
+              </button>
+              <button 
+                type="button"
+                onClick={() => removeItem(item.id)}
+                className="w-6 h-6 flex items-center justify-center rounded-full bg-danger/10 text-danger/70 hover:text-danger hover:bg-danger/20 transition-all opacity-0 group-hover:opacity-100"
+                title="ลบรายการ"
+              >
+                <Trash2 size={12} />
+              </button>
+            </>
+          )}
         </div>
       </div>
-    )}
-  </>
+      
+      {/* Accordion Details */}
+      {isExpanded && (
+        <div className="px-12 py-4 bg-black/40 border-b border-white/5 flex gap-6 relative z-0 shadow-inner">
+          <div className="absolute left-4 top-0 bottom-0 w-[1px] bg-white/5" />
+          <div className="flex-1 space-y-2">
+            <label className="text-[12px] uppercase text-nexus-teal font-semibold tracking-wider flex items-center gap-1">
+              <AlignLeft size={12} /> รายละเอียดสินค้าเพิ่มเติม
+            </label>
+            <textarea 
+              value={item.details || ""} 
+              onChange={(e) => updateItem(item.id, "details", e.target.value)}
+              disabled={isLocked}
+              className="w-full bg-white/[0.02] border border-white/10 rounded-xl p-3 text-[12px] text-white/80 focus:outline-none focus:border-nexus-teal/50 transition-colors custom-scrollbar placeholder:text-white/70" 
+              rows={3} 
+              placeholder="ระบุสเปก, รุ่น, สี, ขนาด หรือรายละเอียดอื่นๆ..."
+            />
+          </div>
+          <div className="flex-1 space-y-2">
+            <label className="text-[12px] uppercase text-nexus-teal font-semibold tracking-wider flex items-center gap-1">
+              ลิงก์เอกสารอ้างอิง
+            </label>
+            <input 
+              type="url"
+              value={item.datasheetUrl || ""} 
+              onChange={(e) => updateItem(item.id, "datasheetUrl", e.target.value)}
+              disabled={isLocked}
+              className="w-full bg-white/[0.02] border border-white/10 rounded-full px-4 h-8 text-[12px] text-white/80 focus:outline-none focus:border-nexus-teal/50 transition-colors placeholder:text-white/70" 
+              placeholder="https://..."
+            />
+            {canEditProduct && (
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer text-[12px] font-bold text-white/70 hover:text-white transition-colors">
+                  <input 
+                    type="checkbox"
+                    checked={!!item.saveToProductMaster}
+                    disabled={isLocked}
+                    onChange={(e) => updateItem(item.id, "saveToProductMaster", e.target.checked)}
+                    className="w-4 h-4 rounded border-white/20 text-nexus-teal focus:ring-nexus-teal/50 bg-black/40 disabled:opacity-40 disabled:cursor-not-allowed"
+                  />
+                  <span>บันทึกกลับไปยังสินค้า</span>
+                </label>
+                <span className="text-[12px] text-white/60">
+                  {item.saveToProductMaster ? "*จะบันทึกกลับไปยังฐานข้อมูลสินค้า" : "*เฉพาะเอกสารนี้ (ค่าเริ่มต้น)"}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Sales Insights Box (Protected by canSeeCost) */}
+          <div className="w-[240px] shrink-0 bg-white/[0.01] border border-white/5 rounded-xl p-3 space-y-2 h-max">
+             <label className="text-[12px] uppercase text-white/50 font-semibold tracking-wider flex items-center gap-1 border-b border-white/5 pb-2 mb-2">
+               ข้อมูลเชิงลึก
+             </label>
+             
+             <div className="flex justify-between items-center">
+               <span className="text-[12px] text-white/60">คงเหลือในคลัง:</span>
+               <span className={cn("text-[12px] font-mono font-bold", (item.currentStock || 0) > 0 ? "text-nexus-teal" : "text-danger")}>
+                 {item.currentStock || 0} {item.unit || "ชิ้น"}
+               </span>
+             </div>
+             
+             {canSeeCost && (
+               <>
+                 <div className="flex justify-between items-center">
+                   <span className="text-[12px] text-white/60">ต้นทุนเฉลี่ย:</span>
+                   <span className="text-[12px] font-mono font-bold text-white/80">
+                     {formatCurrency(item.cost ?? item.costPrice ?? 0)} บาท
+                   </span>
+                 </div>
+                 
+                 <div className="flex justify-between items-center pt-2 border-t border-white/5 mt-1">
+                   <span className="text-[12px] text-white/60">กำไรคาดการณ์:</span>
+                   <span className={cn("text-[13px] font-mono font-black", 
+                      lineGP >= 0 ? "text-nexus-blue" : "text-danger"
+                   )}>
+                     {lineGP.toFixed(2)}%
+                   </span>
+                 </div>
+               </>
+             )}
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
-export function DocumentItemsTable({ items = [], onChange, isLocked = false }: DocumentItemsTableProps) {
-  const { companyId } = useAuth();
-  const { data: realtimeProducts = [] } = useRealtimeCollection('products', [
-    where('companyId', '==', companyId || ""),
-    where('isDeleted', '==', false)
-  ]);
-  
-  const availableProducts = realtimeProducts;
+export function DocumentItemsTable({ 
+  items = [], 
+  onChange, 
+  isLocked = false, 
+  priceDeviationWarningPercent = 10 
+}: DocumentItemsTableProps) {
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
+
+  // Fetch real-time products from database
+  const { data: companyScopedProducts = [] } = useRealtimeCollection('products', [], true);
+  const { data: globalProducts = [] } = useRealtimeCollection('products', [], false);
+
+  const availableProducts = useMemo(() => {
+    const map = new Map<string, any>();
+    [...globalProducts, ...companyScopedProducts].forEach((p) => {
+      if (p && p.id && !map.has(p.id)) {
+        map.set(p.id, {
+          id: p.id,
+          sku: p.sku || p.productCode || p.code || p.id,
+          name: p.name || p.productName || "Unnamed Product",
+          unit: p.unit || p.productUnit || "ชิ้น",
+          price: p.price ?? p.unitPrice ?? p.retailPrice ?? p.pricing?.pricePOS ?? p.pricing?.priceProject ?? 0,
+          cost: p.cost ?? p.costPrice ?? p.costWAC ?? p.pricing?.costWAC ?? 0,
+          currentStock: p.currentStock ?? p.stock ?? p.quantity ?? 0,
+          itemType: p.itemType || "PRODUCT",
+          details: p.details || p.description || "",
+          datasheetUrl: p.datasheetUrl || ""
+        });
+      }
+    });
+
+    const list = Array.from(map.values());
+    if (list.length > 0) return list;
+    return DEFAULT_PRODUCT_CATALOG;
+  }, [globalProducts, companyScopedProducts]);
 
   const taxRate = 7;
 
   const notifyChange = (newItems: any[]) => {
-    const sub = newItems.reduce((sum, item) => sum + ((Number(item.qty) || 0) * (Number(item.price) || 0)), 0);
+    let sub = 0;
+    let totalWht = 0;
+    newItems.forEach(item => {
+      if (item.itemType === 'GROUP_HEADER') return;
+      const lineSub = (Number(item.qty) || 0) * (Number(item.price) || 0);
+      const lineDiscVal = Number(item.discountValue) || 0;
+      const lineDiscAmt = item.discountType === 'PERCENT' ? lineSub * (lineDiscVal / 100) : lineDiscVal;
+      const finalLineAmt = Math.max(0, lineSub - lineDiscAmt);
+      sub += finalLineAmt;
+      const whtR = Number(item.whtRate) || 0;
+      totalWht += finalLineAmt * (whtR / 100);
+    });
     const tax = sub * (taxRate / 100);
-    onChange(newItems, { subtotal: sub, taxAmount: tax, grandTotal: sub + tax });
+    onChange(newItems, { subtotal: sub, taxAmount: tax, grandTotal: sub + tax - totalWht });
   };
 
-  const addItem = () => {
+  const addItem = (itemType: string = 'PRODUCT') => {
     if (isLocked) return;
     notifyChange([...items, { 
       id: Date.now(), 
       productId: null,
       sku: "",
       name: "", 
-      qty: 1, 
-      unit: "Set", 
+      qty: itemType === 'GROUP_HEADER' ? 0 : 1, 
+      unit: "ชิ้น", 
       price: 0, 
-      cost: 0 
+      cost: 0,
+      costPrice: 0,
+      itemType: itemType,
+      whtRate: itemType === 'SERVICE' || itemType === 'LABOR' ? 3 : 0,
+      discountType: 'PERCENT',
+      discountValue: 0
     }]);
+  };
+
+  const duplicateItem = (id: number) => {
+    if (isLocked) return;
+    const targetIndex = items.findIndex(i => i.id === id);
+    if (targetIndex === -1) return;
+    const target = items[targetIndex];
+    const newItem = {
+      ...target,
+      id: Date.now() + Math.random(),
+      name: target.name ? `${target.name} (สำเนา)` : ""
+    };
+    const newItems = [...items];
+    newItems.splice(targetIndex + 1, 0, newItem);
+    notifyChange(newItems);
   };
 
   const addSubItem = (parentId: number) => {
@@ -421,7 +805,12 @@ export function DocumentItemsTable({ items = [], onChange, isLocked = false }: D
       qty: 1,
       unit: "ชิ้น",
       price: 0,
-      cost: 0
+      cost: 0,
+      costPrice: 0,
+      itemType: "PRODUCT",
+      whtRate: 0,
+      discountType: 'PERCENT',
+      discountValue: 0
     });
     notifyChange(newItems);
   };
@@ -433,35 +822,20 @@ export function DocumentItemsTable({ items = [], onChange, isLocked = false }: D
 
   const onProductSelected = (id: number, product: any) => {
     if (isLocked) return;
-    
     const existingItemIndex = items.findIndex(i => i.productId === product.id && i.id !== id);
-    
     if (existingItemIndex !== -1) {
-      // Duplicate found, increment qty
       const newItems = [...items];
       newItems[existingItemIndex] = {
         ...newItems[existingItemIndex],
         qty: (Number(newItems[existingItemIndex].qty) || 0) + 1
       };
-      
       const currentRowIndex = newItems.findIndex(i => i.id === id);
       if (currentRowIndex !== -1) {
         newItems.splice(currentRowIndex, 1);
       }
-      
       notifyChange(newItems);
     } else {
-      updateItemFields(id, {
-        productId: product.id,
-        sku: product.sku || product.id,
-        name: product.name,
-        unit: product.unit || "ชิ้น",
-        price: product.price,
-        cost: product.cost || 0,
-        incomeAccountId: product.incomeAccountId || null,
-        expenseAccountId: product.expenseAccountId || null,
-        currentStock: product.currentStock
-      });
+      updateItemFields(id, product);
     }
   };
 
@@ -476,67 +850,124 @@ export function DocumentItemsTable({ items = [], onChange, isLocked = false }: D
   };
 
   return (
-    <div className="border border-white/10 rounded-xl bg-white/[0.01] shadow-2xl">
-      {/* Header */}
-      <div className="flex gap-2 items-center text-[11px] font-black text-white/60 uppercase tracking-widest px-2 py-2 border-b border-white/10 bg-white/[0.03] rounded-t-xl">
-        <div className="w-10 text-center shrink-0">ลำดับ</div>
-        <div className="w-32 text-center shrink-0">รหัสสินค้า</div>
-        <div className="flex-1 text-left">รายการสินค้า</div>
-        <div className="w-20 text-center shrink-0">จำนวน</div>
-        <div className="w-20 text-center shrink-0">หน่วย</div>
-        <div className="w-24 text-right shrink-0">ราคาต่อหน่วย</div>
-        <div className="w-24 text-right shrink-0">จำนวนเงิน</div>
-        <div className="w-[52px] shrink-0 flex justify-center">
-          {!isLocked && items.length > 0 && (
-            <button 
-              onClick={() => onChange([])}
-              className="text-[9px] text-danger/50 hover:text-danger hover:underline transition-colors whitespace-nowrap"
-              title="ลบทั้งหมด"
-            >
-              Clear All
-            </button>
-          )}
-        </div>
-      </div>
-      
-      {/* Body */}
-      <div className="flex flex-col">
-        {items.map((item, index) => (
-          <InlineRow 
-            key={item.id} 
-            item={item} 
-            index={index}
-            updateItem={updateItem}
-            updateItemFields={updateItemFields}
-            onProductSelected={onProductSelected}
-            removeItem={removeItem}
-            addSubItem={addSubItem}
-            isLocked={isLocked}
-            availableProducts={availableProducts}
-          />
-        ))}
-        {items.length === 0 && (
-          <div className="min-h-[36px] flex items-center justify-center text-center">
-            <p className="text-white/30 uppercase font-black text-[11px] tracking-[0.2em]">ไม่มีรายการสินค้า</p>
+    <div className="border border-white/10 rounded-xl bg-white/[0.01] shadow-2xl overflow-hidden">
+      <div className="overflow-x-auto custom-scrollbar">
+        <div className="min-w-[1100px]">
+          {/* Header Row */}
+          <div className={cn(ITEM_GRID, "text-[12px] font-bold text-white/60 uppercase tracking-widest px-2 py-2 border-b border-white/10 bg-white/[0.03] rounded-t-xl")}>
+            <div className="text-center">ลำดับ</div>
+            <div className="text-center">ประเภท</div>
+            <div className="text-center">รหัสสินค้า</div>
+            <div className="text-left">รายการสินค้า / บริการ</div>
+            <div className="text-center" title="สเปก/รายละเอียด"></div>
+            <div className="text-center">จำนวน</div>
+            <div className="text-center">หน่วย</div>
+            <div className="text-right">ราคา/หน่วย</div>
+            <div className="text-center">ส่วนลด</div>
+            <div className="text-center">WHT %</div>
+            <div className="text-right">จำนวนเงิน</div>
+            <div className="flex justify-center items-center">
+              {!isLocked && items.length > 0 && (
+                <button 
+                  type="button"
+                  onClick={() => setIsConfirmingClear(true)}
+                  className="text-[12px] font-bold text-danger/80 hover:text-danger hover:underline transition-colors whitespace-nowrap"
+                  title="ล้างรายการทั้งหมด"
+                >
+                  ล้างทั้งหมด
+                </button>
+              )}
+            </div>
           </div>
-        )}
+          
+          {/* Body Rows */}
+          <div className="flex flex-col">
+            {items.map((item, index) => (
+              <InlineRow 
+                key={item.id} 
+                item={item} 
+                index={index}
+                updateItem={updateItem}
+                updateItemFields={updateItemFields}
+                onProductSelected={onProductSelected}
+                removeItem={removeItem}
+                duplicateItem={duplicateItem}
+                addSubItem={addSubItem}
+                isLocked={isLocked}
+                availableProducts={availableProducts}
+                priceDeviationWarningPercent={priceDeviationWarningPercent}
+              />
+            ))}
+            {items.length === 0 && (
+              <div className="min-h-[48px] flex items-center justify-center text-center py-6">
+                <p className="text-white/70 uppercase font-semibold text-[12px] tracking-[0.2em]">ไม่มีรายการสินค้า</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Add Item Row & Summary */}
       {!isLocked && (
-        <div className="px-2 py-3 border-t border-white/5 bg-white/[0.02] flex items-center justify-between rounded-b-xl">
-          <div className="flex items-center">
-            <button 
-              onClick={addItem}
-              className="text-nexus-teal hover:text-nexus-teal/80 text-[12px] font-bold tracking-wide flex items-center gap-1.5 transition-colors hover:underline"
+        <div className="px-4 py-3 border-t border-white/5 bg-white/[0.02] flex items-center justify-between rounded-b-xl">
+          <div className="flex items-center gap-3">
+            <PillButton 
+              type="button"
+              variant="primary"
+              onClick={() => addItem('PRODUCT')}
+              className="text-[12px] font-bold h-8 px-3"
             >
-              <Plus size={12} strokeWidth={3} /> เพิ่มรายการ
-            </button>
-            <span className="text-xs text-slate-400 opacity-50 ml-4 font-black uppercase tracking-widest border-l border-white/10 pl-4">
-              รวม {items.length} รายการ / {items.reduce((sum, item) => sum + Number(item.qty || 0), 0)} ชิ้น
+              <Plus size={13} strokeWidth={3} className="mr-1" /> เพิ่มรายการสินค้า
+            </PillButton>
+            <PillButton 
+              type="button"
+              variant="glass"
+              onClick={() => addItem('GROUP_HEADER')}
+              className="text-[12px] font-bold h-8 px-3 text-nexus-teal border-nexus-teal/30 hover:bg-nexus-teal/20"
+            >
+              <Plus size={13} strokeWidth={3} className="mr-1" /> เพิ่มหัวข้อกลุ่ม
+            </PillButton>
+            <span className="text-[12px] text-white/60 font-semibold uppercase tracking-wider border-l border-white/10 pl-4">
+              รวม {items.filter(i => i.itemType !== 'GROUP_HEADER').length} รายการ / {items.reduce((sum, item) => sum + (item.itemType === 'GROUP_HEADER' ? 0 : Number(item.qty || 0)), 0)} ชิ้น
             </span>
           </div>
         </div>
+      )}
+
+      {/* Clear All Confirmation Modal */}
+      {isConfirmingClear && (
+        <Modal 
+          isOpen={true} 
+          onClose={() => setIsConfirmingClear(false)} 
+          title="ยืนยันล้างรายการทั้งหมด"
+        >
+          <div className="p-6 space-y-6 text-center">
+            <div className="w-12 h-12 bg-danger/20 rounded-full flex items-center justify-center mx-auto text-danger">
+              <AlertTriangle size={24} />
+            </div>
+            <h4 className="text-lg font-bold text-white">คุณต้องการล้างรายการสินค้าทั้งหมดใช่หรือไม่?</h4>
+            <p className="text-sm text-white/60">การกระทำนี้จะลบรายการสินค้าทุกบรรทัดในเอกสารนี้ และไม่สามารถยกเลิกได้</p>
+            <div className="flex justify-center gap-3 pt-2">
+              <PillButton 
+                variant="glass" 
+                onClick={() => setIsConfirmingClear(false)}
+                className="px-6 h-10"
+              >
+                ยกเลิก
+              </PillButton>
+              <PillButton 
+                variant="confirm" 
+                onClick={() => {
+                  onChange([]);
+                  setIsConfirmingClear(false);
+                }}
+                className="px-6 h-10 bg-danger/20 text-danger border-danger/40 hover:bg-danger/30 font-bold"
+              >
+                ยืนยันล้างทั้งหมด
+              </PillButton>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

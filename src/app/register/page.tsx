@@ -9,9 +9,9 @@ export default function RegisterPortalPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen flex bg-[#020203] text-white overflow-hidden">
+    <div className="min-h-screen flex bg-surface-0 text-white overflow-hidden">
       {/* Left Side: Brand & Illustration */}
-      <div className="hidden lg:flex w-1/2 relative items-center justify-center border-r border-white/5 bg-[#050508] p-12 overflow-hidden">
+      <div className="hidden lg:flex w-1/2 relative items-center justify-center border-r border-white/5 bg-surface-0 p-12 overflow-hidden">
         <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] bg-nexus-blue/10 blur-[150px] rounded-full mix-blend-screen" />
         <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-nexus-teal/10 blur-[150px] rounded-full mix-blend-screen" />
         

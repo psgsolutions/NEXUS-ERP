@@ -372,7 +372,7 @@ export default function SettingsPage() {
         <div className="flex-1 w-full space-y-10">
           
           {activeTab === "company" && (
-            <GlassCard className="p-4 space-y-3 border-white/10 rounded-2xl animate-in slide-in-from-bottom duration-500">
+            <GlassCard accentColor="teal" className="p-4 space-y-3 animate-in slide-in-from-bottom duration-500">
                <div className="flex items-center gap-5">
                   <div className="w-20 h-20 rounded-xl bg-white/[0.02] border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 text-white/20 hover:border-nexus-teal hover:text-nexus-teal hover:bg-nexus-teal/5 transition-all cursor-pointer">
                      <Building2 size={24} />
@@ -532,7 +532,7 @@ export default function SettingsPage() {
                   <h2 className="text-xl font-bold text-white uppercase">ตั้งค่าความปลอดภัย</h2>
                   <p className="text-xs text-white/40 font-bold mt-1">กำหนดนโยบายความปลอดภัยและตรวจสอบการเข้าถึงระบบ</p>
                </div>
-               <GlassCard className="p-4 border-white/10 rounded-2xl flex flex-col items-center justify-center min-h-[300px] text-center space-y-3">
+               <GlassCard accentColor="purple" className="p-4 flex flex-col items-center justify-center min-h-[300px] text-center space-y-3">
                   <div className="w-16 h-16 rounded-full bg-nexus-teal/10 flex items-center justify-center text-nexus-teal">
                      <ShieldCheck size={32} />
                   </div>
@@ -550,9 +550,12 @@ export default function SettingsPage() {
 
 
         {/* Right Sidebar Status */}
-        <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-3">
-           <GlassCard className="p-4 border-white/10 bg-nexus-teal/5">
-              <h4 className="text-[12px] font-medium text-nexus-teal uppercase tracking-widest mb-5">สถานะระบบ</h4>
+        <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-7">
+           <GlassCard accentColor="teal" className="p-5">
+              <h4 className="text-xs font-bold text-nexus-teal uppercase tracking-widest mb-4 flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-[10px] text-nexus-teal font-mono font-bold">01</span>
+                สถานะระบบ
+              </h4>
               <div className="space-y-3">
                  <ConfigStatusItem icon={<Database size={14} />} label="Multi-tenancy" status="เปิดใช้งาน" />
                  <ConfigStatusItem icon={<Lock size={14} />} label="การเข้ารหัสข้อมูล" status="ระดับสูงสุด" />
@@ -561,8 +564,11 @@ export default function SettingsPage() {
               </div>
            </GlassCard>
 
-           <GlassCard className="p-4 border-white/10">
-              <h4 className="text-[12px] font-medium text-white/20 uppercase tracking-widest mb-4">ประวัติการแก้ไขล่าสุด</h4>
+           <GlassCard accentColor="blue" className="p-5">
+              <h4 className="text-xs font-bold text-white/70 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full bg-nexus-blue/10 border border-nexus-blue/30 text-[10px] text-nexus-blue font-mono font-bold">02</span>
+                ประวัติการแก้ไขล่าสุด
+              </h4>
               <div className="space-y-3">
                  <ConfigLogItem label="ปรับปรุงอัตราภาษี" time="2 วันที่แล้ว" user="ผู้ดูแลระบบสูงสุด" />
                  <ConfigLogItem label="แก้ไข Prefix ใบสั่งขาย" time="5 วันที่แล้ว" user="ผู้ดูแลระบบ" />
@@ -587,7 +593,7 @@ export default function SettingsPage() {
 
       {showCreateWizard && (
          <div className="fixed inset-0 z-[5500] flex items-center justify-center p-5 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300">
-           <div className="w-full max-w-[800px] bg-[#0F0F12] border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-5 space-y-3">
+           <div className="w-full max-w-[800px] bg-surface-1 border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-5 space-y-3">
               
               {/* Header */}
               <div className="space-y-1">

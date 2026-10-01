@@ -65,7 +65,7 @@ export function OcrValidationModal({ isOpen, onClose, onConfirm, pdfUrl, ocrData
       title="ตรวจสอบเอกสารสั่งจ้าง"
       maxWidth="max-w-[1800px]"
     >
-      <div className="flex h-[80vh] divide-x divide-white/10 bg-[#0D0D0D]">
+      <div className="flex h-[80vh] divide-x divide-white/10 bg-surface-0">
         
         {/* LEFT PANE: PDF Viewer (60%) */}
         <div className="w-[60%] flex flex-col bg-black/40">
@@ -90,7 +90,7 @@ export function OcrValidationModal({ isOpen, onClose, onConfirm, pdfUrl, ocrData
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-xl text-white/30">
                 <FileText size={48} className="mb-4 opacity-50" />
-                <p className="font-black tracking-widest uppercase text-[14px]">ไม่พบไฟล์แนบ</p>
+                <p className="font-semibold tracking-widest uppercase text-[14px]">ไม่พบไฟล์แนบ</p>
                 <p className="text-[12px] opacity-60 mt-2">โปรดอัปโหลดไฟล์ PDF เพื่อให้ AI ทำการตรวจสอบ</p>
               </div>
             )}
@@ -98,7 +98,7 @@ export function OcrValidationModal({ isOpen, onClose, onConfirm, pdfUrl, ocrData
         </div>
 
         {/* RIGHT PANE: OCR Validation Form (40%) */}
-        <div className="w-[40%] flex flex-col bg-[#0F0F12]">
+        <div className="w-[40%] flex flex-col bg-surface-1">
           <div className="p-4 border-b border-white/5 bg-nexus-teal/5 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Cpu className="text-nexus-teal animate-pulse" size={18} />
@@ -197,7 +197,7 @@ export function OcrValidationModal({ isOpen, onClose, onConfirm, pdfUrl, ocrData
                     onChange={(e) => setFormData({...formData, totalAmount: parseFloat(e.target.value) || 0})}
                     className="flex-1 h-10 px-4 rounded-md font-mono tracking-tight text-xl text-nexus-teal font-black bg-white/[0.02]"
                   />
-                  <span className="text-white/40 font-black tracking-widest">THB</span>
+                  <span className="text-white/40 font-semibold tracking-widest">THB</span>
                 </div>
               </Field>
             </div>
@@ -205,7 +205,7 @@ export function OcrValidationModal({ isOpen, onClose, onConfirm, pdfUrl, ocrData
           </div>
 
           {/* Action Footer */}
-          <div className="p-6 border-t border-white/5 space-y-3 bg-[#0D0D0D]">
+          <div className="p-6 border-t border-white/5 space-y-3 bg-surface-0">
             <PillButton 
               className="w-full h-10 rounded-full shadow-neon-teal bg-nexus-teal uppercase tracking-[0.2em] font-black flex items-center justify-center gap-2"
               onClick={handleConfirm}

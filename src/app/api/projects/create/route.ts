@@ -4,7 +4,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { nextCounterSequence } from "@/lib/sequence-server";
 import { generateStockPilotId } from "@/lib/utils";
 import { can } from "@/lib/permissions";
-import { auditService } from "@/services/audit.service";
+import { auditServer } from "@/services/audit.server";
 import { PROJECT_TYPE_CONFIGS, ProjectTypeCode } from "@/types/database";
 
 /**
@@ -174,7 +174,7 @@ export async function POST(request: Request) {
     await batch.commit();
 
     // 9. Record Audit Log
-    await auditService.logCreate(userId, companyId, "PROJECTS", finalProjectId, {
+    await auditServer.logCreate(userId, companyId, "PROJECTS", finalProjectId, {
       projectId: finalProjectId,
       projectName: projectName,
       budget: budgetSummary.totalRev,

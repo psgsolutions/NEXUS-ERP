@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processExpiringWarrantyMAProposals } from "@/lib/warranty-cron-service";
 import { isCronRequest, requireApiUser, authErrorResponse } from "@/lib/api-auth";
+import { adminDb } from "@/lib/firebase-admin";
 
 /**
  * [CRON-ENDPOINT] Daily Warranty & MA Proposal Cron Job
@@ -9,14 +10,29 @@ import { isCronRequest, requireApiUser, authErrorResponse } from "@/lib/api-auth
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const companyId = searchParams.get("companyId") || "COMP-001";
+    let companyIds: string[];
 
-    // Vercel Cron (CRON_SECRET) หรือผู้ใช้ที่ล็อกอินและมีสิทธิ์ในบริษัทนั้น
-    if (!isCronRequest(req)) {
-      await requireApiUser(req, companyId);
+    if (isCronRequest(req)) {
+      // Vercel Cron: ระบุ companyId ได้ ถ้าไม่ระบุให้ตรวจทุกบริษัท
+      const requested = searchParams.get("companyId");
+      companyIds = requested
+        ? [requested]
+        : (await adminDb.collection("companies").get()).docs.map(d => d.id);
+    } else {
+      // ผู้ใช้ที่ล็อกอิน: ตรวจได้เฉพาะบริษัทที่มีสิทธิ์
+      const apiUser = await requireApiUser(req, searchParams.get("companyId"));
+      const companyId = searchParams.get("companyId") || apiUser.companyId;
+      if (!companyId) {
+        return NextResponse.json({ success: false, error: "companyId is required" }, { status: 400 });
+      }
+      companyIds = [companyId];
     }
 
-    const results = await processExpiringWarrantyMAProposals(companyId);
+    const results = [];
+    for (const id of companyIds) {
+      results.push(...await processExpiringWarrantyMAProposals(id));
+    }
+    const companyId = companyIds.join(",");
     
     const createdCount = results.filter(r => r.status === "CREATED").length;
     const skippedCount = results.filter(r => r.status === "SKIPPED_ALREADY_DRAFTED").length;

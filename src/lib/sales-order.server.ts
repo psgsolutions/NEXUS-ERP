@@ -6,13 +6,13 @@ import type { Quotation } from "./sales-service";
 
 /**
  * [SERVER-ONLY: Admin SDK] แปลงใบเสนอราคาเป็นใบสั่งขาย (ใช้ผ่าน POST /api/sales/convert-so)
- * จองสต็อก (3-State Lock), สร้าง SO, อัปเดตใบเสนอราคา และลงบัญชีใน transaction เดียว
+ * จองสต็อก (3-State Lock), สร้าง SO และอัปเดตใบเสนอราคาใน transaction เดียว
+ * ไม่ลงบัญชีรายได้ที่นี่: รายได้และภาษีขายรับรู้ตอนออกใบกำกับภาษี (DocumentFlowService.issueTaxInvoiceAndBillingNoteFromSO)
  */
 export async function convertToSalesOrder(quoteId: string, companyId: string) {
   await assertPeriodOpen(companyId);
   const quoteRef = adminDb.doc(`companies/${companyId}/quotations/${quoteId}`);
   const soId = await nexusSequenceServer("SO", companyId);
-  const jvId = await nexusSequenceServer("FIN", companyId);
   const now = () => admin.firestore.FieldValue.serverTimestamp();
 
   await adminDb.runTransaction(async (transaction) => {
@@ -97,22 +97,6 @@ export async function convertToSalesOrder(quoteId: string, companyId: string) {
       status: "Approved",
       linkedSo: soId,
       updatedAt: now()
-    });
-
-    // 6. Automated Double-Entry GL Bookkeeping (Balanced Postings)
-    const totalAmount = quoteData.totalRevenue || 0;
-    transaction.set(adminDb.doc(`companies/${companyId}/journal_entries/${jvId}`), {
-      jvId,
-      date: new Date().toISOString(),
-      description: `บันทึกรับรู้รายได้จากใบสั่งขายเลขที่ ${soId} (อ้างอิงใบเสนอราคา ${quoteId})`,
-      referenceId: soId,
-      companyId,
-      totalAmount,
-      lines: [
-        { accountId: "11300", accountName: "ลูกหนี้การค้า", debit: totalAmount, credit: 0 },
-        { accountId: "41100", accountName: "รายได้จากการขาย", debit: 0, credit: totalAmount }
-      ],
-      createdAt: now()
     });
   });
 

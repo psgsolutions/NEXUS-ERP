@@ -11,6 +11,7 @@ import {
 import { calculateERPDocument, LineItem, VatTypeV3 } from "@/lib/erp-logic";
 import { idService } from "@/lib/idService";
 import { auditService } from "@/services/audit.service";
+import { AccountingEngine } from "@/services/accountingEngine";
 
 /**
  * NEXUS ERP - Document Flow Service
@@ -352,9 +353,20 @@ export const DocumentFlowService = {
       updatedBy: userId 
     });
 
+    // 4. รับรู้รายได้และภาษีขาย ณ จุดออกใบกำกับภาษี (Dr ลูกหนี้ / Cr รายได้, Cr ภาษีขาย) ใน batch เดียวกัน
+    await AccountingEngine.postSalesJournal({
+      companyId,
+      invoiceId: taxInvoiceNo,
+      customerName: invoicePayload.customerName || salesOrder.customerId || "",
+      subTotal,
+      vatAmount,
+      grandTotal,
+      isVatRegistered: invoicePayload.isVatRegistered && normalizedVatType !== 'Non-VAT'
+    }, batch);
+
     await batch.commit();
 
-    // 4. Audit Log Actions
+    // 5. Audit Log Actions
     await auditService.logCreate(userId, companyId, "TAX_INVOICE", invRef.id, invoicePayload);
     await auditService.logCreate(userId, companyId, "BILLING_NOTE", bnRef.id, billingNotePayload);
 

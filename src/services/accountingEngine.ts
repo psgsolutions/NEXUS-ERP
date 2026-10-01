@@ -40,7 +40,8 @@ export const AccountingEngine = {
       }
     ];
 
-    if (data.isVatRegistered && data.vatAmount > 0) {
+    // ลงภาษีขายทุกครั้งที่ใบกำกับมี VAT ไม่อย่างนั้น Dr ลูกหนี้ (รวม VAT) จะไม่เท่ากับ Cr รายได้
+    if (data.vatAmount > 0) {
       items.push({
         accountCode: '2121-00', // Output VAT
         accountName: 'ภาษีขาย',

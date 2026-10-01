@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiUser, authErrorResponse } from "@/lib/api-auth";
 import { assertPeriodOpen } from "@/lib/period-close-service";
-import { convertToSalesOrder } from "@/lib/sales-service";
+import { convertToSalesOrder } from "@/lib/sales-order.server";
 
 /**
  * [API-SERVER] Sales Order Conversion API

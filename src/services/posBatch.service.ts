@@ -1,7 +1,10 @@
-import { db } from '@/lib/firebase-client';
-import { collection, doc, writeBatch, serverTimestamp, increment } from 'firebase/firestore';
+import * as admin from 'firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 import { calculateERPDocument, VatTypeV3 } from '@/lib/erp-logic';
-import { AccountingEngine } from './accountingEngine';
+
+/**
+ * [SERVER-ONLY: Admin SDK] ใช้ผ่าน POST /api/pos/checkout เท่านั้น
+ */
 
 export interface POSCheckoutPayload {
   companyId: string;
@@ -19,28 +22,31 @@ export interface POSCheckoutPayload {
 
 /**
  * ดำเนินการยิง WriteBatch เพื่อลงบันทึกธุรกรรมขายหน้าร้าน, ปรับปรุงสต๊อก, และลงบัญชีคู่พร้อมกันแบบเบ็ดเสร็จ
+ * โยน error เมื่อบันทึกไม่สำเร็จ (ไม่มีอะไรถูกบันทึกเพราะเป็น batch เดียว)
  */
 export async function processPOSBatchCheckout(payload: POSCheckoutPayload): Promise<{ success: boolean; transactionId: string }> {
   const { companyId, userId, items, vatType, cashAccountId } = payload;
-  
+  const now = admin.firestore.FieldValue.serverTimestamp();
+
   // 1. คำนวณภาษีและยอดเงินผ่าน Centralized Engine ป้องกันเศษปัดไม่ตรงบัญชีหลังบ้าน
   const calc = calculateERPDocument(items, vatType, false); // false = ใช้ราคาขายหน้าร้าน
-  
-  const batch = writeBatch(db);
-  
+
+  const batch = adminDb.batch();
+
   // สร้าง Reference IDs สำหรับการเขียนข้อมูล
-  const txRef = doc(collection(db, `companies/${companyId}/sales_transactions`));
-  const auditRef = doc(collection(db, `companies/${companyId}/auditLogs`));
+  const txRef = adminDb.collection(`companies/${companyId}/sales_transactions`).doc();
+  const auditRef = adminDb.collection(`companies/${companyId}/auditLogs`).doc();
+  const journalRef = adminDb.collection(`companies/${companyId}/journal_entries`).doc();
 
   try {
     // 2. วนลูป Line Items เพื่อบันทึกคำสั่งปรับปรุงสต๊อกคลังสินค้าลดลงรายตัว
     for (const item of items) {
-      const productRef = doc(db, `companies/${companyId}/products`, item.id);
-      
+      const productRef = adminDb.collection(`companies/${companyId}/products`).doc(item.id);
+
       batch.update(productRef, {
         // หักลบจำนวน field แบบอะตอมิก
-        'stockStatus.onHand': increment(-item.qty),
-        updatedAt: serverTimestamp()
+        'stockStatus.onHand': admin.firestore.FieldValue.increment(-item.qty),
+        updatedAt: now
       });
     }
 
@@ -53,12 +59,12 @@ export async function processPOSBatchCheckout(payload: POSCheckoutPayload): Prom
       vatAmount: calc.vatAmount,
       grandTotal: calc.grandTotal,
       createdBy: userId,
-      createdAt: serverTimestamp(),
+      createdAt: now,
       isDeleted: false
     });
 
     // 4. บันทึกบัญชีคู่ Double-Entry ลงสมุดรายวันทั่วไปทันที
-    // ใช้ AccountingEngine ของระบบเพื่อให้โครงสร้างข้อมูลถูกต้องตาม Schema 100%
+    // โครงสร้างเดียวกับ AccountingEngine.postJournalEntry
     const journalItems = [
       {
         accountCode: cashAccountId,
@@ -83,12 +89,18 @@ export async function processPOSBatchCheckout(payload: POSCheckoutPayload): Prom
       });
     }
 
-    await AccountingEngine.postJournalEntry({
+    batch.set(journalRef, {
       companyId,
+      date: now,
+      bookType: 'JV',
       description: `[AUTO] POS Sale Transaction: ${txRef.id}`,
-      totalAmount: calc.grandTotal,
-      items: journalItems
-    }, batch);
+      totalDebit: calc.grandTotal,
+      totalCredit: calc.grandTotal,
+      status: 'draft',
+      items: journalItems,
+      createdAt: now,
+      updatedAt: now
+    });
 
     // 5. ลงบันทึกประวัติการตรวจสอบการทำงานระบบ
     batch.set(auditRef, {
@@ -96,7 +108,7 @@ export async function processPOSBatchCheckout(payload: POSCheckoutPayload): Prom
       userId,
       action: 'POS_BATCH_CHECKOUT',
       details: `ทำการประมวลผลคำสั่งซื้อหน้าร้าน Transaction: ${txRef.id}`,
-      timestamp: serverTimestamp()
+      timestamp: now
     });
 
     // 🚀 ยิงคำสั่ง Batch บันทึกข้อมูลทั้งหมดลง Firestore พร้อมกันในก้อนเดียว
@@ -105,6 +117,6 @@ export async function processPOSBatchCheckout(payload: POSCheckoutPayload): Prom
 
   } catch (error: any) {
     console.error('❌ [POS BATCH TRANSACTION ERROR]:', error.message);
-    return { success: false, transactionId: '' };
+    throw error;
   }
 }

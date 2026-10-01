@@ -36,7 +36,6 @@ import {
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { usePOSHardware } from "@/hooks/usePOSHardware";
 import { CheckoutModal } from "@/components/pos/CheckoutModal";
-import { processPOSBatchCheckout } from "@/services/posBatch.service";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api-client";
 

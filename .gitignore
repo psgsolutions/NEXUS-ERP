@@ -32,3 +32,8 @@ yarn-error.log*
 .firebase
 firestore.indexes.json
 firestore.rules
+
+# Service account keys (never commit)
+*-firebase-adminsdk-*.json
+temp-sa.json
+serviceAccountKey*.json

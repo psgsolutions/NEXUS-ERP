@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireApiUser, authErrorResponse } from "@/lib/api-auth";
-import { db } from "@/lib/firebase-client";
-import { collection, doc } from "firebase/firestore";
+import * as admin from "firebase-admin";
+import { adminDb } from "@/lib/firebase-admin";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { processStockMovements, StockMovement } from "@/lib/stock-service";
-import { AccountingEngine } from "@/services/accountingEngine";
-import { auditService } from "@/services/audit.service";
+import { auditServer } from "@/services/audit.server";
 
 /**
  * [API-SERVER] Goods Receipt & Real-time WAC / GL Posting API
@@ -76,7 +75,7 @@ export async function POST(request: Request) {
     }
 
     // 4. Goods Receipt Document
-    const grRef = doc(collection(db, `companies/${companyId}/goods_receipts`));
+    const grRef = adminDb.collection(`companies/${companyId}/goods_receipts`).doc();
     const grData = {
       grId: grRef.id,
       companyId,
@@ -96,24 +95,32 @@ export async function POST(request: Request) {
     };
 
     // 5. Stock/WAC updates, GR document and its GL entry commit in one transaction (all-or-nothing)
-    await processStockMovements(movements, async (transaction) => {
+    //    Journal: Dr สินค้าคงเหลือ / Cr เจ้าหนี้การค้า (โครงสร้างเดียวกับ AccountingEngine.postGoodsReceipt แบบ Non-VAT)
+    await processStockMovements(movements, (transaction) => {
       transaction.set(grRef, grData);
       if (totalReceiptAmount > 0) {
-        await AccountingEngine.postGoodsReceipt({
+        const now = admin.firestore.FieldValue.serverTimestamp();
+        transaction.set(adminDb.collection(`companies/${companyId}/journal_entries`).doc(), {
           companyId,
-          grnId: grRef.id,
-          supplierName: supplier || "Vendor",
-          subTotal: totalReceiptAmount,
-          vatAmount: 0,
-          totalAmount: totalReceiptAmount,
-          warehouseName: warehouse || "Main Warehouse",
-          vatType: "Non-VAT"
-        }, transaction as any);
+          date: now,
+          bookType: "PV_INTERNAL",
+          description: `[AUTO] Goods Receipt ${grRef.id} (Non-VAT Purchase) from ${supplier || "Vendor"} to ${warehouse || "Main Warehouse"}`,
+          totalDebit: totalReceiptAmount,
+          totalCredit: totalReceiptAmount,
+          isOfficialTax: false,
+          status: "draft", // Requires accountant review
+          items: [
+            { accountCode: "1141-00", accountName: "สินค้าคงเหลือ", debit: totalReceiptAmount, credit: 0 },
+            { accountCode: "2111-00", accountName: "เจ้าหนี้การค้า", debit: 0, credit: totalReceiptAmount }
+          ],
+          createdAt: now,
+          updatedAt: now
+        });
       }
     });
 
     // 6. Write Audit Log
-    await auditService.logCreate(
+    await auditServer.logCreate(
       userId,
       companyId,
       "PROCURE_GR",

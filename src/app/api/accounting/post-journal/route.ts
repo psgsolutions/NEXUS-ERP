@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireApiUser, authErrorResponse } from "@/lib/api-auth";
-import { db } from "@/lib/firebase-client";
-import { collection, addDoc, serverTimestamp, doc, setDoc } from "firebase/firestore";
-import { auditService } from "@/services/audit.service";
+import * as admin from "firebase-admin";
+import { adminDb } from "@/lib/firebase-admin";
+import { auditServer } from "@/services/audit.server";
 
 /**
  * [API-SERVER] Server-Side Journal Entry Posting API
@@ -81,11 +81,11 @@ export async function POST(request: Request) {
     };
 
     // Save to tenant subcollection & root collection
-    const docRef = doc(collection(db, `companies/${companyId}/journal_entries`));
-    await setDoc(docRef, journalData);
+    const docRef = adminDb.collection(`companies/${companyId}/journal_entries`).doc();
+    await docRef.set(journalData);
 
     // 5. Audit Log Entry
-    await auditService.logCreate(
+    await auditServer.logCreate(
       userId,
       companyId,
       "FINANCE_GL",

@@ -2,6 +2,27 @@ import * as admin from "firebase-admin";
 import { adminDb } from "./firebase-admin";
 import { IdType } from "./utils";
 import { idService } from "./idService";
+import { resolveSequenceFormat, SequencePrefix } from "./sequence-engine";
+
+/**
+ * [SERVER-ONLY] Admin SDK version of nexusSequenceEngine (same counter doc and format)
+ * Path: companies/{companyId}/counters/{prefix}
+ */
+export async function nexusSequenceServer(prefix: SequencePrefix, companyId: string): Promise<string> {
+  const formatSnap = await adminDb.doc(`companies/${companyId}/settings/sequence_formats`).get();
+  const formatStr = formatSnap.exists ? formatSnap.data()?.[prefix] : undefined;
+  const { prefixPart, suffixPart, padLength } = resolveSequenceFormat(prefix, formatStr);
+
+  const counterRef = adminDb.doc(`companies/${companyId}/counters/${prefix}`);
+  return adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(counterRef);
+    const data = snap.data();
+    const nextSeq = snap.exists && data?.lastDate === prefixPart ? (data.lastSeq || 0) + 1 : 1;
+
+    tx.set(counterRef, { lastSeq: nextSeq, lastDate: prefixPart, updatedAt: new Date() }, { merge: true });
+    return `${prefixPart}${nextSeq.toString().padStart(padLength, "0")}${suffixPart}`;
+  });
+}
 
 /**
  * [SERVER-ONLY] Atomic counter for idService-formatted numbers (INV, BN, PRJ, SKU ...)

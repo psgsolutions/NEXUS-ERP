@@ -1,22 +1,19 @@
-import { db } from "./firebase-client";
-import {
-  collection,
-  doc,
-  runTransaction,
-  serverTimestamp,
-  increment,
-  DocumentReference,
-  Transaction
-} from "firebase/firestore";
-import { nexusSequenceEngine } from "./sequence-engine";
+import * as admin from "firebase-admin";
+import { adminDb } from "./firebase-admin";
+import { nexusSequenceServer } from "./sequence-server";
 import { ACCOUNTS } from "./financeEngine";
 import { Product } from "@/types";
-import { auditService } from "@/services/audit.service";
+import { auditServer } from "@/services/audit.server";
 import { assertPeriodOpen } from "./period-close-service";
+
+type DocumentReference = admin.firestore.DocumentReference;
+type Transaction = admin.firestore.Transaction;
+const serverTimestamp = () => admin.firestore.FieldValue.serverTimestamp();
+const increment = (n: number) => admin.firestore.FieldValue.increment(n);
 
 
 /**
- * [INV-STRATEGY-V2.1]
+ * [INV-STRATEGY-V2.1] [SERVER-ONLY: Admin SDK]
  * Double-Entry Stock Movement & Real-time WAC Calculation Engine
  * Project: NEXUS ERP (Intelligence OS)
  */
@@ -93,12 +90,12 @@ export async function processStockMovements(
   // 1. Generate Transaction IDs (NXI-YYMM-XXXX)
   const transactionIds: string[] = [];
   for (let i = 0; i < movements.length; i++) {
-    transactionIds.push(await nexusSequenceEngine("INV", companyId));
+    transactionIds.push(await nexusSequenceServer("INV", companyId));
   }
 
   const auditEntries: Array<{ userId: string; productId: string; before: any; after: any }> = [];
 
-  await runTransaction(db, async (transaction) => {
+  await adminDb.runTransaction(async (transaction) => {
     auditEntries.length = 0; // transaction callback may be retried
 
     // 2. Read phase (Firestore requires every read before any write)
@@ -111,9 +108,9 @@ export async function processStockMovements(
       wacChanged: boolean;
     }>();
     for (const productId of Array.from(new Set(movements.map(m => m.productId)))) {
-      const ref = doc(db, "products", productId);
+      const ref = adminDb.collection("products").doc(productId);
       const snap = await transaction.get(ref);
-      if (!snap.exists()) throw new Error(`Product not found (ID: ${productId})`);
+      if (!snap.exists) throw new Error(`Product not found (ID: ${productId})`);
       const data = snap.data() as Product;
       products.set(productId, {
         ref,
@@ -132,9 +129,9 @@ export async function processStockMovements(
     }
     const balances = new Map<string, { ref: DocumentReference; quantity: number }>();
     for (const key of Array.from(balanceKeys)) {
-      const ref = doc(db, `companies/${companyId}/inventory_balance`, key);
+      const ref = adminDb.collection(`companies/${companyId}/inventory_balance`).doc(key);
       const snap = await transaction.get(ref);
-      balances.set(key, { ref, quantity: snap.exists() ? snap.data().quantity : 0 });
+      balances.set(key, { ref, quantity: snap.exists ? (snap.data()?.quantity ?? 0) : 0 });
     }
 
     // 3. Apply movements in order against the in-memory state
@@ -171,7 +168,7 @@ export async function processStockMovements(
 
       // 3.3 Automated Double-Entry GL Posting (stock issue -> COGS)
       if (type === "OUT" && totalValue > 0) {
-        const journalRef = doc(collection(db, "journal_entries"));
+        const journalRef = adminDb.collection("journal_entries").doc();
         transaction.set(journalRef, {
           companyId: companyId,
           date: new Date().toISOString(),
@@ -190,7 +187,7 @@ export async function processStockMovements(
       // 3.4 Update Serial Number Statuses
       if (snList && snList.length > 0) {
         for (const sn of snList) {
-          const snRef = doc(db, `companies/${companyId}/serial_numbers`, sn);
+          const snRef = adminDb.collection(`companies/${companyId}/serial_numbers`).doc(sn);
           const snStatus = type === "OUT" ? "deployed" : "available";
           transaction.set(snRef, {
             productId,
@@ -205,7 +202,7 @@ export async function processStockMovements(
       }
 
       // 3.5 Log Movement Record (Tenant Isolated)
-      const moveRef = doc(db, `companies/${companyId}/stock_movements`, transactionId);
+      const moveRef = adminDb.collection(`companies/${companyId}/stock_movements`).doc(transactionId);
       transaction.set(moveRef, {
         ...movement,
         transactionId,
@@ -256,7 +253,7 @@ export async function processStockMovements(
 
   // 5. Audit Log Activity (Tenant Scoped & Strict Action Logging)
   for (const entry of auditEntries) {
-    await auditService.logUpdate(entry.userId, companyId, "INVENTORY_WAC", entry.productId, entry.before, entry.after);
+    await auditServer.logUpdate(entry.userId, companyId, "INVENTORY_WAC", entry.productId, entry.before, entry.after);
   }
 
   return transactionIds;

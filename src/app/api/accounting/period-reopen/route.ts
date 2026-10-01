@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireApiUser, authErrorResponse } from "@/lib/api-auth";
-import { db } from "@/lib/firebase-client";
-import { collection, doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { auditService } from "@/services/audit.service";
+import * as admin from "firebase-admin";
+import { adminDb } from "@/lib/firebase-admin";
+import { auditServer } from "@/services/audit.server";
 
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
 
     const { targetYear, targetMonthNum, monthNameEn, monthNameTh } = parseYearMonth(year, month);
     const periodDocId = `${companyId}_${targetYear}_${String(targetMonthNum).padStart(2, "0")}`;
-    const closeRef = doc(collection(db, "periodClosings"), periodDocId);
+    const closeRef = adminDb.collection("periodClosings").doc(periodDocId);
 
     const updateData = {
       companyId,
@@ -96,14 +96,14 @@ export async function POST(request: Request) {
       reopenedAt: new Date().toISOString(),
       reopenedBy: userId,
       reopenReason: reopenReason.trim(),
-      updatedAt: serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       isDeleted: false
     };
 
-    await setDoc(closeRef, updateData, { merge: true });
+    await closeRef.set(updateData, { merge: true });
 
     // 4. Audit Log Entry
-    await auditService.logUpdate(
+    await auditServer.logUpdate(
       userId,
       companyId,
       "FINANCE_PERIOD_REOPEN",

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireApiUser, authErrorResponse } from "@/lib/api-auth";
-import { db } from "@/lib/firebase-client";
-import { collection, query, where, getDocs, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import * as admin from "firebase-admin";
+import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
-import { auditService } from "@/services/audit.service";
+import { auditServer } from "@/services/audit.server";
 
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -86,11 +86,9 @@ export async function POST(request: Request) {
     // 3. Pre-Close Check: Reject if there are draft journal entries in this month
     let draftEntries: any[] = [];
     try {
-      const q = query(
-        collection(db, `companies/${companyId}/journal_entries`),
-        where("status", "==", "draft")
-      );
-      const snap = await getDocs(q);
+      const snap = await adminDb.collection(`companies/${companyId}/journal_entries`)
+        .where("status", "==", "draft")
+        .get();
       snap.docs.forEach(docSnap => {
         const data = docSnap.data();
         const rawDate = data.date || data.createdAt;
@@ -121,7 +119,7 @@ export async function POST(request: Request) {
 
     // 4. Save/Update Period Close Record
     const periodDocId = `${companyId}_${targetYear}_${String(targetMonthNum).padStart(2, "0")}`;
-    const closeRef = doc(collection(db, "periodClosings"), periodDocId);
+    const closeRef = adminDb.collection("periodClosings").doc(periodDocId);
 
     const periodData = {
       companyId,
@@ -133,15 +131,15 @@ export async function POST(request: Request) {
       status: "closed",
       closedAt: new Date().toISOString(),
       closedBy: userId,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       isDeleted: false
     };
 
-    await setDoc(closeRef, periodData, { merge: true });
+    await closeRef.set(periodData, { merge: true });
 
     // 5. Write Audit Log
-    await auditService.logCreate(
+    await auditServer.logCreate(
       userId,
       companyId,
       "FINANCE_CLOSE",

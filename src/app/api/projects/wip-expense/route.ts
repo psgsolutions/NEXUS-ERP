@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireApiUser, authErrorResponse } from "@/lib/api-auth";
-import { db } from "@/lib/firebase-client";
-import { doc, getDoc, updateDoc, collection, setDoc, serverTimestamp } from "firebase/firestore";
-import { auditService } from "@/services/audit.service";
+import * as admin from "firebase-admin";
+import { adminDb } from "@/lib/firebase-admin";
+import { auditServer } from "@/services/audit.server";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 
 /**
@@ -91,8 +91,22 @@ export async function POST(request: Request) {
       throw new Error(`[GL Violation] Debit (${totalDebit}) does not equal Credit (${totalCredit})`);
     }
 
+    // Verify project tenant before posting anything
+    const projectRef = adminDb.collection("projects").doc(projectId);
+    const projectSnap = await projectRef.get();
+
+    let oldActualCost = 0;
+    let oldWipValue = 0;
+
+    if (projectSnap.exists && projectSnap.data()?.companyId && projectSnap.data()?.companyId !== companyId) {
+      return NextResponse.json(
+        { success: false, error: "[Tenant Isolation Violation] project does not belong to this company" },
+        { status: 403 }
+      );
+    }
+
     // Save Journal Entry (Server-Side)
-    const journalDocRef = doc(collection(db, `companies/${companyId}/journal_entries`));
+    const journalDocRef = adminDb.collection(`companies/${companyId}/journal_entries`).doc();
     const journalData = {
       companyId,
       projectId,
@@ -111,17 +125,11 @@ export async function POST(request: Request) {
       createdAt: postingDate,
       updatedAt: postingDate
     };
-    await setDoc(journalDocRef, journalData);
+    await journalDocRef.set(journalData);
 
     // 5. Update Project.actualCost and WIP Accumulation in Firestore
-    const projectRef = doc(db, "projects", projectId);
-    const projectSnap = await getDoc(projectRef);
-
-    let oldActualCost = 0;
-    let oldWipValue = 0;
-
-    if (projectSnap.exists()) {
-      const pData = projectSnap.data();
+    if (projectSnap.exists) {
+      const pData = projectSnap.data() || {};
       oldActualCost = pData.actualCost || pData.budgetSummary?.actualCost || 0;
       oldWipValue = pData.wipValue || 0;
 
@@ -131,17 +139,17 @@ export async function POST(request: Request) {
       const newGrossProfit = totalBudget - newActualCost;
       const newGpPercent = totalBudget > 0 ? (newGrossProfit / totalBudget) * 100 : 0;
 
-      await updateDoc(projectRef, {
+      await projectRef.update({
         actualCost: newActualCost,
         wipValue: newWipValue,
         grossProfit: newGrossProfit,
         gpPercent: Number(newGpPercent.toFixed(2)),
-        updatedAt: serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedBy: userId
       });
 
       // Audit Log Activity
-      await auditService.logUpdate(
+      await auditServer.logUpdate(
         userId,
         companyId,
         "PROJECT_WIP",

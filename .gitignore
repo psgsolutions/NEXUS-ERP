@@ -30,8 +30,6 @@ yarn-error.log*
 
 # Firebase
 .firebase
-firestore.indexes.json
-firestore.rules
 
 # Service account keys (never commit)
 *-firebase-adminsdk-*.json

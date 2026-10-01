@@ -1,0 +1,139 @@
+rules_version = '2';
+
+// NEXUS ERP — Interim Tenant-Isolation Rules (Phase 1)
+// - ต้องเป็น "สมาชิก" (มีเอกสาร users/{uid}) หรือ SUPERADMIN จึงใช้งานได้: บัญชีที่สมัครตรงกับ Firebase Auth แต่ไม่มีโปรไฟล์จะถูกปฏิเสธ
+// - companies/{companyId}/** เข้าถึงได้เฉพาะสมาชิกบริษัทนั้น (ใช้ users/{uid}.companyId ไม่ต้องตั้ง Custom Claims)
+// - Root collections: การเขียนต้องตรงบริษัทของผู้ใช้; การอ่านยังเปิดให้สมาชิกทุกบริษัท (Phase 2: บังคับ companyId หลังตรวจทุก query)
+// - Audit log เขียนได้อย่างเดียว ห้ามแก้/ลบ; counters และ periodClosings เขียนได้ผ่าน Admin SDK (API) เท่านั้น
+// ชุดเป้าหมายแบบเข้มงวด (Custom Claims + server-only journal) อยู่ที่ firestore.strict.rules
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // ให้ตรงกับ SUPERADMIN ใน AuthContext / api-auth.ts
+    function isSuperAdmin() {
+      return signedIn() && (
+        request.auth.uid == 'fgIglIug2dh4aNMMeachaugIyFM2' ||
+        request.auth.token.email == 'sadmin@admin.com'
+      );
+    }
+
+    function profilePath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function hasProfile() {
+      return signedIn() && exists(profilePath());
+    }
+
+    function profile() {
+      return get(profilePath()).data;
+    }
+
+    function isMember() {
+      return isSuperAdmin() || hasProfile();
+    }
+
+    function myCompany() {
+      return profile().companyId;
+    }
+
+    function inCompany(companyId) {
+      return isSuperAdmin() || (hasProfile() && myCompany() == companyId);
+    }
+
+    function isCompanyAdmin() {
+      return hasProfile() && profile().role in ['ADMIN', 'admin', 'Admin'];
+    }
+
+    // เอกสารที่จะเขียน: ถ้ามี companyId ต้องเป็นบริษัทของผู้ใช้
+    function newDataInMyCompany() {
+      return !('companyId' in request.resource.data) || inCompany(request.resource.data.companyId);
+    }
+
+    // เอกสารเดิม: ถ้ามี companyId ต้องเป็นบริษัทของผู้ใช้
+    function existingInMyCompany() {
+      return !('companyId' in resource.data) || inCompany(resource.data.companyId);
+    }
+
+    // ---------- Root collections (generic) ----------
+    // collection ที่มีกฎเฉพาะด้านล่างถูกตัดออกจาก wildcard เพื่อไม่ให้ wildcard อนุญาตทับ
+    function isSpecialRoot(collectionName) {
+      return collectionName in ['users', 'companies', 'counters', 'periodClosings', 'logs', 'activity_logs'];
+    }
+
+    match /{collectionName}/{documentId} {
+      allow read: if isMember() && !isSpecialRoot(collectionName);
+      allow create: if isMember() && !isSpecialRoot(collectionName) && newDataInMyCompany();
+      allow update: if isMember() && !isSpecialRoot(collectionName) && existingInMyCompany() && newDataInMyCompany();
+      allow delete: if isMember() && !isSpecialRoot(collectionName) && existingInMyCompany();
+    }
+
+    // ---------- Users (profile = สิทธิ์และบริษัท ห้ามแก้ของตัวเอง) ----------
+    match /users/{userId} {
+      allow read: if signedIn() && (
+        userId == request.auth.uid ||
+        isSuperAdmin() ||
+        (hasProfile() && resource.data.companyId == myCompany())
+      );
+      // SUPERADMIN จัดการได้ทั้งหมด; ADMIN จัดการได้เฉพาะผู้ใช้บริษัทตัวเองและตั้ง SUPERADMIN ไม่ได้
+      allow create, update: if isSuperAdmin() || (
+        isCompanyAdmin() &&
+        request.resource.data.companyId == myCompany() &&
+        !(request.resource.data.get('role', '') in ['SUPERADMIN', 'superadmin']) &&
+        (resource == null || resource.data.companyId == myCompany())
+      );
+      allow delete: if isSuperAdmin() || (isCompanyAdmin() && resource.data.companyId == myCompany());
+    }
+
+    // ---------- Locked collections (Admin SDK / API only) ----------
+    match /counters/{counterId} {
+      allow read, write: if false;
+    }
+
+    match /periodClosings/{periodId} {
+      allow read: if isMember();
+      allow write: if false; // ปิด/เปิดงวดผ่าน /api/accounting/period-close|period-reopen เท่านั้น
+    }
+
+    // ---------- Append-only audit logs ----------
+    match /logs/{logId} {
+      allow read: if isMember();
+      allow create: if isMember() && newDataInMyCompany();
+      allow update, delete: if false;
+    }
+
+    match /activity_logs/{logId} {
+      allow read: if isMember();
+      allow create: if isMember() && newDataInMyCompany();
+      allow update, delete: if false;
+    }
+
+    // ---------- Tenant-scoped company tree ----------
+    match /companies/{companyId} {
+      allow read, update: if inCompany(companyId);
+      allow create, delete: if isSuperAdmin();
+
+      // ทุก subcollection (และลึกกว่านั้น) ยกเว้นที่มีกฎเฉพาะ
+      match /{collection}/{rest=**} {
+        allow read: if inCompany(companyId);
+        allow write: if inCompany(companyId) && !(collection in ['auditLogs', 'financialLedgers']);
+      }
+
+      match /auditLogs/{logId} {
+        allow create: if inCompany(companyId);
+        allow update, delete: if false;
+      }
+
+      // เอกสารบัญชีที่ POSTED แล้วห้ามแก้/ลบ (แก้ผ่าน Reverse Entry เท่านั้น)
+      match /financialLedgers/{ledgerId} {
+        allow create: if inCompany(companyId);
+        allow update: if inCompany(companyId) && resource.data.status != 'POSTED';
+        allow delete: if false;
+      }
+    }
+  }
+}

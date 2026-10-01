@@ -1,5 +1,5 @@
-import { db } from "@/lib/firebase-client";
-import { collection, limit, query, getDocs } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase-client";
+import { doc, getDoc } from "firebase/firestore";
 
 /**
  * [NEXUS-SERVICE] System Health Monitor
@@ -11,9 +11,10 @@ export const healthService = {
   async checkDatabaseConnectivity(): Promise<{ status: "online" | "offline"; latency: number }> {
     const startTime = Date.now();
     try {
-      // ลองดึงข้อมูลขนาดเล็กเพื่อทดสอบความหน่วง
-      const q = query(collection(db, "companies"), limit(1));
-      await getDocs(q);
+      // ลองดึงข้อมูลขนาดเล็กเพื่อทดสอบความหน่วง (โปรไฟล์ตัวเอง: rules อนุญาตเสมอ ไม่ต้อง list ข้ามบริษัท)
+      const uid = auth.currentUser?.uid;
+      if (!uid) throw new Error("not signed in");
+      await getDoc(doc(db, "users", uid));
       const endTime = Date.now();
       return { 
         status: "online", 

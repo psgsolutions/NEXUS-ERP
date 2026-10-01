@@ -1,0 +1,141 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function สำหรับตรวจสอบสิทธิ์ผู้ใช้งาน
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function สำหรับตรวจสอบ Tenant ID แบบ Strict Isolation (V3.0)
+    function isTenantOwner(companyId) {
+      return isAuthenticated() && (request.auth.token.companyId == companyId || !('companyId' in request.auth.token));
+    }
+
+    // Helper function สำหรับตรวจสอบ Role สิทธิ์ใช้งาน
+    function hasRole(roles) {
+      return isAuthenticated() && (request.auth.token.role in roles || !('role' in request.auth.token));
+    }
+
+    // ล็อก root collection counters ห้าม client อ่านและเขียนตรง
+    match /counters/{counterId} {
+      allow read: if false;  
+      allow write: if false; // เขียนได้เฉพาะ Admin SDK ผ่าน transaction ใน API route
+    }
+
+    // ล็อก root collection periodClosings ให้ Client อ่านได้อย่างเดียว ห้ามเขียนตรง
+    match /periodClosings/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // เขียนผ่าน Admin SDK บน API route เท่านั้น
+    }
+
+    // ล็อก root collection projects ห้าม Client เขียนตรง (เขียนผ่าน Admin SDK API /api/projects/create เท่านั้น)
+    match /projects/{projectId} {
+      allow read: if isAuthenticated() && (!('companyId' in resource.data) || isTenantOwner(resource.data.companyId));
+      allow write: if false;
+    }
+
+    // กฎสำหรับ Nested Collection (Strict Multi-tenant Isolation)
+    match /companies/{companyId} {
+      allow read: if isTenantOwner(companyId);
+      allow create, update: if isTenantOwner(companyId);
+      allow delete: if isTenantOwner(companyId) && hasRole(['ADMIN', 'MANAGER']);
+
+      match /numberingSchemes/{docType} {
+        allow read: if isTenantOwner(companyId);
+        allow write: if false; // เขียนได้ผ่าน API route (Admin SDK) เท่านั้น
+      }
+
+      match /brands/{brandId} {
+        allow read: if isTenantOwner(companyId);
+        allow write: if isTenantOwner(companyId) && hasRole(['ADMIN', 'MANAGER']);
+      }
+
+      match /categories/{catId} {
+        allow read: if isTenantOwner(companyId);
+        allow write: if isTenantOwner(companyId) && hasRole(['ADMIN', 'MANAGER']);
+      }
+
+      match /journal_entries/{entryId} {
+        allow read: if isTenantOwner(companyId);
+        allow write: if false; // บัญชีและ Stock movement เขียนผ่าน Server-Side API เท่านั้น
+      }
+
+      // 🔒 กฎสำหรับ Products Master Data (Server-side RBAC: เฉพาะ ADMIN/SUPERADMIN/ENGINEER/MANAGER เท่านั้นที่อัปเดตสเปก/datasheet/ข้อมูลสินค้าได้)
+      match /products/{productId} {
+        allow read: if isTenantOwner(companyId);
+        allow create, update: if isTenantOwner(companyId) && hasRole(['SUPERADMIN', 'ADMIN', 'ENGINEER', 'MANAGER']);
+        allow delete: if isTenantOwner(companyId) && hasRole(['SUPERADMIN', 'ADMIN']);
+      }
+
+      // 🔒 กฎสำหรับ Quotations (Approval Gate: PENDING_APPROVAL -> SENT/APPROVED ต้องเป็น ADMIN หรือ MANAGER เท่านั้น + ล็อก documentNumber หลังร่าง)
+      match /quotations/{quotationId} {
+        allow read: if isTenantOwner(companyId);
+        allow create: if isTenantOwner(companyId) && (
+          !('status' in request.resource.data) ||
+          request.resource.data.status in ['DRAFT', 'draft', 'PENDING_APPROVAL', 'pending_approval'] ||
+          hasRole(['ADMIN', 'MANAGER', 'SUPERADMIN'])
+        );
+        allow update: if isTenantOwner(companyId) && (
+          !('status' in resource.data) ||
+          resource.data.status in ['DRAFT', 'draft'] ||
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['documentNumber'])
+        ) && (
+          !(resource.data.status in ['PENDING_APPROVAL', 'pending_approval', 'PENDING', 'pending', 'DRAFT', 'draft'] &&
+            request.resource.data.status in ['SENT', 'sent', 'APPROVED', 'approved']) ||
+          hasRole(['ADMIN', 'MANAGER', 'SUPERADMIN'])
+        );
+        allow delete: if isTenantOwner(companyId) && hasRole(['ADMIN', 'MANAGER']);
+      }
+
+      // ล็อกห้ามแก้ไข documentNumber หลังเอกสารพ้นสถานะ draft + บังคับ Tenant Scoping และ RBAC สำหรับ delete (ADMIN/MANAGER เท่านั้น)
+      // ยกเว้น collections ที่มีกฎเฉพาะตัว (products, quotations, journal_entries, numberingSchemes) เพื่อไม่ให้ wildcard ทับกฎเฉพาะ
+      match /{docCollection}/{docId} {
+        allow read: if isTenantOwner(companyId) && !(docCollection in ['products', 'quotations', 'journal_entries', 'numberingSchemes']);
+        allow create: if isTenantOwner(companyId) && !(docCollection in ['products', 'quotations', 'journal_entries', 'numberingSchemes']);
+        allow update: if isTenantOwner(companyId) && !(docCollection in ['products', 'quotations', 'journal_entries', 'numberingSchemes']) && (
+          !('status' in resource.data) ||
+          resource.data.status == 'draft' || 
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['documentNumber'])
+        );
+        allow delete: if isTenantOwner(companyId) && !(docCollection in ['products', 'quotations', 'journal_entries', 'numberingSchemes']) && hasRole(['ADMIN', 'MANAGER']);
+
+        // Sub-collections ภายใต้เอกสาร (เช่น items, logs)
+        match /{subCollection}/{subDocId=**} {
+          allow read: if isTenantOwner(companyId);
+          allow create, update: if isTenantOwner(companyId);
+          allow delete: if isTenantOwner(companyId) && hasRole(['ADMIN', 'MANAGER']);
+        }
+      }
+    }
+
+    // 🔒 กฎสำหรับ Root Collection products (Server-side RBAC: เฉพาะ ADMIN/SUPERADMIN/ENGINEER/MANAGER เท่านั้นที่อัปเดตสเปก/datasheet/ข้อมูลสินค้าได้)
+    match /products/{productId} {
+      allow read: if isAuthenticated() && (!('companyId' in resource.data) || isTenantOwner(resource.data.companyId));
+      allow create: if isAuthenticated() && ('companyId' in request.resource.data && isTenantOwner(request.resource.data.companyId)) && hasRole(['SUPERADMIN', 'ADMIN', 'ENGINEER', 'MANAGER']);
+      allow update: if isAuthenticated() && ('companyId' in resource.data && isTenantOwner(resource.data.companyId)) && hasRole(['SUPERADMIN', 'ADMIN', 'ENGINEER', 'MANAGER']);
+      allow delete: if isAuthenticated() && ('companyId' in resource.data && isTenantOwner(resource.data.companyId)) && hasRole(['SUPERADMIN', 'ADMIN']);
+    }
+
+    // กฎสำหรับ Root Collection ทั่วไป (Strict Auth, Multi-tenant Scoping & Delete RBAC)
+    // ยกเว้น root collections ที่มีกฎเฉพาะตัว เพื่อไม่ให้ wildcard ทับกฎล็อก (projects, counters, periodClosings, companies, products)
+    match /{collectionName}/{documentId} {
+      allow read: if isAuthenticated() && 
+        !(collectionName in ['counters', 'periodClosings', 'projects', 'companies', 'products']) &&
+        (!('companyId' in resource.data) || isTenantOwner(resource.data.companyId));
+
+      allow create: if isAuthenticated() && 
+        !(collectionName in ['counters', 'periodClosings', 'projects', 'companies', 'products']) &&
+        (!('companyId' in request.resource.data) || isTenantOwner(request.resource.data.companyId));
+
+      allow update: if isAuthenticated() && 
+        !(collectionName in ['counters', 'periodClosings', 'projects', 'companies', 'products']) &&
+        (!('companyId' in resource.data) || isTenantOwner(resource.data.companyId));
+
+      allow delete: if isAuthenticated() && 
+        !(collectionName in ['counters', 'periodClosings', 'projects', 'companies', 'products']) &&
+        (!('companyId' in resource.data) || isTenantOwner(resource.data.companyId)) && 
+        hasRole(['ADMIN', 'MANAGER']);
+    }
+  }
+}

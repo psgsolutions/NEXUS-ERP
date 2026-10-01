@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { nexusSequenceEngine } from "@/lib/sequence-engine";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { db } from "@/lib/firebase-client";
 import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, updateDoc } from "firebase/firestore";
@@ -58,7 +59,7 @@ type WorkOrder = {
 };
 
 export function SubcontractorWagesTab() {
-  const { user } = useAuth();
+  const { user, companyId } = useAuth();
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -86,10 +87,10 @@ export function SubcontractorWagesTab() {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "warning" } | null>(null);
 
   useEffect(() => {
-    if (user) {
+    if (user && companyId) {
       fetchWorkOrders();
     }
-  }, [user]);
+  }, [user, companyId]);
 
   const fetchWorkOrders = async () => {
     setLoading(true);
@@ -97,6 +98,7 @@ export function SubcontractorWagesTab() {
       const woRef = collection(db, "subcontractor_work_orders");
       const q = query(
         woRef,
+        where("companyId", "==", companyId),
         where("isDeleted", "==", false)
       );
       
@@ -118,7 +120,7 @@ export function SubcontractorWagesTab() {
   const fetchQuotations = async () => {
     try {
       const qRef = collection(db, "quotations");
-      const q = query(qRef, where("isDeleted", "==", false));
+      const q = query(qRef, where("companyId", "==", companyId), where("isDeleted", "==", false));
       const snap = await getDocs(q);
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setQuotations(data);
@@ -137,7 +139,8 @@ export function SubcontractorWagesTab() {
     if (!contractorName || !totalLaborCost) return;
 
     try {
-      const woNo = `WO-2605-${Math.floor(Math.random() * 10000)}`;
+      if (!companyId) throw new Error("ไม่พบรหัสบริษัทของผู้ใช้");
+      const woNo = await nexusSequenceEngine("WO", companyId);
       
       const newWO = {
         woNo: woNo,
@@ -151,6 +154,7 @@ export function SubcontractorWagesTab() {
           { milestoneNo: 3, description: "ส่งมอบงาน", percentage: 30, amount: totalLaborCost * 0.3, status: "PENDING" },
         ],
         status: "ACTIVE",
+        companyId,
         isDeleted: false,
         createdBy: user?.email,
         createdAt: serverTimestamp()
@@ -188,7 +192,8 @@ export function SubcontractorWagesTab() {
         milestoneNo: updatedMilestones[milestoneIndex].milestoneNo,
         amountApproved: payoutAmt,
         whtAmount: whtAmt,
-        associatedPVNo: `PV-2605-${Math.floor(Math.random() * 1000)}`,
+        associatedPVNo: await nexusSequenceEngine("PV", companyId!),
+        companyId,
         createdBy: user?.email,
         createdAt: serverTimestamp()
       });

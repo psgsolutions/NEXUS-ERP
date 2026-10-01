@@ -1,9 +1,9 @@
 rules_version = '2';
 
-// NEXUS ERP — Interim Tenant-Isolation Rules (Phase 1)
+// NEXUS ERP — Interim Tenant-Isolation Rules (Phase 2)
 // - ต้องเป็น "สมาชิก" (มีเอกสาร users/{uid}) หรือ SUPERADMIN จึงใช้งานได้: บัญชีที่สมัครตรงกับ Firebase Auth แต่ไม่มีโปรไฟล์จะถูกปฏิเสธ
 // - companies/{companyId}/** เข้าถึงได้เฉพาะสมาชิกบริษัทนั้น (ใช้ users/{uid}.companyId ไม่ต้องตั้ง Custom Claims)
-// - Root collections: การเขียนต้องตรงบริษัทของผู้ใช้; การอ่านยังเปิดให้สมาชิกทุกบริษัท (Phase 2: บังคับ companyId หลังตรวจทุก query)
+// - Root collections: อ่าน/เขียนได้เฉพาะเอกสารบริษัทตัวเอง (query ฝั่ง client ต้องมี where("companyId", "==", ...) เสมอ)
 // - Audit log เขียนได้อย่างเดียว ห้ามแก้/ลบ; counters และ periodClosings เขียนได้ผ่าน Admin SDK (API) เท่านั้น
 // ชุดเป้าหมายแบบเข้มงวด (Custom Claims + server-only journal) อยู่ที่ firestore.strict.rules
 service cloud.firestore {
@@ -59,6 +59,16 @@ service cloud.firestore {
       return !('companyId' in resource.data) || inCompany(resource.data.companyId);
     }
 
+    // อ่านเอกสารเดียว: เอกสารที่ไม่มีอยู่จริงอ่านได้ (ใช้เช็กการมีอยู่) ที่เหลือต้องเป็นบริษัทตัวเอง
+    function canGet() {
+      return resource == null || isSuperAdmin() || (hasProfile() && resource.data.get('companyId', null) == myCompany());
+    }
+
+    // query หลายเอกสาร: ต้องกรอง companyId เป็นบริษัทตัวเอง (SUPERADMIN query ได้ทั้งหมด)
+    function canList() {
+      return isSuperAdmin() || (hasProfile() && resource.data.companyId == myCompany());
+    }
+
     // ---------- Root collections (generic) ----------
     // collection ที่มีกฎเฉพาะด้านล่างถูกตัดออกจาก wildcard เพื่อไม่ให้ wildcard อนุญาตทับ
     function isSpecialRoot(collectionName) {
@@ -66,7 +76,8 @@ service cloud.firestore {
     }
 
     match /{collectionName}/{documentId} {
-      allow read: if isMember() && !isSpecialRoot(collectionName);
+      allow get: if isMember() && !isSpecialRoot(collectionName) && canGet();
+      allow list: if isMember() && !isSpecialRoot(collectionName) && canList();
       allow create: if isMember() && !isSpecialRoot(collectionName) && newDataInMyCompany();
       allow update: if isMember() && !isSpecialRoot(collectionName) && existingInMyCompany() && newDataInMyCompany();
       allow delete: if isMember() && !isSpecialRoot(collectionName) && existingInMyCompany();
@@ -95,19 +106,22 @@ service cloud.firestore {
     }
 
     match /periodClosings/{periodId} {
-      allow read: if isMember();
+      allow get: if isMember() && canGet();
+      allow list: if isMember() && canList();
       allow write: if false; // ปิด/เปิดงวดผ่าน /api/accounting/period-close|period-reopen เท่านั้น
     }
 
     // ---------- Append-only audit logs ----------
     match /logs/{logId} {
-      allow read: if isMember();
+      allow get: if isMember() && canGet();
+      allow list: if isMember() && canList();
       allow create: if isMember() && newDataInMyCompany();
       allow update, delete: if false;
     }
 
     match /activity_logs/{logId} {
-      allow read: if isMember();
+      allow get: if isMember() && canGet();
+      allow list: if isMember() && canList();
       allow create: if isMember() && newDataInMyCompany();
       allow update, delete: if false;
     }

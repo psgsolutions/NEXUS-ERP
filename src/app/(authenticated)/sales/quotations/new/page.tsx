@@ -23,6 +23,7 @@ import { canViewCost } from "@/lib/permissions";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { useAuth } from "@/context/AuthContext";
 import { SmartSelect, StepperInput, SciFiDropdownPortal } from "@/components/ui/SmartComponents";
 import { searchAddressByPostalCode } from "@/lib/thailand-address-helper";
@@ -35,7 +36,7 @@ export default function QuotationCreationPage() {
 
   // Data Fetching from both root collection and company subcollection
   const effectiveCompanyId = companyId || 'COM-NEXUS-01';
-  const { data: rootCustomers, loading: rootCustomersLoading } = useRealtimeCollection('customers', [], false);
+  const { data: rootCustomers, loading: rootCustomersLoading } = useRealtimeCollection('customers');
   const { data: companyCustomers, loading: companyCustomersLoading } = useRealtimeCollection(`companies/${effectiveCompanyId}/customers`, [], false);
   const { data: users, loading: usersLoading } = useRealtimeCollection('users');
 
@@ -362,7 +363,9 @@ export default function QuotationCreationPage() {
   }, [postalCode]);
 
   // Fetch Company Config for Settings (min GP threshold & price deviation warning)
-  const { data: companyDocs = [] } = useRealtimeCollection('companies', [], false);
+  // อ่านเฉพาะเอกสารบริษัทตัวเอง (tenant rules ไม่อนุญาตให้ list companies ทั้งหมด)
+  const { data: companyDoc } = useRealtimeDocument(effectiveCompanyId ? `companies/${effectiveCompanyId}` : null);
+  const companyDocs = useMemo<any[]>(() => (companyDoc ? [companyDoc] : []), [companyDoc]);
   const companyConfig = useMemo(() => {
     const matched = companyDocs.find((c: any) => c.id === effectiveCompanyId || c.companyId === effectiveCompanyId);
     return matched?.settings || {};

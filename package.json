@@ -10,7 +10,8 @@
     "check:company-id": "node scripts/check-company-id.js",
     "check:hex-tokens": "node scripts/check-hex-tokens.js",
     "check:thai-labels": "node scripts/check-thai-labels.js",
-    "check:layout": "node scripts/run-layout-audit.js"
+    "check:layout": "node scripts/run-layout-audit.js",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-nexus \"node scripts/test-tenant-rules.js\""
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

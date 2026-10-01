@@ -712,7 +712,7 @@ export function DocumentItemsTable({
 
   // Fetch real-time products from database
   const { data: companyScopedProducts = [] } = useRealtimeCollection('products', [], true);
-  const { data: globalProducts = [] } = useRealtimeCollection('products', [], false);
+  const { data: globalProducts = [] } = useRealtimeCollection('products');
 
   const availableProducts = useMemo(() => {
     const map = new Map<string, any>();

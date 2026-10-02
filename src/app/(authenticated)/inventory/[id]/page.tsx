@@ -158,7 +158,7 @@ export default function ProductDetailPage() {
       setMovements(items);
     }, (err) => {
       // ไม่ใช้ข้อมูลจำลอง: ถ้าโหลดไม่ได้ (เช่น index ยังสร้างไม่เสร็จ) ให้แสดงว่าง
-      console.error("Product stock movements snapshot failed", err);
+      console.warn("Product stock movements snapshot failed", err?.code || err);
       setMovements([]);
     });
     return () => unsubscribe();

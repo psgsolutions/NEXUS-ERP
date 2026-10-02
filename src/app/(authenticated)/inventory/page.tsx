@@ -383,7 +383,7 @@ export default function InventoryPage() {
       setMovementsError("");
     }, (err) => {
       // ไม่ใช้ข้อมูลจำลอง: แสดงข้อความแทน (เช่น index ของ Firestore ยังสร้างไม่เสร็จ)
-      console.error("Stock movements snapshot failed", err);
+      console.warn("Stock movements snapshot failed", err?.code || err);
       setMovements([]);
       setMovementsError(err?.code === "failed-precondition"
         ? "ฐานข้อมูลยังสร้างดัชนี (index) สำหรับประวัติสต็อกไม่เสร็จ กรุณาลองใหม่ภายหลัง"

@@ -36,6 +36,11 @@ import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { calculateFinancials, formatCurrency, POType, VatType } from "@/lib/erp-logic";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
+import { useAuth } from "@/context/AuthContext";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { nexusSequenceEngine } from "@/lib/sequence-engine";
+import { db } from "@/lib/firebase-client";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const ORDER_TYPES: { id: POType, label: string, icon: any }[] = [
   { id: 'STOCK', label: 'สต็อกพัสดุ', icon: <Package size={14} /> },
@@ -62,25 +67,29 @@ const INITIAL_FORM = {
   terms: "1. สินค้าต้องจัดส่งในสภาพสมบูรณ์และถูกต้องตามรุ่นที่สั่งซื้อ\n2. บรรจุภัณฑ์ต้องเหมาะสมกับการขนส่งเพื่อป้องกันการชำรุดเสียหาย\n3. กรุณาแนบใบกำกับภาษี/ใบส่งสินค้าและสำเนาใบสั่งซื้อมาพร้อมกับสินค้า"
 };
 
-function generatePONumber(): string {
-  const now = new Date();
-  const yy = now.getFullYear().toString().slice(-2);
-  const mm = (now.getMonth() + 1).toString().padStart(2, '0');
-  const sequence = Math.floor(1000 + Math.random() * 8999);
-  return `PO-${yy}${mm}-${sequence}`;
-}
-
 export default function NewPurchaseOrderPage() {
   const router = useRouter();
   const { showAlert, showConfirm } = useSystemDialog();
+  const { user, companyId } = useAuth();
+
+  // ข้อมูลจริงของบริษัท
+  const { data: suppliers } = useRealtimeCollection<any>("suppliers");
+  const { data: projects } = useRealtimeCollection<any>(`companies/${companyId}/projects`);
+  const { data: warehouses } = useRealtimeCollection<any>("warehouses");
 
   const [activeTab, setActiveTab] = useState("general");
-  const [form, setForm] = useState(INITIAL_FORM);
+  const [form, setForm] = useState({ ...INITIAL_FORM, id: "ออกเลขเมื่อบันทึก" });
   const [items, setItems] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    setForm(prev => ({ ...prev, id: generatePONumber() }));
-  }, []);
+  // ใบสั่งซื้อ: ตอนเลือกสินค้า ตารางใส่ราคาขาย → เปลี่ยนเป็นต้นทุนเฉลี่ยปัจจุบันเป็นราคาซื้อเริ่มต้น (แก้ได้)
+  const handleItemsChange = (newItems: any[]) => {
+    setItems(newItems.map((it) =>
+      it.productId && it._costInitFor !== it.productId
+        ? { ...it, price: Number(it.cost ?? it.costPrice ?? it.price ?? 0), _costInitFor: it.productId }
+        : it
+    ));
+  };
 
   const financials = useMemo(() => {
     return calculateFinancials(items, form.vat_type);
@@ -110,12 +119,62 @@ export default function NewPurchaseOrderPage() {
     }
   };
 
-  const handleSave = () => {
-    if (!form.supplier || items.length === 0) return void showAlert("กรุณาระบุคู่ค้าและรายการสั่งซื้อ");
-    
-    // Simulate save logic
-    showAlert(`สร้างใบสั่งซื้อสำเร็จ (${form.id})`);
-    router.push("/procurement");
+  const handleSave = async () => {
+    const lines = items.filter((it) => it.itemType !== "GROUP_HEADER" && (Number(it.qty) || 0) > 0);
+    if (!form.supplier || lines.length === 0) return void showAlert("กรุณาระบุคู่ค้าและรายการสั่งซื้อ");
+    if (form.order_type === "PROJECT" && !form.project_id) return void showAlert("กรุณาเลือกโครงการ");
+    if (!companyId || !user) return void showAlert("ไม่พบข้อมูลผู้ใช้หรือรหัสบริษัท กรุณาเข้าสู่ระบบใหม่");
+
+    setSaving(true);
+    try {
+      const poCode = await nexusSequenceEngine("PO", companyId);
+      const supplier = suppliers.find((s: any) => s.id === form.supplier);
+      const project = projects.find((p: any) => p.id === form.project_id);
+      const rate = form.currency === "THB" ? 1 : (Number(form.exchange_rate) || 1);
+      const round = (n: number) => Math.round(n * 100) / 100;
+      await setDoc(doc(db, `companies/${companyId}/purchase_orders`, poCode), {
+        poCode,
+        documentNo: poCode,
+        companyId,
+        orderType: form.order_type,
+        supplierId: form.supplier,
+        supplierName: supplier?.name || supplier?.supplierName || form.supplier,
+        reference: form.reference,
+        projectId: form.project_id || "",
+        projectName: project ? (project.title || project.name || project.projectId || "") : "",
+        department: form.department || "",
+        warehouseCode: form.order_type === "STOCK" ? (warehouses[0]?.code || "") : "",
+        date: form.date,
+        expectedDate: form.delivery_date,
+        vatType: form.vat_type,
+        currency: form.currency,
+        exchangeRate: rate,
+        incoterm: form.incoterm,
+        incotermPlace: form.incoterm_place,
+        paymentTerm: form.payment_term,
+        shippingMethod: form.shipping_method,
+        terms: form.terms,
+        items: lines.map((it) => ({ ...it, qtyReceived: 0 })),
+        // ยอดเป็นบาท (THB) ตามอัตราแลกเปลี่ยน
+        subTotal: round(financials.net * rate),
+        vatAmount: round(financials.vat * rate),
+        totalAmount: round(financials.total * rate),
+        totalAmountForeign: round(financials.total),
+        status: "PENDING_APPROVAL",
+        createdBy: user.uid,
+        createdByEmail: user.email || "",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        isDeleted: false,
+      });
+      showAlert(`สร้างใบสั่งซื้อสำเร็จ (${poCode}) รออนุมัติ`);
+      router.push(`/procurement/po/${encodeURIComponent(poCode)}`);
+    } catch (err: any) {
+      console.error("[PO_SAVE_ERROR]", err);
+      showAlert(`บันทึกใบสั่งซื้อไม่สำเร็จ: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const formatForeign = (val: number) => {
@@ -152,7 +211,7 @@ export default function NewPurchaseOrderPage() {
         <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={handleBack}>
           ยกเลิก
         </PillButton>
-        <PillButton variant="confirm" onClick={handleSave} className="h-8 px-5 font-bold text-xs">
+        <PillButton variant="confirm" onClick={handleSave} disabled={saving} className="h-8 px-5 font-bold text-xs">
           <CheckCircle2 size={14} className="mr-1.5" /> อนุมัติและออกใบสั่งซื้อ
         </PillButton>
       </div>
@@ -190,17 +249,16 @@ export default function NewPurchaseOrderPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
           <Field label="ผู้จัดจำหน่าย *">
-            <CreatableCombobox 
-              value={form.supplier} 
-              onChange={(val) => setForm({...form, supplier: val})} 
-              className="w-full h-9 rounded-full bg-white/[0.02] border-white/10"
-              options={[
-                { value: "", label: "เลือกคู่ค้า..." },
-                { value: "SUP-001", label: "Thai Equipment Co., Ltd." },
-                { value: "SUP-002", label: "Global Tech Industries Inc." }
-              ]}
-              allowCustom={true}
-            />
+            <PillSelect
+              value={form.supplier}
+              onChange={(e) => setForm({...form, supplier: e.target.value})}
+              className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[13px] font-bold"
+            >
+              <option value="">{suppliers.length === 0 ? "ยังไม่มีข้อมูลผู้จัดจำหน่าย" : "เลือกคู่ค้า..."}</option>
+              {suppliers.map((s: any) => (
+                <option key={s.id} value={s.id}>{s.name || s.supplierName || s.id}</option>
+              ))}
+            </PillSelect>
           </Field>
 
           <Field label="เลขอ้างอิง (REFERENCE NO.)">
@@ -221,29 +279,27 @@ export default function NewPurchaseOrderPage() {
                 onChange={(e) => setForm({...form, project_id: e.target.value})} 
                 className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[13px] font-bold"
               >
-                <option value="">เลือกโครงการ...</option>
-                <option value="PRJ-2024-001">CCTV Upgrade - Gateway Mall</option>
-                <option value="PRJ-2024-002">Network Infrastructure - Nexus Tower</option>
+                <option value="">{projects.length === 0 ? "ยังไม่มีโครงการ" : "เลือกโครงการ..."}</option>
+                {projects.map((p: any) => (
+                  <option key={p.id} value={p.id}>{p.projectId || p.id} - {p.title || p.name || p.projectName || "-"}</option>
+                ))}
               </PillSelect>
             </Field>
           )}
           {form.order_type === 'CONSUMABLE' && (
             <Field label="แผนกที่ทำรายการเบิก *">
-              <PillSelect 
-                value={form.department} 
-                onChange={(e) => setForm({...form, department: e.target.value})} 
+              <PillInput
+                value={form.department}
+                onChange={(e) => setForm({...form, department: e.target.value})}
+                placeholder="ระบุแผนก เช่น ฝ่ายไอที"
                 className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[13px] font-bold"
-              >
-                <option value="">เลือกแผนก...</option>
-                <option value="IT">IT Support</option>
-                <option value="ADMIN">HR & Admin</option>
-              </PillSelect>
+              />
             </Field>
           )}
           {form.order_type === 'STOCK' && (
             <Field label="คลังพัสดุปลายทาง">
-              <PillInput 
-                value="Main Warehouse (คลังส่วนกลาง)" 
+              <PillInput
+                value={warehouses[0] ? `${warehouses[0].code || warehouses[0].id} : ${warehouses[0].name || ""}` : "ยังไม่ได้ตั้งค่าคลังสินค้า"}
                 disabled
                 readOnly
                 className="w-full h-9 px-6 rounded-full bg-white/[0.01] border-cyan-500/20 text-cyan-400/60 cursor-not-allowed font-bold text-[13px]" 
@@ -352,7 +408,7 @@ export default function NewPurchaseOrderPage() {
         
         <DocumentItemsTable 
           items={items}
-          onChange={setItems}
+          onChange={handleItemsChange}
         />
       </div>
     </div>

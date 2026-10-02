@@ -1,6 +1,7 @@
 "use client";
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { normalizePoStatus } from "@/lib/procurement-status";
 import { useSystemDialog } from "@/context/DialogContext";
 import {
   Package,
@@ -29,7 +30,8 @@ import { listLocations } from "@/lib/warehouse-location";
 
 const DEFAULT_WAREHOUSE = "Main Warehouse";
 
-export default function NewInventoryInPage() {
+function NewInventoryInScreen() {
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { showAlert, showConfirm } = useSystemDialog();
   const { user, companyId } = useAuth();
@@ -73,7 +75,7 @@ export default function NewInventoryInPage() {
   const openPOs = [
     ...rootPOs.map((po: any) => ({ ...po, _path: `purchase_orders/${po.id}` })),
     ...companyPOs.map((po: any) => ({ ...po, _path: `companies/${companyId}/purchase_orders/${po.id}` })),
-  ].filter((po: any) => !["RECEIVED", "CLOSED", "CANCELLED"].includes(String(po.status || "").toUpperCase()));
+  ].filter((po: any) => ["APPROVED", "PARTIAL_RECEIVED"].includes(normalizePoStatus(po.status))); // รับได้เฉพาะใบที่อนุมัติแล้ว
   const poLabel = (po: any) => po.poCode || po.documentNo || po.poNo || po.id;
 
   const supplierName = (id: string) => {
@@ -192,6 +194,17 @@ export default function NewInventoryInPage() {
       }))
       .filter((it: any) => it.qty > 0));
   };
+
+  // มาจากหน้าใบสั่งซื้อ (?po=companies/.../purchase_orders/PO-xxx): เลือกใบสั่งซื้อให้อัตโนมัติ
+  const poParam = searchParams.get("po") || "";
+  useEffect(() => {
+    if (!poParam || header.poDocPath) return;
+    if (openPOs.some((p: any) => p._path === poParam)) {
+      setActiveTab("po");
+      selectPO(poParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [poParam, openPOs.length]);
 
   const totalCost = items.reduce((acc, i) => acc + ((Number(i.qty) || 0) * (Number(i.price) || 0)), 0);
 
@@ -395,5 +408,13 @@ function Field({ label, children, required }: { label: string, children: React.R
       </label>
       {children}
     </div>
+  );
+}
+
+export default function NewInventoryInPage() {
+  return (
+    <Suspense fallback={<div className="p-10 text-white/40 text-sm">กำลังโหลด...</div>}>
+      <NewInventoryInScreen />
+    </Suspense>
   );
 }

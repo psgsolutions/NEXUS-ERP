@@ -1,213 +1,196 @@
 "use client";
 
 import React, { useState } from "react";
-import { 
-  ArrowLeft,
-  FileCheck, 
-  ChevronLeft, 
-  Edit3, 
-  Truck, 
-  Printer, 
-  Mail, 
-  AlertCircle, 
-  CheckCircle2,
-  DollarSign,
-  Package,
-  Clock,
-  ArrowUpRight,
-  ShieldCheck,
-  Building2
-} from "lucide-react";
-import { 
-  PillButton, 
-  GlassCard, 
-  cn, 
-  PillTabs, 
-  NexusTable, 
-  NexusTableRow, 
-  NexusTableCell, 
-  StatusBadge,
-  MasterMetricCard,
-  PillBackButton,
-  NexusDataField
-} from "@/components/ui/Base";
 import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, Building2, Calendar, CheckCircle2, Truck, XCircle, AlertTriangle, FileText } from "lucide-react";
+import { PillButton, GlassCard, StatusBadge, NexusTable, NexusTableRow, NexusTableCell } from "@/components/ui/Base";
+import NexusPageLayout from "@/components/layout/NexusPageLayout";
+import { DocumentStepper } from "@/components/ui/DocumentStepper";
+import { formatCurrency } from "@/lib/erp-logic";
+import { useAuth } from "@/context/AuthContext";
+import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
+import { approvePurchaseOrder } from "@/lib/procurement-service";
+import { normalizePoStatus } from "@/lib/procurement-status";
+import { db } from "@/lib/firebase-client";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+
+const STEPS = ["รออนุมัติ", "อนุมัติแล้ว", "รับบางส่วน", "รับครบแล้ว"];
+
+const VIEW: Record<string, { step: number; badge: "active" | "inactive" | "pending" | "warning" | "danger"; label: string }> = {
+  PENDING_APPROVAL: { step: 0, badge: "pending", label: "รออนุมัติ" },
+  APPROVED: { step: 1, badge: "active", label: "อนุมัติแล้ว รอรับสินค้า" },
+  PARTIAL_RECEIVED: { step: 2, badge: "warning", label: "รับสินค้าบางส่วน" },
+  RECEIVED: { step: 3, badge: "active", label: "รับสินค้าครบแล้ว" },
+  CANCELLED: { step: 0, badge: "danger", label: "ยกเลิก" },
+};
 
 export default function PODetailPage() {
   const params = useParams();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("overview");
+  const poDocId = decodeURIComponent(String(params.id || ""));
+  const { user, companyId, role } = useAuth();
+  const path = companyId && poDocId ? `companies/${companyId}/purchase_orders/${poDocId}` : null;
+  const { data: po, loading } = useRealtimeDocument<any>(path);
 
-  const tabs = [
-    { id: "overview", label: "ข้อมูล", icon: <FileCheck size={14} /> },
-    { id: "items", label: "สินค้า", icon: <Package size={14} /> },
-    { id: "delivery", label: "จัดส่ง", icon: <Truck size={14} /> },
-    { id: "logs", label: "ประวัติ", icon: <Clock size={14} /> },
-  ];
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
-  return (
-    <div className="p-10 space-y-10 max-w-[1600px] mx-auto animate-in fade-in duration-700">
-      
-      {/* Header with Back Button */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
-        <div className="flex items-center gap-4">
-          <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center">
-            <ArrowLeft size={20} />
-          </PillButton>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
-                ใบสั่งซื้ออุปกรณ์โครงข่าย
-              </h1>
-              <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
-                {params.id || 'PO-2604-0012'}
-              </span>
-            </div>
-            <p className="text-sm text-white/60 font-medium mt-1">
-              รายละเอียดใบสั่งซื้อ รายการสินค้า สถานะการจัดส่ง และการชำระเงิน
-            </p>
+  if (loading) return <div className="p-10 text-white/40 text-sm">กำลังโหลดใบสั่งซื้อ...</div>;
+  if (!po) {
+    return (
+      <div className="p-10 space-y-4">
+        <p className="text-white/60 text-sm">ไม่พบใบสั่งซื้อ "{poDocId}"</p>
+        <PillButton variant="glass" onClick={() => router.push("/procurement")}>กลับหน้าจัดซื้อ</PillButton>
+      </div>
+    );
+  }
+
+  const status = normalizePoStatus(po.status);
+  const view = VIEW[status];
+  const items: any[] = (po.items || []).filter((it: any) => it.itemType !== "GROUP_HEADER");
+  const nothingReceived = items.every((it) => !(Number(it.qtyReceived) > 0));
+
+  const run = async (fn: () => Promise<void>, ok: string) => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      await fn();
+      setMessage({ type: "ok", text: ok });
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "ทำรายการไม่สำเร็จ" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const approve = () => run(async () => {
+    if (!user || !companyId) throw new Error("ไม่พบข้อมูลผู้ใช้");
+    await approvePurchaseOrder(poDocId, user.uid, companyId, role || undefined);
+  }, "อนุมัติใบสั่งซื้อแล้ว");
+
+  const cancel = () => {
+    if (!confirm("ยืนยันยกเลิกใบสั่งซื้อนี้?")) return;
+    run(async () => {
+      await updateDoc(doc(db, path!), { status: "CANCELLED", cancelledAt: serverTimestamp(), updatedAt: serverTimestamp(), updatedBy: user?.uid || "" });
+    }, "ยกเลิกใบสั่งซื้อแล้ว");
+  };
+
+  const header = (
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
+      <div className="flex items-center gap-4">
+        <PillButton variant="glass" onClick={() => router.push("/procurement")} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
+        <div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">ใบสั่งซื้อ</h1>
+            <span className="px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-sm font-mono font-bold">{po.poCode || poDocId}</span>
+            <StatusBadge status={view.badge} label={view.label} />
           </div>
+          <p className="text-sm text-white/60 font-medium mt-1">{po.supplierName || po.supplierId || "-"}</p>
         </div>
-        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
-          <PillButton variant="glass" className="h-8 px-4 text-xs font-bold">พิมพ์เอกสาร</PillButton>
-          <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs flex items-center gap-1.5">
-            <ShieldCheck size={14} />
-            อนุมัติใบสั่งซื้อ
+      </div>
+      <div className="flex items-center gap-2.5 flex-wrap justify-end">
+        {status !== "CANCELLED" && <DocumentStepper steps={STEPS} currentStep={view.step} />}
+        {status === "PENDING_APPROVAL" && (
+          <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={approve}>
+            <CheckCircle2 size={14} className="mr-1.5" /> อนุมัติ
           </PillButton>
+        )}
+        {(status === "APPROVED" || status === "PARTIAL_RECEIVED") && (
+          <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" onClick={() => router.push(`/inventory/in/new?po=${encodeURIComponent(path!)}`)}>
+            <Truck size={14} className="mr-1.5" /> รับสินค้าเข้าคลัง
+          </PillButton>
+        )}
+        {(status === "PENDING_APPROVAL" || status === "APPROVED") && nothingReceived && (
+          <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-red-400" disabled={busy} onClick={cancel}>
+            <XCircle size={14} className="mr-1.5" /> ยกเลิก
+          </PillButton>
+        )}
+      </div>
+      {message && (
+        <div className={`w-full sm:basis-full p-3 rounded-xl text-[12px] font-bold flex items-center gap-2 ${message.type === "ok" ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400" : "bg-red-500/10 border border-red-500/30 text-red-400"}`}>
+          {message.type === "ok" ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />} {message.text}
         </div>
+      )}
+    </div>
+  );
+
+  const left = (
+    <div className="space-y-6 pr-2 pb-10">
+      <div className="grid grid-cols-2 gap-4">
+        <GlassCard className="p-4 border-white/10 rounded-3xl space-y-2 text-[12px]">
+          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3"><Building2 size={16} className="text-purple-300" /> ผู้จัดจำหน่าย</h3>
+          <Row label="ชื่อ" value={po.supplierName || "-"} />
+          <Row label="อ้างอิง" value={po.reference || "-"} />
+          <Row label="ประเภทการสั่งซื้อ" value={po.orderType === "PROJECT" ? "โครงการ" : po.orderType === "CONSUMABLE" ? "ของใช้บริษัท" : "สต็อกพัสดุ"} />
+          {po.projectName && <Row label="โครงการ" value={po.projectName} />}
+          {po.department && <Row label="แผนก" value={po.department} />}
+        </GlassCard>
+        <GlassCard className="p-4 border-white/10 rounded-3xl space-y-2 text-[12px]">
+          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3"><Calendar size={16} className="text-nexus-blue" /> เงื่อนไข</h3>
+          <Row label="วันที่สั่งซื้อ" value={po.date || "-"} />
+          <Row label="กำหนดส่ง" value={po.expectedDate || "-"} />
+          <Row label="การชำระเงิน" value={po.paymentTerm || "-"} />
+          <Row label="ภาษี" value={po.vatType || "-"} />
+          <Row label="สกุลเงิน" value={`${po.currency || "THB"}${po.currency && po.currency !== "THB" ? ` @ ${po.exchangeRate}` : ""}`} />
+        </GlassCard>
       </div>
 
-      <div className="flex flex-col xl:flex-row items-start gap-4">
-        
-        {/* Left Content Area */}
-        <div className="flex-1 w-full space-y-10">
-          
-          <PillTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+      <GlassCard className="p-4 border-white/10 rounded-3xl space-y-3">
+        <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 border-b border-white/10 pb-3">รายการสั่งซื้อ ({items.length})</h3>
+        <NexusTable headers={["รายการ", "สั่ง", "รับแล้ว", "ราคา/หน่วย", "รวม"]}>
+          {items.map((it: any, idx: number) => {
+            const qty = Number(it.qty ?? it.qtyOrdered ?? 0);
+            const got = Number(it.qtyReceived) || 0;
+            const price = Number(it.price ?? it.unitCost ?? 0);
+            return (
+              <NexusTableRow key={it.id || idx}>
+                <NexusTableCell>
+                  <div className="text-white text-[13px] font-bold">{it.name || it.description || "-"}</div>
+                  {it.sku && <div className="text-[11px] text-white/40 font-mono">{it.sku}</div>}
+                </NexusTableCell>
+                <NexusTableCell className="text-right" mono>{qty.toLocaleString()} {it.unit || ""}</NexusTableCell>
+                <NexusTableCell className={`text-right ${got >= qty ? "text-emerald-400" : got > 0 ? "text-warning" : ""}`} mono>{got.toLocaleString()}</NexusTableCell>
+                <NexusTableCell className="text-right" mono>{formatCurrency(price)}</NexusTableCell>
+                <NexusTableCell className="text-right text-white" mono>{formatCurrency(qty * price)}</NexusTableCell>
+              </NexusTableRow>
+            );
+          })}
+        </NexusTable>
+      </GlassCard>
 
-          {activeTab === "overview" && (
-            <div className="space-y-10 animate-in slide-in-from-bottom duration-500">
-              {/* Financial Summary */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <MasterMetricCard icon={<DollarSign size={24} />} label="ยอดเงินรวม" value="฿125,000" color="text-nexus-teal" neon="shadow-neon-teal" />
-                <MasterMetricCard icon={<Clock size={24} />} label="กำหนดส่งสินค้า" value="12 พ.ค. 2026" color="text-nexus-blue" />
-                <MasterMetricCard icon={<AlertCircle size={24} />} label="สถานะการชำระ" value="ยังไม่ชำระ" color="text-warning" />
-              </div>
+      {po.terms && (
+        <GlassCard className="p-4 border-white/10 rounded-3xl space-y-2">
+          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2"><FileText size={16} /> เงื่อนไขเพิ่มเติม</h3>
+          <p className="text-[12px] text-white/60 whitespace-pre-line">{po.terms}</p>
+        </GlassCard>
+      )}
+    </div>
+  );
 
-              {/* Vendor & Entity Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <GlassCard className="p-4 border-white/10 space-y-3">
-                   <h3 className="text-[13px] font-medium text-nexus-teal uppercase tracking-widest flex items-center gap-2">
-                      <Building2 size={16} />
-                      ข้อมูลคู่ค้า
-                   </h3>
-                   <div className="space-y-3">
-                      <NexusDataField label="บริษัท" value="Aruba Global (Thailand) Co., Ltd." />
-                      <NexusDataField label="เลขผู้เสียภาษี" value="0105564000123" />
-                      <NexusDataField label="เครดิตเทอม" value="30 วัน" highlight />
-                      <NexusDataField label="ผู้ติดต่อ" value="คุณกฤษดา (081-999-0000)" />
-                   </div>
-                </GlassCard>
-
-                <GlassCard className="p-4 border-white/10 space-y-3">
-                   <h3 className="text-[13px] font-medium text-white/40 uppercase tracking-widest flex items-center gap-2">
-                      <Truck size={16} />
-                      ที่อยู่จัดส่ง & คลังรับพัสดุ
-                   </h3>
-                   <div className="space-y-3">
-                      <NexusDataField label="คลังปลายทาง" value="คลังพัสดุหลัก (WH-BKK-01)" />
-                      <NexusDataField label="วิธีจัดส่ง" value="ขนส่งเอกชน" />
-                      <NexusDataField label="ผู้รับสินค้า" value="สมชาย (คลังพัสดุ)" />
-                      <NexusDataField label="ความสำคัญ" value="เร่งด่วนพิเศษ" highlight />
-                   </div>
-                </GlassCard>
-              </div>
-
-              {/* Items Table */}
-              <div className="space-y-3">
-                 <h3 className="text-sm font-bold text-white uppercase tracking-tight">รายการสินค้าและบริการ</h3>
-                 <NexusTable headers={["#", "รายการ", "จำนวน", "ราคาต่อหน่วย", "ส่วนลด", "รวมเงิน"]}>
-                    <NexusTableRow>
-                       <NexusTableCell>1</NexusTableCell>
-                       <NexusTableCell>
-                          <p className="text-sm font-bold text-white">Aruba AP-505 Unified Access Point</p>
-                          <p className="text-[11px] text-white/20 uppercase font-medium">SKU: AP-505-RW</p>
-                       </NexusTableCell>
-                       <NexusTableCell className="text-center font-bold">10 Units</NexusTableCell>
-                       <NexusTableCell className="text-right font-bold">฿12,500</NexusTableCell>
-                       <NexusTableCell className="text-right">0%</NexusTableCell>
-                       <NexusTableCell className="text-right font-bold text-nexus-teal">฿125,000</NexusTableCell>
-                    </NexusTableRow>
-                 </NexusTable>
-
-                 {/* Totals Summary */}
-                 <div className="flex justify-end">
-                    <div className="w-80 space-y-3 p-5 rounded-3xl bg-white/[0.02] border border-white/5">
-                       <div className="flex justify-between items-center text-[11px] font-medium text-white/20 uppercase">
-                          <span>มูลค่าสินค้า</span>
-                          <span>฿116,822.43</span>
-                       </div>
-                       <div className="flex justify-between items-center text-[11px] font-medium text-white/20 uppercase">
-                          <span>ภาษีมูลค่าเพิ่ม (7%)</span>
-                          <span>฿8,177.57</span>
-                       </div>
-                       <div className="pt-3 border-t border-white/5 flex justify-between items-center">
-                          <span className="text-[13px] font-medium text-nexus-teal uppercase">ยอดเงินสุทธิ</span>
-                          <span className="text-xl font-bold text-nexus-teal drop-shadow-neon">฿125,000.00</span>
-                       </div>
-                    </div>
-                 </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Sidebar - Tactical Info */}
-        <div className="space-y-3">
-           <GlassCard className="p-4 border-white/10 bg-warning/5">
-              <h4 className="text-[12px] font-medium text-warning uppercase tracking-widest mb-6">ลำดับการอนุมัติ</h4>
-              <div className="space-y-3">
-                 <ApprovalStep label="ผู้จัดการโครงการ" user="Wichai S." status="done" />
-                 <ApprovalStep label="ผู้จัดการฝ่ายจัดซื้อ" user="Areeya P." status="done" />
-                 <ApprovalStep label="ผู้ดูแลระบบสูงสุด" user="Admin" status="pending" />
-              </div>
-           </GlassCard>
-
-           <GlassCard className="p-4 border-white/10">
-              <h4 className="text-[12px] font-medium text-white/20 uppercase tracking-widest mb-6">เอกสารอ้างอิง</h4>
-              <div className="space-y-3">
-                 <DocItem label="ใบเสนอราคา" />
-                 <DocItem label="ใบขอซื้อ" />
-              </div>
-           </GlassCard>
-        </div>
+  const right = (
+    <GlassCard className="p-6 border-white/5 rounded-3xl bg-surface-1 shadow-2xl space-y-4 w-full h-fit">
+      <Row label="ยอดก่อนภาษี" value={`${formatCurrency(po.subTotal ?? 0)} บาท`} />
+      <Row label="ภาษีมูลค่าเพิ่ม" value={`${formatCurrency(po.vatAmount ?? 0)} บาท`} />
+      <div className="flex justify-between items-end pt-4 border-t border-white/5">
+        <span className="text-[12px] font-semibold text-white/70 uppercase tracking-widest">ยอดรวมสุทธิ</span>
+        <span className="text-3xl font-black font-mono tracking-tighter text-purple-300">{formatCurrency(po.totalAmount ?? po.netTotal ?? 0)} <span className="text-[14px]">THB</span></span>
       </div>
-    </div>
+      {Number(po.totalAmount) > 50000 && status === "PENDING_APPROVAL" && (
+        <p className="text-[11px] text-warning">ยอดเกิน 50,000 บาท ต้องให้ SUPERADMIN อนุมัติ</p>
+      )}
+    </GlassCard>
   );
+
+  return <NexusPageLayout header={header} leftContent={left} rightSidebar={right} />;
 }
 
-function ApprovalStep({ label, user, status }: { label: string, user: string, status: "done" | "pending" | "rejected" }) {
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-4 group">
-       <div className={cn(
-         "w-8 h-8 rounded-full flex items-center justify-center transition-all border",
-         status === "done" ? "bg-nexus-teal/10 text-nexus-teal border-nexus-teal/30 shadow-neon-teal" : "bg-white/5 text-white/10 border-white/10"
-       )}>
-          {status === "done" ? <CheckCircle2 size={16} /> : <Clock size={16} />}
-       </div>
-       <div>
-          <p className="text-[13px] font-medium text-white">{label}</p>
-          <p className="text-[11px] font-medium text-white/20 uppercase">{user}</p>
-       </div>
+    <div className="flex justify-between items-center gap-4 text-[12px]">
+      <span className="text-white/50 font-bold">{label}</span>
+      <span className="text-white font-mono font-bold text-right">{value}</span>
     </div>
   );
 }
-
-function DocItem({ label }: { label: string }) {
-  return (
-    <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 group hover:bg-white/[0.05] transition-all cursor-pointer">
-       <span className="text-xs font-bold text-white/60 group-hover:text-white transition-colors">{label}</span>
-       <ArrowUpRight size={14} className="text-white/20 group-hover:text-nexus-blue transition-colors" />
-    </div>
-  );
-}
-

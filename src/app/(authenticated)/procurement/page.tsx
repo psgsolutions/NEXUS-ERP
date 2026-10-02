@@ -48,6 +48,7 @@ import { doc, setDoc, query, collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase-client";
 import { createExpenseFromPO, createWHTFromExpense } from "@/lib/procurement-service";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { normalizePoStatus } from "@/lib/procurement-status";
 import { SecureDeleteAction } from "@/components/ui/SecureDeleteAction";
 
 import { SupplierModal } from "@/components/commerce/SupplierModal";
@@ -76,8 +77,35 @@ export default function ProcurementPage() {
 
   const { data: initialSuppliers } = useRealtimeCollection<any>('suppliers');
   const { data: initialPRs } = useRealtimeCollection<any>('purchase_requests');
-  const { data: initialGRs } = useRealtimeCollection<any>('goods_receipts');
-  const { data: initialPOs } = useRealtimeCollection<any>('purchase_orders');
+  // ใบรับสินค้า (บันทึกโดย /api/inventory/goods-receipt) และใบสั่งซื้ออยู่ใต้บริษัท
+  const { data: rawGRs } = useRealtimeCollection<any>(`companies/${companyId}/goods_receipts`);
+  const { data: rawPOs } = useRealtimeCollection<any>(`companies/${companyId}/purchase_orders`);
+  const toDay = (v: any) => !v ? "-" : typeof v === "string" ? v.split("T")[0] : v.seconds ? new Date(v.seconds * 1000).toISOString().split("T")[0] : "-";
+  const initialGRs = rawGRs.map((g: any) => ({
+    ...g,
+    docId: g.id,
+    id: g.grNo || g.grId || g.id,
+    po: g.poRef || "-",
+    supplier: g.supplier || "-",
+    date: toDay(g.receiptDate || g.createdAt),
+    warehouse: g.warehouse || "-",
+    status: "active",
+  }));
+  const PO_STATUS_LABEL: Record<string, string> = {
+    PENDING_APPROVAL: "รออนุมัติ", APPROVED: "อนุมัติแล้ว", PARTIAL_RECEIVED: "รับบางส่วน", RECEIVED: "รับครบแล้ว", CANCELLED: "ยกเลิก",
+  };
+  const initialPOs = rawPOs.map((po: any) => {
+    const st = normalizePoStatus(po.status);
+    return {
+      ...po,
+      docId: po.id,
+      id: po.poCode || po.documentNo || po.id,
+      vendor: po.supplierName || po.vendor || po.supplierId || "-",
+      totalAmount: Number(po.totalAmount ?? po.netTotal ?? 0),
+      normalizedStatus: st,
+      approval: PO_STATUS_LABEL[st],
+    };
+  });
   const [expensesList, setExpensesList] = useState<any[]>([]);
   const [whtList, setWhtList] = useState<any[]>([]);
 
@@ -297,7 +325,7 @@ export default function ProcurementPage() {
                  ) : activeTab === "receipt" ? (
                     <NexusTable headers={["เลขที่ GR", "อ้างอิง PO", "ชื่อคู่ค้า", "วันที่รับ", "คลังสินค้า", "สถานะ"]}>
                        {filteredGRs.map(gr => (
-                         <GRRow key={gr.id} {...gr} onClick={() => setIsReceiptOpen(true)} />
+                         <GRRow key={gr.docId} {...gr} />
                        ))}
                     </NexusTable>
                  ) : activeTab === "po" ? (
@@ -307,15 +335,15 @@ export default function ProcurementPage() {
                            <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">ไม่มีข้อมูลใบสั่งซื้อ</NexusTableCell>
                          </NexusTableRow>
                        ) : filteredPOs.map(po => (
-                         <PORow key={po.id} {...po} companyId={companyId || "COM-NEXUS-01"} onExpenseCreate={async () => {
+                         <PORow key={po.docId} {...po} companyId={companyId || "COM-NEXUS-01"} onExpenseCreate={async () => {
                             try {
-                              const expId = await createExpenseFromPO(po.id, companyId || "COM-NEXUS-01");
+                              const expId = await createExpenseFromPO(po.docId, companyId || "COM-NEXUS-01");
                               showToast(`สร้างใบสำคัญจ่ายสำเร็จ (${expId})`);
                               setActiveTab("expense");
                             } catch (e: any) {
                               showToast(e.message || "เกิดข้อผิดพลาด");
                             }
-                         }} onClick={() => setIsCreateOpen(true)} />
+                         }} onClick={() => router.push(`/procurement/po/${encodeURIComponent(po.docId)}`)} />
                        ))}
                     </NexusTable>
                  ) : activeTab === "expense" ? (
@@ -463,9 +491,9 @@ function PRRow({ id, requester, dept, project, amount, status, onClick }: { id: 
   );
 }
 
-function PORow({ id, vendor, totalAmount, amount, approval, status, companyId, onExpenseCreate, onClick }: any) {
-  const displayAmount = totalAmount ? `฿${totalAmount.toLocaleString()}` : (amount ? `฿${amount}` : "฿0.00");
-  const isApproved = approval === "อนุมัติแล้ว" || status === "Approved" || status === "Received";
+function PORow({ id, docId, vendor, totalAmount, amount, approval, normalizedStatus, companyId, onExpenseCreate, onClick }: any) {
+  const displayAmount = totalAmount ? `฿${Number(totalAmount).toLocaleString("th-TH", { minimumFractionDigits: 2 })}` : (amount ? `฿${amount}` : "฿0.00");
+  const isApproved = ["APPROVED", "PARTIAL_RECEIVED", "RECEIVED"].includes(normalizedStatus);
   
   return (
     <NexusTableRow onClick={onClick}>
@@ -477,18 +505,23 @@ function PORow({ id, vendor, totalAmount, amount, approval, status, companyId, o
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div className="flex items-center gap-2">
            <div className={cn("w-1.5 h-1.5 rounded-full", isApproved ? "bg-nexus-teal" : "bg-amber-400")} />
-           <span className="text-[11px] font-medium text-white/60">{approval || status}</span>
+           <span className="text-[11px] font-medium text-white/60">{approval}</span>
         </div>
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status={isApproved ? "active" : "pending"} label={isApproved ? "รอดำเนินการ" : "รออนุมัติ"} />
+        <StatusBadge
+          status={normalizedStatus === "CANCELLED" ? "danger" : normalizedStatus === "RECEIVED" ? "active" : isApproved ? "warning" : "pending"}
+          label={normalizedStatus === "CANCELLED" ? "ยกเลิก" : normalizedStatus === "RECEIVED" ? "รับครบแล้ว" : isApproved ? "รอรับสินค้า" : "รออนุมัติ"}
+        />
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-end gap-2">
           {onExpenseCreate && isApproved && (
              <button onClick={onExpenseCreate} className="px-2 py-1 text-[10px] bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500 hover:text-white transition-colors">รับ+ตั้งหนี้</button>
           )}
-          <SecureDeleteAction collectionName="purchase_orders" documentId={id} displayName={id} compact />
+          {normalizedStatus === "PENDING_APPROVAL" && (
+            <SecureDeleteAction collectionName={`companies/${companyId}/purchase_orders`} documentId={docId} displayName={id} compact />
+          )}
         </div>
       </NexusTableCell>
     </NexusTableRow>

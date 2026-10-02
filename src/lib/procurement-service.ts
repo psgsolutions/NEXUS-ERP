@@ -12,7 +12,7 @@ import { nexusSequenceEngine } from "./sequence-engine";
  * Procurement & Approval Intelligence
  */
 
-export async function approvePurchaseOrder(poId: string, userId: string, companyId: string) {
+export async function approvePurchaseOrder(poId: string, userId: string, companyId: string, sessionRole?: string) {
   const poRef = doc(db, `companies/${companyId}/purchase_orders`, poId);
   const userRef = doc(db, "users", userId);
 
@@ -26,7 +26,8 @@ export async function approvePurchaseOrder(poId: string, userId: string, company
 
     // Multi-level Approval Logic
     const amount = poData.totalAmount;
-    const role = userData?.role?.toUpperCase();
+    // role จากโปรไฟล์ ถ้าไม่มี (เช่น SUPERADMIN ที่ไม่มีเอกสาร users) ใช้ role จาก session
+    const role = (userData?.role || sessionRole || "").toUpperCase();
 
     if (amount > 50000 && role !== "SUPERADMIN") {
       throw new Error("ยอดเกิน 50,000 บาท ต้องให้ Superadmin อนุมัติเท่านั้น");

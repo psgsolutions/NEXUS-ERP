@@ -7,7 +7,8 @@ import {
   Search, 
   Filter, 
   ArrowUpRight, 
-  ArrowLeftRight, 
+  ArrowLeftRight,
+  ScanLine, 
   ScanBarcode, 
   Layout, 
   History, 
@@ -363,31 +364,46 @@ export default function InventoryPage() {
     type: "success" as "success" | "error" | "warning"
   });
 
-  // Fetch real-time stock logs scoped to companyId
+  // ประวัติการเคลื่อนไหวสต็อก: รวม 2 แหล่ง
+  //  - stockMovements (root, บันทึกจากหน้าจอเดิม)
+  //  - companies/{companyId}/stock_movements (stock engine: รับสินค้า, จัดเก็บเข้าชั้น, เบิก/โอน)
   useEffect(() => {
     if (!companyId) return;
-    const q = query(
-      collection(db, "stockMovements"),
-      where("companyId", "==", companyId),
-      orderBy("createdAt", "desc"),
-      limit(20)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items: any[] = [];
-      snapshot.forEach((doc) => {
-        items.push({ id: doc.id, ...doc.data() });
-      });
-      setMovements(items);
-      setMovementsError("");
-    }, (err) => {
+    let legacy: any[] = [];
+    let engine: any[] = [];
+    const toMs = (v: any) => v?.seconds ? v.seconds * 1000 : v instanceof Date ? v.getTime() : v ? new Date(v).getTime() : 0;
+    const publish = () => {
+      setMovements([...legacy, ...engine].sort((x, y) => toMs(y.createdAt) - toMs(x.createdAt)).slice(0, 30));
+    };
+    const onError = (err: any) => {
       // ไม่ใช้ข้อมูลจำลอง: แสดงข้อความแทน (เช่น index ของ Firestore ยังสร้างไม่เสร็จ)
       console.warn("Stock movements snapshot failed", err?.code || err);
-      setMovements([]);
       setMovementsError(err?.code === "failed-precondition"
         ? "ฐานข้อมูลยังสร้างดัชนี (index) สำหรับประวัติสต็อกไม่เสร็จ กรุณาลองใหม่ภายหลัง"
         : "โหลดประวัติการเคลื่อนไหวสินค้าไม่สำเร็จ");
-    });
-    return () => unsubscribe();
+    };
+
+    const unsubLegacy = onSnapshot(
+      query(collection(db, "stockMovements"), where("companyId", "==", companyId), orderBy("createdAt", "desc"), limit(20)),
+      (snapshot) => {
+        legacy = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setMovementsError("");
+        publish();
+      },
+      onError
+    );
+    const unsubEngine = onSnapshot(
+      query(collection(db, `companies/${companyId}/stock_movements`), orderBy("timestamp", "desc"), limit(20)),
+      (snapshot) => {
+        engine = snapshot.docs.map((d) => {
+          const data = d.data();
+          return { id: d.id, ...data, createdAt: data.timestamp, fromLocation: data.fromLocation || "EXTERNAL" };
+        });
+        publish();
+      },
+      onError
+    );
+    return () => { unsubLegacy(); unsubEngine(); };
   }, [companyId]);
 
   // Metric summaries (compact design to place directly on the header plane)
@@ -528,7 +544,7 @@ export default function InventoryPage() {
             <PillButton 
               variant="confirm"
               className="gap-1.5 shadow-neon-blue"
-              onClick={() => router.push("/inventory/out/new")}
+              onClick={() => router.push("/inventory/putaway")}
             >
               <ArrowLeftRight size={14} /> โอนย้ายสต็อก
             </PillButton>
@@ -538,6 +554,13 @@ export default function InventoryPage() {
               onClick={() => router.push("/inventory/in/new")}
             >
               <Plus size={14} /> รับสินค้าเข้าคลัง
+            </PillButton>
+            <PillButton
+              variant="glass"
+              className="gap-1.5"
+              onClick={() => router.push("/inventory/putaway")}
+            >
+              <ScanLine size={14} /> จัดเก็บเข้าชั้น
             </PillButton>
             {activeTab === "kits" ? (
               <PillButton 
@@ -920,7 +943,7 @@ export default function InventoryPage() {
                           <PillButton 
                             variant="glass" 
                             className="flex-1 text-sm border-nexus-blue/20 text-nexus-blue h-9 hover:"
-                            onClick={() => router.push("/inventory/out/new")}
+                            onClick={() => router.push("/inventory/putaway")}
                           >
                             <ArrowLeftRight size={12} /> โอนสต็อก
                           </PillButton>

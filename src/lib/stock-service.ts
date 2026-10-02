@@ -193,8 +193,8 @@ export async function processStockMovements(
             productId,
             companyId,
             status: snStatus,
-            lastReference: movement.referenceId,
-            lastLocation: toLocation || fromLocation,
+            lastReference: movement.referenceId || "",
+            lastLocation: toLocation || fromLocation || "",
             updatedAt: serverTimestamp(),
             isDeleted: false
           }, { merge: true });
@@ -204,7 +204,8 @@ export async function processStockMovements(
       // 3.5 Log Movement Record (Tenant Isolated)
       const moveRef = adminDb.collection(`companies/${companyId}/stock_movements`).doc(transactionId);
       transaction.set(moveRef, {
-        ...movement,
+        // Firestore ไม่รับค่า undefined (เช่น fromLocation/snList ที่ไม่ได้ส่งมา)
+        ...Object.fromEntries(Object.entries(movement).filter(([, v]) => v !== undefined)),
         transactionId,
         unitCost: currentUnitCost,
         totalValue,

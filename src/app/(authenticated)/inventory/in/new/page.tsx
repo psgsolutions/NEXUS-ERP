@@ -25,6 +25,7 @@ import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { apiFetch } from "@/lib/api-client";
 import { db } from "@/lib/firebase-client";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { listLocations } from "@/lib/warehouse-location";
 
 const DEFAULT_WAREHOUSE = "Main Warehouse";
 
@@ -52,8 +53,10 @@ export default function NewInventoryInPage() {
     note: ""
   });
 
+  // ตำแหน่งรับเข้า: ค่าเริ่มต้น = พื้นที่รับสินค้า (WH-xx-RECV) แล้วค่อยจัดเก็บเข้าชั้นที่หน้า Put-away
+  // หรือเลือกชั้นวางตรงถ้ารู้ตำแหน่งแล้ว
   const warehouseOptions = warehouses.length > 0
-    ? warehouses.map((w: any) => ({ value: w.code || w.warehouseCode || w.id, label: `${w.code || w.warehouseCode || w.id} : ${w.name || w.warehouseName || "-"}` }))
+    ? listLocations(warehouses).map((l) => ({ value: l.code, label: l.isReceiving ? `${l.label} (แนะนำ: จัดเก็บเข้าชั้นภายหลัง)` : `${l.code} • ${l.label}` }))
     : [{ value: DEFAULT_WAREHOUSE, label: "คลังหลัก (ยังไม่ได้ตั้งค่าคลังสินค้า)" }];
   const warehouseId = header.warehouseId || warehouseOptions[0].value;
 
@@ -145,7 +148,7 @@ export default function NewInventoryInPage() {
       }
 
       showAlert(`บันทึกรับสินค้าเข้าคลังเรียบร้อย (เลขที่ ${result.grId}) มูลค่า ${formatCurrency(result.totalAmount)}`);
-      router.push("/inventory");
+      router.push(String(warehouseId).endsWith("-RECV") ? "/inventory/putaway" : "/inventory");
     } catch (err: any) {
       console.error("[GR_SAVE_ERROR]", err);
       showAlert(`บันทึกไม่สำเร็จ: ${err.message}`);
@@ -238,7 +241,7 @@ export default function NewInventoryInPage() {
                 className="w-full h-9 rounded-full px-6"
               />
             </Field>
-            <Field label="คลังสินค้า (Warehouse)">
+            <Field label="ตำแหน่งรับเข้า (Location)">
               <PillSelect
                 value={warehouseId}
                 onChange={(e) => setHeader({...header, warehouseId: e.target.value})}

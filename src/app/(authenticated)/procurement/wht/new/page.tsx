@@ -3,11 +3,13 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldCheck, CheckCircle2, ArrowLeft, RefreshCw, FileText } from "lucide-react";
-import { PillButton, PillInput, GlassCard } from "@/components/ui/Base";
+import { PillButton, PillInput, PillSelect, GlassCard } from "@/components/ui/Base";
 import { useSystemDialog } from "@/context/DialogContext";
 import { auditService } from "@/services/audit.service";
 import { db } from "@/lib/firebase-client";
-import { doc, collection, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { nexusSequenceEngine } from "@/lib/sequence-engine";
 import { useAuth } from "@/context/AuthContext";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
@@ -29,6 +31,17 @@ export default function NewWHTPage() {
     filingDate: new Date().toISOString().split('T')[0]
   });
 
+  // ใบสำคัญจ่ายของบริษัทที่ยังไม่ออก 50 ทวิ
+  const { data: expenses } = useRealtimeCollection<any>(`companies/${currentCompanyId}/expenses`);
+  const openExpenses = expenses.filter((e: any) => !e.whtId);
+
+  // ฐานภาษีหัก ณ ที่จ่าย = ยอดก่อน VAT ของใบสำคัญจ่าย (แก้ได้)
+  const selectExpense = (id: string) => {
+    const exp = openExpenses.find((e: any) => e.id === id);
+    const base = Number(exp?.subTotal ?? exp?.netTotal ?? 0) || (Number(exp?.totalAmount || 0) - Number(exp?.vatAmount || 0));
+    setForm({ ...form, expenseId: id, baseAmount: Math.max(0, Math.round(base * 100) / 100) });
+  };
+
   const isDirty = form.expenseId !== "" || form.baseAmount > 0;
 
   const handleBack = async () => {
@@ -48,16 +61,29 @@ export default function NewWHTPage() {
 
     setIsSubmitting(true);
     try {
-      const taxAmount = form.baseAmount * (form.whtRate / 100);
-      const whtRef = doc(collection(db, "withholding_taxes"));
+      const expense = openExpenses.find((e: any) => e.id === form.expenseId);
+      const taxAmount = Math.round(form.baseAmount * (form.whtRate / 100) * 100) / 100;
+      const whtId = await nexusSequenceEngine("WHT", currentCompanyId);
       const whtData = {
-        ...form,
+        id: whtId,
+        whtId,
+        expenseId: form.expenseId,
+        expRef: form.expenseId,
+        vendor: expense?.supplierName || expense?.vendor || expense?.supplier || "",
+        supplierId: expense?.supplierId || "",
+        baseAmount: form.baseAmount,
+        whtRate: form.whtRate,
         taxAmount,
+        status: "pending",
+        filingDate: form.filingDate,
         companyId: currentCompanyId,
+        createdBy: user.uid,
         createdAt: serverTimestamp(),
+        isDeleted: false,
       };
-      await setDoc(whtRef, whtData);
-      await auditService.logCreate(user.uid, currentCompanyId, "PROCURE_WHT", "NEW", whtData);
+      await setDoc(doc(db, `companies/${currentCompanyId}/withholding_taxes`, whtId), whtData);
+      await updateDoc(doc(db, `companies/${currentCompanyId}/expenses`, form.expenseId), { whtId, whtAmount: taxAmount, updatedAt: serverTimestamp() });
+      await auditService.logCreate(user.uid, currentCompanyId, "PROCURE_WHT", whtId, whtData);
       
       showAlert("บันทึกหนังสือรับรองการหักภาษี ณ ที่จ่ายเรียบร้อยแล้ว", "System Notification", "info");
       router.push("/procurement?tab=wht");
@@ -113,15 +139,19 @@ export default function NewWHTPage() {
         <div className="space-y-8 max-w-3xl">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Field label="เลขที่เอกสาร 50 ทวิ (WHT Document Number)">
-              <PillInput value={form.id || "-"} disabled className="w-full h-9 px-6 rounded-full font-mono text-amber-500 border-amber-500/30 bg-white/[0.02]" />
+              <PillInput value="ออกเลขเมื่อบันทึก" disabled className="w-full h-9 px-6 rounded-full font-mono text-amber-500 border-amber-500/30 bg-white/[0.02]" />
             </Field>
             <Field label="อ้างอิงใบสำคัญจ่าย * (Expense Reference)" required>
-              <PillInput 
-                value={form.expenseId} 
-                onChange={(e) => setForm({...form, expenseId: e.target.value})}
-                placeholder="เช่น EXP-2604-001..."
-                className="w-full h-9 px-6 rounded-full font-mono text-white/90 bg-white/[0.02]" 
-              />
+              <PillSelect
+                value={form.expenseId}
+                onChange={(e) => selectExpense(e.target.value)}
+                className="w-full h-9 px-6 rounded-full font-mono text-white/90 bg-white/[0.02]"
+              >
+                <option value="">{openExpenses.length === 0 ? "ไม่มีใบสำคัญจ่ายที่ยังไม่ออก 50 ทวิ" : "เลือกใบสำคัญจ่าย..."}</option>
+                {openExpenses.map((exp: any) => (
+                  <option key={exp.id} value={exp.id}>{exp.expenseId || exp.id} • {exp.supplierName || exp.vendor || "-"}</option>
+                ))}
+              </PillSelect>
             </Field>
           </div>
 

@@ -79,6 +79,7 @@ export async function createExpenseFromPO(poId: string, companyId: string) {
     id: expId,
     expenseId: expId,
     poRef: poId,
+    vendor: poData.supplierName || poData.vendor || "",
     documentType: "Expense",
     status: "Awaiting Payment", // รอจ่ายเงิน
     issuedAt: serverTimestamp(),
@@ -107,13 +108,16 @@ export async function createWHTFromExpense(expId: string, companyId: string, wht
 
   // Parse total string if necessary, fallback to 0
   let baseAmount = 0;
-  if (typeof expData.totalAmount === 'number') {
-    baseAmount = expData.totalAmount;
+  // ฐานภาษีหัก ณ ที่จ่าย = ยอดก่อน VAT (ไม่ใช่ยอดรวม VAT)
+  if (typeof expData.subTotal === 'number') {
+    baseAmount = expData.subTotal;
+  } else if (typeof expData.totalAmount === 'number') {
+    baseAmount = expData.totalAmount - (Number(expData.vatAmount) || 0);
   } else if (typeof expData.amount === 'string') {
     baseAmount = parseFloat(expData.amount.replace(/[^0-9.-]+/g,"")) || 0;
   }
 
-  const whtAmount = (baseAmount * whtRate) / 100;
+  const whtAmount = Math.round(baseAmount * whtRate) / 100;
 
   // Run in transaction to update Expense status and create WHT
   await runTransaction(db, async (transaction) => {
@@ -121,7 +125,9 @@ export async function createWHTFromExpense(expId: string, companyId: string, wht
       id: whtId,
       whtId,
       expRef: expId,
-      vendor: expData.vendor || expData.supplier || "Unknown",
+      vendor: expData.supplierName || expData.vendor || expData.supplier || "",
+      supplierId: expData.supplierId || "",
+      taxAmount: whtAmount,
       documentType: "Withholding Tax (50 Tawi)",
       whtRate,
       baseAmount,
@@ -135,7 +141,9 @@ export async function createWHTFromExpense(expId: string, companyId: string, wht
     transaction.update(expRef, {
       status: "Paid (WHT Deducted)",
       paymentDate: serverTimestamp(),
-      whtRef: whtId
+      whtRef: whtId,
+      whtId,
+      whtAmount
     });
   });
 

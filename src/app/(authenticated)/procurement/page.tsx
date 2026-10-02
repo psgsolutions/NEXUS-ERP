@@ -54,7 +54,6 @@ import { SecureDeleteAction } from "@/components/ui/SecureDeleteAction";
 import { SupplierModal } from "@/components/commerce/SupplierModal";
 import { PurchaseRequestModal } from "@/components/commerce/PurchaseRequestModal";
 import { PurchaseOrderModal } from "@/components/commerce/PurchaseOrderModal";
-import { GoodsReceiptModal } from "@/components/commerce/GoodsReceiptModal";
 import { ExpenseModal } from "@/components/commerce/ExpenseModal";
 import { WHTModal } from "@/components/commerce/WHTModal";
 

@@ -75,7 +75,7 @@ function NewInventoryInScreen() {
   const openPOs = [
     ...rootPOs.map((po: any) => ({ ...po, _path: `purchase_orders/${po.id}` })),
     ...companyPOs.map((po: any) => ({ ...po, _path: `companies/${companyId}/purchase_orders/${po.id}` })),
-  ].filter((po: any) => ["APPROVED", "PARTIAL_RECEIVED"].includes(normalizePoStatus(po.status))); // รับได้เฉพาะใบที่อนุมัติแล้ว
+  ].filter((po: any) => !po.isSample && ["APPROVED", "PARTIAL_RECEIVED"].includes(normalizePoStatus(po.status))); // รับได้เฉพาะใบจริงที่อนุมัติแล้ว (ไม่รวมข้อมูลตัวอย่าง)
   const poLabel = (po: any) => po.poCode || po.documentNo || po.poNo || po.id;
 
   const supplierName = (id: string) => {

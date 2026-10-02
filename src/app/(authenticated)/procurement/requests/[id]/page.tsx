@@ -88,7 +88,10 @@ export default function PurchaseRequestDetailPage() {
         {status === "PENDING_APPROVAL" && !canApprove && (
           <span className="text-[11px] text-white/40">รอผู้มีสิทธิ์อนุมัติ (ผู้ขอซื้ออนุมัติใบของตัวเองไม่ได้)</span>
         )}
-        {status === "APPROVED" && (
+        {pr.isSample && status === "APPROVED" && (
+          <span className="text-[11px] text-warning">ข้อมูลตัวอย่าง: สร้างใบสั่งซื้อจริงไม่ได้</span>
+        )}
+        {!pr.isSample && status === "APPROVED" && (
           <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" onClick={() => router.push(`/procurement/orders/new?pr=${encodeURIComponent(prDocId)}`)}>
             <ShoppingCart size={14} className="mr-1.5" /> สร้างใบสั่งซื้อจากใบขอซื้อนี้
           </PillButton>

@@ -503,7 +503,7 @@ function PRRow({ id, requester, dept, project, amount, status, onClick }: { id: 
   );
 }
 
-function PORow({ id, docId, vendor, totalAmount, amount, approval, normalizedStatus, companyId, onExpenseCreate, onClick }: any) {
+function PORow({ id, docId, vendor, totalAmount, amount, approval, normalizedStatus, isSample, companyId, onExpenseCreate, onClick }: any) {
   const displayAmount = totalAmount ? `฿${Number(totalAmount).toLocaleString("th-TH", { minimumFractionDigits: 2 })}` : (amount ? `฿${amount}` : "฿0.00");
   const isApproved = ["APPROVED", "PARTIAL_RECEIVED", "RECEIVED"].includes(normalizedStatus);
   
@@ -528,7 +528,7 @@ function PORow({ id, docId, vendor, totalAmount, amount, approval, normalizedSta
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-end gap-2">
-          {onExpenseCreate && isApproved && (
+          {onExpenseCreate && isApproved && !isSample && (
              <button onClick={onExpenseCreate} className="px-2 py-1 text-[10px] bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500 hover:text-white transition-colors">รับ+ตั้งหนี้</button>
           )}
           {normalizedStatus === "PENDING_APPROVAL" && (
@@ -540,7 +540,7 @@ function PORow({ id, docId, vendor, totalAmount, amount, approval, normalizedSta
   );
 }
 
-function ExpenseRow({ id, poRef, vendor, supplier, totalAmount, amount, status, companyId, onWhtCreate, onClick }: any) {
+function ExpenseRow({ id, poRef, vendor, supplier, totalAmount, amount, status, isSample, companyId, onWhtCreate, onClick }: any) {
   const displayVendor = vendor || supplier || "-";
   const displayAmount = totalAmount ? `฿${totalAmount.toLocaleString()}` : (amount ? `฿${amount}` : "฿0.00");
   const isPaid = status?.includes("Paid") || status === "paid";
@@ -557,7 +557,7 @@ function ExpenseRow({ id, poRef, vendor, supplier, totalAmount, amount, status, 
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-end gap-2">
-          {onWhtCreate && !isPaid && (
+          {onWhtCreate && !isPaid && !isSample && (
              <button onClick={onWhtCreate} className="px-2 py-1 text-[10px]  text-nexus-blue rounded hover:bg-nexus-blue hover:text-white transition-colors">จ่าย+หัก WHT</button>
           )}
           <SecureDeleteAction collectionName="expenses" documentId={id} displayName={id} compact />

@@ -97,7 +97,10 @@ export default function PODetailPage() {
             <CheckCircle2 size={14} className="mr-1.5" /> อนุมัติ
           </PillButton>
         )}
-        {(status === "APPROVED" || status === "PARTIAL_RECEIVED") && (
+        {po.isSample && (
+          <span className="text-[11px] text-warning">ข้อมูลตัวอย่าง: รับสินค้าเข้าคลังไม่ได้</span>
+        )}
+        {!po.isSample && (status === "APPROVED" || status === "PARTIAL_RECEIVED") && (
           <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" onClick={() => router.push(`/inventory/in/new?po=${encodeURIComponent(path!)}`)}>
             <Truck size={14} className="mr-1.5" /> รับสินค้าเข้าคลัง
           </PillButton>

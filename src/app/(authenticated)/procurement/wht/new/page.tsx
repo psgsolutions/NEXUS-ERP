@@ -33,7 +33,7 @@ export default function NewWHTPage() {
 
   // ใบสำคัญจ่ายของบริษัทที่ยังไม่ออก 50 ทวิ
   const { data: expenses } = useRealtimeCollection<any>(`companies/${currentCompanyId}/expenses`);
-  const openExpenses = expenses.filter((e: any) => !e.whtId);
+  const openExpenses = expenses.filter((e: any) => !e.whtId && !e.isSample);
 
   // ฐานภาษีหัก ณ ที่จ่าย = ยอดก่อน VAT ของใบสำคัญจ่าย (แก้ได้)
   const selectExpense = (id: string) => {

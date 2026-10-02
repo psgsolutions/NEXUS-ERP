@@ -18,7 +18,7 @@ import {
 import { useInventory } from "@/hooks/useInventory";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { Plus, Trash2, FileText, Search, ChevronDown, MapPin } from "lucide-react";
-import { Warehouse3D, mockWarehouses } from "./Warehouse3D";
+import { Warehouse3D } from "./Warehouse3D";
 import { useSystemDialog } from "@/context/DialogContext";
 
 interface InventoryInModalProps {

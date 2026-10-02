@@ -48,9 +48,7 @@ import {
   NexusDataField
 } from "@/components/ui/Base";
 import { DocumentFlowStepper } from "@/components/ui/DocumentFlowStepper";
-import { InventoryInModal } from "@/components/inventory/InventoryInModal";
 import { StockTransferModal } from "@/components/inventory/StockTransferModal";
-import { AddProductSheet } from "@/components/inventory/AddProductSheet";
 import { Warehouse3D } from "@/components/inventory/Warehouse3D";
 import { useInventory } from "@/hooks/useInventory";
 import { useRouter } from "next/navigation";

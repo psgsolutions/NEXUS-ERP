@@ -122,16 +122,16 @@ export async function processStockMovements(
       });
     }
 
-    const balanceKeys = new Set<string>();
+    const balanceKeys = new Map<string, { location: string; productId: string }>();
     for (const m of movements) {
-      if (m.fromLocation) balanceKeys.add(`${m.fromLocation}_${m.productId}`);
-      if (m.toLocation) balanceKeys.add(`${m.toLocation}_${m.productId}`);
+      if (m.fromLocation) balanceKeys.set(`${m.fromLocation}_${m.productId}`, { location: m.fromLocation, productId: m.productId });
+      if (m.toLocation) balanceKeys.set(`${m.toLocation}_${m.productId}`, { location: m.toLocation, productId: m.productId });
     }
-    const balances = new Map<string, { ref: DocumentReference; quantity: number }>();
-    for (const key of Array.from(balanceKeys)) {
+    const balances = new Map<string, { ref: DocumentReference; quantity: number; location: string; productId: string }>();
+    for (const [key, info] of Array.from(balanceKeys.entries())) {
       const ref = adminDb.collection(`companies/${companyId}/inventory_balance`).doc(key);
       const snap = await transaction.get(ref);
-      balances.set(key, { ref, quantity: snap.exists ? (snap.data()?.quantity ?? 0) : 0 });
+      balances.set(key, { ref, quantity: snap.exists ? (snap.data()?.quantity ?? 0) : 0, ...info });
     }
 
     // 3. Apply movements in order against the in-memory state
@@ -226,7 +226,11 @@ export async function processStockMovements(
 
     // 4. Write location balances and product masters
     for (const balance of Array.from(balances.values())) {
+      // companyId/location/productId ให้หน้าผังคลัง query ตามบริษัทและจัดกลุ่มตามตำแหน่งได้
       transaction.set(balance.ref, {
+        companyId,
+        location: balance.location,
+        productId: balance.productId,
         quantity: balance.quantity,
         updatedAt: serverTimestamp(),
         isDeleted: false

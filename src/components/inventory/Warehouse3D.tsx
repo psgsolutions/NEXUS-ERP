@@ -1,6 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { db } from "@/lib/firebase-client";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { cn, PillButton, PillInput, PillSelect } from "@/components/ui/Base";
 import { useSystemDialog } from "@/context/DialogContext";
 import { 
@@ -34,39 +38,17 @@ interface Rack {
   level: number;
   occupancy: number;
   items: string[];
+  capacity?: number; // จำนวนหน่วยสูงสุดของชั้นวาง (ใช้คำนวณ % ความจุ)
 }
 
 interface Warehouse {
-  id: string;
+  id: string;     // รหัสคลัง (เช่น WH-01) ใช้เป็นตำแหน่ง WH-01-A1
+  docId: string;  // ID เอกสารใน collection warehouses
   name: string;
   gridCols: number;
   gridRows: number;
   racks: Rack[];
 }
-
-export const mockWarehouses: Warehouse[] = [
-  {
-    id: "WH-01",
-    name: "คลังสินค้าหลัก",
-    gridCols: 12,
-    gridRows: 8,
-    racks: [
-      { id: "A1", x: 2, y: 2, width: 2, height: 1, level: 4, occupancy: 85, items: ["Aruba AP-505", "Cisco C9200", "สาย LAN CAT6", "ท่อร้อยสายไฟ"] },
-      { id: "A2", x: 5, y: 2, width: 2, height: 1, level: 3, occupancy: 40, items: ["ตู้ไฟ MDB", "เบรกเกอร์", "ตู้แร็ค (Rack 42U)"] },
-      { id: "B1", x: 2, y: 5, width: 1, height: 3, level: 5, occupancy: 100, items: ["สายไฟ VAF 2x2.5", "สายไฟ THW 1x1.5", "เต้ารับคู่มีกราวด์", "หน้ากากสวิตช์", "หลอดไฟ LED"] },
-      { id: "B2", x: 8, y: 4, width: 3, height: 2, level: 2, occupancy: 10, items: ["Spare Parts", "อุปกรณ์เสริมช่าง"] },
-    ]
-  },
-  {
-    id: "WH-02",
-    name: "คลังสินค้าย่อย (Branch 1 - Storage)",
-    gridCols: 8,
-    gridRows: 8,
-    racks: [
-      { id: "C1", x: 3, y: 3, width: 3, height: 1, level: 3, occupancy: 20, items: ["คีย์บอร์ด", "เมาส์", "ปลั๊กพ่วง"] }
-    ]
-  }
-];
 
 export function Warehouse3D({ 
   pickerMode = false, 
@@ -81,8 +63,64 @@ export function Warehouse3D({
   locatorQuery?: string;
   setLocatorQuery?: (query: string) => void;
 } = {}) {
-  const [warehouses, setWarehouses] = useState<Warehouse[]>(mockWarehouses);
-  const [activeWhId, setActiveWhId] = useState<string>(initialWarehouseId || "WH-01");
+  const { companyId } = useAuth();
+  const { showAlert } = useSystemDialog();
+
+  // ข้อมูลจริง: ผังคลัง (warehouses) + ยอดคงเหลือตามตำแหน่ง (inventory_balance) + ชื่อสินค้า
+  const { data: dbWarehouses, loading: warehousesLoading } = useRealtimeCollection<any>("warehouses");
+  const { data: balances } = useRealtimeCollection<any>(`companies/${companyId}/inventory_balance`);
+  const { data: products } = useRealtimeCollection<any>("products");
+
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [activeWhId, setActiveWhId] = useState<string>(initialWarehouseId || "");
+
+  useEffect(() => {
+    const productName = new Map<string, string>(products.map((p: any) => [p.id, p.name || p.productName || p.sku || p.id]));
+    setWarehouses(dbWarehouses.map((w: any) => {
+      const code = w.code || w.warehouseCode || w.id;
+      return {
+        id: code,
+        docId: w.id,
+        name: w.name || w.warehouseName || code,
+        gridCols: Number(w.gridCols) || 12,
+        gridRows: Number(w.gridRows) || 8,
+        racks: (w.racks || []).map((r: any) => {
+          const loc = `${code}-${r.id}`;
+          const rows = balances.filter((b: any) => Number(b.quantity) > 0 && (b.location === loc || String(b.location || "").startsWith(`${loc}-`)));
+          const qty = rows.reduce((sum: number, b: any) => sum + Number(b.quantity), 0);
+          const capacity = Number(r.capacity) || 0;
+          return {
+            id: r.id, x: r.x, y: r.y, width: r.width, height: r.height, level: r.level, capacity,
+            occupancy: capacity > 0 ? Math.min(100, Math.round((qty / capacity) * 100)) : 0,
+            items: rows.map((b: any) => `${productName.get(b.productId) || b.productId} (${Number(b.quantity).toLocaleString()})`),
+          };
+        }),
+      };
+    }));
+  }, [dbWarehouses, balances, products]);
+
+  // บันทึกผังคลัง (เก็บเฉพาะโครงสร้าง ไม่เก็บรายการสินค้า/ความจุที่คำนวณจากสต็อก)
+  const persistWarehouse = async (wh: Warehouse) => {
+    try {
+      await setDoc(doc(db, "warehouses", wh.docId), {
+        companyId,
+        code: wh.id,
+        name: wh.name,
+        gridCols: wh.gridCols,
+        gridRows: wh.gridRows,
+        racks: wh.racks.map(({ id, x, y, width, height, level, capacity }) => ({ id, x, y, width, height, level, capacity: capacity || 0 })),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } catch (err: any) {
+      console.error("[WAREHOUSE_SAVE_ERROR]", err);
+      showAlert(`บันทึกผังคลังไม่สำเร็จ: ${err.message}`);
+    }
+  };
+  const applyWarehouses = (next: Warehouse[]) => {
+    setWarehouses(next);
+    const changed = next.find((w) => w.id === activeWh?.id);
+    if (changed) persistWarehouse(changed);
+  };
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [viewAngle, setViewAngle] = useState<"isometric" | "blueprint">("isometric");
   const [selectedRackId, setSelectedRackId] = useState<string | null>(null);
@@ -98,7 +136,7 @@ export function Warehouse3D({
   const [editingRack, setEditingRack] = useState<Partial<Rack> | null>(null);
 
   const activeWh = warehouses.find(w => w.id === activeWhId) || warehouses[0];
-  const selectedRack = activeWh.racks.find(r => r.id === selectedRackId);
+  const selectedRack = activeWh?.racks.find(r => r.id === selectedRackId);
 
   // Search filter matching
   const doesRackMatchLocator = (rack: Rack) => {
@@ -110,17 +148,17 @@ export function Warehouse3D({
     );
   };
 
-  const handleAddWarehouse = () => {
-    if (!newWhName.trim()) return;
-    const newWh: Warehouse = {
-      id: `WH-${Date.now().toString().slice(-4)}`,
-      name: newWhName,
-      gridCols: 10,
-      gridRows: 8,
-      racks: []
-    };
-    setWarehouses([...warehouses, newWh]);
-    setActiveWhId(newWh.id);
+  const handleAddWarehouse = async () => {
+    if (!newWhName.trim() || !companyId) return;
+    // รหัสคลังถัดไป WH-01, WH-02, ...
+    const nextNo = warehouses.reduce((max, w) => Math.max(max, Number(String(w.id).match(/(\d+)$/)?.[1] || 0)), 0) + 1;
+    const code = `WH-${String(nextNo).padStart(2, "0")}`;
+    const newWh: Warehouse = { id: code, docId: `${companyId}_${code}`, name: newWhName.trim(), gridCols: 10, gridRows: 8, racks: [] };
+    await setDoc(doc(db, "warehouses", newWh.docId), {
+      companyId, code, name: newWh.name, gridCols: newWh.gridCols, gridRows: newWh.gridRows, racks: [],
+      isActive: true, isDeleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    });
+    setActiveWhId(code);
     setShowNewWhForm(false);
     setNewWhName("");
   };
@@ -128,11 +166,11 @@ export function Warehouse3D({
   const handleUpdateWarehouseGrid = (cols: number, rows: number) => {
     const safeCols = Math.max(4, Math.min(24, cols));
     const safeRows = Math.max(4, Math.min(20, rows));
-    setWarehouses(warehouses.map(w => w.id === activeWhId ? { ...w, gridCols: safeCols, gridRows: safeRows } : w));
+    applyWarehouses(warehouses.map(w => w.id === activeWh?.id ? { ...w, gridCols: safeCols, gridRows: safeRows } : w));
   };
 
   const handleSelectGridCell = (x: number, y: number) => {
-    if (mode !== "edit") return;
+    if (mode !== "edit" || !activeWh) return;
     
     // Check if cell has an existing rack
     const clickedRack = activeWh.racks.find(r => 
@@ -160,7 +198,7 @@ export function Warehouse3D({
   };
 
   const handleSaveRack = () => {
-    if (!editingRack || !editingRack.id) return;
+    if (!editingRack || !editingRack.id || !activeWh) return;
     
     // Validate bounds
     const rackId = editingRack.id.trim().toUpperCase();
@@ -176,7 +214,7 @@ export function Warehouse3D({
     }
 
     const updatedWarehouses = warehouses.map(wh => {
-      if (wh.id !== activeWhId) return wh;
+      if (wh.id !== activeWh.id) return wh;
       
       const newRacks = [...wh.racks];
       const existingIdx = newRacks.findIndex(r => r.id === editingRack.id || (r.x === x && r.y === y && r.id !== editingRack.id));
@@ -189,7 +227,8 @@ export function Warehouse3D({
         height: h,
         level: lvl,
         occupancy: editingRack.occupancy || 0,
-        items: editingRack.items || []
+        items: editingRack.items || [],
+        capacity: editingRack.capacity || 0
       };
 
       if (existingIdx >= 0 && newRacks[existingIdx].id === rackId) {
@@ -201,17 +240,17 @@ export function Warehouse3D({
       return { ...wh, racks: newRacks };
     });
     
-    setWarehouses(updatedWarehouses);
+    applyWarehouses(updatedWarehouses);
     setEditingRack(null);
     setSelectedGridCell(null);
   };
 
   const handleDeleteRack = (rackId: string) => {
     const updated = warehouses.map(wh => {
-      if (wh.id !== activeWhId) return wh;
+      if (wh.id !== activeWh?.id) return wh;
       return { ...wh, racks: wh.racks.filter(r => r.id !== rackId) };
     });
-    setWarehouses(updated);
+    applyWarehouses(updated);
     setEditingRack(null);
     setSelectedGridCell(null);
     if (selectedRackId === rackId) setSelectedRackId(null);
@@ -219,14 +258,14 @@ export function Warehouse3D({
 
   // Visual adjustment helpers in edit mode
   const adjustRackPos = (dx: number, dy: number) => {
-    if (!editingRack) return;
+    if (!editingRack || !activeWh) return;
     const newX = Math.max(1, Math.min(activeWh.gridCols - (editingRack.width || 1) + 1, (editingRack.x || 1) + dx));
     const newY = Math.max(1, Math.min(activeWh.gridRows - (editingRack.height || 1) + 1, (editingRack.y || 1) + dy));
     setEditingRack({ ...editingRack, x: newX, y: newY });
   };
 
   const adjustRackSize = (dw: number, dh: number) => {
-    if (!editingRack) return;
+    if (!editingRack || !activeWh) return;
     const newW = Math.max(1, Math.min(activeWh.gridCols - (editingRack.x || 1) + 1, (editingRack.width || 1) + dw));
     const newH = Math.max(1, Math.min(activeWh.gridRows - (editingRack.y || 1) + 1, (editingRack.height || 1) + dh));
     setEditingRack({ ...editingRack, width: newW, height: newH });
@@ -237,6 +276,23 @@ export function Warehouse3D({
     const newL = Math.max(1, Math.min(8, (editingRack.level || 1) + dl));
     setEditingRack({ ...editingRack, level: newL });
   };
+
+  if (!activeWh) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 p-10 rounded-2xl bg-black/30 border border-white/5 text-center">
+        <Layers className="text-nexus-teal" size={28} />
+        <p className="text-sm text-white/60">
+          {warehousesLoading ? "กำลังโหลดผังคลังสินค้า..." : "ยังไม่มีข้อมูลคลังสินค้าของบริษัท"}
+        </p>
+        {!warehousesLoading && !pickerMode && (
+          <div className="flex items-center gap-2">
+            <PillInput value={newWhName} onChange={e => setNewWhName(e.target.value)} placeholder="ชื่อคลังสินค้า..." className="w-56 h-10 text-xs" />
+            <PillButton onClick={handleAddWarehouse} className="h-10 px-4 text-xs" variant="save">สร้างคลัง</PillButton>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col space-y-6 animate-in fade-in duration-500">
@@ -771,6 +827,18 @@ export function Warehouse3D({
                                  <div className="flex-1 text-center font-black text-white text-xs">{editingRack.level} ชั้น</div>
                                  <button onClick={() => adjustLevels(1)} className="h-10 w-12 hover:bg-white/5 text-white font-bold">+</button>
                               </div>
+                           </div>
+
+                           {/* Capacity: ใช้คำนวณ % ความจุจากยอดสต็อกจริงในตำแหน่งนี้ */}
+                           <div className="space-y-1.5">
+                              <label className="text-[9px] font-semibold text-white/40 uppercase">ความจุ (หน่วยสินค้าสูงสุด, 0 = ไม่กำหนด)</label>
+                              <PillInput
+                                 type="number"
+                                 min={0}
+                                 value={editingRack.capacity ?? 0}
+                                 onChange={e => setEditingRack({ ...editingRack, capacity: Math.max(0, Number(e.target.value) || 0) })}
+                                 className="w-full h-10 text-xs font-mono"
+                              />
                            </div>
 
                            {/* Action Buttons */}

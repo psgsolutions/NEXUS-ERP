@@ -29,7 +29,7 @@ import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, collection } from "firebase/firestore";
 import { saveToFirestore } from "@/lib/firebaseUtils";
-import { Warehouse3D, mockWarehouses } from "./Warehouse3D";
+import { Warehouse3D } from "./Warehouse3D";
 import { useSystemDialog } from "@/context/DialogContext";
 import { SmartScanner } from "@/components/shared/SmartScanner";
 

@@ -29,16 +29,13 @@ export function resolveSequenceFormat(prefix: string, formatStr: string | undefi
   const MM = (now.getMonth() + 1).toString().padStart(2, '0');
   const DD = now.getDate().toString().padStart(2, '0');
 
-  // Parse Date Tokens (Case Insensitive)
+  // Parse Date Tokens (Case Insensitive) รวมถึงแบบผสมในวงเล็บเดียว เช่น [BBMM], [YYMM], [YYYYMMDD]
+  const DATE_PARTS: Record<string, string> = { YYYY, YY, BBBB, BB, MM, DD };
   const resolvedFormat = format
     .replace(/\[PREFIX\]/gi, prefix)
-    .replace(/\[YYYY\]/gi, YYYY)
-    .replace(/\[YYMM\]/gi, `${YY}${MM}`) // Legacy support
-    .replace(/\[YY\]/gi, YY)
-    .replace(/\[BBBB\]/gi, BBBB)
-    .replace(/\[BB\]/gi, BB)
-    .replace(/\[MM\]/gi, MM)
-    .replace(/\[DD\]/gi, DD);
+    .replace(/\[((?:YYYY|YY|BBBB|BB|MM|DD)+)\]/gi, (_match, token: string) =>
+      (token.toUpperCase().match(/YYYY|YY|BBBB|BB|MM|DD/g) || []).map((part) => DATE_PARTS[part]).join("")
+    );
 
   // Extract Zero Pad Token (e.g. [0000] or 0000)
   const zeroMatch = resolvedFormat.match(/\[(0+)\]/) || resolvedFormat.match(/(0{3,})/);

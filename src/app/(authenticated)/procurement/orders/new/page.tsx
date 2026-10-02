@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { Suspense, useState, useMemo, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSystemDialog } from "@/context/DialogContext";
 import { 
   Plus, 
@@ -40,7 +40,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { nexusSequenceEngine } from "@/lib/sequence-engine";
 import { db } from "@/lib/firebase-client";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 
 const ORDER_TYPES: { id: POType, label: string, icon: any }[] = [
   { id: 'STOCK', label: 'สต็อกพัสดุ', icon: <Package size={14} /> },
@@ -67,8 +67,10 @@ const INITIAL_FORM = {
   terms: "1. สินค้าต้องจัดส่งในสภาพสมบูรณ์และถูกต้องตามรุ่นที่สั่งซื้อ\n2. บรรจุภัณฑ์ต้องเหมาะสมกับการขนส่งเพื่อป้องกันการชำรุดเสียหาย\n3. กรุณาแนบใบกำกับภาษี/ใบส่งสินค้าและสำเนาใบสั่งซื้อมาพร้อมกับสินค้า"
 };
 
-export default function NewPurchaseOrderPage() {
+function NewPurchaseOrderScreen() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const prId = searchParams.get("pr") || "";
   const { showAlert, showConfirm } = useSystemDialog();
   const { user, companyId } = useAuth();
 
@@ -81,6 +83,25 @@ export default function NewPurchaseOrderPage() {
   const [form, setForm] = useState({ ...INITIAL_FORM, id: "ออกเลขเมื่อบันทึก" });
   const [items, setItems] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
+
+  // สร้างจากใบขอซื้อที่อนุมัติแล้ว (?pr=PR-xxx): กรอกผู้จำหน่าย โครงการ และรายการให้
+  useEffect(() => {
+    if (!prId || !companyId) return;
+    getDoc(doc(db, `companies/${companyId}/purchase_requests`, prId)).then((snap) => {
+      const pr: any = snap.data();
+      if (!pr) return;
+      setForm((prev) => ({
+        ...prev,
+        order_type: pr.projectId ? "PROJECT" : prev.order_type,
+        project_id: pr.projectId || "",
+        department: pr.department || "",
+        supplier: pr.suggestedSupplierId || "",
+        reference: pr.prCode || prId,
+        delivery_date: pr.requiredDate || prev.delivery_date,
+      }));
+      setItems((pr.items || []).map((it: any) => ({ ...it, _costInitFor: it.productId })));
+    });
+  }, [prId, companyId]);
 
   // ใบสั่งซื้อ: ตอนเลือกสินค้า ตารางใส่ราคาขาย → เปลี่ยนเป็นต้นทุนเฉลี่ยปัจจุบันเป็นราคาซื้อเริ่มต้น (แก้ได้)
   const handleItemsChange = (newItems: any[]) => {
@@ -140,6 +161,7 @@ export default function NewPurchaseOrderPage() {
         supplierId: form.supplier,
         supplierName: supplier?.name || supplier?.supplierName || form.supplier,
         reference: form.reference,
+        prRef: prId || "",
         projectId: form.project_id || "",
         projectName: project ? (project.title || project.name || project.projectId || "") : "",
         department: form.department || "",
@@ -167,6 +189,11 @@ export default function NewPurchaseOrderPage() {
         updatedAt: serverTimestamp(),
         isDeleted: false,
       });
+      if (prId) {
+        await updateDoc(doc(db, `companies/${companyId}/purchase_requests`, prId), {
+          status: "CONVERTED", poCode, updatedAt: serverTimestamp(),
+        });
+      }
       showAlert(`สร้างใบสั่งซื้อสำเร็จ (${poCode}) รออนุมัติ`);
       router.push(`/procurement/po/${encodeURIComponent(poCode)}`);
     } catch (err: any) {
@@ -469,5 +496,13 @@ function Field({ label, children, required }: { label: string, children: React.R
       </label>
       {children}
     </div>
+  );
+}
+
+export default function NewPurchaseOrderPage() {
+  return (
+    <Suspense fallback={<div className="p-10 text-white/40 text-sm">กำลังโหลด...</div>}>
+      <NewPurchaseOrderScreen />
+    </Suspense>
   );
 }

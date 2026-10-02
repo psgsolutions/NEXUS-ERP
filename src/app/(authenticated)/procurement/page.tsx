@@ -76,7 +76,20 @@ export default function ProcurementPage() {
   const [isWHTOpen, setIsWHTOpen] = useState(false);
 
   const { data: initialSuppliers } = useRealtimeCollection<any>('suppliers');
-  const { data: initialPRs } = useRealtimeCollection<any>('purchase_requests');
+  // ใบขอซื้ออยู่ใต้บริษัท (บันทึกจาก /procurement/requests/new)
+  const { data: rawPRs } = useRealtimeCollection<any>(`companies/${companyId}/purchase_requests`);
+  const initialPRs = rawPRs.map((pr: any) => {
+    const st = String(pr.status || "").toUpperCase();
+    return {
+      ...pr,
+      docId: pr.id,
+      id: pr.prCode || pr.documentNo || pr.id,
+      dept: pr.department || pr.dept || "-",
+      project: pr.projectName || pr.projectId || "-",
+      amount: Number(pr.totalAmount || 0).toLocaleString("th-TH", { minimumFractionDigits: 2 }),
+      status: st === "APPROVED" || st === "CONVERTED" ? "active" : st === "REJECTED" || st === "CANCELLED" ? "danger" : "pending",
+    };
+  });
   // ใบรับสินค้า (บันทึกโดย /api/inventory/goods-receipt) และใบสั่งซื้ออยู่ใต้บริษัท
   const { data: rawGRs } = useRealtimeCollection<any>(`companies/${companyId}/goods_receipts`);
   const { data: rawPOs } = useRealtimeCollection<any>(`companies/${companyId}/purchase_orders`);
@@ -319,7 +332,7 @@ export default function ProcurementPage() {
                  ) : activeTab === "pr" ? (
                     <NexusTable headers={["เลขที่ PR", "ผู้ขอซื้อ", "แผนก", "โครงการอ้างอิง", "ยอดโดยประมาณ", "สถานะ"]}>
                        {filteredPRs.map(pr => (
-                         <PRRow key={pr.id} {...pr} onClick={() => setIsPROpen(true)} />
+                         <PRRow key={pr.docId} {...pr} onClick={() => router.push(`/procurement/requests/${encodeURIComponent(pr.docId)}`)} />
                        ))}
                     </NexusTable>
                  ) : activeTab === "receipt" ? (

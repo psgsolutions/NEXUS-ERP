@@ -26,11 +26,11 @@ import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { SmartSelect } from "@/components/ui/SmartComponents";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
-
-const vendorOptions = [
-  { value: "VD-001", label: "บริษัท อุปกรณ์ไอที จำกัด (มหาชน)", description: "Tax: 0105559012345" },
-  { value: "VD-002", label: "หจก. รับเหมาเครือข่ายไทย", description: "Tax: 0103550012346" }
-];
+import { useAuth } from "@/context/AuthContext";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { nexusSequenceEngine } from "@/lib/sequence-engine";
+import { db } from "@/lib/firebase-client";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
@@ -46,14 +46,25 @@ function Field({ label, children, required }: { label: string; children: React.R
 export default function NewPurchaseRequestPage() {
   const router = useRouter();
   const { showAlert, showConfirm } = useSystemDialog();
+  const { user, companyId } = useAuth();
+
+  // ข้อมูลจริงของบริษัท
+  const { data: suppliers } = useRealtimeCollection<any>("suppliers");
+  const { data: projects } = useRealtimeCollection<any>(`companies/${companyId}/projects`);
+  const vendorOptions = suppliers.map((sp: any) => ({
+    value: sp.id,
+    label: sp.name || sp.supplierName || sp.id,
+    description: sp.taxId ? `Tax: ${sp.taxId}` : "",
+  }));
+  const [saving, setSaving] = useState(false);
 
   const [activeTab, setActiveTab] = useState("header");
   const [docState, setDocState] = useState("draft");
   const [items, setItems] = useState<any[]>([]);
   
   const [header, setHeader] = useState({
-    requester: "Kriangkrai M.",
-    department: "Engineering",
+    requester: "",
+    department: "",
     requestDate: new Date().toISOString().split('T')[0],
     requiredDate: "",
     priority: "medium",
@@ -70,18 +81,22 @@ export default function NewPurchaseRequestPage() {
   const [vendorData, setVendorData] = useState<any>(null);
 
   // File Attachments Vault
-  const [attachments, setAttachments] = useState<{name: string, size: string}[]>([]);
 
+  // ผู้ยื่นคำขอ = ผู้ใช้ที่ล็อกอิน
   useEffect(() => {
-    // 0-Click Auto-Inference Pipeline Mockup
-    if (vendorId === "VD-001") {
-      setVendorData({ address: "123 ถ.สุขุมวิท กรุงเทพฯ", taxId: "0105559012345", creditTerms: "30 Days", contact: "คุณสมชาย" });
-    } else if (vendorId === "VD-002") {
-      setVendorData({ address: "456 ถ.รัชดาฯ กรุงเทพฯ", taxId: "0103550012346", creditTerms: "15 Days", contact: "คุณวิเชียร" });
-    } else {
-      setVendorData(null);
-    }
-  }, [vendorId]);
+    if (user) setHeader((prev) => ({ ...prev, requester: prev.requester || user.displayName || user.email || "" }));
+  }, [user]);
+
+  // ข้อมูลผู้จำหน่ายจากฐานข้อมูลจริง
+  useEffect(() => {
+    const sp = suppliers.find((x: any) => x.id === vendorId);
+    setVendorData(sp ? {
+      address: typeof sp.address === "string" ? sp.address : [sp.address?.line1, sp.address?.province].filter(Boolean).join(" "),
+      taxId: sp.taxId || "-",
+      creditTerms: sp.creditTerms || sp.paymentTerms || "-",
+      contact: sp.contactName || sp.contactPerson || "-",
+    } : null);
+  }, [vendorId, suppliers]);
 
   const tabs = [
     { id: "header", label: "ข้อมูลพื้นฐานการขอซื้อ" },
@@ -99,10 +114,55 @@ export default function NewPurchaseRequestPage() {
     }
   };
 
-  const handleSave = () => {
-    if (items.length === 0) return void showAlert("กรุณาเพิ่มรายการที่ต้องการขอซื้อ");
-    showAlert("ส่งขออนุมัติซื้อเรียบร้อยแล้ว");
-    router.push("/procurement");
+  const handleSave = async () => {
+    const lines = items.filter((it: any) => it.itemType !== "GROUP_HEADER" && (Number(it.qty) || 0) > 0);
+    if (lines.length === 0) return void showAlert("กรุณาเพิ่มรายการที่ต้องการขอซื้อ");
+    if (!header.requiredDate) return void showAlert("กรุณาระบุวันที่ต้องการใช้งาน");
+    if (!header.reason.trim()) return void showAlert("กรุณาระบุวัตถุประสงค์ / ความจำเป็น");
+    if (!companyId || !user) return void showAlert("ไม่พบข้อมูลผู้ใช้หรือรหัสบริษัท กรุณาเข้าสู่ระบบใหม่");
+
+    setSaving(true);
+    try {
+      const prCode = await nexusSequenceEngine("PR", companyId);
+      const vendor = suppliers.find((x: any) => x.id === vendorId);
+      const project = projects.find((x: any) => x.id === header.projectRef);
+      const round = (n: number) => Math.round(n * 100) / 100;
+      await setDoc(doc(db, `companies/${companyId}/purchase_requests`, prCode), {
+        prCode,
+        documentNo: prCode,
+        companyId,
+        requester: header.requester,
+        requesterUid: user.uid,
+        department: header.department,
+        requestDate: header.requestDate,
+        requiredDate: header.requiredDate,
+        priority: header.priority,
+        projectId: header.projectRef || "",
+        projectName: project ? (project.title || project.name || project.projectId || "") : "",
+        reason: header.reason,
+        suggestedSupplierId: vendorId || "",
+        suggestedSupplierName: vendor ? (vendor.name || vendor.supplierName || "") : "",
+        vatMode,
+        whtRate,
+        items: lines,
+        subTotal: round(preVat),
+        vatAmount: round(vatAmount),
+        whtAmount: round(whtAmount),
+        totalAmount: round(grandTotal),
+        status: "PENDING_APPROVAL",
+        createdBy: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        isDeleted: false,
+      });
+      showAlert(`ส่งขออนุมัติซื้อเรียบร้อยแล้ว (${prCode})`);
+      router.push("/procurement");
+    } catch (err: any) {
+      console.error("[PR_SAVE_ERROR]", err);
+      showAlert(`บันทึกใบขอซื้อไม่สำเร็จ: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Calculation Engine
@@ -162,7 +222,7 @@ export default function NewPurchaseRequestPage() {
         <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={handleBack}>
           ยกเลิก
         </PillButton>
-        <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" onClick={handleSave}>
+        <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" onClick={handleSave} disabled={saving}>
           <ShieldCheck size={14} className="mr-1.5" /> ส่งขออนุมัติซื้อ
         </PillButton>
       </div>
@@ -179,16 +239,12 @@ export default function NewPurchaseRequestPage() {
               <PillInput value={header.requester} disabled className="w-full bg-white/[0.01] text-white/40 h-11 rounded-full px-6 text-[13px] font-bold border-white/5 cursor-not-allowed" />
             </Field>
             <Field label="หน่วยงาน / แผนก">
-              <PillSelect 
+              <PillInput
                 value={header.department}
                 onChange={(e) => setHeader({...header, department: e.target.value})}
+                placeholder="ระบุแผนก เช่น ฝ่ายวิศวกรรม"
                 className="w-full px-6 h-11 rounded-full text-[13px] font-bold"
-              >
-                <option>Engineering</option>
-                <option>Sales & Marketing</option>
-                <option>HR & Admin</option>
-                <option>Finance</option>
-              </PillSelect>
+              />
             </Field>
           </div>
 
@@ -256,12 +312,16 @@ export default function NewPurchaseRequestPage() {
 
           <div className="space-y-6">
             <Field label="โครงการที่อ้างอิง">
-              <PillInput 
+              <PillSelect
                 value={header.projectRef}
                 onChange={(e) => setHeader({...header, projectRef: e.target.value})}
-                placeholder="เช่น PRJ-26-001 (ถ้ามี)..." 
-                className="w-full h-11 rounded-full px-6 text-[13px] font-bold bg-white/[0.02]" 
-              />
+                className="w-full h-11 rounded-full px-6 text-[13px] font-bold bg-white/[0.02]"
+              >
+                <option value="">{projects.length === 0 ? "ยังไม่มีโครงการ" : "ไม่ระบุโครงการ"}</option>
+                {projects.map((pj: any) => (
+                  <option key={pj.id} value={pj.id}>{pj.projectId || pj.id} - {pj.title || pj.name || pj.projectName || "-"}</option>
+                ))}
+              </PillSelect>
             </Field>
             <Field label="วัตถุประสงค์ / ความจำเป็น *" required>
               <textarea 
@@ -273,40 +333,13 @@ export default function NewPurchaseRequestPage() {
             </Field>
           </div>
 
-          {/* 3. Multi-Attachment Vault */}
-          <div className="space-y-4 pt-6">
+          {/* 3. Attachments: ยังไม่มี Firebase Storage จึงยังแนบไฟล์จริงไม่ได้ */}
+          <div className="space-y-2 pt-6">
             <h4 className="text-[12px] font-semibold text-white/60 uppercase tracking-widest flex items-center gap-2">
               <FileUp size={16} /> คลังเอกสารแนบอ้างอิง (Attachments)
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div 
-                className="border border-dashed border-white/10 hover:border-cyan-400/50 bg-white/[0.01] hover:bg-cyan-400/5 rounded-3xl h-28 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors"
-                onClick={() => setAttachments([...attachments, { name: `Quotation_Vendor_${attachments.length + 1}.pdf`, size: "1.2 MB" }])}
-              >
-                <UploadCloud size={24} className="text-white/30" />
-                <span className="text-[11px] text-white/40 font-bold uppercase tracking-widest">ลากไฟล์วางที่นี่ หรือคลิกเพื่ออัปโหลด</span>
-              </div>
-              <div className="space-y-2 max-h-28 overflow-y-auto custom-scrollbar pr-2">
-                {attachments.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-[11px] text-white/20 font-bold uppercase tracking-widest">ยังไม่มีไฟล์แนบ</div>
-                ) : (
-                  attachments.map((file, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-white/[0.02] border border-white/5 p-3 px-4 rounded-2xl group hover:bg-white/[0.05] transition-colors">
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <FileText size={16} className="text-cyan-400 shrink-0" />
-                        <span className="text-[12px] text-white/80 font-bold truncate">{file.name}</span>
-                        <span className="text-[10px] text-white/40 font-mono shrink-0">{file.size}</span>
-                      </div>
-                      <button 
-                        className="text-white/20 hover:text-danger shrink-0 transition-colors"
-                        onClick={() => setAttachments(attachments.filter((_, i) => i !== idx))}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
+            <div className="border border-dashed border-white/10 bg-white/[0.01] rounded-3xl h-20 flex items-center justify-center text-[12px] text-white/40 font-bold">
+              ยังไม่รองรับการแนบไฟล์ (รอตั้งค่าพื้นที่เก็บไฟล์ Firebase Storage)
             </div>
           </div>
         </GlassCard>

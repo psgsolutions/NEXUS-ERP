@@ -23,6 +23,7 @@ export async function POST(request: Request) {
       deliveryNote,
       receivedBy,
       warehouse,
+      warehouseCode,
       items = []
     } = body;
     const apiUser = await requireApiUser(request, companyId);
@@ -61,7 +62,8 @@ export async function POST(request: Request) {
           type: "IN",
           quantity: qty,
           unitCost: unitPrice,
-          toLocation: warehouse || "Main Warehouse",
+          // ไม่ระบุตำแหน่ง (ยังไม่มีผังชั้นวาง) = สต็อกเข้าระดับคลัง ไม่สร้างยอดตามตำแหน่ง
+          ...(warehouse ? { toLocation: warehouse } : {}),
           referenceId: poRef || deliveryNote,
           userId
         });
@@ -84,7 +86,8 @@ export async function POST(request: Request) {
       receiptDate: postingDate,
       deliveryNote: deliveryNote || "",
       receivedBy,
-      warehouse: warehouse || "",
+      warehouse: warehouseCode || warehouse || "",
+      location: warehouse || "",
       items,
       totalAmount: totalReceiptAmount,
       status: "received",
@@ -104,7 +107,7 @@ export async function POST(request: Request) {
           companyId,
           date: now,
           bookType: "PV_INTERNAL",
-          description: `[AUTO] Goods Receipt ${grRef.id} (Non-VAT Purchase) from ${supplier || "Vendor"} to ${warehouse || "Main Warehouse"}`,
+          description: `[AUTO] Goods Receipt ${grRef.id} (Non-VAT Purchase) from ${supplier || "Vendor"} to ${warehouse || "คลังสินค้า (ไม่ระบุตำแหน่ง)"}`,
           totalDebit: totalReceiptAmount,
           totalCredit: totalReceiptAmount,
           isOfficialTax: false,

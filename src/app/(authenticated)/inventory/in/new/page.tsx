@@ -53,12 +53,21 @@ export default function NewInventoryInPage() {
     note: ""
   });
 
-  // ตำแหน่งรับเข้า: ค่าเริ่มต้น = พื้นที่รับสินค้า (WH-xx-RECV) แล้วค่อยจัดเก็บเข้าชั้นที่หน้า Put-away
-  // หรือเลือกชั้นวางตรงถ้ารู้ตำแหน่งแล้ว
-  const warehouseOptions = warehouses.length > 0
-    ? listLocations(warehouses).map((l) => ({ value: l.code, label: l.isReceiving ? `${l.label} (แนะนำ: จัดเก็บเข้าชั้นภายหลัง)` : `${l.code} • ${l.label}` }))
-    : [{ value: DEFAULT_WAREHOUSE, label: "คลังหลัก (ยังไม่ได้ตั้งค่าคลังสินค้า)" }];
+  // ตำแหน่งรับเข้า:
+  //  - ยังไม่มีผังชั้นวาง → เลือกได้แค่คลัง และรับเข้าแบบไม่ระบุตำแหน่ง (ค่า "@WH-01" = ไม่สร้างยอดตามตำแหน่ง)
+  //  - มีชั้นวางแล้ว → พื้นที่รับสินค้า (WH-xx-RECV) แล้วจัดเก็บเข้าชั้นภายหลัง หรือเลือกชั้นวางตรง
+  const hasRacks = warehouses.some((w: any) => (w.racks || []).length > 0);
+  const warehouseOptions = warehouses.length === 0
+    ? [{ value: `@${DEFAULT_WAREHOUSE}`, label: "คลังหลัก (ยังไม่ได้ตั้งค่าคลังสินค้า)" }]
+    : !hasRacks
+      ? warehouses.map((w: any) => {
+          const code = w.code || w.warehouseCode || w.id;
+          return { value: `@${code}`, label: `${code} : ${w.name || w.warehouseName || code} (ไม่ระบุตำแหน่ง)` };
+        })
+      : listLocations(warehouses).map((l) => ({ value: l.code, label: l.isReceiving ? `${l.label} (แนะนำ: จัดเก็บเข้าชั้นภายหลัง)` : `${l.code} • ${l.label}` }));
   const warehouseId = header.warehouseId || warehouseOptions[0].value;
+  const receiveLocation = warehouseId.startsWith("@") ? "" : warehouseId;           // ส่งเป็นตำแหน่งสต็อก
+  const receiveWarehouse = warehouseId.startsWith("@") ? warehouseId.slice(1) : warehouseId.split("-").slice(0, 2).join("-"); // รหัสคลังในเอกสาร
 
   // ใบสั่งซื้อที่ยังรับไม่ครบ (มีทั้งแบบเก็บที่ root และใต้บริษัท)
   const openPOs = [
@@ -123,7 +132,8 @@ export default function NewInventoryInPage() {
           receiptDate: header.date,
           deliveryNote: header.reference,
           receivedBy: user.email || user.uid,
-          warehouse: warehouseId,
+          warehouse: receiveLocation,
+          warehouseCode: receiveWarehouse,
           items: lines,
         }),
       });
@@ -148,7 +158,7 @@ export default function NewInventoryInPage() {
       }
 
       showAlert(`บันทึกรับสินค้าเข้าคลังเรียบร้อย (เลขที่ ${result.grId}) มูลค่า ${formatCurrency(result.totalAmount)}`);
-      router.push(String(warehouseId).endsWith("-RECV") ? "/inventory/putaway" : "/inventory");
+      router.push(receiveLocation.endsWith("-RECV") ? "/inventory/putaway" : "/inventory");
     } catch (err: any) {
       console.error("[GR_SAVE_ERROR]", err);
       showAlert(`บันทึกไม่สำเร็จ: ${err.message}`);

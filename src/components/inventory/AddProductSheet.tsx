@@ -298,7 +298,7 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
             packageUnit: formData.packageUnit,
             conversionRate: formData.conversionRate,
             defaultWarehouseId: formData.defaultWarehouseId,
-            defaultRackLocation: formData.defaultRackLocation || "WH-01-A1",
+            defaultRackLocation: formData.defaultRackLocation || "",
             lifecycleStatus: formData.lifecycleStatus,
             supplierId: formData.supplierId,
             supplierConfig: [
@@ -333,7 +333,7 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
             productId: prodId,
             quantity: totalQty,
             fromLocation: "EXTERNAL",
-            toLocation: formData.defaultRackLocation || "WH-01-A1",
+            toLocation: formData.defaultRackLocation || "",
             userId: user.displayName || "system",
             createdAt: new Date()
           });
@@ -385,7 +385,7 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
                 priceProject: existingProd?.pricing?.priceProject || Number(((item.cost || 0) / 0.8).toFixed(2)) * 1.2
               },
               defaultWarehouseId: formData.defaultWarehouseId || (existingProd as any)?.defaultWarehouseId || "WH-01",
-              defaultRackLocation: formData.defaultRackLocation || (existingProd as any)?.defaultRackLocation || "WH-01-A1",
+              defaultRackLocation: formData.defaultRackLocation || (existingProd as any)?.defaultRackLocation || "",
               lifecycleStatus: formData.lifecycleStatus || (existingProd as any)?.lifecycleStatus || "ACTIVE",
               supplierId: formData.supplierId,
               updatedAt: new Date(),
@@ -401,7 +401,7 @@ export function AddProductSheet({ isOpen, onClose }: AddProductSheetProps) {
               productId: prodId,
               quantity: item.qtyReceived,
               fromLocation: "EXTERNAL",
-              toLocation: formData.defaultRackLocation || "WH-01-A1",
+              toLocation: formData.defaultRackLocation || "",
               userId: user.displayName || "system",
               createdAt: new Date()
             });

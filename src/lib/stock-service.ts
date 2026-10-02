@@ -1,7 +1,6 @@
 import * as admin from "firebase-admin";
 import { adminDb } from "./firebase-admin";
 import { nexusSequenceServer } from "./sequence-server";
-import { ACCOUNTS } from "./financeEngine";
 import { Product } from "@/types";
 import { auditServer } from "@/services/audit.server";
 import { assertPeriodOpen } from "./period-close-service";
@@ -29,6 +28,8 @@ export interface StockMovement {
   snList?: string[];
   userId: string;
   companyId: string;
+  /** OUT ของสินค้าที่จองไว้แล้ว (เช่น ใบสั่งขายที่แปลงจากใบเสนอราคา): ลดยอดจอง ไม่ลดยอดพร้อมใช้ซ้ำ */
+  fromReserved?: boolean;
 }
 
 /**
@@ -105,6 +106,8 @@ export async function processStockMovements(
       onHand: number;
       wac: number;
       onHandDelta: number;
+      reservedDelta: number;
+      availableDelta: number;
       wacChanged: boolean;
     }>();
     for (const productId of Array.from(new Set(movements.map(m => m.productId)))) {
@@ -118,6 +121,8 @@ export async function processStockMovements(
         onHand: data.stockStatus?.onHand ?? 0,
         wac: data.pricing?.costWAC ?? (data as any).costPrice ?? 0,
         onHandDelta: 0,
+        reservedDelta: 0,
+        availableDelta: 0,
         wacChanged: false
       });
     }
@@ -157,29 +162,39 @@ export async function processStockMovements(
 
       // 3.2 Product Master Balance & Real-time WAC
       if (type === "OUT") {
+        if (product.onHand < quantity) throw new Error(`สต็อกไม่พอสำหรับ ${product.data.name} (คงเหลือ ${product.onHand})`);
         product.onHand -= quantity;
         product.onHandDelta -= quantity;
+        if (movement.fromReserved) product.reservedDelta -= quantity; // ยอดพร้อมใช้ถูกหักไปแล้วตอนจอง
+        else product.availableDelta -= quantity;
       } else if (type === "IN") {
         product.wac = calculateWAC(previousOnHand, previousWAC, quantity, currentUnitCost);
         product.wacChanged = true;
         product.onHand += quantity;
         product.onHandDelta += quantity;
+        product.availableDelta += quantity;
       }
 
       // 3.3 Automated Double-Entry GL Posting (stock issue -> COGS)
+      //     ผังบัญชีเดียวกับ AccountingEngine / การรับสินค้า: Dr ต้นทุนขาย 5111-00 / Cr สินค้าคงเหลือ 1141-00
       if (type === "OUT" && totalValue > 0) {
-        const journalRef = adminDb.collection("journal_entries").doc();
+        const journalRef = adminDb.collection(`companies/${companyId}/journal_entries`).doc();
+        const amount = Math.round(totalValue * 100) / 100;
         transaction.set(journalRef, {
           companyId: companyId,
-          date: new Date().toISOString(),
-          description: `เบิกพัสดุ: ${product.data.name} [Ref: ${movement.referenceId || transactionId}]`,
+          date: serverTimestamp(),
+          bookType: "JV",
+          description: `[AUTO] เบิกสินค้า ${product.data.name} x${quantity} [Ref: ${movement.referenceId || transactionId}]`,
           reference: movement.referenceId || transactionId,
-          total_amount: totalValue,
+          totalDebit: amount,
+          totalCredit: amount,
+          status: "draft", // Requires accountant review
           items: [
-            { accountCode: ACCOUNTS.COST_OF_GOODS_SOLD.code, accountName: ACCOUNTS.COST_OF_GOODS_SOLD.name, debit: totalValue, credit: 0 },
-            { accountCode: ACCOUNTS.INVENTORY.code, accountName: ACCOUNTS.INVENTORY.name, debit: 0, credit: totalValue }
+            { accountCode: "5111-00", accountName: "ต้นทุนขาย", debit: amount, credit: 0 },
+            { accountCode: "1141-00", accountName: "สินค้าคงเหลือ", debit: 0, credit: amount }
           ],
           createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
           isDeleted: false
         });
       }
@@ -242,7 +257,8 @@ export async function processStockMovements(
     for (const product of Array.from(products.values())) {
       const update: Record<string, any> = {
         "stockStatus.onHand": increment(product.onHandDelta),
-        "stockStatus.available": increment(product.onHandDelta),
+        "stockStatus.available": increment(product.availableDelta),
+        "stockStatus.reserved": increment(product.reservedDelta),
         updatedAt: serverTimestamp(),
         updatedBy
       };

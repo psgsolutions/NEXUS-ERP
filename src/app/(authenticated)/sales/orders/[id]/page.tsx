@@ -10,6 +10,7 @@ import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { DocumentFlowService } from "@/services/documentFlow.service";
+import { soPickRemaining } from "@/lib/picking";
 import { db } from "@/lib/firebase-client";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 
@@ -50,6 +51,8 @@ export default function SalesOrderDetailPage() {
   const view = STATUS_VIEW[status];
   const items: any[] = (so?.items || []).filter((it: any) => it.itemType !== "GROUP_HEADER");
   const userId = user?.email || user?.uid || "";
+  // มีสินค้าที่ต้องเบิกจากคลัง: ส่งมอบผ่านหน้าเบิกสินค้า (ตัดสต็อก + ลงต้นทุนขาย) แทนการกดส่งมอบตรง
+  const needsPicking = so ? soPickRemaining(so).size > 0 : false;
 
   const setStatus = async (next: string, extra: Record<string, any> = {}) => {
     if (!companyId || !so) return;
@@ -125,7 +128,12 @@ export default function SalesOrderDetailPage() {
             <CheckCircle2 size={14} className="mr-1.5" /> อนุมัติใบสั่งขาย
           </PillButton>
         )}
-        {status === "CONFIRMED" && (
+        {status === "CONFIRMED" && needsPicking && (
+          <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={() => router.push(`/inventory/pick?so=${encodeURIComponent(soDocId)}`)}>
+            <Truck size={14} className="mr-1.5" /> จัดของ / เบิกสินค้า{so.picked ? " (เบิกต่อ)" : ""}
+          </PillButton>
+        )}
+        {status === "CONFIRMED" && !needsPicking && (
           <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={() => setStatus("DELIVERED", { deliveredAt: serverTimestamp() })}>
             <Truck size={14} className="mr-1.5" /> บันทึกส่งมอบแล้ว
           </PillButton>

@@ -566,6 +566,13 @@ export default function InventoryPage() {
             <PillButton
               variant="glass"
               className="gap-1.5"
+              onClick={() => router.push("/inventory/pick")}
+            >
+              <ScanBarcode size={14} /> เบิกสินค้า
+            </PillButton>
+            <PillButton
+              variant="glass"
+              className="gap-1.5"
               onClick={() => router.push("/inventory/products/labels")}
             >
               <Printer size={14} /> ฉลากสินค้า

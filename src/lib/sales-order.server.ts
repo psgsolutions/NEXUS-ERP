@@ -89,6 +89,7 @@ export async function convertToSalesOrder(quoteId: string, companyId: string) {
       taxMode: normalizedVatType,
       isVatRegistered: (quoteData as any).isVatRegistered ?? true,
       status: "Confirmed",
+      stockReserved: true, // สินค้าถูกจองแล้ว: ตอนเบิกให้ลดยอดจองแทนยอดพร้อมใช้
       convertedAt: now()
     });
 

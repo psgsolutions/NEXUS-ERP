@@ -130,9 +130,9 @@ export async function calculatePP30Tax(companyId: string, yearMonth: string): Pr
       }
     });
 
-    // 2. Also query sales_orders / tax_invoices if no journal entries found
+    // 2. Fallback: ใบกำกับภาษีของบริษัท (companies/{companyId}/invoices) ถ้าไม่พบภาษีขายในสมุดรายวัน
     if (salesBase === 0 && outputVat === 0) {
-      const invRef = collection(db, "tax_invoices");
+      const invRef = collection(db, `companies/${companyId}/invoices`);
       const qInv = query(
         invRef,
         where("companyId", "==", companyId),
@@ -141,7 +141,8 @@ export async function calculatePP30Tax(companyId: string, yearMonth: string): Pr
       const snapInv = await getDocs(qInv);
       snapInv.forEach((docSnap) => {
         const inv = docSnap.data();
-        const dateStr = inv.issueDate || inv.date || "";
+        const rawDate = inv.issueDate || inv.date || "";
+        const dateStr = typeof rawDate === "string" ? rawDate : rawDate?.seconds ? new Date(rawDate.seconds * 1000).toISOString() : "";
         if (dateStr.startsWith(yearMonth)) {
           salesBase += Number(inv.subTotal || inv.amount || 0);
           outputVat += Number(inv.vatAmount || 0);

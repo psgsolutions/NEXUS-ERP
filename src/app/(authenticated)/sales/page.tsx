@@ -80,30 +80,27 @@ import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
 
 
-const MOCK_QUOTATIONS = [
-  { id: 'QT-2606-0001', customerNameRaw: 'โรงพยาบาลตากสิน', title: 'ระบบเครือข่ายไร้สาย (Wi-Fi 6)', total: '฿1,250,000', status: 'Approved' },
-  { id: 'QT-2606-0002', customerNameRaw: 'บริษัท พีเอสจี โซลูชั่นส์ จำกัด', title: 'ติดตั้งกล้องวงจรปิด AI', total: '฿850,000', status: 'Draft' },
-  { id: 'QT-2606-0003', customerNameRaw: 'ศูนย์ประชุมแห่งชาติ', title: 'ระบบจัดการอาคารอัจฉริยะ (BMS)', total: '฿3,400,000', status: 'Approved' }
-];
+// ---------- แปลงเอกสารจาก Firestore เป็นแถวในตาราง (ข้อมูลจริงเท่านั้น ไม่มี mock) ----------
+const toDateStr = (v: any): string => {
+  if (!v) return "-";
+  if (typeof v === "string") return v.split("T")[0];
+  if (v.seconds) return new Date(v.seconds * 1000).toISOString().split("T")[0];
+  if (v instanceof Date) return v.toISOString().split("T")[0];
+  return "-";
+};
+const toMoney = (n: any): string => `฿${Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const firstOf = (d: any, keys: string[]) => keys.map(k => d[k]).find(v => v !== undefined && v !== null && v !== "");
 
-const MOCK_ORDERS = [
-  { id: 'SO-2606-0001', customerNameRaw: 'โรงพยาบาลตากสิน', date: '15 มิ.ย. 2026', total: '฿1,250,000', status: 'Confirmed' },
-  { id: 'SO-2606-0002', customerNameRaw: 'ศูนย์ประชุมแห่งชาติ', date: '18 มิ.ย. 2026', total: '฿3,400,000', status: 'Pending' }
-];
-
-const MOCK_INVOICES = [
-  { id: 'INV-2606-001', soRef: 'SO-2606-0001', customerNameRaw: 'โรงพยาบาลตากสิน', date: '20 มิ.ย. 2026', dueDate: '20 ก.ค. 2026', total: '฿500,000', status: 'Pending' }
-];
-
-const MOCK_BILLING = [
-  { id: 'BL-2606-001', customerNameRaw: 'โรงพยาบาลตากสิน', date: '25 มิ.ย. 2026', dueDate: '25 ก.ค. 2026', total: '฿500,000', status: 'Active' }
-];
-
-const MOCK_RECEIPTS = [
-  { id: 'REC-2605-089', customerNameRaw: 'บริษัท เอบีซี จำกัด', date: '10 พ.ค. 2026', total: '฿200,000', status: 'Paid' }
-];
-
-const MOCK_CNDN = [];
+// raw ข้อมูลอยู่ก่อน ค่าที่จัดรูปแบบแล้ววางทับ; docId = ID จริงของเอกสาร (ใช้ลบ/อ้างอิง), id = เลขเอกสารที่แสดง
+const toRow = (snap: any, display: (d: any) => Record<string, any>) => {
+  const d = snap.data();
+  return {
+    ...d,
+    docId: snap.id,
+    customerNameRaw: firstOf(d, ["customerName", "customerId", "customer"]) || "",
+    ...display(d),
+  };
+};
 
 
 type SalesSubModule = "crm" | "opportunities" | "quotations" | "orders" | "invoices" | "billing" | "receipts" | "cndn";
@@ -191,129 +188,67 @@ export default function SalesPage() {
       setCustomersList(list);
     });
 
-    // Real-time listener for Quotations
-    const qQuote = query(
-      collection(db, `companies/${companyId}/quotations`)
-    );
-    const unsubQuote = onSnapshot(qQuote, (snap) => {
-      const list: any[] = [];
-      snap.forEach(doc => {
-        const d = doc.data();
-        list.push({ 
-          id: d.documentNo || d.quoteNo || d.quotationNo || doc.id,
-            customerNameRaw: d.customerId || d.customer || "Hospital A",
-          title: d.subject || d.title || "Upgrade LED Wall",
-          value: `฿${(d.totalRevenue || 0).toLocaleString()}`,
-          status: d.status === "Approved" ? "active" : d.status === "Draft" ? "pending" : "danger",
-          ...d
+    const listen = (path: string, display: (d: any) => Record<string, any>, setter: (rows: any[]) => void) =>
+      onSnapshot(query(collection(db, `companies/${companyId}/${path}`)), (snap) => {
+        const rows: any[] = [];
+        snap.forEach(docSnap => {
+          if (docSnap.data().isDeleted !== true) rows.push(toRow(docSnap, display));
         });
-      });
-      setQuotationsList(list.length > 0 ? list : MOCK_QUOTATIONS);
-    });
+        setter(rows);
+      }, (err) => console.error(`[SALES] โหลด ${path} ไม่สำเร็จ:`, err));
 
-    // Real-time listener for Sales Orders
-    const qOrder = query(
-      collection(db, `companies/${companyId}/sales_orders`)
-    );
-    const unsubOrder = onSnapshot(qOrder, (snap) => {
-      const list: any[] = [];
-      snap.forEach(doc => {
-        const d = doc.data();
-        list.push({ 
-          id: d.documentNo || d.soNo || d.orderNo || doc.id,
-            customerNameRaw: d.customer || d.customerId || "PSG Solutions",
-          date: d.convertedAt ? new Date(d.convertedAt.seconds * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          total: `฿${(d.totalRevenue || 0).toLocaleString()}`,
-          status: d.status === "Confirmed" ? "paid" : d.status === "Pending" ? "partial" : "partial",
-          ...d
-        });
-      });
-      setOrdersList(list.length > 0 ? list : MOCK_ORDERS);
-    });
+    // Quotations
+    const unsubQuote = listen("quotations", (d) => ({
+      id: firstOf(d, ["documentNo", "quotationNo", "quoteNo", "quoteId"]) || "-",
+      title: firstOf(d, ["projectName", "subject", "title"]) || "-",
+      value: toMoney(firstOf(d, ["grandTotal", "totalRevenue", "netTotal"])),
+      status: d.status || "DRAFT",
+    }), setQuotationsList);
 
-    // Real-time listener for Invoices
-    const qInv = query(
-      collection(db, `companies/${companyId}/invoices`)
-    );
-    const unsubInv = onSnapshot(qInv, (snap) => {
-      const list: any[] = [];
-      snap.forEach(doc => {
-        const d = doc.data();
-        list.push({ 
-          id: d.documentNo || d.invoiceNo || d.invNo || doc.id,
-            customerNameRaw: d.customer || d.customerId || "Unknown",
-            date: d.issuedAt ? new Date(d.issuedAt.seconds * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          total: `฿${(d.totalRevenue || 0).toLocaleString()}`,
-          status: d.status === "Paid" ? "paid" : "pending",
-          ...d
-        });
-      });
-      setInvoicesList(list.length > 0 ? list : MOCK_INVOICES);
-    });
+    // Sales Orders
+    const unsubOrder = listen("sales_orders", (d) => ({
+      id: firstOf(d, ["documentNo", "soId", "soNo", "orderNo", "orderId"]) || "-",
+      date: toDateStr(firstOf(d, ["convertedAt", "date", "createdAt"])),
+      total: toMoney(firstOf(d, ["grandTotal", "totalRevenue", "totalAmount", "netTotal"])),
+      status: d.status || "Pending",
+    }), setOrdersList);
 
-    // Real-time listener for Receipts
-    const qRec = query(
-      collection(db, `companies/${companyId}/receipts`)
-    );
-    const unsubRec = onSnapshot(qRec, (snap) => {
-      const list: any[] = [];
-      snap.forEach(doc => {
-        const d = doc.data();
-        list.push({ 
-          id: d.documentNo || d.receiptNo || doc.id,
-            customerNameRaw: d.customer || d.customerId || "Unknown",
-            date: d.paymentDate ? new Date(d.paymentDate.seconds * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          total: `฿${(d.totalRevenue || 0).toLocaleString()}`,
-          status: "paid",
-          ...d
-        });
-      });
-      setReceiptsList(list.length > 0 ? list : MOCK_RECEIPTS);
-    });
+    // Invoices
+    const unsubInv = listen("invoices", (d) => ({
+      id: firstOf(d, ["invoiceNo", "documentNo", "docNumber", "invNo"]) || "-",
+      soId: firstOf(d, ["orderRefNo", "soId"]) || "-",
+      date: toDateStr(firstOf(d, ["issueDate", "issuedAt", "createdAt"])),
+      dueDate: toDateStr(d.dueDate),
+      total: toMoney(firstOf(d, ["grandTotal", "totalRevenue", "totalAmount"])),
+      status: d.paymentStatus === "paid" || d.status === "Paid" ? "paid" : "pending",
+    }), setInvoicesList);
 
-    // Real-time listener for Billing Notes
-    const qBill = query(
-      collection(db, `companies/${companyId}/billing_notes`)
-    );
-    const unsubBill = onSnapshot(qBill, (snap) => {
-      const list: any[] = [];
-      snap.forEach(doc => {
-        const d = doc.data();
-        list.push({ 
-          id: d.documentNo || d.billingNo || doc.id,
-            customerNameRaw: d.customer || d.customerId || "Unknown",
-            date: d.issueDate ? new Date(d.issueDate.seconds * 1000).toISOString().split('T')[0] : new 
-Date().toISOString().split('T')[0],
-            dueDate: d.dueDate ? new Date(d.dueDate.seconds * 1000).toISOString().split('T')[0] : "-",
-          total: `฿${(d.totalAmount || 0).toLocaleString()}`,
-          status: d.status || "active",
-          ...d
-        });
-      });
-      setBillingList(list.length > 0 ? list : MOCK_BILLING);
-    });
+    // Receipts
+    const unsubRec = listen("receipts", (d) => ({
+      id: firstOf(d, ["receiptNo", "documentNo", "docNumber"]) || "-",
+      invoiceId: firstOf(d, ["invoiceNo", "invoiceRefNo", "invoiceId"]) || "-",
+      date: toDateStr(firstOf(d, ["paymentDate", "createdAt"])),
+      total: toMoney(firstOf(d, ["amount", "grandTotal", "totalAmount", "totalRevenue"])),
+      status: "paid",
+    }), setReceiptsList);
 
-    // Real-time listener for CN/DN
-    const qCndn = query(
-      collection(db, `companies/${companyId}/cndn`)
-    );
-    const unsubCndn = onSnapshot(qCndn, (snap) => {
-      const list: any[] = [];
-      snap.forEach(doc => {
-        const d = doc.data();
-        list.push({ 
-          id: d.documentNo || d.cndnNo || doc.id,
-            customerNameRaw: d.customer || d.customerId || "Unknown",
-            date: d.issueDate ? new Date(d.issueDate.seconds * 1000).toISOString().split('T')[0] : new 
-Date().toISOString().split('T')[0],
-            total: `฿${(d.totalAmount || 0).toLocaleString()}`,
-          type: d.type || "CN",
-          status: d.status || "active",
-          ...d
-        });
-      });
-      setCndnList(list.length > 0 ? list : MOCK_CNDN);
-    });
+    // Billing Notes
+    const unsubBill = listen("billing_notes", (d) => ({
+      id: firstOf(d, ["billingNoteNo", "documentNo", "docNumber", "billingNo"]) || "-",
+      date: toDateStr(firstOf(d, ["issueDate", "createdAt"])),
+      dueDate: toDateStr(d.dueDate),
+      total: toMoney(firstOf(d, ["totalAmount", "grandTotal"])),
+      status: d.status === "paid" || d.status === "Paid" ? "Paid" : "Pending",
+    }), setBillingList);
+
+    // CN/DN
+    const unsubCndn = listen("cndn", (d) => ({
+      id: firstOf(d, ["documentNo", "cndnNo", "docNumber"]) || "-",
+      date: toDateStr(firstOf(d, ["issueDate", "createdAt"])),
+      total: toMoney(firstOf(d, ["totalAmount", "grandTotal"])),
+      type: d.type || "CN",
+      status: d.status || "active",
+    }), setCndnList);
 
     // Real-time listener for Opportunities
     const qOpp = query(
@@ -375,6 +310,35 @@ Date().toISOString().split('T')[0],
     ...q,
     customer: getCustomerName(q.customerNameRaw)
   }));
+
+  // สรุป pipeline และรายการต้องติดตาม จากใบเสนอราคาจริง
+  const quoteAmount = (q: any) => Number(firstOf(q, ["grandTotal", "totalRevenue", "netTotal"]) || 0);
+  const quoteStage = (status: string) => {
+    const st = String(status || "").toUpperCase();
+    if (["APPROVED", "ACCEPTED", "WON"].includes(st)) return "approved";
+    if (["SENT", "PENDING_APPROVAL"].includes(st)) return "sent";
+    if (st === "DRAFT" || st === "") return "draft";
+    return null; // ยกเลิก/หมดอายุ ไม่นับใน pipeline
+  };
+  const pipeline = { draft: { count: 0, value: 0 }, sent: { count: 0, value: 0 }, approved: { count: 0, value: 0 } };
+  quotationsList.forEach(q => {
+    const stage = quoteStage(q.status);
+    if (stage) {
+      pipeline[stage].count++;
+      pipeline[stage].value += quoteAmount(q);
+    }
+  });
+  const toCompactMoney = (n: number) => `฿${n >= 1_000_000 ? (n / 1_000_000).toFixed(1) + "M" : n >= 1_000 ? (n / 1_000).toFixed(0) + "K" : n.toFixed(0)}`;
+  const followUps = filteredQuotations
+    .filter(q => quoteStage(q.status) === "sent")
+    .map(q => {
+      const sentDate = toDateStr(firstOf(q, ["docDate", "issueDate", "createdAt"]));
+      const daysSince = sentDate === "-" ? 0 : Math.floor((Date.now() - new Date(sentDate).getTime()) / 86_400_000);
+      return { ...q, daysSince };
+    })
+    .filter(q => q.daysSince > 7)
+    .sort((a, b) => b.daysSince - a.daysSince)
+    .slice(0, 5);
 
   const filteredOrders = ordersList.filter(o => 
     (o.customerNameRaw || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -575,6 +539,7 @@ Date().toISOString().split('T')[0],
                       {filteredCustomers.map(cus => (
                         <CustomerRow 
                           key={cus.id}
+                          docId={cus.id}
                           id={cus.displayId} 
                           name={cus.name || "-"} 
                           industry={cus.industry || "-"}
@@ -602,7 +567,8 @@ Date().toISOString().split('T')[0],
                     >
                       {filteredQuotations.map(q => (
                         <QuotationRow 
-                          key={q.id}
+                          key={q.docId}
+                          docId={q.docId}
                           id={q.id} 
                           customer={q.customer} 
                           title={q.title} 
@@ -624,7 +590,8 @@ Date().toISOString().split('T')[0],
                     >
                       {filteredOrders.map(so => (
                         <SalesOrderRow 
-                          key={so.id}
+                          key={so.docId}
+                          docId={so.docId}
                           id={so.id} 
                           customer={so.customer} 
                           date={so.date} 
@@ -646,7 +613,8 @@ Date().toISOString().split('T')[0],
                     >
                       {filteredInvoices.map(inv => (
                         <InvoiceRow 
-                          key={inv.id}
+                          key={inv.docId}
+                          docId={inv.docId}
                           id={inv.id} 
                           soRef={inv.soId || "-"}
                           customer={inv.customer} 
@@ -670,7 +638,8 @@ Date().toISOString().split('T')[0],
                     >
                       {filteredBilling.map(bill => (
                         <BillingNoteRow 
-                          key={bill.id}
+                          key={bill.docId}
+                          docId={bill.docId}
                           id={bill.id} 
                           customer={bill.customer} 
                           date={bill.date} 
@@ -693,7 +662,8 @@ Date().toISOString().split('T')[0],
                     >
                       {filteredCndn.map(cndn => (
                         <CndnRow 
-                          key={cndn.id}
+                          key={cndn.docId}
+                          docId={cndn.docId}
                           id={cndn.id} 
                           customer={cndn.customer} 
                           type={cndn.type}
@@ -716,7 +686,8 @@ Date().toISOString().split('T')[0],
                     >
                       {filteredReceipts.map(rec => (
                         <ReceiptRow 
-                          key={rec.id}
+                          key={rec.docId}
+                          docId={rec.docId}
                           id={rec.id} 
                           invRef={rec.invoiceId || "-"}
                           customer={rec.customer} 
@@ -890,13 +861,13 @@ Date().toISOString().split('T')[0],
                     <h4 className="text-[14px] font-bold text-white">{selectedItem.customer}</h4>
                     <p className="text-[11px] text-white/50">{selectedItem.id}</p>
                   </div>
-                  <StatusBadge status={selectedItem.status === "Confirmed" ? "paid" : "partial"} label={selectedItem.status === "Confirmed" ? "ชำระเงินแล้ว" : "รอดำเนินการ"} />
+                  <StatusBadge {...salesOrderStatusBadge(selectedItem.status)} />
                 </div>
                 
                 <div className="space-y-3 text-xs font-medium text-white/70">
                    <div className="flex items-center gap-3">
                      <FileText size={16} className="text-nexus-blue shrink-0" />
-                     <span>อ้างอิง: {selectedItem.linkedQuotation || "-"}</span>
+                     <span>อ้างอิง: {selectedItem.linkedQuotation || selectedItem.quoteId || selectedItem.quotationRefNo || "-"}</span>
                    </div>
                    <div className="flex items-center gap-3">
                      <CreditCard size={16} className="text-nexus-teal shrink-0" />
@@ -923,9 +894,9 @@ Date().toISOString().split('T')[0],
                <GlassCard className="p-4 border-white/5 ">
                   <h4 className="text-[12px] font-medium text-nexus-blue uppercase tracking-widest mb-6">ขั้นตอนการปิดการขาย</h4>
                   <div className="space-y-3">
-                     <PipelineStage label="ร่าง" count={5} value="฿1.2M" />
-                     <PipelineStage label="ส่งแล้ว" count={12} value="฿4.5M" color="bg-nexus-blue" />
-                     <PipelineStage label="อนุมัติแล้ว" count={8} value="฿2.8M" color="bg-nexus-teal" />
+                     <PipelineStage label="ร่าง" count={pipeline.draft.count} value={toCompactMoney(pipeline.draft.value)} />
+                     <PipelineStage label="ส่งแล้ว" count={pipeline.sent.count} value={toCompactMoney(pipeline.sent.value)} color="bg-nexus-blue" />
+                     <PipelineStage label="อนุมัติแล้ว" count={pipeline.approved.count} value={toCompactMoney(pipeline.approved.value)} color="bg-nexus-teal" />
                   </div>
                </GlassCard>
 
@@ -935,8 +906,11 @@ Date().toISOString().split('T')[0],
                      แจ้งเตือนการติดตามงาน
                   </h4>
                   <div className="space-y-3">
-                     <ReminderItem name="PSG Solutions" detail="QT-2604-0001 (เกิน 7 วัน)" />
-                     <ReminderItem name="Hospital A" detail="ต้องการอัปเดตสเปกทางเทคนิค" />
+                     {followUps.length === 0 ? (
+                       <p className="text-[12px] text-white/30">ไม่มีใบเสนอราคาที่ส่งเกิน 7 วันและรอติดตาม</p>
+                     ) : followUps.map(q => (
+                       <ReminderItem key={q.docId} name={q.customer} detail={`${q.id} (ส่งแล้ว ${q.daysSince} วัน)`} />
+                     ))}
                   </div>
                </GlassCard>
              </>
@@ -967,7 +941,7 @@ Date().toISOString().split('T')[0],
   );
 }
 
-function CustomerRow({ id, name, industry, taxId, status, role, companyId, onClick }: { id: string, name: string, industry: string, taxId: string, status: "active" | "inactive", role: string, companyId: string, onClick?: () => void }) {
+function CustomerRow({ id, docId, name, industry, taxId, status, role, companyId, onClick }: { id: string, docId: string, name: string, industry: string, taxId: string, status: "active" | "inactive", role: string, companyId: string, onClick?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
@@ -982,7 +956,7 @@ function CustomerRow({ id, name, industry, taxId, status, role, companyId, onCli
            <div onClick={(e) => e.stopPropagation()} className="inline-block">
              <SecureDeleteAction 
                collectionName={`companies/${companyId || "COM-NEXUS-01"}/customers`}
-               documentId={id}
+               documentId={docId}
                displayName={name}
                compact
              />
@@ -993,7 +967,29 @@ function CustomerRow({ id, name, industry, taxId, status, role, companyId, onCli
   );
 }
 
-function QuotationRow({ id, customer, title, value, status, companyId, onClick }: { id: string, customer: string, title: string, value: string, status: string, companyId: string, onClick?: () => void }) {
+function quotationStatusBadge(status: string) {
+  switch (String(status || "").toUpperCase()) {
+    case "DRAFT": return { status: "pending", label: "ร่าง" };
+    case "PENDING_APPROVAL": return { status: "warning", label: "รออนุมัติ" };
+    case "SENT": return { status: "active", label: "ส่งแล้ว" };
+    case "APPROVED": case "ACCEPTED": case "WON": return { status: "active", label: "อนุมัติแล้ว" };
+    case "EXPIRED": return { status: "inactive", label: "หมดอายุ" };
+    default: return { status: "danger", label: "ยกเลิก" };
+  }
+}
+
+function salesOrderStatusBadge(status: string) {
+  switch (String(status || "").toUpperCase()) {
+    case "COMPLETED": return { status: "active", label: "ออกใบกำกับแล้ว" };
+    case "CONFIRMED": return { status: "active", label: "ยืนยันแล้ว" };
+    case "PROCESSING": return { status: "warning", label: "กำลังดำเนินการ" };
+    case "DELIVERED": return { status: "active", label: "ส่งมอบแล้ว" };
+    case "CANCELLED": return { status: "danger", label: "ยกเลิก" };
+    default: return { status: "pending", label: "รอดำเนินการ" };
+  }
+}
+
+function QuotationRow({ id, docId, customer, title, value, status, companyId, onClick }: { id: string, docId: string, customer: string, title: string, value: string, status: string, companyId: string, onClick?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[140px] whitespace-nowrap align-middle text-center text-nexus-teal tracking-tighter" mono>{id}</NexusTableCell>
@@ -1001,18 +997,18 @@ function QuotationRow({ id, customer, title, value, status, companyId, onClick }
       <NexusTableCell className="text-[14px] font-bold text-white/40 truncate text-left">{title}</NexusTableCell>
       <NexusTableCell className="w-[150px] whitespace-nowrap text-right text-white" mono>{value}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status={status === "Approved" || status === "active" ? "active" : status === "Draft" || status === "pending" ? "pending" : "danger"} label={status === "Approved" || status === "active" ? "ส่งแล้ว" : status === "Draft" || status === "pending" ? "ร่าง" : "ยกเลิก"} />
+        <StatusBadge {...quotationStatusBadge(status)} />
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-block">
-          <SecureDeleteAction collectionName={`companies/${companyId}/quotations`} documentId={id} displayName={title} compact />
+          <SecureDeleteAction collectionName={`companies/${companyId}/quotations`} documentId={docId} displayName={title} compact />
         </div>
       </NexusTableCell>
     </NexusTableRow>
   );
 }
 
-function SalesOrderRow({ id, customer, date, total, status, companyId, onClick }: { id: string, customer: string, date: string, total: string, status: string, companyId: string, onClick?: () => void }) {
+function SalesOrderRow({ id, docId, customer, date, total, status, companyId, onClick }: { id: string, docId: string, customer: string, date: string, total: string, status: string, companyId: string, onClick?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
@@ -1020,18 +1016,18 @@ function SalesOrderRow({ id, customer, date, total, status, companyId, onClick }
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-white/40 uppercase tracking-widest">{date}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white" mono>{total}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status={status === "Confirmed" || status === "paid" ? "paid" : "partial"} label={status === "Confirmed" || status === "paid" ? "ชำระเงินแล้ว" : "รอดำเนินการ"} />
+        <StatusBadge {...salesOrderStatusBadge(status)} />
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-block">
-          <SecureDeleteAction collectionName={`companies/${companyId}/sales_orders`} documentId={id} displayName={customer} compact />
+          <SecureDeleteAction collectionName={`companies/${companyId}/sales_orders`} documentId={docId} displayName={customer} compact />
         </div>
       </NexusTableCell>
     </NexusTableRow>
   );
 }
 
-function InvoiceRow({ id, soRef, customer, date, dueDate, total, status, companyId, onClick }: { id: string, soRef: string, customer: string, date: string, dueDate: string, total: string, status: string, companyId: string, onClick?: () => void }) {
+function InvoiceRow({ id, docId, soRef, customer, date, dueDate, total, status, companyId, onClick }: { id: string, docId: string, soRef: string, customer: string, date: string, dueDate: string, total: string, status: string, companyId: string, onClick?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
@@ -1041,18 +1037,18 @@ function InvoiceRow({ id, soRef, customer, date, dueDate, total, status, company
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-warning">{dueDate}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white" mono>{total}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status={status === "Paid" || status === "paid" ? "paid" : "pending"} label={status === "Paid" || status === "paid" ? "ชำระแล้ว" : "รอชำระ"} />
+        <StatusBadge status={status === "Paid" || status === "paid" ? "active" : "pending"} label={status === "Paid" || status === "paid" ? "ชำระแล้ว" : "รอชำระ"} />
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-block">
-          <SecureDeleteAction collectionName={`companies/${companyId}/invoices`} documentId={id} displayName={customer} compact />
+          <SecureDeleteAction collectionName={`companies/${companyId}/invoices`} documentId={docId} displayName={customer} compact />
         </div>
       </NexusTableCell>
     </NexusTableRow>
   );
 }
 
-function BillingNoteRow({ id, customer, date, dueDate, total, status, companyId, onClick }: any) {
+function BillingNoteRow({ id, docId, customer, date, dueDate, total, status, companyId, onClick }: any) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-warning font-medium tracking-tighter">{id}</NexusTableCell>
@@ -1061,18 +1057,18 @@ function BillingNoteRow({ id, customer, date, dueDate, total, status, companyId,
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-warning">{dueDate}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white" mono>{total}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status={status === "Paid" ? "paid" : "pending"} label={status === "Paid" ? "รับชำระแล้ว" : "รอดำเนินการ"} />
+        <StatusBadge status={status === "Paid" ? "active" : "pending"} label={status === "Paid" ? "รับชำระแล้ว" : "รอดำเนินการ"} />
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-block">
-          <SecureDeleteAction collectionName={`companies/${companyId}/billing_notes`} documentId={id} displayName={id} compact />
+          <SecureDeleteAction collectionName={`companies/${companyId}/billing_notes`} documentId={docId} displayName={id} compact />
         </div>
       </NexusTableCell>
     </NexusTableRow>
   );
 }
 
-function CndnRow({ id, customer, type, date, total, status, companyId, onClick }: any) {
+function CndnRow({ id, docId, customer, type, date, total, status, companyId, onClick }: any) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
@@ -1085,14 +1081,14 @@ function CndnRow({ id, customer, type, date, total, status, companyId, onClick }
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-block">
-          <SecureDeleteAction collectionName={`companies/${companyId}/cndn`} documentId={id} displayName={id} compact />
+          <SecureDeleteAction collectionName={`companies/${companyId}/cndn`} documentId={docId} displayName={id} compact />
         </div>
       </NexusTableCell>
     </NexusTableRow>
   );
 }
 
-function ReceiptRow({ id, invRef, customer, date, total, status, companyId, onClick }: any) {
+function ReceiptRow({ id, docId, invRef, customer, date, total, status, companyId, onClick }: any) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-emerald-400 font-medium tracking-tighter">{id}</NexusTableCell>
@@ -1101,11 +1097,11 @@ function ReceiptRow({ id, invRef, customer, date, total, status, companyId, onCl
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-white/40">{date}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-emerald-400" mono>{total}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status="paid" label="รับชำระแล้ว" />
+        <StatusBadge status="active" label="รับชำระแล้ว" />
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-block">
-          <SecureDeleteAction collectionName={`companies/${companyId}/receipts`} documentId={id} displayName={id} compact />
+          <SecureDeleteAction collectionName={`companies/${companyId}/receipts`} documentId={docId} displayName={id} compact />
         </div>
       </NexusTableCell>
     </NexusTableRow>

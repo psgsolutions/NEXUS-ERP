@@ -9,12 +9,31 @@ import { DocumentFlowService } from "@/services/documentFlow.service";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
 
+// สถานะจากหลายแหล่ง (Draft/Confirmed/COMPLETED/delivered) → OPEN / DELIVERED / COMPLETED / DRAFT / CANCELLED
+function normalizeSoStatus(status: string) {
+  const st = String(status || "").toUpperCase();
+  if (st === "DRAFT") return "DRAFT";
+  if (st === "DELIVERED") return "DELIVERED";
+  if (st === "COMPLETED") return "COMPLETED";
+  if (st === "CANCELLED") return "CANCELLED";
+  return "OPEN";
+}
+
 export default function SalesOrderDashboardPage() {
   const router = useRouter();
   const { companyId, user } = useAuth();
   const { showAlert } = useSystemDialog();
   const [searchTerm, setSearchTerm] = useState("");
-  const { data: orders, loading } = useRealtimeCollection("sales_orders");
+  // ใบสั่งขายจริงเก็บที่ companies/{companyId}/sales_orders; ปรับชื่อฟิลด์ที่ต่างกันตามแหล่งที่สร้างให้เป็นแบบเดียว
+  const { data: rawOrders, loading } = useRealtimeCollection(`companies/${companyId}/sales_orders`);
+  const orders = rawOrders.map((so: any) => ({
+    ...so,
+    soCode: so.soCode || so.documentNo || so.soId || so.id,
+    netTotal: so.grandTotal ?? so.netTotal ?? so.totalAmount ?? so.totalRevenue ?? 0,
+    poNumber: so.poNumber || so.customerPoNo || "",
+    customerName: so.customerName || so.customerSnapshot?.name || so.customerInfo?.name || so.customerId || "",
+    status: normalizeSoStatus(so.status),
+  }));
 
   // Filter logic
   const filteredOrders = orders.filter(so => {
@@ -44,6 +63,8 @@ export default function SalesOrderDashboardPage() {
     switch (status) {
       case 'COMPLETED': return 'active';
       case 'DELIVERED': return 'pending';
+      case 'CANCELLED': return 'danger';
+      case 'DRAFT':
       case 'OPEN':
       default: return 'inactive';
     }
@@ -51,8 +72,10 @@ export default function SalesOrderDashboardPage() {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'COMPLETED': return 'ปิดจ๊อบแล้ว';
+      case 'COMPLETED': return 'ออกใบกำกับแล้ว';
       case 'DELIVERED': return 'ส่งมอบแล้ว';
+      case 'DRAFT': return 'ร่าง';
+      case 'CANCELLED': return 'ยกเลิก';
       case 'OPEN': return 'กำลังดำเนินการ';
       default: return status || 'OPEN';
     }

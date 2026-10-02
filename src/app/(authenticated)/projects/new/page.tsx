@@ -782,7 +782,7 @@ export default function NewProjectPage() {
                   onChange={(val) => setSelectedCustomerId(val)}
                   placeholder="พิมพ์ค้นหาหรือเลือกชื่อลูกค้า..."
                   addNewLabel="เพิ่มรายชื่อลูกค้าใหม่"
-                  onAddNew={() => router.push("/sales/customers/new")}
+                  onAddNew={() => router.push("/customers/new")}
                 />
               </div>
 

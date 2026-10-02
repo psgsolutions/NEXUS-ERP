@@ -38,7 +38,7 @@ export default function NewInvoicePage() {
 
     const fetchSOs = async () => {
       const q = query(
-        collection(db, 'sales_orders'),
+        collection(db, `companies/${companyId}/sales_orders`),
         where('companyId', '==', companyId),
         where('isDeleted', '==', false)
       );
@@ -146,7 +146,7 @@ export default function NewInvoicePage() {
         isDeleted: false
       };
 
-      await addDoc(collection(db, 'invoices'), docData);
+      await addDoc(collection(db, `companies/${companyId}/invoices`), docData);
       
       alert(`บันทึกใบแจ้งหนี้สำเร็จ: ${invoiceNo}`);
       // Reset

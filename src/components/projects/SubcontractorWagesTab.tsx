@@ -119,7 +119,7 @@ export function SubcontractorWagesTab() {
 
   const fetchQuotations = async () => {
     try {
-      const qRef = collection(db, "quotations");
+      const qRef = collection(db, `companies/${companyId}/quotations`);
       const q = query(qRef, where("companyId", "==", companyId), where("isDeleted", "==", false));
       const snap = await getDocs(q);
       const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));

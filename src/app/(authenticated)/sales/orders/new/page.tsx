@@ -2,88 +2,148 @@
 
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Send, Building2, Calendar, Percent, Plus, Sparkles, MapPin, Paperclip, File as FileIcon, Trash2, AlertTriangle, Briefcase, ShieldCheck } from "lucide-react";
-import { PillButton, PillSelect, cn, NexusDatePicker, GlassCard, PillInput } from "@/components/ui/Base";
+import { ArrowLeft, Save, Send, Building2, Calendar, Percent, Plus, MapPin, Paperclip, AlertTriangle, ShieldCheck } from "lucide-react";
+import { PillButton, PillSelect, cn, NexusDatePicker, GlassCard } from "@/components/ui/Base";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { formatCurrency } from "@/lib/erp-logic";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
+import { useAuth } from "@/context/AuthContext";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { nexusSequenceEngine } from "@/lib/sequence-engine";
+import { db } from "@/lib/firebase-client";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
-// Mock Data
-const MOCK_CUSTOMERS = [
-  { id: "C001", name: "บริษัท เอสซีจี แพคเกจจิ้ง จำกัด (มหาชน)", address: "1 ถ.ปูนซิเมนต์ไทย บางซื่อ กรุงเทพฯ 10800", taxId: "0107557000392", creditLimit: 5000000, currentBalance: 3200000 },
-  { id: "C002", name: "บมจ. ซีพี ออลล์", address: "313 อาคาร ซี.พี.ทาวเวอร์ ชั้น 24 ถ.สีลม บางรัก กรุงเทพฯ 10500", taxId: "0107542000011", creditLimit: 2000000, currentBalance: 1950000 },
-  { id: "C003", name: "บริษัท แอดวานซ์ อินโฟร์ เซอร์วิส จำกัด (มหาชน)", address: "414 พหลโยธิน แขวงสามเสนใน เขตพญาไท กรุงเทพฯ 10400", taxId: "0107535000265", creditLimit: 10000000, currentBalance: 1500000 }
-];
+type TaxType = "exclusive" | "inclusive" | "none";
 
-const MOCK_SITES: Record<string, { id: string, name: string, address: string, branchCode: string }[]> = {
-  "C001": [
-    { id: "S1", name: "สำนักงานใหญ่ (บางซื่อ)", address: "1 ถ.ปูนซิเมนต์ไทย บางซื่อ กรุงเทพฯ 10800", branchCode: "00000" },
-    { id: "S2", name: "สาขาระยอง (โรงงาน)", address: "1 ถ.ปูนซิเมนต์ไทยระยอง ต.ท่าประดู่ อ.เมือง จ.ระยอง 21000", branchCode: "00001" }
-  ],
-  "C002": [
-    { id: "S3", name: "สำนักงานใหญ่ (สีลม)", address: "313 อาคาร ซี.พี.ทาวเวอร์ ชั้น 24 ถ.สีลม บางรัก กรุงเทพฯ 10500", branchCode: "00000" }
-  ]
+const VAT_TYPE_LABEL: Record<TaxType, string> = {
+  exclusive: "Exclude VAT",
+  inclusive: "Include VAT",
+  none: "Non-VAT",
 };
 
-const MOCK_PROJECTS = [
-  { id: "PRJ-24-001", name: "วางระบบ ERP สนง.ใหญ่", costCenter: "CC-IT-001" },
-  { id: "PRJ-24-002", name: "ปรับปรุงสาขาระยอง", costCenter: "CC-ENG-002" },
-  { id: "PRJ-24-003", name: "MA Service 2024", costCenter: "CC-SVC-003" }
-];
+const customerName = (c: any) => c?.name || c?.customerName || c?.companyName || "-";
+const customerAddress = (c: any) => {
+  if (!c) return "";
+  if (typeof c.address === "string") return c.address;
+  if (c.address?.billing) return c.address.billing;
+  return [c.addressNo, c.soi, c.road, c.subDistrict, c.district, c.province, c.zipCode].filter(Boolean).join(" ");
+};
 
 export default function SalesOrderPage() {
   const router = useRouter();
-  
+  const { user, companyId } = useAuth();
+
+  // ข้อมูลจริงของบริษัท
+  const { data: customers, loading: customersLoading } = useRealtimeCollection<any>(`companies/${companyId}/customers`);
+  const { data: projects } = useRealtimeCollection<any>(`companies/${companyId}/projects`);
+  const { data: invoices } = useRealtimeCollection<any>(`companies/${companyId}/invoices`);
+
   const [docDate, setDocDate] = useState(new Date().toISOString().split('T')[0]);
-  const [taxType, setTaxType] = useState("exclusive");
-  const [selectedCustomer, setSelectedCustomer] = useState(MOCK_CUSTOMERS[0].id);
-  const [selectedSite, setSelectedSite] = useState<string>("S1");
+  const [taxType, setTaxType] = useState<TaxType>("exclusive");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [items, setItems] = useState<any[]>([]);
   const [isCustomerSelectorOpen, setIsCustomerSelectorOpen] = useState(false);
-
-  // Feature A: Delivery Address
   const [isSameAsBilling, setIsSameAsBilling] = useState(true);
   const [deliveryAddress, setDeliveryAddress] = useState("");
-
-  // Feature B & D: Project & Payment Terms
   const [projectId, setProjectId] = useState("");
   const [paymentTerm, setPaymentTerm] = useState("30"); // days
-  
-  // Feature C: Multi-Attachment Vault
-  const [attachments, setAttachments] = useState<{name: string, size: string}[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  const customer = MOCK_CUSTOMERS.find(c => c.id === selectedCustomer);
-  const sites = customer ? (MOCK_SITES[customer.id] || []) : [];
-  const activeSite = sites.find(s => s.id === selectedSite) || sites[0];
+  const customer = customers.find((c: any) => c.id === selectedCustomerId);
+  const billingAddress = customerAddress(customer);
 
-  // Auto-calculated summary
+  // คำนวณยอดจากรายการ (ฟิลด์ qty / price / discountType / discountValue ของ DocumentItemsTable)
   const summary = useMemo(() => {
-    const subtotal = items.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
-    const discount = items.reduce((acc, item) => acc + (item.discount || 0), 0);
-    const afterDiscount = subtotal - discount;
-    const vat = taxType !== "none" ? afterDiscount * 0.07 : 0;
-    const grandTotal = taxType === "inclusive" ? afterDiscount : afterDiscount + vat;
-    const preVat = taxType === "inclusive" ? grandTotal - vat : afterDiscount;
-
-    return { subtotal, discount, preVat, vat, grandTotal };
+    const lines = items.filter((it) => it.itemType !== "GROUP_HEADER");
+    const subtotal = lines.reduce((acc, it) => acc + (Number(it.qty) || 0) * (Number(it.price) || 0), 0);
+    const discount = lines.reduce((acc, it) => {
+      const lineSub = (Number(it.qty) || 0) * (Number(it.price) || 0);
+      const val = Number(it.discountValue) || 0;
+      return acc + (it.discountType === "PERCENT" ? lineSub * (val / 100) : val);
+    }, 0);
+    const afterDiscount = Math.max(0, subtotal - discount);
+    let vat = 0;
+    let preVat = afterDiscount;
+    let grandTotal = afterDiscount;
+    if (taxType === "exclusive") {
+      vat = afterDiscount * 0.07;
+      grandTotal = afterDiscount + vat;
+    } else if (taxType === "inclusive") {
+      preVat = afterDiscount / 1.07;
+      vat = afterDiscount - preVat;
+    }
+    const round = (n: number) => Math.round(n * 100) / 100;
+    return { subtotal: round(subtotal), discount: round(discount), preVat: round(preVat), vat: round(vat), grandTotal: round(grandTotal) };
   }, [items, taxType]);
 
-  const creditRemaining = customer ? customer.creditLimit - customer.currentBalance : 0;
-  const isCreditExceeded = summary.grandTotal > creditRemaining;
+  // วงเงินเครดิต: วงเงินจากข้อมูลลูกค้า, ยอดค้าง = ใบแจ้งหนี้ที่ยังไม่ชำระของลูกค้ารายนี้
+  const creditLimit = Number(customer?.creditLimit ?? customer?.credit_limit ?? 0);
+  const hasCreditLimit = creditLimit > 0;
+  const currentBalance = useMemo(() => {
+    if (!customer) return 0;
+    return invoices
+      .filter((inv: any) => (inv.customerId === customer.id || inv.customerId === customer.customerId) && inv.paymentStatus !== "paid" && inv.status !== "Paid")
+      .reduce((sum: number, inv: any) => sum + Number(inv.grandTotal || inv.totalAmount || 0), 0);
+  }, [invoices, customer]);
+  const creditRemaining = creditLimit - currentBalance;
+  const isCreditExceeded = hasCreditLimit && summary.grandTotal > creditRemaining;
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files).map(f => ({
-        name: f.name,
-        size: (f.size / 1024).toFixed(1) + " KB"
-      }));
-      setAttachments(prev => [...prev, ...newFiles]);
+  const saveOrder = async (status: "Draft" | "Confirmed") => {
+    setError("");
+    if (!companyId) return setError("ไม่พบรหัสบริษัทของผู้ใช้");
+    if (!customer) return setError("กรุณาเลือกลูกค้า");
+    const lines = items.filter((it) => it.itemType !== "GROUP_HEADER" && (Number(it.qty) || 0) > 0);
+    if (lines.length === 0) return setError("กรุณาเพิ่มรายการสินค้าหรือบริการอย่างน้อย 1 รายการ");
+    if (status === "Confirmed" && isCreditExceeded) return setError("ยอดเกินวงเงินเครดิตคงเหลือ ไม่สามารถอนุมัติได้ (บันทึกเป็นร่างได้)");
+
+    setSaving(true);
+    try {
+      const soId = await nexusSequenceEngine("SO", companyId);
+      const project = projects.find((p: any) => p.id === projectId);
+      await setDoc(doc(db, `companies/${companyId}/sales_orders`, soId), {
+        soId,
+        documentNo: soId,
+        companyId,
+        docDate,
+        customerId: customer.id,
+        customerName: customerName(customer),
+        customerSnapshot: {
+          name: customerName(customer),
+          taxId: customer.taxId || "",
+          branch: customer.branch || customer.branchCode || "",
+          address: billingAddress,
+        },
+        billingAddress,
+        deliveryAddress: isSameAsBilling ? billingAddress : deliveryAddress,
+        projectId: projectId || "",
+        projectName: project ? (project.title || project.name || project.projectId || "") : "",
+        paymentTermDays: Number(paymentTerm),
+        vatType: VAT_TYPE_LABEL[taxType],
+        taxMode: VAT_TYPE_LABEL[taxType],
+        isVatRegistered: taxType !== "none",
+        items: lines,
+        subTotal: summary.preVat,
+        totalDiscount: summary.discount,
+        vatAmount: summary.vat,
+        grandTotal: summary.grandTotal,
+        totalAmount: summary.grandTotal,
+        totalRevenue: summary.grandTotal,
+        status,
+        fulfillmentStatus: "pending",
+        createdBy: user?.email || user?.uid || "",
+        updatedBy: user?.email || user?.uid || "",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        isDeleted: false,
+      });
+      router.push(`/sales/orders/${soId}`);
+    } catch (err: any) {
+      console.error("[SO_SAVE_ERROR]", err);
+      setError(err?.message || "บันทึกใบสั่งขายไม่สำเร็จ");
+      setSaving(false);
     }
-  };
-
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const headerContent = (
@@ -96,68 +156,77 @@ export default function SalesOrderPage() {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">สร้างใบสั่งขายใหม่</h1>
             <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
-              SO-NEW
+              ออกเลขเมื่อบันทึก
             </span>
           </div>
           <p className="text-sm text-white/60 font-medium mt-1">สร้างใบสั่งขาย ระบุรายการสินค้า บริการ และเงื่อนไขการส่งมอบ</p>
         </div>
       </div>
       <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
-        <DocumentStepper steps={["ร่าง", "รออนุมัติ", "อนุมัติแล้ว"]} currentStep={0} />
-        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={() => router.back()}>
+        <DocumentStepper steps={["ร่าง", "อนุมัติแล้ว"]} currentStep={0} />
+        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={() => router.back()} disabled={saving}>
           ยกเลิก
         </PillButton>
-        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/80">
-          <Save size={14} className="mr-1.5" /> บันทึกร่าง
+        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/80" onClick={() => saveOrder("Draft")} disabled={saving}>
+          <Save size={14} className="mr-1.5" /> {saving ? "กำลังบันทึก..." : "บันทึกร่าง"}
         </PillButton>
-        <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs">
+        <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" onClick={() => saveOrder("Confirmed")} disabled={saving || isCreditExceeded}>
           <Send size={14} className="mr-1.5" /> บันทึกและอนุมัติ
         </PillButton>
       </div>
+      {error && (
+        <div className="w-full sm:basis-full p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-[12px] text-red-400 font-bold flex items-center gap-2">
+          <AlertTriangle size={14} /> {error}
+        </div>
+      )}
     </div>
   );
 
   const leftContent = (
     <div className="space-y-6 pr-2 pb-10">
-      
+
       <div className="flex flex-col gap-6">
         {/* Customer Column */}
         <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-nexus-teal hover:border-white/25">
           <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
             <Building2 size={16} className="text-nexus-teal" /> ข้อมูลลูกค้า
           </h3>
-          
+
           <div className="space-y-4 relative">
             <Field label="ชื่อลูกค้า *">
-              
               <div className="relative w-full">
-                <div 
+                <div
                   onClick={() => setIsCustomerSelectorOpen(!isCustomerSelectorOpen)}
                   className="w-full h-9 bg-white/[0.02] rounded-full px-6 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition-all group"
                 >
                   <span className={cn("text-[13px] font-bold", customer ? "text-white" : "text-white/30")}>
-                    {customer ? customer.name : "พิมพ์เพื่อค้นหาผู้ติดต่อ หรือสร้างผู้ติดต่อใหม่"}
+                    {customer ? customerName(customer) : customersLoading ? "กำลังโหลดรายชื่อลูกค้า..." : "เลือกลูกค้า"}
                   </span>
                   <Plus size={16} className="text-white/30 group-hover:text-cyan-400 transition-all" />
                 </div>
-                
+
                 {isCustomerSelectorOpen && (
-                  <div className="absolute top-11 left-0 w-full bg-surface-2 border border-white/10 rounded-xl shadow-2xl p-2 z-50">
-                    {MOCK_CUSTOMERS.map(c => (
-                      <div 
-                        key={c.id} 
-                        onClick={() => { 
-                          setSelectedCustomer(c.id); 
-                          setSelectedSite(MOCK_SITES[c.id]?.[0]?.id || "");
-                          setIsCustomerSelectorOpen(false); 
+                  <div className="absolute top-11 left-0 w-full max-h-80 overflow-y-auto bg-surface-2 border border-white/10 rounded-xl shadow-2xl p-2 z-50">
+                    {customers.length === 0 && !customersLoading && (
+                      <p className="p-3 text-[12px] text-white/40">ยังไม่มีข้อมูลลูกค้าในบริษัทนี้</p>
+                    )}
+                    {customers.map((c: any) => (
+                      <div
+                        key={c.id}
+                        onClick={() => {
+                          setSelectedCustomerId(c.id);
+                          setIsCustomerSelectorOpen(false);
                         }}
                         className="p-3 hover:bg-white/5 rounded-lg cursor-pointer transition-all"
                       >
-                        <p className="text-[13px] font-bold text-white">{c.name}</p>
-                        <p className="text-[10px] text-white/30 mt-1 font-mono">{c.taxId} • <span className="font-sans">{c.address}</span></p>
+                        <p className="text-[13px] font-bold text-white">{customerName(c)}</p>
+                        <p className="text-[10px] text-white/30 mt-1 font-mono">{c.taxId || "-"} • <span className="font-sans">{customerAddress(c) || "-"}</span></p>
                       </div>
                     ))}
-                    <div className="p-3 mt-2 border-t border-white/5 hover:bg-cyan-500/10 rounded-lg cursor-pointer text-cyan-400 flex items-center gap-2">
+                    <div
+                      onClick={() => router.push("/customers/new")}
+                      className="p-3 mt-2 border-t border-white/5 hover:bg-cyan-500/10 rounded-lg cursor-pointer text-cyan-400 flex items-center gap-2"
+                    >
                       <Plus size={14} /> <span className="text-[13px] font-bold">เพิ่มลูกค้าใหม่...</span>
                     </div>
                   </div>
@@ -167,24 +236,16 @@ export default function SalesOrderPage() {
 
             <div className="grid grid-cols-2 gap-6 pt-2">
               <div className="space-y-3">
-                <Field label="สาขา / ที่อยู่สำหรับออกบิล (Billing Address)">
+                <Field label="ที่อยู่สำหรับออกบิล (Billing Address)">
                   <div className="flex items-center gap-2 mb-2">
-                     <MapPin size={14} className="text-white/40" /> 
+                     <MapPin size={14} className="text-white/40" />
+                     {customer && (
+                       <span className="text-[11px] text-white/40">สาขา {customer.branch || customer.branchCode || "00000"}</span>
+                     )}
                   </div>
-                  {sites.length > 0 ? (
-                    <PillSelect value={selectedSite} onChange={(e) => setSelectedSite(e.target.value)} className="w-full h-9 px-6 rounded-full bg-white/[0.02] text-[13px] font-bold">
-                      {sites.map(site => (
-                        <option key={site.id} value={site.id}>{site.name} (สาขา {site.branchCode})</option>
-                      ))}
-                    </PillSelect>
-                  ) : (
-                    <p className="text-[13px] text-white/40">ไม่มีข้อมูลสาขาสำหรับลูกค้ารายนี้</p>
-                  )}
-                  {activeSite && (
-                    <p className="text-[13px] font-bold text-white/60 min-h-[40px] leading-relaxed pt-2">
-                      {activeSite.address}
-                    </p>
-                  )}
+                  <p className="text-[13px] font-bold text-white/60 min-h-[40px] leading-relaxed">
+                    {customer ? (billingAddress || "ไม่มีข้อมูลที่อยู่ของลูกค้ารายนี้") : "-"}
+                  </p>
                 </Field>
               </div>
               <div className="space-y-3 border-l border-white/5 pl-6">
@@ -193,17 +254,17 @@ export default function SalesOrderPage() {
                     <MapPin size={12} className="text-cyan-400" /> สถานที่ส่งมอบ / หน้างาน
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer text-[10px] text-cyan-400/80 hover:text-cyan-400">
-                    <input 
-                      type="checkbox" 
-                      checked={isSameAsBilling} 
+                    <input
+                      type="checkbox"
+                      checked={isSameAsBilling}
                       onChange={e => setIsSameAsBilling(e.target.checked)}
                       className="w-3 h-3 rounded-sm border-white/20 bg-white/5 text-cyan-500 focus:ring-cyan-500/50"
                     />
-                    [ 📍 ใช้ที่อยู่เดียวกับสำนักงานใหญ่ ]
+                    [ 📍 ใช้ที่อยู่เดียวกับที่อยู่ออกบิล ]
                   </label>
                 </div>
                 {!isSameAsBilling ? (
-                  <textarea 
+                  <textarea
                     value={deliveryAddress}
                     onChange={e => setDeliveryAddress(e.target.value)}
                     placeholder="ระบุสถานที่จัดส่งหรือไซต์งาน..."
@@ -211,7 +272,7 @@ export default function SalesOrderPage() {
                   />
                 ) : (
                   <p className="text-[13px] font-bold text-white/30">
-                    {activeSite ? activeSite.address : "-"}
+                    {billingAddress || "-"}
                   </p>
                 )}
               </div>
@@ -229,7 +290,7 @@ export default function SalesOrderPage() {
               <Field label="วันที่ออก *">
                 <NexusDatePicker value={docDate} onChange={(e) => setDocDate(e.target.value)} className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[13px] font-bold" />
               </Field>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <Field label="เงื่อนไขการชำระเงิน">
                   <PillSelect value={paymentTerm} onChange={(e) => setPaymentTerm(e.target.value)} className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[13px] font-bold">
@@ -243,22 +304,22 @@ export default function SalesOrderPage() {
                 <Field label="โครงการ / Cost Center">
                   <PillSelect value={projectId} onChange={(e) => setProjectId(e.target.value)} className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[13px] font-bold">
                     <option value="">-- ไม่ระบุโครงการ --</option>
-                    {MOCK_PROJECTS.map(p => (
-                      <option key={p.id} value={p.id}>{p.id} - {p.name}</option>
+                    {projects.map((p: any) => (
+                      <option key={p.id} value={p.id}>{p.projectId || p.id} - {p.title || p.name || p.projectName || "-"}</option>
                     ))}
                   </PillSelect>
                 </Field>
               </div>
             </div>
           </div>
-          
+
           <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-purple-500 hover:border-white/25">
             <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
               <Percent size={16} className="text-purple-400" /> ข้อมูลราคาและภาษี
             </h3>
             <div className="space-y-4">
               <Field label="ประเภทราคา *">
-                <PillSelect value={taxType} onChange={(e) => setTaxType(e.target.value)} className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[13px] font-bold">
+                <PillSelect value={taxType} onChange={(e) => setTaxType(e.target.value as TaxType)} className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[13px] font-bold">
                   <option value="exclusive">แยกภาษี (Exclusive)</option>
                   <option value="inclusive">รวมภาษี (Inclusive)</option>
                   <option value="none">ไม่มีภาษี</option>
@@ -283,54 +344,22 @@ export default function SalesOrderPage() {
           <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
             รายการสินค้า / บริการ
           </h3>
-          
-          <DocumentItemsTable 
-            items={items} 
-            onChange={setItems} 
+
+          <DocumentItemsTable
+            items={items}
+            onChange={setItems}
           />
         </div>
 
-        {/* Multi-Attachment Vault */}
-        <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-amber-500 hover:border-white/25">
-          <div className="flex items-center justify-between border-b border-white/10 pb-4 h-[36px]">
-            <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2">
-              <Paperclip size={16} className="text-amber-400" /> เอกสารแนบ (Attachments)
-            </h3>
-            <label className="cursor-pointer">
-              <input type="file" multiple className="hidden" onChange={handleFileUpload} />
-              <div className="h-8 px-4 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 text-[11px] font-semibold uppercase tracking-widest flex items-center transition-all">
-                <Plus size={12} className="mr-2" /> เพิ่มไฟล์แนบ
-              </div>
-            </label>
+        {/* Attachments: ยังไม่มี Firebase Storage จึงยังแนบไฟล์จริงไม่ได้ */}
+        <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-amber-500">
+          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
+            <Paperclip size={16} className="text-amber-400" /> เอกสารแนบ (Attachments)
+          </h3>
+          <div className="w-full py-6 rounded-2xl border border-dashed border-white/10 flex flex-col items-center justify-center text-white/30 bg-black/30">
+            <Paperclip size={20} className="mb-2 opacity-30" />
+            <p className="text-[12px] font-bold">ยังไม่รองรับการแนบไฟล์ (รอตั้งค่าพื้นที่เก็บไฟล์ Firebase Storage)</p>
           </div>
-          
-          {attachments.length === 0 ? (
-            <div className="w-full py-8 rounded-2xl border border-dashed border-white/10 flex flex-col items-center justify-center text-white/30 bg-black/30">
-              <Paperclip size={24} className="mb-2 opacity-30" />
-              <p className="text-[12px] font-bold">ลากไฟล์มาวาง หรือคลิกเพื่ออัปโหลด (Drag & Drop)</p>
-              <p className="text-[10px] font-mono mt-1 opacity-50">รองรับ PDF, JPG, PNG ขนาดไม่เกิน 10MB</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {attachments.map((file, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all group">
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <FileIcon size={16} className="text-cyan-400 shrink-0" />
-                    <div className="overflow-hidden">
-                      <p className="text-[12px] font-bold text-white truncate">{file.name}</p>
-                      <p className="text-[10px] font-mono text-white/40">{file.size}</p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => removeAttachment(idx)}
-                    className="w-7 h-7 flex items-center justify-center rounded-full bg-red-500/10 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20 shrink-0"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
       </div>
@@ -339,7 +368,7 @@ export default function SalesOrderPage() {
 
   const rightSidebar = (
     <div className="space-y-4 h-fit pb-10">
-      
+
       {/* Credit Limit Checking Card */}
       <GlassCard className={cn(
         "p-5 border-white/15 rounded-3xl shadow-2xl w-full flex flex-col gap-3 transition-colors border-t-4 border-t-nexus-teal",
@@ -347,7 +376,7 @@ export default function SalesOrderPage() {
       )}>
         <div className="flex justify-between items-center pb-3 border-b border-white/5">
           <span className="text-[11px] font-black uppercase tracking-widest text-white/40">วงเงินเครดิต (Credit Limit)</span>
-          {isCreditExceeded ? (
+          {!customer ? null : isCreditExceeded ? (
             <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-red-400">
               <AlertTriangle size={12} /> เกินวงเงิน
             </span>
@@ -357,22 +386,28 @@ export default function SalesOrderPage() {
             </span>
           )}
         </div>
-        <div className="space-y-2">
-          <div className="flex justify-between items-center text-[12px]">
-            <span className="text-white/60 font-bold">วงเงินที่ได้รับ:</span>
-            <span className="text-white font-mono font-bold">{formatCurrency(customer?.creditLimit || 0)}</span>
+        {!customer ? (
+          <p className="text-[12px] text-white/40">เลือกลูกค้าเพื่อตรวจสอบวงเงิน</p>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex justify-between items-center text-[12px]">
+              <span className="text-white/60 font-bold">วงเงินที่ได้รับ:</span>
+              <span className="text-white font-mono font-bold">{hasCreditLimit ? formatCurrency(creditLimit) : "ไม่ได้กำหนด"}</span>
+            </div>
+            <div className="flex justify-between items-center text-[12px]">
+              <span className="text-white/60 font-bold">ยอดใบแจ้งหนี้ค้างชำระ:</span>
+              <span className="text-white font-mono font-bold">{formatCurrency(currentBalance)}</span>
+            </div>
+            {hasCreditLimit && (
+              <div className="flex justify-between items-center text-[12px] pt-2 border-t border-white/5">
+                <span className={cn("font-black uppercase tracking-widest", isCreditExceeded ? "text-red-400" : "text-emerald-400")}>วงเงินคงเหลือ:</span>
+                <span className={cn("font-mono font-black", isCreditExceeded ? "text-red-400" : "text-emerald-400")}>
+                  {formatCurrency(creditRemaining)}
+                </span>
+              </div>
+            )}
           </div>
-          <div className="flex justify-between items-center text-[12px]">
-            <span className="text-white/60 font-bold">ยอดหนี้ค้างชำระ:</span>
-            <span className="text-white font-mono font-bold">{formatCurrency(customer?.currentBalance || 0)}</span>
-          </div>
-          <div className="flex justify-between items-center text-[12px] pt-2 border-t border-white/5">
-            <span className={cn("font-black uppercase tracking-widest", isCreditExceeded ? "text-red-400" : "text-emerald-400")}>วงเงินคงเหลือ:</span>
-            <span className={cn("font-mono font-black", isCreditExceeded ? "text-red-400" : "text-emerald-400")}>
-              {formatCurrency(creditRemaining)}
-            </span>
-          </div>
-        </div>
+        )}
         {isCreditExceeded && (
           <div className="mt-2 p-2 rounded-lg bg-red-500/20 border border-red-500/30 text-[11px] text-red-400 font-bold leading-relaxed">
             ยอดเงินคงเหลือไม่เพียงพอสำหรับการเปิดใบสั่งขายนี้ กรุณาติดต่อฝ่ายสินเชื่อเพื่อขออนุมัติวงเงินชั่วคราว
@@ -383,7 +418,7 @@ export default function SalesOrderPage() {
       {/* Summary Card */}
       <GlassCard className="p-6 border-white/5 rounded-3xl bg-surface-1 shadow-2xl space-y-4 w-full">
         <div className="flex justify-between items-center text-[13px]">
-          <span className="text-white/40 font-bold uppercase tracking-widest text-[11px]">มูลค่ารวมก่อนภาษี (Subtotal)</span>
+          <span className="text-white/40 font-bold uppercase tracking-widest text-[11px]">มูลค่ารวม (Subtotal)</span>
           <span className="text-white font-mono font-bold">{formatCurrency(summary.subtotal)} บาท</span>
         </div>
         {summary.discount > 0 && (
@@ -418,7 +453,7 @@ export default function SalesOrderPage() {
   );
 
   return (
-    <NexusPageLayout 
+    <NexusPageLayout
       header={headerContent}
       leftContent={leftContent}
       rightSidebar={rightSidebar}

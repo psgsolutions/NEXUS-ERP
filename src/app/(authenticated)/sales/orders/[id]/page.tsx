@@ -1,227 +1,238 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Save, Send, Building2, Calendar, Percent, Plus } from "lucide-react";
-import { PillButton, PillInput, PillSelect, cn, NexusDatePicker } from "@/components/ui/Base";
-import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
+import { ArrowLeft, Building2, Calendar, CheckCircle2, FileText, MapPin, Truck, XCircle, AlertTriangle } from "lucide-react";
+import { PillButton, GlassCard, StatusBadge, NexusTable, NexusTableRow, NexusTableCell } from "@/components/ui/Base";
 import { formatCurrency } from "@/lib/erp-logic";
+import NexusPageLayout from "@/components/layout/NexusPageLayout";
+import { DocumentStepper } from "@/components/ui/DocumentStepper";
+import { useAuth } from "@/context/AuthContext";
+import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
+import { DocumentFlowService } from "@/services/documentFlow.service";
+import { db } from "@/lib/firebase-client";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 
-// Mock Data
-const MOCK_CUSTOMERS = [
-  { id: "C001", name: "บริษัท เอสซีจี แพคเกจจิ้ง จำกัด (มหาชน)", address: "1 ถ.ปูนซิเมนต์ไทย บางซื่อ กรุงเทพฯ 10800", taxId: "0107557000392" },
-  { id: "C002", name: "บมจ. ซีพี ออลล์", address: "313 อาคาร ซี.พี.ทาวเวอร์ ชั้น 24 ถ.สีลม บางรัก กรุงเทพฯ 10500", taxId: "0107542000011" },
-  { id: "C003", name: "บริษัท แอดวานซ์ อินโฟร์ เซอร์วิส จำกัด (มหาชน)", address: "414 พหลโยธิน แขวงสามเสนใน เขตพญาไท กรุงเทพฯ 10400", taxId: "0107535000265" }
-];
+const STEPS = ["ร่าง", "อนุมัติแล้ว", "ส่งมอบแล้ว", "ออกใบกำกับแล้ว"];
 
-const MOCK_PRODUCTS = [
-  { id: "P01", name: "Nexus Pro Server Node", unitPrice: 45000, type: "hardware", unit: "Node" },
-  { id: "P02", name: "Enterprise DB License (1 YR)", unitPrice: 120000, type: "software", unit: "License" },
-  { id: "P03", name: "Implementation Service", unitPrice: 15000, type: "service", unit: "Man-Day" },
-  { id: "P04", name: "Cloud Storage 10TB", unitPrice: 8500, type: "subscription", unit: "Month" }
-];
+function normalizeStatus(status: string) {
+  const st = String(status || "").toUpperCase();
+  if (["DRAFT", "DELIVERED", "COMPLETED", "CANCELLED"].includes(st)) return st;
+  return "CONFIRMED";
+}
 
-export default function SalesOrderPage() {
+const STATUS_VIEW: Record<string, { step: number; badge: "active" | "inactive" | "pending" | "warning" | "danger"; label: string }> = {
+  DRAFT: { step: 0, badge: "pending", label: "ร่าง" },
+  CONFIRMED: { step: 1, badge: "active", label: "อนุมัติแล้ว" },
+  DELIVERED: { step: 2, badge: "warning", label: "ส่งมอบแล้ว รอออกใบกำกับ" },
+  COMPLETED: { step: 3, badge: "active", label: "ออกใบกำกับแล้ว" },
+  CANCELLED: { step: 0, badge: "danger", label: "ยกเลิก" },
+};
+
+const toDateStr = (v: any) => {
+  if (!v) return "-";
+  if (typeof v === "string") return v.split("T")[0];
+  if (v.seconds) return new Date(v.seconds * 1000).toISOString().split("T")[0];
+  return "-";
+};
+
+export default function SalesOrderDetailPage() {
   const router = useRouter();
   const params = useParams();
-  
-  const [docDate, setDocDate] = useState(new Date().toISOString().split('T')[0]);
-  const [validUntil, setValidUntil] = useState(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-  const [taxType, setTaxType] = useState("exclusive");
-  const [selectedCustomer, setSelectedCustomer] = useState(MOCK_CUSTOMERS[0].id);
-  const [items, setItems] = useState<any[]>([]);
-  const [isCustomerSelectorOpen, setIsCustomerSelectorOpen] = useState(false);
+  const soDocId = decodeURIComponent(String(params.id || ""));
+  const { user, companyId } = useAuth();
+  const { data: so, loading } = useRealtimeDocument<any>(companyId && soDocId ? `companies/${companyId}/sales_orders/${soDocId}` : null);
 
-  const customer = MOCK_CUSTOMERS.find(c => c.id === selectedCustomer);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
-  // Auto-calculated summary
-  const summary = useMemo(() => {
-    const subtotal = items.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
-    const discount = items.reduce((acc, item) => acc + (item.discount || 0), 0);
-    const afterDiscount = subtotal - discount;
-    const vat = taxType !== "none" ? afterDiscount * 0.07 : 0;
-    const grandTotal = taxType === "inclusive" ? afterDiscount : afterDiscount + vat;
-    const preVat = taxType === "inclusive" ? grandTotal - vat : afterDiscount;
+  const status = normalizeStatus(so?.status);
+  const view = STATUS_VIEW[status];
+  const items: any[] = (so?.items || []).filter((it: any) => it.itemType !== "GROUP_HEADER");
+  const userId = user?.email || user?.uid || "";
 
-    return { subtotal, discount, preVat, vat, grandTotal };
-  }, [items, taxType]);
+  const setStatus = async (next: string, extra: Record<string, any> = {}) => {
+    if (!companyId || !so) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      await updateDoc(doc(db, `companies/${companyId}/sales_orders`, soDocId), {
+        status: next,
+        ...extra,
+        updatedBy: userId,
+        updatedAt: serverTimestamp(),
+      });
+      setMessage({ type: "ok", text: "อัปเดตสถานะเรียบร้อย" });
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "อัปเดตสถานะไม่สำเร็จ" });
+    } finally {
+      setBusy(false);
+    }
+  };
 
-  return (
-    <div className="min-h-screen bg-surface-0 text-white flex flex-col font-sans relative pb-24">
-      
-      {/* Top Navigation / Action Bar */}
-      <div className="p-4 sm:p-6 pb-0">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
-          <div className="flex items-center gap-4">
-            <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center">
-              <ArrowLeft size={20} />
-            </PillButton>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">ใบสั่งขาย</h1>
-                <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
-                  {params.id || 'SO-2609-0001'}
-                </span>
-              </div>
-              <p className="text-sm text-white/60 font-medium mt-1">รายละเอียดคำสั่งขาย รายการสินค้า สถานะการจัดส่ง และการเปิดบิล</p>
-            </div>
+  const issueTaxInvoice = async () => {
+    if (!companyId || !so) return;
+    if (!confirm("ยืนยันออกใบกำกับภาษีและใบวางบิล? ระบบจะลงบัญชีรายได้และภาษีขายทันที")) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const result = await DocumentFlowService.issueTaxInvoiceAndBillingNoteFromSO(companyId, { ...so, id: soDocId }, userId);
+      setMessage({ type: "ok", text: `ออกใบกำกับภาษี ${result.taxInvoiceNo} และใบวางบิล ${result.billingNoteNo} แล้ว` });
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "ออกใบกำกับภาษีไม่สำเร็จ" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-10 text-white/40 text-sm">กำลังโหลดใบสั่งขาย...</div>;
+  }
+
+  if (!so) {
+    return (
+      <div className="p-10 space-y-4">
+        <p className="text-white/60 text-sm">ไม่พบใบสั่งขาย "{soDocId}"</p>
+        <PillButton variant="glass" onClick={() => router.push("/sales/orders")}>กลับไปหน้ารายการใบสั่งขาย</PillButton>
+      </div>
+    );
+  }
+
+  const docNo = so.documentNo || so.soId || soDocId;
+  const customerName = so.customerName || so.customerSnapshot?.name || so.customerId || "-";
+
+  const headerContent = (
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
+      <div className="flex items-center gap-4">
+        <PillButton variant="glass" onClick={() => router.push("/sales/orders")} className="w-10 h-10 p-0 flex items-center justify-center">
+          <ArrowLeft size={20} />
+        </PillButton>
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">ใบสั่งขาย</h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold">
+              {docNo}
+            </span>
+            <StatusBadge status={view.badge} label={view.label} />
           </div>
-          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
-            <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={() => router.back()}>
-              ยกเลิก
-            </PillButton>
-            <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/80">
-              <Save size={14} className="mr-1.5" /> บันทึกร่าง
-            </PillButton>
-            <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs">
-              <Send size={14} className="mr-1.5" /> บันทึกและอนุมัติ
-            </PillButton>
-          </div>
+          <p className="text-sm text-white/60 font-medium mt-1">{customerName}</p>
         </div>
       </div>
-
-      <div className="flex flex-col xl:flex-row gap-4 px-4 py-6 w-full max-w-[1800px] mx-auto">
-         <div className="flex-1 space-y-4">
-         
-         {/* Customer and Dates */}
-         <div className="flex flex-col gap-4">
-            {/* Customer Column */}
-            <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-               <div className="flex items-center justify-between border-b border-white/5 pb-4 h-[36px]">
-            <h3 className="text-sm font-semibold uppercase tracking-widest text-white/40 flex items-center gap-2 ">
-                  <Building2 size={16} /> ข้อมูลลูกค้า
-               </h3>
-               
-               <div className="space-y-4 relative">
-                  <label className="text-[11px] font-semibold uppercase tracking-widest text-white/30">ชื่อลูกค้า *</label>
-                  
-                  {/* Smart Dropdown Mockup */}
-                  <div className="relative">
-                     <div 
-                        onClick={() => setIsCustomerSelectorOpen(!isCustomerSelectorOpen)}
-                        className="w-full h-12 bg-surface-0 border border-white/10 rounded-xl px-4 flex items-center justify-between cursor-pointer hover:border-nexus-teal/50 transition-all group"
-                     >
-                        <span className={cn("text-sm font-bold", customer ? "text-white" : "text-white/30")}>
-                           {customer ? customer.name : "พิมพ์เพื่อค้นหาผู้ติดต่อ หรือสร้างผู้ติดต่อใหม่"}
-                        </span>
-                        <Plus size={16} className="text-white/30 group-hover:text-nexus-teal transition-all" />
-                     </div>
-                     
-                     {isCustomerSelectorOpen && (
-                        <div className="absolute top-14 left-0 w-full bg-surface-2 border border-white/10 rounded-xl shadow-2xl p-2 z-50">
-                           {MOCK_CUSTOMERS.map(c => (
-                              <div 
-                                 key={c.id} 
-                                 onClick={() => { setSelectedCustomer(c.id); setIsCustomerSelectorOpen(false); }}
-                                 className="p-3 hover:bg-white/5 rounded-lg cursor-pointer transition-all"
-                              >
-                                 <p className="text-sm font-bold text-white">{c.name}</p>
-                                 <p className="text-[10px] text-white/30 mt-1">{c.taxId} • {c.address}</p>
-                              </div>
-                           ))}
-                           <div className="p-3 mt-2 border-t border-white/5 hover:bg-nexus-teal/10 rounded-lg cursor-pointer text-nexus-teal flex items-center gap-2">
-                              <Plus size={14} /> <span className="text-sm font-bold">เพิ่มลูกค้าใหม่...</span>
-                           </div>
-                        </div>
-                     )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6 pt-2">
-                     <div className="space-y-2">
-                        <label className="text-[11px] font-semibold uppercase tracking-widest text-white/30">ที่อยู่</label>
-                        <p className="text-sm text-white/60 min-h-[40px] leading-relaxed">{customer?.address || "-"}</p>
-                     </div>
-                     <div className="space-y-2">
-                        <label className="text-[11px] font-semibold uppercase tracking-widest text-white/30">เลขประจำตัวผู้เสียภาษี</label>
-                        <p className="text-sm text-white/60">{customer?.taxId || "-"}</p>
-                     </div>
-                  </div>
-               </div>
-            </div>
-
-            {/* Dates & Tax Column */}
-            <div className="grid grid-cols-2 gap-4">
-               <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-                  <h3 className="text-sm font-semibold uppercase tracking-widest text-white/40 flex items-center gap-2 border-b border-white/5 pb-4">
-                     <Calendar size={16} /> วันที่เอกสาร
-                  </h3>
-                  <div className="space-y-6">
-                     <div className="space-y-2">
-                        <label className="text-[11px] font-semibold uppercase tracking-widest text-white/30">วันที่ออก</label>
-                        <NexusDatePicker value={docDate} onChange={(e) => setDocDate(e.target.value)} className="w-full bg-surface-0" />
-                     </div>
-                     <div className="space-y-2">
-                        <label className="text-[11px] font-semibold uppercase tracking-widest text-white/30">วันที่ใช้ได้ถึง</label>
-                        <NexusDatePicker value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="w-full bg-surface-0" />
-                     </div>
-                  </div>
-               </div>
-               
-               <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-                  <h3 className="text-sm font-semibold uppercase tracking-widest text-white/40 flex items-center gap-2 border-b border-white/5 pb-4">
-                     <Percent size={16} /> ข้อมูลราคาและภาษี
-                  </h3>
-                  <div className="space-y-2">
-                     <label className="text-[11px] font-semibold uppercase tracking-widest text-white/30">ประเภทราคา</label>
-                     <PillSelect value={taxType} onChange={(e) => setTaxType(e.target.value)} className="w-full bg-surface-0">
-                        <option value="exclusive">แยกภาษี (Exclusive)</option>
-                        <option value="inclusive">รวมภาษี (Inclusive)</option>
-                        <option value="none">ไม่มีภาษี</option>
-                     </PillSelect>
-                  </div>
-               </div>
-               </div>
-            </div>
-
-            {/* Line Items Table */}
-            <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-               <h3 className="text-sm font-semibold uppercase tracking-widest text-white/40 flex items-center gap-2 border-b border-white/5 pb-4">
-                  รายการสินค้า / บริการ
-               </h3>
-          </div>
-               
-               <DocumentItemsTable 
-                  items={items} 
-                  onChange={setItems} 
-               />
-            </div>
-         </div> {/* This closes flex-1 */}
-
-         {/* Summary Section (Sticky Right) */}
-         <div className="xl:w-[25%] shrink-0 sticky top-[96px] space-y-4 h-fit">
-            <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4 w-full">
-               <div className="flex justify-between items-center text-sm">
-                  <span className="text-white/40 font-bold">มูลค่ารวมก่อนภาษี (Subtotal)</span>
-                  <span className="text-white font-mono">{formatCurrency(summary.subtotal)} บาท</span>
-               </div>
-               {summary.discount > 0 && (
-                  <div className="flex justify-between items-center text-sm">
-                     <span className="text-nexus-teal/70 font-bold">ส่วนลดรวม (Total Discount)</span>
-                     <span className="text-nexus-teal font-mono">-{formatCurrency(summary.discount)} บาท</span>
-                  </div>
-               )}
-               {taxType !== "none" && (
-                  <div className="flex justify-between items-center text-sm border-t border-white/5 pt-4">
-                     <span className="text-white/40 font-bold">มูลค่าก่อนภาษี (Pre-VAT)</span>
-                     <span className="text-white font-mono">{formatCurrency(summary.preVat)} บาท</span>
-                  </div>
-               )}
-               {taxType !== "none" && (
-                  <div className="flex justify-between items-center text-sm pb-4 border-b border-white/5">
-                     <span className="text-white/40 font-bold">ภาษีมูลค่าเพิ่ม 7% (VAT)</span>
-                     <span className="text-white font-mono">{formatCurrency(summary.vat)} บาท</span>
-                  </div>
-               )}
-               <div className="flex justify-between items-end pt-4">
-                  <span className="text-base font-semibold text-white/70 uppercase tracking-widest">จำนวนเงินทั้งสิ้น</span>
-                  <span className="text-3xl font-black text-nexus-teal font-mono tracking-tighter">
-                     {formatCurrency(summary.grandTotal)} <span className="text-lg">THB</span>
-                  </span>
-               </div>
-            </div>
-         </div>
-
+      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+        {status !== "CANCELLED" && <DocumentStepper steps={STEPS} currentStep={view.step} />}
+        {status === "DRAFT" && (
+          <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={() => setStatus("Confirmed")}>
+            <CheckCircle2 size={14} className="mr-1.5" /> อนุมัติใบสั่งขาย
+          </PillButton>
+        )}
+        {status === "CONFIRMED" && (
+          <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={() => setStatus("DELIVERED", { deliveredAt: serverTimestamp() })}>
+            <Truck size={14} className="mr-1.5" /> บันทึกส่งมอบแล้ว
+          </PillButton>
+        )}
+        {status === "DELIVERED" && (
+          <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={issueTaxInvoice}>
+            <FileText size={14} className="mr-1.5" /> ออกใบกำกับภาษี + ใบวางบิล
+          </PillButton>
+        )}
+        {(status === "DRAFT" || status === "CONFIRMED") && (
+          <PillButton
+            variant="glass"
+            className="h-8 px-4 text-xs font-bold text-red-400"
+            disabled={busy}
+            onClick={() => confirm("ยืนยันยกเลิกใบสั่งขายนี้?") && setStatus("CANCELLED")}
+          >
+            <XCircle size={14} className="mr-1.5" /> ยกเลิก
+          </PillButton>
+        )}
       </div>
+      {message && (
+        <div className={`w-full sm:basis-full p-3 rounded-xl text-[12px] font-bold flex items-center gap-2 ${message.type === "ok" ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400" : "bg-red-500/10 border border-red-500/30 text-red-400"}`}>
+          {message.type === "ok" ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />} {message.text}
+        </div>
+      )}
+    </div>
+  );
+
+  const leftContent = (
+    <div className="space-y-6 pr-2 pb-10">
+      <div className="grid grid-cols-2 gap-4">
+        <GlassCard className="p-4 border-white/10 rounded-3xl space-y-3">
+          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3">
+            <Building2 size={16} className="text-nexus-teal" /> ลูกค้า
+          </h3>
+          <p className="text-[14px] font-bold text-white">{customerName}</p>
+          <p className="text-[12px] text-white/50 font-mono">เลขผู้เสียภาษี {so.customerSnapshot?.taxId || so.customerInfo?.taxId || "-"} • สาขา {so.customerSnapshot?.branch || "-"}</p>
+          <p className="text-[12px] text-white/60 flex gap-2"><MapPin size={14} className="shrink-0 mt-0.5" /> {so.billingAddress || so.customerSnapshot?.address || "-"}</p>
+          {so.deliveryAddress && so.deliveryAddress !== so.billingAddress && (
+            <p className="text-[12px] text-cyan-400/80 flex gap-2"><Truck size={14} className="shrink-0 mt-0.5" /> ส่งมอบที่: {so.deliveryAddress}</p>
+          )}
+        </GlassCard>
+        <GlassCard className="p-4 border-white/10 rounded-3xl space-y-2 text-[12px]">
+          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3">
+            <Calendar size={16} className="text-nexus-blue" /> เงื่อนไข
+          </h3>
+          <Row label="วันที่เอกสาร" value={toDateStr(so.docDate || so.date || so.createdAt)} />
+          <Row label="เครดิต" value={so.paymentTermDays !== undefined ? `${so.paymentTermDays} วัน` : (so.paymentTerms || "-")} />
+          <Row label="โครงการ" value={so.projectName || so.projectId || "-"} />
+          <Row label="ประเภทภาษี" value={so.vatType || so.taxMode || "-"} />
+          <Row label="อ้างอิงใบเสนอราคา" value={so.quoteId || so.quotationRefNo || "-"} />
+          {so.invoiceNo && <Row label="ใบกำกับภาษี" value={so.invoiceNo} />}
+          {so.billingNoteNo && <Row label="ใบวางบิล" value={so.billingNoteNo} />}
+        </GlassCard>
+      </div>
+
+      <GlassCard className="p-4 border-white/10 rounded-3xl space-y-3">
+        <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 border-b border-white/10 pb-3">
+          รายการสินค้า / บริการ ({items.length})
+        </h3>
+        <NexusTable headers={["รายการ", "จำนวน", "ราคา/หน่วย", "ส่วนลด", "รวม"]}>
+          {items.map((it: any, idx: number) => {
+            const qty = Number(it.qty ?? it.quantity ?? 0);
+            const price = Number(it.price ?? it.unitPrice ?? 0);
+            const lineSub = qty * price;
+            const disc = it.discountType === "PERCENT" ? lineSub * ((Number(it.discountValue) || 0) / 100) : Number(it.discountValue ?? it.discount ?? 0);
+            return (
+              <NexusTableRow key={it.id || idx}>
+                <NexusTableCell>
+                  <div className="text-white text-[13px] font-bold">{it.name || it.description || "-"}</div>
+                  {it.sku && <div className="text-[11px] text-white/40 font-mono">{it.sku}</div>}
+                </NexusTableCell>
+                <NexusTableCell className="text-right" mono>{qty.toLocaleString()} {it.unit || ""}</NexusTableCell>
+                <NexusTableCell className="text-right" mono>{formatCurrency(price)}</NexusTableCell>
+                <NexusTableCell className="text-right" mono>{disc > 0 ? formatCurrency(disc) : "-"}</NexusTableCell>
+                <NexusTableCell className="text-right text-white" mono>{formatCurrency(Math.max(0, lineSub - disc))}</NexusTableCell>
+              </NexusTableRow>
+            );
+          })}
+        </NexusTable>
+        {items.length === 0 && <p className="text-[12px] text-white/40">ไม่มีรายการ</p>}
+      </GlassCard>
+    </div>
+  );
+
+  const rightSidebar = (
+    <GlassCard className="p-6 border-white/5 rounded-3xl bg-surface-1 shadow-2xl space-y-4 w-full h-fit">
+      <Row label="ยอดก่อนภาษี" value={`${formatCurrency(so.subTotal ?? so.netTotal ?? so.totalRevenue ?? 0)} บาท`} />
+      {Number(so.totalDiscount || 0) > 0 && <Row label="ส่วนลดรวม" value={`-${formatCurrency(so.totalDiscount)} บาท`} />}
+      <Row label="ภาษีมูลค่าเพิ่ม 7%" value={`${formatCurrency(so.vatAmount ?? 0)} บาท`} />
+      <div className="flex justify-between items-end pt-4 border-t border-white/5">
+        <span className="text-[12px] font-semibold text-white/70 uppercase tracking-widest">จำนวนเงินทั้งสิ้น</span>
+        <span className="text-3xl font-black font-mono tracking-tighter text-cyan-400">
+          {formatCurrency(so.grandTotal ?? so.totalAmount ?? so.totalRevenue ?? 0)} <span className="text-[14px]">THB</span>
+        </span>
+      </div>
+    </GlassCard>
+  );
+
+  return <NexusPageLayout header={headerContent} leftContent={leftContent} rightSidebar={rightSidebar} />;
+}
+
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex justify-between items-center gap-4 text-[12px]">
+      <span className="text-white/50 font-bold">{label}</span>
+      <span className="text-white font-mono font-bold text-right">{value}</span>
     </div>
   );
 }

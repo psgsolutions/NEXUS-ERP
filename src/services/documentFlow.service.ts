@@ -257,7 +257,12 @@ export const DocumentFlowService = {
       normalizedVatType = 'Exclude VAT';
     }
 
-    const baseAmount = Number(salesOrder.totalAmount || (salesOrder as any).netTotal || 0);
+    // ฐานคำนวณ: แยกภาษี = ยอดก่อน VAT, รวมภาษี/ไม่มีภาษี = ยอดสุทธิ
+    // (ถ้ามี subTotal/grandTotal ที่บันทึกไว้แล้วให้ใช้ก่อน กันการคิด VAT ซ้ำจากยอดที่รวม VAT แล้ว)
+    const so: any = salesOrder;
+    const baseAmount = normalizedVatType === 'Exclude VAT'
+      ? Number(so.subTotal ?? so.netTotal ?? so.totalAmount ?? so.totalRevenue ?? 0)
+      : Number(so.grandTotal ?? so.totalAmount ?? so.netTotal ?? so.totalRevenue ?? 0);
 
     let subTotal = baseAmount;
     let vatAmount = 0;

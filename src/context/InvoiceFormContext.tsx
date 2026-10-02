@@ -178,7 +178,7 @@ export function InvoiceFormProvider({ children }: { children: React.ReactNode })
         status: 'UNPAID'
       };
 
-      await addDoc(collection(db, 'invoices'), payload);
+      await addDoc(collection(db, `companies/${currentCompanyId}/invoices`), payload);
       
       alert(`บันทึกใบแจ้งหนี้สำเร็จ: ${invCode}`);
       router.push('/finance/invoices');

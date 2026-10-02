@@ -291,7 +291,7 @@ export function QuotationFormProvider({ children }: { children: React.ReactNode 
         competitorFor: formData.competitorFor,
       };
 
-      await addDoc(collection(db, 'quotations'), payload);
+      await addDoc(collection(db, `companies/${currentCompanyId}/quotations`), payload);
       
       alert(`บันทึกใบเสนอราคาสำเร็จ: ${qtCode}`);
       router.push('/sales/quotations');

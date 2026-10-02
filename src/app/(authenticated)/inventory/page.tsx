@@ -8,7 +8,8 @@ import {
   Filter, 
   ArrowUpRight, 
   ArrowLeftRight,
-  ScanLine, 
+  ScanLine,
+  Printer,
   ScanBarcode, 
   Layout, 
   History, 
@@ -561,6 +562,13 @@ export default function InventoryPage() {
               onClick={() => router.push("/inventory/putaway")}
             >
               <ScanLine size={14} /> จัดเก็บเข้าชั้น
+            </PillButton>
+            <PillButton
+              variant="glass"
+              className="gap-1.5"
+              onClick={() => router.push("/inventory/products/labels")}
+            >
+              <Printer size={14} /> ฉลากสินค้า
             </PillButton>
             {activeTab === "kits" ? (
               <PillButton 

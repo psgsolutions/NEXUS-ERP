@@ -57,6 +57,8 @@ import {
   limit
 } from "firebase/firestore";
 import { inventoryService } from "@/services/inventory.service";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { findBarcodeConflict } from "@/lib/product-validation";
 import { Product } from "@/types/database";
 
 const CATEGORIES = [
@@ -89,6 +91,7 @@ export default function ProductDetailPage() {
   // Form state
   const [form, setForm] = useState({
     sku: "",
+    barcode: "",
     name: "",
     description: "",
     category: "",
@@ -119,6 +122,7 @@ export default function ProductDetailPage() {
           setProduct(data);
           setForm({
             sku: data.sku || "",
+            barcode: (data as any).barcode || "",
             name: data.name || "",
             description: data.description || "",
             category: data.category || "",
@@ -164,6 +168,13 @@ export default function ProductDetailPage() {
     return () => unsubscribe();
   }, [companyId, productId]);
 
+  // ตรวจบาร์โค้ดซ้ำกับสินค้าอื่นในบริษัท (เทียบทั้งบาร์โค้ดและ SKU)
+  const { data: companyProducts } = useRealtimeCollection<any>("products");
+  const barcodeConflict = useMemo(
+    () => findBarcodeConflict(form.barcode, companyProducts, companyId || "", productId as string),
+    [form.barcode, companyProducts, companyId, productId]
+  );
+
   const margin = useMemo(() => {
     if (!form.priceProject) return 0;
     const profit = form.priceProject - form.costWAC;
@@ -181,6 +192,10 @@ export default function ProductDetailPage() {
       setToast({ message: "กรุณาระบุรหัส SKU และชื่อพัสดุ", isVisible: true, type: "warning" });
       return;
     }
+    if (barcodeConflict) {
+      setToast({ message: `บาร์โค้ดซ้ำกับ ${barcodeConflict}`, isVisible: true, type: "warning" });
+      return;
+    }
     setIsSaving(true);
     try {
       await inventoryService.updateItem(user.uid, companyId, productId, {
@@ -190,17 +205,12 @@ export default function ProductDetailPage() {
         category: form.category,
         brand: form.brand,
         unit: form.unit,
-        pricing: {
-          costWAC: form.costWAC,
-          pricePOS: form.pricePOS,
-          priceProject: form.priceProject
-        },
-        stockStatus: {
-          onHand: form.onHand,
-          reserved: form.reserved,
-          available: form.onHand - form.reserved
-        }
-      });
+        barcode: form.barcode.trim(),
+        barcodes: form.barcode.trim() ? [form.barcode.trim()] : [],
+        // ไม่บันทึก costWAC / stockStatus จากหน้านี้: เปลี่ยนผ่าน stock engine เท่านั้น
+        "pricing.pricePOS": form.pricePOS,
+        "pricing.priceProject": form.priceProject
+      } as any);
       setToast({ message: "บันทึกข้อมูลพัสดุเรียบร้อยแล้ว", isVisible: true, type: "success" });
       setIsEditMode(false);
     } catch (err) {
@@ -215,6 +225,7 @@ export default function ProductDetailPage() {
     if (product) {
       setForm({
         sku: product.sku || "",
+        barcode: (product as any).barcode || "",
         name: product.name || "",
         description: product.description || "",
         category: product.category || "",
@@ -389,6 +400,24 @@ export default function ProductDetailPage() {
                 )}
               </FormField>
 
+              <FormField label="บาร์โค้ด (ยิงจากสินค้า หรือว่างไว้ใช้ SKU)">
+                {isEditMode ? (
+                  <>
+                    <PillInput
+                      value={form.barcode}
+                      onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+                      placeholder="ยิงบาร์โค้ดที่ตัวสินค้า..."
+                      className="w-full font-mono"
+                    />
+                    {barcodeConflict && <p className="text-[11px] text-danger mt-1 ml-2">ซ้ำกับ {barcodeConflict}</p>}
+                  </>
+                ) : (
+                  <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono text-sm font-bold text-white/80">
+                    {form.barcode || "— (ใช้ SKU)"}
+                  </div>
+                )}
+              </FormField>
+
               <FormField label="ชื่อพัสดุ / สินค้า *">
                 {isEditMode ? (
                   <PillInput
@@ -490,7 +519,7 @@ export default function ProductDetailPage() {
                 <FormField label="ราคาเสนอโครงการ">
                   {isEditMode ? (
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-bold">\u0E3F</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-bold">฿</span>
                       <PillInput
                         type="number"
                         value={form.priceProject}
@@ -500,7 +529,7 @@ export default function ProductDetailPage() {
                     </div>
                   ) : (
                     <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-white">
-                      \u0E3F{form.priceProject.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ฿{form.priceProject.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </div>
                   )}
                 </FormField>
@@ -508,7 +537,7 @@ export default function ProductDetailPage() {
                 <FormField label="ราคาขายปลีก">
                   {isEditMode ? (
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-bold">\u0E3F</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-bold">฿</span>
                       <PillInput
                         type="number"
                         value={form.pricePOS}
@@ -518,27 +547,16 @@ export default function ProductDetailPage() {
                     </div>
                   ) : (
                     <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-white">
-                      \u0E3F{form.pricePOS.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ฿{form.pricePOS.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </div>
                   )}
                 </FormField>
 
-                <FormField label="ต้นทุนเฉลี่ย">
-                  {isEditMode ? (
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-bold">\u0E3F</span>
-                      <PillInput
-                        type="number"
-                        value={form.costWAC}
-                        onChange={(e) => setForm({ ...form, costWAC: Number(e.target.value) })}
-                        className="w-full pl-8 font-mono mono-numbers"
-                      />
-                    </div>
-                  ) : (
-                    <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-nexus-teal">
-                      \u0E3F{form.costWAC.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </div>
-                  )}
+                {/* ต้นทุนเฉลี่ยคำนวณจากการรับสินค้าเท่านั้น (แก้ตรงจะทำให้มูลค่าสต็อกไม่ตรงบัญชี) */}
+                <FormField label="ต้นทุนเฉลี่ย (คำนวณอัตโนมัติ)">
+                  <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-nexus-teal">
+                    ฿{form.costWAC.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </div>
                 </FormField>
               </div>
 
@@ -550,17 +568,17 @@ export default function ProductDetailPage() {
                     {margin}%
                   </div>
                   <span className="text-xs text-white/30 font-bold">
-                    กำไรต่อหน่วย: \u0E3F{(form.priceProject - form.costWAC).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    กำไรต่อหน่วย: ฿{(form.priceProject - form.costWAC).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
                 </div>
 
                 <div className="flex-1 p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col items-center justify-center gap-2">
                   <span className="text-[10px] font-normal text-white/30 uppercase tracking-widest">มูลค่าคงคลังรวม</span>
                   <div className="text-2xl font-bold font-mono text-nexus-blue">
-                    \u0E3F{totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    ฿{totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </div>
                   <span className="text-xs text-white/30 font-bold">
-                    {form.onHand} {form.unit} x \u0E3F{form.costWAC.toLocaleString()}
+                    {form.onHand} {form.unit} x ฿{form.costWAC.toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -579,34 +597,17 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* ยอดคงเหลือ/ยอดจองเปลี่ยนผ่านการรับสินค้า เบิก หรือจองตามใบสั่งขายเท่านั้น (ไม่ให้แก้ตรง) */}
               <FormField label="ระดับสต็อกปัจจุบัน">
-                {isEditMode ? (
-                  <PillInput
-                    type="number"
-                    value={form.onHand}
-                    onChange={(e) => setForm({ ...form, onHand: Number(e.target.value) })}
-                    className="w-full font-mono mono-numbers"
-                  />
-                ) : (
-                  <div className="px-4 py-3 rounded-2xl bg-nexus-teal/5 border border-nexus-teal/15 font-mono font-bold text-nexus-teal text-lg">
-                    {form.onHand.toLocaleString()} {form.unit}
-                  </div>
-                )}
+                <div className="px-4 py-3 rounded-2xl bg-nexus-teal/5 border border-nexus-teal/15 font-mono font-bold text-nexus-teal text-lg">
+                  {form.onHand.toLocaleString()} {form.unit}
+                </div>
               </FormField>
 
               <FormField label="ถูกจองใช้งาน">
-                {isEditMode ? (
-                  <PillInput
-                    type="number"
-                    value={form.reserved}
-                    onChange={(e) => setForm({ ...form, reserved: Number(e.target.value) })}
-                    className="w-full font-mono mono-numbers"
-                  />
-                ) : (
-                  <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-warning text-lg">
-                    {form.reserved.toLocaleString()} {form.unit}
-                  </div>
-                )}
+                <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-warning text-lg">
+                  {form.reserved.toLocaleString()} {form.unit}
+                </div>
               </FormField>
 
               <FormField label="พร้อมใช้งาน">
@@ -770,7 +771,7 @@ export default function ProductDetailPage() {
             {margin}%
           </div>
           <span className="text-sm text-white/40 font-medium block">
-            กำไรต่อหน่วย: \u0E3F{(form.priceProject - form.costWAC).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            กำไรต่อหน่วย: ฿{(form.priceProject - form.costWAC).toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </span>
         </GlassCard>
       )}

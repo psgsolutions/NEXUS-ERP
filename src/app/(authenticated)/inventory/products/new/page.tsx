@@ -43,7 +43,7 @@ import { UomHierarchyBuilder } from "@/components/inventory/UomHierarchyBuilder"
 import { SupplierMatrix } from "@/components/inventory/SupplierMatrix";
 import { DocumentVaultUploader, DigitalDocumentItem } from "@/components/shared/DocumentVaultUploader";
 import { ProductConversion, ProductSupplierInfo } from "@/types/inventory";
-import { getRequiredFieldsStatus, checkSkuDuplicate } from "@/lib/product-validation";
+import { getRequiredFieldsStatus, checkSkuDuplicate, findBarcodeConflict } from "@/lib/product-validation";
 
 const INITIAL_FORM_DATA = {
   // 1. Identification & Classification
@@ -402,18 +402,19 @@ export default function NewProductPage() {
     ? (initialQty * (formData.cost || 0))
     : poItems.reduce((acc, item) => acc + (item.qtyReceived * (item.cost || 0)), 0);
 
+  // รับสินค้าจากใบสั่งซื้อทำที่หน้ารับสินค้าเข้าคลัง (ผ่าน stock engine + ลงบัญชี)
   const fetchPOItems = () => {
-    if (!formData.poRef) return void showAlert("กรุณาระบุเลขที่ใบสั่งซื้อ");
-    setPoItems([
-      { id: "ITEM-001", name: "Aruba AP-505", sku: "AP-505-RW", qtyOrdered: 10, qtyReceived: 10, cost: 4500, sns: "" },
-      { id: "ITEM-002", name: "CAT6 Cable 305m", sku: "CBL-CAT6-305", qtyOrdered: 5, qtyReceived: 5, cost: 2800, sns: "" }
-    ]);
-    setFormData(prev => ({ ...prev, supplierId: "SUPP-001" }));
+    router.push("/inventory/in/new");
   };
 
   const updatePoItem = (id: string, field: string, value: any) => {
     setPoItems(poItems.map(item => item.id === id ? { ...item, [field]: value } : item));
   };
+
+  const barcodeConflict = React.useMemo(
+    () => findBarcodeConflict(formData.barcode, products || [], companyId || ""),
+    [formData.barcode, products, companyId]
+  );
 
   const isSkuDuplicate = React.useMemo(() => {
     return checkSkuDuplicate(formData.sku, products || [], companyId || "");
@@ -469,6 +470,10 @@ export default function NewProductPage() {
 
     if (isSkuDuplicate) {
       newErrors.sku = "รหัสสินค้านี้มีอยู่ในระบบแล้ว";
+    }
+
+    if (barcodeConflict) {
+      newErrors.barcode = `บาร์โค้ดซ้ำกับ ${barcodeConflict}`;
     }
 
     // Validation for inventory level hierarchy: ขั้นต่ำ <= จุดสั่งซื้อ <= สูงสุด
@@ -562,9 +567,9 @@ export default function NewProductPage() {
               }
             ],
             warehouseId: formData.warehouseId || "WH-01",
-            rackLocation: formData.rackLocation || "WH-01-A1",
-            warehouseLocation: `${formData.warehouseId || "WH-01"}:${formData.rackLocation || "WH-01-A1"}`,
-            supplierId: formData.supplierId || "SUPP-001",
+            rackLocation: formData.rackLocation || "",
+            warehouseLocation: formData.rackLocation ? `${formData.warehouseId || "WH-01"}:${formData.rackLocation}` : (formData.warehouseId || "WH-01"),
+            supplierId: formData.supplierId || "",
             supplierConfig: formData.supplierConfig.length > 0 ? formData.supplierConfig : [
               {
                 supplierId: formData.supplierId,
@@ -624,7 +629,7 @@ export default function NewProductPage() {
               productId: prodId,
               quantity: totalQty,
               fromLocation: "EXTERNAL",
-              toLocation: formData.rackLocation || "WH-01-A1",
+              toLocation: formData.rackLocation || formData.warehouseId || "WH-01",
               userId: user.displayName || "system",
               createdAt: new Date()
             });
@@ -685,7 +690,7 @@ export default function NewProductPage() {
                 priceProject: existingProd?.pricing?.priceProject || Number(((item.cost || 0) / 0.8).toFixed(2)) * 1.2
               },
               warehouseId: formData.warehouseId || (existingProd as any)?.warehouseId || "WH-01",
-              rackLocation: formData.rackLocation || (existingProd as any)?.rackLocation || "WH-01-A1",
+              rackLocation: formData.rackLocation || (existingProd as any)?.rackLocation || "",
               supplierId: formData.supplierId,
               updatedAt: new Date(),
               isDeleted: false
@@ -699,7 +704,7 @@ export default function NewProductPage() {
               productId: prodId,
               quantity: item.qtyReceived,
               fromLocation: "EXTERNAL",
-              toLocation: formData.rackLocation || "WH-01-A1",
+              toLocation: formData.rackLocation || formData.warehouseId || "WH-01",
               userId: user.displayName || "system",
               createdAt: new Date()
             });
@@ -757,7 +762,7 @@ export default function NewProductPage() {
             { id: "po", label: "รับจากคำสั่งซื้อ", icon: <Truck size={14} /> }
           ]} 
           activeTab={sourceMode} 
-          onTabChange={setSourceMode} 
+          onTabChange={(tab: string) => tab === "po" ? router.push("/inventory/in/new") : setSourceMode(tab)}
         />
       </div>
     </div>
@@ -767,9 +772,7 @@ export default function NewProductPage() {
     { value: "WH-01", label: "คลังสินค้าหลัก (WH-01)" }
   ];
 
-  const supplierOptions = suppliers?.map(s => ({ value: s.id, label: s.name })) || [
-    { value: "SUPP-001", label: "ผู้จำหน่ายทั่วไป (SUPP-001)" }
-  ];
+  const supplierOptions = suppliers?.map(s => ({ value: s.id, label: s.name })) || [];
 
   const leftContent = (
     <div className="space-y-3.5 pr-1 pb-10">
@@ -858,9 +861,9 @@ export default function NewProductPage() {
                   {/* บรรทัดที่ 2: บาร์โค้ด - หมวดหมู่หลัก - (หมวดหมู่ย่อย) */}
                   <div className="flex flex-wrap gap-2 items-end">
                     <div className="w-[130px] shrink-0">
-                      <Field label="บาร์โค้ด">
-                        <PillInput 
-                          value={formData.barcode} 
+                      <Field label="บาร์โค้ด" error={errors.barcode || (barcodeConflict ? `ซ้ำกับ ${barcodeConflict}` : undefined)}>
+                        <PillInput
+                          value={formData.barcode}
                           onChange={(e) => setFormData(prev => ({ ...prev, barcode: e.target.value }))} 
                           className="w-full h-8 px-3 rounded-full font-mono text-center text-[12px] placeholder:text-center" 
                           placeholder="สแกนบาร์โค้ด..." 

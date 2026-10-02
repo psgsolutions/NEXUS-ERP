@@ -113,3 +113,27 @@ export function checkSkuDuplicate(
     return (p.sku || "").trim().toLowerCase() === normalized;
   });
 }
+
+/**
+ * บาร์โค้ดซ้ำ: ต้องไม่ซ้ำกับบาร์โค้ดหรือ SKU ของสินค้าอื่นในบริษัท
+ * (ตอนยิง ระบบจับคู่ทั้งบาร์โค้ดและ SKU ถ้าซ้ำจะไม่รู้ว่าเป็นสินค้าตัวไหน)
+ * คืนค่าชื่อสินค้าที่ซ้ำ หรือ null
+ */
+export function findBarcodeConflict(
+  barcode: string | null | undefined,
+  existingProducts: Array<Record<string, any>>,
+  companyId: string,
+  excludeProductId?: string
+): string | null {
+  const normalized = String(barcode || "").trim().toUpperCase();
+  if (!normalized) return null;
+  const hit = existingProducts.find((p) => {
+    if (excludeProductId && p.id === excludeProductId) return false;
+    if (p.isDeleted || p.companyId !== companyId) return false;
+    const codes = [p.barcode, p.sku, ...(Array.isArray(p.barcodes) ? p.barcodes : [])]
+      .filter(Boolean)
+      .map((v: any) => String(v).trim().toUpperCase());
+    return codes.includes(normalized);
+  });
+  return hit ? (hit.name || hit.productName || hit.sku || hit.id) : null;
+}

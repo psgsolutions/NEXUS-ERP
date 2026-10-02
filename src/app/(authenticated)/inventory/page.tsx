@@ -349,6 +349,7 @@ export default function InventoryPage() {
   
   // Real-time movement logs
   const [movements, setMovements] = useState<any[]>([]);
+  const [movementsError, setMovementsError] = useState("");
 
   // Selected details for other tabs
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
@@ -379,163 +380,39 @@ export default function InventoryPage() {
         items.push({ id: doc.id, ...doc.data() });
       });
       setMovements(items);
+      setMovementsError("");
     }, (err) => {
-      console.warn("Stock movements snapshot failed, using high-fidelity fallback data", err);
-      // Fail-safe mock logs so system never crashes if index is still building
-      setMovements([
-        { id: "1", transactionId: "TX-GRN-1209", type: "IN", productId: products[0]?.id || "AP-505", quantity: 24, fromLocation: "EXTERNAL", toLocation: "WH-01-A1-L4", userId: user?.displayName || "System", createdAt: new Date() },
-        { id: "2", transactionId: "TX-TRF-0982", type: "TRANSFER", productId: products[1]?.id || "C9200", quantity: 5, fromLocation: "MAIN-WH-A2", toLocation: "RAYONG-WH-B1", userId: "Kriangkrai M.", createdAt: new Date(Date.now() - 86400000) }
-      ]);
+      // ไม่ใช้ข้อมูลจำลอง: แสดงข้อความแทน (เช่น index ของ Firestore ยังสร้างไม่เสร็จ)
+      console.error("Stock movements snapshot failed", err);
+      setMovements([]);
+      setMovementsError(err?.code === "failed-precondition"
+        ? "ฐานข้อมูลยังสร้างดัชนี (index) สำหรับประวัติสต็อกไม่เสร็จ กรุณาลองใหม่ภายหลัง"
+        : "โหลดประวัติการเคลื่อนไหวสินค้าไม่สำเร็จ");
     });
     return () => unsubscribe();
-  }, [companyId, products]);
+  }, [companyId]);
 
   // Metric summaries (compact design to place directly on the header plane)
   const totalQty = products.reduce((acc, curr) => acc + (curr.stockStatus?.onHand || 0), 0);
   const totalCost = products.reduce((acc, curr) => acc + ((curr.stockStatus?.onHand || 0) * (curr.pricing?.costWAC || 0)), 0);
   const lowStockCount = products.filter(p => (p.stockStatus?.onHand || 0) <= ((p as any).minStock || 0)).length;
 
-  const handleInventoryIn = async (data: any) => {
-    if (data.mode === "MANUAL") {
-      const prodId = data.productId || `PROD-${Date.now().toString().slice(-4)}`;
-      const productRef = doc(db, "products", prodId);
-      
-      let existingProd = products.find(p => p.id === prodId);
-      let currentOnHand = existingProd?.stockStatus?.onHand || 0;
-      let currentCostWAC = existingProd?.pricing?.costWAC || 0;
-      
-      let newQty = currentOnHand + data.qty;
-      let newCostWAC = currentOnHand + data.qty > 0 
-        ? ((currentOnHand * currentCostWAC) + (data.qty * data.cost)) / newQty
-        : data.cost;
-        
-      const saveOp = async () => {
-        await setDoc(productRef, {
-          companyId,
-          sku: data.sku || existingProd?.sku || `SKU-${Date.now().toString().slice(-4)}`,
-          name: data.name || existingProd?.name || "Unnamed Product",
-          category: data.category || existingProd?.category || "general",
-          stockStatus: {
-            onHand: newQty,
-            reserved: existingProd?.stockStatus?.reserved || 0,
-            available: newQty - (existingProd?.stockStatus?.reserved || 0)
-          },
-          pricing: {
-            costWAC: newCostWAC,
-            pricePOS: data.price || existingProd?.pricing?.pricePOS || 0,
-            priceProject: data.price * 1.2 || existingProd?.pricing?.priceProject || 0
-          },
-          updatedAt: new Date(),
-          isDeleted: false
-        }, { merge: true });
-        
-        const logRef = doc(collection(db, "stockMovements"));
-        await setDoc(logRef, {
-          companyId,
-          transactionId: `TX-GRN-${Date.now().toString().slice(-4)}`,
-          type: "IN",
-          productId: prodId,
-          quantity: data.qty,
-          fromLocation: "EXTERNAL",
-          toLocation: data.rackLocation || "WH-01-A1",
-          userId: user?.displayName || "system",
-          createdAt: new Date()
-        });
-      };
-      
-      try {
-        await saveToFirestore(saveOp());
-        setToast({
-          message: "บันทึกรับเข้าพัสดุเรียบร้อยแล้ว",
-          isVisible: true,
-          type: "success"
-        });
-        
-      } catch (error: any) {
-        console.error(error);
-        setToast({
-          message: `แจ้งเตือน: ข้อมูลไม่สามารถซิงค์ขึ้นเซิร์ฟเวอร์ได้ (${error.message})`,
-          isVisible: true,
-          type: "error"
-        });
-      }
-    }
-  };
-
-  const handleStockTransfer = async (data: any) => {
-    const prodId = data.productId;
-    const productRef = doc(db, "products", prodId);
-    let existingProd = products.find(p => p.id === prodId);
-    
-    if (!existingProd) return;
-    
-    let currentOnHand = existingProd.stockStatus?.onHand || 0;
-    if (currentOnHand < data.qty) {
-      setToast({
-        message: "สต็อกไม่เพียงพอสำหรับการโอนย้าย",
-        isVisible: true,
-        type: "error"
-      });
-      return;
-    }
-    
-    const saveOp = async () => {
-      await setDoc(productRef, {
-        stockStatus: {
-          onHand: currentOnHand - data.qty,
-          reserved: existingProd.stockStatus?.reserved || 0,
-          available: currentOnHand - data.qty - (existingProd.stockStatus?.reserved || 0)
-        },
-        updatedAt: new Date()
-      }, { merge: true });
-
-      const logRef = doc(collection(db, "stockMovements"));
-      await setDoc(logRef, {
-        companyId,
-        transactionId: `TX-TRF-${Date.now().toString().slice(-4)}`,
-        type: "TRANSFER",
-        productId: prodId,
-        quantity: data.qty,
-        fromLocation: data.fromWarehouse,
-        toLocation: data.toWarehouse,
-        userId: user?.displayName || "system",
-        createdAt: new Date()
-      });
-    };
-    
-    try {
-      await saveToFirestore(saveOp());
-      setToast({
-        message: `โอนย้ายพัสดุสำเร็จ: ${data.qty} Units`,
-        isVisible: true,
-        type: "success"
-      });
-      
-    } catch (error: any) {
-      console.error(error);
-      setToast({
-        message: `แจ้งเตือน: ไม่สามารถโอนย้ายได้ (${error.message})`,
-        isVisible: true,
-        type: "error"
-      });
-    }
-  };
 
   const { data: dbKits, loading: kitsLoading } = useRealtimeCollection<any>('kits');
   const { data: dbAssets, loading: assetsLoading } = useRealtimeCollection<any>('assets');
   const { data: dbSerials, loading: serialsLoading } = useRealtimeCollection<any>('serials');
 
-  const mockKits = dbKits.length > 0 ? dbKits : [];
-  const mockAssets = dbAssets.length > 0 ? dbAssets : [];
-  const mockSerials = dbSerials.length > 0 ? dbSerials : [];
+  const kits = dbKits;
+  const assets = dbAssets;
+  const serials = dbSerials;
 
-  const filteredKits = mockKits.filter((k: any) =>
+  const filteredKits = kits.filter((k: any) =>
     (k.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (k.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (k.description || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const selectedKit = mockKits.find((k: any) => k.id === selectedKitId);
+  const selectedKit = kits.find((k: any) => k.id === selectedKitId);
 
   // Filtering calculations
   const filteredProducts = products.filter(p => 
@@ -544,13 +421,13 @@ export default function InventoryPage() {
     (p.category && p.category.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const filteredAssets = mockAssets.filter((a: any) => 
+  const filteredAssets = assets.filter((a: any) => 
     (a.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (a.custodian || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (a.location || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredSerials = mockSerials.filter((s: any) => 
+  const filteredSerials = serials.filter((s: any) => 
     (s.sn || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (s.location || '').toLowerCase().includes(searchQuery.toLowerCase())
@@ -567,8 +444,8 @@ export default function InventoryPage() {
   });
 
   const selectedProduct = products.find(p => p.id === selectedProductId);
-  const selectedAsset = mockAssets.find(a => a.id === selectedAssetId);
-  const selectedSerial = mockSerials.find(s => s.sn === selectedSerialSn);
+  const selectedAsset = assets.find(a => a.id === selectedAssetId);
+  const selectedSerial = serials.find(s => s.sn === selectedSerialSn);
   const selectedMovement = movements.find(m => m.id === selectedMovementId);
 
   return (
@@ -889,7 +766,7 @@ export default function InventoryPage() {
                       {filteredMovements.length === 0 ? (
                         <NexusTableRow className="bg-transparent hover:bg-transparent pointer-events-none">
                           <NexusTableCell colSpan={6} className="p-20 text-center text-white/20">
-                            <span className="text-sm font-medium tracking-widest uppercase">ไม่พบประวัติการเคลื่อนไหวสินค้า</span>
+                            <span className="text-sm font-medium tracking-widest uppercase">{movementsError || "ไม่พบประวัติการเคลื่อนไหวสินค้า"}</span>
                           </NexusTableCell>
                         </NexusTableRow>
                       ) : (

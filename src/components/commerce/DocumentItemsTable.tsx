@@ -18,12 +18,6 @@ export interface DocumentItemsTableProps {
   priceDeviationWarningPercent?: number;
 }
 
-const DEFAULT_PRODUCT_CATALOG = [
-  { id: "prd-001", sku: "PRD-2606-0001", name: "สินค้า A (กล่อง)", unit: "กล่อง", price: 450.00, cost: 300.00, currentStock: 50, itemType: "PRODUCT" },
-  { id: "prd-002", sku: "PRD-2606-0019", name: "สินค้า B (อัน)", unit: "อัน", price: 120.00, cost: 80.00, currentStock: 100, itemType: "PRODUCT" },
-  { id: "prd-003", sku: "PRD-2606-0058", name: "สินค้า C (ตัว)", unit: "ตัว", price: 15000.00, cost: 11000.00, currentStock: 0, itemType: "PRODUCT" }
-];
-
 export const ITEM_GRID =
   "grid items-center gap-x-2 " +
   "grid-cols-[36px_90px_110px_minmax(180px,1fr)_32px_60px_60px_90px_90px_60px_100px_54px]";
@@ -710,13 +704,12 @@ export function DocumentItemsTable({
 }: DocumentItemsTableProps) {
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
 
-  // Fetch real-time products from database
-  const { data: companyScopedProducts = [] } = useRealtimeCollection('products', [], true);
-  const { data: globalProducts = [] } = useRealtimeCollection('products');
+  // สินค้าจริงของบริษัท (ไม่มีรายการจำลอง: ถ้ายังไม่มีสินค้า ให้ค้นแล้วไม่พบ)
+  const { data: companyProducts = [] } = useRealtimeCollection('products');
 
   const availableProducts = useMemo(() => {
     const map = new Map<string, any>();
-    [...globalProducts, ...companyScopedProducts].forEach((p) => {
+    companyProducts.forEach((p) => {
       if (p && p.id && !map.has(p.id)) {
         map.set(p.id, {
           id: p.id,
@@ -725,7 +718,7 @@ export function DocumentItemsTable({
           unit: p.unit || p.productUnit || "ชิ้น",
           price: p.price ?? p.unitPrice ?? p.retailPrice ?? p.pricing?.pricePOS ?? p.pricing?.priceProject ?? 0,
           cost: p.cost ?? p.costPrice ?? p.costWAC ?? p.pricing?.costWAC ?? 0,
-          currentStock: p.currentStock ?? p.stock ?? p.quantity ?? 0,
+          currentStock: p.stockStatus?.available ?? p.stockStatus?.onHand ?? p.currentStock ?? p.stock ?? p.quantity ?? 0,
           itemType: p.itemType || "PRODUCT",
           details: p.details || p.description || "",
           datasheetUrl: p.datasheetUrl || ""
@@ -733,10 +726,8 @@ export function DocumentItemsTable({
       }
     });
 
-    const list = Array.from(map.values());
-    if (list.length > 0) return list;
-    return DEFAULT_PRODUCT_CATALOG;
-  }, [globalProducts, companyScopedProducts]);
+    return Array.from(map.values());
+  }, [companyProducts]);
 
   const taxRate = 7;
 

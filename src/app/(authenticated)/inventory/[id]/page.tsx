@@ -156,12 +156,10 @@ export default function ProductDetailPage() {
       const items: any[] = [];
       snap.forEach((d) => items.push({ id: d.id, ...d.data() }));
       setMovements(items);
-    }, () => {
-      // Fallback mock for index building
-      setMovements([
-        { id: "1", transactionId: "TX-GRN-1209", type: "IN", quantity: 24, fromLocation: "EXTERNAL", toLocation: "WH-01-A1-L4", userId: user?.displayName || "System", createdAt: new Date() },
-        { id: "2", transactionId: "TX-ISS-0982", type: "OUT", quantity: 5, fromLocation: "WH-01-A1-L4", toLocation: "PROJECT-26-001", userId: "Kriangkrai M.", createdAt: new Date(Date.now() - 86400000) }
-      ]);
+    }, (err) => {
+      // ไม่ใช้ข้อมูลจำลอง: ถ้าโหลดไม่ได้ (เช่น index ยังสร้างไม่เสร็จ) ให้แสดงว่าง
+      console.error("Product stock movements snapshot failed", err);
+      setMovements([]);
     });
     return () => unsubscribe();
   }, [companyId, productId]);

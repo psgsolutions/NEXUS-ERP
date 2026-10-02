@@ -52,6 +52,15 @@ export interface TaxFilingLock {
   isLocked: boolean;
 }
 
+// วันที่ของเอกสารตามเวลาประเทศไทย (UTC+7) เพื่อจัดเข้างวดภาษีถูกเดือน
+// (เอกสารที่ออก 1 ต.ค. 06:00 น. เวลาไทย คือ 30 ก.ย. ตามเวลา UTC)
+function toThaiDateStr(value: any): string {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  const ms = value.seconds !== undefined ? value.seconds * 1000 : value instanceof Date ? value.getTime() : NaN;
+  return Number.isNaN(ms) ? "" : new Date(ms + 7 * 60 * 60 * 1000).toISOString();
+}
+
 // รหัสบัญชีภาษีขาย/ภาษีซื้อ (ผังบัญชี 6 หลัก และรูปแบบ XXXX-XX ที่ AccountingEngine ใช้)
 const OUTPUT_VAT_CODES = ["213100", "2121-00"];
 const INPUT_VAT_CODES = ["115100", "1151-00"];
@@ -95,7 +104,7 @@ export async function calculatePP30Tax(companyId: string, yearMonth: string): Pr
     const journalDocs = await fetchCompanyJournalEntries(companyId);
 
     journalDocs.forEach((data) => {
-      const entryDateStr = data.date ? (typeof data.date === "string" ? data.date : new Date(data.date.seconds * 1000).toISOString()) : "";
+      const entryDateStr = toThaiDateStr(data.date);
       
       if (entryDateStr.startsWith(yearMonth)) {
         journalCount++;
@@ -142,7 +151,7 @@ export async function calculatePP30Tax(companyId: string, yearMonth: string): Pr
       snapInv.forEach((docSnap) => {
         const inv = docSnap.data();
         const rawDate = inv.issueDate || inv.date || "";
-        const dateStr = typeof rawDate === "string" ? rawDate : rawDate?.seconds ? new Date(rawDate.seconds * 1000).toISOString() : "";
+        const dateStr = toThaiDateStr(rawDate);
         if (dateStr.startsWith(yearMonth)) {
           salesBase += Number(inv.subTotal || inv.amount || 0);
           outputVat += Number(inv.vatAmount || 0);

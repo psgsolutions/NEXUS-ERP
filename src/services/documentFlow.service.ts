@@ -290,6 +290,11 @@ export const DocumentFlowService = {
     const bnSeq = await idService.getNextSequence('BN', companyId);
     const billingNoteNo = idService.formatId('BN', bnSeq);
 
+    // ครบกำหนดชำระตามเครดิตของใบสั่งขาย (ไม่ระบุ = 30 วัน)
+    const termDays = Number((salesOrder as any).paymentTermDays ?? (salesOrder as any).paymentTermDay ?? 30);
+    const dueDate = new Date(Date.now() + (Number.isFinite(termDays) ? termDays : 30) * 24 * 60 * 60 * 1000).toISOString();
+    const customerName = (salesOrder as any).customerName || (salesOrder as any).customerSnapshot?.name || "";
+
     const batch = writeBatch(db);
 
     // 1. Create TaxInvoice Document
@@ -305,9 +310,9 @@ export const DocumentFlowService = {
       customerPoNo: (salesOrder as any).customerPoNo || (salesOrder as any).referenceNo || "",
       customerSnapshot: (salesOrder as any).customerSnapshot || null,
       customerId: salesOrder.customerId,
-      customerName: (salesOrder as any).customerName || "",
+      customerName,
       issueDate: serverTimestamp(),
-      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      dueDate,
       items: salesOrder.items,
       isVatRegistered: salesOrder.isVatRegistered ?? true,
       vatType: normalizedVatType,
@@ -337,7 +342,9 @@ export const DocumentFlowService = {
       customerPoNo: (salesOrder as any).customerPoNo || (salesOrder as any).referenceNo || "",
       customerSnapshot: (salesOrder as any).customerSnapshot || null,
       customerId: salesOrder.customerId,
+      customerName,
       issueDate: serverTimestamp(),
+      dueDate,
       totalAmount: grandTotal,
       status: 'issued',
       createdBy: userId,

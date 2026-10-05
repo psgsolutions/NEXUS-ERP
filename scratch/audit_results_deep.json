@@ -1,0 +1,163 @@
+[
+  {
+    "type": "Root Collection",
+    "path": "counters",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0
+  },
+  {
+    "type": "Root Collection",
+    "path": "journal_entries",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0
+  },
+  {
+    "type": "Root Collection",
+    "path": "sales_orders",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0
+  },
+  {
+    "type": "Root Collection",
+    "path": "products",
+    "totalDocs": 95,
+    "company_id_count": 0,
+    "companyId_count": 95
+  },
+  {
+    "type": "Root Collection",
+    "path": "companies",
+    "totalDocs": 3,
+    "company_id_count": 0,
+    "companyId_count": 0
+  },
+  {
+    "type": "Root Collection",
+    "path": "users",
+    "totalDocs": 1,
+    "company_id_count": 0,
+    "companyId_count": 1
+  },
+  {
+    "type": "Root Collection",
+    "path": "customers",
+    "totalDocs": 10,
+    "company_id_count": 0,
+    "companyId_count": 10
+  },
+  {
+    "type": "Root Collection",
+    "path": "quotations",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0
+  },
+  {
+    "type": "Root Collection",
+    "path": "projects",
+    "totalDocs": 1,
+    "company_id_count": 0,
+    "companyId_count": 1
+  },
+  {
+    "type": "Root Collection",
+    "path": "purchase_orders",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0
+  },
+  {
+    "type": "Root Collection",
+    "path": "goods_receipts",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0
+  },
+  {
+    "type": "Root Collection",
+    "path": "audit_logs",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0
+  },
+  {
+    "type": "Root Collection",
+    "path": "stock_ledgers",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0
+  },
+  {
+    "type": "Root Collection",
+    "path": "serial_numbers",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0
+  },
+  {
+    "type": "Collection Group",
+    "path": "collectionGroup(counters)",
+    "totalDocs": 8,
+    "company_id_count": 0,
+    "companyId_count": 0
+  },
+  {
+    "type": "Collection Group",
+    "path": "collectionGroup(journal_entries)",
+    "totalDocs": 1,
+    "company_id_count": 0,
+    "companyId_count": 1
+  },
+  {
+    "type": "Collection Group",
+    "path": "collectionGroup(sales_orders)",
+    "totalDocs": 1,
+    "company_id_count": 0,
+    "companyId_count": 1
+  },
+  {
+    "type": "Collection Group",
+    "path": "collectionGroup(products)",
+    "totalDocs": 95,
+    "company_id_count": 0,
+    "companyId_count": 95
+  },
+  {
+    "type": "Collection Group",
+    "path": "collectionGroup(quotations)",
+    "totalDocs": 4,
+    "company_id_count": 0,
+    "companyId_count": 4
+  },
+  {
+    "type": "Collection Group",
+    "path": "collectionGroup(purchase_orders)",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0
+  },
+  {
+    "type": "Collection Group",
+    "path": "collectionGroup(stock_movements)",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0
+  },
+  {
+    "type": "Collection Group",
+    "path": "collectionGroup(serial_numbers)",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0
+  },
+  {
+    "type": "Collection Group",
+    "path": "collectionGroup(auditLogs)",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0
+  }
+]

@@ -1,0 +1,128 @@
+[
+  {
+    "collection": "counters",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0,
+    "both_count": 0,
+    "neither_count": 0,
+    "sample_snake_doc_ids": []
+  },
+  {
+    "collection": "journal_entries",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0,
+    "both_count": 0,
+    "neither_count": 0,
+    "sample_snake_doc_ids": []
+  },
+  {
+    "collection": "sales_orders",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0,
+    "both_count": 0,
+    "neither_count": 0,
+    "sample_snake_doc_ids": []
+  },
+  {
+    "collection": "products",
+    "totalDocs": 95,
+    "company_id_count": 0,
+    "companyId_count": 95,
+    "both_count": 0,
+    "neither_count": 0,
+    "sample_snake_doc_ids": []
+  },
+  {
+    "collection": "companies",
+    "totalDocs": 3,
+    "company_id_count": 0,
+    "companyId_count": 0,
+    "both_count": 0,
+    "neither_count": 3,
+    "sample_snake_doc_ids": []
+  },
+  {
+    "collection": "users",
+    "totalDocs": 1,
+    "company_id_count": 0,
+    "companyId_count": 1,
+    "both_count": 0,
+    "neither_count": 0,
+    "sample_snake_doc_ids": []
+  },
+  {
+    "collection": "customers",
+    "totalDocs": 10,
+    "company_id_count": 0,
+    "companyId_count": 10,
+    "both_count": 0,
+    "neither_count": 0,
+    "sample_snake_doc_ids": []
+  },
+  {
+    "collection": "quotations",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0,
+    "both_count": 0,
+    "neither_count": 0,
+    "sample_snake_doc_ids": []
+  },
+  {
+    "collection": "projects",
+    "totalDocs": 1,
+    "company_id_count": 0,
+    "companyId_count": 1,
+    "both_count": 0,
+    "neither_count": 0,
+    "sample_snake_doc_ids": []
+  },
+  {
+    "collection": "purchase_orders",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0,
+    "both_count": 0,
+    "neither_count": 0,
+    "sample_snake_doc_ids": []
+  },
+  {
+    "collection": "goods_receipts",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0,
+    "both_count": 0,
+    "neither_count": 0,
+    "sample_snake_doc_ids": []
+  },
+  {
+    "collection": "audit_logs",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0,
+    "both_count": 0,
+    "neither_count": 0,
+    "sample_snake_doc_ids": []
+  },
+  {
+    "collection": "stock_ledgers",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0,
+    "both_count": 0,
+    "neither_count": 0,
+    "sample_snake_doc_ids": []
+  },
+  {
+    "collection": "serial_numbers",
+    "totalDocs": 0,
+    "company_id_count": 0,
+    "companyId_count": 0,
+    "both_count": 0,
+    "neither_count": 0,
+    "sample_snake_doc_ids": []
+  }
+]

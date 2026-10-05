@@ -1,0 +1,112 @@
+[
+  {
+    "file": "src/app/(authenticated)/admin/form-builder/page.tsx",
+    "line": 145,
+    "snippet": "<div className=\"w-64 border-r border-white/5 bg-slate-900/30 p-4 flex flex-col gap-2 overflow-y-auto shrink-0\">"
+  },
+  {
+    "file": "src/app/(authenticated)/admin/form-builder/page.tsx",
+    "line": 297,
+    "snippet": "<th className=\"border border-slate-300 p-2 text-right w-24\">Qty</th>"
+  },
+  {
+    "file": "src/app/(authenticated)/admin/form-builder/page.tsx",
+    "line": 298,
+    "snippet": "{p.showUnit && <th className=\"border border-slate-300 p-2 text-left w-20\">Unit</th>}"
+  },
+  {
+    "file": "src/app/(authenticated)/admin/form-builder/page.tsx",
+    "line": 299,
+    "snippet": "<th className=\"border border-slate-300 p-2 text-right w-32\">Unit Price</th>"
+  },
+  {
+    "file": "src/app/(authenticated)/admin/form-builder/page.tsx",
+    "line": 300,
+    "snippet": "<th className=\"border border-slate-300 p-2 text-right w-32\">Amount</th>"
+  },
+  {
+    "file": "src/app/(authenticated)/hr/employees/new/page.tsx",
+    "line": 131,
+    "snippet": "<div className=\"w-40 h-48 rounded-2xl bg-white/[0.03] border border-dashed border-white/10 flex flex-col items-center justify-center gap-3 group hover:border-cyan-500/40 transition-all cursor-pointer\">"
+  },
+  {
+    "file": "src/app/(authenticated)/inventory/[id]/page.tsx",
+    "line": 679,
+    "snippet": "<NexusTableCell mono className=\"w-36\">{move.transactionId}</NexusTableCell>"
+  },
+  {
+    "file": "src/app/(authenticated)/inventory/[id]/page.tsx",
+    "line": 680,
+    "snippet": "<NexusTableCell className=\"text-center w-24\">"
+  },
+  {
+    "file": "src/app/(authenticated)/inventory/[id]/page.tsx",
+    "line": 686,
+    "snippet": "<NexusTableCell mono className=\"w-20 text-right\">{move.quantity}</NexusTableCell>"
+  },
+  {
+    "file": "src/app/(authenticated)/inventory/[id]/page.tsx",
+    "line": 690,
+    "snippet": "<NexusTableCell className=\"w-36 text-xs font-bold text-white/50\">{move.userId || \"System\"}</NexusTableCell>"
+  },
+  {
+    "file": "src/app/(authenticated)/settings/page.tsx",
+    "line": 377,
+    "snippet": "<div className=\"w-20 h-20 rounded-xl bg-white/[0.02] border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 text-white/20 hover:border-nexus-teal hover:text-nexus-teal hover:bg-nexus-teal/5 transition-all cursor-pointer\">"
+  },
+  {
+    "file": "src/app/portal/repair/page.tsx",
+    "line": 191,
+    "snippet": "<Suspense fallback={<div className=\"min-h-screen bg-slate-50 flex items-center justify-center p-6\"><div className=\"animate-pulse flex flex-col items-center\"><div className=\"w-12 h-12 bg-slate-200 rounded-full mb-4\"></div><div className=\"h-4 bg-slate-200 rounded w-24\"></div></div></div>}>"
+  },
+  {
+    "file": "src/components/commerce/DocumentItemsTable.tsx",
+    "line": 259,
+    "snippet": "<div className=\"w-24 shrink-0 flex flex-col items-end gap-1\">"
+  },
+  {
+    "file": "src/components/hr/EmployeeModal.tsx",
+    "line": 152,
+    "snippet": "<div className=\"w-40 h-48 rounded-2xl bg-white/[0.03] border border-dashed border-white/10 flex flex-col items-center justify-center gap-3 group hover:border-nexus-teal/40 transition-all cursor-pointer\">"
+  },
+  {
+    "file": "src/components/inventory/AddProductSheet.tsx",
+    "line": 469,
+    "snippet": "className=\"w-24 h-24 rounded-2xl bg-white/[0.02] border border-dashed border-white/20 flex flex-col items-center justify-center text-white/30 hover:border-nexus-teal hover:text-nexus-teal cursor-pointer transition-colors shrink-0 overflow-hidden relative group\""
+  },
+  {
+    "file": "src/components/inventory/InventoryInModal.tsx",
+    "line": 291,
+    "snippet": "className=\"w-24 h-24 rounded-2xl bg-white/[0.02] border border-dashed border-white/20 flex flex-col items-center justify-center text-white/30 hover:border-nexus-teal hover:text-nexus-teal cursor-pointer transition-colors shrink-0 overflow-hidden relative group\""
+  },
+  {
+    "file": "src/components/inventory/ProductModal.tsx",
+    "line": 132,
+    "snippet": "<div className=\"w-64 h-64 bg-white/[0.03] border border-white/5 rounded-[3rem] flex flex-col items-center justify-center gap-4 relative overflow-hidden group\">"
+  },
+  {
+    "file": "src/components/reports/DocumentRenderer.tsx",
+    "line": 137,
+    "snippet": "<th className=\"p-2 text-center uppercase text-black/60 font-semibold w-24\">จำนวน</th>"
+  },
+  {
+    "file": "src/components/reports/DocumentRenderer.tsx",
+    "line": 138,
+    "snippet": "<th className=\"p-2 text-right uppercase text-black/60 font-semibold w-28\">ราคา/หน่วย</th>"
+  },
+  {
+    "file": "src/components/reports/DocumentRenderer.tsx",
+    "line": 139,
+    "snippet": "<th className=\"p-2 text-right uppercase text-black/60 font-semibold w-32\">ยอดเงินรวม</th>"
+  },
+  {
+    "file": "src/components/ui/Base.tsx",
+    "line": 781,
+    "snippet": "<div className={cn(\"absolute -right-4 -top-4 w-20 h-20 blur-[40px] opacity-0 group-hover:opacity-10 transition-all duration-1000 rounded-full\", color.replace('text-', 'bg-'))} />"
+  },
+  {
+    "file": "src/components/ui/Base.tsx",
+    "line": 817,
+    "snippet": "<div className={cn(\"absolute -right-4 -top-4 w-32 h-32 blur-[60px] opacity-0 group-hover:opacity-10 transition-all duration-1000 rounded-full\", color.replace('text-', 'bg-'))} />"
+  }
+]

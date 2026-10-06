@@ -72,7 +72,7 @@ export default function ProductLabelsPage() {
         <div className="space-y-3 print:hidden">
           <div className="relative">
             <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
-            <PillInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ค้นหาชื่อ / SKU / บาร์โค้ด / ยี่ห้อ" className="w-full h-10 pl-10 rounded-full" />
+            <PillInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ค้นหาชื่อ / SKU / บาร์โค้ด / ยี่ห้อ" className="w-full h-9 pl-10 rounded-full" />
           </div>
           {loading && <p className="text-white/40 text-sm">กำลังโหลด...</p>}
           <div className="space-y-1.5 max-h-[70vh] overflow-y-auto pr-1">
@@ -82,12 +82,12 @@ export default function ProductLabelsPage() {
                   <p className="text-[13px] text-white truncate">{p.name}</p>
                   <p className="text-[11px] text-white/40 font-mono">{p.sku}{p.barcode ? ` • ${p.barcode}` : " • (ไม่มีบาร์โค้ด ใช้ SKU)"}</p>
                 </div>
-                <input
+                <PillInput
                   type="number"
                   min={0}
                   value={copies[p.id] || 0}
                   onChange={(e) => setCopy(p.id, Number(e.target.value))}
-                  className="w-16 h-8 text-center rounded-lg bg-black/40 border border-white/10 text-white font-mono"
+                  className="w-20 h-9 rounded-full text-center font-mono"
                   title="จำนวนดวง"
                 />
               </div>

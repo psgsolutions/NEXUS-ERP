@@ -36,6 +36,9 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "NEXUS-ERP",
+    "backup_v3",
+    "scratch"
   ]
 }

@@ -165,7 +165,7 @@ function PickingScreen() {
           onChange={(e) => setScan(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleScan(scan); setScan(""); } }}
           placeholder={location ? "ยิงสินค้า (บาร์โค้ด / SKU)" : "ยิงบาร์โค้ดชั้นวาง เช่น WH-01-A1-L2"}
-          className="w-full h-12 rounded-2xl px-5 text-[16px] font-mono"
+          className="w-full h-9 rounded-full px-5 text-[14px] font-mono"
           autoComplete="off"
         />
         {feedback && (

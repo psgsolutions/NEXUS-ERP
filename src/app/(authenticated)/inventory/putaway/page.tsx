@@ -189,7 +189,7 @@ export default function PutawayPage() {
             onChange={(e) => setScan(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleScan(scan); setScan(""); } }}
             placeholder={target ? "ยิงสินค้า (บาร์โค้ด / SKU)" : "ยิงบาร์โค้ดชั้นวาง เช่น WH-01-A1-L2"}
-            className="w-full h-12 rounded-2xl px-5 text-[16px] font-mono"
+            className="w-full h-9 rounded-full px-5 text-[14px] font-mono"
             autoComplete="off"
           />
           {feedback && (
@@ -217,7 +217,7 @@ export default function PutawayPage() {
               <p className="text-[11px] text-white/40 font-mono">{l.sku} • ที่ต้นทาง {availableAtSource.get(l.productId) || 0}</p>
             </div>
             <button onClick={() => setLineQty(l.productId, l.qty - 1)} className="w-8 h-8 rounded-full bg-white/5 text-white flex items-center justify-center"><Minus size={14} /></button>
-            <input type="number" value={l.qty} onChange={(e) => setLineQty(l.productId, Number(e.target.value))} className="w-16 h-8 text-center rounded-lg bg-black/40 border border-white/10 text-white font-mono" />
+            <PillInput type="number" min={0} value={l.qty} onChange={(e) => setLineQty(l.productId, Number(e.target.value))} className="w-20 h-9 rounded-full text-center font-mono" />
             <button onClick={() => setLineQty(l.productId, l.qty + 1)} className="w-8 h-8 rounded-full bg-white/5 text-white flex items-center justify-center"><Plus size={14} /></button>
             <button onClick={() => setLineQty(l.productId, 0)} className="w-8 h-8 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center"><Trash2 size={14} /></button>
           </div>

@@ -35,3 +35,9 @@ yarn-error.log*
 *-firebase-adminsdk-*.json
 temp-sa.json
 serviceAccountKey*.json
+
+# Local junk (installers, logs, nested repo copies)
+*.exe
+temp_log.txt
+firestore-debug.log
+/NEXUS-ERP/

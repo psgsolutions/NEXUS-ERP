@@ -150,6 +150,7 @@ export async function calculatePP30Tax(companyId: string, yearMonth: string): Pr
       const snapInv = await getDocs(qInv);
       snapInv.forEach((docSnap) => {
         const inv = docSnap.data();
+        if (inv.isSample === true) return; // ข้อมูลตัวอย่างไม่นับเป็นภาษีจริง
         const rawDate = inv.issueDate || inv.date || "";
         const dateStr = toThaiDateStr(rawDate);
         if (dateStr.startsWith(yearMonth)) {
@@ -188,20 +189,26 @@ export async function fetchWHTTaxRecords(
   const records: WHTTaxRecord[] = [];
 
   try {
-    const whtRef = collection(db, `companies/${companyId}/withholding_taxes`);
-    const qWht = query(
-      whtRef,
-      where("companyId", "==", companyId),
-      where("isDeleted", "==", false)
-    );
-    const snapWht = await getDocs(qWht);
+    // ไม่กรอง isDeleted ใน query: เอกสารที่สร้างจาก createWHTFromExpense ไม่มีฟิลด์นี้
+    const snapWht = await getDocs(query(collection(db, `companies/${companyId}/withholding_taxes`), where("companyId", "==", companyId)));
+
+    // เลขผู้เสียภาษีของผู้จำหน่าย: 13 หลักขึ้นต้น 0 = นิติบุคคล (ภ.ง.ด.53), อื่นๆ = บุคคลธรรมดา (ภ.ง.ด.3)
+    const supplierTaxIds = new Map<string, string>();
+    const supplierIds = Array.from(new Set(snapWht.docs.map((d) => d.data().supplierId).filter(Boolean)));
+    for (const id of supplierIds) {
+      const sup = await getDoc(doc(db, "suppliers", id));
+      if (sup.exists()) supplierTaxIds.set(id, String(sup.data().taxId || ""));
+    }
 
     snapWht.forEach((docSnap) => {
       const data = docSnap.data();
-      const dateStr = data.issuedAt ? (typeof data.issuedAt === "string" ? data.issuedAt : new Date(data.issuedAt.seconds * 1000).toISOString()) : "";
+      if (data.isDeleted === true || data.isSample === true) return;
+      // วันที่หักภาษี: issuedAt / filingDate / createdAt ตามเวลาไทย
+      const dateStr = toThaiDateStr(data.issuedAt || data.filingDate || data.createdAt);
 
       if (dateStr.startsWith(yearMonth) || !yearMonth) {
-        const isCorp = data.vendorType === "CORPORATE" || (data.taxId && data.taxId.length === 13 && data.taxId.startsWith("0"));
+        const taxId = String(data.taxId || supplierTaxIds.get(data.supplierId) || "");
+        const isCorp = data.vendorType === "CORPORATE" || (taxId.length === 13 && taxId.startsWith("0"));
         const targetType = isCorp ? "PND53" : "PND3";
 
         if (whtType === targetType) {
@@ -210,13 +217,13 @@ export async function fetchWHTTaxRecords(
             docNo: data.whtId || docSnap.id,
             date: dateStr.split("T")[0],
             vendorName: data.vendor || data.vendorName || "ผู้เสียภาษี",
-            taxId: data.taxId || "0000000000000",
+            taxId: taxId || "0000000000000",
             vendorType: isCorp ? "CORPORATE" : "INDIVIDUAL",
             whtType: targetType,
             incomeType: data.incomeType || "ค่าบริการ / ค่าจ้าง",
             baseAmount: Number(data.baseAmount || 0),
             whtRate: Number(data.whtRate || 3),
-            whtAmount: Number(data.whtAmount || 0)
+            whtAmount: Number(data.whtAmount ?? data.taxAmount ?? 0)
           });
         }
       }

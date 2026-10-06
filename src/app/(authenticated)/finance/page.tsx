@@ -62,15 +62,6 @@ import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
 
 
-const MOCK_RV = [
-  { id: 'RV-2606-001', customer: 'โรงพยาบาลตากสิน', date: '25 มิ.ย. 2026', total: '฿500,000', status: 'Completed' }
-];
-
-const MOCK_PV = [
-  { id: 'PV-2606-001', vendor: 'บริษัท ซิสโก้ ซิสเต็มส์', date: '28 มิ.ย. 2026', total: '฿450,000', status: 'Pending' }
-];
-
-
 type FinanceSubModule = "overview" | "ar" | "ap" | "gl" | "tax" | "assets" | "bank" | "cheques";
 
 export default function FinancePage() {
@@ -91,19 +82,54 @@ export default function FinancePage() {
   const { showAlert } = useSystemDialog();
   const [toast, setToast] = useState({ message: "", isVisible: false });
 
-  const { data: dbFinancials, loading: glLoading } = useRealtimeCollection<any>('journalEntries');
-  const { data: dbARs, loading: arLoading } = useRealtimeCollection<any>('receivables');
-  const { data: dbAPs, loading: apLoading } = useRealtimeCollection<any>('payables');
+  // สมุดรายวัน: ใต้บริษัท (AccountingEngine / API / stock engine) + root เดิม (เอกสารเก่า)
+  const { data: companyJournals, loading: glLoading } = useRealtimeCollection<any>(`companies/${companyId}/journal_entries`);
+  const { data: legacyJournals } = useRealtimeCollection<any>('journal_entries');
+  // ลูกหนี้ = ใบกำกับภาษีที่ยังไม่ชำระ, เจ้าหนี้ = ใบสำคัญจ่ายที่ยังไม่จ่าย
+  const { data: companyInvoices, loading: arLoading } = useRealtimeCollection<any>(`companies/${companyId}/invoices`);
+  const { data: companyExpenses, loading: apLoading } = useRealtimeCollection<any>(`companies/${companyId}/expenses`);
+
+  const toMs = (v: any) => !v ? 0 : v.seconds ? v.seconds * 1000 : new Date(v).getTime() || 0;
+  const thDate = (v: any) => { const ms = toMs(v); return ms ? new Date(ms).toLocaleDateString('th-TH') : "-"; };
+  const journalLines = (f: any) => (f.items || f.lines || []) as any[];
+  const dbFinancials = [
+    ...companyJournals.map((j: any) => ({ ...j, _path: `companies/${companyId}/journal_entries/${j.id}` })),
+    ...legacyJournals.map((j: any) => ({ ...j, _path: `journal_entries/${j.id}` })),
+  ].filter((j: any) => j.isDeleted !== true).sort((x: any, y: any) => toMs(y.date || y.createdAt) - toMs(x.date || x.createdAt));
+
+  const dbARs = companyInvoices
+    .filter((inv: any) => inv.paymentStatus !== "paid" && inv.status !== "Paid" && inv.isDeleted !== true)
+    .map((inv: any) => ({
+      ...inv,
+      amount: Number(inv.grandTotal ?? inv.totalAmount ?? 0),
+      status: toMs(inv.dueDate) && toMs(inv.dueDate) < Date.now() ? "overdue" : "pending",
+    }));
+  const dbAPs = companyExpenses
+    .filter((e: any) => !String(e.status || "").toLowerCase().startsWith("paid") && e.isDeleted !== true)
+    .map((e: any) => ({
+      ...e,
+      amount: Number(e.totalAmount ?? 0) - Number(e.whtAmount ?? 0),
+      payDate: e.dueDate,
+      poNo: e.poRef || e.expenseId || e.id,
+      status: "pending",
+    }));
   const { data: dbTaxes, loading: taxLoading } = useRealtimeCollection<any>('taxFilings');
   const { data: dbAssets, loading: assetsLoading } = useRealtimeCollection<any>('assets');
   const { data: dbBankAccounts, loading: bankLoading } = useRealtimeCollection<any>('bankAccounts');
   const { data: dbCheques, loading: chequesLoading } = useRealtimeCollection<any>('cheques');
 
   // Real-time Dashboard Calculations
-  const totalAR = dbARs.filter((ar: any) => ar.status === "pending" || ar.status === "overdue").reduce((sum: number, ar: any) => sum + (ar.amount || 0), 0);
-  const totalAP = dbAPs.filter((ap: any) => ap.status === "active" || ap.status === "pending").reduce((sum: number, ap: any) => sum + (ap.amount || 0), 0);
+  const totalAR = dbARs.reduce((sum: number, ar: any) => sum + (ar.amount || 0), 0);
+  const totalAP = dbAPs.reduce((sum: number, ap: any) => sum + (ap.amount || 0), 0);
   const netCashflow = totalAR - totalAP;
-  const totalPL = dbFinancials.reduce((sum: number, f: any) => sum + ((f.totalCredit || 0) - (f.totalDebit || 0)), 0);
+  // กำไร(ขาดทุน) = รายได้ (หมวด 4: เครดิต-เดบิต) - ค่าใช้จ่าย/ต้นทุน (หมวด 5: เดบิต-เครดิต)
+  const totalPL = dbFinancials.reduce((sum: number, f: any) => sum + journalLines(f).reduce((acc: number, l: any) => {
+    const code = String(l.accountCode || l.accountId || l.code || "");
+    const dr = Number(l.debit) || 0, cr = Number(l.credit) || 0;
+    if (code.startsWith("4")) return acc + (cr - dr);
+    if (code.startsWith("5")) return acc - (dr - cr);
+    return acc;
+  }, 0), 0);
 
   // AI Forecast Logic
   let riskStatus = "safe";
@@ -122,28 +148,33 @@ export default function FinancePage() {
     }
   }
 
-  const financialsList = dbFinancials.map(f => ({
-    id: f.journalNo || f.documentNo || f.journalId || f.id || "JV-UNKNOWN",
-    date: f.date ? new Date(f.date.seconds ? f.date.seconds * 1000 : f.date).toLocaleDateString('th-TH') : "-",
-    desc: f.description || "-",
-    dr: f.totalDebit?.toLocaleString() || "-",
-    cr: f.totalCredit?.toLocaleString() || "-",
-    status: f.status || "active"
-  }));
+  const financialsList = dbFinancials.map((f: any) => {
+    const dr = Number(f.totalDebit ?? journalLines(f).reduce((s: number, l: any) => s + (Number(l.debit) || 0), 0));
+    const cr = Number(f.totalCredit ?? journalLines(f).reduce((s: number, l: any) => s + (Number(l.credit) || 0), 0));
+    return {
+      id: f.jvId || f.journalNo || f.documentNo || f.id,
+      path: f._path,
+      date: thDate(f.date || f.createdAt),
+      desc: f.description || "-",
+      dr: dr.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
+      cr: cr.toLocaleString("th-TH", { minimumFractionDigits: 2 }),
+      status: (String(f.status || "posted").toLowerCase() === "draft" ? "pending" : "active") as "pending" | "active"
+    };
+  });
 
   const arList = dbARs.map(ar => ({
     customer: ar.customerName || ar.customerId || "Unknown",
     inv: ar.invoiceNo || ar.documentNo || ar.invoiceId || ar.id || "-",
-    due: ar.dueDate ? new Date(ar.dueDate.seconds ? ar.dueDate.seconds * 1000 : ar.dueDate).toLocaleDateString('th-TH') : "-",
-    amount: ar.amount ? `฿${ar.amount.toLocaleString()}` : "-",
+    due: thDate(ar.dueDate),
+    amount: `฿${Number(ar.amount || 0).toLocaleString("th-TH", { minimumFractionDigits: 2 })}`,
     status: ar.status || "pending"
   }));
 
   const apList = dbAPs.map(ap => ({
     supplier: ap.supplierName || ap.supplierId || "Unknown",
     po: ap.poNo || ap.documentNo || ap.poId || ap.id || "-",
-    payDate: ap.payDate ? new Date(ap.payDate.seconds ? ap.payDate.seconds * 1000 : ap.payDate).toLocaleDateString('th-TH') : "-",
-    amount: ap.amount ? `฿${ap.amount.toLocaleString()}` : "-",
+    payDate: thDate(ap.payDate),
+    amount: `฿${Number(ap.amount || 0).toLocaleString("th-TH", { minimumFractionDigits: 2 })}`,
     status: ap.status || "active"
   }));
 
@@ -398,7 +429,7 @@ export default function FinancePage() {
                           <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">ไม่พบข้อมูลในระบบ</NexusTableCell>
                         </NexusTableRow>
                       ) : filteredFinancials.map((f, i) => (
-                        <FinancialRow key={i} {...f} />
+                        <FinancialRow key={f.path || i} {...f} />
                       ))}
                     </NexusTable>
                   </div>
@@ -766,11 +797,11 @@ function AssetRow({ id, name, cat, purchase, bookValue, status }: { id: string, 
   );
 }
 
-function FinancialRow({ id, date, desc, dr, cr, status }: { id: string, date: string, desc: string, dr: string, cr: string, status: "active" | "pending" }) {
+function FinancialRow({ id, path, date, desc, dr, cr, status }: { id: string, path: string, date: string, desc: string, dr: string, cr: string, status: "active" | "pending" }) {
   return (
     <NexusTableRow>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <Link href={`/finance/journal/${id}`} className="block">
+        <Link href={`/finance/journal/${encodeURIComponent(path)}`} className="block">
            <p className="font-mono text-xs text-nexus-blue font-medium tracking-tighter text-center w-full">{id}</p>
         </Link>
       </NexusTableCell>
@@ -779,7 +810,7 @@ function FinancialRow({ id, date, desc, dr, cr, status }: { id: string, date: st
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white/60 font-mono">{dr}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white/60 font-mono">{cr}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status={status} label="บันทึกแล้ว" />
+        <StatusBadge status={status} label={status === "pending" ? "รอตรวจ (ร่าง)" : "ลงบัญชีแล้ว"} />
       </NexusTableCell>
     </NexusTableRow>
   );
@@ -792,7 +823,7 @@ function ARRow({ customer, inv, due, amount, status }: { customer: string, inv: 
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[10px] text-nexus-teal tracking-tighter">{inv}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-sm font-medium text-white/40 uppercase tracking-widest">{due}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white mono-numbers">{amount}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center"><StatusBadge status={status} label={status === "pending" ? "รอชำระ" : "เกินกำหนด"} /></NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center"><StatusBadge status={status === "overdue" ? "danger" : "pending"} label={status === "pending" ? "รอชำระ" : "เกินกำหนด"} /></NexusTableCell>
     </NexusTableRow>
   );
 }
@@ -804,7 +835,7 @@ function APRow({ supplier, po, payDate, amount, status }: { supplier: string, po
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[10px] text-nexus-blue tracking-tighter">{po}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-sm font-medium text-white/40 uppercase tracking-widest">{payDate}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white mono-numbers">{amount}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center"><StatusBadge status={status} label={status === "active" ? "อนุมัติจ่าย" : "รอตรวจรับ"} /></NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center"><StatusBadge status="pending" label="รอจ่าย" /></NexusTableCell>
     </NexusTableRow>
   );
 }

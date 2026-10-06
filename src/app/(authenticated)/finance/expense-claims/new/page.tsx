@@ -22,20 +22,28 @@ import {
 import { formatCurrency } from "@/lib/erp-logic";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
+import { useAuth } from "@/context/AuthContext";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { nexusSequenceEngine } from "@/lib/sequence-engine";
+import { db } from "@/lib/firebase-client";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export default function NewExpenseClaimPage() {
   const router = useRouter();
   const { showAlert, showConfirm } = useSystemDialog();
 
   const [formData, setFormData] = useState({
-    claimId: "EX-" + new Date().toISOString().split('T')[0].replace(/-/g, '').substring(2) + "-" + Math.floor(Math.random() * 10000).toString().padStart(4, '0'),
-    employeeId: "EMP-001", // Demo default
+    claimId: "ออกเลขเมื่อบันทึก",
+    employeeId: "",
     expenseAccountCode: "53000-00", // Default to General Expense
     description: "",
     hasVat: false,
     subtotal: 0,
-    receiptUrls: [] as string[]
   });
+  const { user, companyId } = useAuth();
+  const { data: employees } = useRealtimeCollection<any>("employees");
+  const [saving, setSaving] = useState(false);
+  const employeeName = (e: any) => e ? (e.name || [e.firstName, e.lastName].filter(Boolean).join(" ") || e.employeeCode || e.id) : "";
 
   const [vatAmount, setVatAmount] = useState(0);
   const [grandTotal, setGrandTotal] = useState(0);
@@ -59,27 +67,47 @@ export default function NewExpenseClaimPage() {
     }
   };
 
-  const handleSave = () => {
+  // ใบเบิกบันทึกเป็นใบสำคัญจ่าย (expenses) ผู้รับเงินคือพนักงาน: แสดงในแท็บค่าใช้จ่ายของจัดซื้อและเจ้าหนี้ของการเงิน
+  const handleSave = async () => {
+    if (!formData.employeeId) return void showAlert("กรุณาเลือกพนักงานผู้เบิก", "System Notification", "warning");
     if (formData.subtotal <= 0) return void showAlert("กรุณาระบุยอดเงินเบิก", "System Notification", "warning");
     if (!formData.description) return void showAlert("กรุณาระบุรายละเอียดการเบิก", "System Notification", "warning");
-    
-    showAlert("ส่งคำขอเบิกเงินภายในเรียบร้อยแล้ว");
-    router.push("/finance");
-  };
+    if (!companyId || !user) return void showAlert("ไม่พบข้อมูลผู้ใช้หรือรหัสบริษัท", "System Notification", "error");
 
-  const handleUploadReceipt = () => {
-    const mockUrl = `/mock-receipts/receipt-${Date.now()}.png`;
-    setFormData(prev => ({
-      ...prev,
-      receiptUrls: [...prev.receiptUrls, mockUrl]
-    }));
-  };
-
-  const handleRemoveReceipt = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      receiptUrls: prev.receiptUrls.filter((_, i) => i !== index)
-    }));
+    setSaving(true);
+    try {
+      const expId = await nexusSequenceEngine("EXP", companyId);
+      const employee = employees.find((e: any) => e.id === formData.employeeId);
+      const round = (n: number) => Math.round(n * 100) / 100;
+      await setDoc(doc(db, `companies/${companyId}/expenses`, expId), {
+        id: expId,
+        expenseId: expId,
+        companyId,
+        documentType: "ExpenseClaim",
+        employeeId: formData.employeeId,
+        employeeName: employeeName(employee),
+        supplierName: employeeName(employee),
+        vendor: employeeName(employee),
+        expenseAccountCode: formData.expenseAccountCode,
+        description: formData.description,
+        hasVat: formData.hasVat,
+        subTotal: round(formData.subtotal),
+        vatAmount: round(vatAmount),
+        totalAmount: round(grandTotal),
+        status: "Awaiting Payment",
+        dueDate: new Date().toISOString().split("T")[0],
+        createdBy: user.email || user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        isDeleted: false,
+      });
+      showAlert(`ส่งคำขอเบิกเงินเรียบร้อยแล้ว (${expId})`);
+      router.push("/finance");
+    } catch (err: any) {
+      showAlert(`บันทึกไม่สำเร็จ: ${err.message}`, "System Notification", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const headerContent = (
@@ -107,7 +135,7 @@ export default function NewExpenseClaimPage() {
         <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={handleBack}>
           ยกเลิก
         </PillButton>
-        <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" onClick={handleSave}>
+        <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" onClick={handleSave} disabled={saving}>
           <ShieldCheck size={14} className="mr-1.5" /> ส่งคำขอเบิกเงิน
         </PillButton>
       </div>
@@ -125,12 +153,17 @@ export default function NewExpenseClaimPage() {
               className="w-full text-white/50 bg-white/5 border-white/5 font-mono cursor-not-allowed" 
             />
           </Field>
-          <Field label="รหัสพนักงาน (EMPLOYEE ID) *">
-            <PillInput 
-              value={formData.employeeId} 
-              onChange={e => setFormData({ ...formData, employeeId: e.target.value })} 
-              className="w-full" 
-            />
+          <Field label="พนักงานผู้เบิก (EMPLOYEE) *">
+            <PillSelect
+              value={formData.employeeId}
+              onChange={e => setFormData({ ...formData, employeeId: e.target.value })}
+              className="w-full"
+            >
+              <option value="">{employees.length === 0 ? "ยังไม่มีข้อมูลพนักงาน" : "เลือกพนักงาน..."}</option>
+              {employees.map((emp: any) => (
+                <option key={emp.id} value={emp.id}>{emp.employeeCode || emp.employeeId || emp.id} - {employeeName(emp)}</option>
+              ))}
+            </PillSelect>
           </Field>
         </div>
         
@@ -174,47 +207,19 @@ export default function NewExpenseClaimPage() {
                 onChange={e => setFormData({ ...formData, hasVat: e.target.checked })}
                 className="w-4 h-4 rounded border-white/20 bg-white/5 text-cyan-500 focus:ring-cyan-500/50"
               />
-              รวมภาษีมูลค่าเพิ่ม 7% (INCLUDES VAT)
+              มีภาษีมูลค่าเพิ่ม 7% (คิดเพิ่มจากยอดก่อนภาษี)
             </label>
           </div>
         </div>
 
-        <div className="pt-4 border-t border-white/5">
-          <div className="flex items-center justify-between mb-4">
-            <Field label="แนบรูปถ่ายใบเสร็จ (RECEIPTS) *">
-              <div />
-            </Field>
-            <PillButton 
-              variant="ghost" 
-              className="h-8 px-4 text-[11px] bg-white/5 border-white/10 hover:bg-white/10"
-              onClick={handleUploadReceipt}
-            >
-              <Camera size={12} className="mr-2" /> ถ่ายรูป / อัปโหลด
-            </PillButton>
+        <div className="pt-4 border-t border-white/5 space-y-2">
+          <Field label="แนบรูปถ่ายใบเสร็จ (RECEIPTS)">
+            <div />
+          </Field>
+          <div className="w-full p-6 rounded-2xl border border-dashed border-white/10 flex flex-col items-center justify-center text-white/40 bg-white/[0.02]">
+            <ImageIcon size={28} className="mb-2 opacity-50" />
+            <p className="text-[12px] font-semibold">ยังไม่รองรับการแนบไฟล์ (รอตั้งค่าพื้นที่เก็บไฟล์ Firebase Storage) เก็บใบเสร็จตัวจริงไว้ประกอบการเบิก</p>
           </div>
-          
-          {formData.receiptUrls.length === 0 ? (
-            <div className="w-full p-8 rounded-2xl border border-dashed border-white/10 flex flex-col items-center justify-center text-white/30 bg-white/[0.02]">
-              <ImageIcon size={32} className="mb-2 opacity-50" />
-              <p className="text-[11px] uppercase tracking-widest font-semibold">No receipts attached</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 gap-4">
-              {formData.receiptUrls.map((url, idx) => (
-                <div key={idx} className="relative aspect-[3/4] rounded-xl overflow-hidden border border-white/10 bg-black/40 group">
-                  <div className="absolute inset-0 flex items-center justify-center text-white/20 font-mono text-xs">
-                    [RECEIPT IMAGE]
-                  </div>
-                  <button 
-                    onClick={() => handleRemoveReceipt(idx)}
-                    className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
       </GlassCard>

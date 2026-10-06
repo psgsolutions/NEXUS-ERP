@@ -190,8 +190,8 @@ export default function FinancePage() {
     id: a.assetCode || a.assetNo || a.code || a.id || "AST-UNKNOWN",
     name: a.name || "Unknown Asset",
     cat: a.category || "UNKNOWN",
-    purchase: a.purchaseValue ? `฿${a.purchaseValue.toLocaleString()}` : "-",
-    bookValue: a.bookValue ? `฿${a.bookValue.toLocaleString()}` : "-",
+    purchase: `฿${Number(a.purchasePrice ?? a.purchaseValue ?? 0).toLocaleString("th-TH", { minimumFractionDigits: 2 })}`,
+    bookValue: `฿${Number(a.netBookValue ?? a.bookValue ?? 0).toLocaleString("th-TH", { minimumFractionDigits: 2 })}`,
     status: a.status || "active"
   }));
 

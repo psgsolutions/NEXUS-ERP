@@ -17,11 +17,13 @@ import {
 import { 
   PillButton, 
   PillSelect, 
+  PillInput,
   GlassCard,
   cn 
 } from "@/components/ui/Base";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { where } from "firebase/firestore";
+import { where, doc, getDoc, collection, writeBatch, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase-client";
 import { formatCurrency } from "@/lib/erp-logic";
 import { useAuth } from "@/context/AuthContext";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
@@ -32,21 +34,26 @@ export default function NewAssetDepreciationPage() {
   const { showAlert, showConfirm } = useSystemDialog();
 
   const [step, setStep] = useState(1);
-  const [period, setPeriod] = useState("เมษายน 2569");
-  const { companyId: currentCompanyId } = useAuth();
+  // งวดค่าเสื่อม = เดือนปัจจุบัน (YYYY-MM)
+  const [period, setPeriod] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; });
+  const { user, companyId: currentCompanyId } = useAuth();
   
   const { data: assets } = useRealtimeCollection("assets", currentCompanyId ? [where('companyId', '==', currentCompanyId)] : []);
 
-  const totalAssets = assets?.length || 0;
-  const totalBookValue = assets?.reduce((sum, a) => sum + (a.netBookValue || 0), 0) || 0;
-  
-  // Calculate mock monthly depreciation: 1/12 of ((purchasePrice - salvage) / usefulLifeYears)
-  const depreciationAmount = assets?.reduce((sum, a) => {
-     if (a.usefulLifeYears > 0) {
-        return sum + (((a.purchasePrice || 0) - (a.salvageValue || 0)) / a.usefulLifeYears) / 12;
-     }
-     return sum;
-  }, 0) || 0;
+  const cost = (a: any) => Number(a.purchasePrice ?? a.purchaseValue ?? 0);
+  const salvage = (a: any) => Number(a.salvageValue ?? 0);
+  const bookValue = (a: any) => Number(a.netBookValue ?? a.bookValue ?? (cost(a) - Number(a.accumulatedDepreciation ?? 0)));
+  const monthlyFor = (a: any) => {
+    const life = Number(a.usefulLifeYears) || 0;
+    if (life <= 0 || String(a.status || "active") !== "active") return 0;
+    const m = (cost(a) - salvage(a)) / (life * 12);
+    return Math.max(0, Math.min(m, bookValue(a) - salvage(a)));
+  };
+  const depreciable = (assets || []).filter((a: any) => monthlyFor(a) > 0);
+
+  const totalAssets = depreciable.length;
+  const totalBookValue = (assets || []).reduce((sum: number, a: any) => sum + bookValue(a), 0);
+  const depreciationAmount = Math.round(depreciable.reduce((sum: number, a: any) => sum + monthlyFor(a), 0) * 100) / 100;
 
   const assetSummary = {
     totalAssets,
@@ -66,13 +73,56 @@ export default function NewAssetDepreciationPage() {
     }
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (!currentCompanyId || !user) return;
+    if (depreciable.length === 0) return void showAlert("ไม่มีสินทรัพย์ที่ต้องคิดค่าเสื่อมในงวดนี้");
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
-      showAlert(`ประมวลผลค่าเสื่อมราคางวด ${period} สำเร็จ`);
+    try {
+      // กันประมวลผลซ้ำงวดเดียวกัน
+      const runRef = doc(db, "assetDepreciations", `${currentCompanyId}_${period}`);
+      if ((await getDoc(runRef)).exists()) throw new Error(`งวด ${period} ประมวลผลค่าเสื่อมไปแล้ว`);
+
+      const batch = writeBatch(db);
+      const items = depreciable.map((a: any) => {
+        const amount = Math.round(monthlyFor(a) * 100) / 100;
+        batch.update(doc(db, "assets", a.id), {
+          accumulatedDepreciation: Math.round((Number(a.accumulatedDepreciation ?? 0) + amount) * 100) / 100,
+          netBookValue: Math.round((bookValue(a) - amount) * 100) / 100,
+          lastDepreciationPeriod: period,
+          updatedAt: serverTimestamp(),
+        });
+        return { assetId: a.id, name: a.name || a.assetId || a.id, amount };
+      });
+      batch.set(runRef, {
+        companyId: currentCompanyId, period, amount: depreciationAmount, assetCount: items.length, items,
+        createdBy: user.email || user.uid, createdAt: serverTimestamp(), isDeleted: false,
+      });
+      // Dr ค่าเสื่อมราคา 5310-00 / Cr ค่าเสื่อมราคาสะสม 1591-00 (ร่าง รอนักบัญชีอนุมัติ)
+      batch.set(doc(collection(db, `companies/${currentCompanyId}/journal_entries`)), {
+        companyId: currentCompanyId,
+        date: serverTimestamp(),
+        bookType: "JV",
+        description: `[AUTO] ค่าเสื่อมราคาประจำงวด ${period} (${items.length} รายการ)`,
+        reference: `DEP-${period}`,
+        totalDebit: depreciationAmount,
+        totalCredit: depreciationAmount,
+        status: "draft",
+        items: [
+          { accountCode: "5310-00", accountName: "ค่าเสื่อมราคา", debit: depreciationAmount, credit: 0 },
+          { accountCode: "1591-00", accountName: "ค่าเสื่อมราคาสะสม", debit: 0, credit: depreciationAmount },
+        ],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        isDeleted: false,
+      });
+      await batch.commit();
+      showAlert(`ประมวลผลค่าเสื่อมราคางวด ${period} สำเร็จ (${formatCurrency(depreciationAmount)} บาท)`);
       router.push("/finance");
-    }, 1500);
+    } catch (err: any) {
+      showAlert(err.message || "ประมวลผลไม่สำเร็จ");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const headerContent = (
@@ -134,10 +184,7 @@ export default function NewAssetDepreciationPage() {
           <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full max-w-4xl mx-auto">
             <div className="grid grid-cols-2 gap-8 p-10 rounded-[2.5rem] bg-white/[0.02] border border-white/5">
                <Field label="งวดบัญชี * (Accounting Period)">
-                  <PillSelect value={period} onChange={(e) => setPeriod(e.target.value)} className="w-full px-6 h-9 rounded-full font-bold">
-                    <option>เมษายน 2569</option>
-                    <option>พฤษภาคม 2569</option>
-                  </PillSelect>
+                  <PillInput type="month" value={period} onChange={(e) => setPeriod(e.target.value)} className="w-full px-6 h-9 rounded-full font-bold" />
                </Field>
                <Field label="จำนวนสินทรัพย์ที่รอประมวลผล (Pending Assets)">
                   <div className="h-9 px-6 rounded-full bg-white/5 border border-white/10 flex items-center text-sm font-bold text-white w-full">

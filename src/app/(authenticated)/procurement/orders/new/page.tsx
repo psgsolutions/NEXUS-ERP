@@ -343,6 +343,7 @@ function NewPurchaseOrderScreen() {
             <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 ">
             <Calendar size={16} /> วันที่เอกสาร
           </h3>
+          </div>
           <div className="space-y-4">
             <Field label="วันที่สั่งซื้อ *">
               <NexusDatePicker value={form.date} onChange={(e) => setForm({...form, date: e.target.value})} className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[13px] font-bold" />
@@ -431,8 +432,7 @@ function NewPurchaseOrderScreen() {
         <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
           <ShoppingCart size={16} /> รายการสินค้า / บริการ
         </h3>
-          </div>
-        
+
         <DocumentItemsTable 
           items={items}
           onChange={handleItemsChange}

@@ -724,9 +724,9 @@ export default function NewProjectPage() {
               </div>
 
               {/* รูปแบบประเภทโครงการ (8 cols) */}
-              <div className="lg:col-span-8 flex items-center justify-between gap-2 bg-black/40 p-1 rounded-full border border-white/10 h-9 overflow-x-auto custom-scrollbar">
+              <div className="lg:col-span-8 flex flex-wrap items-center justify-between gap-2 bg-black/40 p-1 rounded-[1.25rem] border border-white/10 min-h-9">
                 <span className="text-xs font-bold text-white/60 pl-3 shrink-0" title="กำหนดประเภทเอกสารตรวจรับและขั้นตอนการอนุมัติบังคับตามมาตรฐาน Compliance">รูปแบบการดำเนินงาน:</span>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex flex-wrap items-center gap-1 min-w-0">
                   {[
                     { code: 1, icon: "🛒", label: "ซื้อขายส่งมอบ" },
                     { code: 2, icon: "🛠️", label: "ซ่อมบำรุงรักษา" },

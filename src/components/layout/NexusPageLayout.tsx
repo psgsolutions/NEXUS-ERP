@@ -40,14 +40,16 @@ export default function NexusPageLayout({
         {/* ฝั่งซ้าย: เลื่อนเฉพาะส่วนนี้ถ้าเนื้อหายาว */}
         <main className={cn(
           "flex-1 overflow-y-auto p-4 xl:p-6 custom-scrollbar pb-32 xl:pb-6",
-          rightSidebar ? "w-full xl:w-[75%]" : "w-full"
+          "min-w-0",
+          rightSidebar ? "w-full xl:w-auto" : "w-full"
         )}>
           {leftContent}
         </main>
 
         {/* ฝั่งขวา: แผงสรุปยอดเกาะติดหน้าจอ หรือเลื่อนแยกอิสระ */}
         {rightSidebar && (
-          <aside className="w-full xl:w-[25%] flex-none border-t xl:border-t-0 xl:border-l border-white/10 bg-white/[0.02] overflow-y-auto custom-scrollbar">
+          // แผงขวา: ไม่แคบจนข้อมูลถูกตัด (13") และไม่กว้างเกินจำเป็น (27")
+          <aside className="w-full xl:w-[clamp(310px,24%,400px)] flex-none min-w-0 border-t xl:border-t-0 xl:border-l border-white/10 bg-white/[0.02] overflow-y-auto overflow-x-hidden custom-scrollbar">
             {rightSidebar}
           </aside>
         )}

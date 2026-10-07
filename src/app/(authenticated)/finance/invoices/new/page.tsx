@@ -214,6 +214,7 @@ export default function CreateInvoicePage() {
             <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 ">
           <ShieldCheck size={16} /> ข้อมูลเอกสาร (Document Header)
         </h3>
+        </div>
         
         <div className="space-y-4">
           <Field label="อ้างอิงใบสั่งขาย *">
@@ -309,7 +310,6 @@ export default function CreateInvoicePage() {
           <ShoppingCart size={16} /> รายการสินค้า / บริการ
           <span className="text-[10px] text-cyan-400/80 ml-2">(Partial Billing Allowed)</span>
         </h3>
-          </div>
         
         <DocumentItemsTable items={items} onChange={setItems} />
       </div>

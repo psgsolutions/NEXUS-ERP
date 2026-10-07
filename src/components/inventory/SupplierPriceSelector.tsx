@@ -11,16 +11,19 @@ interface SupplierPriceSelectorProps {
   productName?: string;
   onSelectPrice: (price: number, supplierName?: string, supplierId?: string) => void;
   className?: string;
+  /** แสดงข้อความเมื่อยังไม่มีประวัติราคา (ใช้ในแผงรายละเอียด) */
+  emptyText?: string;
 }
 
 export function SupplierPriceSelector({
   productId,
   productName,
   onSelectPrice,
-  className
+  className,
+  emptyText
 }: SupplierPriceSelectorProps) {
   const { companyId } = useAuth();
-  const currentCompanyId = companyId || "COMP-001";
+  const currentCompanyId = companyId || "";
   
   const [history, setHistory] = useState<SupplierPriceRecord[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -56,7 +59,7 @@ export function SupplierPriceSelector({
   }, [targetId, currentCompanyId]);
 
   if (!targetId || history.length === 0) {
-    return null;
+    return emptyText && !loading ? <p className={cn("text-[12px] text-white/50", className)}>{emptyText}</p> : null;
   }
 
   return (

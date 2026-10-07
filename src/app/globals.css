@@ -332,3 +332,23 @@ input, select, textarea, button, td, th {
 }
 
 /* trigger rebuild */
+
+/* ===== Responsive data table (NexusTable) =====
+ * ทุกช่องบรรทัดเดียว คอลัมน์กว้างตามข้อมูล ไม่มี scrollbar ย่อย
+ * การย่อคอลัมน์ข้อความเมื่อพื้นที่ไม่พอ ทำใน NexusTable (ตัวแปร --nt-max + tooltip)
+ * จึงยกเลิก table-fixed / min-width / max-w ตายตัว ที่หน้าต่าง ๆ ใส่ไว้ */
+/* ตารางไม่ดันความกว้างของคอลัมน์/แผงที่ครอบอยู่ (กันแผงขวาถูกดันหลุดจอ) */
+.nexus-table-wrap,
+.nexus-items-table {
+  contain: inline-size;
+}
+.nexus-table {
+  table-layout: auto !important;
+  min-width: 0 !important;
+}
+.nexus-table td.truncate,
+.nexus-table td .truncate,
+.nexus-table td [class*="max-w-"].truncate {
+  white-space: nowrap !important;
+  max-width: none !important;
+}

@@ -195,7 +195,7 @@ export default function DashboardPage() {
       )}
 
       {/* --- TOP METRICS & QUICK ACTIONS --- */}
-      <div className="flex flex-col xl:flex-row justify-between w-full gap-5">
+      <div className="flex flex-col 2xl:flex-row justify-between w-full gap-4 2xl:gap-5">
         
         {/* HERO METRICS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
@@ -248,17 +248,17 @@ export default function DashboardPage() {
         </div>
 
         {/* QUICK ACTIONS */}
-        <div className="grid grid-cols-4 gap-3 xl:flex xl:flex-nowrap xl:w-auto">
-           <div className="w-full xl:w-[110px]">
+        <div className="grid grid-cols-4 gap-3 2xl:flex 2xl:flex-nowrap 2xl:w-auto">
+           <div className="w-full 2xl:w-[110px]">
              <QuickActionCard icon={<BadgeDollarSign size={16} />} label="เสนอราคา" color="text-nexus-teal bg-nexus-teal/20" link="/sales?action=new-quotation" title="สร้างเอกสารใบเสนอราคาใหม่" />
            </div>
-           <div className="w-full xl:w-[110px]">
+           <div className="w-full 2xl:w-[110px]">
              <QuickActionCard icon={<Warehouse size={16} />} label="คลังสินค้า" color="text-nexus-blue bg-nexus-blue/20" link="/inventory" title="ตรวจสอบและบริหารพัสดุ" />
            </div>
-           <div className="w-full xl:w-[110px]">
+           <div className="w-full 2xl:w-[110px]">
              <QuickActionCard icon={<UsersRound size={16} />} label="ลูกค้า" color="text-amber-500 bg-amber-500/20" link="/sales" title="ฐานข้อมูลและประวัติลูกค้า" />
            </div>
-           <div className="w-full xl:w-[110px]">
+           <div className="w-full 2xl:w-[110px]">
              <QuickActionCard icon={<ShoppingBasket size={16} />} label="สั่งซื้อ" color="text-rose-500 bg-rose-500/20" link="/procurement" title="สร้างเอกสารใบสั่งซื้อ" />
            </div>
         </div>

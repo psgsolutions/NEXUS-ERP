@@ -802,14 +802,11 @@ whitespace-nowrap">{name}</span>
           </Link>
         </NexusTableCell>
       <NexusTableCell align="center" className="w-[1%] whitespace-nowrap align-middle">
-         <div className="space-y-1.5 w-32 mx-auto">
-            <div className="flex justify-between items-center text-xs font-medium text-white/40 uppercase">
-               <span>ความคืบหน้า</span>
-               <span className="text-white/75">{progress}%</span>
-            </div>
-            <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+         <div className="flex items-center gap-2">
+            <div className="h-1 w-20 2xl:w-28 bg-white/5 rounded-full overflow-hidden shrink-0">
                <div className="h-full bg-nexus-teal shadow-neon-teal" style={{ width: `${progress}%` }} />
             </div>
+            <span className="text-xs font-mono text-white/75">{progress}%</span>
          </div>
       </NexusTableCell>
       <NexusTableCell align="center" className="w-[1%] whitespace-nowrap text-sm font-medium text-white/60 uppercase">{team}</NexusTableCell>

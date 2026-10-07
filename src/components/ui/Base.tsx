@@ -479,7 +479,8 @@ export function PillTabs({
 }) {
   return (
     <div className={cn(
-      "flex items-center gap-2 p-0 bg-transparent w-full overflow-x-auto no-scrollbar flex-nowrap",
+      // แท็บที่ไม่พอแถวจะขึ้นบรรทัดใหม่ (ไม่ซ่อนไว้นอกจอ)
+      "flex items-center gap-1.5 2xl:gap-2 p-0 bg-transparent w-full flex-wrap",
       className
     )}>
       {tabs.map((tab) => {
@@ -490,7 +491,7 @@ export function PillTabs({
             onClick={() => onTabChange(tab.id)}
             title={desc ? desc : undefined}
             className={cn(
-              "h-9 px-5 rounded-full text-[13px] font-black transition-all duration-300 flex items-center gap-2.5 uppercase tracking-wider whitespace-nowrap flex-shrink-0",
+              "h-9 px-3.5 2xl:px-5 rounded-full text-[12px] 2xl:text-[13px] font-black transition-all duration-300 flex items-center gap-2 2xl:gap-2.5 uppercase tracking-wide 2xl:tracking-wider whitespace-nowrap flex-shrink-0",
               activeTab === tab.id 
                 ? "bg-nexus-teal/15 text-nexus-teal shadow-[0_0_10px_rgba(0,255,209,0.1)] border border-nexus-teal/30" 
                 : "bg-white/5 text-white/50 hover:text-white hover:bg-white/10 border border-transparent"
@@ -512,84 +513,163 @@ export function PillTabs({
 }
 
 /* Master Table Structure */
-export function NexusTable({ 
-  headers, 
-  children, 
+
+export type NexusColumnAlign = "left" | "center" | "right";
+
+/**
+ * จัดตำแหน่งคอลัมน์ตามชนิดข้อมูลจากชื่อหัวคอลัมน์ (หัวและข้อมูลใช้ค่าเดียวกันเสมอ)
+ * - ขวา: จำนวนเงิน / ปริมาณ / ราคา / เปอร์เซ็นต์
+ * - กลาง: วันที่ / สถานะ / ประเภท / หน่วย / รูปภาพ / การจัดการ
+ * - ซ้าย: ชื่อ คำอธิบาย รหัส เลขที่เอกสาร หมวดหมู่ และข้อความทั่วไป
+ */
+export function nexusColumnAlign(header: string): NexusColumnAlign {
+  const h = header || "";
+  const l = h.toLowerCase();
+  if (
+    /มูลค่า|ยอด|ราคา|ทุน|จำนวน|คงเหลือ|รวม|ภาษี|ส่วนลด|เปอร์เซ็นต์|เงิน|งบประมาณ|ค่าเสื่อม|เดบิต|เครดิต|ปริมาณ|อัตรา|%/.test(h) ||
+    /debit|credit|total|amount|value|qty|price|cost|balance|wac/.test(l)
+  ) {
+    // ยกเว้นคอลัมน์ข้อความที่มีคำเหล่านี้ปน เช่น "วิธีชำระเงิน", "ประเภทภาษี"
+    if (!/ประเภท|วิธี|ผู้|ชื่อ|รหัส|เลขที่|เลขประจำตัว/.test(h)) return "right";
+  }
+  if (
+    (!/^ผู้/.test(h) && /สถานะ|วัน|เวลา|งวด|กำหนด|ติดตาม|ประเภท|หน่วย|รูป|จัดการ|การกระทำ|แอคชั่น|ความคืบหน้า|ระดับ|ลำดับ|^ที่$|สต็อก|การอนุมัติ|^เอกสาร$/.test(h)) ||
+    /status|date|type|action|unit/.test(l) || h.trim() === ""
+  ) {
+    return "center";
+  }
+  return "left";
+}
+
+/** คอลัมน์ข้อความที่ย่อได้เมื่อพื้นที่ไม่พอ (รหัส / เลขที่เอกสาร / หมายเลข ไม่ย่อ) */
+export function nexusColumnShrinkable(header: string): boolean {
+  if (nexusColumnAlign(header) !== "left") return false;
+  return !/รหัส|เลขที่|หมายเลข|อ้างอิง|เลขประจำตัว|เบอร์|โทร|sku|code|no\./i.test(header || "");
+}
+
+const FLEX_JUSTIFY: Record<NexusColumnAlign, string> = { left: "flex-start", center: "center", right: "flex-end" };
+
+export function NexusTable({
+  headers,
+  children,
   className,
   minWidth = "min-w-[700px]",
   itemCount,
   totalCount
-}: { 
-  headers: string[], 
-  children: React.ReactNode, 
+}: {
+  headers: string[],
+  children: React.ReactNode,
   className?: string,
   minWidth?: string,
   itemCount?: number,
   totalCount?: number
 }) {
-  return (
-    <div className="w-full max-h-[600px] overflow-auto custom-scrollbar rounded-2xl border border-white/5 bg-black/[0.15] backdrop-blur-md relative">
-      <table className={cn("w-full border-collapse", minWidth, className)}>
-        <thead className="sticky top-0 z-20">
-          <tr className="bg-surface-0/95 border-b border-white/5 h-12 shadow-sm">
-            {headers.map((header, i) => {
-              const lowerHeader = header.toLowerCase();
-              
-              // Right Aligned: Financials, Quantities, Document IDs
-              const isRightAligned = 
-                header.includes("มูลค่า") || 
-                header.includes("คงเหลือ") || 
-                header.includes("เปอร์เซ็นต์") || 
-                header.includes("ส่วนลด") || 
-                header.includes("ภาษี") || 
-                lowerHeader.includes("debit") || 
-                lowerHeader.includes("credit") || 
-                lowerHeader.includes("total") || 
-                lowerHeader.includes("amount") || 
-                lowerHeader.includes("value") || 
-                lowerHeader.includes("qty") || 
-                lowerHeader.includes("price") || 
-                lowerHeader.includes("cost") || 
-                lowerHeader.includes("balance") ||
-                header.includes("จำนวน") ||
-                header.includes("ราคา") ||
-                header.includes("ยอด") ||
-                header.includes("รวม") ||
-                header.includes("เครดิต") ||
-                (header.includes("รหัส") && !header.includes("สินค้า") && !header.includes("ลูกค้า") && !lowerHeader.includes("sku")) ||
-                (header.includes("เลขที่") && !header.includes("13 หลัก") && !header.includes("ผู้เสียภาษี"));
+  // [Responsive Table] ตารางพอดีพื้นที่ 13"-27" เสมอ:
+  // - ทุกช่องเป็นบรรทัดเดียว คอลัมน์กว้างตามข้อมูล (table-layout auto)
+  // - หัวคอลัมน์และข้อมูลจัดตำแหน่งเดียวกันตามชนิดข้อมูล (nexusColumnAlign)
+  // - ถ้ากว้างเกินพื้นที่ จะย่อเฉพาะคอลัมน์ข้อความยาว (ชิดซ้าย) ให้พอดี แสดง "…" และ tooltip ข้อความเต็ม
+  //   ตัวเลข รหัส วันที่ สถานะ ไม่ถูกย่อ และไม่มี scrollbar ย่อยในตาราง
+  // - minWidth เก็บไว้เพื่อความเข้ากันได้ของ props เดิม แต่ไม่บังคับใช้แล้ว
+  void minWidth;
+  const tableId = React.useId().replace(/[^a-zA-Z0-9]/g, "");
+  const aligns = React.useMemo(() => headers.map(nexusColumnAlign), [headers]);
+  const shrinkable = React.useMemo(() => headers.map(nexusColumnShrinkable), [headers]);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
 
-              // Center Aligned: Status, Dates, Actions, SKUs, Tax IDs
-              const isCenterAligned = 
-                !isRightAligned && (
-                header.includes("สถานะ") || 
-                header.includes("วันที่") || 
-                header.includes("ประเภท") || 
-                header.includes("การกระทำ") || 
-                header.includes("แอคชั่น") || 
-                header.includes("จัดการ") ||
-                header.includes("รหัสสินค้า") ||
-                header.includes("รหัสลูกค้า") ||
-                lowerHeader.includes("sku") ||
-                header.includes("13 หลัก") ||
-                lowerHeader.includes("status") || 
-                lowerHeader.includes("date") || 
-                lowerHeader.includes("type") || 
-                lowerHeader.includes("action")
-                );
-              
-              return (
-                <th 
-                  key={i} 
-                  className={cn(
-                    "px-6 text-[14px] font-medium text-white/60 tracking-wider whitespace-nowrap",
-                    isRightAligned ? "text-right" : isCenterAligned ? "text-center" : "text-left"
-                  )}
-                >
-                  {header}
-                </th>
-              );
-            })}
+  const alignCss = React.useMemo(() => {
+    const sel = `table[data-nt="${tableId}"]>tbody>tr>td:not([colspan])`;
+    return aligns.map((a, i) => {
+      const td = `${sel}:nth-child(${i + 1})`;
+      const rules = [
+        `${td}{text-align:${a}}`,
+        `${td}>.nt-cell>.flex,${td}>.nt-cell>.inline-flex{justify-content:${FLEX_JUSTIFY[a]}}`,
+        `${td}>.nt-cell>.flex-col{align-items:${FLEX_JUSTIFY[a]}}`,
+      ];
+      if (shrinkable[i]) {
+        // คอลัมน์ข้อความ: ย่อได้เมื่อพื้นที่ไม่พอ (ค่าความกว้างคำนวณใน fitColumns)
+        rules.push(`${td}>.nt-cell{max-width:var(--nt-max,none);overflow:hidden;text-overflow:ellipsis}`);
+        rules.push(`${td}>.nt-cell>*{max-width:100%;overflow:hidden;text-overflow:ellipsis}`);
+      }
+      return rules.join("");
+    }).join("");
+  }, [aligns, shrinkable, tableId]);
+
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    const table = tableRef.current;
+    if (!wrap || !table) return;
+    let frame = 0;
+
+    const fitColumns = () => {
+      table.style.removeProperty("--nt-max");
+      const avail = wrap.clientWidth;
+      const need = table.scrollWidth;
+      const textCols = shrinkable.map((ok, i) => (ok ? i : -1)).filter((i) => i >= 0);
+      const ths = Array.from(table.querySelectorAll<HTMLTableCellElement>("thead th"));
+      if (need > avail + 1 && textCols.length > 0) {
+        // water-filling: ลดคอลัมน์ข้อความที่กว้างที่สุดก่อน จนรวมแล้วพอดีพื้นที่
+        const widths = textCols.map((i) => ths[i]?.getBoundingClientRect().width || 0).sort((a, b) => b - a);
+        let overflow = need - avail + 2;
+        let cap = widths[0];
+        for (let k = 0; k < widths.length && overflow > 0; k++) {
+          const next = k + 1 < widths.length ? widths[k + 1] : 0;
+          const room = (cap - next) * (k + 1);
+          if (room >= overflow) { cap -= overflow / (k + 1); overflow = 0; }
+          else { overflow -= room; cap = next; }
+        }
+        let max = Math.max(64, Math.floor(cap - 24));
+        table.style.setProperty("--nt-max", `${max}px`);
+        // วัดซ้ำจนพอดี (ความกว้างจริงขึ้นกับ padding/ตัวอักษรของแต่ละช่อง)
+        for (let k = 0; k < 6 && table.scrollWidth > wrap.clientWidth + 1 && max > 64; k++) {
+          max = Math.max(64, max - Math.ceil((table.scrollWidth - wrap.clientWidth + 2) / textCols.length));
+          table.style.setProperty("--nt-max", `${max}px`);
+        }
+      }
+      // tooltip ข้อความเต็มเฉพาะช่องที่ถูกย่อ
+      table.querySelectorAll<HTMLElement>("td > .nt-cell").forEach((cell) => {
+        const truncated = cell.scrollWidth > cell.clientWidth + 1 ||
+          Array.from(cell.children).some((c) => (c as HTMLElement).scrollWidth > (c as HTMLElement).clientWidth + 1);
+        if (truncated) cell.setAttribute("title", (cell.textContent || "").trim());
+        else if (cell.dataset.ntTitle !== "1") cell.removeAttribute("title");
+      });
+    };
+
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(fitColumns);
+    };
+    schedule();
+    const ro = new ResizeObserver(schedule);
+    ro.observe(wrap);
+    const mo = new MutationObserver(schedule);
+    const tbody = table.querySelector("tbody");
+    if (tbody) mo.observe(tbody, { childList: true, subtree: true, characterData: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, [shrinkable]);
+
+  return (
+    <div ref={wrapRef} className="nexus-table-wrap w-full rounded-2xl border border-white/5 bg-black/[0.15] backdrop-blur-md relative">
+      <style dangerouslySetInnerHTML={{ __html: alignCss }} />
+      <table ref={tableRef} data-nt={tableId} className={cn("nexus-table w-full table-auto border-collapse", className)}>
+        <thead className="sticky top-0 z-20">
+          <tr className="bg-surface-0/95 border-b border-white/5 shadow-sm">
+            {headers.map((header, i) => (
+              <th
+                key={i}
+                className={cn(
+                  "px-2.5 2xl:px-4 py-2.5 text-[12px] 2xl:text-[13px] font-medium text-white/60 tracking-wide leading-tight whitespace-nowrap align-middle",
+                  "first:rounded-tl-2xl last:rounded-tr-2xl first:pl-4 last:pr-4",
+                  aligns[i] === "right" ? "text-right" : aligns[i] === "center" ? "text-center" : "text-left"
+                )}
+              >
+                {header}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
@@ -597,7 +677,7 @@ export function NexusTable({
         </tbody>
       </table>
       {(itemCount !== undefined || totalCount !== undefined) && (
-        <div className="px-6 py-3 border-t border-white/5 flex items-center justify-between">
+        <div className="px-4 py-2.5 border-t border-white/5 flex items-center justify-between">
           <p className="text-xs text-slate-400 font-medium">
             แสดง 1-{itemCount || 0} จาก {totalCount || itemCount || 0} รายการ
           </p>
@@ -609,10 +689,10 @@ export function NexusTable({
 
 export function NexusTableRow({ children, onClick, className }: { children: React.ReactNode, onClick?: () => void, className?: string }) {
   return (
-    <tr 
+    <tr
       onClick={onClick}
       className={cn(
-        "group cursor-pointer transition-all duration-300 h-14 hover:bg-white/[0.03]",
+        "group cursor-pointer transition-all duration-300 h-12 hover:bg-white/[0.03]",
         className
       )}
     >
@@ -621,9 +701,9 @@ export function NexusTableRow({ children, onClick, className }: { children: Reac
   );
 }
 
-export function NexusTableCell({ 
-  children, 
-  className, 
+export function NexusTableCell({
+  children,
+  className,
   mono = false,
   wrap = false,
   colSpan,
@@ -631,9 +711,9 @@ export function NexusTableCell({
   variant,
   title,
   maxWidth
-}: { 
-  children: React.ReactNode, 
-  className?: string, 
+}: {
+  children: React.ReactNode,
+  className?: string,
   mono?: boolean,
   wrap?: boolean,
   colSpan?: number,
@@ -642,20 +722,18 @@ export function NexusTableCell({
   title?: string,
   maxWidth?: string
 }) {
-  const tooltipText = title || (typeof children === "string" || typeof children === "number" ? String(children) : undefined);
-  const isTruncated = variant === "text" || variant === "code" || !!maxWidth;
+  // ตำแหน่งซ้าย/กลาง/ขวา กำหนดจากหัวคอลัมน์ใน NexusTable (align/className ของช่องใช้เฉพาะแถวที่ colSpan)
 
   return (
-    <td 
+    <td
       colSpan={colSpan}
-      title={isTruncated || title ? tooltipText : undefined}
       className={cn(
-        "px-6 text-[14px] font-normal text-white/80 transition-colors duration-300",
-        wrap ? "whitespace-normal break-words leading-relaxed py-3" : "whitespace-nowrap",
+        "px-2.5 2xl:px-4 py-2 first:pl-4 last:pr-4 text-[13px] 2xl:text-[14px] font-normal text-white/80 transition-colors duration-300 align-middle",
+        // ทุกช่องบรรทัดเดียว (ยกเว้นแถวข้อความที่ต้องการตัดบรรทัด เช่น ข้อความว่าง/คำอธิบาย ที่ระบุ wrap)
+        wrap || colSpan ? "whitespace-normal leading-relaxed" : "whitespace-nowrap",
         mono && "font-mono text-nexus-teal tracking-normal font-bold [font-style:normal!important]",
-        variant === "code" && "font-mono text-nexus-teal max-w-[180px] truncate",
-        variant === "text" && "max-w-[280px] truncate",
-        variant === "numeric" && "font-mono text-right min-w-[100px]",
+        variant === "code" && "font-mono text-nexus-teal",
+        variant === "numeric" && "font-mono",
         maxWidth && maxWidth,
         align === "center" && "text-center",
         align === "right" && "text-right",
@@ -663,7 +741,9 @@ export function NexusTableCell({
         className
       )}
     >
-      {children}
+      <div className="nt-cell" data-nt-title={title ? "1" : undefined} title={title || undefined}>
+        {children}
+      </div>
     </td>
   );
 }
@@ -869,7 +949,7 @@ export function MasterMetricCard({
     return (
       <div 
         className={cn(
-          "group relative flex items-center gap-5 p-5 rounded-2xl bg-surface-0/60 backdrop-blur-xl border overflow-hidden transition-all duration-500",
+          "group relative flex items-center gap-3 2xl:gap-5 p-4 2xl:p-5 rounded-2xl bg-surface-0/60 backdrop-blur-xl border overflow-hidden transition-all duration-500",
           "hover:bg-white/[0.04] shadow-lg",
           onClick && "cursor-pointer active:scale-95",
           theme.border,
@@ -889,12 +969,12 @@ export function MasterMetricCard({
           {React.cloneElement(icon as React.ReactElement, { size: 18 })}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold text-white/20 uppercase tracking-[0.15em] leading-none truncate group-hover:text-white/40 transition-colors">{label}</p>
-          <p className="text-2xl font-black text-white mt-2 leading-none tracking-tight mono-numbers truncate">{value}</p>
+          <p className="text-[11px] font-semibold text-white/20 uppercase tracking-[0.1em] leading-tight break-words group-hover:text-white/40 transition-colors">{label}</p>
+          <p className="text-xl 2xl:text-2xl font-black text-white mt-2 leading-none tracking-tight mono-numbers whitespace-nowrap">{value}</p>
         </div>
         
         {onClick && (
-          <div className="opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-2 group-hover:translate-x-0 flex-shrink-0">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none">
              <div className={cn("w-6 h-6 rounded-full flex items-center justify-center bg-white/5 text-white/20", color.replace('text-', 'hover:text-'))}>
                 <ChevronLeft className="rotate-180" size={12} />
              </div>

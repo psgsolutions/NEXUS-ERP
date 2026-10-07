@@ -689,8 +689,8 @@ export default function InventoryPage() {
                                 {item.sku}
                               </NexusTableCell>
                               <NexusTableCell>
-                                <div className="w-full font-bold text-white group-hover:text-nexus-teal transition-colors text-sm">{item.name}</div>
-                                {item.brand && <div className="text-xs text-white/20 font-bold uppercase mt-0.5">{item.brand}</div>}
+                                <span className="font-bold text-white group-hover:text-nexus-teal transition-colors text-sm">{item.name}</span>
+                                {item.brand && <span className="text-xs text-white/30 font-bold uppercase ml-2">· {item.brand}</span>}
                               </NexusTableCell>
                               <NexusTableCell>
                                 <span className="px-2 py-0.5 rounded bg-white/5 text-xs text-white/40 border border-white/10 uppercase font-bold tracking-widest">
@@ -867,13 +867,13 @@ export default function InventoryPage() {
                                 {kit.id}
                               </NexusTableCell>
                               <NexusTableCell>
-                                <div className="w-full font-bold text-white group-hover:text-nexus-teal transition-colors text-sm">{kit.name}</div>
-                                <div className="text-[10px] text-white/40 mt-1 whitespace-nowrap">{kit.description}</div>
+                                <span className="font-bold text-white group-hover:text-nexus-teal transition-colors text-sm">{kit.name}</span>
                               </NexusTableCell>
                               <NexusTableCell>
                                 <span className="px-2 py-0.5 rounded bg-white/5 text-xs text-white/40 border border-white/10 font-bold">
                                   {kit.components.length} ส่วนประกอบ ({kit.components.filter((c: any) => c.type === 'service').length} บริการ)
                                 </span>
+                                {kit.description && <span className="text-[12px] text-white/40 ml-2">{kit.description}</span>}
                               </NexusTableCell>
                               <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white" mono>
                                 ฿{kit.aggregateCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}

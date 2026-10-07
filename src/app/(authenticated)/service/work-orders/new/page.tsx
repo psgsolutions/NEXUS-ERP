@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRealtimeCollection } from '@/hooks/useRealtimeCollection';
-import { PillInput, PillButton } from '@/components/ui/Base';
+import { PillInput, PillButton, PillSelect } from '@/components/ui/Base';
 import { DocumentItemsTable } from '@/components/commerce/DocumentItemsTable';
 import { DocumentItem } from '@/types/shared';
 import { Save, Wrench, Search, FileText, UserCircle, ArrowLeft } from 'lucide-react';
 import { db } from '@/lib/firebase-client';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
 import { nexusSequenceEngine } from '@/lib/sequence-engine';
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
@@ -17,16 +17,33 @@ import { useRouter } from "next/navigation";
 export default function CreateWorkOrderPage() {
   const router = useRouter();
   const { user, companyId } = useAuth();
-  const currentCompanyId = companyId || 'COMP-001';
 
-  // Fetch Sales Orders
-  const { data: salesOrders } = useRealtimeCollection('sales_orders');
-  
+  // ใบสั่งขายของบริษัท (ไม่รวมใบตัวอย่าง/ยกเลิก)
+  const { data: allSalesOrders } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/sales_orders` : '');
+  const salesOrders = useMemo(
+    () => allSalesOrders
+      .filter((so: any) => !so.isSample && String(so.status || '').toUpperCase() !== 'CANCELLED')
+      .map((so: any) => ({ ...so, soCode: so.soCode || so.documentNo || so.soId || so.id })),
+    [allSalesOrders]
+  );
+
+  // ผู้ใช้ของบริษัทที่มอบหมายงานได้ (ช่างเทคนิคขึ้นก่อน)
+  const { data: companyUsers } = useRealtimeCollection<any>('users');
+  const assignees = useMemo(
+    () => companyUsers
+      .filter((u: any) => !u.status || String(u.status).toUpperCase() === 'ACTIVE')
+      .map((u: any) => ({ uid: u.id, name: u.name || u.displayName || u.email, role: String(u.role || '').toUpperCase() }))
+      .sort((a, b) => Number(b.role === 'TECHNICIAN') - Number(a.role === 'TECHNICIAN') || a.name.localeCompare(b.name, 'th')),
+    [companyUsers]
+  );
+
   const [formData, setFormData] = useState({
     soId: '',
     soCode: '',
     customerId: '',
     customerName: '',
+    projectId: '',
+    technicianUid: '',
     technicianName: '',
     scheduleDate: '',
     remarks: ''
@@ -45,8 +62,9 @@ export default function CreateWorkOrderPage() {
         ...prev,
         soId: so.id,
         soCode: so.soCode,
-        customerId: so.customerId,
-        customerName: so.customerName
+        customerId: so.customerId || '',
+        customerName: so.customerName || '',
+        projectId: so.projectId || ''
       }));
 
       // Pull items from SO
@@ -63,43 +81,46 @@ export default function CreateWorkOrderPage() {
         soId: '',
         soCode: '',
         customerId: '',
-        customerName: ''
+        customerName: '',
+        projectId: ''
       }));
       setItems([]);
     }
   };
 
   const handleSave = async () => {
-    if (!formData.soId || !formData.technicianName || items.length === 0) {
-      alert("กรุณาเลือกอ้างอิง SO, ระบุชื่อช่างผู้รับผิดชอบ และต้องมีรายการอย่างน้อย 1 รายการ");
+    if (!companyId) return;
+    if (!formData.soId || !formData.technicianUid || items.length === 0) {
+      alert("กรุณาเลือกอ้างอิง SO, เลือกช่างผู้รับผิดชอบ และต้องมีรายการอย่างน้อย 1 รายการ");
       return;
     }
-    
+
     try {
       setLoading(true);
-      const woCode = await nexusSequenceEngine('WO', currentCompanyId);
-      
-      await addDoc(collection(db, 'work_orders'), {
+      const woCode = await nexusSequenceEngine('WO', companyId);
+
+      await setDoc(doc(db, `companies/${companyId}/work_orders`, woCode), {
         woCode,
         soId: formData.soId,
         soCode: formData.soCode,
         customerId: formData.customerId,
         customerName: formData.customerName,
+        projectId: formData.projectId || null,
+        technicianUid: formData.technicianUid,
         technicianName: formData.technicianName,
         scheduleDate: formData.scheduleDate,
         remarks: formData.remarks,
         items,
-        companyId: currentCompanyId,
+        companyId,
         createdAt: serverTimestamp(),
         createdBy: user?.uid || 'SYSTEM',
         isDeleted: false,
         status: 'ASSIGNED'
       });
-      
+
       alert(`สร้างใบสั่งงานสำเร็จ: ${woCode}`);
-      // Reset form
       setItems([]);
-      setFormData({ soId: '', soCode: '', customerId: '', customerName: '', technicianName: '', scheduleDate: '', remarks: '' });
+      setFormData({ soId: '', soCode: '', customerId: '', customerName: '', projectId: '', technicianUid: '', technicianName: '', scheduleDate: '', remarks: '' });
     } catch (err) {
       console.error(err);
       alert("เกิดข้อผิดพลาดในการบันทึกใบสั่งงาน");
@@ -143,23 +164,23 @@ export default function CreateWorkOrderPage() {
       {/* Header Form */}
       <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
-          <h3 className="text-[13px] font-semibold text-cyan-400 uppercase tracking-widest border-b border-white/5 pb-2">
+          <h3 className="text-[13px] font-semibold text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
             อ้างอิงเอกสาร (Reference)
           </h3>
           
           <Field label="อ้างอิงใบสั่งขาย * (Select SO)">
-            <select
+            <PillSelect
               value={formData.soId}
               onChange={handleSoChange}
-              className="h-9 px-5 rounded-full bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold focus:outline-none focus:border-cyan-400/40 w-full appearance-none transition-all"
+              className="h-9 px-5 bg-white/[0.03] border-white/10 text-[13px] w-full"
             >
-              <option value="" className="bg-slate-900 text-white/40">-- เลือกใบสั่งขาย (Sales Order) --</option>
-              {salesOrders.map(so => (
-                <option key={so.id} value={so.id} className="bg-slate-900 text-white">
+              <option value="">-- เลือกใบสั่งขาย --</option>
+              {salesOrders.map((so: any) => (
+                <option key={so.id} value={so.id}>
                   {so.soCode} : {so.customerName}
                 </option>
               ))}
-            </select>
+            </PillSelect>
           </Field>
 
           <Field label="ลูกค้า (Customer)">
@@ -174,18 +195,26 @@ export default function CreateWorkOrderPage() {
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-[13px] font-semibold text-cyan-400 uppercase tracking-widest border-b border-white/5 pb-2">
+          <h3 className="text-[13px] font-semibold text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
             มอบหมายงาน (Assignment)
           </h3>
           
           <Field label="ทีมช่างรับผิดชอบ * (Assign To)">
-            <PillInput 
-              type="text"
-              value={formData.technicianName}
-              onChange={e => setFormData({...formData, technicianName: e.target.value})}
-              placeholder="ชื่อช่าง หรือ หัวหน้าทีม"
-              className="h-9 px-6 rounded-full w-full"
-            />
+            <PillSelect
+              value={formData.technicianUid}
+              onChange={e => {
+                const a = assignees.find(x => x.uid === e.target.value);
+                setFormData({ ...formData, technicianUid: a?.uid || '', technicianName: a?.name || '' });
+              }}
+              className="h-9 px-5 bg-white/[0.03] border-white/10 text-[13px] w-full"
+            >
+              <option value="">-- เลือกผู้รับผิดชอบ --</option>
+              {assignees.map(a => (
+                <option key={a.uid} value={a.uid}>
+                  {a.name}{a.role === 'TECHNICIAN' ? ' (ช่างเทคนิค)' : ''}
+                </option>
+              ))}
+            </PillSelect>
           </Field>
 
           <Field label="กำหนดการเข้างาน (Schedule Date)">
@@ -201,7 +230,7 @@ export default function CreateWorkOrderPage() {
 
       {/* Line Items */}
       <div className="flex-1 flex flex-col gap-4 bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl">
-        <h3 className="text-[13px] font-semibold text-cyan-400 uppercase tracking-widest flex items-center gap-2">
+        <h3 className="text-[13px] font-semibold text-nexus-teal uppercase tracking-widest flex items-center gap-2">
           รายการสินค้าและค่าแรง (Items from SO)
         </h3>
         <p className="text-[11px] text-white/40 not-italic mb-2 -mt-2 font-bold">ดึงรายการจากใบสั่งขายโดยอัตโนมัติ สามารถลบรายการที่ไม่เกี่ยวข้องกับงานช่างออกได้</p>
@@ -214,13 +243,13 @@ export default function CreateWorkOrderPage() {
     <div className="space-y-4 h-fit pb-10">
       <div className="bg-surface-1 border border-white/5 rounded-3xl p-6 shadow-2xl space-y-4 w-full">
         <h3 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4">
-          <UserCircle size={16} className="text-cyan-400" /> สถานะการจ่ายงาน
+          <UserCircle size={16} className="text-nexus-teal" /> สถานะการจ่ายงาน
         </h3>
         
         <div className="space-y-3">
           <div className="flex flex-col gap-1 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
             <span className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">สถานะปัจจุบัน</span>
-            <span className="text-[13px] font-bold text-yellow-400">รอสั่งงาน (DRAFT)</span>
+            <span className="text-[13px] font-bold text-warning">รอสั่งงาน (DRAFT)</span>
           </div>
           
           <div className="flex flex-col gap-1 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
@@ -236,7 +265,7 @@ export default function CreateWorkOrderPage() {
           <textarea
             value={formData.remarks}
             onChange={e => setFormData({...formData, remarks: e.target.value})}
-            className="w-full h-24 p-4 bg-white/[0.03] border border-white/10 rounded-2xl text-[13px] text-white font-bold resize-none outline-none focus:border-cyan-500/50 transition-all"
+            className="w-full h-24 p-4 bg-white/[0.03] border border-white/10 rounded-2xl text-[13px] text-white font-bold resize-none outline-none focus:border-nexus-teal/40 transition-all"
             placeholder="ข้อควรระวัง หรือ รายละเอียดเพิ่มเติมสำหรับหน้างาน..."
           />
         </div>

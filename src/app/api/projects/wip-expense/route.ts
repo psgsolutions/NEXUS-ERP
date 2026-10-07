@@ -11,11 +11,12 @@ import { assertPeriodOpen } from "@/lib/period-close-service";
  * Endpoint: POST /api/projects/wip-expense
  */
 
-export const ACCOUNTS_WIP = {
-  WIP_ASSET: { code: "114100", name: "งานระหว่างก่อสร้าง (WIP Asset)" },
-  CASH: { code: "111100", name: "เงินสด" },
-  BANK: { code: "111200", name: "เงินฝากธนาคาร" },
-  ACCOUNTS_PAYABLE: { code: "211100", name: "เจ้าหนี้การค้า" }
+// ผังบัญชีรูปแบบเดียวกับระบบ (1111-00, 2111-00, ...)
+const ACCOUNTS_WIP = {
+  WIP_ASSET: { code: "1161-00", name: "งานระหว่างทำ (WIP)" },
+  CASH: { code: "1111-00", name: "เงินสด" },
+  BANK: { code: "1112-00", name: "เงินฝากธนาคาร" },
+  ACCOUNTS_PAYABLE: { code: "2111-00", name: "เจ้าหนี้การค้า" }
 };
 
 export async function POST(request: Request) {
@@ -26,8 +27,9 @@ export async function POST(request: Request) {
       projectId, 
       amount, 
       paymentMethod = "cash", 
-      note = "", 
-      receiptUrl = ""
+      note = "",
+      receiptUrl = "",
+      workOrderId = ""
     } = body;
     const apiUser = await requireApiUser(request, companyId);
     const userId = apiUser.email || apiUser.uid;
@@ -91,9 +93,13 @@ export async function POST(request: Request) {
       throw new Error(`[GL Violation] Debit (${totalDebit}) does not equal Credit (${totalCredit})`);
     }
 
-    // Verify project tenant before posting anything
-    const projectRef = adminDb.collection("projects").doc(projectId);
-    const projectSnap = await projectRef.get();
+    // Verify project tenant before posting anything (โครงการอยู่ใต้บริษัท; ของเก่าอยู่ที่ root)
+    let projectRef = adminDb.collection(`companies/${companyId}/projects`).doc(projectId);
+    let projectSnap = await projectRef.get();
+    if (!projectSnap.exists) {
+      projectRef = adminDb.collection("projects").doc(projectId);
+      projectSnap = await projectRef.get();
+    }
 
     let oldActualCost = 0;
     let oldWipValue = 0;
@@ -110,15 +116,17 @@ export async function POST(request: Request) {
     const journalData = {
       companyId,
       projectId,
-      date: postingDate,
+      ...(workOrderId ? { workOrderId } : {}),
+      date: admin.firestore.FieldValue.serverTimestamp(),
       bookType: "JV",
       description: `[WIP ASSET] บันทึกต้นทุนงานระหว่างก่อสร้าง โครงการ: ${projectId}${note ? ' (' + note + ')' : ''}`,
       reference: `WIP-${projectId}-${Date.now().toString().slice(-4)}`,
       receiptUrl,
-      lines: journalLines,
+      items: journalLines,
       totalDebit,
       totalCredit,
-      status: "posted",
+      // รายการอัตโนมัติรอฝ่ายบัญชีอนุมัติลงบัญชี (เหมือน journal อัตโนมัติอื่น ๆ)
+      status: "draft",
       createdBy: userId,
       updatedBy: userId,
       isDeleted: false,

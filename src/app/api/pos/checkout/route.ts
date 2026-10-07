@@ -12,7 +12,7 @@ import { processPOSBatchCheckout, POSCheckoutPayload } from "@/services/posBatch
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { companyId, items, vatType = "EXCLUSIVE", cashAccountId = "1111-00" } = body as POSCheckoutPayload;
+    const { companyId, items, paymentMethod, cashReceived } = body as POSCheckoutPayload;
     const apiUser = await requireApiUser(request, companyId);
     const userId = apiUser.email || apiUser.uid;
 
@@ -38,14 +38,17 @@ export async function POST(request: Request) {
       companyId,
       userId,
       items,
-      vatType,
-      cashAccountId
+      paymentMethod,
+      cashReceived
     });
 
     return NextResponse.json({
       success: true,
       message: "ชำระเงินและตัดสต็อก POS สำเร็จ",
-      transactionId: result.transactionId
+      transactionId: result.transactionId,
+      transactionNo: result.transactionNo,
+      grandTotal: result.grandTotal,
+      change: result.change
     });
   } catch (err: any) {
     const authRes = authErrorResponse(err);

@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { 
   BarChart3, 
   TrendingUp, 
@@ -28,20 +30,34 @@ interface DailySummaryModalProps {
 export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
   const [activeTab, setActiveTab] = useState("sales");
 
-  const mockData = {
-    revenue: 125400,
-    orders: 48,
-    payments: {
-      cash: 45000,
-      creditCard: 55400,
-      transfer: 25000
-    },
-    topProducts: [
-      { name: "Cisco Catalyst 9200", qty: 2, total: 170000 },
-      { name: "Patch Cord 1m", qty: 24, total: 3600 },
-      { name: "Aruba AP-505", qty: 5, total: 62500 }
-    ]
-  };
+  const { user, companyId } = useAuth();
+  // บิลขายหน้าร้านจริงของบริษัท (บันทึกโดย /api/pos/checkout)
+  const { data: transactions } = useRealtimeCollection<any>(`companies/${companyId}/sales_transactions`);
+
+  // สรุปเฉพาะบิลของวันนี้ตามเวลาไทย
+  const todayKey = new Date(Date.now() + 7 * 3600e3).toISOString().split("T")[0];
+  const summary = useMemo(() => {
+    const today = transactions.filter((t: any) => {
+      const ms = t.createdAt?.seconds ? t.createdAt.seconds * 1000 : 0;
+      return ms && new Date(ms + 7 * 3600e3).toISOString().startsWith(todayKey);
+    });
+    const payments = { CASH: 0, CARD: 0, TRANSFER: 0 } as Record<string, number>;
+    const byProduct = new Map<string, { name: string; qty: number; total: number }>();
+    let revenue = 0;
+    for (const t of today) {
+      const amount = Number(t.grandTotal) || 0;
+      revenue += amount;
+      payments[t.paymentMethod || "CASH"] = (payments[t.paymentMethod || "CASH"] || 0) + amount;
+      for (const it of t.items || []) {
+        const cur = byProduct.get(it.productId) || { name: it.name || it.productId, qty: 0, total: 0 };
+        cur.qty += Number(it.qty) || 0;
+        cur.total += Number(it.amount) || 0;
+        byProduct.set(it.productId, cur);
+      }
+    }
+    const topProducts = Array.from(byProduct.values()).sort((x, y) => y.total - x.total).slice(0, 10);
+    return { revenue, orders: today.length, payments, topProducts };
+  }, [transactions, todayKey]);
 
   return (
     <Modal 
@@ -59,8 +75,8 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
                 <h4 className="text-xl font-semibold text-white uppercase tracking-tight">สรุปประจำวัน (Daily Briefing)</h4>
               </div>
               <div className="flex items-center gap-4 bg-white/[0.02] border border-white/5 p-2 rounded-2xl">
-                 <button onClick={() => setActiveTab("sales")} className={cn("px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === "sales" ? "bg-nexus-teal text-white shadow-neon-teal" : "text-white/20 hover:text-white/40")}>Sales</button>
-                 <button onClick={() => setActiveTab("products")} className={cn("px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === "products" ? "bg-nexus-teal text-white shadow-neon-teal" : "text-white/20 hover:text-white/40")}>Top Items</button>
+                 <button onClick={() => setActiveTab("sales")} className={cn("px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === "sales" ? "bg-nexus-teal text-white shadow-neon-teal" : "text-white/20 hover:text-white/40")}>ยอดขาย</button>
+                 <button onClick={() => setActiveTab("products")} className={cn("px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === "products" ? "bg-nexus-teal text-white shadow-neon-teal" : "text-white/20 hover:text-white/40")}>สินค้าขายดี</button>
               </div>
             </div>
 
@@ -68,17 +84,17 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
               {activeTab === "sales" && (
                 <div className="space-y-10">
                   <div className="grid grid-cols-3 gap-6">
-                    <SummaryCard icon={<TrendingUp size={18} />} label="ยอดขายรวม" value={`฿${mockData.revenue.toLocaleString()}`} color="text-nexus-teal" />
-                    <SummaryCard icon={<Package size={18} />} label="จำนวนออเดอร์" value={mockData.orders.toString()} color="text-nexus-blue" />
-                    <SummaryCard icon={<Calendar size={18} />} label="สถานะเครื่อง" value="ONLINE" color="text-nexus-teal" />
+                    <SummaryCard icon={<TrendingUp size={18} />} label="ยอดขายรวม" value={`฿${summary.revenue.toLocaleString("th-TH", { minimumFractionDigits: 2 })}`} color="text-nexus-teal" />
+                    <SummaryCard icon={<Package size={18} />} label="จำนวนออเดอร์" value={summary.orders.toString()} color="text-nexus-blue" />
+                    <SummaryCard icon={<Calendar size={18} />} label="ยอดเฉลี่ยต่อบิล" value={`฿${(summary.orders ? summary.revenue / summary.orders : 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} color="text-nexus-teal" />
                   </div>
 
                   <div className="space-y-6">
                     <h5 className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">สัดส่วนการชำระเงิน (Payment Breakdown)</h5>
                     <div className="grid grid-cols-1 gap-4">
-                       <PaymentRow icon={<Banknote size={16} />} label="เงินสด (Cash)" value={mockData.payments.cash} total={mockData.revenue} color="bg-nexus-teal" />
-                       <PaymentRow icon={<CreditCard size={16} />} label="บัตรเครดิต (Credit Card)" value={mockData.payments.creditCard} total={mockData.revenue} color="bg-nexus-blue" />
-                       <PaymentRow icon={<ArrowRightLeft size={16} />} label="เงินโอน (Transfer)" value={mockData.payments.transfer} total={mockData.revenue} color="bg-white/20" />
+                       <PaymentRow icon={<Banknote size={16} />} label="เงินสด (Cash)" value={summary.payments.CASH} total={summary.revenue} color="bg-nexus-teal" />
+                       <PaymentRow icon={<CreditCard size={16} />} label="บัตรเครดิต (Credit Card)" value={summary.payments.CARD} total={summary.revenue} color="bg-nexus-blue" />
+                       <PaymentRow icon={<ArrowRightLeft size={16} />} label="เงินโอน (Transfer)" value={summary.payments.TRANSFER} total={summary.revenue} color="bg-white/20" />
                     </div>
                   </div>
                 </div>
@@ -88,7 +104,8 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
                 <div className="space-y-6">
                    <h5 className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">สินค้าขายดี (Top Performing Items)</h5>
                    <div className="space-y-3">
-                      {mockData.topProducts.map((p, i) => (
+                      {summary.topProducts.length === 0 && <p className="text-[12px] text-white/40">ยังไม่มีการขายวันนี้</p>}
+                      {summary.topProducts.map((p, i) => (
                         <div key={i} className="flex items-center justify-between p-5 rounded-2xl bg-white/[0.02] border border-white/5 group hover:bg-white/[0.04] transition-all">
                            <div className="flex items-center gap-4">
                               <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/20 font-semibold text-[10px]">{i+1}</div>
@@ -97,7 +114,7 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
                                  <p className="text-[10px] text-white/30 font-black uppercase tracking-widest">จำนวน: {p.qty} หน่วย</p>
                               </div>
                            </div>
-                           <p className="text-sm font-black text-nexus-teal mono-numbers">฿{p.total.toLocaleString()}</p>
+                           <p className="text-sm font-black text-nexus-teal mono-numbers">฿{p.total.toLocaleString("th-TH", { minimumFractionDigits: 2 })}</p>
                         </div>
                       ))}
                    </div>
@@ -115,9 +132,9 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
             </div>
 
             <div className="p-8 rounded-xl bg-white/[0.03] border border-white/10 space-y-6">
-              <NexusDataField label="วันที่" value="26/04/2026" />
-              <NexusDataField label="รหัสเครื่อง (POS ID)" value="POS-TERM-01" />
-              <NexusDataField label="พนักงานประจำกะ" value="Kriangkrai M." />
+              <NexusDataField label="วันที่" value={new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })} />
+              <NexusDataField label="จำนวนบิลวันนี้" value={`${summary.orders} บิล`} />
+              <NexusDataField label="ผู้เปิดรายงาน" value={user?.displayName || user?.email || "-"} />
             </div>
           </div>
 
@@ -149,7 +166,7 @@ function SummaryCard({ icon, label, value, color }: { icon: React.ReactNode, lab
 }
 
 function PaymentRow({ icon, label, value, total, color }: { icon: React.ReactNode, label: string, value: number, total: number, color: string }) {
-  const percent = (value / total * 100).toFixed(1);
+  const percent = total > 0 ? (value / total * 100).toFixed(1) : "0.0";
   return (
     <div className="space-y-2">
        <div className="flex justify-between items-center text-[11px] font-semibold uppercase tracking-widest">

@@ -1,122 +1,115 @@
 import * as admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebase-admin';
-import { calculateERPDocument, VatTypeV3 } from '@/lib/erp-logic';
+import { processStockMovements, StockMovement } from '@/lib/stock-service';
+import { nexusSequenceServer } from '@/lib/sequence-server';
 
 /**
  * [SERVER-ONLY: Admin SDK] ใช้ผ่าน POST /api/pos/checkout เท่านั้น
  */
 
+export type POSPaymentMethod = 'CASH' | 'TRANSFER' | 'CARD';
+
 export interface POSCheckoutPayload {
   companyId: string;
   userId: string;
-  items: Array<{
-    id: string;
-    qty: number;
-    costPrice: number;
-    projectPrice: number;
-    retailPrice: number;
-  }>;
-  vatType: VatTypeV3;
-  cashAccountId: string;
+  items: Array<{ id: string; qty: number }>;
+  paymentMethod?: POSPaymentMethod;
+  cashReceived?: number;
 }
 
+// บัญชีรับเงินตามช่องทางชำระ
+const RECEIPT_ACCOUNT: Record<POSPaymentMethod, { code: string; name: string }> = {
+  CASH: { code: '1111-00', name: 'เงินสด' },
+  TRANSFER: { code: '1112-00', name: 'เงินฝากธนาคาร' },
+  CARD: { code: '1113-00', name: 'ลูกหนี้บัตรเครดิต' },
+};
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 /**
- * ดำเนินการยิง WriteBatch เพื่อลงบันทึกธุรกรรมขายหน้าร้าน, ปรับปรุงสต๊อก, และลงบัญชีคู่พร้อมกันแบบเบ็ดเสร็จ
- * โยน error เมื่อบันทึกไม่สำเร็จ (ไม่มีอะไรถูกบันทึกเพราะเป็น batch เดียว)
+ * ขายหน้าร้าน (ราคาแยก VAT 7%) ใน transaction เดียว:
+ *  - ตัดสต็อกสินค้า (products) ผ่าน stock engine + ลงต้นทุนขาย Dr 5111-00 / Cr 1141-00
+ *  - บันทึกบิล (companies/{id}/sales_transactions) + รายได้ Dr เงินสด/ธนาคาร / Cr 4111-00 / Cr ภาษีขาย 2121-00
+ * ราคาใช้ราคาขายหน้าร้านจากฐานข้อมูล (ไม่เชื่อราคาที่หน้าเว็บส่งมา)
  */
-export async function processPOSBatchCheckout(payload: POSCheckoutPayload): Promise<{ success: boolean; transactionId: string }> {
-  const { companyId, userId, items, vatType, cashAccountId } = payload;
-  const now = admin.firestore.FieldValue.serverTimestamp();
+export async function processPOSBatchCheckout(payload: POSCheckoutPayload): Promise<{ success: boolean; transactionId: string; transactionNo: string; grandTotal: number; change: number }> {
+  const { companyId, userId } = payload;
+  const paymentMethod: POSPaymentMethod = payload.paymentMethod && RECEIPT_ACCOUNT[payload.paymentMethod] ? payload.paymentMethod : 'CASH';
 
-  // 1. คำนวณภาษีและยอดเงินผ่าน Centralized Engine ป้องกันเศษปัดไม่ตรงบัญชีหลังบ้าน
-  const calc = calculateERPDocument(items, vatType, false); // false = ใช้ราคาขายหน้าร้าน
+  // รวมจำนวนตามสินค้า
+  const qtyById = new Map<string, number>();
+  for (const it of payload.items || []) {
+    const qty = Math.floor(Number(it.qty) || 0);
+    if (it.id && qty > 0) qtyById.set(it.id, (qtyById.get(it.id) || 0) + qty);
+  }
+  if (qtyById.size === 0) throw new Error('ไม่มีรายการสินค้า');
 
-  const batch = adminDb.batch();
+  // ราคาและชื่อจากฐานข้อมูล
+  const lines: Array<{ productId: string; sku: string; name: string; qty: number; price: number; amount: number }> = [];
+  for (const [productId, qty] of Array.from(qtyById.entries())) {
+    const snap = await adminDb.collection('products').doc(productId).get();
+    const p = snap.data();
+    if (!p || p.companyId !== companyId) throw new Error(`ไม่พบสินค้า ${productId}`);
+    const price = Number(p.pricing?.pricePOS ?? p.price ?? p.unitPrice ?? 0);
+    lines.push({ productId, sku: p.sku || productId, name: p.name || productId, qty, price, amount: round2(price * qty) });
+  }
 
-  // สร้าง Reference IDs สำหรับการเขียนข้อมูล
-  const txRef = adminDb.collection(`companies/${companyId}/sales_transactions`).doc();
-  const auditRef = adminDb.collection(`companies/${companyId}/auditLogs`).doc();
+  const subTotal = round2(lines.reduce((s, l) => s + l.amount, 0));
+  const vatAmount = round2(subTotal * 0.07);
+  const grandTotal = round2(subTotal + vatAmount);
+  const cashReceived = paymentMethod === 'CASH' ? Number(payload.cashReceived ?? grandTotal) : grandTotal;
+  if (paymentMethod === 'CASH' && cashReceived < grandTotal) throw new Error('ยอดเงินที่รับไม่พอ');
+  const change = round2(cashReceived - grandTotal);
+
+  const transactionNo = await nexusSequenceServer('POS', companyId);
+  const txRef = adminDb.collection(`companies/${companyId}/sales_transactions`).doc(transactionNo);
   const journalRef = adminDb.collection(`companies/${companyId}/journal_entries`).doc();
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  const account = RECEIPT_ACCOUNT[paymentMethod];
 
-  try {
-    // 2. วนลูป Line Items เพื่อบันทึกคำสั่งปรับปรุงสต๊อกคลังสินค้าลดลงรายตัว
-    for (const item of items) {
-      const productRef = adminDb.collection(`companies/${companyId}/products`).doc(item.id);
+  const movements: StockMovement[] = lines.map((l) => ({
+    companyId,
+    productId: l.productId,
+    type: 'OUT',
+    quantity: l.qty,
+    referenceId: transactionNo,
+    userId,
+  }));
 
-      batch.update(productRef, {
-        // หักลบจำนวน field แบบอะตอมิก
-        'stockStatus.onHand': admin.firestore.FieldValue.increment(-item.qty),
-        updatedAt: now
-      });
-    }
-
-    // 3. บันทึกประวัติรายการคำสั่งซื้อหน้าร้าน
-    batch.set(txRef, {
+  await processStockMovements(movements, (tx) => {
+    tx.set(txRef, {
       companyId,
-      transactionNo: `POS-${Date.now().toString().slice(-6)}`,
-      items,
-      subTotal: calc.subTotal,
-      vatAmount: calc.vatAmount,
-      grandTotal: calc.grandTotal,
+      transactionNo,
+      items: lines,
+      subTotal,
+      vatAmount,
+      grandTotal,
+      paymentMethod,
+      cashReceived,
+      change,
       createdBy: userId,
       createdAt: now,
-      isDeleted: false
+      isDeleted: false,
     });
-
-    // 4. บันทึกบัญชีคู่ Double-Entry ลงสมุดรายวันทั่วไปทันที
-    // โครงสร้างเดียวกับ AccountingEngine.postJournalEntry
-    const journalItems = [
-      {
-        accountCode: cashAccountId,
-        accountName: 'เงินสด/ธนาคาร',
-        debit: calc.grandTotal,
-        credit: 0
-      },
-      {
-        accountCode: '4111-00', // รายได้จากการขาย
-        accountName: 'รายได้จากการขาย',
-        debit: 0,
-        credit: calc.subTotal
-      }
-    ];
-
-    if (calc.vatAmount > 0) {
-      journalItems.push({
-        accountCode: '2121-00', // ภาษีขาย
-        accountName: 'ภาษีขาย',
-        debit: 0,
-        credit: calc.vatAmount
-      });
-    }
-
-    batch.set(journalRef, {
+    tx.set(journalRef, {
       companyId,
       date: now,
       bookType: 'JV',
-      description: `[AUTO] POS Sale Transaction: ${txRef.id}`,
-      totalDebit: calc.grandTotal,
-      totalCredit: calc.grandTotal,
+      description: `[AUTO] ขายหน้าร้าน ${transactionNo}`,
+      reference: transactionNo,
+      totalDebit: grandTotal,
+      totalCredit: grandTotal,
       status: 'draft',
-      items: journalItems,
+      items: [
+        { accountCode: account.code, accountName: account.name, debit: grandTotal, credit: 0 },
+        { accountCode: '4111-00', accountName: 'รายได้จากการขาย', debit: 0, credit: subTotal },
+        { accountCode: '2121-00', accountName: 'ภาษีขาย', debit: 0, credit: vatAmount },
+      ],
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      isDeleted: false,
     });
+  });
 
-    // 5. ลงบันทึกประวัติการตรวจสอบการทำงานระบบ
-    batch.set(auditRef, {
-      companyId,
-      userId,
-      action: 'POS_BATCH_CHECKOUT',
-      details: `ทำการประมวลผลคำสั่งซื้อหน้าร้าน Transaction: ${txRef.id}`,
-      timestamp: now
-    });
-
-    // 🚀 ยิงคำสั่ง Batch บันทึกข้อมูลทั้งหมดลง Firestore พร้อมกันในก้อนเดียว
-    await batch.commit();
-    return { success: true, transactionId: txRef.id };
-
-  } catch (error: any) {
-    console.error('❌ [POS BATCH TRANSACTION ERROR]:', error.message);
-    throw error;
-  }
+  return { success: true, transactionId: transactionNo, transactionNo, grandTotal, change };
 }

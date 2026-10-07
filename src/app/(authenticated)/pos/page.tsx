@@ -38,6 +38,9 @@ import { usePOSHardware } from "@/hooks/usePOSHardware";
 import { CheckoutModal } from "@/components/pos/CheckoutModal";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api-client";
+import { findProductByScan } from "@/lib/warehouse-location";
+import { DailySummaryModal } from "@/components/pos/DailySummaryModal";
+import type { PaymentMethod } from "@/components/pos/CheckoutModal";
 
 export default function POSPage() {
   const [cart, setCart] = useState<any[]>([]);
@@ -45,6 +48,9 @@ export default function POSPage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [successTxId, setSuccessTxId] = useState<string | null>(null);
+  const [successChange, setSuccessChange] = useState(0);
+  const [isPaying, setIsPaying] = useState(false);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [selectedProductDetail, setSelectedProductDetail] = useState<any>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -74,7 +80,7 @@ export default function POSPage() {
   const { data: products } = useRealtimeCollection('products');
 
   const handleBarcodeScan = (barcode: string) => {
-    const product = products.find(p => p.sku.toLowerCase() === barcode.toLowerCase() || p.id === barcode);
+    const product = findProductByScan(products, barcode);
     if (product) {
       addToCart(product);
     }
@@ -92,12 +98,10 @@ export default function POSPage() {
     }
   });
 
+  // หมวดสินค้าจากสินค้าจริงของบริษัท
   const categories = [
     { id: "all", label: "ทั้งหมด" },
-    { id: "display", label: "Display" },
-    { id: "network", label: "Network" },
-    { id: "cable", label: "Cables" },
-    { id: "rack", label: "Racks" },
+    ...Array.from(new Set(products.map((p: any) => p.category).filter(Boolean))).sort().map((c: any) => ({ id: c, label: c })),
   ];
 
   const addToCart = (product: any) => {
@@ -117,36 +121,31 @@ export default function POSPage() {
   const tax = subtotal * 0.07;
   const total = subtotal + tax;
 
-  const handlePaymentConfirm = async (cashReceived: number) => {
-    if (!companyId) return;
-    
-    // Prepare items for batch checkout
-    const checkoutItems = cart.map(item => ({
-      id: item.id,
-      qty: item.qty,
-      costPrice: item.pricing?.costWAC || 0,
-      projectPrice: item.pricing?.priceProject || 0,
-      retailPrice: item.pricing?.pricePOS || item.price || 0
-    }));
-
-    const res = await apiFetch("/api/pos/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        companyId: companyId,
-        userId: user?.uid || 'SYSTEM',
-        items: checkoutItems,
-        vatType: 'EXCLUSIVE',
-        cashAccountId: '1111-00'
-      })
-    });
-    const result = await res.json();
-
-    if (res.ok && result.success) {
-      setIsCheckoutOpen(false);
-      setSuccessTxId(result.transactionId);
-    } else {
-      alert(result.error || "เกิดข้อผิดพลาดในการทำรายการ กรุณาลองใหม่อีกครั้ง");
+  const handlePaymentConfirm = async (paymentMethod: PaymentMethod, cashReceived: number) => {
+    if (!companyId || isPaying) return;
+    setIsPaying(true);
+    try {
+      // ส่งแค่สินค้าและจำนวน: ราคา/ภาษีคำนวณที่ server จากราคาขายในฐานข้อมูล
+      const res = await apiFetch("/api/pos/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId,
+          items: cart.map(item => ({ id: item.id, qty: item.qty })),
+          paymentMethod,
+          cashReceived,
+        })
+      });
+      const result = await res.json();
+      if (res.ok && result.success) {
+        setIsCheckoutOpen(false);
+        setSuccessChange(Number(result.change) || 0);
+        setSuccessTxId(result.transactionNo || result.transactionId);
+      } else {
+        alert(result.error || "เกิดข้อผิดพลาดในการทำรายการ กรุณาลองใหม่อีกครั้ง");
+      }
+    } finally {
+      setIsPaying(false);
     }
   };
 
@@ -171,6 +170,9 @@ export default function POSPage() {
                 <div className="w-2 h-2 rounded-full bg-nexus-teal animate-pulse" />
                 <span className="text-[12px] font-medium text-white/40 uppercase tracking-widest hidden md:inline">ระบบพร้อมใช้งาน</span>
              </div>
+             <PillButton variant="glass" className="h-9 px-4 text-xs font-bold" onClick={() => setIsSummaryOpen(true)}>
+                สรุปยอดวันนี้
+             </PillButton>
              <button 
                 onClick={toggleFullscreen}
                 className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white/[0.03] border border-white/10 text-white/40 hover:text-white hover:bg-white/[0.08] transition-all"
@@ -391,6 +393,7 @@ export default function POSPage() {
                   <h2 className="text-2xl font-bold text-white uppercase tracking-tight">ชำระเงินสำเร็จ</h2>
                   <p className="text-[12px] font-bold text-white/40 uppercase tracking-widest leading-relaxed">
                      รายการขายเลขที่ {successTxId}<br />
+                     {successChange > 0 && <>เงินทอน ฿{successChange.toLocaleString("th-TH", { minimumFractionDigits: 2 })}<br /></>}
                      บันทึกเข้าสู่ระบบบัญชีและตัดสต็อกเรียบร้อยแล้ว
                   </p>
                </div>
@@ -404,9 +407,11 @@ export default function POSPage() {
       <CheckoutModal 
         isOpen={isCheckoutOpen} 
         grandTotal={total} 
-        onConfirmPayment={handlePaymentConfirm} 
-        onClose={() => setIsCheckoutOpen(false)} 
+        onConfirmPayment={handlePaymentConfirm}
+        onClose={() => setIsCheckoutOpen(false)}
+        isProcessing={isPaying}
       />
+      <DailySummaryModal isOpen={isSummaryOpen} onClose={() => setIsSummaryOpen(false)} />
 
       {/* Product Detail Modal */}
       {selectedProductDetail && (

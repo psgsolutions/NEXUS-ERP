@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { PillButton, GlassCard, PillSelect } from "@/components/ui/Base";
-import { Building2, Search, ArrowRight, Loader2, Target, CheckCircle2 } from "lucide-react";
+import { Building2, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -25,27 +25,79 @@ export default function RegisterBusinessPage() {
   const [customerType, setCustomerType] = useState<string[]>([]);
   const [employeeCount, setEmployeeCount] = useState("");
 
-  const handleNextStep = (e: React.FormEvent) => {
+  // Step 2: บัญชีผู้ดูแลกิจการ (เจ้าของ)
+  const [ownerName, setOwnerName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [error, setError] = useState("");
+  const [registrationId, setRegistrationId] = useState("");
+
+  const handleNextStep = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     if (step === 1) {
       if (taxId.length < 13) {
-        alert("กรุณากรอกเลขทะเบียน 13 หลักให้ครบถ้วน");
+        setError("กรุณากรอกเลขทะเบียน 13 หลักให้ครบถ้วน");
+        return;
+      }
+      if (branchType === "branch" && !branchCode.trim()) {
+        setError("กรุณาระบุรหัสสาขา");
         return;
       }
       setStep(2);
     } else if (step === 2) {
       if (!businessType) {
-        alert("กรุณาเลือกประเภทธุรกิจ");
+        setError("กรุณาเลือกประเภทธุรกิจ");
+        return;
+      }
+      if (!ownerName.trim() || !email.trim() || password.length < 8) {
+        setError("กรุณากรอกชื่อ อีเมล และรหัสผ่าน (อย่างน้อย 8 ตัวอักษร) ของผู้ดูแลกิจการ");
         return;
       }
       setLoading(true);
-      // Mock API Registration
-      setTimeout(() => {
+      try {
+        // สร้างคำขอเปิดกิจการ + บัญชีผู้ดูแล (รอ SUPERADMIN อนุมัติจึงสร้างบริษัทจริง)
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kind: "business",
+            personType,
+            taxId,
+            branchType,
+            branchCode,
+            juristicType: personType === "juristic" ? juristicType : "",
+            companyName,
+            vatRegistered: vatReg === "yes",
+            businessType,
+            customerTypes: customerType,
+            employeeCount,
+            ownerName,
+            email,
+            password,
+          }),
+        });
+        const result = await res.json();
+        if (!res.ok || !result.success) {
+          setError(result.error || "ส่งคำขอไม่สำเร็จ กรุณาลองใหม่");
+          return;
+        }
+        setRegistrationId(result.registrationId);
+        setStep(3);
+      } catch {
+        setError("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่");
+      } finally {
         setLoading(false);
-        setStep(3); // Success
-      }, 1500);
+      }
     }
   };
+
+  const errorBox = error ? (
+    <div className="p-3 bg-danger/10 border border-danger/20 rounded-xl text-danger text-xs font-bold text-center">
+      {error}
+    </div>
+  ) : null;
 
   const toggleCustomerType = (type: string) => {
     if (customerType.includes(type)) {
@@ -90,7 +142,8 @@ export default function RegisterBusinessPage() {
           {/* STEP 1: Basic Information */}
           {step === 1 && (
             <form onSubmit={handleNextStep} className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-              
+              {errorBox}
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-2">รูปแบบกิจการ</label>
@@ -104,17 +157,15 @@ export default function RegisterBusinessPage() {
               <div className="space-y-2">
                 <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-2">เลขทะเบียน 13 หลัก</label>
                 <div className="flex gap-3">
-                  <input 
-                    type="text" 
-                    placeholder="0125559028451" 
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="เลขประจำตัวผู้เสียภาษี 13 หลัก"
                     className="flex-1 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white font-mono text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 transition-all placeholder:text-white/10"
                     value={taxId}
                     onChange={(e) => setTaxId(e.target.value.replace(/\D/g, '').substring(0, 13))}
                     required
                   />
-                  <PillButton type="button" variant="glass" className="px-4 bg-nexus-blue/20 text-nexus-blue border-nexus-blue/30 hover:bg-nexus-blue/30">
-                    <Search size={14} /> ค้นหา
-                  </PillButton>
                 </div>
               </div>
 
@@ -135,14 +186,14 @@ export default function RegisterBusinessPage() {
               </div>
 
               <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-1 space-y-2">
+                <div className={cn("col-span-1 space-y-2", personType !== "juristic" && "hidden")}>
                   <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-2">ประเภทนิติบุคคล</label>
                   <PillSelect value={juristicType} onChange={(e) => setJuristicType(e.target.value)} className="h-9 px-4 bg-white/[0.03] border-white/10 font-sans text-nexus-teal">
                     <option value="บริษัทจำกัด" className="bg-surface-0">บริษัทจำกัด</option>
                     <option value="หจก" className="bg-surface-0">ห้างหุ้นส่วนจำกัด</option>
                   </PillSelect>
                 </div>
-                <div className="col-span-2 space-y-2">
+                <div className={cn("space-y-2", personType === "juristic" ? "col-span-2" : "col-span-3")}>
                   <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-2">ชื่อกิจการ</label>
                   <input type="text" placeholder="ระบุชื่อกิจการ..." className="w-full h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white font-medium focus:outline-none focus:border-nexus-teal/40 transition-all placeholder:text-white/10" value={companyName} onChange={(e) => setCompanyName(e.target.value)} required />
                 </div>
@@ -171,6 +222,7 @@ export default function RegisterBusinessPage() {
                 <h3 className="text-lg font-bold text-nexus-teal mb-1">ข้อมูลเกี่ยวกับกิจการของคุณ</h3>
                 <p className="text-white/40 text-xs">บอกเราเพื่อให้เราแนะนำฟีเจอร์ที่ตอบโจทย์กิจการของคุณที่สุด</p>
               </div>
+              {errorBox}
 
               <div className="space-y-3">
                 <label className="text-[11px] font-bold text-white/60 uppercase tracking-[0.1em] ml-2">เลือกประเภทธุรกิจของคุณ</label>
@@ -229,6 +281,15 @@ export default function RegisterBusinessPage() {
                 </PillSelect>
               </div>
 
+              <div className="space-y-3 pt-2 border-t border-white/5">
+                <label className="text-[11px] font-bold text-white/60 uppercase tracking-[0.1em] ml-2 block pt-4">บัญชีผู้ดูแลกิจการ (ใช้เข้าสู่ระบบ)</label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <input type="text" placeholder="ชื่อ-นามสกุล" autoComplete="name" className="w-full h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 transition-all placeholder:text-white/10" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} required />
+                  <input type="email" placeholder="อีเมล" autoComplete="email" className="w-full h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 transition-all placeholder:text-white/10" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  <input type="password" placeholder="รหัสผ่าน (8 ตัวขึ้นไป)" autoComplete="new-password" minLength={8} className="w-full h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white font-mono text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 transition-all placeholder:text-white/10" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                </div>
+              </div>
+
               <div className="pt-4 flex gap-3">
                 <PillButton type="button" variant="ghost" onClick={() => setStep(1)} className="px-6 text-white/60">
                   ย้อนกลับ
@@ -248,15 +309,15 @@ export default function RegisterBusinessPage() {
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">ส่งคำขอสร้างกิจการสำเร็จ!</h2>
               <p className="text-white/50 text-sm mb-4 max-w-sm leading-relaxed">
-                บริษัทของคุณได้รับการลงทะเบียนและ <strong className="text-warning">กำลังรอการอนุมัติจาก Super Admin</strong> 
+                บันทึกคำขอของ <span className="text-white font-bold">{companyName}</span> แล้ว <strong className="text-warning">กำลังรอผู้ดูแลระบบ (SUPERADMIN) อนุมัติ</strong> เมื่ออนุมัติแล้วจะเข้าสู่ระบบด้วย {email} ได้ทันที
               </p>
               <div className="bg-warning/10 border border-warning/20 p-3 rounded-xl mb-8 max-w-sm">
                 <p className="text-[11px] text-warning font-medium leading-relaxed">
-                  * หากไม่ได้รับการยืนยันภายใน 24 ชั่วโมงนับจากนี้ บัญชีจะถูกระงับการใช้งานชั่วคราวโดยอัตโนมัติ
+                  * หากไม่ได้รับการอนุมัติภายใน 24 ชั่วโมง คำขอจะหมดอายุ กรุณาติดต่อผู้ดูแลระบบ
                 </p>
               </div>
               <p className="text-white/50 text-sm mb-8">
-                รหัสบริษัทอ้างอิง: <span className="text-nexus-teal font-mono bg-nexus-teal/10 px-2 py-0.5 rounded">NEXUS-{Math.floor(Math.random() * 1000).toString().padStart(3, '0')}</span>
+                เลขที่คำขอ: <span className="text-nexus-teal font-mono bg-nexus-teal/10 px-2 py-0.5 rounded">{registrationId}</span>
               </p>
               <PillButton onClick={() => router.push("/login")} variant="primary" className="h-9 px-8 shadow-neon-teal">
                 กลับสู่หน้าเข้าสู่ระบบ

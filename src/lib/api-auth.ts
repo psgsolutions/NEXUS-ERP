@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "./firebase-admin";
+import { inactiveReason, isSuperAdminAccount } from "./user-status";
 
 /**
  * [API-AUTH] Server-side authentication for Next.js API routes.
@@ -19,14 +20,11 @@ export class ApiAuthError extends Error {
   }
 }
 
-// ให้ตรงกับ AuthContext ที่กำหนดบัญชี SUPERADMIN ไว้
-const SUPERADMIN_UIDS = ["fgIglIug2dh4aNMMeachaugIyFM2"];
-const SUPERADMIN_EMAILS = ["sadmin@admin.com"];
 
 /**
  * Verifies the caller's ID token and (when `companyId` is given) tenant access.
- * Tenant rule mirrors firestore.rules `isTenantOwner`: enforced whenever the user's
- * company is known (custom claim or users/{uid}.companyId); SUPERADMIN may access any company.
+ * Tenant rule mirrors firestore.rules `inCompany`: non-SUPERADMIN users must be active and bound to a
+ * company (custom claim or users/{uid}.companyId); SUPERADMIN may access any company.
  */
 export async function requireApiUser(request: Request, companyId?: string | null): Promise<ApiUser> {
   const token = request.headers.get("authorization")?.match(/^Bearer (.+)$/)?.[1];
@@ -44,8 +42,15 @@ export async function requireApiUser(request: Request, companyId?: string | null
   const profile = (await adminDb.collection("users").doc(decoded.uid).get()).data() || {};
   const userCompanyId: string | null = (decoded.companyId as string) || profile.companyId || null;
   let role = String(decoded.role || profile.role || "").toUpperCase();
-  if (SUPERADMIN_UIDS.includes(decoded.uid) || (decoded.email && SUPERADMIN_EMAILS.includes(decoded.email))) {
+  if (isSuperAdminAccount(decoded.uid, decoded.email)) {
     role = "SUPERADMIN";
+  }
+
+  if (role !== "SUPERADMIN") {
+    // บัญชีรออนุมัติ/ถูกระงับ หรือยังไม่ผูกบริษัท เรียก API ไม่ได้
+    const reason = inactiveReason(profile);
+    if (reason) throw new ApiAuthError(403, reason);
+    if (!userCompanyId) throw new ApiAuthError(403, "บัญชียังไม่ได้ผูกกับบริษัท");
   }
 
   if (companyId && role !== "SUPERADMIN" && userCompanyId && userCompanyId !== companyId) {

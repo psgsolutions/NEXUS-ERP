@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { PillButton, GlassCard, PillSelect } from "@/components/ui/Base";
+import { PillButton, GlassCard } from "@/components/ui/Base";
 import { UserPlus, Building, Lock, Mail, User, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -19,18 +19,38 @@ export default function RegisterUserPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     if (!companyId || !firstName || !email || !password) {
-      alert("กรุณากรอกข้อมูลให้ครบถ้วน");
+      setError("กรุณากรอกข้อมูลให้ครบถ้วน");
+      return;
+    }
+    if (password.length < 8) {
+      setError("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร");
       return;
     }
     setLoading(true);
-    // Mock API
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      // สร้างบัญชีสถานะรออนุมัติ (ฝั่ง server ตรวจว่ารหัสบริษัทมีอยู่จริง)
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "user", accountType: role, companyId, firstName, lastName, email, password }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        setError(result.error || "สมัครใช้งานไม่สำเร็จ กรุณาลองใหม่");
+        return;
+      }
       setSuccess(true);
-    }, 1500);
+    } catch {
+      setError("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -66,7 +86,12 @@ export default function RegisterUserPage() {
           
           {!success ? (
             <form onSubmit={handleSubmit} className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-              
+              {error && (
+                <div className="p-3 bg-danger/10 border border-danger/20 rounded-xl text-danger text-xs font-bold text-center">
+                  {error}
+                </div>
+              )}
+
               <div className="space-y-2">
                 <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-2">ประเภทบัญชีผู้ใช้</label>
                 <div className="flex gap-2">
@@ -85,7 +110,7 @@ export default function RegisterUserPage() {
                   <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={16} />
                   <input 
                     type="text" 
-                    placeholder="NEXUS-001" 
+                    placeholder="ขอรหัสจากผู้ดูแลบริษัท" 
                     className="w-full pl-12 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white font-mono text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all placeholder:text-white/10"
                     value={companyId}
                     onChange={(e) => setCompanyId(e.target.value.toUpperCase())}
@@ -179,11 +204,11 @@ export default function RegisterUserPage() {
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">ส่งคำขอลงทะเบียนสำเร็จ!</h2>
               <p className="text-white/50 text-sm mb-4 max-w-sm leading-relaxed">
-                บัญชีของคุณถูกส่งไปผูกกับรหัสบริษัท <span className="font-mono text-white bg-white/10 px-1 py-0.5 rounded">{companyId}</span> แล้ว ขณะนี้<strong className="text-warning">กำลังรอการอนุมัติจาก Super Admin</strong>
+                บัญชีของคุณถูกส่งไปผูกกับรหัสบริษัท <span className="font-mono text-white bg-white/10 px-1 py-0.5 rounded">{companyId}</span> แล้ว ขณะนี้<strong className="text-warning">กำลังรอผู้ดูแลระบบของบริษัทอนุมัติ</strong>
               </p>
               <div className="bg-warning/10 border border-warning/20 p-3 rounded-xl mb-8 max-w-sm">
                 <p className="text-[11px] text-warning font-medium leading-relaxed">
-                  * หากไม่ได้รับการยืนยันภายใน 24 ชั่วโมงนับจากนี้ บัญชีจะถูกระงับการใช้งานชั่วคราวโดยอัตโนมัติ
+                  * หากไม่ได้รับการอนุมัติภายใน 24 ชั่วโมง คำขอจะหมดอายุ กรุณาติดต่อผู้ดูแลระบบ
                 </p>
               </div>
               <PillButton onClick={() => router.push("/login")} variant="primary" className="h-9 px-8 shadow-neon-teal">

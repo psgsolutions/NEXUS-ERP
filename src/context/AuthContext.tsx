@@ -2,13 +2,15 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { 
-  onAuthStateChanged, 
-  User as FirebaseUser 
+  onAuthStateChanged,
+  signOut,
+  User as FirebaseUser
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase-client";
 import { doc, getDoc } from "firebase/firestore";
 
 import { can, Permission } from "@/lib/permissions";
+import { inactiveReason, isSuperAdminAccount } from "@/lib/user-status";
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -99,6 +101,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           let data: any = {};
           if (userDoc && typeof userDoc.exists === 'function' && userDoc.exists()) {
             data = userDoc.data();
+          }
+
+          // บัญชีรออนุมัติ/ถูกระงับ หรือยังไม่ผูกบริษัท -> ออกจากระบบทันที (หน้า login แสดงเหตุผล)
+          if (!isSuperAdminAccount(user.uid, user.email) && userDoc?.exists?.() && (inactiveReason(data) || !data.companyId)) {
+            await signOut(auth);
+            return;
           }
 
           const finalCompanyId = data.companyId || cachedCompanyId;

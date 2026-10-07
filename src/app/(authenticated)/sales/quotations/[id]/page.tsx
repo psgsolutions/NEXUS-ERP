@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Save, Send, Building2, Calendar, Plus, Info, AlertTriangle, Search, Trash2, FileText, Mail, MessageSquare, Download, Edit3, ChevronDown, CheckCircle2, Lock, GitBranch, Copy, History, XCircle, FileSpreadsheet } from "lucide-react";
 import { PillButton, cn, NexusDatePicker, GlassCard, Modal } from "@/components/ui/Base";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
@@ -30,8 +30,11 @@ import { db } from "@/lib/firebase-client";
 import { writeBatch, doc, collection, serverTimestamp, getDoc, getDocs, updateDoc } from "firebase/firestore";
 import { apiFetch } from "@/lib/api-client";
 
-export default function QuotationEditPage({ params }: { params: { id: string } }) {
+export default function QuotationEditPage() {
   const router = useRouter();
+  // Next 16: params ของ page เป็น Promise จึงอ่านผ่าน useParams แทน
+  const routeParams = useParams();
+  const params = { id: decodeURIComponent(String(routeParams.id || "")) };
   const { user, companyId, role } = useAuth();
   
   // Data Fetching from both root collection and company subcollection
@@ -385,6 +388,15 @@ export default function QuotationEditPage({ params }: { params: { id: string } }
     }
   };
 
+  // ใบรูปแบบเก่ามีแต่ชื่อลูกค้า: จับคู่กับลูกค้าในฐานข้อมูลตามชื่อ (ไม่สร้างลูกค้าซ้ำตอนบันทึก)
+  useEffect(() => {
+    if (selectedCustomerId || !customerSearchTerm || customers.length === 0) return;
+    const name = customerSearchTerm.trim();
+    const match = customers.find(c => getCustomerName(c).trim() === name);
+    if (match) setSelectedCustomerId(match.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customers, customerSearchTerm, selectedCustomerId]);
+
   // Load existing data
   useEffect(() => {
     async function loadQuotation() {
@@ -395,9 +407,13 @@ export default function QuotationEditPage({ params }: { params: { id: string } }
         
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setQuotationNumber(data.documentNo || data.quotationNumber || "");
+          // ใบเสนอราคารูปแบบเก่า: เลขที่อยู่ใน quoteId, วันที่ใน date, สถานะตัวพิมพ์เล็ก ("Draft"),
+          // ชื่อลูกค้าเก็บใน customerId และรายการอยู่ใน items (ไม่มี subcollection lines)
+          const normalizedStatus = String(data.status || "DRAFT").toUpperCase();
+          const legacyCustomerName = !data.customerName && data.customerId && /[\s\u0E00-\u0E7F]/.test(String(data.customerId)) ? String(data.customerId) : "";
+          setQuotationNumber(data.documentNo || data.quotationNumber || data.quoteId || docSnap.id);
           setQuotationType(data.quotationType || "SALE");
-          setDocDate(data.docDate || new Date().toISOString().split('T')[0]);
+          setDocDate(data.docDate || data.date || new Date().toISOString().split('T')[0]);
           setValidUntil(data.validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
           setPaymentTerms(data.paymentTerms || "เครดิต 30 วัน");
           setReferenceNo(data.referenceNo || data.customerPoNo || "");
@@ -409,7 +425,11 @@ export default function QuotationEditPage({ params }: { params: { id: string } }
           setCustomerSnapshot(data.customerSnapshot || null);
           setNextFollowUpDate(data.nextFollowUpDate || "");
 
-          if (data.status !== "DRAFT" && data.customerSnapshot) {
+          if (legacyCustomerName) {
+            // ผูกกับลูกค้าจริงอัตโนมัติเมื่อโหลดรายชื่อลูกค้าเสร็จ (ดู effect ด้านล่าง)
+            setSelectedCustomerId("");
+            setCustomerSearchTerm(legacyCustomerName);
+          } else if (normalizedStatus !== "DRAFT" && data.customerSnapshot) {
             const snap = data.customerSnapshot;
             setSelectedCustomerId(snap.customerId || data.customerId || "");
             setCustomerSearchTerm(snap.customerName || data.customerName || "");
@@ -444,7 +464,8 @@ export default function QuotationEditPage({ params }: { params: { id: string } }
             }
           }
 
-          setTaxType(data.taxType || "EXCLUSIVE");
+          const legacyTax = String(data.taxMode || "").toUpperCase();
+          setTaxType(data.taxType || (legacyTax === "INCLUSIVE" ? "INCLUSIVE" : legacyTax === "NON_VAT" || legacyTax === "NONE" ? "NON_VAT" : "EXCLUSIVE"));
           setWhtRate(data.whtRate || 0);
           setDocDiscountType(data.docDiscountType || 'PERCENT');
           setDocDiscountValue(data.docDiscountValue || 0);
@@ -453,12 +474,12 @@ export default function QuotationEditPage({ params }: { params: { id: string } }
           setProbability(data.probability || 50);
           setExpectedCloseDate(data.expectedCloseDate || "");
           setLeadSource(data.leadSource || "");
-          setProjectName(data.projectName || "");
+          setProjectName(data.projectName || data.subject || "");
           setIncoTerms(data.incoTerms || "");
           setExpectedDeliveryDays(data.expectedDeliveryDays || 30);
           setShippingAddress(data.shippingAddress || "");
           setInternalNotes(data.internalNotes || "");
-          setStatus(data.status || "DRAFT");
+          setStatus(normalizedStatus);
           if (data.salesPersonId) {
              setSelectedSalespersonId(data.salesPersonId);
           }
@@ -488,6 +509,27 @@ export default function QuotationEditPage({ params }: { params: { id: string } }
             };
           });
           loadedItems.sort((a: any, b: any) => (a.sequence || 0) - (b.sequence || 0));
+          if (loadedItems.length === 0 && Array.isArray(data.items)) {
+            // รูปแบบเก่า: รายการเก็บในเอกสารหลัก
+            loadedItems.push(...data.items.map((it: any, idx: number) => ({
+              id: it.id || `legacy-${idx}`,
+              productId: it.productId || null,
+              sku: it.sku || "",
+              name: it.name || it.productName || "",
+              description: it.description || "",
+              details: it.details || "",
+              qty: Number(it.qty ?? it.quantity) || 1,
+              unit: it.unit || it.uom || "ชิ้น",
+              price: Number(it.price ?? it.unitPrice) || 0,
+              cost: Number(it.cost ?? it.costPrice) || 0,
+              discount: "",
+              discountType: 'PERCENT',
+              discountValue: 0,
+              isOptional: false,
+              incomeAccountId: "411100",
+              whtRate: undefined
+            })));
+          }
           setItems(loadedItems);
         }
       } catch (err) {

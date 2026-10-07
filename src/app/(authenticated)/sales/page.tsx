@@ -802,7 +802,7 @@ export default function SalesPage() {
                     <h4 className="text-[14px] font-bold text-white">{selectedItem.title}</h4>
                     <p className="text-[11px] text-white/50">{selectedItem.id}</p>
                   </div>
-                  <StatusBadge status={selectedItem.status === "Approved" ? "active" : selectedItem.status === "Draft" ? "pending" : "danger"} label={selectedItem.status === "Approved" ? "ส่งแล้ว" : selectedItem.status === "Draft" ? "ร่าง" : selectedItem.status} />
+                  <StatusBadge {...quotationStatusBadge(selectedItem.status)} />
                 </div>
                 
                 <div className="space-y-3 text-xs font-medium text-white/70">
@@ -841,7 +841,7 @@ export default function SalesPage() {
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-white/5 flex flex-col gap-3">
-                   <PillButton size="sm" variant="glass" onClick={() => router.push("/sales/quotations/new")} className="w-full border-white/20 hover:border-nexus-teal shadow-none">
+                   <PillButton size="sm" variant="glass" onClick={() => router.push(`/sales/quotations/${encodeURIComponent(selectedItem.docId)}`)} className="w-full border-white/20 hover:border-nexus-teal shadow-none">
                      <FileText size={14} className="mr-2" />
                      ดู / แก้ไขใบเสนอราคา
                    </PillButton>

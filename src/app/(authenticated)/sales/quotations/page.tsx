@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { where } from "firebase/firestore";
 import { PillButton, NexusTable, NexusTableRow, NexusTableCell, NexusSearchInput, StatusBadge, GlassCard } from "@/components/ui/Base";
 import { Plus, FileText, Calendar, Building2, Search, DollarSign, Clock, CheckCircle2, XCircle, FileClock, AlertCircle } from "lucide-react";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
@@ -14,10 +13,22 @@ export default function QuotationDashboardPage() {
   const router = useRouter();
   const { companyId } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const { data: quotations = [], loading } = useRealtimeCollection('quotations', [
-    where('companyId', '==', companyId || 'COMP-001'),
-    where('isDeleted', '==', false)
-  ]);
+  // ใบเสนอราคาอยู่ใต้บริษัท; รองรับรูปแบบเก่า (quoteId / date / totalRevenue / สถานะตัวพิมพ์เล็ก)
+  const { data: rawQuotations = [], loading } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/quotations` : '');
+  const { data: customers = [] } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/customers` : '');
+  const customerNameById = React.useMemo(
+    () => new Map(customers.map((c: any) => [c.id, c.customerName || c.name || c.companyName || ''])),
+    [customers]
+  );
+  const quotations = React.useMemo(() => rawQuotations.map((q: any) => ({
+    ...q,
+    documentNo: q.documentNo || q.quotationNumber || q.quoteId || q.id,
+    docDate: q.docDate || q.date || '',
+    customerName: q.customerName || q.customerSnapshot?.customerName || customerNameById.get(q.customerId) || q.customerId || '',
+    projectName: q.projectName || q.subject || '',
+    grandTotal: q.grandTotal ?? q.totalRevenue ?? 0,
+    status: String(q.status || 'DRAFT').toUpperCase(),
+  })), [rawQuotations, customerNameById]);
 
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -100,7 +111,7 @@ export default function QuotationDashboardPage() {
       const res = await apiFetch(`/api/quotations/${qId}/duplicate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId: companyId || "COM-NEXUS-01" })
+        body: JSON.stringify({ companyId })
       });
       const data = await res.json();
       if (data.success && data.newQuotationId) {
@@ -175,7 +186,7 @@ export default function QuotationDashboardPage() {
               </NexusTableRow>
             ) : (
               filteredQuotations.map((qt, idx) => (
-                <NexusTableRow key={qt.id || idx}>
+                <NexusTableRow key={qt.id || idx} onClick={() => router.push(`/sales/quotations/${encodeURIComponent(qt.id)}`)}>
                   <NexusTableCell align="right" className="w-[1%] whitespace-nowrap font-mono text-nexus-teal text-[12px] uppercase tracking-tight font-bold pr-6">
                     <div className="flex flex-col items-end">
                       <span>{qt.documentNo || '-'}</span>
@@ -229,7 +240,7 @@ export default function QuotationDashboardPage() {
                     <div className="flex justify-center gap-1.5">
                       <PillButton 
                         className="h-8 px-3 text-[12px] text-nexus-blue border-nexus-blue/20 hover:bg-transparent"
-                        onClick={() => router.push(`/sales/quotations/${qt.id}`)}
+                        onClick={() => router.push(`/sales/quotations/${encodeURIComponent(qt.id)}`)}
                       >
                         เปิดดู
                       </PillButton>

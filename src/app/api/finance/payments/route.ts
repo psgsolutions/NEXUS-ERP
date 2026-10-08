@@ -99,15 +99,18 @@ export async function POST(request: Request) {
           : (WHT_RATES.includes(Number(raw.whtRate)) ? Number(raw.whtRate) : 0);
         const whtAmount = hasCert ? round2((Number(e.whtAmount) || 0) * fraction) : round2(preVat * (whtRate / 100));
 
-        // หนี้จากการรับสินค้าตาม PO ตั้งเจ้าหนี้ไว้แล้ว -> ล้างเจ้าหนี้; อื่น ๆ -> ลงค่าใช้จ่ายตรง
-        const debit = e.poRef && e.documentType !== "ExpenseClaim"
+        // บันทึกใบกำกับภาษีซื้อแล้ว (apPosted): ตั้งหนี้เต็มจำนวนไว้แล้ว -> ล้างเจ้าหนี้ทั้งก้อน
+        // ซื้อตาม PO (ตั้งหนี้ส่วนก่อน VAT ตอนรับสินค้า) -> ล้างเจ้าหนี้ + ลงภาษีซื้อ
+        // ค่าใช้จ่ายตรง/เบิกพนักงาน ที่ยังไม่ตั้งหนี้ -> ลงค่าใช้จ่าย + ภาษีซื้อ
+        const apPosted = !!e.apPosted;
+        const debit = apPosted || (e.poRef && e.documentType !== "ExpenseClaim")
           ? { code: "2111-00", name: "เจ้าหนี้การค้า" }
           : expenseAccountOf(e);
 
         const paidAfter = round2(paidBefore + amount);
         const balanceAfter = round2(Math.max(0, total - paidAfter));
         return {
-          ref: refs[i], e, docNo, hasCert,
+          ref: refs[i], e, docNo, hasCert, apPosted,
           line: { expenseDocId: snap.id, expenseNo: docNo, total, balanceBefore: balance, amount, preVat, vat, whtRate, whtAmount, netPaid: round2(amount - whtAmount), debitAccount: debit.code },
           debit,
           paid: balanceAfter <= 0.009,
@@ -142,8 +145,12 @@ export async function POST(request: Request) {
         dr.set(code, cur);
       };
       lines.forEach((l) => {
-        addDr(l.debit.code, l.debit.name, l.line.preVat);
-        addDr("1151-00", "ภาษีซื้อ", l.line.vat);
+        if (l.apPosted) {
+          addDr(l.debit.code, l.debit.name, l.line.amount);
+        } else {
+          addDr(l.debit.code, l.debit.name, l.line.preVat);
+          addDr("1151-00", "ภาษีซื้อ", l.line.vat);
+        }
       });
       const journalItems = [
         ...Array.from(dr.entries()).map(([code, v]) => ({ accountCode: code, accountName: v.name, debit: v.amount, credit: 0 })),
@@ -179,7 +186,8 @@ export async function POST(request: Request) {
             whtAmount: l.line.whtAmount,
             documentType: "Withholding Tax (50 Tawi)",
             status: "Issued",
-            issuedAt: now,
+            // ภ.ง.ด.3/53 นับเดือนตามวันที่จ่ายเงิน (ไม่ใช่วันที่บันทึก)
+            issuedAt: paymentDate,
             filingDate: paymentDate,
             createdBy: apiUser.uid,
             createdAt: now,

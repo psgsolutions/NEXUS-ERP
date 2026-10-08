@@ -541,7 +541,7 @@ function PORow({ id, docId, vendor, totalAmount, amount, approval, normalizedSta
   );
 }
 
-function ExpenseRow({ id, poRef, vendor, supplier, totalAmount, amount, balance, status, isSample, whtId, companyId, onWhtCreate, onClick }: any) {
+function ExpenseRow({ id, poRef, vendor, supplier, totalAmount, amount, balance, paidAmount, vatAmount, apPosted, documentType, status, isSample, whtId, companyId, onWhtCreate, onClick }: any) {
   const displayVendor = vendor || supplier || "-";
   const displayAmount = totalAmount ? `฿${totalAmount.toLocaleString()}` : (amount ? `฿${amount}` : "฿0.00");
   const st = String(status || "");
@@ -563,6 +563,11 @@ function ExpenseRow({ id, poRef, vendor, supplier, totalAmount, amount, balance,
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-end gap-2">
+          {!isPaid && !isSample && !apPosted && !(Number(paidAmount) > 0) && (Number(vatAmount) > 0 || !(poRef && documentType !== "ExpenseClaim")) && (
+            <Link href={`/finance/purchase-tax-invoice/new?expense=${encodeURIComponent(id)}`} className="h-8 px-3 rounded-full border border-white/15 text-white/70 text-[12px] font-bold flex items-center hover:bg-white/5" title="บันทึกใบกำกับภาษีซื้อ ตั้งหนี้ตามวันที่ในใบกำกับ">
+              รับใบกำกับ
+            </Link>
+          )}
           {!isPaid && !isSample && (
             <Link href={`/finance/payments/new?expense=${encodeURIComponent(id)}`} className="h-8 px-3 rounded-full border border-nexus-teal/30 text-nexus-teal text-[12px] font-bold flex items-center hover:bg-nexus-teal/10">
               จ่ายชำระ

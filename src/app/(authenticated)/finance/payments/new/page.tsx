@@ -43,6 +43,7 @@ interface Payable {
   certWhtRate: number | null; // มีหนังสือรับรองหัก ณ ที่จ่ายแล้ว
   certWhtAmount: number;
   debitLabel: string;
+  apPosted: boolean; // บันทึกใบกำกับภาษีซื้อแล้ว (ตั้งหนี้เต็มจำนวน)
 }
 
 interface LineState { selected: boolean; amount: string; whtRate: number }
@@ -65,6 +66,7 @@ function PaymentForm() {
         const subTotal = round2(Number(e.subTotal ?? total) || 0);
         const hasCert = !!e.whtId;
         const isPo = !!e.poRef && e.documentType !== "ExpenseClaim";
+        const apPosted = !!e.apPosted;
         const acct = expenseAccountOf(e);
         return {
           docId: e.id,
@@ -78,7 +80,8 @@ function PaymentForm() {
           dueMs: toMillis(e.dueDate),
           certWhtRate: hasCert ? Number(e.whtRate) || (subTotal > 0 ? Math.round((Number(e.whtAmount) / subTotal) * 100) : 0) : null,
           certWhtAmount: Number(e.whtAmount) || 0,
-          debitLabel: isPo ? "2111-00 เจ้าหนี้การค้า" : `${acct.code} ${acct.name}`,
+          debitLabel: isPo || apPosted ? "2111-00 เจ้าหนี้การค้า" : `${acct.code} ${acct.name}`,
+          apPosted,
         };
       })
       .filter((p) => p.balance > 0.009),
@@ -134,7 +137,10 @@ function PaymentForm() {
     const fraction = p.total > 0 ? amount / p.total : 1;
     const preVat = round2(p.subTotal * fraction);
     const whtAmount = p.certWhtRate !== null ? round2(p.certWhtAmount * fraction) : round2(preVat * (l.whtRate / 100));
-    return { p, l, amount, preVat, vat: round2(amount - preVat), whtAmount, net: round2(amount - whtAmount), over: amount > p.balance + 0.009 };
+    // บันทึกใบกำกับแล้ว: ภาษีซื้อลงไปแล้ว ตอนจ่ายล้างเจ้าหนี้เต็มจำนวน
+    const vat = p.apPosted ? 0 : round2(amount - preVat);
+    const debitAmount = p.apPosted ? amount : preVat;
+    return { p, l, amount, preVat, vat, debitAmount, whtAmount, net: round2(amount - whtAmount), over: amount > p.balance + 0.009 };
   }), [items, lines]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const chosen = computed.filter((c) => c.l.selected);
@@ -148,7 +154,7 @@ function PaymentForm() {
   // รายการบัญชีตัวอย่าง (รวมตามบัญชีเดบิต)
   const debitPreview = useMemo(() => {
     const m = new Map<string, number>();
-    chosen.forEach((c) => m.set(c.p.debitLabel, round2((m.get(c.p.debitLabel) || 0) + c.preVat)));
+    chosen.forEach((c) => m.set(c.p.debitLabel, round2((m.get(c.p.debitLabel) || 0) + c.debitAmount)));
     return Array.from(m.entries());
   }, [chosen]);
 
@@ -268,7 +274,7 @@ function PaymentForm() {
                 <NexusTableCell>
                   <input type="checkbox" checked={l.selected} onChange={(e) => setLine(p, { selected: e.target.checked })} className="w-4 h-4 accent-nexus-teal cursor-pointer" />
                 </NexusTableCell>
-                <NexusTableCell variant="code" title={`${p.kind} · ยอดเต็ม ${baht(p.total)} · ลงบัญชี ${p.debitLabel}`}>{p.docNo}</NexusTableCell>
+                <NexusTableCell variant="code" title={`${p.kind} · ยอดเต็ม ${baht(p.total)} · ลงบัญชี ${p.debitLabel}${p.apPosted ? " · บันทึกใบกำกับภาษีซื้อแล้ว" : ""}`}>{p.docNo}</NexusTableCell>
                 <NexusTableCell className={overdue ? "text-danger font-bold" : ""} title={overdue ? "เกินกำหนดชำระ" : undefined}>{thDate(p.dueMs)}</NexusTableCell>
                 <NexusTableCell variant="numeric">{baht(p.balance)}</NexusTableCell>
                 <NexusTableCell>

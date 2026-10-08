@@ -541,7 +541,8 @@ function PORow({ id, docId, vendor, totalAmount, amount, approval, normalizedSta
   );
 }
 
-function ExpenseRow({ id, poRef, vendor, supplier, totalAmount, amount, balance, paidAmount, vatAmount, apPosted, documentType, status, isSample, whtId, companyId, onWhtCreate, onClick }: any) {
+function ExpenseRow({ id, poRef, vendor, supplier, totalAmount, amount, balance, paidAmount, vatAmount, apPosted, documentType, status, isSample, whtId, paymentRefs, companyId, onWhtCreate, onClick }: any) {
+  const pvRefs: string[] = Array.isArray(paymentRefs) ? paymentRefs : [];
   const displayVendor = vendor || supplier || "-";
   const displayAmount = totalAmount ? `฿${totalAmount.toLocaleString()}` : (amount ? `฿${amount}` : "฿0.00");
   const st = String(status || "");
@@ -576,7 +577,13 @@ function ExpenseRow({ id, poRef, vendor, supplier, totalAmount, amount, balance,
           {onWhtCreate && !isPaid && !isSample && !whtId && (
             <button onClick={onWhtCreate} className="h-8 px-3 rounded-full border border-nexus-blue/30 text-nexus-blue text-[12px] font-bold hover:bg-nexus-blue/10" title="ออกหนังสือรับรองการหักภาษี ณ ที่จ่ายล่วงหน้า (หักจริงตอนจ่ายชำระ)">ออก 50 ทวิ</button>
           )}
-          <SecureDeleteAction collectionName={`companies/${companyId}/expenses`} documentId={id} displayName={id} compact />
+          {pvRefs.length > 0 && (
+            <Link href={`/finance/payments/${encodeURIComponent(pvRefs[pvRefs.length - 1])}`} className="h-8 px-3 rounded-full border border-white/15 text-white/70 text-[12px] font-bold flex items-center hover:bg-white/5" title={`ใบสำคัญจ่าย: ${pvRefs.join(", ")}`}>
+              ใบสำคัญจ่าย{pvRefs.length > 1 ? ` (${pvRefs.length})` : ""}
+            </Link>
+          )}
+          {/* จ่ายเงินแล้วลบไม่ได้ ต้องยกเลิกใบสำคัญจ่ายก่อน */}
+          {!(Number(paidAmount) > 0) && <SecureDeleteAction collectionName={`companies/${companyId}/expenses`} documentId={id} displayName={id} compact />}
         </div>
       </NexusTableCell>
     </NexusTableRow>
@@ -594,7 +601,7 @@ function WHTRow({ id, expenseId, expRef, vendor, baseAmount, taxAmount, status, 
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white/60 mono-numbers">฿{baseAmount?.toLocaleString() || "0.00"}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-warning mono-numbers">฿{taxAmount?.toLocaleString() || "0.00"}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status="active" label={status === 'filed' ? "ยื่นแบบแล้ว" : "ออกเอกสารแล้ว"} />
+        <StatusBadge status={status === "Cancelled" ? "danger" : "active"} label={status === "Cancelled" ? "ยกเลิกแล้ว" : status === 'filed' ? "ยื่นแบบแล้ว" : "ออกเอกสารแล้ว"} />
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-block">

@@ -231,7 +231,7 @@ export default function SalesPage() {
       invoiceId: firstOf(d, ["invoiceNo", "invoiceRefNo", "invoiceId"]) || "-",
       date: toDateStr(firstOf(d, ["paymentDate", "createdAt"])),
       total: toMoney(firstOf(d, ["amount", "grandTotal", "totalAmount", "totalRevenue"])),
-      status: "paid",
+      status: String(d.status || "").toLowerCase() === "cancelled" ? "cancelled" : "paid",
     }), setReceiptsList);
 
     // Billing Notes
@@ -1108,12 +1108,12 @@ function ReceiptRow({ id, docId, invRef, customer, date, total, status, companyI
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-white/40">{date}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-emerald-400" mono>{total}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status="active" label="รับชำระแล้ว" />
+        {status === "cancelled" ? <StatusBadge status="danger" label="ยกเลิกแล้ว" /> : <StatusBadge status="active" label="รับชำระแล้ว" />}
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <div onClick={(e) => e.stopPropagation()} className="inline-block">
-          <SecureDeleteAction collectionName={`companies/${companyId}/receipts`} documentId={docId} displayName={id} compact />
-        </div>
+        <Link href={`/finance/receipts/${encodeURIComponent(docId)}`} onClick={(e) => e.stopPropagation()} className="h-8 px-3 rounded-full border border-white/15 text-white/70 text-[12px] font-bold inline-flex items-center hover:bg-white/[0.05]">
+          เปิดดู
+        </Link>
       </NexusTableCell>
     </NexusTableRow>
   );

@@ -1,336 +1,243 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSystemDialog } from "@/context/DialogContext";
-import { 
-  FileText, 
-  Plus, 
-  Trash2, 
-  ShieldCheck, 
-  AlertCircle,
-  ArrowRight,
-  Calculator,
-  Search,
-  X,
-  ArrowLeft
-} from "lucide-react";
-import { 
-  PillButton, 
-  PillInput, 
-  PillSelect, 
-  PillTabs, 
-  NexusDataField, 
-  GlassCard,
-  cn, 
-  NexusDatePicker 
-} from "@/components/ui/Base";
-import { formatCurrency } from "@/lib/erp-logic";
+import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { GlassCard, PillButton, PillInput, PillSelect, cn } from "@/components/ui/Base";
+import { SmartSelect } from "@/components/ui/SmartComponents";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
-import { DocumentStepper } from "@/components/ui/DocumentStepper";
+import { useAuth } from "@/context/AuthContext";
+import { apiFetch } from "@/lib/api-client";
+import { can } from "@/lib/permissions";
+import { ACCOUNT_TYPE_TH, BOOK_TYPES, CHART_OF_ACCOUNTS } from "@/lib/chart-of-accounts";
+
+interface Line { id: number; accountCode: string; description: string; debit: string; credit: string }
+
+const baht = (n: number) => (Number(n) || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const num = (s: string) => Math.round((Number(String(s).replace(/,/g, "")) || 0) * 100) / 100;
+const cleanAmount = (s: string) => s.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1").replace(/^(\d*\.\d{0,2}).*$/, "$1");
+const today = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
+let seq = 0;
+const blankLine = (): Line => ({ id: ++seq, accountCode: "", description: "", debit: "", credit: "" });
+
+const ACCOUNT_OPTIONS = CHART_OF_ACCOUNTS.map((a) => ({ value: a.code, label: `${a.code} ${a.name}`, description: ACCOUNT_TYPE_TH[a.type] }));
 
 export default function NewJournalEntryPage() {
   const router = useRouter();
-  const { showAlert, showConfirm } = useSystemDialog();
+  const { showConfirm } = useSystemDialog();
+  const { companyId, role } = useAuth();
+  const canSave = can(role, "finance:edit");
 
-  const [activeTab, setActiveTab] = useState("header");
-  const [entries, setEntries] = useState<any[]>([
-    { id: 1, accountCode: "", accountName: "เลือกบัญชี...", debit: 0, credit: 0, desc: "" },
-    { id: 2, accountCode: "", accountName: "เลือกบัญชี...", debit: 0, credit: 0, desc: "" }
-  ]);
-  const [header, setHeader] = useState({
-    date: new Date().toISOString().split('T')[0],
-    bookType: "JV",
-    description: "",
-    reference: ""
-  });
+  const [date, setDate] = useState(today);
+  const [bookType, setBookType] = useState("JV");
+  const [description, setDescription] = useState("");
+  const [reference, setReference] = useState("");
+  const [lines, setLines] = useState<Line[]>(() => [blankLine(), blankLine()]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  const [totals, setTotals] = useState({ dr: 0, cr: 0, diff: 0 });
-  const [isSaving, setIsSaving] = useState(false);
+  const totals = useMemo(() => {
+    const dr = Math.round(lines.reduce((s, l) => s + num(l.debit), 0) * 100) / 100;
+    const cr = Math.round(lines.reduce((s, l) => s + num(l.credit), 0) * 100) / 100;
+    return { dr, cr, diff: Math.round((dr - cr) * 100) / 100 };
+  }, [lines]);
+  const used = lines.filter((l) => l.accountCode || num(l.debit) || num(l.credit));
+  const problems = [
+    !description.trim() && "ระบุคำอธิบายรายการ",
+    used.length < 2 && "มีรายการบัญชีอย่างน้อย 2 บรรทัด",
+    used.some((l) => !l.accountCode) && "เลือกบัญชีให้ครบทุกบรรทัด",
+    used.some((l) => (num(l.debit) > 0) === (num(l.credit) > 0)) && "แต่ละบรรทัดระบุเดบิตหรือเครดิตอย่างใดอย่างหนึ่ง",
+    totals.dr <= 0 && "ยอดรวมต้องมากกว่า 0",
+    totals.diff !== 0 && "ยอดเดบิตต้องเท่ากับเครดิต",
+  ].filter(Boolean) as string[];
+  const ready = problems.length === 0 && canSave;
+  const isDirty = used.length > 0 || !!description.trim();
 
-  useEffect(() => {
-    const dr = entries.reduce((acc, e) => acc + (e.debit || 0), 0);
-    const cr = entries.reduce((acc, e) => acc + (e.credit || 0), 0);
-    setTotals({ dr, cr, diff: Math.abs(dr - cr) });
-  }, [entries]);
+  const update = (id: number, patch: Partial<Line>) => setLines((ls) => ls.map((l) => {
+    if (l.id !== id) return l;
+    const next = { ...l, ...patch };
+    if (patch.debit && num(patch.debit) > 0) next.credit = "";
+    if (patch.credit && num(patch.credit) > 0) next.debit = "";
+    return next;
+  }));
+  const remove = (id: number) => setLines((ls) => (ls.length > 2 ? ls.filter((l) => l.id !== id) : ls.map((l) => (l.id === id ? { ...blankLine(), id } : l))));
+  /** เติมยอดที่ขาดลงบรรทัดนี้ให้สมดุล */
+  const balanceInto = (id: number) => {
+    const l = lines.find((x) => x.id === id);
+    if (!l || totals.diff === 0) return;
+    const own = num(l.debit) - num(l.credit);
+    const need = Math.round((own - totals.diff) * 100) / 100;
+    update(id, need >= 0 ? { debit: need ? String(need) : "", credit: "" } : { debit: "", credit: String(-need) });
+  };
 
-  const isDirty = entries.some(e => e.debit > 0 || e.credit > 0) || header.description !== "";
+  const back = async () => {
+    if (!isDirty || (await showConfirm("มีข้อมูลที่ยังไม่บันทึก ต้องการออกจากหน้านี้ใช่หรือไม่?"))) router.back();
+  };
 
-  const handleBack = async () => {
-    if (isDirty) {
-      if (await showConfirm("คุณมีการกรอกข้อมูลค้างไว้ ต้องการย้อนกลับโดยไม่บันทึกใช่หรือไม่?")) {
-        router.back();
-      }
-    } else {
-      router.back();
+  const save = async () => {
+    if (!ready) return;
+    setError("");
+    setSaving(true);
+    try {
+      const res = await apiFetch("/api/finance/journal-entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId, date, bookType, description, reference,
+          lines: used.map((l) => ({ accountCode: l.accountCode, description: l.description, debit: num(l.debit), credit: num(l.credit) })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
+      router.push(`/finance/journal/${encodeURIComponent(data.path)}`);
+    } catch (err: any) {
+      setError(err.message);
+      setSaving(false);
     }
   };
 
-  const addEntry = () => {
-    setEntries([...entries, { id: Date.now(), accountCode: "", accountName: "เลือกบัญชี...", debit: 0, credit: 0, desc: "" }]);
-  };
-
-  const removeEntry = (id: number) => {
-    setEntries(entries.filter(e => e.id !== id));
-  };
-
-  const updateEntry = (id: number, field: string, value: any) => {
-    setEntries(entries.map(e => {
-      if (e.id === id) {
-        const newEntry = { ...e, [field]: value };
-        // If debit is entered, credit should be 0 and vice versa for the same line
-        if (field === "debit" && parseFloat(value) > 0) newEntry.credit = 0;
-        if (field === "credit" && parseFloat(value) > 0) newEntry.debit = 0;
-        return newEntry;
-      }
-      return e;
-    }));
-  };
-
-  const handleSave = () => {
-    if (totals.diff !== 0) return void showAlert("ยอดเดบิตและเครดิตต้องสมดุลกัน", "System Notification", "warning");
-    if (entries.length < 2) return void showAlert("กรุณาระบุรายการบัญชีอย่างน้อย 2 รายการ", "System Notification", "warning");
-    
-    setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
-      showAlert("บันทึกสมุดรายวันเรียบร้อยแล้ว");
-      router.push("/finance");
-    }, 1000);
-  };
-
-  const headerContent = (
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
+  const header = (
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-5 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <PillButton variant="glass" onClick={handleBack} className="w-10 h-10 p-0 flex items-center justify-center">
-          <ArrowLeft size={20} />
-        </PillButton>
+        <PillButton variant="glass" onClick={back} className="w-10 h-10 p-0 flex items-center justify-center"><ArrowLeft size={20} /></PillButton>
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
-              บันทึกสมุดรายวันทั่วไป
-            </h1>
-            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
-              GL-ENTRY
-            </span>
-          </div>
-          <p className="text-sm text-white/60 font-medium mt-1">
-            ลงบันทึกรายการบัญชีแยกประเภท เดบิตและเครดิตตามมาตรฐานระบบบัญชี
-          </p>
+          <h1 className="text-2xl font-semibold text-white tracking-tight">บันทึกบัญชีด้วยมือ</h1>
+          <p className="text-sm text-white/60 mt-1">ลงรายการเดบิต / เครดิตตามผังบัญชี บันทึกเป็นรายการรออนุมัติก่อนลงบัญชี</p>
         </div>
       </div>
-      
-      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
-        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={handleBack}>
-          ยกเลิก
-        </PillButton>
-        <PillButton 
-          variant="confirm"
-          className={cn("h-8 px-5 font-bold text-xs", totals.diff !== 0 && "opacity-50 pointer-events-none grayscale")} 
-          onClick={handleSave} 
-          disabled={isSaving}
-        >
-          <ShieldCheck size={14} className="mr-1.5" /> {isSaving ? "กำลังบันทึก..." : "บันทึกรายการ"}
+      <div className="flex items-center gap-2">
+        <PillButton variant="glass" onClick={back} className="h-9 px-4 text-xs font-bold text-white/60">ยกเลิก</PillButton>
+        <PillButton variant="confirm" onClick={save} disabled={!ready || saving} className="h-9 px-5 text-xs font-bold">
+          {saving ? <><Loader2 size={14} className="animate-spin mr-1.5" /> กำลังบันทึก...</> : <><ShieldCheck size={14} className="mr-1.5" /> บันทึกรายการ</>}
         </PillButton>
       </div>
     </div>
   );
 
-  const leftContent = (
-    <div className="space-y-4">
-      <GlassCard className="p-8 space-y-8 animate-in fade-in duration-500 min-h-[60vh] border-white/5 bg-black/20">
-        <div className="flex justify-between items-end border-b border-white/5 pb-8">
+  const label = (t: string, req?: boolean) => (
+    <label className="text-[12px] font-bold text-white/70 ml-1">{t}{req && <span className="text-danger ml-1">*</span>}</label>
+  );
+
+  const left = (
+    <div className="space-y-4 pb-10">
+      {!canSave && <div className="p-3 rounded-xl text-xs font-bold border bg-warning/10 border-warning/20 text-warning">บัญชีผู้ใช้ของคุณไม่มีสิทธิ์บันทึกบัญชี</div>}
+      {error && <div className="p-3 rounded-xl text-xs font-bold border bg-danger/10 border-danger/20 text-danger">{error}</div>}
+
+      <GlassCard className="p-5 space-y-3">
+        <h3 className="text-sm font-bold text-white">ข้อมูลรายการ</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1">
-            <p className="text-[12px] font-semibold text-cyan-400 uppercase tracking-[0.2em]">โหมดบัญชีแยกประเภท</p>
-            <h4 className="text-xl font-semibold text-white uppercase tracking-tight">บันทึกรายวัน</h4>
+            {label("วันที่", true)}
+            <PillInput type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full h-9 text-sm font-mono" />
           </div>
-          <PillTabs 
-             tabs={[
-               { id: "header", label: "Header" },
-               { id: "entries", label: "Accounting Lines" }
-             ]}
-             activeTab={activeTab}
-             onTabChange={setActiveTab}
-          />
+          <div className="space-y-1">
+            {label("สมุดรายวัน")}
+            <PillSelect value={bookType} onChange={(e) => setBookType(e.target.value)} className="w-full h-9 text-sm">
+              {BOOK_TYPES.map((b) => <option key={b.code} value={b.code}>{b.code} · {b.name}</option>)}
+            </PillSelect>
+          </div>
+          <div className="space-y-1">
+            {label("เอกสารอ้างอิง")}
+            <PillInput value={reference} onChange={(e) => setReference(e.target.value)} placeholder="เช่น เลขที่สัญญา, ใบแจ้งหนี้" className="w-full h-9 text-sm" />
+          </div>
         </div>
-
-        <div className="space-y-10 animate-in fade-in slide-in-from-left-4 duration-500">
-          {activeTab === "header" && (
-            <div className="space-y-10 max-w-4xl mx-auto">
-              <div className="grid grid-cols-2 gap-8">
-                <Field label="วันที่ทำรายการ *">
-                  <NexusDatePicker value={header.date}
-                    onChange={(e) => setHeader({...header, date: e.target.value})}
-                    className="w-full h-9" 
-                  />
-                </Field>
-                <Field label="ประเภทสมุดรายวัน">
-                  <PillSelect 
-                    value={header.bookType}
-                    onChange={(e) => setHeader({...header, bookType: e.target.value})}
-                    className="w-full h-9 px-6 rounded-full font-bold"
-                  >
-                     <option value="JV">JV - สมุดรายวันทั่วไป</option>
-                     <option value="RV">RV - สมุดรายวันรับ</option>
-                     <option value="PV">PV - สมุดรายวันจ่าย</option>
-                     <option value="SV">SV - สมุดรายวันขาย</option>
-                  </PillSelect>
-                </Field>
-              </div>
-
-              <Field label="คำอธิบายรายการ *">
-                <textarea 
-                  className="w-full h-40 rounded-3xl bg-white/[0.03] border border-white/10 text-white text-[14px] font-bold p-8 focus:outline-none focus:border-cyan-400/40 transition-all custom-scrollbar"
-                  placeholder="ระบุรายละเอียดธุรกรรม..."
-                  value={header.description}
-                  onChange={(e) => setHeader({...header, description: e.target.value})}
-                />
-              </Field>
-
-              <Field label="เลขที่เอกสารอ้างอิง">
-                <PillInput 
-                  value={header.reference}
-                  onChange={(e) => setHeader({...header, reference: e.target.value})}
-                  placeholder="เช่น INV-XXXX, PO-XXXX..." 
-                  className="w-full h-9 px-6 rounded-full font-bold" 
-                />
-              </Field>
-            </div>
-          )}
-
-          {activeTab === "entries" && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h4 className="text-[12px] font-semibold text-white/30 uppercase tracking-[0.2em]">รายการบัญชี</h4>
-                <PillButton variant="glass" onClick={addEntry} className="h-9 px-6 rounded-full text-xs">
-                  <Plus size={14} className="mr-2" /> เพิ่มบรรทัด
-                </PillButton>
-              </div>
-
-              <div className="space-y-3">
-                <div className="grid grid-cols-12 gap-4 px-6 text-[10px] font-semibold text-white/20 uppercase tracking-widest">
-                   <div className="col-span-5">บัญชี / รายการ</div>
-                   <div className="col-span-3 text-right">เดบิต</div>
-                   <div className="col-span-3 text-right">เครดิต</div>
-                   <div className="col-span-1"></div>
-                </div>
-                {entries.map((item) => (
-                  <div key={item.id} className="bg-white/[0.02] border border-white/5 p-3 rounded-2xl group hover:border-white/10 transition-all min-h-[36px]">
-                    <div className="grid grid-cols-12 gap-4 items-center">
-                      <div className="col-span-5 px-3">
-                         <PillSelect 
-                           value={item.accountName}
-                           onChange={(e) => updateEntry(item.id, "accountName", e.target.value)}
-                           className="w-full bg-transparent border-transparent px-0 font-bold text-white/80 h-7 text-sm py-0 leading-relaxed" 
-                         >
-                            <option>11000 - เงินสด</option>
-                            <option>11010 - เงินฝากธนาคาร</option>
-                            <option>41000 - รายได้จากการขาย</option>
-                            <option>51000 - ต้นทุนขาย</option>
-                         </PillSelect>
-                      </div>
-                      <div className="col-span-3">
-                         <PillInput 
-                           type="number"
-                           value={item.debit}
-                           onChange={(e) => updateEntry(item.id, "debit", parseFloat(e.target.value) || 0)}
-                           className="w-full text-right font-mono text-cyan-400 font-black h-7 rounded-full py-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                         />
-                      </div>
-                      <div className="col-span-3">
-                         <PillInput 
-                           type="number"
-                           value={item.credit}
-                           onChange={(e) => updateEntry(item.id, "credit", parseFloat(e.target.value) || 0)}
-                           className="w-full text-right font-mono text-cyan-500 font-black h-7 rounded-full py-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                         />
-                      </div>
-                      <div className="col-span-1 flex justify-center">
-                         <button onClick={() => removeEntry(item.id)} className="text-white/10 hover:text-danger transition-colors p-2">
-                            <Trash2 size={16} />
-                         </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+        <div className="space-y-1">
+          {label("คำอธิบายรายการ", true)}
+          <PillInput value={description} onChange={(e) => setDescription(e.target.value)} placeholder="เช่น บันทึกค่าเสื่อมราคาประจำเดือน, ปรับปรุงค่าใช้จ่ายค้างจ่าย" className="w-full h-9 text-sm" />
         </div>
+      </GlassCard>
+
+      <GlassCard className="p-5 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-bold text-white">รายการบัญชี</h3>
+          <PillButton variant="glass" onClick={() => setLines((ls) => [...ls, blankLine()])} className="h-8 px-4 text-xs font-bold">
+            <Plus size={14} className="mr-1" /> เพิ่มบรรทัด
+          </PillButton>
+        </div>
+        <div className="nexus-table-wrap">
+          <table className="w-full table-fixed text-[13px]">
+            <colgroup>
+              <col className="w-8" />
+              <col />
+              <col className="w-[24%]" />
+              <col className="w-[104px]" />
+              <col className="w-[104px]" />
+              <col className="w-9" />
+            </colgroup>
+            <thead>
+              <tr className="text-[11px] font-bold text-white/50 border-b border-white/10">
+                <th className="py-2 text-center font-bold">#</th>
+                <th className="py-2 px-1.5 text-left font-bold">บัญชี</th>
+                <th className="py-2 px-1.5 text-left font-bold">คำอธิบายบรรทัด</th>
+                <th className="py-2 px-1.5 text-right font-bold">เดบิต</th>
+                <th className="py-2 px-1.5 text-right font-bold">เครดิต</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((l, i) => (
+                <tr key={l.id} className="border-b border-white/5 last:border-0">
+                  <td className="py-1.5 text-center text-white/40 font-mono">{i + 1}</td>
+                  <td className="py-1.5 px-1.5">
+                    <SmartSelect options={ACCOUNT_OPTIONS} value={l.accountCode} onChange={(v) => update(l.id, { accountCode: v })} allowCustom={false} placeholder="รหัส / ชื่อบัญชี" className="min-w-0" />
+                  </td>
+                  <td className="py-1.5 px-1.5">
+                    <PillInput value={l.description} onChange={(e) => update(l.id, { description: e.target.value })} placeholder="(ถ้ามี)" className="w-full h-9 text-sm" />
+                  </td>
+                  <td className="py-1.5 px-1.5">
+                    <PillInput inputMode="decimal" value={l.debit} onChange={(e) => update(l.id, { debit: cleanAmount(e.target.value) })} onDoubleClick={() => balanceInto(l.id)} placeholder="0.00" title="ดับเบิลคลิกเพื่อเติมยอดให้สมดุล" className="w-full h-9 text-sm text-right font-mono px-3" />
+                  </td>
+                  <td className="py-1.5 px-1.5">
+                    <PillInput inputMode="decimal" value={l.credit} onChange={(e) => update(l.id, { credit: cleanAmount(e.target.value) })} onDoubleClick={() => balanceInto(l.id)} placeholder="0.00" title="ดับเบิลคลิกเพื่อเติมยอดให้สมดุล" className="w-full h-9 text-sm text-right font-mono px-3" />
+                  </td>
+                  <td className="py-1.5 text-center">
+                    <button type="button" onClick={() => remove(l.id)} className="p-1.5 text-white/30 hover:text-danger transition-colors" title="ลบบรรทัด"><Trash2 size={15} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-white/10 font-mono text-white">
+                <td colSpan={3} className="py-2 px-1.5 text-right text-[12px] font-bold text-white/60 font-sans">รวม</td>
+                <td className="py-2 px-1.5 text-right font-bold whitespace-nowrap">{baht(totals.dr)}</td>
+                <td className="py-2 px-1.5 text-right font-bold whitespace-nowrap">{baht(totals.cr)}</td>
+                <td />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <p className="text-[11px] text-white/40">ดับเบิลคลิกช่องเดบิตหรือเครดิตเพื่อเติมยอดที่ขาดให้สมดุลอัตโนมัติ</p>
       </GlassCard>
     </div>
   );
 
-  const rightSidebar = (
-    <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
-      <div className="space-y-1 relative z-10 border-b border-white/5 pb-4">
-        <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">ตรวจสอบความสมดุล</p>
-        <h5 className="text-sm font-black text-white uppercase tracking-tight">Balance Validation</h5>
-      </div>
-
-      <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/10 space-y-6 relative z-10">
-        <NexusDataField label="รวมเดบิต" value={formatCurrency(totals.dr)} color="text-cyan-400" />
-        <NexusDataField label="รวมเครดิต" value={formatCurrency(totals.cr)} color="text-cyan-500" />
-        <div className="pt-6 border-t border-white/5">
-           <NexusDataField 
-             label="ผลต่าง" 
-             value={formatCurrency(totals.diff)} 
-             highlight 
-             color={totals.diff === 0 ? "text-cyan-400" : "text-danger"} 
-           />
+  const balanced = totals.diff === 0 && totals.dr > 0;
+  const right = (
+    <div className="p-4 space-y-4">
+      <GlassCard className="p-4 space-y-2">
+        <h4 className="text-sm font-bold text-white mb-1">ตรวจสอบความสมดุล</h4>
+        {[["รวมเดบิต", totals.dr], ["รวมเครดิต", totals.cr]].map(([k, v]) => (
+          <div key={k as string} className="flex justify-between text-[13px]"><span className="text-white/60">{k}</span><span className="font-mono text-white">{baht(v as number)}</span></div>
+        ))}
+        <div className="flex justify-between text-[13px] pt-2 border-t border-white/5">
+          <span className="text-white/60">ผลต่าง</span>
+          <span className={cn("font-mono font-bold", totals.diff === 0 ? "text-white" : "text-danger")}>{baht(Math.abs(totals.diff))}</span>
         </div>
-      </div>
-
-      {totals.diff !== 0 && (
-         <div className="p-6 rounded-3xl bg-danger/5 border border-danger/10 flex items-start gap-4 animate-pulse relative z-10">
-            <AlertCircle className="text-danger flex-shrink-0" size={18} />
-            <p className="text-[11px] text-danger/60 font-bold uppercase leading-relaxed tracking-widest">
-               รายการบัญชีไม่สมดุล กรุณาตรวจสอบยอด DR/CR อีกครั้ง
-            </p>
-         </div>
+        <div className={cn("flex items-center gap-2 p-2.5 rounded-xl text-[12px] font-bold border", balanced ? "bg-nexus-teal/10 border-nexus-teal/20 text-nexus-teal" : "bg-white/[0.03] border-white/10 text-white/60")}>
+          {balanced ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+          {balanced ? "สมดุล" : totals.diff > 0 ? `เครดิตขาด ${baht(totals.diff)}` : totals.diff < 0 ? `เดบิตขาด ${baht(-totals.diff)}` : "ยังไม่มียอด"}
+        </div>
+      </GlassCard>
+      {problems.length > 0 && (
+        <GlassCard className="p-4">
+          <h4 className="text-[12px] font-bold text-white/70 mb-1.5">ก่อนบันทึก</h4>
+          <ul className="space-y-1 text-[12px] text-white/50 list-disc pl-4">{problems.map((p) => <li key={p}>{p}</li>)}</ul>
+        </GlassCard>
       )}
-
-      <div className="space-y-4 pt-6 border-t border-white/5 relative z-10">
-        <PillButton 
-          className={cn("w-full h-11 px-8 rounded-full shadow-[0_0_12px_rgba(6,182,212,0.15)] uppercase tracking-[0.2em] font-black border border-cyan-500/30 bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30", (totals.diff !== 0 || isSaving) && "opacity-50 pointer-events-none grayscale")} 
-          onClick={handleSave}
-          disabled={isSaving}
-        >
-          <ShieldCheck size={18} className={cn("mr-2", isSaving && "animate-pulse")} />
-          {isSaving ? "กำลังบันทึก..." : "บันทึกรายการ"}
-        </PillButton>
-      </div>
-      
-      <div className="absolute bottom-0 right-0 w-48 h-48 bg-cyan-500/10 blur-[60px] translate-x-1/4 translate-y-1/4 rounded-full pointer-events-none" />
+      <p className="text-[11px] text-white/40 px-1">ได้รับเลขที่ใบสำคัญเมื่อบันทึก และต้องได้รับอนุมัติจากผู้ดูแลหรือนักบัญชีก่อนจึงจะลงบัญชี งวดที่ปิดแล้วบันทึกไม่ได้</p>
     </div>
   );
 
-  return (
-    <NexusPageLayout
-      header={headerContent}
-      leftContent={leftContent}
-      rightSidebar={rightSidebar}
-    />
-  );
-}
-
-function Field({ label, children, required }: { label: string, children: React.ReactNode, required?: boolean }) {
-  const cleanLabel = label.replace('*', '').trim();
-  const hasAsterisk = required || label.includes('*');
-  const parts = cleanLabel.split(' (');
-  const thaiText = parts[0];
-  const engText = parts.length > 1 ? '(' + parts[1] : '';
-
-  return (
-    <div className="space-y-2 w-full flex flex-col items-start justify-center">
-      <label className="text-[12px] font-bold text-white/70 flex flex-wrap items-center gap-1 ml-1">
-        <span className="flex items-center">
-          {thaiText}
-          {hasAsterisk && <span className="text-danger ml-1 font-bold">*</span>}
-        </span>
-        {engText && <span className="text-white/40 font-normal uppercase tracking-widest text-[10px]">{engText}</span>}
-      </label>
-      {children}
-    </div>
-  );
+  return <NexusPageLayout header={header} leftContent={left} rightSidebar={right} />;
 }

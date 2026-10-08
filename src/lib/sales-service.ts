@@ -276,38 +276,4 @@ export async function createInvoiceFromSO(soId: string, companyId: string) {
 /**
  * Creates a Receipt (ใบเสร็จรับเงิน) from an existing Invoice
  */
-export async function createReceiptFromInvoice(invId: string, companyId: string) {
-  const invRef = doc(db, `companies/${companyId}/invoices`, invId);
-  const invSnap = await getDoc(invRef);
-
-  if (!invSnap.exists()) {
-    throw new Error(`Invoice ${invId} not found`);
-  }
-
-  const invData = invSnap.data();
-  const recId = await nexusSequenceEngine("RE", companyId);
-  const recRef = doc(db, `companies/${companyId}/receipts`, recId);
-
-  // Run in transaction to update Invoice status to 'Paid' and create Receipt
-  await runTransaction(db, async (transaction) => {
-    transaction.set(recRef, {
-      ...invData,
-      id: recId,
-      receiptId: recId,
-      invRef: invId,
-      documentType: "Receipt",
-      status: "Paid",
-      paymentDate: serverTimestamp(),
-      companyId,
-      createdAt: serverTimestamp(),
-    });
-
-    transaction.update(invRef, {
-      status: "Paid",
-      paymentDate: serverTimestamp(),
-      receiptRef: recId
-    });
-  });
-
-  return recId;
-}
+// รับชำระเงิน: ใช้ POST /api/finance/receipts (ตัดยอดลูกหนี้ + บันทึกบัญชีใน transaction เดียว)

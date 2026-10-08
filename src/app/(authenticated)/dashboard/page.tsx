@@ -97,7 +97,7 @@ export default function DashboardPage() {
   const attention = useMemo(() => {
     const items: { text: React.ReactNode; href: string; action: string }[] = [];
     if (overdue.length > 0) {
-      const amount = overdue.reduce((s, inv) => s + (Number(inv.grandTotal ?? inv.totalAmount) || 0), 0);
+      const amount = overdue.reduce((s, inv) => s + (Number(inv.balance ?? inv.grandTotal ?? inv.totalAmount) || 0), 0);
       items.push({
         text: <>มีใบแจ้งหนี้เกินกำหนดชำระ <span className="text-danger">{overdue.length} ใบ</span> รวม {fullBaht(amount)}</>,
         href: "/finance",

@@ -2,15 +2,15 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { 
-  Users, 
+import {
+  Users,
   Plus,
   Search,
-  FileText, 
-  Target, 
+  FileText,
+  Target,
   TrendingUp,
-  MessageSquare, 
-  Bell, 
+  MessageSquare,
+  Bell,
   Sparkles,
   Building2,
   ClipboardList,
@@ -29,18 +29,18 @@ import {
   Percent,
   Printer
 } from "lucide-react";
-import { 
-  PillButton, 
-  PillInput, 
+import {
+  PillButton,
+  PillInput,
   PillSelect,
-  MasterMetricCard, 
-  cn, 
-  Modal, 
-  Toast, 
-  NexusTable, 
-  NexusTableRow, 
-  NexusTableCell, 
-  StatusBadge, 
+  MasterMetricCard,
+  cn,
+  Modal,
+  Toast,
+  NexusTable,
+  NexusTableRow,
+  NexusTableCell,
+  StatusBadge,
   PillTabs,
   GlassCard,
   NexusDataField,
@@ -60,7 +60,7 @@ import { useAuth } from "@/context/AuthContext";
 import { auditService } from "@/services/audit.service";
 import { db } from "@/lib/firebase-client";
 import { collection, query, where, onSnapshot, doc, setDoc } from "firebase/firestore";
-import { createQuotation, createSalesOrder, autoGenerateOrdersFromSO, createInvoiceFromSO, createReceiptFromInvoice } from "@/lib/sales-service";
+import { createQuotation, createSalesOrder, autoGenerateOrdersFromSO, createInvoiceFromSO } from "@/lib/sales-service";
 
 export async function handleConvertSOApi(quoteId: string, companyId: string) {
   const res = await apiFetch("/api/sales/convert-so", {
@@ -76,6 +76,7 @@ export async function handleConvertSOApi(quoteId: string, companyId: string) {
 }
 
 import { nexusSequenceEngine } from "@/lib/sequence-engine";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
 
@@ -110,7 +111,7 @@ export default function SalesPage() {
 
   const { user, companyId, role: userRole } = useAuth();
   const [activeTab, setActiveTab] = useState<SalesSubModule>("quotations");
-  
+
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -220,7 +221,8 @@ export default function SalesPage() {
       date: toDateStr(firstOf(d, ["issueDate", "issuedAt", "createdAt"])),
       dueDate: toDateStr(d.dueDate),
       total: toMoney(firstOf(d, ["grandTotal", "totalRevenue", "totalAmount"])),
-      status: d.paymentStatus === "paid" || d.status === "Paid" ? "paid" : "pending",
+      status: d.paymentStatus === "paid" || d.status === "Paid" ? "paid" : d.paymentStatus === "partial" ? "partial" : "pending",
+      isSample: !!d.isSample,
     }), setInvoicesList);
 
     // Receipts
@@ -258,7 +260,7 @@ export default function SalesPage() {
       const list: any[] = [];
       snap.forEach(doc => {
         const d = doc.data();
-        list.push({ 
+        list.push({
           id: doc.id,
           customerName: d.customerName || d.customer || "Unknown",
           projectValue: d.projectValue || d.value || 0,
@@ -284,8 +286,8 @@ export default function SalesPage() {
     };
   }, [companyId]);
 
-  const filteredCustomers = customersList.filter(c => 
-    (c.name || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredCustomers = customersList.filter(c =>
+    (c.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (c.customerId || c.customer_code || c.id || "").toLowerCase().includes(searchQuery.toLowerCase())
   ).map(c => ({
     ...c,
@@ -302,8 +304,8 @@ export default function SalesPage() {
     return cust ? (cust.name || cust.displayId) : id;
   };
 
-  const filteredQuotations = quotationsList.filter(q => 
-    (q.customerNameRaw || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredQuotations = quotationsList.filter(q =>
+    (q.customerNameRaw || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (q.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (q.title || "").toLowerCase().includes(searchQuery.toLowerCase())
   ).map(q => ({
@@ -340,40 +342,40 @@ export default function SalesPage() {
     .sort((a, b) => b.daysSince - a.daysSince)
     .slice(0, 5);
 
-  const filteredOrders = ordersList.filter(o => 
-    (o.customerNameRaw || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredOrders = ordersList.filter(o =>
+    (o.customerNameRaw || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (o.id || "").toLowerCase().includes(searchQuery.toLowerCase())
   ).map(o => ({
     ...o,
     customer: getCustomerName(o.customerNameRaw)
   }));
 
-  const filteredInvoices = invoicesList.filter(inv => 
-    (inv.customerNameRaw || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredInvoices = invoicesList.filter(inv =>
+    (inv.customerNameRaw || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (inv.id || "").toLowerCase().includes(searchQuery.toLowerCase())
   ).map(inv => ({
     ...inv,
     customer: getCustomerName(inv.customerNameRaw)
   }));
 
-  const filteredReceipts = receiptsList.filter(rec => 
-    (rec.customerNameRaw || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredReceipts = receiptsList.filter(rec =>
+    (rec.customerNameRaw || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (rec.id || "").toLowerCase().includes(searchQuery.toLowerCase())
   ).map(rec => ({
     ...rec,
     customer: getCustomerName(rec.customerNameRaw)
   }));
 
-  const filteredBilling = billingList.filter(b => 
-    (b.customerNameRaw || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredBilling = billingList.filter(b =>
+    (b.customerNameRaw || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (b.id || "").toLowerCase().includes(searchQuery.toLowerCase())
   ).map(b => ({
     ...b,
     customer: getCustomerName(b.customerNameRaw)
   }));
 
-  const filteredCndn = cndnList.filter(c => 
-    (c.customerNameRaw || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredCndn = cndnList.filter(c =>
+    (c.customerNameRaw || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (c.id || "").toLowerCase().includes(searchQuery.toLowerCase())
   ).map(c => ({
     ...c,
@@ -428,10 +430,10 @@ export default function SalesPage() {
 
       {/* Tab Navigation (Stepper) & Actions */}
       <section className="px-6 h-[56px] bg-black/10 border-b border-white/5 flex items-center justify-between shrink-0">
-        <PillTabs 
-          tabs={tabs} 
-          activeTab={activeTab} 
-          onTabChange={(id: any) => setActiveTab(id)} 
+        <PillTabs
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={(id: any) => setActiveTab(id)}
         />
         <div className="flex gap-3 shrink-0">
           {activeTab === "crm" && (
@@ -459,7 +461,7 @@ export default function SalesPage() {
             </PillButton>
           )}
           {activeTab === "receipts" && (
-            <PillButton variant="save" onClick={() => { showToast("เลือกใบแจ้งหนี้ที่ต้องการรับชำระเงินจากแท็บ INV"); setActiveTab("invoices"); }} className="h-8 px-5 shadow-neon-teal">
+            <PillButton variant="save" onClick={() => router.push("/finance/receipts/new")} className="h-8 px-5 shadow-neon-teal">
               <Landmark size={14} className="mr-1.5" />
               รับชำระจาก INV
             </PillButton>
@@ -470,7 +472,7 @@ export default function SalesPage() {
       {/* Main Content Scroll Area */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
       <div className="p-5 space-y-3 max-w-[1800px] mx-auto">
-      
+
       <div className="flex flex-col xl:flex-row items-start gap-4">
         <div className="flex-1 w-full space-y-3">
           <div className="space-y-3">
@@ -478,7 +480,7 @@ export default function SalesPage() {
             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                <div className="flex items-center gap-4 shrink-0 min-w-[140px]">
                   <div className="text-nexus-teal flex items-center justify-center">
-                     {activeTab === "crm" ? <Users size={24} /> : 
+                     {activeTab === "crm" ? <Users size={24} /> :
                      activeTab === "opportunities" ? <Target size={24} /> :
                      activeTab === "quotations" ? <FileText size={24} /> :
                      activeTab === "orders" ? <ClipboardList size={24} /> :
@@ -513,8 +515,8 @@ export default function SalesPage() {
 
             {/* Tactical Command Bar */}
             <div className="flex flex-col md:flex-row items-center gap-4 bg-white/[0.01] p-1.5 rounded-full border border-white/5 backdrop-blur-md">
-               <NexusSearchInput 
-                 placeholder="พิมพ์เพื่อค้นหา..." 
+               <NexusSearchInput
+                 placeholder="พิมพ์เพื่อค้นหา..."
                  value={searchQuery}
                  onChange={(e) => setSearchQuery(e.target.value)}
                  className="flex-1"
@@ -532,22 +534,22 @@ export default function SalesPage() {
               <div className="overflow-x-auto custom-scrollbar flex-1 w-full p-2">
                 {activeTab === "crm" && (
                   <div className="animate-in fade-in duration-500">
-                    <NexusTable 
+                    <NexusTable
                       headers={["รหัสลูกค้า", "ชื่อนิติบุคคล / ลูกค้า (ชื่อทางการ)", "ประเภทธุรกิจ", "เลขผู้เสียภาษี", "สถานะ", "จัดการ"]}
                       columnWidths={["w-[120px]", "w-auto", "w-[160px]", "w-[160px]", "w-[100px]", "w-[80px]"]}
                     >
                       {filteredCustomers.map(cus => (
-                        <CustomerRow 
+                        <CustomerRow
                           key={cus.id}
                           docId={cus.id}
-                          id={cus.displayId} 
-                          name={cus.name || "-"} 
+                          id={cus.displayId}
+                          name={cus.name || "-"}
                           industry={cus.industry || "-"}
-                          taxId={cus.displayTaxId} 
-                          status={cus.status || "active"} 
-                          role={userRole || ""} 
+                          taxId={cus.displayTaxId}
+                          status={cus.status || "active"}
+                          role={userRole || ""}
                           companyId={companyId || "COM-NEXUS-01"}
-                          onClick={() => setSelectedCustomer(cus)} 
+                          onClick={() => setSelectedCustomer(cus)}
                         />
                       ))}
                     </NexusTable>
@@ -560,22 +562,22 @@ export default function SalesPage() {
 
                 {activeTab === "quotations" && (
                   <div className="animate-in fade-in duration-500">
-                    <NexusTable 
+                    <NexusTable
                       className="table-fixed"
                       headers={["เลขที่ใบเสนอราคา", "ชื่อลูกค้า", "ชื่อโครงการ", "มูลค่าสุทธิ", "สถานะ", "จัดการ"]}
                       columnWidths={["w-[140px]", "w-auto", "w-auto", "w-[150px]", "w-[140px]", "w-[100px]"]}
                     >
                       {filteredQuotations.map(q => (
-                        <QuotationRow 
+                        <QuotationRow
                           key={q.docId}
                           docId={q.docId}
-                          id={q.id} 
-                          customer={q.customer} 
-                          title={q.title} 
-                          value={q.value} 
-                          status={q.status} 
+                          id={q.id}
+                          customer={q.customer}
+                          title={q.title}
+                          value={q.value}
+                          status={q.status}
                           companyId={companyId || "COM-NEXUS-01"}
-                          onClick={() => setSelectedItem(q)} 
+                          onClick={() => setSelectedItem(q)}
                         />
                       ))}
                     </NexusTable>
@@ -584,21 +586,21 @@ export default function SalesPage() {
 
                 {activeTab === "orders" && (
                   <div className="animate-in fade-in duration-500">
-                    <NexusTable 
+                    <NexusTable
                       headers={["เลขที่ใบสั่งขาย", "ลูกค้า", "สืบหน้าจากงาน", "ยอดรวม", "สถานะ", "จัดการ"]}
                       columnWidths={["w-[140px]", "w-auto", "w-[180px]", "w-[150px]", "w-[140px]", "w-[100px]"]}
                     >
                       {filteredOrders.map(so => (
-                        <SalesOrderRow 
+                        <SalesOrderRow
                           key={so.docId}
                           docId={so.docId}
-                          id={so.id} 
-                          customer={so.customer} 
-                          date={so.date} 
-                          total={so.total} 
-                          status={so.status} 
+                          id={so.id}
+                          customer={so.customer}
+                          date={so.date}
+                          total={so.total}
+                          status={so.status}
                           companyId={companyId || "COM-NEXUS-01"}
-                          onClick={() => setSelectedItem(so)} 
+                          onClick={() => setSelectedItem(so)}
                         />
                       ))}
                     </NexusTable>
@@ -607,23 +609,24 @@ export default function SalesPage() {
 
                 {activeTab === "invoices" && (
                   <div className="animate-in fade-in duration-500">
-                    <NexusTable 
+                    <NexusTable
                       headers={["เลขที่ใบแจ้งหนี้", "อ้างอิง SO", "ลูกค้า", "วันที่ออก", "ครบกำหนด", "ยอดรวม", "สถานะ", "จัดการ"]}
                       columnWidths={["w-[140px]", "w-[140px]", "w-auto", "w-[120px]", "w-[120px]", "w-[150px]", "w-[120px]", "w-[100px]"]}
                     >
                       {filteredInvoices.map(inv => (
-                        <InvoiceRow 
+                        <InvoiceRow
                           key={inv.docId}
                           docId={inv.docId}
-                          id={inv.id} 
+                          id={inv.id}
                           soRef={inv.soId || "-"}
-                          customer={inv.customer} 
-                          date={inv.date} 
+                          customer={inv.customer}
+                          date={inv.date}
                           dueDate={inv.dueDate || "-"}
-                          total={inv.total} 
-                          status={inv.status} 
+                          total={inv.total}
+                          status={inv.status}
+                          isSample={inv.isSample}
                           companyId={companyId || "COM-NEXUS-01"}
-                          onClick={() => setSelectedItem(inv)} 
+                          onClick={() => setSelectedItem(inv)}
                         />
                       ))}
                     </NexusTable>
@@ -632,22 +635,22 @@ export default function SalesPage() {
 
                 {activeTab === "billing" && (
                   <div className="animate-in fade-in duration-500">
-                    <NexusTable 
+                    <NexusTable
                       headers={["เลขที่ใบวางบิล", "ลูกค้า", "วันที่ออก", "นัดรับชำระ", "ยอดรวม", "สถานะ", "จัดการ"]}
                       columnWidths={["w-[140px]", "w-auto", "w-[120px]", "w-[120px]", "w-[150px]", "w-[120px]", "w-[100px]"]}
                     >
                       {filteredBilling.map(bill => (
-                        <BillingNoteRow 
+                        <BillingNoteRow
                           key={bill.docId}
                           docId={bill.docId}
-                          id={bill.id} 
-                          customer={bill.customer} 
-                          date={bill.date} 
+                          id={bill.id}
+                          customer={bill.customer}
+                          date={bill.date}
                           dueDate={bill.dueDate}
-                          total={bill.total} 
-                          status={bill.status} 
+                          total={bill.total}
+                          status={bill.status}
                           companyId={companyId || "COM-NEXUS-01"}
-                          onClick={() => setSelectedItem(bill)} 
+                          onClick={() => setSelectedItem(bill)}
                         />
                       ))}
                     </NexusTable>
@@ -656,22 +659,22 @@ export default function SalesPage() {
 
                 {activeTab === "cndn" && (
                   <div className="animate-in fade-in duration-500">
-                    <NexusTable 
+                    <NexusTable
                       headers={["รหัสเอกสาร", "ลูกค้า", "ประเภท", "วันที่ออก", "ยอดรวม", "สถานะ", "จัดการ"]}
                       columnWidths={["w-[140px]", "w-auto", "w-[100px]", "w-[120px]", "w-[150px]", "w-[120px]", "w-[100px]"]}
                     >
                       {filteredCndn.map(cndn => (
-                        <CndnRow 
+                        <CndnRow
                           key={cndn.docId}
                           docId={cndn.docId}
-                          id={cndn.id} 
-                          customer={cndn.customer} 
+                          id={cndn.id}
+                          customer={cndn.customer}
                           type={cndn.type}
-                          date={cndn.date} 
-                          total={cndn.total} 
-                          status={cndn.status} 
+                          date={cndn.date}
+                          total={cndn.total}
+                          status={cndn.status}
                           companyId={companyId || "COM-NEXUS-01"}
-                          onClick={() => setSelectedItem(cndn)} 
+                          onClick={() => setSelectedItem(cndn)}
                         />
                       ))}
                     </NexusTable>
@@ -680,22 +683,22 @@ export default function SalesPage() {
 
                 {activeTab === "receipts" && (
                   <div className="animate-in fade-in duration-500">
-                    <NexusTable 
+                    <NexusTable
                       headers={["เลขที่ใบเสร็จ", "อ้างอิง INV", "ลูกค้า", "วันที่รับชำระ", "ยอดรวม", "สถานะ", "จัดการ"]}
                       columnWidths={["w-[140px]", "w-[140px]", "w-auto", "w-[120px]", "w-[150px]", "w-[120px]", "w-[100px]"]}
                     >
                       {filteredReceipts.map(rec => (
-                        <ReceiptRow 
+                        <ReceiptRow
                           key={rec.docId}
                           docId={rec.docId}
-                          id={rec.id} 
+                          id={rec.id}
                           invRef={rec.invoiceId || "-"}
-                          customer={rec.customer} 
-                          date={rec.date} 
-                          total={rec.total} 
-                          status={rec.status} 
+                          customer={rec.customer}
+                          date={rec.date}
+                          total={rec.total}
+                          status={rec.status}
                           companyId={companyId || "COM-NEXUS-01"}
-                          onClick={() => setSelectedItem(rec)} 
+                          onClick={() => setSelectedItem(rec)}
                         />
                       ))}
                     </NexusTable>
@@ -722,20 +725,20 @@ export default function SalesPage() {
                   </div>
                   <StatusBadge status={selectedCustomer.status || "active"} label={selectedCustomer.status === "active" ? "ใช้งาน" : "ปิดใช้งาน"} />
                 </div>
-                
+
                 <div className="space-y-3 text-xs font-medium text-white/70">
                    <div className="flex items-center gap-3">
                      <Building2 size={16} className="text-nexus-blue shrink-0" />
                      <span>
-                       ประเภท: {selectedCustomer.type === "person" ? "บุคคลธรรมดา" : selectedCustomer.type === "government" ? "หน่วยงานราชการ" : "นิติบุคคล"} 
-                       {" "}•{" "} 
+                       ประเภท: {selectedCustomer.type === "person" ? "บุคคลธรรมดา" : selectedCustomer.type === "government" ? "หน่วยงานราชการ" : "นิติบุคคล"}
+                       {" "}•{" "}
                        {selectedCustomer.branch_type === "branch" ? `สาขา ${selectedCustomer.branch_code || "-"}` : "สำนักงานใหญ่"}
                      </span>
                    </div>
                    <div className="flex items-start gap-3">
                      <MapPin size={16} className="text-nexus-teal shrink-0 mt-0.5" />
                      <span>
-                       {selectedCustomer.addresses?.[0] 
+                       {selectedCustomer.addresses?.[0]
                          ? `${selectedCustomer.addresses[0].addressNo || ""} ${selectedCustomer.addresses[0].moo ? `ม.${selectedCustomer.addresses[0].moo}` : ""} ${selectedCustomer.addresses[0].subDistrict || ""} ${selectedCustomer.addresses[0].district || ""} ${selectedCustomer.addresses[0].province || ""} ${selectedCustomer.addresses[0].zipCode || ""}`
                          : "ไม่ได้ระบุที่อยู่"
                        }
@@ -804,7 +807,7 @@ export default function SalesPage() {
                   </div>
                   <StatusBadge {...quotationStatusBadge(selectedItem.status)} />
                 </div>
-                
+
                 <div className="space-y-3 text-xs font-medium text-white/70">
                    <div className="flex items-center gap-3">
                      <Building2 size={16} className="text-nexus-teal shrink-0" />
@@ -863,7 +866,7 @@ export default function SalesPage() {
                   </div>
                   <StatusBadge {...salesOrderStatusBadge(selectedItem.status)} />
                 </div>
-                
+
                 <div className="space-y-3 text-xs font-medium text-white/70">
                    <div className="flex items-center gap-3">
                      <FileText size={16} className="text-nexus-blue shrink-0" />
@@ -920,22 +923,22 @@ export default function SalesPage() {
       </div>
       </div>
 
-      
 
-      
 
-      
 
-      
 
-      
 
-      
 
-      <Toast 
-        message={toast.message} 
-        isVisible={toast.isVisible} 
-        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
+
+
+
+
+
+
+      <Toast
+        message={toast.message}
+        isVisible={toast.isVisible}
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
       />
     </div>
   );
@@ -954,7 +957,7 @@ function CustomerRow({ id, docId, name, industry, taxId, status, role, companyId
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
          {(role === "ADMIN" || role === "SUPERADMIN") && (
            <div onClick={(e) => e.stopPropagation()} className="inline-block">
-             <SecureDeleteAction 
+             <SecureDeleteAction
                collectionName={`companies/${companyId || "COM-NEXUS-01"}/customers`}
                documentId={docId}
                displayName={name}
@@ -1027,7 +1030,7 @@ function SalesOrderRow({ id, docId, customer, date, total, status, companyId, on
   );
 }
 
-function InvoiceRow({ id, docId, soRef, customer, date, dueDate, total, status, companyId, onClick }: { id: string, docId: string, soRef: string, customer: string, date: string, dueDate: string, total: string, status: string, companyId: string, onClick?: () => void }) {
+function InvoiceRow({ id, docId, soRef, customer, date, dueDate, total, status, companyId, isSample, onClick }: { id: string, docId: string, soRef: string, customer: string, date: string, dueDate: string, total: string, status: string, companyId: string, isSample?: boolean, onClick?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
@@ -1037,10 +1040,18 @@ function InvoiceRow({ id, docId, soRef, customer, date, dueDate, total, status, 
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-warning">{dueDate}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white" mono>{total}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status={status === "Paid" || status === "paid" ? "active" : "pending"} label={status === "Paid" || status === "paid" ? "ชำระแล้ว" : "รอชำระ"} />
+        <StatusBadge
+          status={status === "paid" ? "active" : status === "partial" ? "warning" : "pending"}
+          label={status === "paid" ? "ชำระแล้ว" : status === "partial" ? "ชำระบางส่วน" : "รอชำระ"}
+        />
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <div onClick={(e) => e.stopPropagation()} className="inline-block">
+        <div onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1.5">
+          {status !== "paid" && !isSample && (
+            <Link href={`/finance/receipts/new?invoice=${encodeURIComponent(docId)}`} className="h-8 px-3 rounded-full border border-nexus-teal/30 text-nexus-teal text-[12px] font-bold flex items-center hover:bg-nexus-teal/10">
+              รับชำระ
+            </Link>
+          )}
           <SecureDeleteAction collectionName={`companies/${companyId}/invoices`} documentId={docId} displayName={customer} compact />
         </div>
       </NexusTableCell>

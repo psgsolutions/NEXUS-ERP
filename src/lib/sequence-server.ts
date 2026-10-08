@@ -25,6 +25,33 @@ export async function nexusSequenceServer(prefix: SequencePrefix, companyId: str
 }
 
 /**
+ * [SERVER-ONLY] ออกเลขเอกสารภายใน transaction เดียวกับการบันทึกเอกสาร
+ * เลขจะถูกใช้เฉพาะเมื่อ transaction สำเร็จ (ตรวจไม่ผ่าน/ล้มเหลว = เลขไม่ข้าม)
+ *
+ * const take = await prepareSequence("RE", companyId);
+ * await adminDb.runTransaction(async (tx) => {
+ *   const seq = await take(tx);      // ต้องเรียกในช่วงอ่าน (ก่อน write ใด ๆ)
+ *   ... ตรวจข้อมูล ...
+ *   seq.commit();                    // เขียนตัวนับพร้อมเอกสาร
+ * });
+ */
+export async function prepareSequence(prefix: SequencePrefix, companyId: string) {
+  const formatSnap = await adminDb.doc(`companies/${companyId}/settings/sequence_formats`).get();
+  const formatStr = formatSnap.exists ? formatSnap.data()?.[prefix] : undefined;
+  const { prefixPart, suffixPart, padLength } = resolveSequenceFormat(prefix, formatStr);
+  const counterRef = adminDb.doc(`companies/${companyId}/counters/${prefix}`);
+  return async (tx: FirebaseFirestore.Transaction) => {
+    const snap = await tx.get(counterRef);
+    const data = snap.data();
+    const nextSeq = snap.exists && data?.lastDate === prefixPart ? (data.lastSeq || 0) + 1 : 1;
+    return {
+      number: `${prefixPart}${nextSeq.toString().padStart(padLength, "0")}${suffixPart}`,
+      commit: () => tx.set(counterRef, { lastSeq: nextSeq, lastDate: prefixPart, updatedAt: new Date() }, { merge: true }),
+    };
+  };
+}
+
+/**
  * [SERVER-ONLY] Atomic counter for idService-formatted numbers (INV, BN, PRJ, SKU ...)
  * collection `counters` ถูกล็อกไม่ให้ client อ่าน/เขียน จึงต้องออกเลขผ่าน Admin SDK เท่านั้น
  */

@@ -101,7 +101,8 @@ export default function FinancePage() {
     .filter((inv: any) => inv.paymentStatus !== "paid" && inv.status !== "Paid" && inv.isDeleted !== true)
     .map((inv: any) => ({
       ...inv,
-      amount: Number(inv.grandTotal ?? inv.totalAmount ?? 0),
+      // รับชำระบางส่วนแล้ว: ใช้ยอดค้างคงเหลือ
+      amount: Number(inv.balance ?? inv.grandTotal ?? inv.totalAmount ?? 0),
       status: toMs(inv.dueDate) && toMs(inv.dueDate) < Date.now() ? "overdue" : "pending",
     }));
   const dbAPs = companyExpenses

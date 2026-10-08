@@ -7,6 +7,7 @@ import { twMerge } from "tailwind-merge";
 import { X, Sparkles, ChevronLeft, ChevronDown, Plus, Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { FloatingLayer } from "./FloatingLayer";
 export { cn };
 
 /** 
@@ -108,6 +109,8 @@ export function PillSelect({ className, children, value, onChange, placeholder =
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const triggerRef = React.useRef<HTMLDivElement>(null);
+  const floatingRef = React.useRef<HTMLDivElement>(null);
   const optionRefs = React.useRef<(HTMLDivElement | null)[]>([]);
 
   // Parse children to get labels and values
@@ -137,10 +140,11 @@ export function PillSelect({ className, children, value, onChange, placeholder =
   }, [highlightedIndex, isOpen]);
 
   useEffect(() => {
+    // เมนูอยู่ในชั้นลอย (นอก container) จึงนับคลิกในชั้นลอยเป็นข้างในด้วย
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+      const t = event.target as Node;
+      if (containerRef.current?.contains(t) || floatingRef.current?.contains(t)) return;
+      setIsOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -198,8 +202,9 @@ export function PillSelect({ className, children, value, onChange, placeholder =
   };
 
   return (
-    <div className={cn("relative", isOpen && "z-[99999]")} ref={containerRef}>
+    <div className="relative" ref={containerRef}>
       <div
+        ref={triggerRef}
         tabIndex={props.disabled ? -1 : 0}
         onKeyDown={handleKeyDown}
         onClick={() => setIsOpen(!isOpen)}
@@ -221,8 +226,13 @@ export function PillSelect({ className, children, value, onChange, placeholder =
         />
       </div>
 
-      {isOpen && (
-        <div className="absolute top-full left-0 w-full mt-2 z-[99999] bg-surface-0/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9)] p-1.5 animate-in fade-in slide-in-from-top-2 duration-200 max-h-[300px] overflow-y-auto custom-scrollbar">
+      <FloatingLayer
+        ref={floatingRef}
+        anchorRef={triggerRef}
+        open={isOpen}
+        maxHeight={300}
+        className="bg-surface-0/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9)] p-1.5"
+      >
           {options.map((opt: any, idx: number) => (
             <div
               key={idx}
@@ -241,8 +251,7 @@ export function PillSelect({ className, children, value, onChange, placeholder =
               {opt.value === value && <div className="w-1.5 h-1.5 rounded-full bg-nexus-teal shadow-neon-teal shrink-0" />}
             </div>
           ))}
-        </div>
-      )}
+      </FloatingLayer>
     </div>
   );
 }
@@ -1178,12 +1187,13 @@ export function CreatableCombobox({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+  const floatingRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+      const t = event.target as Node;
+      if (containerRef.current?.contains(t) || floatingRef.current?.contains(t)) return;
+      setIsOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -1197,7 +1207,7 @@ export function CreatableCombobox({
   );
 
   return (
-    <div className={cn("relative w-full", isOpen && "z-[99999]")} ref={containerRef}>
+    <div className="relative w-full" ref={containerRef}>
       <div
         onClick={() => {
           setIsOpen(!isOpen);
@@ -1219,8 +1229,13 @@ export function CreatableCombobox({
         />
       </div>
 
-      {isOpen && (
-        <div className="absolute top-full left-0 w-full mt-2 z-[99999] bg-surface-0/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9)] p-1.5 animate-in fade-in slide-in-from-top-2 duration-200 max-h-[300px] overflow-y-auto custom-scrollbar flex flex-col gap-1">
+      <FloatingLayer
+        ref={floatingRef}
+        anchorRef={containerRef}
+        open={isOpen}
+        maxHeight={300}
+        className="bg-surface-0/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9)] p-1.5 flex flex-col gap-1"
+      >
           <input 
             autoFocus
             type="text"
@@ -1261,8 +1276,7 @@ export function CreatableCombobox({
               No results found
             </div>
           )}
-        </div>
-      )}
+      </FloatingLayer>
     </div>
   );
 }

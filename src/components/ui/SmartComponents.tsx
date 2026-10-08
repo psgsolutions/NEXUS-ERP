@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { FloatingLayer } from "./FloatingLayer";
 import { cn, PillButton, PillInput, PillSelect, SignatureGlow } from "@/components/ui/Base";
 import { Search, Plus, ChevronDown, Minus, ChevronUp } from "lucide-react";
 
@@ -49,6 +50,7 @@ export function SmartSelect({
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
   const initialValueRef = useRef<string>(value);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const floatingRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -126,7 +128,9 @@ export function SmartSelect({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const t = event.target as Node;
+      // เมนูอยู่ในชั้นลอย (นอก container) จึงนับคลิกในชั้นลอยเป็นข้างในด้วย
+      if (dropdownRef.current && !dropdownRef.current.contains(t) && !floatingRef.current?.contains(t)) {
         if (isOpen || isFocused) {
           commitValue(searchQuery);
           setIsOpen(false);
@@ -174,7 +178,7 @@ export function SmartSelect({
   };
 
   return (
-    <div className={cn("relative w-full", isOpen && "z-[99999]", className)} ref={dropdownRef}>
+    <div className={cn("relative w-full", className)} ref={dropdownRef}>
       <div className="relative w-full flex items-center">
         <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-nexus-teal/60 pointer-events-none z-10" />
         <PillInput
@@ -200,7 +204,8 @@ export function SmartSelect({
             setTimeout(() => {
               if (
                 document.activeElement !== inputRef.current &&
-                (!dropdownRef.current || !dropdownRef.current.contains(document.activeElement))
+                (!dropdownRef.current || !dropdownRef.current.contains(document.activeElement)) &&
+                !floatingRef.current?.contains(document.activeElement)
               ) {
                 commitValue(searchQuery);
                 setIsFocused(false);
@@ -312,8 +317,14 @@ export function SmartSelect({
         </div>
       </div>
 
-      {isOpen && (
-        <div className="absolute z-[99999] left-0 right-0 top-full mt-1 bg-surface-2/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col p-1.5">
+      <FloatingLayer
+        ref={floatingRef}
+        anchorRef={dropdownRef}
+        open={isOpen}
+        gap={4}
+        maxHeight={360}
+        className="bg-surface-2/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.9)] flex flex-col p-1.5"
+      >
           {isCustomTyped && (
             <div className="px-3 py-2 text-[12px] font-semibold text-nexus-teal bg-nexus-teal/20 border border-nexus-teal/40 backdrop-blur-md rounded-xl flex items-center justify-between mb-1">
               <span>🆕 จะสร้าง &quot;{(isFocused ? searchQuery : (selectedOption ? selectedOption.label : (value || searchQuery || ""))).trim()}&quot; เป็นรายการใหม่เมื่อกดบันทึก</span>
@@ -375,8 +386,7 @@ export function SmartSelect({
               </button>
             </div>
           )}
-        </div>
-      )}
+      </FloatingLayer>
     </div>
   );
 }
@@ -401,52 +411,18 @@ export function SciFiDropdownPortal({
   align = "left",
   className,
 }: SciFiDropdownPortalProps) {
-  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useLayoutEffect(() => {
-    if (isOpen && triggerRef.current) {
-      const updateCoords = () => {
-        if (!triggerRef.current) return;
-        const rect = triggerRef.current.getBoundingClientRect();
-        setCoords({
-          top: rect.bottom + 6,
-          left: align === "right" ? rect.right : rect.left,
-          width: rect.width,
-        });
-      };
-      // initial calculation
-      updateCoords();
-      // attach listeners for scroll & resize (use capture phase to catch scrolls on inner containers)
-      window.addEventListener('scroll', updateCoords, true);
-      window.addEventListener('resize', updateCoords, true);
-      return () => {
-        window.removeEventListener('scroll', updateCoords, true);
-        window.removeEventListener('resize', updateCoords, true);
-      };
-    }
-  }, [isOpen, align]);
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        isOpen &&
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
-        triggerRef.current &&
-        !triggerRef.current.contains(event.target as Node)
-      ) {
+      const t = event.target as Node;
+      if (isOpen && !dropdownRef.current?.contains(t) && !triggerRef.current?.contains(t)) {
         onClose();
       }
     };
-
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside, { capture: true });
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside, { capture: true });
-    };
+    if (isOpen) document.addEventListener("mousedown", handleClickOutside, { capture: true });
+    return () => document.removeEventListener("mousedown", handleClickOutside, { capture: true });
   }, [isOpen, onClose]);
 
   return (
@@ -454,26 +430,20 @@ export function SciFiDropdownPortal({
       <div ref={triggerRef} className="w-full">
         {trigger}
       </div>
-
-      {isOpen && typeof window !== 'undefined' && coords.top > 0 && createPortal(
-        <div
-          ref={dropdownRef}
-          style={{
-            top: `${coords.top}px`,
-            left: `${align === "right" ? "auto" : `${coords.left}px`}`,
-            right: align === "right" ? `${window.innerWidth - coords.left}px` : "auto",
-            minWidth: `${coords.width}px` // Ensure dropdown is at least as wide as the trigger
-          }}
-          className={cn(
-            "fixed z-[999999] rounded-xl overflow-hidden flex flex-col",
-            "bg-surface-1 border border-white/10 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)]",
-            className
-          )}
-        >
-          {children}
-        </div>,
-        document.body
-      )}
+      <FloatingLayer
+        ref={dropdownRef}
+        anchorRef={triggerRef}
+        open={isOpen}
+        align={align}
+        matchWidth={false}
+        maxHeight={420}
+        className={cn(
+          "rounded-xl flex flex-col bg-surface-1 border border-white/10 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)]",
+          className
+        )}
+      >
+        {children}
+      </FloatingLayer>
     </>
   );
 }

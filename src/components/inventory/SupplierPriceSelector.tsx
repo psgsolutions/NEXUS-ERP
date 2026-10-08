@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { FloatingLayer } from "@/components/ui/FloatingLayer";
 import { Truck, ChevronDown, Check, Tag } from "lucide-react";
 import { PillButton, cn } from "@/components/ui/Base";
 import { fetchSupplierPriceHistory, SupplierPriceRecord } from "@/lib/procurement-service";
@@ -24,10 +25,22 @@ export function SupplierPriceSelector({
 }: SupplierPriceSelectorProps) {
   const { companyId } = useAuth();
   const currentCompanyId = companyId || "";
-  
+
   const [history, setHistory] = useState<SupplierPriceRecord[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const floatingRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!anchorRef.current?.contains(t) && !floatingRef.current?.contains(t)) setIsOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [isOpen]);
 
   const targetId = productId || productName;
 
@@ -63,7 +76,7 @@ export function SupplierPriceSelector({
   }
 
   return (
-    <div className={cn("relative inline-block", className)}>
+    <div ref={anchorRef} className={cn("relative inline-block", className)}>
       <PillButton
         variant="glass"
         type="button"
@@ -76,8 +89,7 @@ export function SupplierPriceSelector({
         <ChevronDown size={12} className={cn("transition-transform duration-200", isOpen && "rotate-180")} />
       </PillButton>
 
-      {isOpen && (
-        <div className="absolute z-[999999] left-0 top-full mt-2 w-72 bg-neutral-900/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl p-3 space-y-2 animate-in fade-in duration-200">
+      <FloatingLayer ref={floatingRef} anchorRef={anchorRef} open={isOpen} matchWidth={false} minWidth={288} maxHeight={360} className="w-72 bg-neutral-900/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl p-3 space-y-2">
           <div className="flex items-center justify-between border-b border-white/10 pb-2 px-1">
             <span className="text-[12px] font-bold text-white flex items-center gap-1.5">
               <Tag size={13} className="text-nexus-teal" />
@@ -118,8 +130,7 @@ export function SupplierPriceSelector({
               </div>
             ))}
           </div>
-        </div>
-      )}
+      </FloatingLayer>
     </div>
   );
 }

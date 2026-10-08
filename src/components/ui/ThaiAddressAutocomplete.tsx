@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { FloatingLayer } from "@/components/ui/FloatingLayer";
 import { PillInput, cn } from "./Base";
 
 export interface ThaiAddress {
@@ -30,6 +31,7 @@ export function ThaiAddressAutocomplete({
   const [suggestions, setSuggestions] = useState<ThaiAddress[]>([]);
   const [show, setShow] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const floatingRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!cachedDb) {
@@ -45,7 +47,8 @@ export function ThaiAddressAutocomplete({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+      const t = event.target as Node;
+      if (wrapperRef.current && !wrapperRef.current.contains(t) && !floatingRef.current?.contains(t)) {
         setShow(false);
       }
     };
@@ -56,14 +59,14 @@ export function ThaiAddressAutocomplete({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e);
     const q = e.target.value.trim().toLowerCase();
-    
+
     if (q.length < 2 || db.length === 0) {
       setSuggestions([]);
       setShow(false);
       return;
     }
 
-    const filtered = db.filter(item => 
+    const filtered = db.filter(item =>
       item.district.includes(q) ||
       item.amphoe.includes(q) ||
       item.province.includes(q) ||
@@ -83,16 +86,15 @@ export function ThaiAddressAutocomplete({
   };
 
   return (
-    <div className={cn("relative", show && "z-[99999]")} ref={wrapperRef}>
-      <PillInput 
-        value={value} 
-        onChange={handleInputChange} 
+    <div className="relative" ref={wrapperRef}>
+      <PillInput
+        value={value}
+        onChange={handleInputChange}
         onFocus={() => { if (suggestions.length > 0) setShow(true); }}
         placeholder={placeholder}
         className={className}
       />
-      {show && (
-        <div className="absolute top-full left-0 mt-2 min-w-[250px] bg-surface-2 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[99999] max-h-60 overflow-y-auto custom-scrollbar flex flex-col">
+      <FloatingLayer ref={floatingRef} anchorRef={wrapperRef} open={show} matchWidth={false} minWidth={250} maxHeight={240} className="bg-surface-2 border border-white/10 rounded-2xl shadow-2xl flex flex-col">
           {suggestions.map((s, idx) => (
             <button
               key={idx}
@@ -111,8 +113,7 @@ export function ThaiAddressAutocomplete({
               </div>
             </button>
           ))}
-        </div>
-      )}
+      </FloatingLayer>
     </div>
   );
 }

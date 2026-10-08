@@ -1,11 +1,23 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { FloatingLayer } from "@/components/ui/FloatingLayer";
 import { ShieldCheck, ChevronRight, Building2, Globe } from "lucide-react";
 import { cn } from "@/components/ui/Base";
 
 export function EntitySelector() {
   const [isOpen, setIsOpen] = useState(false);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const floatingRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!anchorRef.current?.contains(t) && !floatingRef.current?.contains(t)) setIsOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [isOpen]);
   const [selectedEntity, setSelectedEntity] = useState({ id: "hq", name: "PSG HQ (BANGKOK)", type: "HEADQUARTERS" });
 
   const entities = [
@@ -15,13 +27,14 @@ export function EntitySelector() {
   ];
 
   return (
-    <div className={cn("relative", isOpen && "z-[99999]")}>
-       <div 
+    <div className="relative">
+       <div
+          ref={anchorRef}
           onClick={() => setIsOpen(!isOpen)}
           className="mb-2 p-3 rounded-xl bg-white/[0.03] border border-white/10 relative group cursor-pointer hover:bg-white/[0.06] transition-all overflow-hidden"
        >
           <div className="flex items-center gap-4 relative z-10">
-             <div className={cn("w-10 h-10 rounded-xl bg-opacity-10 flex items-center justify-center border border-opacity-20 flex-shrink-0", 
+             <div className={cn("w-10 h-10 rounded-xl bg-opacity-10 flex items-center justify-center border border-opacity-20 flex-shrink-0",
                 selectedEntity.id === "gl" ? "bg-warning text-warning border-warning" : "bg-nexus-teal text-nexus-teal border-nexus-teal"
              )}>
                 {selectedEntity.id === "gl" ? <Globe size={20} /> : <ShieldCheck size={20} />}
@@ -34,10 +47,9 @@ export function EntitySelector() {
           </div>
        </div>
 
-       {isOpen && (
-         <div className="absolute top-full left-0 w-full mt-2 z-[99999] bg-surface-2 border border-white/10 rounded-2xl shadow-2xl p-2 animate-in fade-in slide-in-from-top-2 duration-300">
+       <FloatingLayer ref={floatingRef} anchorRef={anchorRef} open={isOpen} className="bg-surface-2 border border-white/10 rounded-2xl shadow-2xl p-2">
             {entities.map((entity) => (
-               <button 
+               <button
                   key={entity.id}
                   onClick={() => {
                      setSelectedEntity(entity);
@@ -54,8 +66,7 @@ export function EntitySelector() {
                   </div>
                </button>
             ))}
-         </div>
-       )}
+       </FloatingLayer>
     </div>
   );
 }

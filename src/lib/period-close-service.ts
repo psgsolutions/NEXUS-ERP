@@ -1,7 +1,7 @@
 import { db } from "./firebase-client";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
-const THAI_MONTHS = [
+export const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
 ];
@@ -12,26 +12,38 @@ const ENG_MONTHS = [
 ];
 
 /**
+ * งวด (ปี ค.ศ., เดือน 1-12) ของวันที่ลงบัญชี ตามเวลาประเทศไทย
+ * รองรับ "YYYY-MM-DD" (ใช้ตามตัวอักษร), Date, Firestore Timestamp และ ISO string
+ */
+export function periodOf(raw: any): { year: number; month: number } | null {
+  if (raw == null || raw === "") return null;
+  if (typeof raw === "string") {
+    const m = raw.match(/^(\d{4})-(\d{2})/);
+    if (m && !raw.includes("T")) return { year: Number(m[1]), month: Number(m[2]) };
+  }
+  const ms =
+    raw instanceof Date ? raw.getTime()
+    : typeof raw?.toMillis === "function" ? raw.toMillis()
+    : typeof raw?.seconds === "number" ? raw.seconds * 1000
+    : typeof raw?._seconds === "number" ? raw._seconds * 1000
+    : new Date(raw).getTime();
+  if (!Number.isFinite(ms)) return null;
+  const bkk = new Date(ms + 7 * 3600e3);
+  return { year: bkk.getUTCFullYear(), month: bkk.getUTCMonth() + 1 };
+}
+
+export const periodIdOf = (companyId: string, year: number, month: number) => `${companyId}_${year}_${String(month).padStart(2, "0")}`;
+
+/**
  * Checks whether a fiscal period for a given company and posting date is open or closed.
  * Throws an explicit error if the target period is closed.
  */
 export async function assertPeriodOpen(companyId: string, postingDate?: string | Date): Promise<boolean> {
   if (!companyId) return true;
 
-  let dateObj: Date;
-  if (!postingDate) {
-    dateObj = new Date();
-  } else if (postingDate instanceof Date) {
-    dateObj = postingDate;
-  } else {
-    dateObj = new Date(postingDate);
-    if (isNaN(dateObj.getTime())) {
-      dateObj = new Date();
-    }
-  }
-
-  const targetYear = dateObj.getFullYear();
-  const targetMonthNum = dateObj.getMonth() + 1; // 1-12
+  const p = periodOf(postingDate || new Date()) || periodOf(new Date())!;
+  const targetYear = p.year;
+  const targetMonthNum = p.month;
   const monthNameTh = THAI_MONTHS[targetMonthNum - 1];
   const monthNameEn = ENG_MONTHS[targetMonthNum - 1];
 
@@ -88,7 +100,7 @@ export async function assertPeriodOpen(companyId: string, postingDate?: string |
   });
 
   if (isClosed) {
-    throw new Error(`ไม่สามารถบันทึกรายการย้อนหลังเข้าเดือนที่ปิดงบแล้ว: ${monthNameTh} ${targetYear}`);
+    throw new Error(`ไม่สามารถบันทึกรายการย้อนหลังเข้าเดือนที่ปิดงบแล้ว: ${monthNameTh} ${targetYear + 543}`);
   }
 
   return true;

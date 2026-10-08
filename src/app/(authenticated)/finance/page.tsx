@@ -44,8 +44,6 @@ import {
   NexusSearchInput
 } from "@/components/ui/Base";
 import { DocumentFlowStepper } from "@/components/ui/DocumentFlowStepper";
-import { JournalEntryModal } from "@/components/finance/JournalEntryModal";
-import { PeriodCloseModal } from "@/components/finance/PeriodCloseModal";
 import { ReceiptModal } from "@/components/finance/ReceiptModal";
 import { PaymentModal } from "@/components/finance/PaymentModal";
 import { TaxFilingModal } from "@/components/finance/TaxFilingModal";
@@ -70,11 +68,6 @@ export default function FinancePage() {
   const { user, companyId, role } = useAuth();
   const [activeTab, setActiveTab] = useState<FinanceSubModule>("overview");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isCloseOpen, setIsCloseOpen] = useState(false);
-  const [isReopenOpen, setIsReopenOpen] = useState(false);
-  const [reopenYear, setReopenYear] = useState("2026");
-  const [reopenMonth, setReopenMonth] = useState("April");
-  const [reopenReason, setReopenReason] = useState("");
   const [isTaxModalOpen, setIsTaxModalOpen] = useState(false);
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
 
@@ -331,17 +324,10 @@ export default function FinancePage() {
           onTabChange={(id: any) => setActiveTab(id)}
         />
         <div className="flex gap-3 shrink-0">
-           <PillButton variant="confirm" className="h-8 px-5 rounded-full text-[11px] uppercase tracking-widest font-black" onClick={() => setIsCloseOpen(true)}>
+           <PillButton variant="confirm" className="h-8 px-5 rounded-full text-[11px] uppercase tracking-widest font-black" onClick={() => router.push("/finance/period-close/new")}>
              <ShieldCheck size={14} className="mr-1.5" />
              ปิดงวดบัญชี
            </PillButton>
-
-           {(role?.toUpperCase() === "SUPERADMIN" || role?.toUpperCase() === "ADMIN") && (
-             <PillButton variant="danger" className="h-8 px-5 rounded-full text-[11px] uppercase tracking-widest font-black" onClick={() => setIsReopenOpen(true)}>
-               <Unlock size={14} className="mr-1.5" />
-               ปลดล็อกงวดบัญชี
-             </PillButton>
-           )}
 
            {(activeTab === "overview" || activeTab === "gl") && (
              <PillButton variant="primary" onClick={() => router.push("/finance/journal-entries/new")} className="h-8 px-5 rounded-full shadow-neon-teal text-[11px] uppercase tracking-widest font-black">
@@ -593,138 +579,6 @@ export default function FinancePage() {
       </div>
 
       {/* Finance Management Modals */}
-
-
-      <PeriodCloseModal
-        isOpen={isCloseOpen}
-        onClose={() => setIsCloseOpen(false)}
-        onConfirm={async (data) => {
-          if (!user || !companyId) return;
-          try {
-            const res = await apiFetch("/api/accounting/period-close", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                companyId,
-                month: data.month,
-                year: data.year,
-                userRole: role || "ACCOUNTANT",
-                userId: user.uid
-              })
-            });
-            const result = await res.json();
-            if (!res.ok || !result.success) {
-              throw new Error(result.error || "เกิดข้อผิดพลาดในการปิดงวดบัญชี");
-            }
-            setIsCloseOpen(false);
-            showAlert(result.message || `ปิดงวดบัญชี ${data.month} ${data.year} สำเร็จและล็อกข้อมูลแล้ว`, "การปิดงวดบัญชี", "info");
-          } catch (err: any) {
-            console.error(err);
-            showAlert(err.message || "เกิดข้อผิดพลาดในการปิดงวดบัญชี", "การแจ้งเตือนระบบ", "error");
-          }
-        }}
-      />
-
-      {isReopenOpen && (
-        <Modal
-          isOpen={isReopenOpen}
-          onClose={() => setIsReopenOpen(false)}
-          title="การปลดล็อกปิดงวดบัญชี (Superadmin Only)"
-        >
-          <div className="p-8 space-y-6 bg-surface-0">
-            <div className="space-y-3">
-              <label className="text-[12px] font-bold text-white/60">ปีปฏิทิน</label>
-              <PillSelect
-                value={reopenYear}
-                onChange={(e) => setReopenYear(e.target.value)}
-                className="w-full text-sm font-medium"
-              >
-                <option value="2025">2025</option>
-                <option value="2026">2026</option>
-              </PillSelect>
-            </div>
-            <div className="space-y-3">
-              <label className="text-[12px] font-bold text-white/60">เดือนที่ต้องการปลดล็อก</label>
-              <PillSelect
-                value={reopenMonth}
-                onChange={(e) => setReopenMonth(e.target.value)}
-                className="w-full text-sm font-medium"
-              >
-                <option value="January">มกราคม (January)</option>
-                <option value="February">กุมภาพันธ์ (February)</option>
-                <option value="March">มีนาคม (March)</option>
-                <option value="April">เมษายน (April)</option>
-                <option value="May">พฤษภาคม (May)</option>
-                <option value="June">มิถุนายน (June)</option>
-                <option value="July">กรกฎาคม (July)</option>
-                <option value="August">สิงหาคม (August)</option>
-                <option value="September">กันยายน (September)</option>
-                <option value="October">ตุลาคม (October)</option>
-                <option value="November">พฤศจิกายน (November)</option>
-                <option value="December">ธันวาคม (December)</option>
-              </PillSelect>
-            </div>
-            <div className="space-y-3">
-              <label className="text-[12px] font-bold text-white/60">เหตุผลในการปลดล็อกงวดบัญชี (จำเป็นต้องระบุ)</label>
-              <PillInput
-                value={reopenReason}
-                onChange={(e) => setReopenReason(e.target.value)}
-                placeholder="ระบุเหตุผลในการปลดล็อกงวด..."
-                className="w-full text-sm font-medium"
-              />
-            </div>
-            <div className="flex gap-4 pt-4">
-              <PillButton
-                variant="danger"
-                className="flex-1 h-8 rounded-full text-sm font-bold"
-                onClick={async () => {
-                  if (!user || !companyId) return;
-                  if (!reopenReason.trim()) {
-                    showAlert("กรุณาระบุเหตุผลในการปลดล็อกงวดบัญชี", "ข้อผิดพลาด", "error");
-                    return;
-                  }
-                  try {
-                    const res = await apiFetch("/api/accounting/period-reopen", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        companyId,
-                        year: reopenYear,
-                        month: reopenMonth,
-                        reopenReason,
-                        userRole: role || "SUPERADMIN",
-                        userId: user.uid
-                      })
-                    });
-                    const result = await res.json();
-                    if (!res.ok || !result.success) {
-                      throw new Error(result.error || "เกิดข้อผิดพลาดในการปลดล็อกงวดบัญชี");
-                    }
-                    setIsReopenOpen(false);
-                    setReopenReason("");
-                    showAlert(result.message || `ปลดล็อกงวดบัญชี ${reopenMonth} ${reopenYear} สำเร็จ`, "แจ้งเตือนระบบ", "info");
-                  } catch (err: any) {
-                    console.error(err);
-                    showAlert(err.message || "เกิดข้อผิดพลาดในการปลดล็อกงวดบัญชี", "ข้อผิดพลาด", "error");
-                  }
-                }}
-              >
-                ยืนยันการปลดล็อกงวด
-              </PillButton>
-              <PillButton
-                variant="glass"
-                className="h-8 rounded-full text-sm font-bold"
-                onClick={() => setIsReopenOpen(false)}
-              >
-                ยกเลิก
-              </PillButton>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-
-
 
 
       <TaxFilingModal

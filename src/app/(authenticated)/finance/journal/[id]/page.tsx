@@ -7,6 +7,7 @@ import { PillButton, GlassCard, StatusBadge, NexusTable, NexusTableRow, NexusTab
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { formatCurrency } from "@/lib/erp-logic";
 import { useAuth } from "@/context/AuthContext";
+import { assertPeriodOpen } from "@/lib/period-close-service";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { db } from "@/lib/firebase-client";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
@@ -56,6 +57,7 @@ export default function JournalDetailPage() {
     setBusy(true);
     setMessage(null);
     try {
+      await assertPeriodOpen(companyId || "", (jv.date || jv.createdAt?.toDate?.()) as any);
       await updateDoc(doc(db, allowedPath!), {
         status: "posted",
         isImmutable: true,

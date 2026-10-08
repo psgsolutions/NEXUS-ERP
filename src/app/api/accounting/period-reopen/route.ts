@@ -84,6 +84,10 @@ export async function POST(request: Request) {
     const { targetYear, targetMonthNum, monthNameEn, monthNameTh } = parseYearMonth(year, month);
     const periodDocId = `${companyId}_${targetYear}_${String(targetMonthNum).padStart(2, "0")}`;
     const closeRef = adminDb.collection("periodClosings").doc(periodDocId);
+    const current = await closeRef.get();
+    if (!current.exists || current.data()?.status !== "closed") {
+      return NextResponse.json({ success: false, error: `งวด ${monthNameTh} ${targetYear + 543} ยังไม่ได้ปิด` }, { status: 409 });
+    }
 
     const updateData = {
       companyId,
@@ -94,7 +98,8 @@ export async function POST(request: Request) {
       periodMonth: targetMonthNum,
       status: "open",
       reopenedAt: new Date().toISOString(),
-      reopenedBy: userId,
+      reopenedBy: apiUser.uid,
+      reopenedByName: userId,
       reopenReason: reopenReason.trim(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       isDeleted: false
@@ -114,7 +119,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `ปลดล็อกงวดบัญชี ${monthNameTh} ${targetYear} สำเร็จ`,
+      message: `เปิดงวดบัญชี ${monthNameTh} ${targetYear + 543} อีกครั้งแล้ว`,
       periodId: periodDocId
     });
   } catch (err: any) {

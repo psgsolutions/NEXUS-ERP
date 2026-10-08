@@ -23,6 +23,7 @@ import { canViewCost } from "@/lib/permissions";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useCompanyProjects } from "@/hooks/useCompanyProjects";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { useAuth } from "@/context/AuthContext";
 import { SmartSelect, StepperInput, SciFiDropdownPortal } from "@/components/ui/SmartComponents";
@@ -336,12 +337,12 @@ export default function QuotationCreationPage() {
   const [exclusions, setExclusions] = useState("");
 
   // Projects list for SmartSelect (Patch 9)
-  const { data: rawProjects = [] } = useRealtimeCollection('projects');
+  const { data: rawProjects = [] } = useCompanyProjects();
   const projectOptions = useMemo(() => {
     return rawProjects.map((p: any) => ({
       value: p.id,
-      label: p.name || p.projectName || p.id,
-      description: `รหัส: ${p.code || p.projectCode || p.id}`
+      label: p.projectName || p.title || p.name || p.id,
+      description: `รหัส: ${p.projectId || p.code || p.projectCode || p.id}`
     }));
   }, [rawProjects]);
 

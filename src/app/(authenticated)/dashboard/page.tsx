@@ -25,6 +25,7 @@ import { SystemHealthIndicator } from "@/components/shared/SystemHealthIndicator
 import { RevenueExpenseChart } from "@/components/dashboard/RevenueExpenseChart";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useCompanyProjects } from "@/hooks/useCompanyProjects";
 import { normalizePoStatus } from "@/lib/procurement-status";
 import {
   activeProjects,
@@ -54,8 +55,7 @@ export default function DashboardPage() {
   const { data: companyJournals, loading: journalsLoading } = useRealtimeCollection<any>(co("journal_entries"));
   const { data: legacyJournals } = useRealtimeCollection<any>("journal_entries");
   const { data: products, loading: productsLoading } = useRealtimeCollection<any>("products");
-  const { data: companyProjects } = useRealtimeCollection<any>(co("projects"));
-  const { data: legacyProjects } = useRealtimeCollection<any>("projects");
+  const { data: allProjects } = useCompanyProjects();
   const { data: invoices } = useRealtimeCollection<any>(co("invoices"));
   const { data: purchaseOrders } = useRealtimeCollection<any>(co("purchase_orders"));
   const { data: purchaseRequests } = useRealtimeCollection<any>(co("purchase_requests"));
@@ -71,8 +71,8 @@ export default function DashboardPage() {
 
   const lowStock = useMemo(() => lowStockProducts(products), [products]);
   const projects = useMemo(
-    () => activeProjects([...companyProjects, ...legacyProjects]).filter((p) => !p.isSample),
-    [companyProjects, legacyProjects]
+    () => activeProjects(allProjects).filter((p) => !p.isSample),
+    [allProjects]
   );
   const overdue = useMemo(() => overdueInvoices(invoices), [invoices]);
   const feed = useMemo(() => activityFeed(logs, 8), [logs]);

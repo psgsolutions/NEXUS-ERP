@@ -65,13 +65,13 @@ import { db } from "@/lib/firebase-client";
 import { doc, setDoc, getDoc, getDocs, collection, query, where, orderBy, onSnapshot, serverTimestamp, writeBatch } from "firebase/firestore";
 import { generateStockPilotId } from "@/lib/utils";
 import { can } from "@/lib/permissions";
-import { idService } from "@/lib/idService";
 import { KitEditor } from "@/components/projects/KitEditor";
 import { ContractorModal } from "@/components/projects/ContractorModal";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { ProjectTypeCode, PROJECT_TYPE_CONFIGS } from "@/types/database";
 import { apiFetch } from "@/lib/api-client";
+import { computeProjectBudget, normalizeItemLine, normalizeLaborLine } from "@/lib/project-budget";
 
 
 
@@ -79,7 +79,7 @@ export default function NewProjectPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, companyId, role } = useAuth();
-  const currentCompanyId = companyId || "COMP-001";
+  const currentCompanyId = companyId || "";
 
   // Collapsible Card States (Continuous Scroll Layout)
   const [openCards, setOpenCards] = useState({
@@ -169,43 +169,7 @@ export default function NewProjectPage() {
   ]);
   const [activeModal, setActiveModal] = useState<string | null>(null);
 
-  const [numberingScheme, setNumberingScheme] = useState<any>(null);
-
-  // Auto Generate Project ID via Configurable Numbering Engine API (Dynamic reserveOn)
-  useEffect(() => {
-    if (!currentCompanyId) return;
-    let isMounted = true;
-    
-    apiFetch(`/api/settings/numbering-schemes?companyId=${currentCompanyId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!isMounted) return;
-        const prjScheme = data.schemes?.PRJ || { reserveOn: "draft" };
-        setNumberingScheme(prjScheme);
-        
-        // Dynamic Check: If reserveOn === "draft", reserve immediately on mount
-        if (prjScheme.reserveOn === "draft") {
-          idService.generateDocumentNumber("PRJ", currentCompanyId, { mnemonic: projectName || "GEN" })
-            .then((res) => {
-              if (isMounted && res.documentNumber) {
-                setProjectId(res.documentNumber);
-              }
-            })
-            .catch(() => {
-              // ออกเลขไม่สำเร็จ: ให้ระบบออกเลขใหม่ตอนกดบันทึกแทน
-              if (isMounted) setProjectId("");
-            });
-        } else {
-          // If reserveOn === "approve", display placeholder and reserve upon submission
-          setProjectId("(รออนุมัติเพื่อออกเลข)");
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to fetch PRJ numbering scheme:", err);
-      });
-
-    return () => { isMounted = false; };
-  }, [currentCompanyId]);
+  // เลขโครงการออกที่ server ครั้งเดียวตอนบันทึก (ไม่จองเลขตอนเปิดหน้า)
 
   // Load Realtime Products & Contractors
   useEffect(() => {
@@ -336,111 +300,10 @@ export default function NewProjectPage() {
     }));
   }, [dbProducts]);
 
-  // Live Budget & Financial Estimation Calculation
+  // งบประมาณ: สูตรเดียวกับที่ server ใช้บันทึก (lib/project-budget)
   const budgetSummary = useMemo(() => {
-    const equipCount = documentItems.length;
-    const equipTotalQty = documentItems.reduce((sum, item) => sum + (Number(item.qty) || 1), 0);
-    const equipCost = documentItems.reduce((sum, item) => {
-      if (item.isOptional) return sum;
-      return sum + ((Number(item.cost) || 0) * (Number(item.qty) || 1));
-    }, 0);
-    const equipRev = documentItems.reduce((sum, item) => {
-      if (item.isOptional) return sum;
-      const lineTotal = (Number(item.qty) || 0) * (Number(item.price) || 0);
-      let discountAmt = 0;
-      if (item.discount) {
-        const str = String(item.discount).trim();
-        if (str.endsWith('%')) {
-          const pct = Number(str.replace('%', '')) || 0;
-          discountAmt = lineTotal * (pct / 100);
-        } else {
-          discountAmt = Number(str.replace(/,/g, '')) || 0;
-        }
-      }
-      return sum + Math.max(0, lineTotal - discountAmt);
-    }, 0);
-    
-    const laborCount = projectLabors.length;
-    const laborTotalPoints = projectLabors.reduce((sum, item) => {
-      return sum + (item.type === "per-point" ? (item.points || 1) : 1);
-    }, 0);
-
-    const laborCost = projectLabors.reduce((sum, item) => {
-      if (item.type === "per-point") {
-        const matCost = item.materialCost || 0;
-        const labCost = item.laborCost || 0;
-        const pts = item.points || 1;
-        return sum + ((matCost + labCost) * pts);
-      }
-      return sum + (item.cost || 0);
-    }, 0);
-
-    const laborRev = projectLabors.reduce((sum, item) => {
-      if (item.type === "per-point") {
-        const prc = item.price || 0;
-        const pts = item.points || 1;
-        return sum + (prc * pts);
-      }
-      return sum + (item.price || 0);
-    }, 0);
-    
-    const totalCost = equipCost + laborCost;
-    const totalRev = equipRev + laborRev;
-    
-    // เงินสำรองฉุกเฉินและความเสี่ยงโครงการ (5% ของต้นทุนทางตรง)
-    const contingencyBuffer = Math.round(totalCost * 0.05);
-    const grandTotalCost = totalCost + contingencyBuffer;
-
-    // การคำนวณกำไรและสัดส่วน
-    const grossProfit = totalRev - totalCost;
-    const netProfit = totalRev - grandTotalCost;
-    const gpPercent = totalRev > 0 ? ((grossProfit / totalRev) * 100).toFixed(1) : "0.0";
-    const netProfitPercent = totalRev > 0 ? ((netProfit / totalRev) * 100).toFixed(1) : "0.0";
-    const markupPercent = totalCost > 0 ? ((grossProfit / totalCost) * 100).toFixed(1) : "0.0";
-    const costToRevRatio = totalRev > 0 ? ((totalCost / totalRev) * 100).toFixed(1) : "0.0";
-
-    // ภาษีมูลค่าเพิ่ม (7%)
-    const vatAmount = Math.round(totalRev * 0.07);
-    const grandTotalWithVat = totalRev + vatAmount;
-
-    // คำนวณระยะเวลาดำเนินงาน (วัน)
-    let durationDays = 1;
-    if (startDate && endDate) {
-      const start = new Date(startDate).getTime();
-      const end = new Date(endDate).getTime();
-      if (end >= start) {
-        durationDays = Math.max(1, Math.ceil((end - start) / (1000 * 3600 * 24)));
-      }
-    }
-
-    const revenuePerDay = Math.round(totalRev / durationDays);
-    const costPerDay = Math.round(totalCost / durationDays);
-
-    return { 
-      equipCount,
-      equipTotalQty,
-      equipCost, 
-      equipRev, 
-      laborCount,
-      laborTotalPoints,
-      laborCost, 
-      laborRev, 
-      totalCost, 
-      totalRev, 
-      contingencyBuffer,
-      grandTotalCost,
-      grossProfit, 
-      netProfit,
-      gpPercent: parseFloat(gpPercent),
-      netProfitPercent: parseFloat(netProfitPercent),
-      markupPercent: parseFloat(markupPercent),
-      costToRevRatio: parseFloat(costToRevRatio),
-      vatAmount,
-      grandTotalWithVat,
-      durationDays,
-      revenuePerDay,
-      costPerDay
-    };
+    const lines = [...documentItems.map(normalizeItemLine), ...projectLabors.map(normalizeLaborLine)];
+    return computeProjectBudget(lines, { startDate, endDate });
   }, [documentItems, projectLabors, startDate, endDate]);
 
   const showToast = (message: string, isError = false) => {
@@ -514,63 +377,49 @@ export default function NewProjectPage() {
     ]);
   };
 
-  // Submit & Save Project via Server-Side Atomic API (/api/projects/create)
-  const handleSaveProject = async () => {
-    if (!validateForm()) return;
-
-    if (!can(role, "projects:edit")) {
-      showToast("บัญชีของคุณไม่มีสิทธิ์ในการสร้างโครงการ (ต้องเป็น Role Admin/Engineer ขึ้นไป)", true);
+  // บันทึกผ่าน server (ออกเลข ตรวจข้อมูล และคำนวณงบประมาณที่ server)
+  const handleSaveProject = async (asDraft = false) => {
+    if (asDraft) {
+      if (!projectName.trim() || projectName.trim().length < 3) {
+        showToast("กรุณาระบุชื่อโครงการอย่างน้อย 3 ตัวอักษร", true);
+        return;
+      }
+      if (!selectedCustomerId) {
+        showToast("กรุณาเลือกลูกค้าของโครงการ", true);
+        return;
+      }
+    } else if (!validateForm()) {
       return;
     }
 
+    if (!can(role, "projects:edit")) {
+      showToast("บัญชีของคุณไม่มีสิทธิ์สร้างโครงการ", true);
+      return;
+    }
+    if (!currentCompanyId) return;
+
     try {
       setIsSubmitting(true);
-
-      let finalProjectId = projectId;
-      if (!finalProjectId || finalProjectId.includes("รออนุมัติ") || numberingScheme?.reserveOn === "approve") {
-        const generated = await idService.generateDocumentNumber("PRJ", currentCompanyId, { mnemonic: projectName || "GEN" });
-        finalProjectId = generated.documentNumber;
-        setProjectId(finalProjectId);
-      }
-
-      const chosenCustomer = customerOptions.find((c: any) => c.value === selectedCustomerId);
-      const custName = chosenCustomer ? chosenCustomer.label : selectedCustomerId;
-
       const payload = {
         companyId: currentCompanyId,
-        projectId: finalProjectId,
-        userRole: role,
-        userId: user?.email || "SYSTEM_USER",
-        projectName: projectName,
-        selectedCustomerId: selectedCustomerId,
-        customerName: custName,
-        clientReference: clientReference,
-        projectTypeCode: projectTypeCode,
-        projectType: projectType,
-        sectorType: sectorType,
+        asDraft,
+        projectName,
+        selectedCustomerId,
+        clientReference,
+        projectTypeCode,
+        sectorType,
         priority: projectPriority,
-        startDate: startDate,
-        endDate: endDate,
-        siteLocation: siteLocation || "ไม่ได้ระบุ",
-        siteContact: {
-          name: siteContactName || "ไม่ระบุ",
-          phone: siteContactPhone || "ไม่ระบุ"
-        },
-        followers: projectFollowers.filter((f) => f.name && f.name.trim() !== ""),
-        projectManager: projectManager,
-        items: [...documentItems, ...projectLabors],
-        resources: assignedTeam.map((t) => ({ ...t, userId: t.id })),
-        governmentDetails: sectorType === "Government" ? {
-          torDocNo: govTorDocNo,
-          referencePrice: govReferencePrice,
-          govContractNo: govContractNo,
-          bankGuarantee: { status: "Active" }
-        } : undefined,
-        privateDetails: sectorType === "Private" ? {
-          customerPO: pvtCustomerPO || clientReference,
-          paymentTerms: pvtPaymentTerms
-        } : undefined,
-        budgetSummary: budgetSummary
+        startDate,
+        endDate,
+        siteLocation,
+        siteContact: { name: siteContactName, phone: siteContactPhone },
+        followers: projectFollowers,
+        projectManager,
+        items: documentItems,
+        labors: projectLabors,
+        resources: assignedTeam,
+        governmentDetails: { torDocNo: govTorDocNo, referencePrice: govReferencePrice, govContractNo },
+        privateDetails: { customerPO: pvtCustomerPO || clientReference, paymentTerms: pvtPaymentTerms },
       };
 
       const res = await apiFetch("/api/projects/create", {
@@ -578,24 +427,17 @@ export default function NewProjectPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-
       const resData = await res.json();
-
       if (!res.ok || !resData.success) {
-        throw new Error(resData.error || "เกิดข้อผิดพลาดในการบันทึกโครงการผ่านเซิร์ฟเวอร์");
+        throw new Error(resData.error || "บันทึกโครงการไม่สำเร็จ");
       }
 
-      const createdId = resData.projectId || projectId;
-      setProjectId(createdId);
-      showToast(resData.message || `สร้างโครงการ ${createdId} และส่งขออนุมัติ 3 ชั้นสำเร็จ! 🎉`, false);
-      
-      setTimeout(() => {
-        router.push("/projects");
-      }, 1200);
-
+      setProjectId(resData.projectId);
+      showToast(resData.message, false);
+      setTimeout(() => router.push("/projects"), 1200);
     } catch (err: any) {
-      console.error("Error saving project to Server API:", err);
-      showToast(err.message || "เกิดข้อผิดพลาดในการบันทึกโครงการ กรุณาลองใหม่อีกครั้ง", true);
+      console.error("Error saving project:", err);
+      showToast(err.message || "บันทึกโครงการไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", true);
     } finally {
       setIsSubmitting(false);
     }
@@ -614,7 +456,7 @@ export default function NewProjectPage() {
               สร้างโครงการใหม่
             </h1>
             <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
-              {projectId || "PRJ-2609-0001"}
+              {projectId || "ออกเลขเมื่อบันทึก"}
             </span>
           </div>
           <p className="text-sm text-white/60 font-medium mt-1">
@@ -634,7 +476,8 @@ export default function NewProjectPage() {
 
         <PillButton 
           variant="glass" 
-          onClick={() => showToast("บันทึกฉบับร่างเรียบร้อยแล้ว", false)} 
+          onClick={() => handleSaveProject(true)}
+          disabled={isSubmitting}
           className="h-8 px-4 text-xs font-bold text-white/80"
         >
           บันทึกฉบับร่าง
@@ -650,7 +493,7 @@ export default function NewProjectPage() {
 
         <PillButton 
           variant="confirm"
-          onClick={handleSaveProject} 
+          onClick={() => handleSaveProject(false)}
           disabled={isSubmitting || !can(role, "projects:edit")} 
           className={cn("h-8 px-5 font-bold text-xs", !can(role, "projects:edit") && "opacity-50 cursor-not-allowed")}
           title={!can(role, "projects:edit") ? "สิทธิ์การใช้งานไม่เพียงพอ (ต้องเป็น Role Admin/Engineer ขึ้นไป)" : undefined}
@@ -1450,7 +1293,7 @@ export default function NewProjectPage() {
       <div className="space-y-3 text-sm">
         <div className="flex items-center justify-between py-1 border-b border-white/5">
           <span className="text-white/60 font-medium">รหัสโครงการ</span>
-          <span className="font-mono font-bold text-nexus-teal pointer-events-none select-none">{projectId || "PRJ-2609-0001"}</span>
+          <span className="font-mono font-bold text-nexus-teal pointer-events-none select-none">{projectId || "ออกเลขเมื่อบันทึก"}</span>
         </div>
 
         <div className="flex items-center justify-between py-1 border-b border-white/5">

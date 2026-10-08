@@ -1,204 +1,186 @@
 import { NextResponse } from "next/server";
+import * as admin from "firebase-admin";
 import { requireApiUser, authErrorResponse } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
-import { nextCounterSequence } from "@/lib/sequence-server";
-import { generateStockPilotId } from "@/lib/utils";
+import { nexusSequenceServer } from "@/lib/sequence-server";
 import { can } from "@/lib/permissions";
 import { auditServer } from "@/services/audit.server";
 import { PROJECT_TYPE_CONFIGS, ProjectTypeCode } from "@/types/database";
+import { computeProjectBudget, normalizeItemLine, normalizeLaborLine } from "@/lib/project-budget";
 
 /**
- * [API-SERVER] Server-Side Atomic Project Creation API
- * Project: NEXUS ERP (Intelligence OS)
+ * [API-SERVER] สร้างโครงการ
  * Endpoint: POST /api/projects/create
- * 
- * Obey Master Protocol:
- * - Scoped query & companyId isolation
- * - isDeleted=false flag attached
- * - Atomic Dual-Write via adminDb.batch()
- * - Server-side RBAC check with can(role, "projects:edit")
- * - Audit Log recorded for every creation
+ *
+ * - เลขโครงการออกที่ server ครั้งเดียว ตามรูปแบบเลขเอกสาร PRJ ของบริษัท
+ * - เก็บที่ companies/{companyId}/projects/{projectId} ที่เดียว
+ * - งบประมาณคำนวณใหม่จากรายการ (ไม่เชื่อตัวเลขสรุปจาก browser)
+ * - asDraft = true -> สถานะ "Draft" (ยังไม่ส่งอนุมัติ)
  */
+
+const str = (v: any, max = 500) => String(v ?? "").trim().slice(0, max);
+const isDate = (v: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ""));
+
+// ตัดค่า undefined ออก (Firestore ไม่รับ undefined)
+function clean<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(clean) as any;
+  if (value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(
+      Object.entries(value as any).filter(([, v]) => v !== undefined).map(([k, v]) => [k, clean(v)])
+    ) as any;
+  }
+  return value;
+}
+
+async function findCustomer(companyId: string, customerId: string) {
+  const own = await adminDb.doc(`companies/${companyId}/customers/${customerId}`).get();
+  if (own.exists) return own.data()!;
+  const legacy = await adminDb.doc(`customers/${customerId}`).get();
+  if (legacy.exists && legacy.data()?.companyId === companyId) return legacy.data()!;
+  return null;
+}
+
+function badRequest(error: string) {
+  return NextResponse.json({ success: false, error }, { status: 400 });
+}
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const {
-      companyId,
-      projectName,
-      selectedCustomerId,
-      customerName,
-      clientReference = "",
-      projectTypeCode = 4,
-      projectType = "งานขายอุปกรณ์พร้อมติดตั้งครบวงจร",
-      sectorType = "Private",
-      priority = "ปานกลาง",
-      startDate,
-      endDate,
-      siteLocation = "ไม่ได้ระบุ",
-      siteContact = { name: "ไม่ระบุ", phone: "ไม่ระบุ" },
-      followers = [],
-      projectManager,
-      items = [],
-      resources = [],
-      governmentDetails,
-      privateDetails,
-      budgetSummary = {}
-    } = body;
+    const companyId = str(body.companyId, 80);
+    if (!companyId) return badRequest("ไม่พบรหัสบริษัท");
+
     const apiUser = await requireApiUser(request, companyId);
-    const userRole = apiUser.role;
-    const userId = apiUser.email || apiUser.uid;
-
-    // 1. Mandatory Tenant Isolation Check
-    if (!companyId) {
+    if (!can(apiUser.role, "projects:edit")) {
       return NextResponse.json(
-        { success: false, error: "[Tenant Isolation Violation] companyId is required!" },
-        { status: 400 }
-      );
-    }
-
-    // 2. Server-Side RBAC Enforcement (Defense-in-depth)
-    if (!can(userRole, "projects:edit")) {
-      return NextResponse.json(
-        { success: false, error: "สิทธิ์การใช้งานไม่เพียงพอสำหรับการสร้างโครงการ (ต้องเป็น Role Admin/Engineer ขึ้นไป) 🔒" },
+        { success: false, error: "สิทธิ์การใช้งานไม่เพียงพอสำหรับการสร้างโครงการ" },
         { status: 403 }
       );
     }
+    const userId = apiUser.uid;
 
-    // 3. Field Validations
-    if (!projectName || typeof projectName !== "string" || projectName.trim().length < 3) {
-      return NextResponse.json(
-        { success: false, error: "กรุณาระบุชื่อโครงการอย่างน้อย 3 ตัวอักษร" },
-        { status: 400 }
-      );
+    // ---- ตรวจข้อมูล ----
+    const projectName = str(body.projectName, 200);
+    if (projectName.length < 3) return badRequest("กรุณาระบุชื่อโครงการอย่างน้อย 3 ตัวอักษร");
+
+    const customerId = str(body.selectedCustomerId, 120);
+    if (!customerId) return badRequest("กรุณาเลือกลูกค้าของโครงการ");
+    const customer = await findCustomer(companyId, customerId);
+    if (!customer) return badRequest("ไม่พบลูกค้านี้ในบริษัท");
+
+    const startDate = isDate(body.startDate) ? body.startDate : new Date().toISOString().slice(0, 10);
+    const endDate = isDate(body.endDate) ? body.endDate : startDate;
+    if (endDate < startDate) return badRequest("วันสิ้นสุดโครงการต้องไม่อยู่ก่อนวันที่เริ่ม");
+
+    const typeCode = ([1, 2, 3, 4].includes(Number(body.projectTypeCode)) ? Number(body.projectTypeCode) : 4) as ProjectTypeCode;
+    const typeConfig = PROJECT_TYPE_CONFIGS[typeCode];
+    const sectorType = body.sectorType === "Government" ? "Government" : "Private";
+    const asDraft = body.asDraft === true;
+
+    // ---- รายการ BOQ + งบประมาณ (คำนวณที่ server) ----
+    const rawItems: any[] = Array.isArray(body.items) ? body.items : [];
+    const rawLabors: any[] = Array.isArray(body.labors)
+      ? body.labors
+      : rawItems.filter((i) => i && (i.type === "lump-sum" || i.type === "per-point"));
+    const itemLines = rawItems
+      .filter((i) => i && i.type !== "lump-sum" && i.type !== "per-point")
+      .map(normalizeItemLine);
+    const laborLines = rawLabors.map(normalizeLaborLine);
+    const lines = [...itemLines, ...laborLines].filter((l) => l.kind === "GROUP" || l.name);
+    if (!asDraft && !lines.some((l) => l.kind !== "GROUP")) {
+      return badRequest("กรุณาเพิ่มรายการสินค้าหรืองานบริการอย่างน้อย 1 รายการ");
     }
-    if (!selectedCustomerId) {
-      return NextResponse.json(
-        { success: false, error: "กรุณาเลือกชื่อลูกค้าผู้ชำระเงินในโครงการ" },
-        { status: 400 }
-      );
-    }
+    const budget = computeProjectBudget(lines, { startDate, endDate });
 
-    // 4. Atomic Sequence ID Generation
-    const nextSeq = await nextCounterSequence("PRJ", companyId, projectName);
-    const finalProjectId = generateStockPilotId("PRJ", companyId, nextSeq);
+    // ---- เลขโครงการ (ครั้งเดียว ตามรูปแบบของบริษัท) ----
+    const projectId = await nexusSequenceServer("PRJ", companyId);
+    const now = admin.firestore.FieldValue.serverTimestamp();
 
-    // 5. Build 3-Step Approval Workflow Definition
-    const approvalWorkflow = [
-      {
-        approvalId: `APP-STEP-1`,
-        stepOrder: 1,
-        role: "Project Director",
-        roleNameTh: "หัวหน้าฝ่ายตรวจสอบความถูกต้อง",
-        status: "Pending",
-        comments: "รอการตรวจสอบขอบเขตและเป้าหมายโครงการ"
-      },
-      {
-        approvalId: `APP-STEP-2`,
-        stepOrder: 2,
-        role: "Finance Manager",
-        roleNameTh: "ฝ่ายการเงินอนุมัติงบประมาณและต้นทุน",
-        status: "Pending",
-        comments: "รอการอนุมัติกรอบวงเงินและกำไรขั้นต้น (GP %)"
-      },
-      {
-        approvalId: `APP-STEP-3`,
-        stepOrder: 3,
-        role: "Executive",
-        roleNameTh: "ผู้บริหารอนุมัติเปิดโครงการเป็นทางการ",
-        status: "Pending",
-        comments: "รอการลงนามอนุมัติสั่งการเปิดโครงการ"
-      }
+    const approvals = [
+      { stepOrder: 1, role: "Project Director", roleNameTh: "หัวหน้าฝ่าย: ตรวจขอบเขตและเป้าหมายโครงการ", status: "Pending" },
+      { stepOrder: 2, role: "Finance Manager", roleNameTh: "ฝ่ายการเงิน: อนุมัติกรอบวงเงินและกำไรขั้นต้น", status: "Pending" },
+      { stepOrder: 3, role: "Executive", roleNameTh: "ผู้บริหาร: อนุมัติเปิดโครงการ", status: "Pending" },
     ];
 
-    // 6. Build Document Checklist based on projectTypeCode
-    const typeConfig = PROJECT_TYPE_CONFIGS[projectTypeCode as ProjectTypeCode] || PROJECT_TYPE_CONFIGS[4];
-    const initialChecklist = typeConfig.requiredDocuments.map((docItem) => ({
-      docCode: docItem.docCode,
-      docName: docItem.docName,
-      isMandatory: docItem.isMandatory,
-      isAttached: false,
-      category: docItem.category
-    }));
-
-    const nowISO = new Date().toISOString();
-
-    // 7. Complete Project Document Payload
-    const projectDocData = {
-      projectId: finalProjectId,
-      projectName: projectName.trim(),
-      title: projectName.trim(),
-      customerId: selectedCustomerId,
-      customerName: customerName || selectedCustomerId,
-      clientReference: clientReference,
+    const projectDoc = clean({
+      projectId,
+      projectName,
+      title: projectName,
+      customerId,
+      customerName: str(customer.customerName || customer.name || customer.companyName || customerId, 200),
+      clientReference: str(body.clientReference, 120),
+      projectTypeCode: typeCode,
       projectType: typeConfig.nameTh,
-      projectTypeCode: projectTypeCode,
-      projectTypeName: typeConfig.nameTh,
-      sectorType: sectorType,
-      documentChecklist: initialChecklist,
-      priority: priority,
-      status: "Pending Approval",
-      currentApprovalStep: 1,
-      startDate: startDate || nowISO.split("T")[0],
-      endDate: endDate || nowISO.split("T")[0],
-      siteLocation: siteLocation,
-      siteContact: siteContact,
-      followers: followers,
-      projectManager: projectManager || userId,
-      budget: Number(budgetSummary.totalRev || 0),
-      allocatedCost: Number(budgetSummary.totalCost || 0),
+      sectorType,
+      priority: str(body.priority || "ปานกลาง", 30),
+      status: asDraft ? "Draft" : "Pending Approval",
+      currentApprovalStep: asDraft ? 0 : 1,
+      approvals,
+      documentChecklist: typeConfig.requiredDocuments.map((d) => ({
+        docCode: d.docCode,
+        docName: d.docName,
+        isMandatory: d.isMandatory,
+        isAttached: false,
+        category: d.category,
+      })),
+      startDate,
+      endDate,
+      siteLocation: str(body.siteLocation, 500),
+      siteContact: { name: str(body.siteContact?.name, 120), phone: str(body.siteContact?.phone, 40) },
+      followers: (Array.isArray(body.followers) ? body.followers : [])
+        .filter((f: any) => str(f?.name))
+        .map((f: any) => ({ name: str(f.name, 120), role: str(f.role, 120), phone: str(f.phone, 40), note: str(f.note, 300) })),
+      projectManager: str(body.projectManager, 120) || (apiUser.email || userId),
+      resources: (Array.isArray(body.resources) ? body.resources : [])
+        .filter((r: any) => str(r?.name))
+        .map((r: any) => ({ name: str(r.name, 120), role: str(r.role, 120), allocation: Math.min(100, Math.max(0, Number(r.allocation) || 0)), ...(r.userId ? { userId: str(r.userId, 128) } : {}) })),
+      items: lines,
+      budget: budget.totalRev,
+      allocatedCost: budget.totalCost,
       actualCost: 0,
-      grossProfit: Number(budgetSummary.grossProfit || 0),
-      gpPercent: Number(budgetSummary.gpPercent || 0),
-      items: items,
-      resources: resources,
-      approvals: approvalWorkflow,
-      governmentDetails: sectorType === "Government" ? (governmentDetails || { bankGuarantee: { status: "Active" } }) : undefined,
-      privateDetails: sectorType === "Private" ? (privateDetails || { paymentTerms: "มัดจำ 30%, ชำระงวดสุดท้าย 70% หลังส่งมอบ" }) : undefined,
-      companyId: companyId,
+      grossProfit: budget.grossProfit,
+      gpPercent: budget.gpPercent,
+      progress: 0,
+      budgetSummary: budget,
+      governmentDetails: sectorType === "Government" ? {
+        torDocNo: str(body.governmentDetails?.torDocNo, 120),
+        referencePrice: Math.max(0, Number(body.governmentDetails?.referencePrice) || 0),
+        govContractNo: str(body.governmentDetails?.govContractNo, 120),
+      } : undefined,
+      privateDetails: sectorType === "Private" ? {
+        customerPO: str(body.privateDetails?.customerPO, 120),
+        paymentTerms: str(body.privateDetails?.paymentTerms, 500),
+      } : undefined,
+      companyId,
       isDeleted: false,
-      is_deleted: false,
-      createdAt: nowISO,
-      updatedAt: nowISO,
-      createdBy: userId
-    };
-
-    // 8. Atomic Dual-Write using Firebase Admin SDK (db.batch)
-    const compProjectRef = adminDb.collection("companies").doc(companyId).collection("projects").doc(finalProjectId);
-    const rootProjectRef = adminDb.collection("projects").doc(finalProjectId);
-
-    const batch = adminDb.batch();
-    batch.set(compProjectRef, projectDocData);
-    batch.set(rootProjectRef, projectDocData);
-
-    await batch.commit();
-
-    // 9. Record Audit Log
-    await auditServer.logCreate(userId, companyId, "PROJECTS", finalProjectId, {
-      projectId: finalProjectId,
-      projectName: projectName,
-      budget: budgetSummary.totalRev,
-      sectorType: sectorType
+      createdAt: now,
+      updatedAt: now,
+      createdBy: userId,
+      ...(asDraft ? {} : { submittedAt: now, submittedBy: userId }),
     });
 
-    return NextResponse.json(
-      {
-        success: true,
-        projectId: finalProjectId,
-        message: `สร้างโครงการ ${finalProjectId} และส่งขออนุมัติ 3 ชั้นสำเร็จ! 🎉`,
-        data: projectDocData
-      },
-      { status: 200 }
-    );
+    // create(): ถ้าเลขซ้ำ (ไม่ควรเกิด) จะล้มเหลวแทนการเขียนทับโครงการเดิม
+    await adminDb.doc(`companies/${companyId}/projects/${projectId}`).create(projectDoc);
+
+    await auditServer.logCreate(userId, companyId, "PROJECTS", projectId, {
+      projectId,
+      projectName,
+      status: projectDoc.status,
+      budget: budget.totalRev,
+    });
+
+    return NextResponse.json({
+      success: true,
+      projectId,
+      status: projectDoc.status,
+      message: asDraft ? `บันทึกฉบับร่างโครงการ ${projectId} แล้ว` : `สร้างโครงการ ${projectId} และส่งขออนุมัติแล้ว`,
+    });
   } catch (error: any) {
     const authRes = authErrorResponse(error);
     if (authRes) return authRes;
     console.error("[SERVER_PROJECT_CREATE_ERROR]:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "เกิดข้อผิดพลาดฝั่งเซิร์ฟเวอร์ในการสร้างโครงการ"
-      },
+      { success: false, error: "เกิดข้อผิดพลาดในการสร้างโครงการ กรุณาลองใหม่" },
       { status: 500 }
     );
   }

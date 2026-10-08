@@ -92,6 +92,28 @@ export async function POST(request: Request) {
     }
     const budget = computeProjectBudget(lines, { startDate, endDate });
 
+    // ---- ผู้จัดการโครงการ/ทีมงาน ต้องเป็นผู้ใช้ของบริษัทนี้ ----
+    const pmUid = str(body.projectManagerUid, 128) || userId;
+    const rawResources: any[] = (Array.isArray(body.resources) ? body.resources : []).filter((r: any) => str(r?.userId));
+    const uids = Array.from(new Set([pmUid, ...rawResources.map((r: any) => str(r.userId, 128))]));
+    const userDocs = await adminDb.getAll(...uids.map((u) => adminDb.doc(`users/${u}`)));
+    const members = new Map<string, any>();
+    userDocs.forEach((d) => { if (d.exists && d.data()?.companyId === companyId) members.set(d.id, d.data()); });
+    const pm = members.get(pmUid);
+    if (!pm && pmUid !== userId) return badRequest("ผู้จัดการโครงการต้องเป็นผู้ใช้ของบริษัท");
+    const pmName = str(pm?.name || pm?.displayName || pm?.email || apiUser.email || pmUid, 120);
+    const resources = rawResources
+      .filter((r: any) => members.has(str(r.userId, 128)))
+      .map((r: any) => {
+        const u = members.get(str(r.userId, 128));
+        return {
+          userId: str(r.userId, 128),
+          name: str(u?.name || u?.displayName || u?.email || r.name, 120),
+          role: str(r.role, 120),
+          allocation: Math.min(100, Math.max(0, Number(r.allocation) || 0)),
+        };
+      });
+
     // ---- เลขโครงการ (ครั้งเดียว ตามรูปแบบของบริษัท) ----
     const projectId = await nexusSequenceServer("PRJ", companyId);
     const now = admin.firestore.FieldValue.serverTimestamp();
@@ -130,10 +152,10 @@ export async function POST(request: Request) {
       followers: (Array.isArray(body.followers) ? body.followers : [])
         .filter((f: any) => str(f?.name))
         .map((f: any) => ({ name: str(f.name, 120), role: str(f.role, 120), phone: str(f.phone, 40), note: str(f.note, 300) })),
-      projectManager: str(body.projectManager, 120) || (apiUser.email || userId),
-      resources: (Array.isArray(body.resources) ? body.resources : [])
-        .filter((r: any) => str(r?.name))
-        .map((r: any) => ({ name: str(r.name, 120), role: str(r.role, 120), allocation: Math.min(100, Math.max(0, Number(r.allocation) || 0)), ...(r.userId ? { userId: str(r.userId, 128) } : {}) })),
+      projectManager: pmName,
+      projectManagerUid: pmUid,
+      resources,
+      teamUids: resources.map((r) => r.userId),
       items: lines,
       budget: budget.totalRev,
       allocatedCost: budget.totalCost,

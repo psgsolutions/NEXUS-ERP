@@ -2,11 +2,11 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useState, useEffect, useMemo } from "react";
-import { 
+import {
   Briefcase,
-  ArrowLeft, 
-  Search, 
-  Plus, 
+  ArrowLeft,
+  Search,
+  Plus,
   Calendar,
   Users,
   BarChart3,
@@ -41,18 +41,18 @@ import {
   Layers,
   MapPin
 } from "lucide-react";
-import { 
-  PillButton, 
-  PillInput, 
+import {
+  PillButton,
+  PillInput,
   PillSelect,
-  MasterMetricCard, 
-  cn, 
-  Modal, 
-  Toast, 
-  NexusTable, 
-  NexusTableRow, 
-  NexusTableCell, 
-  StatusBadge, 
+  MasterMetricCard,
+  cn,
+  Modal,
+  Toast,
+  NexusTable,
+  NexusTableRow,
+  NexusTableCell,
+  StatusBadge,
   PillTabs,
   GlassCard,
   NexusDataField,
@@ -62,11 +62,8 @@ import { SmartSelect, StepperInput } from "@/components/ui/SmartComponents";
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase-client";
-import { doc, setDoc, getDoc, getDocs, collection, query, where, orderBy, onSnapshot, serverTimestamp, writeBatch } from "firebase/firestore";
-import { generateStockPilotId } from "@/lib/utils";
+import { doc, getDoc, getDocs, collection } from "firebase/firestore";
 import { can } from "@/lib/permissions";
-import { KitEditor } from "@/components/projects/KitEditor";
-import { ContractorModal } from "@/components/projects/ContractorModal";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { ProjectTypeCode, PROJECT_TYPE_CONFIGS } from "@/types/database";
@@ -100,20 +97,30 @@ export default function NewProjectPage() {
   const [toast, setToast] = useState({ message: "", isVisible: false, isError: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Firestore Realtime Collections
-  const customerConditions = useMemo(() => [where("companyId", "==", currentCompanyId)], [currentCompanyId]);
-  const { data: rawCustomers } = useRealtimeCollection("customers", customerConditions, false);
+  // ลูกค้าของบริษัท (ที่เก็บหลัก + รุ่นเก่าที่ root ไม่นับซ้ำ)
+  const { data: ownCustomers } = useRealtimeCollection<any>(currentCompanyId ? `companies/${currentCompanyId}/customers` : "");
+  const { data: legacyCustomers } = useRealtimeCollection<any>("customers");
+  const rawCustomers = useMemo(() => {
+    const ids = new Set(ownCustomers.map((c: any) => c.id));
+    return [...ownCustomers, ...legacyCustomers.filter((c: any) => !ids.has(c.id))];
+  }, [ownCustomers, legacyCustomers]);
 
-  const [dbProducts, setDbProducts] = useState<any[]>([]);
-  const [dbContractors, setDbContractors] = useState<any[]>([]);
+  // ผู้ใช้ของบริษัทที่ใช้งานอยู่ (เลือกเป็นผู้จัดการโครงการ/ทีมงาน)
+  const { data: companyUsers } = useRealtimeCollection<any>("users");
+  const userOptions = useMemo(
+    () => companyUsers
+      .filter((u: any) => !u.status || String(u.status).toUpperCase() === "ACTIVE")
+      .map((u: any) => ({ uid: u.id, name: u.name || u.displayName || u.email || u.id, role: String(u.role || "").toUpperCase() }))
+      .sort((a: any, b: any) => a.name.localeCompare(b.name, "th")),
+    [companyUsers]
+  );
 
   // 1: ข้อมูลทั่วไปของโครงการ (General Info)
   const [projectId, setProjectId] = useState<string>("");
   const [projectName, setProjectName] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [projectTypeCode, setProjectTypeCode] = useState<ProjectTypeCode>(4);
-  const [projectType, setProjectType] = useState("งานขายอุปกรณ์พร้อมติดตั้งครบวงจร");
-  const [sectorType, setSectorType] = useState<"Government" | "Private">("Private");
+const [sectorType, setSectorType] = useState<"Government" | "Private">("Private");
   const [projectPriority, setProjectPriority] = useState("ปานกลาง");
   const [clientReference, setClientReference] = useState("");
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -158,121 +165,63 @@ export default function NewProjectPage() {
   // 2: พัสดุอุปกรณ์และงานบริการ (Items & Packages)
   const [documentItems, setDocumentItems] = useState<any[]>([]);
   const [projectLabors, setProjectLabors] = useState<any[]>([]);
-  const [catalogSearchQuery, setCatalogSearchQuery] = useState("");
-  const [catalogActiveSubTab, setCatalogActiveSubTab] = useState<"warehouse" | "packages">("warehouse");
 
   // 3: จัดทีมงานและทรัพยากร (Team & Resources)
-  const [projectManager, setProjectManager] = useState(user?.email?.split("@")[0] || "ผู้จัดการโครงการหลัก");
-  const [assignedTeam, setAssignedTeam] = useState<any[]>([
-    { id: "MEM-01", name: "วิศวกรระบบอาวุโส", role: "Lead Systems Engineer", allocation: 100 },
-    { id: "MEM-02", name: "ช่างติดตั้งสายสัญญาณ", role: "Installation Technician", allocation: 80 }
-  ]);
-  const [activeModal, setActiveModal] = useState<string | null>(null);
+  // ผู้จัดการโครงการและทีมงาน: เลือกจากผู้ใช้จริงของบริษัท (ค่าเริ่มต้น = ผู้สร้างโครงการ)
+  const [projectManagerUid, setProjectManagerUid] = useState<string>(user?.uid || "");
+  const [assignedTeam, setAssignedTeam] = useState<{ uid: string; name: string; role: string; allocation: number }[]>([]);
+  const projectManagerName = userOptions.find((u: any) => u.uid === projectManagerUid)?.name || "";
 
   // เลขโครงการออกที่ server ครั้งเดียวตอนบันทึก (ไม่จองเลขตอนเปิดหน้า)
 
-  // Load Realtime Products & Contractors
-  useEffect(() => {
-    if (!currentCompanyId) return;
-
-    const qProd = query(
-      collection(db, "products"),
-      where("companyId", "==", currentCompanyId),
-      where("isDeleted", "==", false)
-    );
-
-    const unsubProd = onSnapshot(qProd, (snapshot) => {
-      const items: any[] = [];
-      snapshot.forEach((docSnap) => items.push({ id: docSnap.id, ...docSnap.data() }));
-      setDbProducts(items);
-    });
-
-    const qCont = query(
-      collection(db, "contractors"),
-      where("companyId", "==", currentCompanyId),
-      where("isActive", "==", true)
-    );
-
-    const unsubCont = onSnapshot(qCont, (snapshot) => {
-      const items: any[] = [];
-      snapshot.forEach((docSnap) => items.push({ id: docSnap.id, ...docSnap.data() }));
-      setDbContractors(items);
-    });
-
-    return () => {
-      unsubProd();
-      unsubCont();
-    };
-  }, [currentCompanyId]);
-
-  // Handle Import from Quotation if query param present
+  // นำเข้าจากใบเสนอราคา (?fromQuotationId=) — รองรับทั้ง lines subcollection และรูปแบบเก่า (items array)
   useEffect(() => {
     const fromQuotationId = searchParams?.get("fromQuotationId");
-    if (fromQuotationId && currentCompanyId) {
-      const fetchQuotationData = async () => {
-        try {
-          const headerRef = doc(db, `companies/${currentCompanyId}/quotations`, fromQuotationId);
-          const headerSnap = await getDoc(headerRef);
-          
-          if (headerSnap.exists()) {
-            const data = headerSnap.data();
-            setProjectName(data.projectName || data.quotationNumber || "");
-            setSelectedCustomerId(data.customerId || "");
-            setClientReference(data.quotationNumber || "");
-            
-            const linesRef = collection(db, `companies/${currentCompanyId}/quotations/${fromQuotationId}/lines`);
-            const linesSnap = await getDocs(linesRef);
-            
-            const newEquipments: any[] = [];
-            const newLabors: any[] = [];
-            
-            linesSnap.forEach(docSnap => {
-              const lineData = docSnap.data();
-              const isLabor = lineData.sku?.toLowerCase().includes("lab") || 
-                              lineData.productName?.includes("บริการ") || 
-                              lineData.productName?.includes("ค่าแรง") || 
-                              lineData.productName?.includes("ติดตั้ง");
-              
-              if (isLabor) {
-                newLabors.push({
-                  id: Date.now() + Math.random(),
-                  name: lineData.productName,
-                  type: "lump-sum",
-                  points: lineData.qty || 1,
-                  materialCost: 0,
-                  laborCost: lineData.costPrice || 0,
-                  price: lineData.unitPrice || 0,
-                  cost: (lineData.costPrice || 0) * (lineData.qty || 1),
-                  totalPrice: lineData.lineTotal || 0
-                });
-              } else {
-                newEquipments.push({
-                  id: Date.now() + Math.random(),
-                  productId: lineData.productId || null,
-                  name: lineData.productName,
-                  sku: lineData.sku || "SKU-GENERIC",
-                  qty: lineData.qty || 1,
-                  unit: lineData.unit || "ชิ้น",
-                  cost: lineData.costPrice || 0,
-                  price: lineData.unitPrice || 0,
-                  discount: lineData.discount || ""
-                });
-              }
-            });
-            
-            if (newEquipments.length > 0) setDocumentItems(newEquipments);
-            if (newLabors.length > 0) setProjectLabors(newLabors);
-            showToast(`นำเข้าข้อมูลจากใบเสนอราคา ${data.quotationNumber} สำเร็จ`, false);
-          }
-        } catch (error) {
-          console.error("Error fetching quotation:", error);
-          showToast("ไม่สามารถนำเข้าข้อมูลจากใบเสนอราคาได้", true);
+    if (!fromQuotationId || !currentCompanyId) return;
+    (async () => {
+      try {
+        const headerSnap = await getDoc(doc(db, `companies/${currentCompanyId}/quotations`, fromQuotationId));
+        if (!headerSnap.exists()) {
+          showToast("ไม่พบใบเสนอราคาที่ต้องการนำเข้า", true);
+          return;
         }
-      };
-      
-      fetchQuotationData();
-    }
-  }, [searchParams, currentCompanyId]);
+        const data: any = headerSnap.data();
+        const docNo = data.documentNo || data.quotationNumber || data.quoteId || headerSnap.id;
+        setProjectName(data.projectName || data.subject || "");
+        setClientReference(docNo);
+        // รูปแบบเก่าเก็บชื่อลูกค้าไว้ใน customerId: จับคู่กับรายชื่อลูกค้าตามชื่อ
+        const byId = rawCustomers.find((c: any) => c.id === data.customerId);
+        const byName = rawCustomers.find((c: any) => (c.customerName || c.name) === (data.customerName || data.customerId));
+        setSelectedCustomerId(byId?.id || byName?.id || "");
+
+        const linesSnap = await getDocs(collection(db, `companies/${currentCompanyId}/quotations/${fromQuotationId}/lines`));
+        const source: any[] = linesSnap.empty
+          ? (Array.isArray(data.items) ? data.items : [])
+          : linesSnap.docs.map((d) => d.data()).sort((a: any, b: any) => (a.sequence || 0) - (b.sequence || 0));
+        const imported = source.map((l: any, i: number) => ({
+          id: Date.now() + i,
+          productId: l.productId || null,
+          sku: l.sku || "",
+          name: l.productName || l.name || "",
+          details: l.details || l.description || "",
+          qty: Number(l.qty ?? l.quantity) || 1,
+          unit: l.uom || l.unit || "ชิ้น",
+          price: Number(l.unitPrice ?? l.price) || 0,
+          cost: Number(l.costPrice ?? l.cost) || 0,
+          itemType: String(l.itemType || "PRODUCT").toUpperCase(),
+          discountType: l.discountType === "AMOUNT" ? "AMOUNT" : "PERCENT",
+          discountValue: Number(l.discountValue) || 0,
+          whtRate: Number(l.whtRate) || 0,
+        }));
+        if (imported.length > 0) setDocumentItems(imported);
+        showToast(`นำเข้าข้อมูลจากใบเสนอราคา ${docNo} แล้ว (${imported.length} รายการ)`, false);
+      } catch (error) {
+        console.error("Error importing quotation:", error);
+        showToast("ไม่สามารถนำเข้าข้อมูลจากใบเสนอราคาได้", true);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, currentCompanyId, rawCustomers.length > 0]);
 
   // Customer List Mapping (Strict: Zero mock fallback to prevent saving dirty data)
   const customerOptions = useMemo(() => {
@@ -285,20 +234,6 @@ export default function NewProjectPage() {
       description: `เลข 13 หลัก: ${c.taxId || "-"} | สาขา: ${c.branchCode || "00000"}`
     }));
   }, [rawCustomers]);
-
-  // Active Products & Kits (Strict: Zero mock fallback)
-  const activeWarehouseProducts = useMemo(() => {
-    if (dbProducts.length === 0) return [];
-    return dbProducts.filter((p: any) => p.category_id !== "Kit" && !p.isKit).map((p: any) => ({
-      id: p.id,
-      sku: p.sku || "N/A",
-      name: p.name || "ไม่มีชื่อพัสดุ",
-      unit: p.unit ? p.unit.split(" ")[0] : "ชิ้น",
-      cost: p.pricing?.costWAC || p.pricing?.avg_cost || p.cost || 0,
-      price: p.pricing?.priceProject || p.pricing?.pricePOS || p.price || 0,
-      qty_on_hand: p.stockStatus?.onHand ?? p.currentQty ?? 0
-    }));
-  }, [dbProducts]);
 
   // งบประมาณ: สูตรเดียวกับที่ server ใช้บันทึก (lib/project-budget)
   const budgetSummary = useMemo(() => {
@@ -328,36 +263,11 @@ export default function NewProjectPage() {
       showToast("กรุณาเลือกพัสดุอุปกรณ์หรือรายการงานบริการอย่างน้อย 1 รายการ", true);
       return false;
     }
-    if (!projectManager.trim()) {
-      showToast("กรุณาระบุผู้จัดการโครงการหลักที่รับผิดชอบ", true);
+    if (!projectManagerUid) {
+      showToast("กรุณาเลือกผู้จัดการโครงการ", true);
       return false;
     }
     return true;
-  };
-
-  // Add Equipment item to Selection List
-  const handleSelectWarehouseProduct = (prod: any) => {
-    setDocumentItems((prev) => {
-      const existing = prev.find((item) => item.sku === prod.sku);
-      if (existing) {
-        return prev.map((item) => (item.sku === prod.sku ? { ...item, qty: (Number(item.qty) || 0) + 1 } : item));
-      }
-      return [
-        ...prev,
-        {
-          id: Date.now() + Math.random(),
-          productId: prod.id,
-          name: prod.name,
-          sku: prod.sku,
-          qty: 1,
-          unit: prod.unit || "ชิ้น",
-          cost: prod.cost || 0,
-          price: prod.price || 0,
-          discount: ""
-        }
-      ];
-    });
-    showToast(`เพิ่มพัสดุ ${prod.name} เข้าตารางสินค้าอัจฉริยะสำเร็จ`, false);
   };
 
   // Add Custom Labor / Service Item
@@ -366,7 +276,7 @@ export default function NewProjectPage() {
       ...prev,
       {
         id: Date.now(),
-        name: "ระบุรายการงานบริการติดตั้ง...",
+        name: "",
         type: "lump-sum",
         points: 1,
         materialCost: 0,
@@ -414,10 +324,11 @@ export default function NewProjectPage() {
         siteLocation,
         siteContact: { name: siteContactName, phone: siteContactPhone },
         followers: projectFollowers,
-        projectManager,
+        projectManager: projectManagerName,
+        projectManagerUid,
         items: documentItems,
         labors: projectLabors,
-        resources: assignedTeam,
+        resources: assignedTeam.map((m) => ({ userId: m.uid, name: m.name, role: m.role, allocation: m.allocation })),
         governmentDetails: { torDocNo: govTorDocNo, referencePrice: govReferencePrice, govContractNo },
         privateDetails: { customerPO: pvtCustomerPO || clientReference, paymentTerms: pvtPaymentTerms },
       };
@@ -466,16 +377,16 @@ export default function NewProjectPage() {
       </div>
 
       <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
-        <PillButton 
-          variant="glass" 
-          onClick={() => setAllCards(!openCards.general)} 
+        <PillButton
+          variant="glass"
+          onClick={() => setAllCards(!openCards.general)}
           className="h-8 px-3.5 text-xs font-bold"
         >
           {openCards.general ? "พับเก็บทั้งหมด" : "ขยายทั้งหมด"}
         </PillButton>
 
-        <PillButton 
-          variant="glass" 
+        <PillButton
+          variant="glass"
           onClick={() => handleSaveProject(true)}
           disabled={isSubmitting}
           className="h-8 px-4 text-xs font-bold text-white/80"
@@ -483,18 +394,18 @@ export default function NewProjectPage() {
           บันทึกฉบับร่าง
         </PillButton>
 
-        <PillButton 
-          variant="glass" 
-          onClick={() => router.back()} 
+        <PillButton
+          variant="glass"
+          onClick={() => router.back()}
           className="h-8 px-4 text-xs font-bold text-white/50"
         >
           ยกเลิก
         </PillButton>
 
-        <PillButton 
+        <PillButton
           variant="confirm"
           onClick={() => handleSaveProject(false)}
-          disabled={isSubmitting || !can(role, "projects:edit")} 
+          disabled={isSubmitting || !can(role, "projects:edit")}
           className={cn("h-8 px-5 font-bold text-xs", !can(role, "projects:edit") && "opacity-50 cursor-not-allowed")}
           title={!can(role, "projects:edit") ? "สิทธิ์การใช้งานไม่เพียงพอ (ต้องเป็น Role Admin/Engineer ขึ้นไป)" : undefined}
         >
@@ -510,7 +421,7 @@ export default function NewProjectPage() {
 
       {/* CARD 1: ข้อมูลพื้นฐานโครงการและผู้ติดตามหน้างาน */}
       <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl transition-all border-l-4 border-l-nexus-teal hover:border-white/25">
-        <div 
+        <div
           onClick={() => toggleCard("general")}
           className="p-4 sm:p-5 flex items-center justify-between bg-white/[0.04] border-b border-white/10 cursor-pointer hover:bg-white/[0.08] transition-colors select-none"
         >
@@ -534,16 +445,16 @@ export default function NewProjectPage() {
         {openCards.general && (
           <div className="p-4 sm:p-5 space-y-4 animate-in fade-in duration-300">
             {/* แถวที่ 1: สวิตช์เลือกประเภทองค์กรและรูปแบบประเภทโครงการ (Compact Segment Control Bar) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 pb-3 border-b border-white/10 items-center">
+            <div className="grid grid-cols-1 2xl:grid-cols-12 gap-3 pb-3 border-b border-white/10 items-center">
               {/* ประเภทองค์กรลูกค้า (4 cols) */}
-              <div className="lg:col-span-4 flex items-center justify-between gap-2 bg-black/40 p-1 rounded-full border border-white/10 h-9">
+              <div className="2xl:col-span-4 flex items-center justify-between gap-2 bg-black/40 p-1 rounded-full border border-white/10 h-9">
                 <span className="text-xs font-bold text-white/60 pl-3 shrink-0">องค์กรลูกค้า:</span>
                 <div className="flex items-center gap-1 w-full justify-end">
                   <button
                     type="button"
                     onClick={() => setSectorType("Government")}
                     className={cn(
-                      "px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 h-7",
+                      "px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 h-7 whitespace-nowrap",
                       sectorType === "Government"
                         ? "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md shadow-sm"
                         : "text-white/40 hover:text-white"
@@ -555,7 +466,7 @@ export default function NewProjectPage() {
                     type="button"
                     onClick={() => setSectorType("Private")}
                     className={cn(
-                      "px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 h-7",
+                      "px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 h-7 whitespace-nowrap",
                       sectorType === "Private"
                         ? "bg-nexus-blue/20 text-nexus-blue border border-nexus-blue/40 backdrop-blur-md shadow-sm"
                         : "text-white/40 hover:text-white"
@@ -567,7 +478,7 @@ export default function NewProjectPage() {
               </div>
 
               {/* รูปแบบประเภทโครงการ (8 cols) */}
-              <div className="lg:col-span-8 flex flex-wrap items-center justify-between gap-2 bg-black/40 p-1 rounded-[1.25rem] border border-white/10 min-h-9">
+              <div className="2xl:col-span-8 flex flex-wrap items-center justify-between gap-2 bg-black/40 p-1 rounded-[1.25rem] border border-white/10 min-h-9">
                 <span className="text-xs font-bold text-white/60 pl-3 shrink-0" title="กำหนดประเภทเอกสารตรวจรับและขั้นตอนการอนุมัติบังคับตามมาตรฐาน Compliance">รูปแบบการดำเนินงาน:</span>
                 <div className="flex flex-wrap items-center gap-1 min-w-0">
                   {[
@@ -581,10 +492,7 @@ export default function NewProjectPage() {
                       <button
                         key={pt.code}
                         type="button"
-                        onClick={() => {
-                          setProjectTypeCode(pt.code as ProjectTypeCode);
-                          setProjectType(pt.code === 1 ? "งานซื้อขายส่งมอบสินค้า" : pt.code === 2 ? "งานซ่อมบำรุงรักษาและบริการ" : pt.code === 3 ? "งานบริการติดตั้งและผูกทีมช่าง" : "งานขายอุปกรณ์พร้อมติดตั้งครบวงจร");
-                        }}
+                        onClick={() => setProjectTypeCode(pt.code as ProjectTypeCode)}
                         className={cn(
                           "px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1 h-7 whitespace-nowrap",
                           isSelected
@@ -607,11 +515,11 @@ export default function NewProjectPage() {
                 <label className="text-[12px] font-bold text-white/70 uppercase tracking-wider ml-1">
                   ชื่อโครงการ / หัวข้อการติดตั้ง <span className="text-rose-500 font-bold ml-0.5">*</span>
                 </label>
-                <PillInput 
-                  value={projectName} 
-                  onChange={(e) => setProjectName(e.target.value)} 
-                  placeholder="เช่น โครงการติดตั้งระบบจอ LED Wall และระบบเครือข่าย อาคาร B" 
-                  className="w-full text-white font-bold h-8 text-sm" 
+                <PillInput
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="เช่น โครงการติดตั้งระบบจอ LED Wall และระบบเครือข่าย อาคาร B"
+                  className="w-full text-white font-bold h-8 text-sm"
                 />
               </div>
 
@@ -631,24 +539,12 @@ export default function NewProjectPage() {
 
               <div className="space-y-1">
                 <label className="text-[12px] font-bold text-white/70 uppercase tracking-wider ml-1">รหัสเอกสารอ้างอิงลูกค้า</label>
-                <PillInput 
-                  value={clientReference} 
-                  onChange={(e) => setClientReference(e.target.value)} 
-                  placeholder="เช่น PO-2026-9912 หรือ เลขที่ใบเสนอราคาอ้างอิง..." 
-                  className="w-full h-8 text-sm" 
+                <PillInput
+                  value={clientReference}
+                  onChange={(e) => setClientReference(e.target.value)}
+                  placeholder="เช่น PO-2026-9912 หรือ เลขที่ใบเสนอราคาอ้างอิง..."
+                  className="w-full h-8 text-sm"
                 />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[12px] font-bold text-white/70 uppercase tracking-wider ml-1">หมวดธุรกิจโครงการ</label>
-                <PillSelect value={projectType} onChange={(e) => setProjectType(e.target.value)} className="w-full h-8 text-sm font-medium">
-                  <option value="งานขายอุปกรณ์พร้อมติดตั้งครบวงจร">งานขายอุปกรณ์พร้อมติดตั้งครบวงจร</option>
-                  <option value="งานระบบโครงสร้างและสถาปัตยกรรม">งานระบบโครงสร้างและสถาปัตยกรรม</option>
-                  <option value="งานพัฒนาระบบซอฟต์แวร์">งานพัฒนาระบบซอฟต์แวร์</option>
-                  <option value="งานบริการที่ปรึกษาโครงการ">งานบริการที่ปรึกษาโครงการ</option>
-                  <option value="งานบริการซ่อมบำรุงรักษา">งานบริการซ่อมบำรุงรักษา</option>
-                </PillSelect>
-                <span className="text-[10px] text-white/40 block ml-1">ใช้จัดกลุ่มประเภทงานในรายงานภาพรวม</span>
               </div>
 
               <div className="space-y-1">
@@ -675,6 +571,41 @@ export default function NewProjectPage() {
                 <PillInput type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full h-8 text-sm font-mono" />
               </div>
 
+              {/* เงื่อนไขสัญญาตามประเภทลูกค้า */}
+              <div className="space-y-1.5 md:col-span-3 pt-3 border-t border-white/10">
+                <div className="flex items-center gap-1.5 text-nexus-teal mb-1">
+                  <FileText size={16} />
+                  <span className="text-xs font-bold text-white">{sectorType === "Government" ? "ข้อมูลสัญญาภาครัฐ" : "เงื่อนไขการว่าจ้าง (เอกชน)"}</span>
+                </div>
+                {sectorType === "Government" ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[12px] font-bold text-white/70 ml-1">เลขที่เอกสาร TOR</label>
+                      <PillInput value={govTorDocNo} onChange={(e) => setGovTorDocNo(e.target.value)} placeholder="เช่น TOR-2569-015" className="w-full h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[12px] font-bold text-white/70 ml-1">ราคากลาง (บาท)</label>
+                      <PillInput type="number" value={govReferencePrice || ""} onChange={(e) => setGovReferencePrice(Number(e.target.value) || 0)} placeholder="0.00" className="w-full h-9 text-sm font-mono text-right" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[12px] font-bold text-white/70 ml-1">เลขที่สัญญา</label>
+                      <PillInput value={govContractNo} onChange={(e) => setGovContractNo(e.target.value)} placeholder="ระบุเมื่อลงนามสัญญาแล้ว" className="w-full h-9 text-sm" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[12px] font-bold text-white/70 ml-1">เลขที่ใบสั่งซื้อของลูกค้า (PO)</label>
+                      <PillInput value={pvtCustomerPO} onChange={(e) => setPvtCustomerPO(e.target.value)} placeholder="เช่น PO-2026-9912" className="w-full h-9 text-sm" />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <label className="text-[12px] font-bold text-white/70 ml-1">เงื่อนไขการชำระเงิน / งวดงาน</label>
+                      <PillInput value={pvtPaymentTerms} onChange={(e) => setPvtPaymentTerms(e.target.value)} placeholder="เช่น มัดจำ 30% ชำระงวดสุดท้าย 70% หลังส่งมอบ" className="w-full h-9 text-sm" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* ข้อมูลสถานที่และผู้ติดต่อหน้างาน */}
               <div className="space-y-1.5 md:col-span-3 pt-3 border-t border-white/10">
                 <div className="flex items-center gap-1.5 text-nexus-blue mb-1">
@@ -683,25 +614,25 @@ export default function NewProjectPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="md:col-span-2">
-                    <PillInput 
-                      value={siteLocation} 
-                      onChange={(e) => setSiteLocation(e.target.value)} 
-                      placeholder="ระบุสถานที่ติดตั้ง เลขที่อาคาร หรือลิงก์ Google Maps หน้างาน..." 
-                      className="w-full h-8 text-sm" 
+                    <PillInput
+                      value={siteLocation}
+                      onChange={(e) => setSiteLocation(e.target.value)}
+                      placeholder="ระบุสถานที่ติดตั้ง เลขที่อาคาร หรือลิงก์ Google Maps หน้างาน..."
+                      className="w-full h-8 text-sm"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <PillInput 
-                      value={siteContactName} 
-                      onChange={(e) => setSiteContactName(e.target.value)} 
-                      placeholder="ชื่อผู้ติดต่อหน้างาน..." 
-                      className="w-full h-8 text-sm font-medium" 
+                    <PillInput
+                      value={siteContactName}
+                      onChange={(e) => setSiteContactName(e.target.value)}
+                      placeholder="ชื่อผู้ติดต่อหน้างาน..."
+                      className="w-full h-8 text-sm font-medium"
                     />
-                    <PillInput 
-                      value={siteContactPhone} 
-                      onChange={(e) => setSiteContactPhone(e.target.value)} 
-                      placeholder="เบอร์โทรศัพท์..." 
-                      className="w-full h-8 text-sm font-mono font-bold" 
+                    <PillInput
+                      value={siteContactPhone}
+                      onChange={(e) => setSiteContactPhone(e.target.value)}
+                      placeholder="เบอร์โทรศัพท์..."
+                      className="w-full h-8 text-sm font-mono font-bold"
                     />
                   </div>
                 </div>
@@ -715,8 +646,8 @@ export default function NewProjectPage() {
                     <span className="text-xs font-bold uppercase text-white">รายชื่อผู้ติดตามและผู้ประสานงานหน้างาน</span>
                     <span className="text-[11px] text-white/40 font-mono font-bold">({projectFollowers.length} คน)</span>
                   </div>
-                  <PillButton 
-                    variant="glass" 
+                  <PillButton
+                    variant="glass"
                     onClick={handleAddFollower}
                     className="h-7 px-3 text-xs font-bold text-nexus-teal border-nexus-teal/30"
                   >
@@ -733,7 +664,7 @@ export default function NewProjectPage() {
                     {projectFollowers.map((fol) => (
                       <div key={fol.id} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-black/30 border border-white/10 p-2 rounded-2xl">
                         <div className="sm:col-span-3">
-                          <PillInput 
+                          <PillInput
                             value={fol.name}
                             onChange={(e) => handleUpdateFollower(fol.id, "name", e.target.value)}
                             placeholder="ชื่อ-นามสกุล..."
@@ -741,7 +672,7 @@ export default function NewProjectPage() {
                           />
                         </div>
                         <div className="sm:col-span-3">
-                          <PillInput 
+                          <PillInput
                             value={fol.role}
                             onChange={(e) => handleUpdateFollower(fol.id, "role", e.target.value)}
                             placeholder="ตำแหน่ง / บทบาท..."
@@ -749,7 +680,7 @@ export default function NewProjectPage() {
                           />
                         </div>
                         <div className="sm:col-span-2">
-                          <PillInput 
+                          <PillInput
                             value={fol.phone}
                             onChange={(e) => handleUpdateFollower(fol.id, "phone", e.target.value)}
                             placeholder="เบอร์โทรศัพท์..."
@@ -757,7 +688,7 @@ export default function NewProjectPage() {
                           />
                         </div>
                         <div className="sm:col-span-3">
-                          <PillInput 
+                          <PillInput
                             value={fol.note || ""}
                             onChange={(e) => handleUpdateFollower(fol.id, "note", e.target.value)}
                             placeholder="หมายเหตุ..."
@@ -786,7 +717,7 @@ export default function NewProjectPage() {
 
       {/* CARD 2: รายการพัสดุอุปกรณ์และงานบริการ */}
       <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl transition-all border-l-4 border-l-nexus-blue hover:border-white/25">
-        <div 
+        <div
           onClick={() => toggleCard("boq")}
           className="p-4 sm:p-5 flex items-center justify-between bg-white/[0.04] border-b border-white/10 cursor-pointer hover:bg-white/[0.08] transition-colors select-none"
         >
@@ -812,33 +743,8 @@ export default function NewProjectPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-bold text-white/80 uppercase tracking-wider flex items-center gap-2">
-                  <FileSpreadsheet size={18} className="text-nexus-teal" /> ตารางรายการสินค้าและพัสดุอัจฉริยะ ({documentItems.length} รายการ)
+                  <FileSpreadsheet size={18} className="text-nexus-teal" /> รายการสินค้าและพัสดุ ({documentItems.length} รายการ)
                 </h4>
-                <div className="flex items-center gap-2">
-                  <PillButton 
-                    variant="glass" 
-                    onClick={() => {
-                      setDocumentItems((prev) => [
-                        ...prev,
-                        {
-                          id: Date.now() + Math.random(),
-                          productId: null,
-                          sku: "",
-                          name: "",
-                          qty: 1,
-                          unit: "ชิ้น",
-                          price: 0,
-                          cost: 0,
-                          discount: "",
-                          isOptional: false
-                        }
-                      ]);
-                    }}
-                    className="h-7 px-3 text-xs font-bold text-nexus-teal border-nexus-teal/30"
-                  >
-                    + เพิ่มแถวพัสดุใหม่
-                  </PillButton>
-                </div>
               </div>
 
               <DocumentItemsTable
@@ -855,9 +761,9 @@ export default function NewProjectPage() {
                 <h4 className="text-sm font-bold text-white/80 uppercase tracking-wider flex items-center gap-2">
                   <Wrench size={18} className="text-nexus-blue" /> รายการงานบริการและค่าแรงติดตั้ง ({projectLabors.length} รายการ)
                 </h4>
-                <PillButton 
-                  variant="glass" 
-                  onClick={handleAddCustomLabor} 
+                <PillButton
+                  variant="glass"
+                  onClick={handleAddCustomLabor}
                   className="h-7 px-3 text-xs font-bold text-nexus-blue border-nexus-blue/30"
                 >
                   + เพิ่มรายการงานบริการ
@@ -888,24 +794,53 @@ export default function NewProjectPage() {
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[11px] font-bold text-white/50 uppercase block">ต้นทุนบริการ (บาท)</label>
-                          <NumberStepper
-                            value={lab.cost || 0}
-                            onChange={(val) => setProjectLabors((prev) => prev.map((item) => (item.id === lab.id ? { ...item, cost: val } : item)))}
-                            step={500}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[11px] font-bold text-nexus-teal uppercase block">ราคาขายเสนอ (บาท)</label>
-                          <NumberStepper
-                            value={lab.price || 0}
-                            onChange={(val) => setProjectLabors((prev) => prev.map((item) => (item.id === lab.id ? { ...item, price: val } : item)))}
-                            step={500}
-                          />
-                        </div>
+                      <div className="flex items-center gap-2">
+                        {[{ v: "lump-sum", l: "เหมาจ่าย" }, { v: "per-point", l: "คิดต่อจุด" }].map((t) => (
+                          <button
+                            key={t.v}
+                            type="button"
+                            onClick={() => setProjectLabors((prev) => prev.map((item) => (item.id === lab.id ? { ...item, type: t.v } : item)))}
+                            className={cn(
+                              "h-8 px-3 rounded-full text-xs font-bold border transition-all",
+                              (lab.type || "lump-sum") === t.v ? "bg-nexus-blue/20 text-nexus-blue border-nexus-blue/40" : "text-white/50 border-white/10 hover:text-white"
+                            )}
+                          >
+                            {t.l}
+                          </button>
+                        ))}
                       </div>
+
+                      {lab.type === "per-point" ? (
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                          <div>
+                            <label className="text-[11px] font-bold text-white/50 block">จำนวนจุด</label>
+                            <NumberStepper value={lab.points || 1} onChange={(val) => setProjectLabors((prev) => prev.map((item) => (item.id === lab.id ? { ...item, points: Math.max(1, val) } : item)))} step={1} />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-bold text-white/50 block">ค่าวัสดุต่อจุด (บาท)</label>
+                            <NumberStepper value={lab.materialCost || 0} onChange={(val) => setProjectLabors((prev) => prev.map((item) => (item.id === lab.id ? { ...item, materialCost: val } : item)))} step={50} />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-bold text-white/50 block">ค่าแรงต่อจุด (บาท)</label>
+                            <NumberStepper value={lab.laborCost || 0} onChange={(val) => setProjectLabors((prev) => prev.map((item) => (item.id === lab.id ? { ...item, laborCost: val } : item)))} step={50} />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-bold text-nexus-teal block">ราคาขายต่อจุด (บาท)</label>
+                            <NumberStepper value={lab.price || 0} onChange={(val) => setProjectLabors((prev) => prev.map((item) => (item.id === lab.id ? { ...item, price: val } : item)))} step={50} />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[11px] font-bold text-white/50 block">ต้นทุนบริการ (บาท)</label>
+                            <NumberStepper value={lab.cost || 0} onChange={(val) => setProjectLabors((prev) => prev.map((item) => (item.id === lab.id ? { ...item, cost: val } : item)))} step={500} />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-bold text-nexus-teal block">ราคาขายเสนอ (บาท)</label>
+                            <NumberStepper value={lab.price || 0} onChange={(val) => setProjectLabors((prev) => prev.map((item) => (item.id === lab.id ? { ...item, price: val } : item)))} step={500} />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -917,7 +852,7 @@ export default function NewProjectPage() {
 
       {/* CARD 3: จัดทีมงานและทรัพยากร */}
       <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl transition-all border-l-4 border-l-purple-500 hover:border-white/25">
-        <div 
+        <div
           onClick={() => toggleCard("team")}
           className="p-4 sm:p-5 flex items-center justify-between bg-white/[0.04] border-b border-white/10 cursor-pointer hover:bg-white/[0.08] transition-colors select-none"
         >
@@ -941,62 +876,80 @@ export default function NewProjectPage() {
           <div className="p-6 space-y-6 animate-in fade-in duration-300">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
-                <label className="text-[13px] font-bold text-white/70 uppercase tracking-wider ml-1">
-                  ผู้จัดการโครงการหลัก <span className="text-rose-500 font-bold ml-0.5">*</span>
+                <label className="text-[13px] font-bold text-white/70 tracking-wider ml-1">
+                  ผู้จัดการโครงการ <span className="text-danger font-bold ml-0.5">*</span>
                 </label>
-                <PillInput 
-                  value={projectManager} 
-                  onChange={(e) => setProjectManager(e.target.value)} 
-                  placeholder="ระบุชื่อผู้จัดการโครงการ..." 
-                  className="w-full h-8 font-bold text-sm text-nexus-teal" 
-                />
+                <PillSelect value={projectManagerUid} onChange={(e) => setProjectManagerUid(e.target.value)} className="w-full h-9 text-sm font-bold">
+                  <option value="">-- เลือกผู้จัดการโครงการ --</option>
+                  {userOptions.map((u: any) => (
+                    <option key={u.uid} value={u.uid}>{u.name}</option>
+                  ))}
+                </PillSelect>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[13px] font-bold text-white/70 uppercase tracking-wider ml-1">อัตราค่าแรงผู้รับเหมาช่วง</label>
-                <PillButton variant="glass" onClick={() => setActiveModal("contractor")} className="w-full h-8 justify-center text-sm text-white/80">
-                  <Wrench size={16} className="mr-2 text-warning" /> จัดการข้อมูลผู้รับเหมาและชุดค่าแรง
-                </PillButton>
+                <label className="text-[13px] font-bold text-white/70 tracking-wider ml-1">เพิ่มทีมงาน</label>
+                <PillSelect
+                  value=""
+                  onChange={(e) => {
+                    const u = userOptions.find((x: any) => x.uid === e.target.value);
+                    if (u && !assignedTeam.some((m) => m.uid === u.uid)) {
+                      setAssignedTeam((prev) => [...prev, { uid: u.uid, name: u.name, role: u.role === "TECHNICIAN" ? "ช่างเทคนิค" : "ทีมงานโครงการ", allocation: 100 }]);
+                    }
+                  }}
+                  className="w-full h-9 text-sm"
+                >
+                  <option value="">-- เลือกผู้ใช้เพื่อเพิ่มเข้าทีม --</option>
+                  {userOptions.filter((u: any) => !assignedTeam.some((m) => m.uid === u.uid)).map((u: any) => (
+                    <option key={u.uid} value={u.uid}>{u.name}</option>
+                  ))}
+                </PillSelect>
               </div>
             </div>
 
-            {/* Assigned Team List */}
             <div className="space-y-3 pt-4 border-t border-white/10">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-white/70 uppercase tracking-wider">ทีมวิศวกรและช่างเทคนิคที่ได้รับมอบหมาย</h4>
-                <button
-                  type="button"
-                  onClick={() => setAssignedTeam((prev) => [...prev, { id: `MEM-${Date.now()}`, name: "บุคลากรใหม่", role: "Support Engineer", allocation: 100 }])}
-                  className="text-sm text-nexus-teal font-bold hover:underline"
-                >
-                  + เพิ่มทีมงาน
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {assignedTeam.map((member) => (
-                  <div key={member.id} className="p-4 bg-white/[0.03] border border-white/10 rounded-2xl space-y-2">
-                    <div className="flex items-center justify-between">
-                      <PillInput
-                        value={member.name}
-                        onChange={(e) => setAssignedTeam((prev) => prev.map((m) => (m.id === member.id ? { ...m, name: e.target.value } : m)))}
-                        className="h-8 text-sm font-bold w-3/4"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setAssignedTeam((prev) => prev.filter((m) => m.id !== member.id))}
-                        className="text-white/30 hover:text-danger p-1"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+              <h4 className="text-sm font-bold text-white/70 tracking-wider">ทีมงานที่ได้รับมอบหมาย ({assignedTeam.length} คน)</h4>
+              {assignedTeam.length === 0 ? (
+                <div className="p-4 border border-dashed border-white/10 rounded-2xl text-center text-white/40 text-xs">
+                  ยังไม่ได้เพิ่มทีมงาน (เลือกจากรายชื่อผู้ใช้ด้านบน)
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {assignedTeam.map((member) => (
+                    <div key={member.uid} className="p-3 bg-white/[0.03] border border-white/10 rounded-2xl space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-bold text-white truncate" title={member.name}>{member.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setAssignedTeam((prev) => prev.filter((m) => m.uid !== member.uid))}
+                          className="text-white/30 hover:text-danger p-1 shrink-0"
+                          title="นำออกจากทีม"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-[1fr_110px] gap-2">
+                        <PillInput
+                          value={member.role}
+                          onChange={(e) => setAssignedTeam((prev) => prev.map((m) => (m.uid === member.uid ? { ...m, role: e.target.value } : m)))}
+                          placeholder="หน้าที่ในโครงการ"
+                          className="h-9 text-sm"
+                        />
+                        <div className="relative">
+                          <PillInput
+                            type="number"
+                            value={member.allocation}
+                            onChange={(e) => setAssignedTeam((prev) => prev.map((m) => (m.uid === member.uid ? { ...m, allocation: Math.min(100, Math.max(0, Number(e.target.value) || 0)) } : m)))}
+                            className="h-9 text-sm font-mono text-right pr-8"
+                            title="สัดส่วนเวลาที่ทำงานให้โครงการ"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/40">%</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-white/60 font-bold">{member.role}</span>
-                      <span className="text-nexus-blue font-mono font-bold">มอบหมาย: {member.allocation}%</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1004,7 +957,7 @@ export default function NewProjectPage() {
 
       {/* CARD 4: สรุปงบประมาณโครงการ รายละเอียดการประเมิน และขั้นตอนการอนุมัติ 3 ชั้น */}
       <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl transition-all border-l-4 border-l-emerald-500 hover:border-white/25">
-        <div 
+        <div
           onClick={() => toggleCard("summary")}
           className="p-4 sm:p-5 flex items-center justify-between bg-white/[0.04] border-b border-white/10 cursor-pointer hover:bg-white/[0.08] transition-colors select-none"
         >
@@ -1303,7 +1256,7 @@ export default function NewProjectPage() {
 
         <div className="flex items-center justify-between py-1 border-b border-white/5">
           <span className="text-white/60 font-medium">รูปแบบโครงการ</span>
-          <span className="font-bold text-white/80 max-w-[150px] truncate text-right">{projectType}</span>
+          <span className="font-bold text-white/80 max-w-[150px] truncate text-right" title={PROJECT_TYPE_CONFIGS[projectTypeCode]?.nameTh}>{PROJECT_TYPE_CONFIGS[projectTypeCode]?.nameTh}</span>
         </div>
 
         <div className="flex items-center justify-between py-1 border-b border-white/5">
@@ -1379,17 +1332,6 @@ export default function NewProjectPage() {
         />
       )}
 
-      {activeModal === "contractor" && (
-        <ContractorModal
-          isOpen={true}
-          onClose={() => setActiveModal(null)}
-          onSave={(c: any) => {
-            showToast(`บันทึกข้อมูลผู้รับเหมา ${c?.name || ""} เรียบร้อย`, false);
-            setActiveModal(null);
-          }}
-          showToast={(msg: string) => showToast(msg, false)}
-        />
-      )}
     </div>
   );
 

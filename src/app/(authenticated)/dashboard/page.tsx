@@ -1,171 +1,176 @@
-// @ts-nocheck
 "use client";
 
-import React, { useState } from "react";
-import { 
-  DollarSign, 
+import React, { useMemo, useState } from "react";
+import {
   BadgeDollarSign,
-  Package, 
+  Package,
   Warehouse,
-  Briefcase, 
+  Briefcase,
   FolderKanban,
   AlertTriangle,
   Plus,
   ShoppingBasket,
   TrendingUp,
   Activity,
-  CheckCircle2,
-  Zap,
-  Layout,
   ChevronRight,
   Bell,
-  Sparkles,
   ArrowUpRight,
-  Target,
-  Users,
   UsersRound,
-  MessageSquare,
-  ShieldCheck,
-  Search,
-  Monitor,
-  Cpu,
-  Globe,
-  Timer
+  CheckCircle2,
+  ClipboardList,
+  Zap,
 } from "lucide-react";
-import { 
-  PillButton, 
-  PillInput, 
-  MasterMetricCard, 
-  cn, 
-  GlassCard,
-  StatusBadge,
-  PillTabs,
-  NexusSearchInput
-} from "@/components/ui/Base";
+import { PillButton, MasterMetricCard, cn, GlassCard } from "@/components/ui/Base";
 import { SystemHealthIndicator } from "@/components/shared/SystemHealthIndicator";
-import { QuantumRiskEngine } from "@/components/dashboard/QuantumRiskEngine";
-import { MacroIntelligence } from "@/components/dashboard/MacroIntelligence";
-import { TemporalForecaster } from "@/components/ai/TemporalForecaster";
+import { RevenueExpenseChart } from "@/components/dashboard/RevenueExpenseChart";
+import { useAuth } from "@/context/AuthContext";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { normalizePoStatus } from "@/lib/procurement-status";
+import {
+  activeProjects,
+  activityFeed,
+  compactBaht,
+  fullBaht,
+  lastMonthKeys,
+  lowStockProducts,
+  monthlyProfitAndLoss,
+  overdueInvoices,
+  PROJECT_STATUS_LABEL,
+  relativeTimeTh,
+  type ActivityKind,
+} from "@/lib/dashboard-metrics";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+const upper = (s: any) => String(s || "").toUpperCase();
+
 export default function DashboardPage() {
   const router = useRouter();
-  const [viewMode, setViewMode] = useState<"standard" | "quantum" | "macro" | "temporal">("standard");
-  const [neuralEnabled, setNeuralEnabled] = useState(false);
+  const { companyId } = useAuth();
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
+  const co = (sub: string) => (companyId ? `companies/${companyId}/${sub}` : "");
+
+  // ข้อมูลจริงของบริษัท (useRealtimeCollection กรองตาม companyId ให้อัตโนมัติ)
+  const { data: companyJournals, loading: journalsLoading } = useRealtimeCollection<any>(co("journal_entries"));
+  const { data: legacyJournals } = useRealtimeCollection<any>("journal_entries");
+  const { data: products, loading: productsLoading } = useRealtimeCollection<any>("products");
+  const { data: companyProjects } = useRealtimeCollection<any>(co("projects"));
+  const { data: legacyProjects } = useRealtimeCollection<any>("projects");
+  const { data: invoices } = useRealtimeCollection<any>(co("invoices"));
+  const { data: purchaseOrders } = useRealtimeCollection<any>(co("purchase_orders"));
+  const { data: purchaseRequests } = useRealtimeCollection<any>(co("purchase_requests"));
+  const { data: quotations } = useRealtimeCollection<any>(co("quotations"));
+  const { data: workOrders } = useRealtimeCollection<any>(co("work_orders"));
+  const { data: logs, loading: logsLoading } = useRealtimeCollection<any>("logs");
+
+  const journals = useMemo(() => [...companyJournals, ...legacyJournals], [companyJournals, legacyJournals]);
+  const months = useMemo(() => lastMonthKeys(6), []);
+  const monthly = useMemo(() => monthlyProfitAndLoss(journals, months), [journals, months]);
+  const thisMonth = monthly[monthly.length - 1];
+  const margin = thisMonth && thisMonth.revenue > 0 ? ((thisMonth.revenue - thisMonth.expense) / thisMonth.revenue) * 100 : null;
+
+  const lowStock = useMemo(() => lowStockProducts(products), [products]);
+  const projects = useMemo(
+    () => activeProjects([...companyProjects, ...legacyProjects]).filter((p) => !p.isSample),
+    [companyProjects, legacyProjects]
+  );
+  const overdue = useMemo(() => overdueInvoices(invoices), [invoices]);
+  const feed = useMemo(() => activityFeed(logs, 8), [logs]);
+
+  // งานรอดำเนินการ (นับเอกสารตัวอย่างแยกไว้ให้เห็น)
+  const pending = useMemo(() => {
+    const count = (list: any[], pred: (x: any) => boolean) => {
+      const hit = list.filter((x) => x.isDeleted !== true && pred(x));
+      return { total: hit.length, samples: hit.filter((x) => x.isSample).length };
+    };
+    return [
+      { label: "ใบขอซื้อรออนุมัติ", href: "/procurement", ...count(purchaseRequests, (x) => upper(x.status) === "PENDING_APPROVAL") },
+      { label: "ใบสั่งซื้อรออนุมัติ", href: "/procurement", ...count(purchaseOrders, (x) => normalizePoStatus(x.status) === "PENDING_APPROVAL") },
+      { label: "ใบเสนอราคารออนุมัติ", href: "/sales/quotations", ...count(quotations, (x) => upper(x.status) === "PENDING_APPROVAL") },
+      { label: "รายการบัญชีรอลงบัญชี", href: "/finance", ...count(journals, (x) => String(x.status || "").toLowerCase() === "draft") },
+      { label: "ใบงานช่างที่ยังเปิดอยู่", href: "/mobile/technician", ...count(workOrders, (x) => ["ASSIGNED", "IN_PROGRESS"].includes(upper(x.status))) },
+    ];
+  }, [purchaseRequests, purchaseOrders, quotations, journals, workOrders]);
+  const pendingTotal = pending.reduce((s, p) => s + p.total, 0);
+
+  // เรื่องที่ควรดำเนินการก่อน (เรียงตามความเร่งด่วน)
+  const attention = useMemo(() => {
+    const items: { text: React.ReactNode; href: string; action: string }[] = [];
+    if (overdue.length > 0) {
+      const amount = overdue.reduce((s, inv) => s + (Number(inv.grandTotal ?? inv.totalAmount) || 0), 0);
+      items.push({
+        text: <>มีใบแจ้งหนี้เกินกำหนดชำระ <span className="text-danger">{overdue.length} ใบ</span> รวม {fullBaht(amount)}</>,
+        href: "/finance",
+        action: "ติดตามหนี้",
+      });
+    }
+    if (lowStock.length > 0) {
+      const top = lowStock[0];
+      items.push({
+        text: <>สินค้าต่ำกว่าจุดสั่งซื้อ <span className="text-warning">{lowStock.length} รายการ</span> เช่น {top.name} เหลือ {top.onHand} {top.unit} (จุดสั่งซื้อ {top.min})</>,
+        href: "/procurement/requests/new",
+        action: "เปิดใบขอซื้อ",
+      });
+    }
+    const approvals = pending.filter((p) => p.label.includes("รออนุมัติ") && p.total > 0);
+    if (approvals.length > 0) {
+      items.push({
+        text: <>มีเอกสารรออนุมัติ {approvals.map((p) => `${p.label.replace("รออนุมัติ", "")} ${p.total}`).join(", ")}</>,
+        href: approvals[0].href,
+        action: "ตรวจอนุมัติ",
+      });
+    }
+    return items;
+  }, [overdue, lowStock, pending]);
+
+  const loadingMoney = journalsLoading;
+  const kpiValue = (v: string) => (loadingMoney ? "…" : v);
 
   return (
-    <div className={cn(
-      "px-6 py-3.5 space-y-4 max-w-[1800px] mx-auto animate-in fade-in duration-700",
-      neuralEnabled && "blur-[0.5px] brightness-110 contrast-125"
-    )}>
-      
+    <div className="px-6 py-3.5 space-y-4 max-w-[1800px] mx-auto">
+
       {/* --- TOP COMMAND HEADER --- */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
             <SystemHealthIndicator />
-            <div className="px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-[12px] text-white/40 font-medium uppercase flex items-center gap-2 tracking-widest">
-              <div className="w-1.5 h-1.5 rounded-full bg-nexus-teal shadow-neon-teal animate-pulse" />
-              โหนด: NEXUS-BKK-GLOBAL
-            </div>
-            <div className="flex gap-2">
-               <div 
-                  onClick={() => setViewMode(viewMode === "standard" ? "quantum" : "standard")}
-                  className={cn("px-3.5 py-1 rounded-full border text-[11px] font-medium uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
-                     viewMode === "quantum" ? "bg-warning/20 border-warning text-warning shadow-neon-warning" : "bg-nexus-blue/10 border-nexus-blue/20 text-nexus-blue"
-                  )}
-               >
-                 <Cpu size={12} />
-                 วิเคราะห์: {viewMode === "quantum" ? "QUANTUM" : "STANDARD"}
-               </div>
-               <div 
-                  onClick={() => setViewMode(viewMode === "macro" ? "standard" : "macro")}
-                  className={cn("px-3.5 py-1 rounded-full border text-[11px] font-medium uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
-                     viewMode === "macro" ? "bg-nexus-blue/20 border-nexus-blue text-nexus-blue shadow-neon-blue" : "bg-white/5 border-white/10 text-white/40"
-                  )}
-               >
-                 <Globe size={12} />
-                 โหมด: MACRO
-               </div>
-               <div 
-                  onClick={() => setViewMode(viewMode === "temporal" ? "standard" : "temporal")}
-                  className={cn("px-3.5 py-1 rounded-full border text-[11px] font-medium uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
-                     viewMode === "temporal" ? "bg-nexus-teal/20 border-nexus-teal text-nexus-teal shadow-neon-teal" : "bg-white/5 border-white/10 text-white/40"
-                  )}
-               >
-                 <Timer size={12} />
-                 โหมด: TEMPORAL
-               </div>
-               <div 
-                  onClick={() => setNeuralEnabled(!neuralEnabled)}
-                  className={cn("px-3.5 py-1 rounded-full border text-[11px] font-medium uppercase flex items-center gap-2 tracking-widest cursor-pointer transition-all",
-                     neuralEnabled ? "bg-danger/20 border-danger text-danger shadow-neon-danger" : "bg-white/5 border-white/10 text-white/40"
-                  )}
-               >
-                 <Zap size={12} />
-                 NEURAL: {neuralEnabled ? "CONNECTED" : "OFF"}
-               </div>
-            </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 bg-nexus-teal/20 border border-nexus-teal/20 rounded-xl flex items-center justify-center shadow-neon-teal">
               <Zap size={22} className="text-nexus-teal drop-shadow-md" />
             </div>
             <div>
-              <p className="text-[14px] font-medium text-white/20 uppercase tracking-[0.2em] mb-0.5 ml-0.5" title="หน้าหลักควบคุมการปฏิบัติงานรวม">หน้าแรก</p>
+              <p className="text-[14px] font-medium text-white/20 uppercase tracking-[0.2em] mb-0.5 ml-0.5">หน้าแรก</p>
               <h1 className="text-3xl font-bold text-white tracking-tighter leading-none uppercase">ภาพรวมระบบ</h1>
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-4">
-            <NexusSearchInput 
-              placeholder="พิมพ์เพื่อค้นหา..." 
-              className="w-80 hidden xl:block"
-              kbd="CTRL+K"
-            />
           <div className={cn("relative", isCreateMenuOpen && "z-[99999]")}>
-            <PillButton 
-              className="px-8 shadow-neon-teal" 
-              onClick={() => setIsCreateMenuOpen(!isCreateMenuOpen)}
-            >
+            <PillButton className="px-8 shadow-neon-teal" onClick={() => setIsCreateMenuOpen(!isCreateMenuOpen)}>
               <Plus size={18} className={cn("transition-transform", isCreateMenuOpen && "rotate-45")} />
               สร้างรายการใหม่
             </PillButton>
-            
+
             {isCreateMenuOpen && (
-              <div className="absolute top-full right-0 mt-3 w-56 bg-surface-0/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[99999] animate-in slide-in-from-top-2 duration-200">
+              <div className="absolute top-full right-0 mt-3 w-56 bg-surface-0/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[99999]">
                 <div className="p-2 space-y-1">
-                  <div 
-                    onClick={() => router.push('/projects?action=new')}
-                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer text-white/70 hover:text-white transition-colors group"
-                  >
-                    <FolderKanban size={16} className="group-hover:text-nexus-blue" />
-                    <span className="text-sm font-bold uppercase tracking-widest">โครงการใหม่</span>
-                  </div>
-                  <div 
-                    onClick={() => router.push('/sales?action=new-quotation')}
-                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer text-white/70 hover:text-white transition-colors group"
-                  >
-                    <BadgeDollarSign size={16} className="group-hover:text-nexus-teal" />
-                    <span className="text-sm font-bold uppercase tracking-widest">ใบเสนอราคา</span>
-                  </div>
-                  <div 
-                    onClick={() => router.push('/procurement?action=new')}
-                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer text-white/70 hover:text-white transition-colors group"
-                  >
-                    <ShoppingBasket size={16} className="group-hover:text-warning" />
-                    <span className="text-sm font-bold uppercase tracking-widest">ใบสั่งซื้อ</span>
-                  </div>
-                  <div 
-                    onClick={() => router.push('/sales?action=new-customer')}
-                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer text-white/70 hover:text-white transition-colors group"
-                  >
-                    <UsersRound size={16} className="group-hover:text-nexus-teal" />
-                    <span className="text-sm font-bold uppercase tracking-widest">เพิ่มลูกค้าใหม่</span>
-                  </div>
+                  {[
+                    { href: "/projects/new", label: "โครงการใหม่", icon: <FolderKanban size={16} className="group-hover:text-nexus-blue" /> },
+                    { href: "/sales/quotations/new", label: "ใบเสนอราคา", icon: <BadgeDollarSign size={16} className="group-hover:text-nexus-teal" /> },
+                    { href: "/procurement/orders/new", label: "ใบสั่งซื้อ", icon: <ShoppingBasket size={16} className="group-hover:text-warning" /> },
+                    { href: "/customers/new", label: "เพิ่มลูกค้าใหม่", icon: <UsersRound size={16} className="group-hover:text-nexus-teal" /> },
+                  ].map((m) => (
+                    <div
+                      key={m.href}
+                      onClick={() => router.push(m.href)}
+                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer text-white/70 hover:text-white transition-colors group"
+                    >
+                      {m.icon}
+                      <span className="text-sm font-bold uppercase tracking-widest">{m.label}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -173,75 +178,50 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* --- QUANTUM ENGINE LAYER (V6.0) --- */}
-      {viewMode === "quantum" && (
-         <div className="animate-in zoom-in-95 duration-500">
-            <QuantumRiskEngine />
-         </div>
-      )}
-
-      {/* --- MACRO INTELLIGENCE LAYER (V7.0) --- */}
-      {viewMode === "macro" && (
-         <div className="animate-in slide-in-from-top-4 duration-500">
-            <MacroIntelligence />
-         </div>
-      )}
-
-      {/* --- TEMPORAL FORECASTING LAYER (V8.0) --- */}
-      {viewMode === "temporal" && (
-         <div className="animate-in fade-in zoom-in-110 duration-700">
-            <TemporalForecaster />
-         </div>
-      )}
-
       {/* --- TOP METRICS & QUICK ACTIONS --- */}
       <div className="flex flex-col 2xl:flex-row justify-between w-full gap-4 2xl:gap-5">
-        
+
         {/* HERO METRICS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
-          <div className="w-full">
-            <MasterMetricCard 
-              icon={<BadgeDollarSign size={24} />} 
-              label="รายได้เดือนนี้" 
-              value="฿2.45M" 
-              color="text-nexus-teal" 
-              neon="shadow-neon-teal" 
-              onClick={() => router.push('/sales')}
-              title="ยอดขายรวมสุทธิในเดือนปัจจุบัน"
+          <div className="w-full" title={thisMonth ? `รายได้เดือน ${thisMonth.label}: ${fullBaht(thisMonth.revenue)}` : undefined}>
+            <MasterMetricCard
+              icon={<BadgeDollarSign size={24} />}
+              label="รายได้เดือนนี้"
+              value={kpiValue(compactBaht(thisMonth?.revenue || 0))}
+              color="text-nexus-teal"
+              neon="shadow-neon-teal"
+              onClick={() => router.push("/finance")}
               className="bg-nexus-teal/[0.1]"
             />
           </div>
-          <div className="w-full">
-            <MasterMetricCard 
-              icon={<TrendingUp size={24} />} 
-              label="กำไรสุทธิ" 
-              value="24.8%" 
-              color="text-nexus-blue" 
-              neon="shadow-neon-blue" 
-              onClick={() => router.push('/finance')}
-              title="เปอร์เซ็นต์กำไรสุทธิหลังหักค่าใช้จ่าย"
+          <div className="w-full" title="กำไรสุทธิเดือนนี้ = (รายได้ - ต้นทุนและค่าใช้จ่าย) / รายได้">
+            <MasterMetricCard
+              icon={<TrendingUp size={24} />}
+              label="กำไรสุทธิเดือนนี้"
+              value={kpiValue(margin === null ? "-" : `${margin.toFixed(1)}%`)}
+              color="text-nexus-blue"
+              neon="shadow-neon-blue"
+              onClick={() => router.push("/finance")}
               className="bg-nexus-blue/[0.1]"
             />
           </div>
-          <div className="w-full">
-            <MasterMetricCard 
-              icon={<FolderKanban size={24} />} 
-              label="โครงการ" 
-              value="12 งาน" 
-              color="text-amber-500" 
-              onClick={() => router.push('/projects')}
-              title="จำนวนโครงการที่กำลังดำเนินการอยู่"
+          <div className="w-full" title="โครงการที่ยังไม่ปิด">
+            <MasterMetricCard
+              icon={<FolderKanban size={24} />}
+              label="โครงการที่ดำเนินอยู่"
+              value={`${projects.length} งาน`}
+              color="text-amber-500"
+              onClick={() => router.push("/projects")}
               className="bg-amber-500/[0.1]"
             />
           </div>
-          <div className="w-full">
-            <MasterMetricCard 
-              icon={<AlertTriangle size={24} />} 
-              label="จุดวิกฤต" 
-              value="3 จุด" 
-              color="text-danger" 
-              onClick={() => setViewMode('quantum')}
-              title="รายการที่ต้องได้รับการแก้ไขทันที"
+          <div className="w-full" title="สินค้าต่ำกว่าจุดสั่งซื้อ + ใบแจ้งหนี้เกินกำหนด">
+            <MasterMetricCard
+              icon={<AlertTriangle size={24} />}
+              label="จุดวิกฤต"
+              value={productsLoading ? "…" : `${lowStock.length + overdue.length} จุด`}
+              color="text-danger"
+              onClick={() => router.push(overdue.length > 0 ? "/finance" : "/inventory")}
               className="bg-danger/[0.1]"
             />
           </div>
@@ -249,294 +229,249 @@ export default function DashboardPage() {
 
         {/* QUICK ACTIONS */}
         <div className="grid grid-cols-4 gap-3 2xl:flex 2xl:flex-nowrap 2xl:w-auto">
-           <div className="w-full 2xl:w-[110px]">
-             <QuickActionCard icon={<BadgeDollarSign size={16} />} label="เสนอราคา" color="text-nexus-teal bg-nexus-teal/20" link="/sales?action=new-quotation" title="สร้างเอกสารใบเสนอราคาใหม่" />
-           </div>
-           <div className="w-full 2xl:w-[110px]">
-             <QuickActionCard icon={<Warehouse size={16} />} label="คลังสินค้า" color="text-nexus-blue bg-nexus-blue/20" link="/inventory" title="ตรวจสอบและบริหารพัสดุ" />
-           </div>
-           <div className="w-full 2xl:w-[110px]">
-             <QuickActionCard icon={<UsersRound size={16} />} label="ลูกค้า" color="text-amber-500 bg-amber-500/20" link="/sales" title="ฐานข้อมูลและประวัติลูกค้า" />
-           </div>
-           <div className="w-full 2xl:w-[110px]">
-             <QuickActionCard icon={<ShoppingBasket size={16} />} label="สั่งซื้อ" color="text-rose-500 bg-rose-500/20" link="/procurement" title="สร้างเอกสารใบสั่งซื้อ" />
-           </div>
+          <div className="w-full 2xl:w-[110px]">
+            <QuickActionCard icon={<BadgeDollarSign size={16} />} label="เสนอราคา" color="text-nexus-teal bg-nexus-teal/20" link="/sales/quotations/new" />
+          </div>
+          <div className="w-full 2xl:w-[110px]">
+            <QuickActionCard icon={<Warehouse size={16} />} label="คลังสินค้า" color="text-nexus-blue bg-nexus-blue/20" link="/inventory" />
+          </div>
+          <div className="w-full 2xl:w-[110px]">
+            <QuickActionCard icon={<UsersRound size={16} />} label="ลูกค้า" color="text-amber-500 bg-amber-500/20" link="/customers" />
+          </div>
+          <div className="w-full 2xl:w-[110px]">
+            <QuickActionCard icon={<ShoppingBasket size={16} />} label="สั่งซื้อ" color="text-rose-500 bg-rose-500/20" link="/procurement/orders/new" />
+          </div>
         </div>
       </div>
 
       {/* --- MAIN OPERATIONAL LAYER --- */}
       <div className="flex flex-col xl:flex-row gap-5">
-        
+
         {/* LEFT: PERFORMANCE & GRAPHS */}
         <div className="flex-1 space-y-3 min-w-0">
-          
-          {/* AI Briefing Bar */}
-          <div className="bg-nexus-teal/5 border border-nexus-teal/20 rounded-xl p-6 flex items-center gap-5 animate-shimmer relative overflow-hidden group">
-             <div className="w-14 h-14 rounded-2xl bg-nexus-teal/20 flex items-center justify-center text-nexus-teal border border-nexus-teal/30 shadow-neon-teal">
-                <Sparkles size={28} className="animate-pulse" />
-             </div>
-             <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                   <h3 className="text-[14px] font-medium text-nexus-teal uppercase tracking-[0.2em]">การวิเคราะห์สถานการณ์โดย AI</h3>
-                   <div className="w-1 h-1 rounded-full bg-nexus-teal animate-ping" />
-                </div>
-                <p className="text-base font-bold text-white leading-relaxed">
-                   สต็อก Aruba AP-505 เหลือเพียง 2 ชิ้น ในขณะที่โปรเจกต์ <span className="text-nexus-teal">PRJ-26-001</span> รอเบิก 5 ชิ้น 
-                   <span className="text-white/40"> • แนะนำให้เปิด PO จัดซื้อด่วนทันที</span>
-                </p>
-             </div>
-             <PillButton variant="glass" className="hidden md:flex border-nexus-teal/20 text-nexus-teal px-6 uppercase text-[10px]">ดำเนินการทันที</PillButton>
+
+          {/* เรื่องที่ต้องดำเนินการ (คำนวณจากข้อมูลจริง) */}
+          <div className={cn(
+            "border rounded-xl p-5 flex items-center gap-5 relative overflow-hidden",
+            attention.length > 0 ? "bg-warning/5 border-warning/20" : "bg-nexus-teal/5 border-nexus-teal/20"
+          )}>
+            <div className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center border shrink-0",
+              attention.length > 0 ? "bg-warning/15 text-warning border-warning/30" : "bg-nexus-teal/20 text-nexus-teal border-nexus-teal/30"
+            )}>
+              {attention.length > 0 ? <AlertTriangle size={24} /> : <CheckCircle2 size={24} />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className={cn("text-[13px] font-medium uppercase tracking-[0.15em] mb-1", attention.length > 0 ? "text-warning" : "text-nexus-teal")}>
+                สิ่งที่ต้องดำเนินการ{attention.length > 1 ? ` (${attention.length} เรื่อง)` : ""}
+              </h3>
+              <p className="text-[15px] font-bold text-white leading-relaxed">
+                {productsLoading ? "กำลังตรวจสอบข้อมูล…" : attention.length > 0 ? attention[0].text : "ไม่มีเรื่องเร่งด่วน สต็อกและการรับชำระเป็นปกติ"}
+              </p>
+              {attention.length > 1 && (
+                <ul className="mt-1 space-y-0.5">
+                  {attention.slice(1).map((a, i) => (
+                    <li key={i} className="text-[13px] text-white/50">
+                      <Link href={a.href} className="hover:text-white">• {a.text}</Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            {attention.length > 0 && (
+              <PillButton variant="glass" onClick={() => router.push(attention[0].href)} className="hidden md:flex border-warning/30 text-warning px-5 text-[12px] shrink-0">
+                {attention[0].action}
+              </PillButton>
+            )}
           </div>
 
-          {/* Revenue Intelligence Graph */}
-          <GlassCard accentColor="teal" className="p-5 h-[420px] relative overflow-hidden group">
-            <div className="flex items-center justify-between mb-10">
-               <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-white uppercase flex items-center gap-2 tracking-[0.2em]">
-                     <Activity size={16} className="text-nexus-teal animate-pulse" />
-                     การวิเคราะห์และพยากรณ์ข้อมูลธุรกิจ
-                  </h3>
-                  <p className="text-xs text-white/40 uppercase font-medium tracking-widest mt-1">การวิเคราะห์การเติบโตของรายได้ (Q2 2026)</p>
-               </div>
-               <div className="flex gap-5">
-                  <div className="flex items-center gap-3">
-                     <div className="w-2.5 h-2.5 rounded-full bg-nexus-teal shadow-neon-teal" />
-                     <span className="text-[14px] font-medium text-white/40 uppercase tracking-widest">เกิดขึ้นจริง</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                     <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
-                     <span className="text-[14px] font-medium text-white/40 uppercase tracking-widest">เป้าหมาย</span>
-                  </div>
-               </div>
+          {/* รายได้และค่าใช้จ่าย 6 เดือน */}
+          <GlassCard accentColor="teal" className="p-5 relative">
+            <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-white uppercase flex items-center gap-2 tracking-[0.15em]">
+                  <Activity size={16} className="text-nexus-teal" />
+                  รายได้และค่าใช้จ่ายรายเดือน
+                </h3>
+                <p className="text-xs text-white/40">6 เดือนล่าสุด จากรายการบัญชี (หมวด 4 รายได้ / หมวด 5 ต้นทุนและค่าใช้จ่าย) รวมรายการรอลงบัญชี</p>
+              </div>
+              {thisMonth && (
+                <div className="text-right">
+                  <p className="text-[12px] text-white/40">กำไร (ขาดทุน) {thisMonth.label}</p>
+                  <p className={cn("text-xl font-bold font-mono", thisMonth.revenue - thisMonth.expense < 0 ? "text-danger" : "text-white")}>
+                    {fullBaht(thisMonth.revenue - thisMonth.expense)}
+                  </p>
+                </div>
+              )}
             </div>
-            
-            <div className="relative h-[250px] w-full mt-12">
-               <svg viewBox="0 0 800 200" className="w-full h-full preserve-3d">
-                  <defs>
-                    <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10bba8" stopOpacity="0.2" />
-                      <stop offset="100%" stopColor="#10bba8" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  
-                  <path 
-                    d="M0,150 C50,140 100,160 150,110 C200,60 250,100 300,40 C350,20 400,80 450,120 C500,160 550,130 600,70 C650,40 700,90 800,50 L800,200 L0,200 Z" 
-                    fill="url(#chartGradient)"
-                    className="animate-fade-in-up"
-                  />
-                  
-                  <path 
-                    d="M0,150 C50,140 100,160 150,110 C200,60 250,100 300,40 C350,20 400,80 450,120 C500,160 550,130 600,70 C650,40 700,90 800,50" 
-                    fill="none" 
-                    stroke="#10bba8" 
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    className="drop-shadow-neon animate-draw"
-                  />
-
-                  <line x1="0" y1="60" x2="800" y2="60" stroke="rgba(255,255,255,0.05)" strokeWidth="1" strokeDasharray="10,10" />
-               </svg>
-            </div>
-            
-            <div className="absolute inset-x-10 bottom-10 flex justify-between items-end text-[14px] font-medium text-white/10 uppercase tracking-[0.4em] border-t border-white/5 pt-6">
-               <span>สัปดาห์ 1</span>
-               <span>สัปดาห์ 2</span>
-               <span>สัปดาห์ 3</span>
-               <span className="text-nexus-teal shadow-neon-teal">สถานะปัจจุบัน</span>
-               <span>สัปดาห์ 5</span>
-            </div>
+            <RevenueExpenseChart data={monthly} />
           </GlassCard>
 
           {/* Bottom Operational Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-             <GlassCard accentColor="blue" className="p-5">
-                <div className="flex items-center justify-between mb-6">
-                   <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-3">
-                      <Briefcase size={16} className="text-nexus-blue" />
-                      ความคืบหน้าโครงการติดตั้ง
-                   </h3>
-                   <span className="text-xs font-bold text-white/40 uppercase tracking-widest">งานที่ดำเนินการอยู่</span>
-                </div>
-                <div className="space-y-3">
-                   <ProjectProgressRow name="ติดตั้ง LED Wall - ศูนย์ประชุม" progress={75} id="PRJ-26-001" status="กำลังดำเนินการ" />
-                   <ProjectProgressRow name="วางระบบ Network - PSG HQ" progress={40} id="PRJ-26-003" status="ล่าช้ากว่าแผน" isRisk />
-                   <ProjectProgressRow name="MA Service - PTT" progress={100} id="SRV-26-012" status="เสร็จสมบูรณ์" />
-                </div>
-             </GlassCard>
+            <GlassCard accentColor="blue" className="p-5">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-3">
+                  <Briefcase size={16} className="text-nexus-blue" />
+                  ความคืบหน้าโครงการ
+                </h3>
+                <Link href="/projects" className="text-xs font-bold text-white/40 hover:text-white">ดูทั้งหมด</Link>
+              </div>
+              <div className="space-y-4">
+                {projects.length === 0 && <p className="text-[13px] text-white/40 py-6 text-center">ยังไม่มีโครงการที่ดำเนินอยู่</p>}
+                {projects.slice(0, 4).map((p) => {
+                  const late = p.deadlineMs > 0 && p.deadlineMs < Date.now() && p.progress < 100;
+                  return (
+                    <ProjectProgressRow
+                      key={p.id}
+                      href={`/projects/${encodeURIComponent(p.id)}`}
+                      name={p.name}
+                      code={p.code}
+                      progress={p.progress}
+                      status={late ? "เลยกำหนด" : PROJECT_STATUS_LABEL[p.status] || p.status}
+                      isRisk={late}
+                    />
+                  );
+                })}
+              </div>
+            </GlassCard>
 
-             <GlassCard accentColor="purple" className="p-5">
-                <div className="flex items-center justify-between mb-6">
-                   <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-3">
-                      <Package size={16} className="text-nexus-teal" />
-                      การติดตามพัสดุและสินค้าคงคลัง
-                   </h3>
-                   <span className="text-xs font-bold text-white/40 uppercase tracking-widest">สต็อกวิกฤต</span>
-                </div>
-                <div className="space-y-5">
-                   <StockAlertRow item="Aruba AP-505" stock={2} min={10} trend="down" />
-                   <StockAlertRow item="Cat6 Cable 305m" stock={5} min={20} trend="down" />
-                   <StockAlertRow item="Cisco C9200L" stock={1} min={2} trend="stable" />
-                </div>
-                <PillButton variant="glass" className="w-full mt-6 border-white/10 hover:border-nexus-teal text-white text-xs font-bold uppercase tracking-widest">
-                   ดูสต็อกทั้งหมด
-                   <ChevronRight size={14} className="ml-2" />
-                </PillButton>
-             </GlassCard>
+            <GlassCard accentColor="purple" className="p-5">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-3">
+                  <Package size={16} className="text-nexus-teal" />
+                  สินค้าต่ำกว่าจุดสั่งซื้อ
+                </h3>
+                <span className="text-xs font-bold text-white/40">{lowStock.length} รายการ</span>
+              </div>
+              <div className="space-y-2">
+                {!productsLoading && lowStock.length === 0 && (
+                  <p className="text-[13px] text-white/40 py-6 text-center">สต็อกทุกรายการอยู่เหนือจุดสั่งซื้อ</p>
+                )}
+                {lowStock.slice(0, 4).map((s) => (
+                  <StockAlertRow key={s.id} item={s.name} sku={s.sku} stock={s.onHand} min={s.min} unit={s.unit} />
+                ))}
+              </div>
+              <PillButton variant="glass" onClick={() => router.push("/inventory")} className="w-full mt-5 border-white/10 hover:border-nexus-teal text-white text-xs font-bold uppercase tracking-widest">
+                ดูสต็อกทั้งหมด
+                <ChevronRight size={14} className="ml-2" />
+              </PillButton>
+            </GlassCard>
           </div>
         </div>
 
         {/* RIGHT: TACTICAL SIDEBAR */}
-        <div className="w-full xl:w-[476px] flex-shrink-0 space-y-4">
-           {/* System Activity Feed (Moved up due to Quick Operations relocation) */}
-           <GlassCard accentColor="amber" className="flex flex-col overflow-hidden">
-              <div className="p-5 border-b border-white/10 flex flex-wrap items-center justify-between bg-white/[0.04] gap-4">
-                 <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-3 min-w-0">
-                    <Bell size={16} className="text-warning flex-shrink-0 animate-pulse" />
-                    <span className="truncate">บันทึกกิจกรรมและความปลอดภัย</span>
-                 </h3>
-                 <div className="w-2 h-2 rounded-full bg-nexus-teal shadow-neon-teal flex-shrink-0" />
-              </div>
-              
-              <div className="flex-1 p-0 h-[420px] overflow-y-auto custom-scrollbar">
-                  <TacticalLogItem type="วิกฤต" msg="พบความพยายามเข้าสู่ระบบที่ผิดปกติ: 192.168.1.5" time="2 นาทีที่แล้ว" />
-                  <TacticalLogItem type="ข้อมูล" msg="อนุมัติใบสั่งซื้อใหม่ PO-2604-001 เรียบร้อยแล้ว" time="15 นาทีที่แล้ว" />
-                  <TacticalLogItem type="สำเร็จ" msg="ซิงค์ข้อมูลการเงินรายสัปดาห์เสร็จสมบูรณ์" time="1 ชม. ที่แล้ว" />
-                  <TacticalLogItem type="แจ้งเตือน" msg="พื้นที่ดิสก์ในโหนด BKK Node-01 ใกล้เต็ม" time="3 ชม. ที่แล้ว" />
-                  <TacticalLogItem type="ข้อมูล" msg="ตรวจสอบสต็อกสินค้าเสร็จสิ้นโดย: ผู้ดูแลระบบ" time="เมื่อวานนี้" />
-              </div>
-              
-              <Link href="/logs" className="w-full py-5 px-4 text-[11px] sm:text-[14px] font-medium text-white/20 uppercase hover:text-white hover:bg-white/[0.02] transition-all flex items-center justify-center gap-2 border-t border-white/5 tracking-wider sm:tracking-[0.2em] text-center">
-                 เข้าสู่ศูนย์ประวัติระบบ <ArrowUpRight size={14} className="flex-shrink-0" />
-              </Link>
-           </GlassCard>
+        <div className="w-full xl:w-[clamp(320px,30%,476px)] flex-shrink-0 space-y-4">
+          {/* กิจกรรมล่าสุด จากบันทึกระบบ */}
+          <GlassCard accentColor="amber" className="flex flex-col overflow-hidden">
+            <div className="p-5 border-b border-white/10 flex items-center justify-between bg-white/[0.04] gap-4">
+              <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-3 min-w-0">
+                <Bell size={16} className="text-warning flex-shrink-0" />
+                <span>กิจกรรมล่าสุด</span>
+              </h3>
+            </div>
 
-           {/* AI Performance Insight */}
-           <GlassCard accentColor="emerald" className="p-5 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-5 opacity-5">
-                 <Cpu size={80} />
-              </div>
-              <div className="flex flex-wrap items-center justify-between mb-8 gap-3">
-                 <h3 className="text-[14px] font-medium text-nexus-blue uppercase tracking-widest min-w-0 flex-1 truncate">ประสิทธิภาพการใช้ทรัพยากร</h3>
-                 <span className="px-2 py-0.5 rounded-full bg-nexus-blue/10 text-[11px] sm:text-[14px] font-medium text-nexus-blue uppercase whitespace-nowrap">AI เรียลไทม์</span>
-              </div>
-              <div className="flex items-center justify-center py-6 relative">
-                 <svg className="w-40 h-40 transform -rotate-90 overflow-visible">
-                    <defs>
-                      <filter id="neon-glow-blue" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur1" />
-                        <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur2" />
-                        <feMerge>
-                          <feMergeNode in="blur2" />
-                          <feMergeNode in="blur1" />
-                          <feMergeNode in="SourceGraphic" />
-                        </feMerge>
-                      </filter>
-                    </defs>
-                    <circle cx="80" cy="80" r="72" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/5" />
-                    <circle 
-                      cx="80" cy="80" r="72" stroke="currentColor" strokeWidth="12" fill="transparent" 
-                      strokeDasharray="452" 
-                      strokeDashoffset="90"
-                      strokeLinecap="round"
-                      filter="url(#neon-glow-blue)"
-                      className="text-nexus-blue transition-all duration-1000" 
-                    />
-                 </svg>
-                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-bold text-white tracking-tighter">82%</span>
-                    <span className="text-[14px] font-medium text-white/20 uppercase tracking-widest mt-2">ดัชนี SLA ภาพรวม</span>
-                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 mt-8 border-t border-white/5 pt-8">
-                 <div className="text-center min-w-0">
-                    <p className="text-[11px] sm:text-[14px] font-medium text-white/20 uppercase tracking-widest mb-1 truncate">รายการรอดำเนินการ</p>
-                    <p className="text-xl sm:text-2xl font-bold text-white">12</p>
-                 </div>
-                 <div className="text-center min-w-0">
-                    <p className="text-[11px] sm:text-[14px] font-medium text-white/20 uppercase tracking-widest mb-1 truncate">ระยะเวลาเฉลี่ย</p>
-                    <p className="text-xl sm:text-2xl font-bold text-white tracking-tighter">4ชม. 20น.</p>
-                 </div>
-              </div>
-           </GlassCard>
+            <div className="flex-1">
+              {!logsLoading && feed.length === 0 && <p className="text-[13px] text-white/40 py-10 text-center">ยังไม่มีบันทึกกิจกรรม</p>}
+              {feed.map((f) => (
+                <TacticalLogItem key={f.id} kind={f.kind} msg={f.message} time={relativeTimeTh(f.atMs)} />
+              ))}
+            </div>
+
+            <Link href="/logs" className="w-full py-4 px-4 text-[13px] font-medium text-white/40 hover:text-white hover:bg-white/[0.02] transition-all flex items-center justify-center gap-2 border-t border-white/5">
+              ดูประวัติระบบทั้งหมด <ArrowUpRight size={14} className="flex-shrink-0" />
+            </Link>
+          </GlassCard>
+
+          {/* งานรอดำเนินการ */}
+          <GlassCard accentColor="emerald" className="p-5">
+            <div className="flex items-center justify-between mb-4 gap-3">
+              <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-3">
+                <ClipboardList size={16} className="text-nexus-blue" />
+                งานรอดำเนินการ
+              </h3>
+              <span className="text-2xl font-bold text-white font-mono">{pendingTotal}</span>
+            </div>
+            <div className="divide-y divide-white/5">
+              {pending.map((p) => (
+                <Link key={p.label} href={p.href} className="flex items-center justify-between py-2.5 group">
+                  <span className="text-[13px] text-white/70 group-hover:text-white">
+                    {p.label}
+                    {p.samples > 0 && <span className="text-[11px] text-white/30 ml-1.5">(ตัวอย่าง {p.samples})</span>}
+                  </span>
+                  <span className={cn("text-[14px] font-bold font-mono", p.total > 0 ? "text-warning" : "text-white/30")}>{p.total}</span>
+                </Link>
+              ))}
+            </div>
+          </GlassCard>
         </div>
       </div>
     </div>
   );
 }
 
-{/* --- HELPER COMPONENTS --- */}
+/* --- HELPER COMPONENTS --- */
 
-function ProjectProgressRow({ name, progress, id, status, isRisk = false }: { name: string, progress: number, id: string, status: string, isRisk?: boolean }) {
+function ProjectProgressRow({ href, name, progress, code, status, isRisk = false }: { href: string, name: string, progress: number, code: string, status: string, isRisk?: boolean }) {
   return (
-    <div className="space-y-2">
-       <div className="flex justify-between items-end">
-          <div className="min-w-0">
-             <p className="text-[14px] font-medium text-nexus-blue uppercase tracking-widest mb-1">{id}</p>
-             <p className="text-sm font-bold text-white truncate">{name}</p>
-          </div>
-          <span className={cn("text-[14px] font-medium uppercase px-2 py-0.5 rounded border tracking-widest", isRisk ? "text-danger border-danger/30 bg-danger/10" : "text-white/40 border-white/10")}>
-             {status}
-          </span>
-       </div>
-       <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-          <div 
-            className={cn("h-full transition-all duration-1000", isRisk ? "bg-danger" : "bg-nexus-teal shadow-neon-teal")} 
-            style={{ width: `${progress}%` }} 
-          />
-       </div>
-    </div>
-  );
-}
-
-function StockAlertRow({ item, stock, min, trend }: { item: string, stock: number, min: number, trend: 'up' | 'down' | 'stable' }) {
-  return (
-    <div className="flex items-center justify-between group p-3 rounded-2xl bg-white/[0.02] border border-transparent hover:border-white/5 transition-all">
-       <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/20 group-hover:text-nexus-teal group-hover:shadow-neon-teal transition-all">
-             <Package size={18} />
-          </div>
-          <div>
-             <p className="text-xs font-bold text-white">{item}</p>
-             <p className="text-[14px] font-medium text-white/20 uppercase tracking-widest">Threshold: {min} units</p>
-          </div>
-       </div>
-        <div className="text-right">
-          <p className={cn("text-lg font-bold", stock <= 2 ? "text-danger animate-pulse" : "text-white")}>{stock}</p>
-          <p className="text-[14px] font-medium text-white/10 uppercase tracking-widest">สต็อกปัจจุบัน</p>
+    <Link href={href} className="block space-y-2 group">
+      <div className="flex justify-between items-end gap-3">
+        <div className="min-w-0">
+          <p className="text-[12px] font-medium text-nexus-blue font-mono mb-0.5">{code}</p>
+          <p className="text-sm font-bold text-white truncate group-hover:text-nexus-teal" title={name}>{name}</p>
         </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-[12px] font-mono text-white/60">{progress}%</span>
+          <span className={cn("text-[12px] font-medium px-2 py-0.5 rounded border whitespace-nowrap", isRisk ? "text-danger border-danger/30 bg-danger/10" : "text-white/50 border-white/10")}>
+            {status}
+          </span>
+        </div>
+      </div>
+      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+        <div className={cn("h-full", isRisk ? "bg-danger" : "bg-nexus-teal")} style={{ width: `${progress}%` }} />
+      </div>
+    </Link>
+  );
+}
+
+function StockAlertRow({ item, sku, stock, min, unit }: { item: string, sku: string, stock: number, min: number, unit: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white/[0.02] border border-transparent hover:border-white/5 transition-all">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-white/30 shrink-0">
+          <Package size={16} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[13px] font-bold text-white truncate" title={item}>{item}</p>
+          <p className="text-[12px] text-white/40 font-mono">{sku ? `${sku} · ` : ""}จุดสั่งซื้อ {min} {unit}</p>
+        </div>
+      </div>
+      <div className="text-right shrink-0">
+        <p className={cn("text-lg font-bold font-mono", stock === 0 ? "text-danger" : "text-warning")}>{stock}</p>
+        <p className="text-[11px] text-white/30">คงเหลือ</p>
+      </div>
     </div>
   );
 }
 
-function TacticalLogItem({ type, msg, time }: { type: string, msg: string, time: string }) {
-  const dotColors: any = {
-    "วิกฤต": "bg-danger shadow-neon-danger",
-    "แจ้งเตือน": "bg-warning shadow-neon-warning",
-    "ข้อมูล": "bg-nexus-blue shadow-neon-blue",
-    "สำเร็จ": "bg-nexus-teal shadow-neon-teal",
-  };
+const KIND_STYLE: Record<ActivityKind, { dot: string; badge: string; label: string }> = {
+  success: { dot: "bg-nexus-teal", badge: "text-nexus-teal border-nexus-teal/20 bg-nexus-teal/10", label: "สร้าง/อนุมัติ" },
+  info: { dot: "bg-nexus-blue", badge: "text-nexus-blue border-nexus-blue/20 bg-nexus-blue/10", label: "แก้ไข" },
+  warning: { dot: "bg-warning", badge: "text-warning border-warning/20 bg-warning/10", label: "ลบ" },
+};
 
-  const badgeColors: any = {
-    "วิกฤต": "text-danger border-danger/20 bg-danger/10",
-    "แจ้งเตือน": "text-warning border-warning/20 bg-warning/10",
-    "ข้อมูล": "text-nexus-blue border-nexus-blue/20 bg-nexus-blue/10",
-    "สำเร็จ": "text-nexus-teal border-nexus-teal/20 bg-nexus-teal/10",
-  };
-
+function TacticalLogItem({ kind, msg, time }: { kind: ActivityKind, msg: string, time: string }) {
+  const st = KIND_STYLE[kind];
   return (
-    <div className="p-5 flex gap-5 items-start hover:bg-white/[0.03] transition-all cursor-pointer group border-b border-white/[0.02] last:border-0">
-       <div className={cn("w-2 h-2 rounded-full mt-1.5 flex-shrink-0 animate-pulse", dotColors[type])} />
-       <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-white/80 group-hover:text-white transition-colors leading-relaxed line-clamp-2">{msg}</p>
-          <div className="flex items-center gap-3 mt-2">
-             <span className="text-[14px] font-medium text-white/20 uppercase tracking-widest">{time}</span>
-             <span className="text-[14px] font-medium text-white/10">•</span>
-             <span className={cn("text-[14px] font-medium uppercase tracking-widest px-2 py-0.5 rounded border", badgeColors[type])}>
-                {type}
-             </span>
-          </div>
-       </div>
-       <ChevronRight size={14} className="text-white/0 group-hover:text-white/20 transition-all -translate-x-2 group-hover:translate-x-0" />
+    <div className="px-5 py-3.5 flex gap-4 items-start border-b border-white/[0.03] last:border-0">
+      <div className={cn("w-2 h-2 rounded-full mt-1.5 flex-shrink-0", st.dot)} />
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-bold text-white/80 leading-snug break-words">{msg}</p>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-[12px] text-white/40">{time}</span>
+          <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded border", st.badge)}>{st.label}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -544,15 +479,12 @@ function TacticalLogItem({ type, msg, time }: { type: string, msg: string, time:
 function QuickActionCard({ icon, label, color, link }: { icon: any, label: string, color: string, link: string }) {
   return (
     <Link href={link} className="contents">
-      <div className={cn("p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/[0.08] hover:border-white/20 transition-all active:scale-95 group relative overflow-hidden shadow-2xl backdrop-blur-lg")}>
-         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", color)}>
-            {React.cloneElement(icon as React.ReactElement, { size: 20 })}
-         </div>
-         <span className="text-[11px] font-medium text-white uppercase text-center tracking-widest leading-snug truncate w-full px-1">{label}</span>
-         <div className={cn("absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity", color.split(' ').find(c => c.startsWith('bg-')))} />
-         <div className="absolute top-3 right-3 w-1.5 h-1.5 rounded-full bg-white/10 group-hover:bg-nexus-teal transition-colors" />
+      <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/[0.08] hover:border-white/20 transition-all active:scale-95 group relative overflow-hidden shadow-2xl backdrop-blur-lg">
+        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", color)}>
+          {React.cloneElement(icon as React.ReactElement<any>, { size: 20 })}
+        </div>
+        <span className="text-[12px] font-medium text-white uppercase text-center tracking-widest leading-snug w-full px-1">{label}</span>
       </div>
     </Link>
   );
 }
-

@@ -1,23 +1,24 @@
 "use client";
 
+import { EXPENSE_ACCOUNTS } from "@/lib/payables";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSystemDialog } from "@/context/DialogContext";
-import { 
-  FileText, 
-  ShieldCheck, 
+import {
+  FileText,
+  ShieldCheck,
   Camera,
   Image as ImageIcon,
   Trash2,
   Receipt,
   ArrowLeft
 } from "lucide-react";
-import { 
-  PillButton, 
-  PillInput, 
-  PillSelect, 
+import {
+  PillButton,
+  PillInput,
+  PillSelect,
   GlassCard,
-  cn 
+  cn
 } from "@/components/ui/Base";
 import { formatCurrency } from "@/lib/erp-logic";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
@@ -35,7 +36,7 @@ export default function NewExpenseClaimPage() {
   const [formData, setFormData] = useState({
     claimId: "ออกเลขเมื่อบันทึก",
     employeeId: "",
-    expenseAccountCode: "53000-00", // Default to General Expense
+    expenseAccountCode: EXPENSE_ACCOUNTS[0].code, // ค่าใช้จ่ายเบ็ดเตล็ดทั่วไป
     description: "",
     hasVat: false,
     subtotal: 0,
@@ -130,7 +131,7 @@ export default function NewExpenseClaimPage() {
           </p>
         </div>
       </div>
-      
+
       <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
         <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={handleBack}>
           ยกเลิก
@@ -147,10 +148,10 @@ export default function NewExpenseClaimPage() {
       <GlassCard className="p-8 space-y-8 animate-in fade-in duration-500 border-white/5 bg-black/20">
         <div className="grid grid-cols-2 gap-6">
           <Field label="เลขที่เอกสาร (CLAIM ID)">
-            <PillInput 
-              value={formData.claimId} 
-              readOnly 
-              className="w-full text-white/50 bg-white/5 border-white/5 font-mono cursor-not-allowed" 
+            <PillInput
+              value={formData.claimId}
+              readOnly
+              className="w-full text-white/50 bg-white/5 border-white/5 font-mono cursor-not-allowed"
             />
           </Field>
           <Field label="พนักงานผู้เบิก (EMPLOYEE) *">
@@ -166,44 +167,43 @@ export default function NewExpenseClaimPage() {
             </PillSelect>
           </Field>
         </div>
-        
+
         <Field label="รหัสบัญชีค่าใช้จ่าย (EXPENSE ACCOUNT) *">
-          <PillSelect 
-            value={formData.expenseAccountCode} 
+          <PillSelect
+            value={formData.expenseAccountCode}
             onChange={e => setFormData({ ...formData, expenseAccountCode: e.target.value })}
             className="w-full"
           >
-            <option value="53000-00">53000-00 - ค่าใช้จ่ายเบ็ดเตล็ดทั่วไป</option>
-            <option value="53000-01">53000-01 - ค่าเดินทางและพาหนะ</option>
-            <option value="53000-02">53000-02 - ค่ารับรองลูกค้า</option>
-            <option value="53000-03">53000-03 - ค่าวัสดุสิ้นเปลืองสำนักงาน</option>
+            {EXPENSE_ACCOUNTS.map((a) => (
+              <option key={a.code} value={a.code}>{a.code} - {a.name}</option>
+            ))}
           </PillSelect>
         </Field>
 
         <Field label="รายละเอียดการเบิก (DESCRIPTION) *">
-          <PillInput 
-            value={formData.description} 
-            onChange={e => setFormData({ ...formData, description: e.target.value })} 
+          <PillInput
+            value={formData.description}
+            onChange={e => setFormData({ ...formData, description: e.target.value })}
             placeholder="ระบุรายละเอียดค่าใช้จ่ายที่ต้องการเบิก..."
-            className="w-full" 
+            className="w-full"
           />
         </Field>
 
         <div className="grid grid-cols-2 gap-6">
           <Field label="ยอดเงินเบิกก่อนภาษี (SUBTOTAL) *">
-            <PillInput 
-              type="number" 
-              value={formData.subtotal || ''} 
-              onChange={e => setFormData({ ...formData, subtotal: Number(e.target.value) })} 
-              className="w-full font-mono" 
+            <PillInput
+              type="number"
+              value={formData.subtotal || ''}
+              onChange={e => setFormData({ ...formData, subtotal: Number(e.target.value) })}
+              className="w-full font-mono"
             />
           </Field>
-          
+
           <div className="flex flex-col justify-center space-y-2 mt-8">
             <label className="flex items-center gap-2 cursor-pointer text-[12px] font-bold text-white/70 hover:text-white">
-              <input 
-                type="checkbox" 
-                checked={formData.hasVat} 
+              <input
+                type="checkbox"
+                checked={formData.hasVat}
                 onChange={e => setFormData({ ...formData, hasVat: e.target.checked })}
                 className="w-4 h-4 rounded border-white/20 bg-white/5 text-cyan-500 focus:ring-cyan-500/50"
               />
@@ -232,13 +232,13 @@ export default function NewExpenseClaimPage() {
         <Receipt size={16} className="text-cyan-400" />
         <h3 className="text-base font-black text-white/80 uppercase tracking-widest mb-0">Summary</h3>
       </div>
-      
+
       <div className="space-y-4 flex-1">
         <div className="flex justify-between items-center">
           <span className="text-[12px] font-semibold text-white/40 uppercase tracking-widest">ยอดก่อนภาษี</span>
           <span className="text-[13px] font-mono text-white/80">{formatCurrency(formData.subtotal)}</span>
         </div>
-        
+
         {formData.hasVat && (
           <div className="flex justify-between items-center">
             <span className="text-[12px] font-semibold text-white/40 uppercase tracking-widest">ภาษีมูลค่าเพิ่ม (7%)</span>

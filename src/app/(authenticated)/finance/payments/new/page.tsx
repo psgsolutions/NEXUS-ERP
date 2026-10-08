@@ -1,334 +1,338 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useSystemDialog } from "@/context/DialogContext";
-import { 
-  DollarSign, 
-  Trash2, 
-  ShieldCheck, 
-  ArrowLeft,
-  Search,
-  Building
-} from "lucide-react";
-import { 
-  PillButton, 
-  PillInput, 
-  PillSelect, 
-  GlassCard,
-  NexusDatePicker
+
+import React, { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Banknote, FileText, HandCoins, Landmark, Loader2, Wallet } from "lucide-react";
+import {
+  GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillInput, PillSelect, cn,
 } from "@/components/ui/Base";
-import { formatCurrency } from "@/lib/erp-logic";
+import { SmartSelect } from "@/components/ui/SmartComponents";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
-import { DocumentStepper } from "@/components/ui/DocumentStepper";
+import { useAuth } from "@/context/AuthContext";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { apiFetch } from "@/lib/api-client";
+import { can } from "@/lib/permissions";
+import { toMillis } from "@/lib/dashboard-metrics";
+import { expenseAccountOf, payeeKeyOf } from "@/lib/payables";
 
-export default function NewPaymentPage() {
+type Method = "CASH" | "TRANSFER" | "CHEQUE";
+const METHODS: { id: Method; label: string; icon: React.ReactNode; account: string }[] = [
+  { id: "TRANSFER", label: "โอนเงิน", icon: <Landmark size={14} />, account: "1112-00 เงินฝากธนาคาร" },
+  { id: "CHEQUE", label: "เช็ค", icon: <FileText size={14} />, account: "1112-00 เงินฝากธนาคาร" },
+  { id: "CASH", label: "เงินสด", icon: <Banknote size={14} />, account: "1111-00 เงินสด" },
+];
+const WHT_RATES = [0, 1, 2, 3, 5];
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+const baht = (n: number) => (Number(n) || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const thDate = (v: any) => {
+  const ms = toMillis(v);
+  return ms ? new Date(ms).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" }) : "-";
+};
+
+interface Payable {
+  docId: string;
+  docNo: string;
+  payeeKey: string;
+  payeeName: string;
+  kind: string;
+  total: number;
+  subTotal: number;
+  balance: number;
+  dueMs: number;
+  certWhtRate: number | null; // มีหนังสือรับรองหัก ณ ที่จ่ายแล้ว
+  certWhtAmount: number;
+  debitLabel: string;
+}
+
+interface LineState { selected: boolean; amount: string; whtRate: number }
+
+function PaymentForm() {
   const router = useRouter();
-  const { showAlert, showConfirm } = useSystemDialog();
+  const searchParams = useSearchParams();
+  const { companyId, role } = useAuth();
+  const canSave = can(role, "finance:edit");
 
-  const [header, setHeader] = useState({
-    supplier: "",
-    date: new Date().toISOString().split('T')[0],
-    bankAccount: "KBank - XXX-XXXX-XXX",
-    paymentMethod: "transfer",
-    reference: "",
-    note: ""
-  });
-  
-  const [orders, setOrders] = useState<any[]>([]);
+  const { data: expenses, loading } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/expenses` : "");
 
-  const [summary, setSummary] = useState({
-    subtotal: 0,
-    wht: 0,
-    total: 0
-  });
+  // รายการค้างจ่าย (ไม่รวมเอกสารตัวอย่าง/ยกเลิก/จ่ายครบแล้ว)
+  const payables: Payable[] = useMemo(
+    () => expenses
+      .filter((e: any) => !e.isSample && e.isDeleted !== true && String(e.status || "").toLowerCase() !== "cancelled" && !String(e.status || "").toLowerCase().startsWith("paid"))
+      .map((e: any) => {
+        const total = round2(Number(e.totalAmount) || 0);
+        const balance = round2(e.balance !== undefined ? Number(e.balance) : total - (Number(e.paidAmount) || 0));
+        const subTotal = round2(Number(e.subTotal ?? total) || 0);
+        const hasCert = !!e.whtId;
+        const isPo = !!e.poRef && e.documentType !== "ExpenseClaim";
+        const acct = expenseAccountOf(e);
+        return {
+          docId: e.id,
+          docNo: e.expenseId || e.documentNo || e.id,
+          payeeKey: payeeKeyOf(e),
+          payeeName: e.supplierName || e.vendor || e.employeeName || "-",
+          kind: e.documentType === "ExpenseClaim" ? "เบิกค่าใช้จ่าย" : isPo ? `ซื้อตาม ${e.poRef}` : "ค่าใช้จ่าย",
+          total,
+          subTotal,
+          balance,
+          dueMs: toMillis(e.dueDate),
+          certWhtRate: hasCert ? Number(e.whtRate) || (subTotal > 0 ? Math.round((Number(e.whtAmount) / subTotal) * 100) : 0) : null,
+          certWhtAmount: Number(e.whtAmount) || 0,
+          debitLabel: isPo ? "2111-00 เจ้าหนี้การค้า" : `${acct.code} ${acct.name}`,
+        };
+      })
+      .filter((p) => p.balance > 0.009),
+    [expenses]
+  );
 
-  useEffect(() => {
-    const sub = orders.reduce((acc, order) => acc + (order.amountToPay || 0), 0);
-    const wht = orders.reduce((acc, order) => acc + (order.whtAmount || 0), 0);
-    setSummary({ subtotal: sub, wht, total: sub - wht });
-  }, [orders]);
-
-  const loadSupplierOrders = () => {
-    if (!header.supplier) return void showAlert("เธเธฃเธธเธ“เธฒเน€เธฅเธทเธญเธเธเธทเนเธญเน€เธเนเธฒเธซเธเธตเน");
-    setOrders([
-      { id: 1, orderNo: "PO-2604-012", total: 125000, balance: 125000, amountToPay: 125000, whtRate: "0", whtAmount: 0 },
-      { id: 2, orderNo: "PO-2604-088", total: 42000, balance: 42000, amountToPay: 42000, whtRate: "3", whtAmount: 1177 }
-    ]);
-  };
-
-  const updateOrder = (id: number, field: string, value: any) => {
-    setOrders(orders.map(order => {
-      if (order.id === id) {
-        const newOrder = { ...order, [field]: value };
-        if (field === "whtRate" || field === "amountToPay") {
-          // Recalculate WHT
-          const rate = parseFloat(newOrder.whtRate) || 0;
-          newOrder.whtAmount = (newOrder.amountToPay / 1.07) * (rate / 100);
-        }
-        return newOrder;
-      }
-      return order;
+  const payeeOptions = useMemo(() => {
+    const map = new Map<string, { name: string; total: number; count: number }>();
+    payables.forEach((p) => {
+      const cur = map.get(p.payeeKey) || { name: p.payeeName, total: 0, count: 0 };
+      cur.total += p.balance;
+      cur.count += 1;
+      map.set(p.payeeKey, cur);
+    });
+    return Array.from(map.entries()).map(([key, c]) => ({
+      value: key,
+      label: c.name,
+      description: `${key.startsWith("EMP:") ? "พนักงาน · " : ""}ค้างจ่าย ${c.count} รายการ รวม ฿${baht(c.total)}`,
     }));
-  };
+  }, [payables]);
 
-  const handleBack = async () => {
-    const isDirty = orders.length > 0 || header.supplier !== "";
-    if (isDirty) {
-      if (await showConfirm("เธเธธเธ“เธกเธตเธเธฒเธฃเธเธฃเธญเธเธเนเธญเธกเธนเธฅเธเนเธฒเธเนเธงเน เธ•เนเธญเธเธเธฒเธฃเธขเนเธญเธเธเธฅเธฑเธเนเธ”เธขเนเธกเนเธเธฑเธเธ—เธถเธเนเธเนเธซเธฃเธทเธญเนเธกเน?")) {
-        router.back();
-      }
-    } else {
-      router.back();
+  const [payeeKey, setPayeeKey] = useState("");
+  const [paymentDate, setPaymentDate] = useState(() => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10));
+  const [method, setMethod] = useState<Method>("TRANSFER");
+  const [bankAccount, setBankAccount] = useState("");
+  const [reference, setReference] = useState("");
+  const [note, setNote] = useState("");
+  const [lines, setLines] = useState<Record<string, LineState>>({});
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
+
+  // ?expense=<docId> : เลือกผู้รับเงินและรายการให้อัตโนมัติ
+  const preset = searchParams?.get("expense") || "";
+  useEffect(() => {
+    if (!preset || payeeKey) return;
+    const p = payables.find((x) => x.docId === preset);
+    if (p) {
+      setPayeeKey(p.payeeKey);
+      setLines({ [p.docId]: { selected: true, amount: String(p.balance), whtRate: 0 } });
+    }
+  }, [preset, payables, payeeKey]);
+
+  const items = useMemo(
+    () => payables.filter((p) => p.payeeKey === payeeKey).sort((a, b) => (a.dueMs || 0) - (b.dueMs || 0)),
+    [payables, payeeKey]
+  );
+  const lineOf = (p: Payable): LineState => lines[p.docId] || { selected: false, amount: String(p.balance), whtRate: 0 };
+  const setLine = (p: Payable, patch: Partial<LineState>) => setLines((prev) => ({ ...prev, [p.docId]: { ...lineOf(p), ...patch } }));
+
+  const computed = useMemo(() => items.map((p) => {
+    const l = lineOf(p);
+    const amount = round2(Math.max(0, Number(l.amount) || 0));
+    const fraction = p.total > 0 ? amount / p.total : 1;
+    const preVat = round2(p.subTotal * fraction);
+    const whtAmount = p.certWhtRate !== null ? round2(p.certWhtAmount * fraction) : round2(preVat * (l.whtRate / 100));
+    return { p, l, amount, preVat, vat: round2(amount - preVat), whtAmount, net: round2(amount - whtAmount), over: amount > p.balance + 0.009 };
+  }), [items, lines]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const chosen = computed.filter((c) => c.l.selected);
+  const totalAmount = round2(chosen.reduce((s, c) => s + c.amount, 0));
+  const totalWht = round2(chosen.reduce((s, c) => s + c.whtAmount, 0));
+  const totalVat = round2(chosen.reduce((s, c) => s + c.vat, 0));
+  const netPaid = round2(totalAmount - totalWht);
+  const hasError = chosen.some((c) => c.over || c.amount <= 0);
+  const methodDef = METHODS.find((m) => m.id === method)!;
+
+  // รายการบัญชีตัวอย่าง (รวมตามบัญชีเดบิต)
+  const debitPreview = useMemo(() => {
+    const m = new Map<string, number>();
+    chosen.forEach((c) => m.set(c.p.debitLabel, round2((m.get(c.p.debitLabel) || 0) + c.preVat)));
+    return Array.from(m.entries());
+  }, [chosen]);
+
+  const save = async () => {
+    setMessage(null);
+    if (!payeeKey) return setMessage({ text: "กรุณาเลือกผู้รับเงิน", error: true });
+    if (chosen.length === 0) return setMessage({ text: "กรุณาเลือกรายการที่จ่ายชำระ", error: true });
+    if (hasError) return setMessage({ text: "ยอดจ่ายต้องมากกว่า 0 และไม่เกินยอดค้าง", error: true });
+    if (method !== "CASH" && !bankAccount.trim()) return setMessage({ text: "กรุณาระบุบัญชีธนาคารที่จ่ายเงิน", error: true });
+    setSaving(true);
+    try {
+      const res = await apiFetch("/api/finance/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId, payeeKey, paymentDate, paymentMethod: method, bankAccount, reference, note,
+          lines: chosen.map((c) => ({ expenseDocId: c.p.docId, amount: c.amount, whtRate: c.l.whtRate })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
+      const certs = (data.whtCertificates || []).length ? ` · ออกหนังสือรับรองหัก ณ ที่จ่าย ${data.whtCertificates.join(", ")}` : "";
+      setMessage({ text: `บันทึกใบสำคัญจ่าย ${data.paymentNo} แล้ว จ่ายจริง ฿${baht(data.netPaid)}${certs}` });
+      setLines({});
+      setPayeeKey("");
+      setReference("");
+      setNote("");
+    } catch (e: any) {
+      setMessage({ text: e.message, error: true });
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleSave = () => {
-    if (orders.length === 0) return void showAlert("เธเธฃเธธเธ“เธฒเน€เธฅเธทเธญเธเธฃเธฒเธขเธเธฒเธฃเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเธเนเธฒเธขเธเธณเธฃเธฐ", "System Notification", "warning");
-    showAlert("เธเธฑเธเธ—เธถเธเธเนเธฒเธขเธเธณเธฃเธฐเน€เธเธดเธเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง");
-    router.push("/finance");
-  };
-
-  const headerContent = (
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
+  const header = (
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-5 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <PillButton variant="glass" onClick={handleBack} className="w-10 h-10 p-0 flex items-center justify-center">
-          <ArrowLeft size={20} />
-        </PillButton>
+        <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center"><ArrowLeft size={20} /></PillButton>
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
-              บันทึกการจ่ายเงิน
-            </h1>
-            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
-              PAYMENT
-            </span>
-          </div>
-          <p className="text-sm text-white/60 font-medium mt-1">
-            บันทึกการชำระเงินเจ้าหนี้การค้า อ้างอิงใบสั่งซื้อ และตัดยอดค้างจ่าย
-          </p>
+          <h1 className="text-2xl font-semibold text-white tracking-tight flex items-center gap-2"><HandCoins size={22} className="text-nexus-teal" /> จ่ายชำระเจ้าหนี้</h1>
+          <p className="text-sm text-white/60 mt-1">เลือกรายการค้างจ่าย ระบบออกใบสำคัญจ่าย ตัดยอดเจ้าหนี้ ออกหนังสือรับรองหัก ณ ที่จ่าย และบันทึกบัญชีให้</p>
         </div>
       </div>
-      
-      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
-        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={handleBack}>
-          ยกเลิก
-        </PillButton>
-        <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" onClick={handleSave}>
-          <ShieldCheck size={14} className="mr-1.5" /> บันทึกจ่ายเงิน
+      <div className="flex items-center gap-2">
+        <PillButton variant="glass" onClick={() => router.back()} className="h-9 px-4 text-xs font-bold text-white/60">ยกเลิก</PillButton>
+        <PillButton variant="confirm" onClick={save} disabled={saving || !canSave || chosen.length === 0} className="h-9 px-5 text-xs font-bold">
+          {saving ? <><Loader2 size={14} className="animate-spin mr-1.5" /> กำลังบันทึก...</> : "บันทึกจ่ายชำระ"}
         </PillButton>
       </div>
     </div>
   );
 
-  const leftContent = (
-    <div className="space-y-4">
-      <GlassCard className="p-8 space-y-8 animate-in fade-in duration-500 min-h-[60vh] border-white/5 bg-black/20">
-        
-        <div className="grid grid-cols-2 gap-6">
-          <Field label="เน€เธเนเธฒเธซเธเธตเน / เธเธนเนเธเธณเธซเธเนเธฒเธข (Supplier) *">
-             <div className="flex gap-2">
-                <PillSelect 
-                  value={header.supplier}
-                  onChange={(e) => setHeader({...header, supplier: e.target.value})}
-                  className="flex-1 px-6 font-bold"
-                >
-                   <option value="">เธเนเธเธซเธฒเน€เธเนเธฒเธซเธเธตเน...</option>
-                   <option value="SUP-01">CommScope Thailand</option>
-                   <option value="SUP-02">Aruba Networks</option>
-                   <option value="SUP-03">Cisco Systems</option>
-                </PillSelect>
-                <PillButton onClick={loadSupplierOrders} className="px-6 shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.15)] bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30">
-                  <Search size={16} className="mr-2" /> เธ”เธถเธเธขเธญเธ”เธเนเธฒเธ
-                </PillButton>
-             </div>
-          </Field>
-          <Field label="เธงเธฑเธเธ—เธตเนเธเนเธฒเธขเธเธณเธฃเธฐ (Date) *">
-            <NexusDatePicker 
-              value={header.date}
-              onChange={(e) => setHeader({...header, date: e.target.value})}
-              className="w-full" 
+  const left = (
+    <div className="space-y-4 pb-10">
+      {message && (
+        <div className={cn("p-3 rounded-xl text-xs font-bold border", message.error ? "bg-danger/10 border-danger/20 text-danger" : "bg-nexus-teal/10 border-nexus-teal/20 text-nexus-teal")}>{message.text}</div>
+      )}
+      {!canSave && <div className="p-3 rounded-xl text-xs font-bold border bg-warning/10 border-warning/20 text-warning">บัญชีของคุณไม่มีสิทธิ์บันทึกการจ่ายเงิน (ต้องเป็นฝ่ายบัญชีหรือผู้ดูแลระบบ)</div>}
+
+      <GlassCard className="p-5 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5">
+          <div className="space-y-1 md:col-span-2">
+            <label className="text-[12px] font-bold text-white/70 ml-1">ผู้รับเงิน <span className="text-danger">*</span></label>
+            <SmartSelect
+              options={payeeOptions}
+              value={payeeKey}
+              onChange={(v) => { setPayeeKey(v); setLines({}); }}
+              placeholder={loading ? "กำลังโหลด..." : payeeOptions.length ? "เลือกผู้จำหน่าย / พนักงานที่มียอดค้างจ่าย..." : "ไม่มีรายการค้างจ่าย"}
             />
-          </Field>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[12px] font-bold text-white/70 ml-1">วันที่จ่าย <span className="text-danger">*</span></label>
+            <PillInput type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="w-full h-9 text-sm font-mono" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[12px] font-bold text-white/70 ml-1">เลขอ้างอิงการโอน / เลขเช็ค</label>
+            <PillInput value={reference} onChange={(e) => setReference(e.target.value)} placeholder="ถ้ามี" className="w-full h-9 text-sm" />
+          </div>
         </div>
-
-        <div className="grid grid-cols-2 gap-6">
-          <Field label="เธเนเธฒเธขเธเธฒเธเธเธฑเธเธเธต (Bank Account) *">
-            <PillSelect 
-              value={header.bankAccount}
-              onChange={(e) => setHeader({...header, bankAccount: e.target.value})}
-              className="w-full px-6"
-            >
-               <option>KBank - 789-0-XXXXX-X (Main)</option>
-               <option>SCB - 123-4-XXXXX-X (Payroll)</option>
-               <option>เน€เธเธดเธเธชเธ”</option>
-            </PillSelect>
-          </Field>
-          <Field label="เธเนเธญเธเธ—เธฒเธเธเธณเธฃเธฐเน€เธเธดเธ (Payment Method)">
-            <PillSelect 
-              value={header.paymentMethod}
-              onChange={(e) => setHeader({...header, paymentMethod: e.target.value})}
-              className="w-full px-6"
-            >
-               <option value="transfer">เนเธญเธเน€เธเธดเธ (Transfer)</option>
-               <option value="cash">เน€เธเธดเธเธชเธ” (Cash)</option>
-               <option value="cheque">เน€เธเนเธ (Cheque)</option>
-            </PillSelect>
-          </Field>
-        </div>
-
-        <Field label="เน€เธฅเธเธ—เธตเนเธญเนเธฒเธเธญเธดเธ (เน€เธเนเธ เน€เธฅเธเน€เธเนเธ / เน€เธฅเธเธชเธฅเธดเธ) (Reference)">
-          <PillInput 
-            value={header.reference}
-            onChange={(e) => setHeader({...header, reference: e.target.value})}
-            placeholder="เธฃเธฐเธเธธเน€เธฅเธเธ—เธตเนเน€เธญเธเธชเธฒเธฃเธเธฒเธฃเธเนเธฒเธข..." 
-            className="w-full" 
-          />
-        </Field>
-
-        <div className="space-y-4 pt-6 border-t border-white/5">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <DollarSign size={16} className="text-white/40" />
-              <h4 className="text-[13px] font-semibold text-white/60 uppercase tracking-widest">เธฃเธฒเธขเธเธฒเธฃเธชเธฑเนเธเธเธทเนเธญเธ—เธตเนเธเนเธฒเธขเธเธณเธฃเธฐ (Orders)</h4>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5">
+          <div className="space-y-1">
+            <label className="text-[12px] font-bold text-white/70 ml-1">วิธีจ่ายเงิน</label>
+            <div className="flex gap-2 flex-wrap">
+              {METHODS.map((m) => (
+                <button key={m.id} type="button" onClick={() => setMethod(m.id)}
+                  className={cn("h-9 px-4 rounded-full text-[13px] font-bold border flex items-center gap-1.5", method === m.id ? "bg-nexus-teal/15 border-nexus-teal/40 text-nexus-teal" : "bg-white/[0.02] border-white/10 text-white/50 hover:text-white")}>
+                  {m.icon} {m.label}
+                </button>
+              ))}
             </div>
-            <span className="text-[11px] font-semibold text-cyan-400 uppercase tracking-widest">เธ•เธฃเธงเธเธชเธญเธเธขเธญเธ”เธเนเธฒเธเธเนเธฒเธขเนเธฅเธฐเธซเธฑเธ เธ“ เธ—เธตเนเธเนเธฒเธข</span>
           </div>
-
-          {/* Advanced Order Grid - Similar to DocumentItemsTable */}
-          <div className="border border-white/10 rounded-3xl overflow-hidden bg-black/40">
-             {/* Table Header */}
-             <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-white/5 border-b border-white/10">
-                <div className="col-span-3 text-[11px] font-semibold text-white/40 uppercase tracking-widest">เน€เธฅเธเธ—เธตเน PO</div>
-                <div className="col-span-2 text-right text-[11px] font-semibold text-white/40 uppercase tracking-widest">เธขเธญเธ”เธเนเธฒเธเธเนเธฒเธข</div>
-                <div className="col-span-3 text-right text-[11px] font-semibold text-white/40 uppercase tracking-widest">เธเนเธฒเธขเธเธณเธฃเธฐเธเธฃเธฑเนเธเธเธตเน</div>
-                <div className="col-span-2 text-right text-[11px] font-black text-white/40 uppercase tracking-widest">WHT (%)</div>
-                <div className="col-span-1 text-right text-[11px] font-semibold text-white/40 uppercase tracking-widest">เธขเธญเธ”เธซเธฑเธ</div>
-                <div className="col-span-1 text-center text-[11px] font-semibold text-white/40 uppercase tracking-widest">เธฅเธ</div>
-             </div>
-
-             {/* Table Body */}
-             <div className="divide-y divide-white/5">
-                {orders.length === 0 ? (
-                   <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">
-                      <Building size={32} className="text-white/10" />
-                      <p className="text-[12px] text-white/30 font-semibold uppercase tracking-widest">เธขเธฑเธเนเธกเนเธกเธตเธฃเธฒเธขเธเธฒเธฃเธเนเธฒเธเธเนเธฒเธข<br/><span className="text-[10px]">เธเธฃเธธเธ“เธฒเน€เธฅเธทเธญเธเน€เธเนเธฒเธซเธเธตเนเนเธฅเธฐเธ”เธถเธเธขเธญเธ”เธเนเธฒเธ</span></p>
-                   </div>
-                ) : (
-                  orders.map((order) => (
-                    <div key={order.id} className="grid grid-cols-12 gap-2 px-4 py-1 items-center min-h-[36px] hover:bg-white/[0.02] transition-colors">
-                      <div className="col-span-3 font-mono text-[13px] text-white/80">{order.orderNo}</div>
-                      <div className="col-span-2 text-right font-mono text-[13px] text-white/40">{formatCurrency(order.balance)}</div>
-                      <div className="col-span-3">
-                         <input 
-                           type="text"
-                           value={order.amountToPay}
-                           onChange={(e) => updateOrder(order.id, "amountToPay", e.target.value)}
-                           onFocus={(e) => e.target.select()}
-                           className="w-full bg-black/50 border border-white/10 rounded-lg px-2 h-7 text-right font-mono text-[13px] text-white focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/50 py-0 leading-relaxed transition-all" 
-                         />
-                      </div>
-                      <div className="col-span-2">
-                         <select 
-                           value={order.whtRate}
-                           onChange={(e) => updateOrder(order.id, "whtRate", e.target.value)}
-                           className="w-full bg-black/50 border border-white/10 rounded-lg px-2 h-7 text-right text-[13px] text-white appearance-none focus:border-cyan-400 focus:outline-none py-0 transition-all" 
-                         >
-                            <option value="0">0%</option>
-                            <option value="1">1%</option>
-                            <option value="3">3%</option>
-                            <option value="5">5%</option>
-                         </select>
-                      </div>
-                      <div className="col-span-1 text-right font-mono text-[12px] text-red-400/80 pt-1">
-                         {order.whtAmount > 0 ? formatCurrency(order.whtAmount) : "-"}
-                      </div>
-                      <div className="col-span-1 flex justify-center">
-                         <button onClick={() => setOrders(orders.filter(i => i.id !== order.id))} className="w-5 h-7 flex items-center justify-center text-white/20 hover:text-danger transition-colors">
-                            <Trash2 size={14} />
-                         </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-             </div>
-          </div>
-
+          {method !== "CASH" && (
+            <div className="space-y-1">
+              <label className="text-[12px] font-bold text-white/70 ml-1">บัญชีธนาคารที่จ่ายเงิน <span className="text-danger">*</span></label>
+              <PillInput value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} placeholder="เช่น กสิกรไทย 123-4-56789-0" className="w-full h-9 text-sm" />
+            </div>
+          )}
         </div>
-
-        <div className="space-y-6 pt-6 border-t border-white/5">
-          <Field label="เธซเธกเธฒเธขเน€เธซเธ•เธธเธ เธฒเธขเนเธ (Internal Note)">
-            <textarea 
-              className="w-full h-20 rounded-2xl bg-white/[0.03] border border-white/10 text-white text-[14px] p-4 focus:outline-none focus:border-cyan-400/40 transition-all custom-scrollbar"
-              value={header.note}
-              onChange={(e) => setHeader({...header, note: e.target.value})}
-              placeholder="เธเธฑเธเธ—เธถเธเธขเนเธญ..."
-            />
-          </Field>
+        <div className="space-y-1">
+          <label className="text-[12px] font-bold text-white/70 ml-1">หมายเหตุ</label>
+          <PillInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="ถ้ามี" className="w-full h-9 text-sm" />
         </div>
+      </GlassCard>
 
+      <GlassCard className="p-0 overflow-hidden">
+        <NexusTable headers={["", "เลขที่เอกสาร", "วันครบกำหนด", "ยอดค้างจ่าย", "ยอดจ่าย", "อัตราหัก ณ ที่จ่าย", "ยอดจ่ายสุทธิ"]}>
+          {!payeeKey && (
+            <NexusTableRow><NexusTableCell colSpan={7} className="text-center py-10 text-white/40">เลือกผู้รับเงินเพื่อแสดงรายการค้างจ่าย</NexusTableCell></NexusTableRow>
+          )}
+          {payeeKey && computed.length === 0 && (
+            <NexusTableRow><NexusTableCell colSpan={7} className="text-center py-10 text-white/40">ไม่มีรายการค้างจ่าย</NexusTableCell></NexusTableRow>
+          )}
+          {computed.map(({ p, l, whtAmount, net, over }) => {
+            const overdue = p.dueMs > 0 && p.dueMs < Date.now();
+            return (
+              <NexusTableRow key={p.docId} className={l.selected ? "bg-nexus-teal/[0.04]" : ""}>
+                <NexusTableCell>
+                  <input type="checkbox" checked={l.selected} onChange={(e) => setLine(p, { selected: e.target.checked })} className="w-4 h-4 accent-nexus-teal cursor-pointer" />
+                </NexusTableCell>
+                <NexusTableCell variant="code" title={`${p.kind} · ยอดเต็ม ${baht(p.total)} · ลงบัญชี ${p.debitLabel}`}>{p.docNo}</NexusTableCell>
+                <NexusTableCell className={overdue ? "text-danger font-bold" : ""} title={overdue ? "เกินกำหนดชำระ" : undefined}>{thDate(p.dueMs)}</NexusTableCell>
+                <NexusTableCell variant="numeric">{baht(p.balance)}</NexusTableCell>
+                <NexusTableCell>
+                  <PillInput type="number" value={l.amount} disabled={!l.selected} onChange={(e) => setLine(p, { amount: e.target.value })}
+                    className={cn("h-9 w-28 text-right font-mono text-sm", over && "border-danger/60 text-danger")} title={over ? "เกินยอดค้างจ่าย" : undefined} />
+                </NexusTableCell>
+                <NexusTableCell title={l.selected && whtAmount > 0 ? `ภาษีหัก ณ ที่จ่าย ${baht(whtAmount)} บาท` : undefined}>
+                  {p.certWhtRate !== null ? (
+                    <span className="text-[12px] text-white/70" title="ใช้อัตราตามหนังสือรับรองที่ออกไว้แล้ว">{p.certWhtRate}% (50 ทวิ)</span>
+                  ) : (
+                    <PillSelect value={String(l.whtRate)} onChange={(e) => setLine(p, { whtRate: Number(e.target.value) })} className="h-9 w-[92px] pl-4 pr-8 text-sm" disabled={!l.selected}>
+                      {WHT_RATES.map((r) => <option key={r} value={String(r)}>{r}%</option>)}
+                    </PillSelect>
+                  )}
+                </NexusTableCell>
+                <NexusTableCell variant="numeric" className="text-nexus-teal font-bold">{l.selected ? baht(net) : "-"}</NexusTableCell>
+              </NexusTableRow>
+            );
+          })}
+        </NexusTable>
+      </GlassCard>
+      <p className="text-[12px] text-white/40">ภาษีหัก ณ ที่จ่ายคิดจากยอดก่อน VAT · รายการที่ออกหนังสือรับรอง (50 ทวิ) ไว้แล้วใช้อัตราตามหนังสือ · จ่ายบางส่วนได้</p>
+    </div>
+  );
+
+  const sideRow = (k: string, v: string, cls = "text-white") => (
+    <div className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
+      <span className="text-[13px] text-white/60">{k}</span>
+      <span className={cn("text-[14px] font-mono font-bold", cls)}>{v}</span>
+    </div>
+  );
+
+  const right = (
+    <div className="p-4 space-y-4">
+      <GlassCard className="p-4">
+        <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2"><Wallet size={16} className="text-nexus-teal" /> สรุปการจ่าย</h4>
+        {sideRow("จำนวนรายการ", `${chosen.length} รายการ`)}
+        {sideRow("ยอดตัดหนี้", `฿${baht(totalAmount)}`)}
+        {sideRow("ภาษีหัก ณ ที่จ่าย", `฿${baht(totalWht)}`)}
+        {sideRow("เงินที่จ่ายจริง", `฿${baht(netPaid)}`, "text-nexus-teal")}
+      </GlassCard>
+
+      <GlassCard className="p-4">
+        <h4 className="text-sm font-bold text-white mb-2">รายการบัญชีที่จะบันทึก</h4>
+        <div className="space-y-1.5 text-[12px]">
+          {debitPreview.map(([label, amt]) => (
+            <div key={label} className="flex justify-between gap-2"><span className="text-white/70">Dr {label}</span><span className="font-mono text-white">{baht(amt)}</span></div>
+          ))}
+          {totalVat > 0 && <div className="flex justify-between gap-2"><span className="text-white/70">Dr 1151-00 ภาษีซื้อ</span><span className="font-mono text-white">{baht(totalVat)}</span></div>}
+          {totalWht > 0 && <div className="flex justify-between gap-2 pl-4"><span className="text-white/70">Cr 2132-00 ภาษีหัก ณ ที่จ่ายค้างจ่าย</span><span className="font-mono text-white">{baht(totalWht)}</span></div>}
+          <div className="flex justify-between gap-2 pl-4"><span className="text-white/70">Cr {methodDef.account}</span><span className="font-mono text-white">{baht(netPaid)}</span></div>
+        </div>
+        <p className="text-[11px] text-white/40 mt-2">บันทึกเป็นรายการรออนุมัติลงบัญชี</p>
       </GlassCard>
     </div>
   );
 
-  const rightSidebar = (
-    <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
-      <div className="space-y-1 border-b border-white/5 pb-4">
-        <h5 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">Payment Allocation</h5>
-      </div>
-
-      <div className="p-6 rounded-3xl bg-black/40 border border-white/5 space-y-4 relative z-10">
-        <div className="flex justify-between items-center pb-4 border-b border-white/5">
-          <span className="text-[11px] text-white/60 font-semibold uppercase tracking-widest">เธขเธญเธ”เธเนเธฒเธขเธเธณเธฃเธฐเธฃเธงเธก</span>
-          <span className="text-[14px] font-mono font-bold text-white">{formatCurrency(summary.subtotal)}</span>
-        </div>
-        <div className="flex justify-between items-center pb-4 border-b border-white/5">
-          <span className="text-[11px] text-danger/60 font-black uppercase tracking-widest">เธซเธฑเธ เธ“ เธ—เธตเนเธเนเธฒเธขเธฃเธงเธก (WHT)</span>
-          <span className="text-[14px] font-mono font-bold text-danger">-{formatCurrency(summary.wht)}</span>
-        </div>
-        <div className="flex justify-between items-end pt-2">
-          <span className="text-[12px] text-white/80 font-semibold uppercase tracking-widest">เธขเธญเธ”เธเนเธฒเธขเธชเธธเธ—เธเธด</span>
-          <span className="text-xl font-mono font-black text-cyan-400 drop-shadow-neon text-right tracking-tight">{formatCurrency(summary.total)}</span>
-        </div>
-      </div>
-
-      <div className="space-y-4 pt-4 relative z-10">
-        <PillButton className="w-full h-11 px-6 rounded-full font-black uppercase tracking-[0.2em] shadow-[0_0_12px_rgba(6,182,212,0.15)] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/30 text-[12px]" onClick={handleSave}>
-          <ShieldCheck size={18} className="mr-2" />
-          เธเธฑเธเธ—เธถเธเธเนเธฒเธขเน€เธเธดเธ
-        </PillButton>
-      </div>
-      
-      <div className="absolute bottom-0 right-0 w-48 h-48 bg-cyan-500/10 blur-[60px] translate-x-1/4 translate-y-1/4 rounded-full pointer-events-none" />
-    </div>
-  );
-
-  return (
-    <NexusPageLayout
-      header={headerContent}
-      leftContent={leftContent}
-      rightSidebar={rightSidebar}
-    />
-  );
+  return <NexusPageLayout header={header} leftContent={left} rightSidebar={right} />;
 }
 
-function Field({ label, children, required }: { label: string, children: React.ReactNode, required?: boolean }) {
-  const cleanLabel = label.replace('*', '').trim();
-  const hasAsterisk = required || label.includes('*');
-  const parts = cleanLabel.split(' (');
-  const thaiText = parts[0];
-  const engText = parts.length > 1 ? '(' + parts[1] : '';
-
+export default function NewPaymentPage() {
   return (
-    <div className="space-y-2 w-full flex flex-col items-start justify-center">
-      <label className="text-[12px] font-bold text-white/70 flex flex-wrap items-center gap-1 ml-1">
-        <span className="flex items-center">
-          {thaiText}
-          {hasAsterisk && <span className="text-danger ml-1 font-bold">*</span>}
-        </span>
-        {engText && <span className="text-white/40 font-normal uppercase tracking-widest text-[10px]">{engText}</span>}
-      </label>
-      {children}
-    </div>
+    <Suspense fallback={<div className="p-10 text-center text-white/50 text-sm">กำลังโหลด...</div>}>
+      <PaymentForm />
+    </Suspense>
   );
 }
-

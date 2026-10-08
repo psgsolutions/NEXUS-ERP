@@ -138,12 +138,13 @@ export async function createWHTFromExpense(expId: string, companyId: string, wht
       createdAt: serverTimestamp(),
     });
 
+    // ผูกหนังสือรับรองฯ กับค่าใช้จ่ายเท่านั้น: การจ่ายเงินจริงทำผ่าน POST /api/finance/payments
+    // (ซึ่งจะหักภาษีตามหนังสือนี้และตัดยอดเจ้าหนี้)
     transaction.update(expRef, {
-      status: "Paid (WHT Deducted)",
-      paymentDate: serverTimestamp(),
       whtRef: whtId,
       whtId,
-      whtAmount
+      whtAmount,
+      whtRate,
     });
   });
 

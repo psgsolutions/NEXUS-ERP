@@ -1,16 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  ShoppingBag, 
+import {
+  ShoppingBag,
   ShoppingCart,
-  Truck, 
-  FileCheck, 
-  Plus, 
-  Search, 
-  Building2, 
-  Clock, 
+  Truck,
+  FileCheck,
+  Plus,
+  Search,
+  Building2,
+  Clock,
   TrendingDown,
   BarChart2,
   AlertCircle,
@@ -22,17 +23,17 @@ import {
   UserPlus,
   Filter
 } from "lucide-react";
-import { 
-  PillButton, 
-  PillInput, 
-  MasterMetricCard, 
-  cn, 
-  Modal, 
-  Toast, 
-  NexusTable, 
-  NexusTableRow, 
-  NexusTableCell, 
-  StatusBadge, 
+import {
+  PillButton,
+  PillInput,
+  MasterMetricCard,
+  cn,
+  Modal,
+  Toast,
+  NexusTable,
+  NexusTableRow,
+  NexusTableCell,
+  StatusBadge,
   PillTabs,
   GlassCard,
   PillSelect,
@@ -144,34 +145,34 @@ export default function ProcurementPage() {
     };
   }, [companyId]);
 
-  const filteredSuppliers = (initialSuppliers || []).filter(s => 
-    (s.name || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredSuppliers = (initialSuppliers || []).filter(s =>
+    (s.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (s.id || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredPRs = (initialPRs || []).filter(p => 
-    (p.requester || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredPRs = (initialPRs || []).filter(p =>
+    (p.requester || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (p.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (p.dept || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredGRs = (initialGRs || []).filter(g => 
-    (g.supplier || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredGRs = (initialGRs || []).filter(g =>
+    (g.supplier || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (g.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (g.po || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredPOs = (initialPOs || []).filter(p => 
-    (p.vendor || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredPOs = (initialPOs || []).filter(p =>
+    (p.vendor || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (p.id || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredExpenses = expensesList.filter(e => 
+  const filteredExpenses = expensesList.filter(e =>
     (e.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (e.poRef || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredWHTs = whtList.filter(w => 
+  const filteredWHTs = whtList.filter(w =>
     (w.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (w.expenseId || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -243,13 +244,13 @@ export default function ProcurementPage() {
 
       {/* Tab Navigation & Actions */}
       <section className="px-6 h-[56px] bg-black/10 border-b border-white/5 flex items-center justify-between shrink-0">
-        <PillTabs 
-          tabs={tabs} 
-          activeTab={activeTab} 
-          onTabChange={(id: any) => setActiveTab(id)} 
+        <PillTabs
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={(id: any) => setActiveTab(id)}
         />
         <div className="flex gap-3 shrink-0">
-           <PillButton 
+           <PillButton
               variant="primary"
               className="h-8 px-5 shadow-neon-teal"
               onClick={() => {
@@ -259,15 +260,15 @@ export default function ProcurementPage() {
                  else if (activeTab === "expense") router.push("/finance/expense-claims/new");
                  else if (activeTab === "wht") router.push("/procurement/wht/new");
                  else router.push("/procurement/orders/new");
-              }} 
+              }}
            >
-              {activeTab === "suppliers" ? <UserPlus size={14} className="mr-1.5" /> : 
-               activeTab === "pr" ? <ClipboardList size={14} className="mr-1.5" /> : 
-               activeTab === "receipt" ? <Truck size={14} className="mr-1.5" /> : 
+              {activeTab === "suppliers" ? <UserPlus size={14} className="mr-1.5" /> :
+               activeTab === "pr" ? <ClipboardList size={14} className="mr-1.5" /> :
+               activeTab === "receipt" ? <Truck size={14} className="mr-1.5" /> :
                <ShoppingCart size={14} className="mr-1.5" />}
               {
-                 activeTab === "suppliers" ? "ลงทะเบียนคู่ค้าใหม่" : 
-                 activeTab === "pr" ? "เปิดใบขอซื้อ" : 
+                 activeTab === "suppliers" ? "ลงทะเบียนคู่ค้าใหม่" :
+                 activeTab === "pr" ? "เปิดใบขอซื้อ" :
                  activeTab === "receipt" ? "บันทึกรับสินค้า" :
                  "ออกใบสั่งซื้อ"
               }
@@ -281,7 +282,7 @@ export default function ProcurementPage() {
 
       <div className="flex flex-col xl:flex-row items-start gap-4">
         <div className="flex-1 w-full space-y-3">
-          
+
           <div className="space-y-3">
             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
               <div className="flex items-center gap-4 shrink-0">
@@ -301,9 +302,9 @@ export default function ProcurementPage() {
 
             {/* Tactical Command Bar */}
             <div className="flex flex-col md:flex-row items-center gap-4 bg-white/[0.01] p-1.5 rounded-full border border-white/5 backdrop-blur-md">
-               <NexusSearchInput 
+               <NexusSearchInput
                  placeholder={
-                    activeTab === "suppliers" ? "ค้นหาชื่อคู่ค้า, เลขผู้เสียภาษี..." : 
+                    activeTab === "suppliers" ? "ค้นหาชื่อคู่ค้า, เลขผู้เสียภาษี..." :
                     activeTab === "pr" ? "ค้นหาใบขอซื้อ, ผู้ขอ, แผนก..." :
                     activeTab === "receipt" ? "ค้นหาเลขใบรับสินค้า, ใบสั่งซื้อ..." :
                     "ค้นหาเลขที่เอกสาร หรือข้อมูลในตารางนี้..."
@@ -365,7 +366,7 @@ export default function ProcurementPage() {
                            <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">ไม่มีข้อมูลบันทึกรายจ่าย</NexusTableCell>
                          </NexusTableRow>
                        ) : filteredExpenses.map(exp => (
-                         <ExpenseRow key={exp.id} {...exp} companyId={companyId || "COM-NEXUS-01"} 
+                         <ExpenseRow key={exp.id} {...exp} companyId={companyId || "COM-NEXUS-01"}
                            onClick={() => { setSelectedItem(exp); setIsExpenseOpen(true); }}
                            onWhtCreate={async () => {
                             try {
@@ -385,7 +386,7 @@ export default function ProcurementPage() {
                            <NexusTableCell colSpan={7} className="text-center text-white/50 py-8">ไม่มีข้อมูลภาษีหัก ณ ที่จ่าย</NexusTableCell>
                          </NexusTableRow>
                        ) : filteredWHTs.map(wht => (
-                         <WHTRow key={wht.id} {...wht} companyId={companyId || "COM-NEXUS-01"} 
+                         <WHTRow key={wht.id} {...wht} companyId={companyId || "COM-NEXUS-01"}
                            onClick={() => { setSelectedItem(wht); setIsWHTOpen(true); }}
                          />
                        ))}
@@ -432,22 +433,22 @@ export default function ProcurementPage() {
       </div>
 
       {/* Procurement Management Modal */}
-      
 
-      
 
-      
 
-      
 
-      
 
-      
 
-      <Toast 
-        message={toast.message} 
-        isVisible={toast.isVisible} 
-        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
+
+
+
+
+
+
+      <Toast
+        message={toast.message}
+        isVisible={toast.isVisible}
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
       />
     </div>
   );
@@ -506,7 +507,7 @@ function PRRow({ id, requester, dept, project, amount, status, onClick }: { id: 
 function PORow({ id, docId, vendor, totalAmount, amount, approval, normalizedStatus, isSample, companyId, onExpenseCreate, onClick }: any) {
   const displayAmount = totalAmount ? `฿${Number(totalAmount).toLocaleString("th-TH", { minimumFractionDigits: 2 })}` : (amount ? `฿${amount}` : "฿0.00");
   const isApproved = ["APPROVED", "PARTIAL_RECEIVED", "RECEIVED"].includes(normalizedStatus);
-  
+
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
@@ -540,10 +541,12 @@ function PORow({ id, docId, vendor, totalAmount, amount, approval, normalizedSta
   );
 }
 
-function ExpenseRow({ id, poRef, vendor, supplier, totalAmount, amount, status, isSample, companyId, onWhtCreate, onClick }: any) {
+function ExpenseRow({ id, poRef, vendor, supplier, totalAmount, amount, balance, status, isSample, whtId, companyId, onWhtCreate, onClick }: any) {
   const displayVendor = vendor || supplier || "-";
   const displayAmount = totalAmount ? `฿${totalAmount.toLocaleString()}` : (amount ? `฿${amount}` : "฿0.00");
-  const isPaid = status?.includes("Paid") || status === "paid";
+  const st = String(status || "");
+  const isPaid = st === "Paid" || st === "paid" || st.startsWith("Paid (");
+  const isPartial = st === "Partially Paid";
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
@@ -553,14 +556,22 @@ function ExpenseRow({ id, poRef, vendor, supplier, totalAmount, amount, status, 
       <NexusTableCell className="w-full font-bold text-white/80">{displayVendor}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white mono-numbers">{displayAmount}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status={isPaid ? "active" : "pending"} label={isPaid ? "ชำระแล้ว" : "รอจ่ายเงิน"} />
+        <StatusBadge
+          status={isPaid ? "active" : isPartial ? "warning" : "pending"}
+          label={isPaid ? "ชำระแล้ว" : isPartial ? `จ่ายบางส่วน (ค้าง ฿${Number(balance || 0).toLocaleString("th-TH")})` : "รอจ่ายเงิน"}
+        />
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-end gap-2">
-          {onWhtCreate && !isPaid && !isSample && (
-             <button onClick={onWhtCreate} className="px-2 py-1 text-[10px]  text-nexus-blue rounded hover:bg-nexus-blue hover:text-white transition-colors">จ่าย+หัก WHT</button>
+          {!isPaid && !isSample && (
+            <Link href={`/finance/payments/new?expense=${encodeURIComponent(id)}`} className="h-8 px-3 rounded-full border border-nexus-teal/30 text-nexus-teal text-[12px] font-bold flex items-center hover:bg-nexus-teal/10">
+              จ่ายชำระ
+            </Link>
           )}
-          <SecureDeleteAction collectionName="expenses" documentId={id} displayName={id} compact />
+          {onWhtCreate && !isPaid && !isSample && !whtId && (
+            <button onClick={onWhtCreate} className="h-8 px-3 rounded-full border border-nexus-blue/30 text-nexus-blue text-[12px] font-bold hover:bg-nexus-blue/10" title="ออกหนังสือรับรองการหักภาษี ณ ที่จ่ายล่วงหน้า (หักจริงตอนจ่ายชำระ)">ออก 50 ทวิ</button>
+          )}
+          <SecureDeleteAction collectionName={`companies/${companyId}/expenses`} documentId={id} displayName={id} compact />
         </div>
       </NexusTableCell>
     </NexusTableRow>

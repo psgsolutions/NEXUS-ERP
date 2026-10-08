@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { 
-  Wallet, 
-  TrendingUp, 
-  TrendingDown, 
-  FileText, 
-  BarChart3, 
-  PieChart, 
-  ArrowUpRight, 
+import {
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  FileText,
+  BarChart3,
+  PieChart,
+  ArrowUpRight,
   ArrowDownLeft,
   Calendar,
   AlertCircle,
@@ -26,18 +26,18 @@ import {
   Landmark,
   CreditCard
 } from "lucide-react";
-import { 
+import {
   PillButton,
-  PillTabs, 
-  PillInput, 
-  MasterMetricCard, 
-  cn, 
-  Modal, 
-  Toast, 
-  NexusTable, 
-  NexusTableRow, 
-  NexusTableCell, 
-  StatusBadge, 
+  PillTabs,
+  PillInput,
+  MasterMetricCard,
+  cn,
+  Modal,
+  Toast,
+  NexusTable,
+  NexusTableRow,
+  NexusTableCell,
+  StatusBadge,
   GlassCard,
   PillSelect,
   NexusDataField,
@@ -77,7 +77,7 @@ export default function FinancePage() {
   const [reopenReason, setReopenReason] = useState("");
   const [isTaxModalOpen, setIsTaxModalOpen] = useState(false);
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
-  
+
   const [modalActiveTab, setModalActiveTab] = useState("basic");
   const { showAlert } = useSystemDialog();
   const [toast, setToast] = useState({ message: "", isVisible: false });
@@ -109,7 +109,8 @@ export default function FinancePage() {
     .filter((e: any) => !String(e.status || "").toLowerCase().startsWith("paid") && e.isDeleted !== true)
     .map((e: any) => ({
       ...e,
-      amount: Number(e.totalAmount ?? 0) - Number(e.whtAmount ?? 0),
+      // จ่ายบางส่วนแล้ว: ใช้ยอดค้างคงเหลือ
+      amount: Number(e.balance ?? e.totalAmount ?? 0),
       payDate: e.dueDate,
       poNo: e.poRef || e.expenseId || e.id,
       status: "pending",
@@ -213,37 +214,37 @@ export default function FinancePage() {
     status: c.status || "pending"
   }));
 
-  const filteredFinancials = financialsList.filter(f => 
-    f.desc.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredFinancials = financialsList.filter(f =>
+    f.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
     f.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredARs = arList.filter(ar => 
-    ar.customer.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredARs = arList.filter(ar =>
+    ar.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
     ar.inv.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredAPs = apList.filter(ap => 
-    ap.supplier.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredAPs = apList.filter(ap =>
+    ap.supplier.toLowerCase().includes(searchQuery.toLowerCase()) ||
     ap.po.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredTaxes = taxList.filter(t => 
+  const filteredTaxes = taxList.filter(t =>
     t.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredAssets = assetsList.filter(a => 
-    a.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredAssets = assetsList.filter(a =>
+    a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     a.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredBanks = bankList.filter(b => 
-    b.bankName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredBanks = bankList.filter(b =>
+    b.bankName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     b.accountNo.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredCheques = chequesList.filter(c => 
-    c.chequeNo.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredCheques = chequesList.filter(c =>
+    c.chequeNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -324,10 +325,10 @@ export default function FinancePage() {
 
       {/* Tab Navigation & Actions */}
       <section className="px-6 h-[56px] bg-black/10 border-b border-white/5 flex items-center justify-between shrink-0">
-        <PillTabs 
-          tabs={tabs} 
+        <PillTabs
+          tabs={tabs}
           activeTab={activeTab}
-          onTabChange={(id: any) => setActiveTab(id)} 
+          onTabChange={(id: any) => setActiveTab(id)}
         />
         <div className="flex gap-3 shrink-0">
            <PillButton variant="confirm" className="h-8 px-5 rounded-full text-[11px] uppercase tracking-widest font-black" onClick={() => setIsCloseOpen(true)}>
@@ -341,7 +342,7 @@ export default function FinancePage() {
                ปลดล็อกงวดบัญชี
              </PillButton>
            )}
-           
+
            {(activeTab === "overview" || activeTab === "gl") && (
              <PillButton variant="primary" onClick={() => router.push("/finance/journal-entries/new")} className="h-8 px-5 rounded-full shadow-neon-teal text-[11px] uppercase tracking-widest font-black">
                <Plus size={14} className="mr-1.5" />
@@ -381,7 +382,7 @@ export default function FinancePage() {
 
       <div className="flex flex-col xl:flex-row items-start gap-4">
         <div className="flex-1 w-full space-y-10">
-          
+
           <div className="space-y-3">
             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
               <div className="flex items-center gap-4 shrink-0">
@@ -401,8 +402,8 @@ export default function FinancePage() {
 
             {/* Tactical Command Bar */}
             <div className="flex flex-col md:flex-row items-center gap-4 bg-white/[0.01] p-1.5 rounded-full border border-white/5 backdrop-blur-md">
-               <NexusSearchInput 
-                 placeholder="พิมพ์เพื่อค้นหา..." 
+               <NexusSearchInput
+                 placeholder="พิมพ์เพื่อค้นหา..."
                  value={searchQuery}
                  onChange={(e) => setSearchQuery(e.target.value)}
                  className="flex-1"
@@ -562,15 +563,15 @@ export default function FinancePage() {
                 ประมาณการกระแสเงินสด
               </h4>
               <div className="space-y-3">
-                 <CashFlowBar 
-                    label="กระแสเงินสดรับ" 
-                    inAmount={totalAR} 
-                    outAmount={0} 
+                 <CashFlowBar
+                    label="กระแสเงินสดรับ"
+                    inAmount={totalAR}
+                    outAmount={0}
                  />
-                 <CashFlowBar 
-                    label="กระแสเงินสดจ่าย" 
-                    inAmount={0} 
-                    outAmount={totalAP} 
+                 <CashFlowBar
+                    label="กระแสเงินสดจ่าย"
+                    inAmount={0}
+                    outAmount={totalAP}
                     isRisk={riskStatus !== "safe"}
                  />
                  <div className="p-4 rounded-xl bg-black/40 border border-white/5 mt-4">
@@ -592,9 +593,9 @@ export default function FinancePage() {
       </div>
 
       {/* Finance Management Modals */}
-      
 
-      <PeriodCloseModal 
+
+      <PeriodCloseModal
         isOpen={isCloseOpen}
         onClose={() => setIsCloseOpen(false)}
         onConfirm={async (data) => {
@@ -722,11 +723,11 @@ export default function FinancePage() {
         </Modal>
       )}
 
-      
 
-      
 
-      <TaxFilingModal 
+
+
+      <TaxFilingModal
         isOpen={isTaxModalOpen}
         onClose={() => setIsTaxModalOpen(false)}
         onConfirm={async (data) => {
@@ -752,7 +753,7 @@ export default function FinancePage() {
         }}
       />
 
-      <AssetDepreciationModal 
+      <AssetDepreciationModal
         isOpen={isAssetModalOpen}
         onClose={() => setIsAssetModalOpen(false)}
         onConfirm={async (data) => {

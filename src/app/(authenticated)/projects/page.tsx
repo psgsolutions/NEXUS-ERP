@@ -3,10 +3,10 @@
 
 import { useRouter } from 'next/navigation';
 import React, { useState, useEffect, useMemo } from "react";
-import { 
-  Briefcase, 
-  Search, 
-  Plus, 
+import {
+  Briefcase,
+  Search,
+  Plus,
   Calendar,
   Users,
   BarChart3,
@@ -33,18 +33,21 @@ import {
   Wrench
 } from "lucide-react";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
-import { 
-  PillButton, 
-  PillInput, 
+import { useCompanyProjects } from "@/hooks/useCompanyProjects";
+import { OPEN_STATUSES, PROJECT_STATUS_BADGE, PROJECT_STATUS_TH, normalizeProjectStatus } from "@/lib/project-status";
+import { compactBaht } from "@/lib/dashboard-metrics";
+import {
+  PillButton,
+  PillInput,
   PillSelect,
-  MasterMetricCard, 
-  cn, 
-  Modal, 
-  Toast, 
-  NexusTable, 
-  NexusTableRow, 
-  NexusTableCell, 
-  StatusBadge, 
+  MasterMetricCard,
+  cn,
+  Modal,
+  Toast,
+  NexusTable,
+  NexusTableRow,
+  NexusTableCell,
+  StatusBadge,
   PillTabs,
   GlassCard,
   NexusDataField,
@@ -108,16 +111,16 @@ export default function ProjectsPage() {
   const [toast, setToast] = useState({ message: "", isVisible: false });
 
   // Quotation Integration States
-  
+
   const [quotationInitialData, setQuotationInitialData] = useState<any>(null);
 
   // Kit Editor States
-  
+
   const [kitEditorInitialData, setKitEditorInitialData] = useState<any>(null);
   const [dbProducts, setDbProducts] = useState<any[]>([]);
 
   // Contractor States
-  
+
   const [selectedContractor, setSelectedContractor] = useState<any>(null);
   const [dbContractors, setDbContractors] = useState<any[]>([]);
   useEffect(() => {
@@ -162,24 +165,8 @@ export default function ProjectsPage() {
     return () => unsubscribeCont();
   }, [companyId]);
 
-  const [dbProjects, setDbProjects] = useState<any[]>([]);
-
-  useEffect(() => {
-    const currentCid = companyId || "COMP-001";
-    const qProjects = query(
-      collection(db, `companies/${currentCid}/projects`)
-    );
-
-    const unsubscribeProj = onSnapshot(qProjects, (snapshot) => {
-      const items: any[] = [];
-      snapshot.forEach((docSnap) => {
-        items.push({ id: docSnap.id, ...docSnap.data() });
-      });
-      setDbProjects(items);
-    });
-
-    return () => unsubscribeProj();
-  }, [companyId]);
+  // โครงการจริงของบริษัท (ที่เก็บหลัก + รุ่นเก่าที่ root ไม่นับซ้ำ)
+  const { data: dbProjects } = useCompanyProjects();
 
   // Active search ID for live product suggestions
   const [activeSearchId, setActiveSearchId] = useState<number | null>(null);
@@ -195,7 +182,7 @@ export default function ProjectsPage() {
   const [projectRef, setProjectRef] = useState("REF-LED-2026");
   const [startDate, setStartDate] = useState("2026-05-20");
   const [endDate, setEndDate] = useState("2026-06-15");
-  
+
   // Custom Equipments List
   const [projectEquipments, setProjectEquipments] = useState<any[]>([
     { id: 1, name: "LED Panel P2.5 Indoor Cabinet", sku: "SKU-LED-40212", qty: 24, cost: 45000, price: 65000 },
@@ -205,29 +192,29 @@ export default function ProjectsPage() {
 
   // Custom Labors / Expenses List
   const [projectLabors, setProjectLabors] = useState<any[]>([
-    { 
-      id: 1, 
-      name: "งานติดตั้งจุดเชื่อมต่อและเดินสาย LAN UTP CAT6", 
-      type: "per-point", 
-      points: 40, 
-      materialSku: "SKU-CAB-006", 
-      materialCost: 150, 
-      laborCost: 350, 
-      price: 750, 
-      cost: 20000, 
-      totalPrice: 30000 
+    {
+      id: 1,
+      name: "งานติดตั้งจุดเชื่อมต่อและเดินสาย LAN UTP CAT6",
+      type: "per-point",
+      points: 40,
+      materialSku: "SKU-CAB-006",
+      materialCost: 150,
+      laborCost: 350,
+      price: 750,
+      cost: 20000,
+      totalPrice: 30000
     },
-    { 
-      id: 2, 
-      name: "ค่าบริการประกอบและติดตั้งโครงสร้างเหล็ก LED", 
-      type: "lump-sum", 
-      points: 1, 
-      materialSku: "", 
-      materialCost: 0, 
-      laborCost: 35000, 
-      price: 55000, 
-      cost: 35000, 
-      totalPrice: 55000 
+    {
+      id: 2,
+      name: "ค่าบริการประกอบและติดตั้งโครงสร้างเหล็ก LED",
+      type: "lump-sum",
+      points: 1,
+      materialSku: "",
+      materialCost: 0,
+      laborCost: 35000,
+      price: 55000,
+      cost: 35000,
+      totalPrice: 55000
     }
   ]);
 
@@ -276,7 +263,7 @@ export default function ProjectsPage() {
         items: p.kitItems || [],
         labor_items: p.kitLabors || []
       }));
-    
+
     const combined = [...dbKits, ...installationPackages];
     const unique = combined.filter((v, i, a) => a.findIndex(t => t.sku === v.sku) === i);
     return unique;
@@ -302,26 +289,61 @@ export default function ProjectsPage() {
   ];
 
   const formattedDbProjects = useMemo(() => {
-    return dbProjects.map((p) => ({
-      id: p.projectId || p.id,
-      name: p.projectName || p.title || "โครงการไม่มีชื่อ",
-      progress: p.status === "Active" ? 15 : p.status === "Completed" ? 100 : 0,
-      team: p.resources ? `${p.resources.length} คน` : "1 คน",
-      deadline: p.endDate || "30 มิ.ย.",
-      status: p.status === "Pending Approval" ? "pending" : p.status === "Active" ? "active" : p.status === "Completed" ? "completed" : "pending"
-    }));
+    return dbProjects
+      .filter((p: any) => p.isDeleted !== true)
+      .map((p: any) => {
+        const st = normalizeProjectStatus(p.status);
+        const end = p.endDate || p.deadline;
+        return {
+          docId: p.id as string,
+          id: String(p.projectId || p.id),
+          name: String(p.projectName || p.title || p.name || "โครงการไม่มีชื่อ"),
+          progress: Math.max(0, Math.min(100, Number(p.progress) || 0)),
+          team: `${(p.resources || p.team || []).length} คน`,
+          deadline: end ? new Date(end).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" }) : "-",
+          statusLabel: PROJECT_STATUS_TH[st],
+          statusBadge: PROJECT_STATUS_BADGE[st],
+          createdMs: p.createdAt?.seconds ? p.createdAt.seconds * 1000 : new Date(p.createdAt || 0).getTime() || 0,
+        };
+      })
+      .sort((a: any, b: any) => b.createdMs - a.createdMs);
   }, [dbProjects]);
 
-  const combinedProjects = useMemo(() => {
-    return [...formattedDbProjects, ...initialProjects];
-  }, [formattedDbProjects, initialProjects]);
+  const combinedProjects = formattedDbProjects;
 
-  const filteredProjects = combinedProjects.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  // สรุปจากโครงการจริง (เฉพาะที่ยังไม่ปิด/ยกเลิก)
+  const projectStats = useMemo(() => {
+    const open = dbProjects.filter((p: any) => p.isDeleted !== true && OPEN_STATUSES.includes(normalizeProjectStatus(p.status)));
+    const running = open.filter((p: any) => normalizeProjectStatus(p.status) === "In Progress");
+    const people = new Set<string>();
+    open.forEach((p: any) => {
+      if (p.projectManagerUid) people.add(p.projectManagerUid);
+      (p.teamUids || []).forEach((u: string) => people.add(u));
+    });
+    const allocated = running.reduce((s: number, p: any) => s + (Number(p.allocatedCost) || 0), 0);
+    const actual = running.reduce((s: number, p: any) => s + (Number(p.actualCost) || 0), 0);
+    const today = new Date().toISOString().slice(0, 10);
+    const upcoming = open
+      .filter((p: any) => (p.endDate || "") >= today)
+      .sort((a: any, b: any) => String(a.endDate).localeCompare(String(b.endDate)))
+      .slice(0, 3);
+    return {
+      openCount: open.length,
+      totalValue: open.reduce((s: number, p: any) => s + (Number(p.budget) || 0), 0),
+      people: people.size,
+      pendingCount: open.filter((p: any) => normalizeProjectStatus(p.status) === "Pending Approval").length,
+      budgetUse: allocated > 0 ? Math.round((actual / allocated) * 100) : null,
+      avgProgress: running.length ? Math.round(running.reduce((s: number, p: any) => s + (Number(p.progress) || 0), 0) / running.length) : null,
+      upcoming,
+    };
+  }, [dbProjects]);
+
+  const filteredProjects = combinedProjects.filter(p =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredMilestones = initialMilestones.filter(m => 
+  const filteredMilestones = initialMilestones.filter(m =>
     m.task.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -369,7 +391,7 @@ export default function ProjectsPage() {
   const saveLaborAsPackage = async (laborItem: any) => {
     let finalCost = 0;
     let finalPrice = 0;
-    
+
     if (laborItem.type === "per-point") {
       const matCost = laborItem.materialCost || 0;
       const labCost = laborItem.laborCost || 0;
@@ -400,7 +422,7 @@ export default function ProjectsPage() {
     try {
       const cid = companyId || "nexus-global-node";
       const productId = `prod_kit_${Date.now()}`;
-      
+
       const productData = {
         productId: productId,
         sku: newSku,
@@ -441,7 +463,7 @@ export default function ProjectsPage() {
   const budgetSummary = React.useMemo(() => {
     const equipCost = projectEquipments.reduce((sum, item) => sum + ((item.cost || 0) * (item.qty || 1)), 0);
     const equipRev = projectEquipments.reduce((sum, item) => sum + ((item.price || 0) * (item.qty || 1)), 0);
-    
+
     const laborCost = projectLabors.reduce((sum, item) => {
       if (item.type === "per-point") {
         const matCost = item.materialCost || 0;
@@ -460,7 +482,7 @@ export default function ProjectsPage() {
       }
       return sum + (item.price || 0);
     }, 0);
-    
+
     const totalCost = equipCost + laborCost;
     const totalRev = equipRev + laborRev;
     const grossProfit = totalRev - totalCost;
@@ -541,8 +563,8 @@ export default function ProjectsPage() {
               <Activity size={16} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-xs font-semibold text-white/60 tracking-wider leading-none">โครงการที่กำลังดำเนินการ</span>
-              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">12 งาน</span>
+              <span className="text-xs font-semibold text-white/60 tracking-wider leading-none">โครงการที่ยังไม่ปิด</span>
+              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">{projectStats.openCount} งาน</span>
             </div>
           </div>
           <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
@@ -550,8 +572,8 @@ export default function ProjectsPage() {
               <DollarSign size={16} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-xs font-semibold text-white/60 tracking-wider leading-none">งบประมาณรวม</span>
-              <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none">฿8.5M</span>
+              <span className="text-xs font-semibold text-white/60 tracking-wider leading-none">มูลค่าโครงการรวม</span>
+              <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none" title={`฿${projectStats.totalValue.toLocaleString("th-TH")}`}>{compactBaht(projectStats.totalValue)}</span>
             </div>
           </div>
           <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-white/20 hover:bg-white/[0.03]">
@@ -559,8 +581,8 @@ export default function ProjectsPage() {
               <Users size={16} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-xs font-semibold text-white/60 tracking-wider leading-none">วิศวกรหน้างาน</span>
-              <span className="text-[17px] font-bold text-white mt-0.5 mono-numbers leading-none">24 คน</span>
+              <span className="text-xs font-semibold text-white/60 tracking-wider leading-none">ทีมงานในโครงการ</span>
+              <span className="text-[17px] font-bold text-white mt-0.5 mono-numbers leading-none">{projectStats.people} คน</span>
             </div>
           </div>
         </div>
@@ -568,17 +590,17 @@ export default function ProjectsPage() {
 
       {/* Tab Navigation & Actions */}
       <section className="px-6 h-[56px] bg-black/10 border-b border-white/5 flex items-center justify-between shrink-0">
-        <PillTabs 
-          tabs={tabs} 
-          activeTab={activeTab} 
-          onTabChange={(id: any) => setActiveTab(id)} 
+        <PillTabs
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={(id: any) => setActiveTab(id)}
         />
         <div className="flex gap-3 shrink-0">
            <PillButton variant="confirm" className="h-8 px-5 shadow-neon-blue" onClick={() => setActiveTab("report")}>
              <ClipboardList size={14} className="mr-1.5" />
              รายงานบริการ
            </PillButton>
-           
+
            {activeTab === "list" && (
              <PillButton variant="primary" onClick={() => { setModalActiveTab("basic"); router.push("/projects/new"); }} className="h-8 px-5 shadow-neon-teal">
                <Plus size={14} className="mr-1.5" />
@@ -606,7 +628,7 @@ export default function ProjectsPage() {
 
       <div className="flex flex-col xl:flex-row items-start gap-4">
         <div className="flex-1 w-full space-y-10">
-          
+
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -620,8 +642,8 @@ export default function ProjectsPage() {
 
             {/* Tactical Command Bar */}
             <div className="flex flex-col md:flex-row items-center gap-4 bg-white/[0.01] p-1.5 rounded-full border border-white/5 backdrop-blur-md">
-               <NexusSearchInput 
-                 placeholder="ค้นหาโครงการ, เลขที่ PRJ หรือข้อมูลในทะเบียน..." 
+               <NexusSearchInput
+                 placeholder="ค้นหาโครงการ, เลขที่ PRJ หรือข้อมูลในทะเบียน..."
                  value={searchQuery}
                  onChange={(e) => setSearchQuery(e.target.value)}
                  className="flex-1"
@@ -640,15 +662,22 @@ export default function ProjectsPage() {
                 {activeTab === "list" && (
                   <div className="animate-in fade-in duration-500">
                     <NexusTable headers={["รหัสโครงการ", "ชื่อโครงการ", "ความคืบหน้า", "ทีมงาน", "กำหนดการ", "สถานะ"]}>
+                      {filteredProjects.length === 0 && (
+                        <NexusTableRow>
+                          <NexusTableCell colSpan={6} className="text-center py-10 text-white/40">ยังไม่มีโครงการ</NexusTableCell>
+                        </NexusTableRow>
+                      )}
                       {filteredProjects.map(prj => (
-                        <ProjectRow 
-                          key={prj.id}
-                          id={prj.id} 
-                          name={prj.name} 
-                          progress={prj.progress} 
-                          team={prj.team} 
-                          deadline={prj.deadline} 
-                          status={prj.status} 
+                        <ProjectRow
+                          key={prj.docId}
+                          docId={prj.docId}
+                          id={prj.id}
+                          name={prj.name}
+                          progress={prj.progress}
+                          team={prj.team}
+                          deadline={prj.deadline}
+                          statusLabel={prj.statusLabel}
+                          statusBadge={prj.statusBadge}
                         />
                       ))}
                     </NexusTable>
@@ -707,8 +736,8 @@ export default function ProjectsPage() {
                         </div>
                       ) : (
                         dbContractors.map(cont => (
-                          <div 
-                            key={cont.id} 
+                          <div
+                            key={cont.id}
                             onClick={() => {
                               setSelectedContractor(cont);
                               router.push("/procurement/suppliers/new");
@@ -729,7 +758,7 @@ export default function ProjectsPage() {
                               <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>
                               พันธมิตรที่พร้อมทำงาน
                             </div>
-                            
+
                             <div className="space-y-1.5 border-t border-white/5 pt-4">
                               <div className="flex items-center gap-2 text-xs text-white/60">
                                 <Phone size={12} className="text-white/40"/> {cont.phone || "-"}
@@ -759,61 +788,68 @@ export default function ProjectsPage() {
         {/* Right Sidebar Status */}
         <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-4 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
            <GlassCard accentColor="blue" className="p-5">
-              <h4 className="text-sm font-bold text-nexus-teal uppercase tracking-widest mb-6">ดัชนีชี้วัดสุขภาพโครงการ</h4>
+              <h4 className="text-sm font-bold text-nexus-teal tracking-widest mb-6">ภาพรวมโครงการที่กำลังดำเนินการ</h4>
               <div className="space-y-3">
-                 <HealthItem label="อัตราการใช้งบประมาณ" value="72%" color="bg-nexus-teal" />
-                 <HealthItem label="ความสำเร็จของงาน" value="85%" color="bg-nexus-blue" />
-                 <HealthItem label="การปฏิบัติตาม SLA" value="100%" color="bg-nexus-teal" />
+                 <HealthItem label="ใช้งบประมาณไปแล้ว" value={projectStats.budgetUse === null ? "-" : `${projectStats.budgetUse}%`} color={projectStats.budgetUse !== null && projectStats.budgetUse > 100 ? "bg-danger" : "bg-nexus-teal"} />
+                 <HealthItem label="ความคืบหน้าเฉลี่ย" value={projectStats.avgProgress === null ? "-" : `${projectStats.avgProgress}%`} color="bg-nexus-blue" />
+                 <div className="flex justify-between items-center text-sm font-medium pt-1">
+                    <span className="text-white/60">โครงการรออนุมัติ</span>
+                    <span className="text-warning font-mono font-bold">{projectStats.pendingCount}</span>
+                 </div>
               </div>
            </GlassCard>
 
            <GlassCard accentColor="purple" className="p-5">
-              <h4 className="text-sm font-bold text-white/60 uppercase tracking-widest mb-6">กำหนดการสำคัญที่ใกล้ถึง</h4>
+              <h4 className="text-sm font-bold text-white/60 tracking-widest mb-6">กำหนดส่งมอบที่ใกล้ถึง</h4>
               <div className="space-y-3">
-                 <DeadlineItem title="ติดตั้ง Core Switch" date="พรุ่งนี้" project="PRJ-26-001" />
-                 <DeadlineItem title="ส่งมอบงานลูกค้า" date="28 เม.ย." project="PRJ-26-002" />
+                 {projectStats.upcoming.length === 0 && <p className="text-[13px] text-white/40">ไม่มีกำหนดส่งมอบที่ใกล้ถึง</p>}
+                 {projectStats.upcoming.map((p: any) => (
+                   <Link key={p.id} href={`/projects/${encodeURIComponent(p.id)}`} className="block">
+                     <DeadlineItem
+                       title={p.projectName || p.title || p.name || "-"}
+                       date={new Date(p.endDate).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" })}
+                       project={p.projectId || p.id}
+                     />
+                   </Link>
+                 ))}
               </div>
            </GlassCard>
         </div>
       </div>
       </div>
       </div>
-      <Toast 
-        message={toast.message} 
-        isVisible={toast.isVisible} 
-        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
+      <Toast
+        message={toast.message}
+        isVisible={toast.isVisible}
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
       />
     </div>
   );
 }
 
-function ProjectRow({ id, name, progress, team, deadline, status }: { id: string, name: string, progress: number, team: string, deadline: string, status: "active" | "completed" | "delayed" }) {
+function ProjectRow({ docId, id, name, progress, team, deadline, statusLabel, statusBadge }: { docId: string, id: string, name: string, progress: number, team: string, deadline: string, statusLabel: string, statusBadge: "active" | "inactive" | "pending" | "warning" | "danger" }) {
+  const href = `/projects/${encodeURIComponent(docId)}`;
   return (
     <NexusTableRow>
-        <NexusTableCell align="right" className="w-[1%] whitespace-nowrap align-middle pr-6">
-          <Link href={`/projects/${id}`} className="block">
-             <span className="font-mono text-[13px] text-nexus-blue font-medium tracking-tight">{id}</span>
-          </Link>
-        </NexusTableCell>
-        <NexusTableCell className="w-full">
-          <Link href={`/projects/${id}`} className="block">
-             <span className="text-[13px] font-bold text-white/80 group-hover:text-white transition-colors 
-whitespace-nowrap">{name}</span>
-          </Link>
-        </NexusTableCell>
-      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap align-middle">
-         <div className="flex items-center gap-2">
-            <div className="h-1 w-20 2xl:w-28 bg-white/5 rounded-full overflow-hidden shrink-0">
-               <div className="h-full bg-nexus-teal shadow-neon-teal" style={{ width: `${progress}%` }} />
-            </div>
-            <span className="text-xs font-mono text-white/75">{progress}%</span>
-         </div>
+      <NexusTableCell>
+        <Link href={href} className="font-mono text-[13px] text-nexus-blue font-medium">{id}</Link>
       </NexusTableCell>
-      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap text-sm font-medium text-white/60 uppercase">{team}</NexusTableCell>
-      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap text-sm font-medium text-white/60 uppercase">{deadline}</NexusTableCell>
-        <NexusTableCell align="center" className="w-[1%] whitespace-nowrap">
-          <StatusBadge status={status === "active" ? "active" : status === "completed" ? "active" : "danger"} label={status === "active" ? "กำลังดำเนินการ" : status === "completed" ? "เสร็จสิ้น" : "ล่าช้า"} />
-        </NexusTableCell>
+      <NexusTableCell>
+        <Link href={href} className="text-[13px] font-bold text-white/80 group-hover:text-white transition-colors">{name}</Link>
+      </NexusTableCell>
+      <NexusTableCell>
+        <div className="flex items-center gap-2">
+          <div className="h-1 w-20 2xl:w-28 bg-white/5 rounded-full overflow-hidden shrink-0">
+            <div className="h-full bg-nexus-teal" style={{ width: `${progress}%` }} />
+          </div>
+          <span className="text-xs font-mono text-white/75">{progress}%</span>
+        </div>
+      </NexusTableCell>
+      <NexusTableCell className="text-white/60">{team}</NexusTableCell>
+      <NexusTableCell className="text-white/60">{deadline}</NexusTableCell>
+      <NexusTableCell>
+        <StatusBadge status={statusBadge} label={statusLabel} />
+      </NexusTableCell>
     </NexusTableRow>
   );
 }
@@ -868,7 +904,7 @@ function HealthItem({ label, value, color }: { label: string, value: string, col
           <span className="text-white/80">{value}</span>
        </div>
        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-          <div className={cn("h-full", color)} style={{ width: value }} />
+          <div className={cn("h-full", color)} style={{ width: value.endsWith("%") ? `${Math.min(100, parseFloat(value))}%` : "0%" }} />
        </div>
     </div>
   );

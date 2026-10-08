@@ -1,942 +1,436 @@
 "use client";
 
-import React, { useState } from "react";
-import { 
-  ArrowLeft,
-  Briefcase, 
-  ChevronLeft, 
-  Edit3, 
-  Target, 
-  ClipboardList, 
-  Users, 
-  Package, 
-  Activity, 
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  FileText,
-  MapPin,
-  ArrowUpRight,
-  TrendingUp,
-  BarChart3,
-  Zap,
-  ShieldAlert,
-  ShieldCheck,
-  UploadCloud,
-  Sparkles,
-  Check,
-  AlertTriangle,
-  Trash2,
-  Plus,
-  Building2
-} from "lucide-react";
-import { 
-  PillButton, 
-  GlassCard, 
-  cn, 
-  PillTabs, 
-  NexusTable, 
-  NexusTableRow, 
-  NexusTableCell, 
-  StatusBadge,
-  MasterMetricCard,
-  PillInput,
-  PillBackButton,
-  NexusDataField,
-  Toast
-} from "@/components/ui/Base";
-import { QuotationModal } from "@/components/commerce/QuotationModal";
-import { GovernmentComplianceTab } from "@/components/projects/GovernmentComplianceTab";
-import { PrivateCommercialTab } from "@/components/projects/PrivateCommercialTab";
-import { ProjectDocumentChecklistCard } from "@/components/projects/ProjectDocumentChecklistCard";
-import { PROJECT_TYPE_CONFIGS, ProjectTypeCode } from "@/types/database";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import {
+  ArrowLeft, Briefcase, Building2, CalendarDays, CheckCircle2, ClipboardList, FileText, History,
+  Loader2, MapPin, Package, Pencil, PlayCircle, ShieldCheck, Users, Wallet, XCircle,
+} from "lucide-react";
+import {
+  GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillInput, PillTabs, StatusBadge, cn,
+} from "@/components/ui/Base";
+import NexusPageLayout from "@/components/layout/NexusPageLayout";
+import { useAuth } from "@/context/AuthContext";
+import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { apiFetch } from "@/lib/api-client";
+import { can } from "@/lib/permissions";
+import { computeProjectBudget } from "@/lib/project-budget";
+import {
+  APPROVAL_STEPS, EDITABLE_STATUSES, PROJECT_STATUS_BADGE, PROJECT_STATUS_TH, canApproveStep, normalizeProjectStatus,
+  type ProjectAction,
+} from "@/lib/project-status";
 
-export default function ProjectDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState("timeline");
-  
-  // Quotation Integration States
-  
-  const [quotationInitialData, setQuotationInitialData] = useState<any>(null);
-  const [toast, setToast] = useState({ message: "", isVisible: false });
+const baht = (n: any) => `฿${(Number(n) || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const thDate = (v: any) => {
+  if (!v) return "-";
+  const ms = typeof v === "string" ? new Date(v).getTime() : v.seconds ? v.seconds * 1000 : v.toMillis ? v.toMillis() : 0;
+  return ms ? new Date(ms).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) : "-";
+};
+const thDateTime = (iso: any) => (iso ? new Date(iso).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" }) : "-");
 
-  // Financials & BOQ States
-  const [selectedBoqVersion, setSelectedBoqVersion] = useState("Rev 3");
-  const [milestonesBilling, setMilestonesBilling] = useState<any[]>([
-    { id: "M1", name: "งวดที่ 1: เตรียมพื้นที่และเดินสายโครงข่ายสัญญาณ", pct: 30, amount: 750000, status: "invoiced", ref: "INV-2026-0081" },
-    { id: "M2", name: "งวดที่ 2: ประกอบ Cabinet และเชื่อมต่อไฟเบอร์", pct: 40, amount: 1000000, status: "pending", ref: null },
-    { id: "M3", name: "งวดที่ 3: ทำการ Calibrate และส่งมอบงานราชการ", pct: 30, amount: 750000, status: "pending", ref: null },
-  ]);
+const KIND_TH: Record<string, string> = { PRODUCT: "สินค้า", SERVICE: "บริการ", LABOR: "ค่าแรง", GROUP: "หัวข้อ" };
+const ACTION_TH: Record<string, string> = {
+  approve: "อนุมัติ", reject: "ไม่อนุมัติ", start: "เริ่มดำเนินการ", progress: "อัปเดตความคืบหน้า", complete: "ปิดโครงการ", cancel: "ยกเลิกโครงการ",
+};
 
-  // Documents & TOR states
-  const [isParsing, setIsParsing] = useState(false);
-  const [parseStep, setParseStep] = useState("");
-  const [parsedResults, setParsedResults] = useState<any[] | null>(null);
-  const [torFile, setTorFile] = useState<string | null>(null);
-
-  const [projectTypeCode, setProjectTypeCode] = useState<ProjectTypeCode>(4);
-  const [projectStatus, setProjectStatus] = useState<string>("Pending Approval");
-  const [projectChecklist, setProjectChecklist] = useState<any[]>([
-    { docCode: "DOC-SPEC-DS", docName: "เอกสารสเปกอุปกรณ์ (Datasheet / Specification)", isMandatory: true, isAttached: true, attachedUrl: "https://drive.google.com/spec-ds-01", category: "technical" },
-    { docCode: "DOC-MAIN-CTR", docName: "สัญญาหลักโครงการ & เงื่อนไขแบ่งงวดชำระเงิน", isMandatory: true, isAttached: false, category: "commercial" },
-    { docCode: "DOC-UAT-SIGN", docName: "เอกสารทดสอบระบบ & UAT Sign-off", isMandatory: true, isAttached: false, category: "acceptance" }
-  ]);
-
-  const tabs = [
-    { id: "timeline", label: "แผนงาน (TIMELINE)", icon: <Target size={14} /> },
-    { id: "checklist", label: "📋 CHECKLIST เอกสารบังคับ", icon: <CheckCircle2 size={14} /> },
-    { id: "govCompliance", label: "🏛️ ระเบียบพัสดุ & ครุภัณฑ์", icon: <ShieldCheck size={14} /> },
-    { id: "pvtCommercial", label: "🏢 สัญญาการค้า & UAT", icon: <Building2 size={14} /> },
-    { id: "survey", label: "สำรวจหน้างาน (MOBILE SURVEY)", icon: <MapPin size={14} /> },
-    { id: "resources", label: "พัสดุ & อุปกรณ์", icon: <Package size={14} /> },
-    { id: "team", label: "ทีมงาน & ค่าแรง", icon: <Users size={14} /> },
-    { id: "reports", label: "SERVICE REPORTS", icon: <ClipboardList size={14} /> },
-    { id: "financials", label: "การเงิน & BOQ", icon: <BarChart3 size={14} /> },
-    { id: "documents", label: "เอกสารสำคัญ & TOR", icon: <FileText size={14} /> },
-  ];
-
-  const handleStatusChange = (newStatus: string) => {
-    if (newStatus === "Active" || newStatus === "Completed") {
-      const typeConfig = PROJECT_TYPE_CONFIGS[projectTypeCode] || PROJECT_TYPE_CONFIGS[4];
-      const mandatoryDocs = typeConfig.requiredDocuments.filter(d => d.isMandatory);
-      const missingDocs = mandatoryDocs.filter(m => {
-        const item = projectChecklist.find(c => c.docCode === m.docCode);
-        return !item || !item.isAttached;
-      });
-
-      if (missingDocs.length > 0) {
-        showToast(`ไม่สามารถสลับเป็น ${newStatus} ได้ เนื่องจากยังขาดเอกสารบังคับ: ${missingDocs.map(d => d.docName).join(", ")}`);
-        return;
-      }
-    }
-    setProjectStatus(newStatus);
-    showToast(`ปรับเปลี่ยนสถานะโครงการเป็น ${newStatus} สำเร็จ! 🎉`);
-  };
-
-  const showToast = (message: string) => {
-    setToast({ message, isVisible: true });
-  };
-
-  const handleParseTOR = () => {
-    if (!torFile) {
-      showToast("กรุณาเลือกหรืออัปโหลดไฟล์ TOR ก่อนทำการวิเคราะห์");
-      return;
-    }
-    setIsParsing(true);
-    setParseStep("กำลังเชื่อมต่อเซิร์ฟเวอร์ระบบรู้จำอักขระ (OCR)...");
-    
-    setTimeout(() => {
-      setParseStep("Gemini 2.5 Flash กำลังอ่านข้อกำหนดสเปกและสแกนตารางอุปกรณ์...");
-      setTimeout(() => {
-        setParseStep("กำลังเปรียบเทียบสเปกกับฐานข้อมูลสินค้า Product Catalog... (95%)");
-        setTimeout(() => {
-          setIsParsing(false);
-          setParsedResults([
-            { spec: "กล้องวงจรปิดคมชัด 4MP กันน้ำมาตรฐาน IP66/IP67", model: "CCTV Outdoor Pro 4MP (IP67)", match: "✅ สอดคล้อง 100%", remarks: "ตรงตาม TOR หมวดกล้องภายนอก" },
-            { spec: "เครื่องบันทึก NVR 16 ช่อง รองรับ HDD SATA 4 ลูก", model: "Enterprise NVR 16Ch SATA4", match: "✅ สอดคล้อง 100%", remarks: "รองรับการทำ RAID 5 ตรงความต้องการ" },
-            { spec: "อุปกรณ์กระจายสัญญาณ PoE L2 Switch 24 ช่อง", model: "Cisco Catalyst C9200L 24P", match: "✅ สอดคล้อง 100%", remarks: "ยี่ห้อและมาตรฐานตรงเกณฑ์กลางจัดซื้อ" },
-            { spec: "เครื่องสำรองไฟฟ้าแบบ True Online 1000VA", model: "UPS Smart 1000VA Pure Sinewave", match: "⚠️ สูงกว่าเกณฑ์ (1200VA)", remarks: "เสนอรุ่นประสิทธิภาพดีกว่าในราคาเดิมเพื่อชนะประมูล" }
-          ]);
-          showToast("Gemini AI วิเคราะห์เปรียบเทียบสเปก TOR สมบูรณ์แล้ว!");
-        }, 1000);
-      }, 1000);
-    }, 1000);
-  };
-
-  // Pull existing equipment/expenses from project details and trigger Quotation
-  const handleGenerateQuotation = () => {
-    const aggregatedItems = [
-      {
-        id: 1,
-        name: "[อุปกรณ์] LED Wall P2.5 Indoor",
-        qty: 24,
-        unit: "Units",
-        cost: 65000,
-        price: 85000
-      },
-      {
-        id: 2,
-        name: "[อุปกรณ์] Aruba AP-505 Enterprise Access Point",
-        qty: 2,
-        unit: "Units",
-        cost: 15000,
-        price: 22000
-      },
-      {
-        id: 3,
-        name: "[งานบริการ] ค่าแรงและทีมวิศวกรติดตั้งระบบโครงข่ายไฟเบอร์",
-        qty: 1,
-        unit: "Lot",
-        cost: 150000,
-        price: 210000
-      }
-    ];
-
-    setQuotationInitialData({
-      title: "ใบเสนอราคาส่วนเพิ่มเติม: ติดตั้งจอ LED Wall - ศูนย์ประชุม",
-      customer: "CUS-004", // QSNCC Client Ref
-      items: aggregatedItems
-    });
-
-    router.push("/sales/quotations/new");
-    showToast("ดึงรายการอุปกรณ์และงบประมาณจากตัวโครงการออกใบเสนอราคาสำเร็จ!");
-  };
-
-  return (
-    <div className="p-10 space-y-10 max-w-[1600px] mx-auto animate-in fade-in duration-700">
-      
-      {/* Header with Back Button */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
-        <div className="flex items-center gap-4">
-          <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center">
-            <ArrowLeft size={20} />
-          </PillButton>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">ติดตั้งระบบ LED Wall - ศูนย์ประชุม</h1>
-              <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
-                {params.id || 'PRJ-26-001'}
-              </span>
-            </div>
-            <p className="text-sm text-white/60 font-medium mt-1">
-              รายละเอียดความคืบหน้าโครงการ แผนงาน WBS จัดสรรบุคลากร และรายงานสรุปการเงิน
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
-          <PillButton variant="primary" onClick={handleGenerateQuotation} className="h-8 px-4 text-xs font-bold flex items-center gap-1.5">
-            <Zap size={14} className="animate-pulse" />
-            ออกใบเสนอราคา
-          </PillButton>
-          <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/70 hover:text-white">
-            ลายเซ็นดิจิทัล
-          </PillButton>
-          <PillButton variant="confirm" className="h-8 px-4 text-xs font-bold flex items-center gap-1.5">
-            <Edit3 size={14} />
-            จัดการโครงการ
-          </PillButton>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        
-        {/* Left Content Area */}
-        <div className="lg:col-span-3 space-y-10">
-          
-          {/* Top Control Bar: Tabs & Action Buttons inline on the same row */}
-          <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4 border-b border-white/5 pb-4">
-            <PillTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} className="flex-1" />
-            
-            <div className="flex items-center gap-2 shrink-0">
-              <PillButton variant="primary" onClick={handleGenerateQuotation} className="h-8 px-4 flex items-center gap-1.5">
-                <Zap size={14} className="animate-pulse" />
-                ออกใบเสนอราคา ⚡
-              </PillButton>
-              
-              <PillButton variant="glass" className="h-8 px-4 text-white/70 hover:text-white">
-                Digital Signature
-              </PillButton>
-              
-              <PillButton variant="confirm" className="h-8 px-4 flex items-center gap-1.5">
-                <Edit3 size={14} />
-                จัดการโครงการ
-              </PillButton>
-            </div>
-          </div>
-
-          {activeTab === "timeline" && (
-            <div className="space-y-10 animate-in slide-in-from-bottom duration-500">
-              {/* Project Progress Summary */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <MasterMetricCard icon={<Activity size={24} />} label="ความคืบหน้าภาพรวม" value="75%" color="text-nexus-teal" neon="shadow-neon-teal" />
-                <MasterMetricCard icon={<Clock size={24} />} label="วันคงเหลือ (Remaining)" value="12 วัน" color="text-nexus-blue" />
-                <MasterMetricCard icon={<BarChart3 size={24} />} label="งานที่เสร็จแล้ว" value="18/24" color="text-white" />
-              </div>
-
-              {/* WBS / Task List */}
-              <div className="space-y-6">
-                 <div className="flex items-center justify-between px-2">
-                    <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight">แผนงานและสถานะรายหมวด (WBS)</h3>
-                    <PillButton variant="glass" className="h-9 px-6 rounded-full">เพิ่มงานใหม่</PillButton>
-                 </div>
-                 
-                 <div className="space-y-4">
-                    <MilestoneCard 
-                      title="Phase 1: การติดตั้งโครงสร้าง & Cabling" 
-                      progress={100} 
-                      status="เสร็จสมบูรณ์"
-                      tasks={[
-                        { name: "ประกอบโครงสร้างเหล็ก LED Wall", status: "done" },
-                        { name: "เดินสายสัญญาณ Fiber & LAN", status: "done" },
-                        { name: "ติดตั้งตู้ Rack & ระบบไฟ", status: "done" },
-                      ]}
-                    />
-                    <MilestoneCard 
-                      title="Phase 2: การติดตั้ง Cabinet & Configuration" 
-                      progress={60} 
-                      status="กำลังดำเนินการ"
-                      tasks={[
-                        { name: "ติดตั้ง Cabinet LED (Zone A-C)", status: "done" },
-                        { name: "ติดตั้ง Cabinet LED (Zone D-F)", status: "pending" },
-                        { name: "Config ระบบส่งภาพ (Processor)", status: "pending" },
-                      ]}
-                    />
-                 </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "checklist" && (
-            <div className="animate-in slide-in-from-bottom duration-500">
-              <ProjectDocumentChecklistCard 
-                projectTypeCode={projectTypeCode}
-                checklist={projectChecklist}
-                onChecklistChange={(updated) => {
-                  setProjectChecklist(updated);
-                  showToast("อัปเดตสถานะ Checklist เอกสารสำเร็จ");
-                }}
-              />
-            </div>
-          )}
-
-          {activeTab === "govCompliance" && (
-            <div className="animate-in slide-in-from-bottom duration-500">
-              <GovernmentComplianceTab 
-                onSave={(updated) => showToast("บันทึกระเบียบพัสดุราชการสำเร็จ")} 
-              />
-            </div>
-          )}
-
-          {activeTab === "pvtCommercial" && (
-            <div className="animate-in slide-in-from-bottom duration-500">
-              <PrivateCommercialTab 
-                onSave={(updated) => showToast("บันทึกสัญญาการค้าและ UAT เอกชนสำเร็จ")} 
-              />
-            </div>
-          )}
-
-          {activeTab === "survey" && (
-            <div className="space-y-6 animate-in slide-in-from-bottom duration-500">
-              <div className="flex justify-between items-center px-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight">แบบฟอร์มสำรวจหน้างานและร่างจัดเตรียมอุปกรณ์ (Survey Wishlist)</h3>
-                  <p className="text-[9px] text-white/30 uppercase mt-0.5 tracking-wider font-semibold">Mobile-Friendly Interface สำหรับช่าง/เซลล์</p>
-                </div>
-                <PillButton className="h-9 px-6 rounded-full shadow-neon-teal" onClick={() => showToast("บันทึกรายการสำรวจลงระบบ และพร้อมดึงเข้า BOQ แล้ว!")}>
-                  <UploadCloud size={16} />
-                  บันทึกแบบสำรวจ
-                </PillButton>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <GlassCard className="p-6 border-white/5 space-y-6">
-                  <h4 className="text-xs font-semibold text-nexus-teal uppercase">เพิ่มรายการเบื้องต้น</h4>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-semibold text-white/50 uppercase">ชื่ออุปกรณ์ / รายละเอียด (Specifier)</label>
-                      <PillInput className="w-full" placeholder="เช่น กล้องวงจรปิด PTZ 4MP, สายไฟ..." />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-white/50 uppercase">จำนวน (Qty)</label>
-                        <PillInput className="w-full text-center" type="number" placeholder="1" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-semibold text-white/50 uppercase">หน่วย (Unit)</label>
-                        <PillInput className="w-full text-center" placeholder="ตัว, เมตร, จุด..." />
-                      </div>
-                    </div>
-                    <PillButton variant="glass" className="w-full text-xs font-black h-10 border-white/10 hover:border-nexus-blue hover:text-nexus-blue transition-colors">
-                      <Plus size={16} /> หยิบใส่ตะกร้า Survey
-                    </PillButton>
-                  </div>
-                </GlassCard>
-
-                <div className="space-y-4">
-                  <h4 className="text-xs font-semibold text-white/70 uppercase px-2">รายการที่เลือกไว้ (Wishlist Basket)</h4>
-                  <div className="space-y-2">
-                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex justify-between items-center group hover:bg-white/[0.04] transition-colors">
-                      <div className="space-y-1">
-                        <h5 className="text-sm font-black text-white">กล้องวงจรปิด Bullet 4MP IP67</h5>
-                        <p className="text-[10px] text-white/40">หมวดหมู่: Hardware (ประมาณการ)</p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="font-mono text-nexus-blue font-black bg-transparent px-3 py-1 rounded-lg">12 ตัว</span>
-                        <button className="text-white/20 hover:text-danger"><Trash2 size={16}/></button>
-                      </div>
-                    </div>
-                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex justify-between items-center group hover:bg-white/[0.04] transition-colors">
-                      <div className="space-y-1">
-                        <h5 className="text-sm font-black text-white">สาย LAN CAT6 UTP (กล่อง)</h5>
-                        <p className="text-[10px] text-white/40">หมวดหมู่: Materials (ประมาณการ)</p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="font-mono text-nexus-blue font-black bg-transparent px-3 py-1 rounded-lg">4 กล่อง</span>
-                        <button className="text-white/20 hover:text-danger"><Trash2 size={16}/></button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "resources" && (
-            <div className="space-y-10 animate-in slide-in-from-bottom duration-500">
-               {/* 📦 Section 1: Equipment & Materials List */}
-               <div className="space-y-4">
-                  <div className="flex items-center justify-between px-4">
-                     <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight flex items-center gap-2">
-                        <Package size={16} className="text-nexus-blue animate-pulse" /> 1. รายการอุปกรณ์ & วัสดุโครงการ (Equipment & Materials)
-                     </h3>
-                     <PillButton className="h-9 px-6 rounded-full shadow-neon-teal">
-                        เบิกพัสดุเพิ่ม 📦
-                     </PillButton>
-                  </div>
-                  <div className="border border-white/5 rounded-[2rem] overflow-hidden bg-white/[0.01] shadow-2xl">
-                     <NexusTable headers={["รหัส/รายการพัสดุอุปกรณ์", "SERIAL NUMBER", "จำนวนที่เบิก", "ผู้รับผิดชอบหน้างาน", "สถานะหน้างาน"]}>
-                        <NexusTableRow className="hover:bg-white/[0.01] transition-colors">
-                           <NexusTableCell className="w-[35%] min-w-[200px]">
-                              <div className="space-y-1">
-                                 <span className="px-2 py-0.5 rounded bg-nexus-blue/15 text-nexus-blue text-[8px] font-mono font-black">EQ-LED-25I</span>
-                                 <div className="text-xs font-black text-white whitespace-nowrap">LED Wall P2.5 Indoor Cabinet Panel</div>
-                              </div>
-                           </NexusTableCell>
-                           <NexusTableCell className="font-mono text-nexus-blue text-xs">SN-LED-40212</NexusTableCell>
-                           <NexusTableCell className="font-mono text-xs text-white/80">24 Units</NexusTableCell>
-                           <NexusTableCell className="text-xs font-bold text-white/70">Somchai R. (Field Engineer)</NexusTableCell>
-                           <NexusTableCell><StatusBadge status="active" label="ติดตั้งแล้ว" /></NexusTableCell>
-                        </NexusTableRow>
-
-                        <NexusTableRow className="hover:bg-white/[0.01] transition-colors">
-                           <NexusTableCell className="w-[35%] min-w-[200px]">
-                              <div className="space-y-1">
-                                 <span className="px-2 py-0.5 rounded bg-nexus-blue/15 text-nexus-blue text-[8px] font-mono font-black">EQ-AP-505</span>
-                                 <div className="text-xs font-black text-white whitespace-nowrap">Aruba AP-505 Enterprise Access Point</div>
-                              </div>
-                           </NexusTableCell>
-                           <NexusTableCell className="font-mono text-nexus-blue text-xs">SN-ARU-0992</NexusTableCell>
-                           <NexusTableCell className="font-mono text-xs text-white/80">2 Units</NexusTableCell>
-                           <NexusTableCell className="text-xs font-bold text-white/70">Somchai R. (Field Engineer)</NexusTableCell>
-                           <NexusTableCell><StatusBadge status="pending" label="กำลังติดตั้ง" /></NexusTableCell>
-                        </NexusTableRow>
-
-                        <NexusTableRow className="hover:bg-white/[0.01] transition-colors">
-                           <NexusTableCell className="w-[35%] min-w-[200px]">
-                              <div className="space-y-1">
-                                 <span className="px-2 py-0.5 rounded bg-nexus-blue/15 text-nexus-blue text-[8px] font-mono font-black">UTP-CAT6-50</span>
-                                 <div className="text-xs font-black text-white whitespace-nowrap">Link CAT6 UTP Cable Box (305m)</div>
-                              </div>
-                           </NexusTableCell>
-                           <NexusTableCell className="font-mono text-white/20 text-xs italic">- (ไม่ระบุ S/N)</NexusTableCell>
-                           <NexusTableCell className="font-mono text-xs text-white/80">5 Boxes</NexusTableCell>
-                           <NexusTableCell className="text-xs font-bold text-white/70">Chatchai S. (Lead Architect)</NexusTableCell>
-                           <NexusTableCell><StatusBadge status="active" label="ส่งของแล้ว" /></NexusTableCell>
-                        </NexusTableRow>
-                     </NexusTable>
-                  </div>
-               </div>
-
-               {/* 🛠️ Section 2: Labor & Installation Services List */}
-               <div className="space-y-4">
-                  <div className="flex items-center justify-between px-4">
-                     <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight flex items-center gap-2">
-                        <Users size={16} className="text-nexus-teal animate-pulse" /> 2. รายการงานติดตั้ง & ค่าบริการปฏิบัติการ (Labor & Services)
-                     </h3>
-                     <PillButton variant="glass" className="h-9 px-6 rounded-full">
-                        เพิ่มงานบริการ ⚡
-                     </PillButton>
-                  </div>
-                  <div className="border border-white/5 rounded-[2rem] overflow-hidden bg-white/[0.01] shadow-2xl">
-                     <NexusTable headers={["รายการงานติดตั้ง / บริการ", "รูปแบบ", "จำนวน/ปริมาณ", "ต้นทุนรวม", "ราคาเสนอขาย", "กำไรเบื้องต้น", "สถานะหน้างาน"]}>
-                        <NexusTableRow className="hover:bg-white/[0.01] transition-colors">
-                           <NexusTableCell className="w-[35%] min-w-[200px]">
-                              <div className="space-y-1">
-                                 <span className="px-2 py-0.5 rounded bg-nexus-teal/15 text-nexus-teal text-[8px] font-mono font-black">PKG-LED-SETUP</span>
-                                 <div className="text-xs font-black text-white whitespace-nowrap">ชุดประกอบและติดตั้งโครงสร้างเหล็กจอ LED Panel OM3</div>
-                              </div>
-                           </NexusTableCell>
-                           <NexusTableCell className="text-xs font-bold text-white/50">Lump-sum (เหมาจ่าย)</NexusTableCell>
-                           <NexusTableCell className="font-mono text-xs text-white/80">1 งาน</NexusTableCell>
-                           <NexusTableCell className="font-mono text-xs text-danger">฿ 35,000</NexusTableCell>
-                           <NexusTableCell className="font-mono text-xs text-nexus-teal">฿ 55,000</NexusTableCell>
-                           <NexusTableCell>
-                              <span className="px-2 py-0.5 rounded bg-white/[0.04] text-[9px] font-mono font-black text-nexus-teal border border-white/5">
-                                 ฿ 20,000 (36%)
-                              </span>
-                           </NexusTableCell>
-                           <NexusTableCell><StatusBadge status="active" label="เสร็จสิ้น" /></NexusTableCell>
-                        </NexusTableRow>
-
-                        <NexusTableRow className="hover:bg-white/[0.01] transition-colors">
-                           <NexusTableCell className="w-[35%] min-w-[200px]">
-                              <div className="space-y-1">
-                                 <span className="px-2 py-0.5 rounded bg-nexus-teal/15 text-nexus-teal text-[8px] font-mono font-black">PKG-UTP-CAT6</span>
-                                 <div className="text-xs font-black text-white whitespace-nowrap">ชุดงานเดินสายแลนพร้อมบล็อกเต้ารับ UTP CAT6 (40 จุด)</div>
-                              </div>
-                           </NexusTableCell>
-                           <NexusTableCell className="text-xs font-bold text-nexus-teal">Per Point (คิดตามจุด)</NexusTableCell>
-                           <NexusTableCell className="font-mono text-xs text-white/80">40 จุด</NexusTableCell>
-                           <NexusTableCell className="font-mono text-xs text-danger">฿ 20,000</NexusTableCell>
-                           <NexusTableCell className="font-mono text-xs text-nexus-teal">฿ 30,000</NexusTableCell>
-                           <NexusTableCell>
-                              <span className="px-2 py-0.5 rounded bg-white/[0.04] text-[9px] font-mono font-black text-nexus-teal border border-white/5">
-                                 ฿ 10,000 (33%)
-                              </span>
-                           </NexusTableCell>
-                           <NexusTableCell><StatusBadge status="pending" label="กำลังดำเนินการ" /></NexusTableCell>
-                        </NexusTableRow>
-                     </NexusTable>
-                  </div>
-               </div>
-            </div>
-          )}
-
-          {activeTab === "team" && (
-            <div className="space-y-6 animate-in slide-in-from-bottom duration-500">
-               <div className="flex items-center justify-between px-4">
-                  <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight">ทีมปฏิบัติการและอัตราค่าแรง</h3>
-                  <PillButton className="h-9 px-6 rounded-full shadow-neon-teal">มอบหมายบุคลากร</PillButton>
-               </div>
-               <NexusTable headers={["วิศวกรผู้รับผิดชอบ", "บทบาท (ROLE)", "เวลาเข้างานสะสม", "อัตราค่าจ้างขั้นต้น"]}>
-                  <NexusTableRow>
-                     <NexusTableCell className="text-sm font-black text-white/80">Chatchai S.</NexusTableCell>
-                     <NexusTableCell className="text-[11px] font-black text-nexus-teal uppercase">Lead Solutions Architect</NexusTableCell>
-                     <NexusTableCell>48 Hours</NexusTableCell>
-                     <NexusTableCell className="text-nexus-blue font-mono">฿ 1,500 / Hr</NexusTableCell>
-                  </NexusTableRow>
-                  <NexusTableRow>
-                     <NexusTableCell className="text-sm font-black text-white/80">Somchai R.</NexusTableCell>
-                     <NexusTableCell className="text-[11px] font-black text-white/60 uppercase">Field Systems Engineer</NexusTableCell>
-                     <NexusTableCell>72 Hours</NexusTableCell>
-                     <NexusTableCell className="text-nexus-blue font-mono">฿ 1,000 / Hr</NexusTableCell>
-                  </NexusTableRow>
-               </NexusTable>
-            </div>
-          )}
-
-          {activeTab === "reports" && (
-            <div className="space-y-6 animate-in slide-in-from-bottom duration-500">
-               <div className="flex items-center justify-between px-4">
-                  <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight">บันทึกรายงานบริการหน้างาน</h3>
-                  <PillButton className="h-9 px-6 rounded-full shadow-neon-teal">ออก Report ใหม่</PillButton>
-               </div>
-               <NexusTable headers={["เลขที่รายงาน (SR ID)", "รายละเอียดการปฏิบัติงาน", "วิศวกรผู้รับผิดชอบ", "วันส่งมอบงาน"]}>
-                  <NexusTableRow>
-                     <NexusTableCell className="font-mono text-nexus-teal">SR-2605-0091</NexusTableCell>
-                     <NexusTableCell className="text-sm font-black text-white/80">ทำการต่อสายเชื่อมและ Calibrate หน้าจอ Cabinet</NexusTableCell>
-                     <NexusTableCell>Somchai R.</NexusTableCell>
-                     <NexusTableCell>18 พฤษภาคม 2026</NexusTableCell>
-                  </NexusTableRow>
-               </NexusTable>
-            </div>
-          )}
-
-          {activeTab === "financials" && (
-            <div className="space-y-10 animate-in slide-in-from-bottom duration-500">
-              {/* Cost tracking metric cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="p-4 rounded-[1.5rem] bg-white/[0.02] border border-white/5 space-y-2">
-                  <span className="text-[8px] font-semibold text-white/30 uppercase tracking-widest block">งบประมาณโครงการ (Baseline BOQ)</span>
-                  <span className="text-xl font-black text-white font-mono block">฿2,500,000.00</span>
-                </div>
-                <div className="p-4 rounded-[1.5rem] bg-nexus-blue/5 border border-nexus-blue/15 space-y-2">
-                  <span className="text-[8px] font-black text-white/30 uppercase tracking-widest block">ต้นทุนผูกพันสัญญา (Committed Cost)</span>
-                  <span className="text-xl font-black text-nexus-blue font-mono block">฿1,850,000.00</span>
-                </div>
-                <div className="p-4 rounded-[1.5rem] bg-nexus-teal/5 border border-nexus-teal/15 space-y-2">
-                  <span className="text-[8px] font-black text-white/30 uppercase tracking-widest block">ต้นทุนจริงที่เกิดขึ้น (Actual Cost)</span>
-                  <span className="text-xl font-black text-nexus-teal font-mono block">฿1,680,000.00</span>
-                </div>
-                <div className="p-4 rounded-[1.5rem] bg-white/[0.04] border border-white/10 space-y-2">
-                  <span className="text-[8px] font-semibold text-white/30 uppercase tracking-widest block">งบประมาณคงเหลือ (Variance)</span>
-                  <span className="text-xl font-black text-white/80 font-mono block">฿650,000.00</span>
-                </div>
-              </div>
-
-              {/* Auto-Bidding Alert System */}
-              <div className="p-4 rounded-3xl bg-transparent border border-warning/30 flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_20px_rgba(245,158,11,0.1)] animate-pulse">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-warning/15 flex items-center justify-center text-warning shrink-0">
-                    <AlertTriangle size={18} />
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-semibold text-warning uppercase tracking-tight">เข้าเกณฑ์การประมูล (Auto-Bidding Detected)</h5>
-                    <p className="text-[10px] text-white/60 mt-0.5">ยอดรวม BOQ ทะลุเกณฑ์ 500,000 บาท ระบบทำการล็อกสถานะเป็น IsBidding เพื่อรอการประกวดราคา</p>
-                  </div>
-                </div>
-                <PillButton
-                  variant="glass"
-                  className="h-8 text-[10px] uppercase font-black tracking-widest border-warning/30 text-warning hover:bg-warning/20 hover:text-white"
-                  onClick={() => {
-                    setActiveTab("documents");
-                    showToast("พาไปยังหน้าเตรียมเอกสาร TOR แล้ว");
-                  }}
-                >
-                  <FileText size={12} /> เตรียมเอกสาร TOR
-                </PillButton>
-              </div>
-
-              {/* Budget Alarm Neon indicator */}
-              <div className="p-4 rounded-3xl bg-transparent border border-danger/30 flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_0_20px_rgba(239,68,68,0.1)]">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-danger/15 flex items-center justify-center text-danger shrink-0">
-                    <ShieldAlert size={18} />
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-semibold text-white uppercase tracking-tight">ระบบระวังภัยงบประมาณบานปลาย (Availability Budget Control)</h5>
-                    <p className="text-[10px] text-white/60 mt-0.5">ยอดจองซื้อวัสดุและค่าจ้างรวมกันคิดเป็น 82.5% ของงบจัดซื้อโครงการ ระบบทำการล็อกการขอเบิกจ่ายพัสดุชั่วคราว</p>
-                  </div>
-                </div>
-                <PillButton
-                  variant="glass"
-                  className="h-8 text-[10px] uppercase font-black tracking-widest border-danger/30 text-danger hover:bg-danger/20 hover:text-white"
-                  onClick={() => showToast("ส่งคำขออนุมัติงบเพิ่มเติมไปยังระดับบริหารเรียบร้อยแล้ว")}
-                >
-                  <Sparkles size={12} /> ขออนุมัติงบวงเงินพิเศษ
-                </PillButton>
-              </div>
-
-              {/* Versioned BOQ */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-center px-4">
-                  <div>
-                    <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight">งบประมาณโครงการจัดทำและสั่งซื้อ (BOQ Ledger)</h3>
-                    <p className="text-[9px] text-white/30 uppercase mt-0.5 tracking-wider font-semibold">Multi-version History Audit</p>
-                  </div>
-
-                  <div className="flex gap-2">
-                    {["Rev 1", "Rev 2", "Rev 3"].map((rev) => (
-                      <button
-                        key={rev}
-                        onClick={() => {
-                          setSelectedBoqVersion(rev);
-                          showToast(`สลับการเรียกแสดงข้อมูลใบ BOQ เป็น ${rev} สำเร็จ`);
-                        }}
-                        className={cn(
-                          "px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg border transition-all",
-                          selectedBoqVersion === rev 
-                            ? "bg-nexus-teal border-nexus-teal text-black shadow-neon-teal" 
-                            : "bg-white/15 border-white/5 text-white/40 hover:text-white"
-                        )}
-                      >
-                        {rev} {rev === "Rev 3" && "(Current)"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="border border-white/5 rounded-[2rem] overflow-hidden bg-white/[0.01] shadow-2xl">
-                  <NexusTable headers={["หมวดหมู่ค่าใช้จ่าย", "รายละเอียดสเปก BOQ", "จำนวน", "ทุนประมาณการ (WAC)", "ราคาเสนอขาย", "ประมาณการกำไร (GP)"]}>
-                    <NexusTableRow>
-                      <NexusTableCell><span className="px-2 py-0.5 rounded bg-nexus-blue/15 text-nexus-blue text-[8px] font-black font-mono">HARDWARE</span></NexusTableCell>
-                      <NexusTableCell><div className="text-xs font-semibold text-white">Cabinet Panel LED P2.5 Indoor</div></NexusTableCell>
-                      <NexusTableCell className="font-mono text-xs text-white/80">24 Units</NexusTableCell>
-                      <NexusTableCell className="text-right font-mono text-xs text-white/60">฿45,000</NexusTableCell>
-                      <NexusTableCell className="text-right text-nexus-teal font-mono text-xs">฿65,000</NexusTableCell>
-                      <NexusTableCell className="text-right text-nexus-blue font-mono text-xs">฿480,000 (30.7%)</NexusTableCell>
-                    </NexusTableRow>
-                    <NexusTableRow>
-                      <NexusTableCell><span className="px-2 py-0.5 rounded bg-nexus-blue/15 text-nexus-blue text-[8px] font-black font-mono">MATERIALS</span></NexusTableCell>
-                      <NexusTableCell><div className="text-xs font-semibold text-white">สายนำสัญญาณ UTP CAT6 (305m)</div></NexusTableCell>
-                      <NexusTableCell className="font-mono text-xs text-white/80">5 Reels</NexusTableCell>
-                      <NexusTableCell className="text-right font-mono text-xs text-white/60">฿3,800</NexusTableCell>
-                      <NexusTableCell className="text-right text-nexus-teal font-mono text-xs">฿5,000</NexusTableCell>
-                      <NexusTableCell className="text-right text-nexus-blue font-mono text-xs">฿6,000 (24.0%)</NexusTableCell>
-                    </NexusTableRow>
-                    <NexusTableRow>
-                      <NexusTableCell><span className="px-2 py-0.5 rounded bg-nexus-blue/15 text-nexus-blue text-[8px] font-black font-mono">SERVICES</span></NexusTableCell>
-                      <NexusTableCell><div className="text-xs font-black text-white">งานติดตั้งโครงสร้าง Calibrate และรับประกัน</div></NexusTableCell>
-                      <NexusTableCell className="font-mono text-xs text-white/80">1 Lot</NexusTableCell>
-                      <NexusTableCell className="text-right font-mono text-xs text-white/60">฿35,000</NexusTableCell>
-                      <NexusTableCell className="text-right text-nexus-teal font-mono text-xs">฿55,000</NexusTableCell>
-                      <NexusTableCell className="text-right text-nexus-blue font-mono text-xs">฿20,000 (36.3%)</NexusTableCell>
-                    </NexusTableRow>
-                  </NexusTable>
-                </div>
-              </div>
-
-              {/* Milestone-Based Billing & WBS */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-center px-4">
-                  <div>
-                    <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight">ความคืบหน้าวางบิลและงวดงานราชการ (Milestone-Based Billing & WBS)</h3>
-                    <p className="text-[9px] text-white/30 uppercase mt-0.5 tracking-wider font-black">Contract Revenue Recognition</p>
-                  </div>
-                </div>
-
-                <div className="border border-white/5 rounded-[2rem] overflow-hidden bg-white/[0.01] shadow-2xl">
-                  <NexusTable headers={["งวดงาน", "รายละเอียดเฟสโครงการ", "เปอร์เซ็นต์วางบิล", "มูลค่าเรียกเก็บ", "เอกสารวางบิล", "ปฏิบัติการ"]}>
-                    {milestonesBilling.map((m, idx) => (
-                      <NexusTableRow key={m.id}>
-                        <NexusTableCell className="font-mono text-xs text-nexus-blue font-black">{m.id}</NexusTableCell>
-                        <NexusTableCell className="text-xs font-semibold text-white">{m.name}</NexusTableCell>
-                        <NexusTableCell className="font-mono text-xs text-white/85 text-center">{m.pct}%</NexusTableCell>
-                        <NexusTableCell className="text-right font-mono text-xs text-white">฿{m.amount.toLocaleString()}</NexusTableCell>
-                        <NexusTableCell>
-                          {m.status === "invoiced" ? (
-                            <span className="px-2 py-0.5 rounded bg-nexus-teal/15 text-nexus-teal border border-nexus-teal/20 text-[9px] font-mono font-black">
-                              {m.ref}
-                            </span>
-                          ) : (
-                            <span className="text-[9px] text-white/20 italic">ยังไม่ได้วางบิล</span>
-                          )}
-                        </NexusTableCell>
-                        <NexusTableCell>
-                          {m.status === "invoiced" ? (
-                            <StatusBadge status="active" label="เรียกเก็บเงินแล้ว" />
-                          ) : (
-                            <PillButton
-                              className="h-7 px-3 text-[10px] shadow-neon-teal"
-                              onClick={() => {
-                                setMilestonesBilling(prev => prev.map(item => item.id === m.id ? { ...item, status: "invoiced", ref: `INV-2026-${Math.floor(1000 + Math.random() * 9000)}` } : item));
-                                showToast(`สร้างร่างใบแจ้งหนี้สำหรับ ${m.id} สำเร็จ!`);
-                              }}
-                            >
-                              ออกใบแจ้งหนี้ 📄
-                            </PillButton>
-                          )}
-                        </NexusTableCell>
-                      </NexusTableRow>
-                    ))}
-                  </NexusTable>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "documents" && (
-            <div className="space-y-10 animate-in slide-in-from-bottom duration-500">
-              
-              {/* AI TOR Spec Analyzer Panel */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Left Drag & Drop Upload Zone */}
-                <GlassCard className="p-6 border-white/5 space-y-4 bg-black/15 flex flex-col justify-between min-h-[280px]">
-                  <div className="space-y-2">
-                    <span className="px-2 py-0.5 rounded bg-nexus-teal/15 text-nexus-teal text-[8px] font-semibold tracking-widest uppercase">Gemini AI Parser</span>
-                    <h4 className="text-sm font-semibold text-white uppercase">วิเคราะห์เอกสารสเปก TOR</h4>
-                    <p className="text-[10px] text-white/50 leading-relaxed">
-                      วางไฟล์เอกสาร TOR หรือสัญญาจัดซื้อจัดจ้างเพื่อให้อัลกอริทึม Gemini ตรวจจับและเปรียบเทียบความสอดคล้องกับคลังสินค้าบริษัทโดยอัตโนมัติ
-                    </p>
-                  </div>
-
-                  <div 
-                    onClick={() => {
-                      setTorFile("TOR_eBidding_QSNCC_v2.pdf");
-                      showToast("เลือกเอกสาร TOR_eBidding_QSNCC_v2.pdf แล้ว!");
-                    }}
-                    className={cn(
-                      "p-8 rounded-2xl border border-dashed text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2",
-                      torFile 
-                        ? "border-nexus-teal bg-nexus-teal/[0.03] text-nexus-teal" 
-                        : "border-white/10 hover:border-white/20 text-white/20 hover:text-white/40"
-                    )}
-                  >
-                    <UploadCloud size={24} className={cn("animate-bounce", torFile ? "text-nexus-teal" : "text-white/20")} />
-                    <span className="text-[10px] font-semibold uppercase tracking-widest">
-                      {torFile ? torFile : "คลิกเพื่ออัปโหลดไฟล์สเปก TOR"}
-                    </span>
-                    <span className="text-[8px] text-white/20">รองรับ PDF, DOCX สูงสุด 50MB</span>
-                  </div>
-
-                  <PillButton 
-                    className="w-full h-9 shadow-neon-teal"
-                    onClick={handleParseTOR}
-                    disabled={isParsing}
-                  >
-                    {isParsing ? "กำลังวิเคราะห์..." : "วิเคราะห์สเปกด้วย Gemini AI ✨"}
-                  </PillButton>
-                </GlassCard>
-
-                {/* Right Progress / Results Panel */}
-                <div className="lg:col-span-2">
-                  <GlassCard className="p-6 border-white/5 h-full flex flex-col justify-between min-h-[280px] bg-black/15">
-                    {isParsing ? (
-                      <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-4">
-                        <div className="relative">
-                          <div className="w-12 h-12 rounded-full border-2 border-nexus-teal/10 border-t-2 border-t-nexus-teal animate-spin" />
-                          <Sparkles className="absolute inset-0 m-auto text-nexus-teal animate-pulse" size={16} />
-                        </div>
-                        <span className="text-xs font-semibold text-nexus-teal uppercase tracking-widest text-center">{parseStep}</span>
-                      </div>
-                    ) : parsedResults ? (
-                      <div className="space-y-4 flex-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-semibold text-white/30 uppercase tracking-widest block">ผลการวิเคราะห์ความสอดคล้อง (Spec Compliance Check)</span>
-                          <span className="text-[9px] font-semibold text-nexus-teal uppercase tracking-widest flex items-center gap-1">
-                            <ShieldCheck size={12} /> ข้อมูลสเปกผ่านเกณฑ์ 100%
-                          </span>
-                        </div>
-
-                        <div className="max-h-56 overflow-y-auto pr-1 custom-scrollbar space-y-2">
-                          {parsedResults.map((r, ri) => (
-                            <div key={ri} className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-1 hover:bg-white/[0.04] transition-colors">
-                              <div className="flex justify-between items-start gap-2">
-                                <span className="text-xs font-black text-white/70 leading-snug">{r.spec}</span>
-                                <span className="px-1.5 py-0.5 rounded bg-white/15 text-[9px] text-nexus-teal border border-nexus-teal/20 font-black shrink-0">
-                                  {r.match}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-[9px] font-semibold uppercase text-white/30 tracking-wider">
-                                <span>รุ่นที่เสนอแนะ: {r.model}</span>
-                                <span>{r.remarks}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-white/20 space-y-2">
-                        <Sparkles size={32} className="opacity-40" />
-                        <h5 className="text-xs font-semibold uppercase tracking-widest">ยังไม่มีการประมวลผลสเปก</h5>
-                        <p className="text-[10px] leading-relaxed max-w-xs">กรุณาเลือกไฟล์สเปก TOR ด้านซ้ายมือ และคลิกเพื่อทำการประมวลผลสเปกอัจฉริยะแบบเปรียบเทียบในระบบ</p>
-                      </div>
-                    )}
-                  </GlassCard>
-                </div>
-              </div>
-
-              {/* Centralized Document Vault */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-center px-4">
-                  <div>
-                    <h3 className="text-sm font-semibold text-white/80 uppercase tracking-tight">คลังสัญญาโครงการแยกบริษัท (Isolated Document Vault)</h3>
-                    <p className="text-[9px] text-white/30 uppercase mt-0.5 tracking-wider font-semibold">Scoped with secure Tenant ID mapping</p>
-                  </div>
-                </div>
-
-                <div className="border border-white/5 rounded-[2rem] overflow-hidden bg-white/[0.01] shadow-2xl">
-                  <NexusTable headers={["ชื่อไฟล์สัญญา / สเปก", "ประเภทไฟล์", "สิทธิ์ผู้มีส่วนร่วม", "ผู้อัปโหลดรายการ", "วันอัปโหลด", "พารามิเตอร์รักษาความปลอดภัย"]}>
-                    <NexusTableRow>
-                      <NexusTableCell className="font-bold text-white text-xs">TOR_eBidding_QSNCC_v2.pdf</NexusTableCell>
-                      <NexusTableCell><span className="px-2 py-0.5 rounded bg-danger/15 text-danger text-[8px] font-black font-mono">PDF_SPEC</span></NexusTableCell>
-                      <NexusTableCell className="text-xs font-bold text-white/50">All Engineers</NexusTableCell>
-                      <NexusTableCell className="text-xs font-bold text-white/60">Chatchai S.</NexusTableCell>
-                      <NexusTableCell className="text-xs font-mono text-white/40">12 พฤษภาคม 2026</NexusTableCell>
-                      <NexusTableCell><span className="px-2 py-0.5 rounded bg-nexus-teal/15 text-nexus-teal text-[8px] font-black font-mono">Isolated: {params.id || 'PRJ26'}</span></NexusTableCell>
-                    </NexusTableRow>
-                    <NexusTableRow>
-                      <NexusTableCell className="font-bold text-white text-xs">Project_Budget_Estimate_Signed.xlsx</NexusTableCell>
-                      <NexusTableCell><span className="px-2 py-0.5 rounded bg-nexus-blue/15 text-nexus-blue text-[8px] font-black font-mono">XLSX_BUDGET</span></NexusTableCell>
-                      <NexusTableCell className="text-xs font-bold text-white/50">Finance Only</NexusTableCell>
-                      <NexusTableCell className="text-xs font-bold text-white/60">Thanakorn P.</NexusTableCell>
-                      <NexusTableCell className="text-xs font-mono text-white/40">14 พฤษภาคม 2026</NexusTableCell>
-                      <NexusTableCell><span className="px-2 py-0.5 rounded bg-nexus-teal/15 text-nexus-teal text-[8px] font-black font-mono">Isolated: {params.id || 'PRJ26'}</span></NexusTableCell>
-                    </NexusTableRow>
-                  </NexusTable>
-                </div>
-              </div>
-
-              {/* Deployed Serial Numbers & Gov Warranties */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-center px-4">
-                  <div>
-                    <h3 className="text-sm font-black text-white/80 uppercase tracking-tight">ทะเบียนติดตั้ง Serial Number อุปกรณ์โครงการ (Serial Number Deployed Traceability)</h3>
-                    <p className="text-[9px] text-white/30 uppercase mt-0.5 tracking-wider font-semibold">Traceability Ledger Integration</p>
-                  </div>
-                  <PillButton 
-                    className="h-9 px-6 rounded-full shadow-neon-teal"
-                    onClick={() => showToast("สร้างใบรับประกันสินค้าส่งราชการและส่งทางเมลเรียบร้อยแล้ว!")}
-                  >
-                    ออกใบส่งมอบและรับประกันราชการ 📄
-                  </PillButton>
-                </div>
-
-                <div className="border border-white/5 rounded-[2rem] overflow-hidden bg-white/[0.01] shadow-2xl">
-                  <NexusTable headers={["หมายเลขซีเรียล (S/N)", "ชื่ออุปกรณ์ / ทรัพยากร", "มาตรฐานสเปก", "สถานะการติดตั้ง", "ระยะรับประกัน", "สิทธิ์ Isolation"]}>
-                    <NexusTableRow>
-                      <NexusTableCell className="font-mono text-xs text-nexus-teal font-black">SN-LED-40212</NexusTableCell>
-                      <NexusTableCell className="text-xs font-black text-white">LED Wall P2.5 Indoor Cabinet Panel</NexusTableCell>
-                      <NexusTableCell className="text-xs font-bold text-white/60">4MP / IP67 / Active</NexusTableCell>
-                      <NexusTableCell><span className="px-2 py-0.5 rounded bg-nexus-teal/15 text-nexus-teal border border-nexus-teal/20 text-[9px] font-semibold">ติดตั้งเสร็จสมบูรณ์</span></NexusTableCell>
-                      <NexusTableCell className="text-xs font-mono text-white/40">3 ปี (ถึง 2029)</NexusTableCell>
-                      <NexusTableCell className="text-xs text-white/40 font-mono">isolated_tenant</NexusTableCell>
-                    </NexusTableRow>
-                    <NexusTableRow>
-                      <NexusTableCell className="font-mono text-xs text-nexus-teal font-black">SN-ARU-0992</NexusTableCell>
-                      <NexusTableCell className="text-xs font-black text-white">Aruba AP-505 Enterprise Access Point</NexusTableCell>
-                      <NexusTableCell className="text-xs font-bold text-white/60">WiFi-6 / Dual-Band</NexusTableCell>
-                      <NexusTableCell><span className="px-2 py-0.5 rounded bg-nexus-blue/15 text-nexus-blue border border-nexus-blue/20 text-[9px] font-semibold">กำลังทดสอบสัญญาณ</span></NexusTableCell>
-                      <NexusTableCell className="text-xs font-mono text-white/40">5 ปี (ถึง 2031)</NexusTableCell>
-                      <NexusTableCell className="text-xs text-white/40 font-mono">isolated_tenant</NexusTableCell>
-                    </NexusTableRow>
-                  </NexusTable>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Sidebar - Tactical Info */}
-        <div className="space-y-6">
-           <GlassCard className="p-8 border-white/10 bg-nexus-blue/5">
-              <h4 className="text-[11px] font-semibold text-nexus-blue uppercase tracking-widest mb-6">ที่ตั้งหน้างาน (SITE LOCATION)</h4>
-              <div className="space-y-6">
-                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-nexus-blue/15 flex items-center justify-center text-nexus-blue border border-nexus-blue/20">
-                       <MapPin size={24} />
-                    </div>
-                    <div>
-                       <p className="text-sm font-semibold text-white">ศูนย์ประชุมแห่งชาติ</p>
-                       <p className="text-[10px] font-semibold text-white/60 uppercase">อาคาร 1 ชั้น 2</p>
-                    </div>
-                 </div>
-                 <PillButton variant="glass" className="w-full h-9 px-6 rounded-full">เปิด Google Maps</PillButton>
-              </div>
-           </GlassCard>
-
-           <GlassCard className="p-8 border-white/10">
-              <h4 className="text-[11px] font-semibold text-white/60 uppercase tracking-widest mb-6">งบประมาณโครงการ (Budget)</h4>
-              <div className="space-y-4">
-                 <NexusDataField label="ยอดงบประมาณ" value="฿2,500,000" />
-                 <NexusDataField label="ต้นทุนพัสดุ" value="฿1,850,000" className="text-danger" />
-                 <NexusDataField label="ค่าแรง & อื่นๆ" value="฿150,000" className="text-danger" />
-                 <div className="pt-4 border-t border-white/5 flex justify-between items-center">
-                    <span className="text-[10px] font-semibold text-nexus-teal uppercase">กำไรเบื้องต้น</span>
-                    <span className="text-lg font-black text-nexus-teal drop-shadow-neon">฿500,000</span>
-                 </div>
-              </div>
-           </GlassCard>
-        </div>
-      </div>
-
-      {/* QuotationModal popups for direct customization */}
-      
-
-      <Toast 
-        message={toast.message} 
-        isVisible={toast.isVisible} 
-        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
-      />
-    </div>
-  );
+// โครงการรุ่นเก่า (ก่อนมีโครงสร้าง BOQ มาตรฐาน): แปลงรายการให้แสดงผลได้
+function legacyLines(p: any): any[] {
+  const eq = (p.equipments || []).map((e: any, i: number) => ({
+    lineId: `E${i}`, kind: "PRODUCT", sku: e.sku || "", name: e.name || "-", qty: Number(e.qty) || 0, unit: e.unit || "ชิ้น",
+    unitPrice: Number(e.price) || 0, unitCost: Number(e.cost) || 0, amount: (Number(e.qty) || 0) * (Number(e.price) || 0), costAmount: (Number(e.qty) || 0) * (Number(e.cost) || 0),
+  }));
+  const lb = (p.labors || []).map((l: any, i: number) => {
+    const qty = l.type === "per-point" ? Number(l.points) || 1 : 1;
+    const unitCost = l.type === "per-point" ? (Number(l.materialCost) || 0) + (Number(l.laborCost) || 0) : Number(l.cost) || 0;
+    return { lineId: `L${i}`, kind: "LABOR", sku: "", name: l.name || "-", qty, unit: l.type === "per-point" ? "จุด" : "งาน", unitPrice: Number(l.price) || 0, unitCost, amount: qty * (Number(l.price) || 0), costAmount: qty * unitCost };
+  });
+  return [...eq, ...lb];
 }
 
-function MilestoneCard({ title, progress, status, tasks }: { title: string, progress: number, status: string, tasks: { name: string, status: "done" | "pending" }[] }) {
-  return (
-    <GlassCard className="p-6 border-white/5 space-y-4 group hover:border-white/10 transition-all">
-       <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-             <div className={cn("w-2 h-2 rounded-full shadow-neon", status === "เสร็จสมบูรณ์" ? "bg-nexus-teal shadow-neon-teal" : "bg-nexus-blue shadow-neon-blue")} />
-             <h4 className="text-sm font-semibold text-white uppercase">{title}</h4>
+export default function ProjectDetailPage() {
+  const router = useRouter();
+  const routeParams = useParams();
+  const docId = decodeURIComponent(String(routeParams.id || ""));
+  const { user, role, companyId } = useAuth();
+
+  const { data: own, loading } = useRealtimeDocument<any>(companyId && docId ? `companies/${companyId}/projects/${docId}` : null);
+  const { data: legacy, loading: legacyLoading } = useRealtimeDocument<any>(!loading && !own && docId ? `projects/${docId}` : null);
+  const isLegacy = !own && !!legacy && legacy.companyId === companyId;
+  const p: any = own || (isLegacy ? legacy : null);
+
+  const { data: workOrders } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/work_orders` : "");
+
+  const [tab, setTab] = useState("overview");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
+  const [pending, setPending] = useState<ProjectAction | null>(null); // รอเหตุผล (ไม่อนุมัติ/ยกเลิก)
+  const [comment, setComment] = useState("");
+  const [progressInput, setProgressInput] = useState<number | null>(null);
+
+  const status = normalizeProjectStatus(p?.status);
+  const lines: any[] = useMemo(() => (p ? (Array.isArray(p.items) && p.items.length ? p.items : legacyLines(p)) : []), [p]);
+  const budget = useMemo(() => {
+    if (p?.budgetSummary) return p.budgetSummary;
+    return computeProjectBudget(lines.map((l: any) => ({ discountType: "PERCENT", discountValue: 0, whtRate: 0, isOptional: false, productId: null, details: "", ...l })), { startDate: p?.startDate, endDate: p?.endDate });
+  }, [p, lines]);
+  const step = Number(p?.currentApprovalStep) || 0;
+  const approvals: any[] = Array.isArray(p?.approvals) && p.approvals.length ? p.approvals : APPROVAL_STEPS.map((s) => ({ stepOrder: s.stepOrder, status: "Pending" }));
+  const relatedWorkOrders = useMemo(
+    () => workOrders.filter((w: any) => w.projectId && (w.projectId === docId || w.projectId === p?.projectId)),
+    [workOrders, docId, p?.projectId]
+  );
+
+  const canEditProject = can(role, "projects:edit");
+  const isOwner = p?.createdBy === user?.uid;
+  const isAdmin = role === "ADMIN" || role === "SUPERADMIN";
+  const canEditThis = !isLegacy && EDITABLE_STATUSES.includes(status) && canEditProject && (isOwner || isAdmin);
+  const canApproveNow = !isLegacy && status === "Pending Approval" && step > 0 && canApproveStep(role, step);
+  const canCancel = !isLegacy && ["Draft", "Pending Approval", "Rejected", "Approved"].includes(status) && (isOwner || isAdmin);
+
+  const runAction = async (action: ProjectAction, extra: Record<string, any> = {}) => {
+    if (!companyId) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const res = await apiFetch("/api/projects/action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, projectDocId: docId, action, ...extra }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "ดำเนินการไม่สำเร็จ");
+      setMessage({ text: `${ACTION_TH[action]}แล้ว` });
+      setPending(null);
+      setComment("");
+      setProgressInput(null);
+    } catch (e: any) {
+      setMessage({ text: e.message, error: true });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (loading || (!own && legacyLoading)) {
+    return <div className="p-10 text-center text-white/50 text-sm"><Loader2 className="animate-spin inline mr-2" size={16} />กำลังโหลดโครงการ...</div>;
+  }
+  if (!p) {
+    return (
+      <div className="p-10 text-center space-y-4">
+        <p className="text-white/60">ไม่พบโครงการนี้</p>
+        <PillButton variant="glass" onClick={() => router.push("/projects")} className="h-9 px-5">กลับไปหน้ารายการโครงการ</PillButton>
+      </div>
+    );
+  }
+
+  const name = p.projectName || p.title || p.name || "-";
+  const code = p.projectId || docId;
+
+  const headerContent = (
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
+      <div className="flex items-center gap-4 min-w-0">
+        <PillButton variant="glass" onClick={() => router.push("/projects")} className="w-10 h-10 p-0 flex items-center justify-center shrink-0">
+          <ArrowLeft size={20} />
+        </PillButton>
+        <div className="min-w-0">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl font-semibold text-white tracking-tight">{name}</h1>
+            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold">{code}</span>
+            <StatusBadge status={PROJECT_STATUS_BADGE[status]} label={PROJECT_STATUS_TH[status]} />
           </div>
-          <span className="text-[10px] font-semibold text-white/60 uppercase">{status} ({progress}%)</span>
-       </div>
-       <div className="h-1 w-full bg-white/15 rounded-full overflow-hidden">
-          <div className={cn("h-full opacity-50", status === "เสร็จสมบูรณ์" ? "bg-nexus-teal shadow-neon-teal" : "bg-nexus-blue shadow-neon-blue")} style={{ width: `${progress}%` }} />
-       </div>
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-          {tasks.map((task, i) => (
-             <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                {task.status === "done" ? <CheckCircle2 size={14} className="text-nexus-teal" /> : <AlertCircle size={14} className="text-white/30" />}
-                <span className={cn("text-xs font-bold", task.status === "done" ? "text-white/85" : "text-white/40")}>{task.name}</span>
-             </div>
-          ))}
-       </div>
+          <p className="text-sm text-white/60 mt-1">
+            {p.customerName || p.customer || "-"} · {p.projectType || "-"}
+            {isLegacy && <span className="text-warning ml-2">(โครงการรุ่นเก่า แสดงผลอย่างเดียว)</span>}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap justify-end">
+        {canEditThis && (
+          <PillButton variant="glass" onClick={() => router.push(`/projects/new?edit=${encodeURIComponent(docId)}`)} className="h-9 px-4 text-xs font-bold">
+            <Pencil size={14} className="mr-1.5" /> {status === "Rejected" ? "แก้ไขและส่งอนุมัติใหม่" : "แก้ไข / ส่งอนุมัติ"}
+          </PillButton>
+        )}
+        {status === "Approved" && canEditProject && !isLegacy && (
+          <PillButton variant="confirm" disabled={busy} onClick={() => runAction("start")} className="h-9 px-4 text-xs font-bold">
+            <PlayCircle size={14} className="mr-1.5" /> เริ่มดำเนินการ
+          </PillButton>
+        )}
+        {status === "In Progress" && canEditProject && !isLegacy && (
+          <PillButton variant="confirm" disabled={busy} onClick={() => runAction("complete")} className="h-9 px-4 text-xs font-bold">
+            <CheckCircle2 size={14} className="mr-1.5" /> ปิดโครงการ
+          </PillButton>
+        )}
+        {canCancel && (
+          <PillButton variant="glass" disabled={busy} onClick={() => { setPending("cancel"); setComment(""); }} className="h-9 px-4 text-xs font-bold text-danger">
+            <XCircle size={14} className="mr-1.5" /> ยกเลิกโครงการ
+          </PillButton>
+        )}
+      </div>
+    </div>
+  );
+
+  const infoRow = (label: string, value: React.ReactNode) => (
+    <div className="flex items-start justify-between gap-4 py-2 border-b border-white/5 last:border-0">
+      <span className="text-[13px] text-white/50 shrink-0">{label}</span>
+      <span className="text-[13px] text-white text-right break-words min-w-0">{value || "-"}</span>
+    </div>
+  );
+
+  const overview = (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <GlassCard className="p-5">
+        <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><Briefcase size={16} className="text-nexus-teal" /> ข้อมูลโครงการ</h3>
+        {infoRow("ลูกค้า", p.customerName || p.customer)}
+        {infoRow("ประเภทงาน", p.projectType)}
+        {infoRow("ประเภทลูกค้า", p.sectorType === "Government" ? "ภาครัฐ" : "เอกชน")}
+        {infoRow("ลำดับความสำคัญ", p.priority)}
+        {infoRow("เอกสารอ้างอิงลูกค้า", p.clientReference || p.clientRef)}
+        {infoRow("ระยะเวลา", `${thDate(p.startDate)} – ${thDate(p.endDate || p.deadline)}`)}
+        {p.sectorType === "Government" ? (
+          <>
+            {infoRow("เลขที่ TOR", p.governmentDetails?.torDocNo)}
+            {infoRow("ราคากลาง", p.governmentDetails?.referencePrice ? baht(p.governmentDetails.referencePrice) : "-")}
+            {infoRow("เลขที่สัญญา", p.governmentDetails?.govContractNo)}
+          </>
+        ) : (
+          <>
+            {infoRow("PO ลูกค้า", p.privateDetails?.customerPO)}
+            {infoRow("เงื่อนไขการชำระเงิน", p.privateDetails?.paymentTerms)}
+          </>
+        )}
+      </GlassCard>
+
+      <GlassCard className="p-5">
+        <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><Users size={16} className="text-nexus-blue" /> ทีมงานและหน้างาน</h3>
+        {infoRow("ผู้จัดการโครงการ", p.projectManager)}
+        {infoRow("ทีมงาน", (p.resources || p.team || []).length ? (
+          <span className="block space-y-0.5">
+            {(p.resources || p.team || []).map((m: any, i: number) => (
+              <span key={i} className="block">{m.name || m}{m.role ? ` · ${m.role}` : ""}{m.allocation ? ` (${m.allocation}%)` : ""}</span>
+            ))}
+          </span>
+        ) : "-")}
+        {infoRow(<><MapPin size={12} className="inline mr-1" />สถานที่</> as any, p.siteLocation)}
+        {infoRow("ผู้ติดต่อหน้างาน", [p.siteContact?.name, p.siteContact?.phone].filter(Boolean).join(" · "))}
+        {(p.followers || []).length > 0 && infoRow("ผู้ติดตามหน้างาน", (
+          <span className="block space-y-0.5">
+            {p.followers.map((f: any, i: number) => <span key={i} className="block">{f.name}{f.role ? ` · ${f.role}` : ""}{f.phone ? ` · ${f.phone}` : ""}</span>)}
+          </span>
+        ))}
+        {infoRow("ใบงานช่างที่เกี่ยวข้อง", relatedWorkOrders.length ? relatedWorkOrders.map((w: any) => w.woCode || w.id).join(", ") : "-")}
+      </GlassCard>
+    </div>
+  );
+
+  const boq = (
+    <NexusTable headers={["ที่", "รายการ", "ประเภท", "จำนวน", "หน่วย", "ราคาต่อหน่วย", "จำนวนเงิน", "ต้นทุนรวม"]}>
+      {lines.length === 0 && (
+        <NexusTableRow><NexusTableCell colSpan={8} className="text-center py-10 text-white/40">ยังไม่มีรายการ</NexusTableCell></NexusTableRow>
+      )}
+      {lines.map((l: any, i: number) =>
+        l.kind === "GROUP" ? (
+          <NexusTableRow key={l.lineId || i} className="bg-nexus-teal/5">
+            <NexusTableCell colSpan={8} className="font-bold text-nexus-teal">{l.name}</NexusTableCell>
+          </NexusTableRow>
+        ) : (
+          <NexusTableRow key={l.lineId || i}>
+            <NexusTableCell>{i + 1}</NexusTableCell>
+            <NexusTableCell>{l.name}{l.sku ? <span className="text-white/40 ml-2 font-mono text-[12px]">{l.sku}</span> : null}{l.isOptional ? <span className="text-warning ml-2 text-[12px]">(ทางเลือก)</span> : null}</NexusTableCell>
+            <NexusTableCell>{KIND_TH[l.kind] || l.kind}</NexusTableCell>
+            <NexusTableCell mono>{(Number(l.qty) || 0).toLocaleString("th-TH")}</NexusTableCell>
+            <NexusTableCell>{l.unit}</NexusTableCell>
+            <NexusTableCell mono>{baht(l.unitPrice)}</NexusTableCell>
+            <NexusTableCell mono>{baht(l.amount)}</NexusTableCell>
+            <NexusTableCell className="text-white/60">{baht(l.costAmount)}</NexusTableCell>
+          </NexusTableRow>
+        )
+      )}
+    </NexusTable>
+  );
+
+  const financeRow = (label: string, value: string, emphasis?: string) => (
+    <div className="flex items-center justify-between py-2.5 border-b border-white/5 last:border-0">
+      <span className="text-[13px] text-white/60">{label}</span>
+      <span className={cn("text-[14px] font-mono font-bold", emphasis || "text-white")}>{value}</span>
+    </div>
+  );
+
+  const finance = (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <GlassCard className="p-5">
+        <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><Wallet size={16} className="text-nexus-teal" /> งบประมาณที่อนุมัติ</h3>
+        {financeRow("ราคาขายก่อนภาษี", baht(budget.totalRev), "text-nexus-teal")}
+        {financeRow("ต้นทุนสินค้าและพัสดุ", baht(budget.equipCost))}
+        {financeRow("ต้นทุนงานบริการและค่าแรง", baht(budget.laborCost))}
+        {financeRow(`สำรองความเสี่ยง (${Math.round((budget.contingencyRate ?? 0.05) * 100)}%)`, baht(budget.contingencyBuffer))}
+        {financeRow("กำไรขั้นต้น", `${baht(budget.grossProfit)} (${budget.gpPercent}%)`, budget.grossProfit < 0 ? "text-danger" : "text-white")}
+        {financeRow("ภาษีมูลค่าเพิ่ม", baht(budget.vatAmount))}
+        {financeRow("มูลค่ารวมภาษี", baht(budget.grandTotalWithVat))}
+      </GlassCard>
+      <GlassCard className="p-5">
+        <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><ClipboardList size={16} className="text-warning" /> ต้นทุนจริงระหว่างดำเนินงาน</h3>
+        {financeRow("ต้นทุนที่ประมาณการ", baht(p.allocatedCost ?? budget.totalCost))}
+        {financeRow("ต้นทุนจริงสะสม", baht(p.actualCost), Number(p.actualCost) > Number(p.allocatedCost ?? budget.totalCost) ? "text-danger" : "text-white")}
+        {financeRow("งานระหว่างทำ (WIP)", baht(p.wipValue))}
+        {financeRow("คงเหลือตามงบ", baht((Number(p.allocatedCost ?? budget.totalCost) || 0) - (Number(p.actualCost) || 0)))}
+        <p className="text-[12px] text-white/40 mt-3">ต้นทุนจริงมาจากค่าใช้จ่ายหน้างานที่บันทึกเข้าโครงการ (หน้าช่างมือถือ)</p>
+      </GlassCard>
+    </div>
+  );
+
+  const docs = (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {(p.documentChecklist || []).length === 0 && <p className="text-[13px] text-white/40">ไม่มีรายการเอกสารบังคับ</p>}
+      {(p.documentChecklist || []).map((d: any) => (
+        <div key={d.docCode} className="p-3 rounded-2xl bg-white/[0.02] border border-white/10 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] font-bold text-white">{d.docName}</p>
+            <p className="text-[12px] text-white/40 font-mono">{d.docCode}</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {d.isMandatory && <StatusBadge status="warning" label="บังคับ" />}
+            <StatusBadge status={d.isAttached ? "active" : "inactive"} label={d.isAttached ? "แนบแล้ว" : "ยังไม่แนบ"} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const history = (
+    <GlassCard className="p-0 overflow-hidden">
+      {(p.history || []).length === 0 && <p className="text-[13px] text-white/40 p-6">ยังไม่มีประวัติการดำเนินการ</p>}
+      {[...(p.history || [])].reverse().map((h: any, i: number) => (
+        <div key={i} className="px-5 py-3 border-b border-white/5 last:border-0">
+          <p className="text-[13px] text-white">
+            <span className="font-bold">{ACTION_TH[h.action] || h.action}</span>
+            {h.action === "progress" ? ` ${h.progress}%` : ""} โดย {h.byName}
+          </p>
+          <p className="text-[12px] text-white/40">{thDateTime(h.at)}{h.comment ? ` · ${h.comment}` : ""}</p>
+        </div>
+      ))}
     </GlassCard>
   );
+
+  const leftContent = (
+    <div className="space-y-4 pb-10">
+      {message && (
+        <div className={cn("p-3 rounded-xl text-xs font-bold border", message.error ? "bg-danger/10 border-danger/20 text-danger" : "bg-nexus-teal/10 border-nexus-teal/20 text-nexus-teal")}>
+          {message.text}
+        </div>
+      )}
+      <PillTabs
+        tabs={[
+          { id: "overview", label: "ภาพรวม", icon: <Building2 size={14} /> },
+          { id: "boq", label: `รายการ (${lines.filter((l: any) => l.kind !== "GROUP").length})`, icon: <Package size={14} /> },
+          { id: "finance", label: "งบประมาณ", icon: <Wallet size={14} /> },
+          { id: "docs", label: "เอกสารบังคับ", icon: <FileText size={14} /> },
+          { id: "history", label: "ประวัติ", icon: <History size={14} /> },
+        ]}
+        activeTab={tab}
+        onTabChange={setTab}
+      />
+      {tab === "overview" && overview}
+      {tab === "boq" && boq}
+      {tab === "finance" && finance}
+      {tab === "docs" && docs}
+      {tab === "history" && history}
+    </div>
+  );
+
+  const progress = Number(p.progress) || 0;
+
+  const rightSidebar = (
+    <div className="space-y-4 p-4">
+      {/* เหตุผลสำหรับไม่อนุมัติ / ยกเลิก */}
+      {pending && (
+        <GlassCard className="p-4 space-y-3 border-danger/30">
+          <p className="text-sm font-bold text-white">{pending === "reject" ? "เหตุผลที่ไม่อนุมัติ" : "เหตุผลที่ยกเลิกโครงการ"}</p>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={3}
+            className="w-full bg-white/[0.03] border border-white/10 rounded-xl p-3 text-[13px] text-white focus:outline-none focus:border-nexus-teal/40"
+            placeholder="ระบุเหตุผล (จำเป็น)"
+          />
+          <div className="flex gap-2 justify-end">
+            <PillButton variant="glass" onClick={() => setPending(null)} className="h-9 px-4 text-xs">ปิด</PillButton>
+            <PillButton variant="confirm" disabled={busy || !comment.trim()} onClick={() => runAction(pending, { comment })} className="h-9 px-4 text-xs text-danger">
+              ยืนยัน{pending === "reject" ? "ไม่อนุมัติ" : "ยกเลิก"}
+            </PillButton>
+          </div>
+        </GlassCard>
+      )}
+
+      {/* ตัวเลขสำคัญ */}
+      <GlassCard className="p-4 space-y-1">
+        {financeRow("มูลค่าโครงการ", baht(budget.totalRev), "text-nexus-teal")}
+        {financeRow("ต้นทุนประมาณการ", baht(budget.totalCost))}
+        {financeRow("กำไรขั้นต้น", `${budget.gpPercent}%`, budget.gpPercent < 15 ? "text-warning" : "text-white")}
+        {financeRow("ต้นทุนจริงสะสม", baht(p.actualCost))}
+        <div className="pt-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[13px] text-white/60">ความคืบหน้า</span>
+            <span className="text-[13px] font-mono font-bold text-white">{progress}%</span>
+          </div>
+          <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+            <div className="h-full bg-nexus-teal" style={{ width: `${progress}%` }} />
+          </div>
+          {status === "In Progress" && canEditProject && !isLegacy && (
+            <div className="flex items-center gap-2 mt-3">
+              <PillInput
+                type="number"
+                value={progressInput ?? progress}
+                onChange={(e) => setProgressInput(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                className="h-9 w-24 text-sm font-mono text-right"
+              />
+              <span className="text-xs text-white/40">%</span>
+              <PillButton variant="glass" disabled={busy || progressInput === null} onClick={() => runAction("progress", { progress: progressInput })} className="h-9 px-4 text-xs">
+                บันทึกความคืบหน้า
+              </PillButton>
+            </div>
+          )}
+        </div>
+        <div className="pt-3 text-[12px] text-white/40 flex items-center gap-1.5">
+          <CalendarDays size={12} /> {thDate(p.startDate)} – {thDate(p.endDate || p.deadline)}
+        </div>
+      </GlassCard>
+
+      {/* การอนุมัติ 3 ชั้น */}
+      <GlassCard className="p-4 space-y-3">
+        <h3 className="text-sm font-bold text-white flex items-center gap-2"><ShieldCheck size={16} className="text-nexus-teal" /> การอนุมัติเปิดโครงการ</h3>
+        {status === "Draft" && <p className="text-[12px] text-white/50">ยังไม่ได้ส่งขออนุมัติ (ฉบับร่าง)</p>}
+        {APPROVAL_STEPS.map((def) => {
+          const a = approvals.find((x: any) => Number(x.stepOrder) === def.stepOrder) || {};
+          const isCurrent = status === "Pending Approval" && step === def.stepOrder;
+          const st = a.status === "Approved" ? "active" : a.status === "Rejected" ? "danger" : isCurrent ? "pending" : "inactive";
+          const label = a.status === "Approved" ? "อนุมัติแล้ว" : a.status === "Rejected" ? "ไม่อนุมัติ" : isCurrent ? "รออนุมัติ" : "ยังไม่ถึงขั้นนี้";
+          return (
+            <div key={def.stepOrder} className={cn("p-3 rounded-xl border", isCurrent ? "border-warning/30 bg-warning/5" : "border-white/10 bg-white/[0.02]")}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[13px] font-bold text-white">ขั้นที่ {def.stepOrder}: {def.title}</span>
+                <StatusBadge status={st as any} label={label} />
+              </div>
+              <p className="text-[12px] text-white/50 mt-0.5">{def.description}</p>
+              {a.byName && <p className="text-[12px] text-white/60 mt-1">{a.byName} · {thDateTime(a.at)}</p>}
+              {a.comment && <p className="text-[12px] text-white/60 mt-0.5">“{a.comment}”</p>}
+              {isCurrent && canApproveNow && (
+                <div className="flex gap-2 mt-2">
+                  <PillButton variant="confirm" disabled={busy} onClick={() => runAction("approve")} className="h-9 px-4 text-xs">อนุมัติ</PillButton>
+                  <PillButton variant="glass" disabled={busy} onClick={() => { setPending("reject"); setComment(""); }} className="h-9 px-4 text-xs text-danger">ไม่อนุมัติ</PillButton>
+                </div>
+              )}
+              {isCurrent && !canApproveNow && (
+                <p className="text-[12px] text-white/40 mt-1">ผู้อนุมัติขั้นนี้: {def.roles.join(", ")}</p>
+              )}
+            </div>
+          );
+        })}
+        {status === "Cancelled" && p.cancelReason && <p className="text-[12px] text-danger">ยกเลิกแล้ว: {p.cancelReason}</p>}
+        <Link href="/projects" className="block text-center text-[12px] text-white/40 hover:text-white pt-1">กลับไปหน้ารายการโครงการ</Link>
+      </GlassCard>
+    </div>
+  );
+
+  return <NexusPageLayout header={headerContent} leftContent={leftContent} rightSidebar={rightSidebar} />;
 }

@@ -68,7 +68,8 @@ import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { ProjectTypeCode, PROJECT_TYPE_CONFIGS } from "@/types/database";
 import { apiFetch } from "@/lib/api-client";
-import { computeProjectBudget, normalizeItemLine, normalizeLaborLine } from "@/lib/project-budget";
+import { computeProjectBudget, linesToForm, normalizeItemLine, normalizeLaborLine } from "@/lib/project-budget";
+import { EDITABLE_STATUSES, normalizeProjectStatus } from "@/lib/project-status";
 
 
 
@@ -173,6 +174,54 @@ const [sectorType, setSectorType] = useState<"Government" | "Private">("Private"
   const projectManagerName = userOptions.find((u: any) => u.uid === projectManagerUid)?.name || "";
 
   // เลขโครงการออกที่ server ครั้งเดียวตอนบันทึก (ไม่จองเลขตอนเปิดหน้า)
+
+  // แก้ไขฉบับร่าง / โครงการที่ถูกตีกลับ (?edit=<id เอกสารโครงการ>)
+  const editDocId = searchParams?.get("edit") || "";
+  const [editLoaded, setEditLoaded] = useState(false);
+  useEffect(() => {
+    if (!editDocId || !currentCompanyId || editLoaded) return;
+    (async () => {
+      const snap = await getDoc(doc(db, `companies/${currentCompanyId}/projects`, editDocId));
+      if (!snap.exists()) {
+        showToast("ไม่พบโครงการที่ต้องการแก้ไข", true);
+        return;
+      }
+      const d: any = snap.data();
+      if (!EDITABLE_STATUSES.includes(normalizeProjectStatus(d.status))) {
+        showToast("โครงการนี้แก้ไขไม่ได้แล้ว (ส่งอนุมัติหรือเริ่มดำเนินการแล้ว)", true);
+        setTimeout(() => router.push(`/projects/${encodeURIComponent(editDocId)}`), 1200);
+        return;
+      }
+      setProjectId(d.projectId || editDocId);
+      setProjectName(d.projectName || d.title || "");
+      setSelectedCustomerId(d.customerId || "");
+      setClientReference(d.clientReference || "");
+      if ([1, 2, 3, 4].includes(Number(d.projectTypeCode))) setProjectTypeCode(Number(d.projectTypeCode) as ProjectTypeCode);
+      setSectorType(d.sectorType === "Government" ? "Government" : "Private");
+      setProjectPriority(d.priority || "ปานกลาง");
+      if (d.startDate) setStartDate(d.startDate);
+      if (d.endDate) setEndDate(d.endDate);
+      setSiteLocation(d.siteLocation || "");
+      setSiteContactName(d.siteContact?.name || "");
+      setSiteContactPhone(d.siteContact?.phone || "");
+      setProjectFollowers((d.followers || []).map((f: any, i: number) => ({ id: `FOL-${i}`, ...f })));
+      setGovTorDocNo(d.governmentDetails?.torDocNo || "");
+      setGovReferencePrice(Number(d.governmentDetails?.referencePrice) || 0);
+      setGovContractNo(d.governmentDetails?.govContractNo || "");
+      setPvtCustomerPO(d.privateDetails?.customerPO || "");
+      setPvtPaymentTerms(d.privateDetails?.paymentTerms || "");
+      if (d.projectManagerUid) setProjectManagerUid(d.projectManagerUid);
+      setAssignedTeam((d.resources || []).filter((m: any) => m.userId).map((m: any) => ({ uid: m.userId, name: m.name, role: m.role || "", allocation: Number(m.allocation) || 0 })));
+      const form = linesToForm(d.items || []);
+      setDocumentItems(form.items);
+      setProjectLabors(form.labors);
+      setEditLoaded(true);
+    })().catch((e) => {
+      console.error("load project for edit:", e);
+      showToast("โหลดข้อมูลโครงการไม่สำเร็จ", true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editDocId, currentCompanyId]);
 
   // นำเข้าจากใบเสนอราคา (?fromQuotationId=) — รองรับทั้ง lines subcollection และรูปแบบเก่า (items array)
   useEffect(() => {
@@ -333,10 +382,10 @@ const [sectorType, setSectorType] = useState<"Government" | "Private">("Private"
         privateDetails: { customerPO: pvtCustomerPO || clientReference, paymentTerms: pvtPaymentTerms },
       };
 
-      const res = await apiFetch("/api/projects/create", {
+      const res = await apiFetch(editDocId ? "/api/projects/update" : "/api/projects/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(editDocId ? { ...payload, projectDocId: editDocId } : payload)
       });
       const resData = await res.json();
       if (!res.ok || !resData.success) {
@@ -345,7 +394,8 @@ const [sectorType, setSectorType] = useState<"Government" | "Private">("Private"
 
       setProjectId(resData.projectId);
       showToast(resData.message, false);
-      setTimeout(() => router.push("/projects"), 1200);
+      const target = editDocId || resData.projectId;
+      setTimeout(() => router.push(`/projects/${encodeURIComponent(target)}`), 1200);
     } catch (err: any) {
       console.error("Error saving project:", err);
       showToast(err.message || "บันทึกโครงการไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", true);
@@ -364,7 +414,7 @@ const [sectorType, setSectorType] = useState<"Government" | "Private">("Private"
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
-              สร้างโครงการใหม่
+              {editDocId ? "แก้ไขโครงการ" : "สร้างโครงการใหม่"}
             </h1>
             <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
               {projectId || "ออกเลขเมื่อบันทึก"}
@@ -409,7 +459,7 @@ const [sectorType, setSectorType] = useState<"Government" | "Private">("Private"
           className={cn("h-8 px-5 font-bold text-xs", !can(role, "projects:edit") && "opacity-50 cursor-not-allowed")}
           title={!can(role, "projects:edit") ? "สิทธิ์การใช้งานไม่เพียงพอ (ต้องเป็น Role Admin/Engineer ขึ้นไป)" : undefined}
         >
-          {isSubmitting ? "กำลังบันทึก..." : !can(role, "projects:edit") ? "ไม่มีสิทธิ์เปิดโครงการ 🔒" : "ส่งขออนุมัติเปิดโครงการ 🚀"}
+          {isSubmitting ? "กำลังบันทึก..." : !can(role, "projects:edit") ? "ไม่มีสิทธิ์เปิดโครงการ 🔒" : "ส่งขออนุมัติเปิดโครงการ"}
         </PillButton>
       </div>
     </div>

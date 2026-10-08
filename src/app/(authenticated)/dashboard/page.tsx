@@ -112,10 +112,11 @@ export default function DashboardPage() {
         action: "เปิดใบขอซื้อ",
       });
     }
-    const approvals = pending.filter((p) => p.label.includes("รออนุมัติ") && p.total > 0);
+    // ไม่นับเอกสารตัวอย่างเป็นงานที่ต้องทำจริง
+    const approvals = pending.filter((p) => p.label.includes("รออนุมัติ") && p.total - p.samples > 0);
     if (approvals.length > 0) {
       items.push({
-        text: <>มีเอกสารรออนุมัติ {approvals.map((p) => `${p.label.replace("รออนุมัติ", "")} ${p.total}`).join(", ")}</>,
+        text: <>มีเอกสารรออนุมัติ {approvals.map((p) => `${p.label.replace("รออนุมัติ", "")} ${p.total - p.samples}`).join(", ")}</>,
         href: approvals[0].href,
         action: "ตรวจอนุมัติ",
       });
@@ -328,7 +329,7 @@ export default function DashboardPage() {
                       name={p.name}
                       code={p.code}
                       progress={p.progress}
-                      status={late ? "เลยกำหนด" : PROJECT_STATUS_LABEL[p.status] || p.status}
+                      status={late ? "เลยกำหนด" : PROJECT_STATUS_LABEL[p.status]}
                       isRisk={late}
                     />
                   );

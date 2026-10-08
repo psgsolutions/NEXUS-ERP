@@ -4,6 +4,8 @@
  * - ไม่นับเอกสารตัวอย่าง (isSample) ในตัวเลขเงิน
  */
 
+import { OPEN_STATUSES, PROJECT_STATUS_TH, normalizeProjectStatus } from "./project-status";
+
 const TH_OFFSET_MS = 7 * 3600 * 1000;
 const TH_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
@@ -86,29 +88,21 @@ export function lowStockProducts(products: any[]) {
     .sort((a, b) => a.onHand / a.min - b.onHand / b.min);
 }
 
-const CLOSED_PROJECT = ["completed", "complete", "closed", "cancelled", "canceled", "done"];
-
 export function activeProjects(projects: any[]) {
   return projects
-    .filter((p) => p.isDeleted !== true && !CLOSED_PROJECT.includes(String(p.status || "").toLowerCase()))
+    .filter((p) => p.isDeleted !== true && OPEN_STATUSES.includes(normalizeProjectStatus(p.status)))
     .map((p) => ({
       id: p.id,
       code: p.projectCode || p.projectId || p.id,
       name: p.title || p.name || p.projectName || "-",
       progress: Math.max(0, Math.min(100, Number(p.progress) || 0)),
-      status: String(p.status || "planning").toLowerCase(),
+      status: normalizeProjectStatus(p.status),
       deadlineMs: toMillis(p.deadline) || toMillis(p.endDate),
       isSample: !!p.isSample,
     }));
 }
 
-export const PROJECT_STATUS_LABEL: Record<string, string> = {
-  planning: "วางแผน",
-  active: "กำลังดำเนินการ",
-  in_progress: "กำลังดำเนินการ",
-  on_hold: "พักงาน",
-  delayed: "ล่าช้า",
-};
+export const PROJECT_STATUS_LABEL = PROJECT_STATUS_TH;
 
 /** ใบแจ้งหนี้ค้างชำระที่เลยกำหนด */
 export function overdueInvoices(invoices: any[], now = Date.now()) {
@@ -189,8 +183,9 @@ export function relativeTimeTh(ms: number, now = Date.now()): string {
 export function compactBaht(n: number): string {
   const abs = Math.abs(n);
   const sign = n < 0 ? "-" : "";
-  if (abs >= 1e6) return `${sign}฿${(abs / 1e6).toFixed(abs >= 1e7 ? 1 : 2)}M`;
-  if (abs >= 1e3) return `${sign}฿${(abs / 1e3).toFixed(abs >= 1e4 ? 0 : 1)}K`;
+  // Number(...) ตัดศูนย์ท้าย: 5.0K -> 5K, 2.50M -> 2.5M
+  if (abs >= 1e6) return `${sign}฿${Number((abs / 1e6).toFixed(abs >= 1e7 ? 1 : 2))}M`;
+  if (abs >= 1e3) return `${sign}฿${Number((abs / 1e3).toFixed(abs >= 1e4 ? 0 : 1))}K`;
   return `${sign}฿${abs.toLocaleString("th-TH", { maximumFractionDigits: 0 })}`;
 }
 

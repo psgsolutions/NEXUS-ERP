@@ -13,12 +13,14 @@ const SERIES = [
 const HEIGHT = 240;
 const PAD = { top: 16, right: 8, bottom: 28, left: 56 };
 
-function niceMax(v: number): number {
-  if (v <= 0) return 1000;
-  const exp = Math.pow(10, Math.floor(Math.log10(v)));
-  const f = v / exp;
-  const nice = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
-  return nice * exp;
+// แกน y เป็นตัวเลขกลม ๆ (0 / 5,000 / 10,000 ...) ประมาณ 4-5 ช่อง
+function niceScale(v: number): { max: number; step: number } {
+  if (v <= 0) return { max: 1000, step: 250 };
+  const raw = v / 4;
+  const exp = Math.pow(10, Math.floor(Math.log10(raw)));
+  const f = raw / exp;
+  const step = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * exp;
+  return { max: Math.ceil(v / step) * step, step };
 }
 
 // แท่งหัวมน 4px ฐานเหลี่ยม
@@ -45,8 +47,8 @@ export function RevenueExpenseChart({ data }: { data: MonthlyPL[] }) {
   }, []);
 
   const hasData = data.some((d) => d.revenue !== 0 || d.expense !== 0);
-  const max = niceMax(Math.max(...data.flatMap((d) => [d.revenue, d.expense]), 0));
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => t * max);
+  const { max, step } = niceScale(Math.max(...data.flatMap((d) => [d.revenue, d.expense]), 0));
+  const ticks = Array.from({ length: Math.round(max / step) + 1 }, (_, i) => i * step);
   const plotW = width - PAD.left - PAD.right;
   const plotH = HEIGHT - PAD.top - PAD.bottom;
   const band = plotW / Math.max(1, data.length);

@@ -24,6 +24,11 @@ export interface ProjectLine {
   amount: number;
   /** ต้นทุนรวมของบรรทัด */
   costAmount: number;
+  /** รายการจากส่วน "งานบริการและค่าแรง" ของหน้าโครงการ (ใช้คืนค่าตอนแก้ไขฉบับร่าง) */
+  origin?: "labor";
+  laborType?: "lump-sum" | "per-point";
+  materialUnitCost?: number;
+  laborUnitCost?: number;
 }
 
 const num = (v: any) => {
@@ -101,7 +106,52 @@ export function normalizeLaborLine(labor: any, index: number): ProjectLine {
     isOptional: false,
     amount: round2(qty * unitPrice),
     costAmount: round2(qty * Math.max(0, unitCost)),
+    origin: "labor",
+    laborType: perPoint ? "per-point" : "lump-sum",
+    materialUnitCost: perPoint ? Math.max(0, num(labor.materialCost)) : 0,
+    laborUnitCost: perPoint ? Math.max(0, num(labor.laborCost)) : Math.max(0, unitCost),
   };
+}
+
+/** แปลงรายการที่บันทึกไว้กลับเป็นข้อมูลฟอร์ม (ตารางสินค้า / งานบริการ) */
+export function linesToForm(lines: any[]): { items: any[]; labors: any[] } {
+  const items: any[] = [];
+  const labors: any[] = [];
+  (Array.isArray(lines) ? lines : []).forEach((l: any, i: number) => {
+    const id = l.lineId || `L${i + 1}`;
+    if (l.origin === "labor") {
+      const perPoint = l.laborType === "per-point";
+      labors.push({
+        id,
+        name: l.name || "",
+        type: perPoint ? "per-point" : "lump-sum",
+        points: perPoint ? l.qty : 1,
+        materialCost: perPoint ? l.materialUnitCost || 0 : 0,
+        laborCost: perPoint ? l.laborUnitCost || 0 : 0,
+        cost: perPoint ? 0 : l.unitCost || 0,
+        price: l.unitPrice || 0,
+        whtRate: l.whtRate,
+      });
+      return;
+    }
+    items.push({
+      id,
+      productId: l.productId || null,
+      sku: l.sku || "",
+      name: l.name || "",
+      details: l.details || "",
+      qty: l.qty,
+      unit: l.unit || "ชิ้น",
+      price: l.unitPrice || 0,
+      cost: l.unitCost || 0,
+      itemType: l.kind === "GROUP" ? "GROUP_HEADER" : l.kind,
+      discountType: l.discountType || "PERCENT",
+      discountValue: l.discountValue || 0,
+      whtRate: l.whtRate || 0,
+      isOptional: !!l.isOptional,
+    });
+  });
+  return { items, labors };
 }
 
 export interface ProjectBudgetOptions {

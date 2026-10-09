@@ -1041,10 +1041,10 @@ function QuotationRow({ id, docId, customer, title, value, stage, validUntil, ca
       <NexusTableCell className="text-white" mono>{value}</NexusTableCell>
       <NexusTableCell><StatusBadge status={st.badge} label={st.label} /></NexusTableCell>
       <NexusTableCell>
-        <div onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1.5">
+        <div onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1.5" style={{ width: 86, justifyContent: "flex-start" }}>
           <button onClick={onDuplicate} className="w-8 h-8 rounded-full border border-white/15 text-white/60 flex items-center justify-center hover:text-white hover:bg-white/[0.05]" title="คัดลอกเป็นใบเสนอราคาใหม่" aria-label="คัดลอก"><Copy size={14} /></button>
           {/* ลบได้เฉพาะใบที่ยังไม่ส่งออกไปภายนอก เพื่อไม่ให้เลขเอกสารที่ลูกค้าเห็นแล้วหายไป (เว้นช่องไว้ให้ปุ่มตรงแนวกัน) */}
-          {canDelete ? <SecureDeleteAction collectionName={`companies/${companyId}/quotations`} documentId={docId} displayName={title} compact /> : <span className="inline-block w-10 h-8 shrink-0" aria-hidden />}
+          {canDelete ? <SecureDeleteAction collectionName={`companies/${companyId}/quotations`} documentId={docId} displayName={title} compact /> : null}
         </div>
       </NexusTableCell>
     </NexusTableRow>

@@ -283,6 +283,8 @@ export default function QuotationEditPage() {
   // Modals & Actions
   const [showRevisionModal, setShowRevisionModal] = useState(false);
   const [linkedSo, setLinkedSo] = useState<string>("");
+  const [notesDirty, setNotesDirty] = useState(false);
+  const [savingNotes, setSavingNotes] = useState(false);
   const [supersededBy, setSupersededBy] = useState<{ id: string; no: string } | null>(null);
   const [revisionChangeSummary, setRevisionChangeSummary] = useState("");
   const [isCreatingRevision, setIsCreatingRevision] = useState(false);
@@ -631,6 +633,25 @@ export default function QuotationEditPage() {
   // ส่งลูกค้าแล้ว = ล็อก ต้องออกฉบับแก้ไข (Revision), ได้งาน/ถูกแทนที่ = อ่านอย่างเดียว
   const isLocked = !["DRAFT", "PENDING_APPROVAL", "REJECTED"].includes(status);
   const canRevise = ["SENT", "ACCEPTED"].includes(status) && !linkedSo;
+
+  const saveInternalNotes = async () => {
+    if (!companyId || !params.id) return;
+    setSavingNotes(true);
+    try {
+      const res = await apiFetch(`/api/quotations/${encodeURIComponent(params.id)}/internal-notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, internalNotes }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || "บันทึกไม่สำเร็จ");
+      setNotesDirty(false);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setSavingNotes(false);
+    }
+  };
 
   // Handle Save with Multi-channel Audit Trail (Patch 11 & 12)
   const handleSave = async (isSubmit: boolean = false, sendChannel?: 'EMAIL' | 'LINE' | 'DOWNLOAD' | 'SYSTEM') => {
@@ -1374,7 +1395,7 @@ export default function QuotationEditPage() {
       )}
 
       {/* T&C, Remarks, and Internal Notes */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className={cn("grid grid-cols-1 gap-4", isLocked ? "md:grid-cols-2" : "md:grid-cols-3")}>
         <div className="bg-surface-1 border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
           <h3 className="text-base font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-2">
             เงื่อนไขการค้า
@@ -1396,6 +1417,7 @@ export default function QuotationEditPage() {
             className="w-full h-32 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed placeholder:text-white/30 transition-all"
           />
         </div>
+        {!isLocked && (
         <div className="bg-surface-1 border border-warning/20 rounded-3xl p-4 shadow-[0_0_15px_rgba(234,179,8,0.05)] space-y-4">
           <h3 className="text-base font-semibold uppercase tracking-widest text-warning flex items-center gap-2 border-b border-warning/20 pb-2">
             หมายเหตุภายใน (ไม่พิมพ์)
@@ -1407,8 +1429,33 @@ export default function QuotationEditPage() {
             className="w-full h-32 bg-black/40 border border-warning/10 rounded-xl p-3 text-[13px] text-warning/80 focus:outline-none focus:border-warning/50 resize-none leading-relaxed placeholder:text-warning/30"
           />
         </div>
+        )}
       </div>
       </fieldset>
+
+      {/* ใบที่ล็อกแล้ว: หมายเหตุภายในยังแก้ได้ (ลูกค้าไม่เห็น) บันทึกแยกเฉพาะฟิลด์นี้ */}
+      {isLocked && (
+        <div className="bg-surface-1 border border-warning/20 rounded-3xl p-4 shadow-[0_0_15px_rgba(234,179,8,0.05)] space-y-4">
+          <h3 className="text-base font-semibold uppercase tracking-widest text-warning flex items-center gap-2 border-b border-warning/20 pb-2">
+            หมายเหตุภายใน (ไม่พิมพ์)
+          </h3>
+          <textarea
+            value={internalNotes}
+            onChange={(e) => { setInternalNotes(e.target.value); setNotesDirty(true); }}
+            disabled={status === "SUPERSEDED"}
+            placeholder="ระบุเหตุผลการให้ส่วนลด หรือข้อความสำหรับผู้อนุมัติ (ลูกค้าจะไม่เห็นข้อความนี้)..."
+            className="w-full h-32 bg-black/40 border border-warning/10 rounded-xl p-3 text-[13px] text-warning/80 focus:outline-none focus:border-warning/50 resize-none leading-relaxed placeholder:text-warning/30"
+          />
+          {status !== "SUPERSEDED" && (
+            <div className="flex items-center justify-end gap-3">
+              {notesDirty && <span className="text-[12px] text-warning/70">ยังไม่ได้บันทึก</span>}
+              <PillButton variant="glass" onClick={saveInternalNotes} disabled={!notesDirty || savingNotes} className="h-8 px-4 text-xs font-bold text-warning border-warning/30">
+                <Save size={14} className="mr-1.5" /> {savingNotes ? "กำลังบันทึก..." : "บันทึกหมายเหตุภายใน"}
+              </PillButton>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 

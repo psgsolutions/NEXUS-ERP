@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/warranty-ma-check",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/quotation-expiry-check",
+      "schedule": "0 1 * * *"
     }
   ]
 }

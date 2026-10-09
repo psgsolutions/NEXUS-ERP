@@ -932,10 +932,11 @@ export default function QuotationEditPage() {
       <fieldset disabled={isLocked} className="m-0 p-0 border-0 min-w-0 space-y-4">
 
       {/* Customer and Header Info */}
-      <div className="flex flex-col xl:flex-row gap-4 items-stretch">
+      {/* จอไม่กว้างพอ: ลูกค้าเต็มแถว แล้วรายละเอียดการขาย + ข้อมูลเอกสารคู่กันด้านล่าง; จอกว้าง (≥1700px) เรียงสามใบในแถวเดียว */}
+      <div className="grid grid-cols-1 md:grid-cols-2 min-[1700px]:flex min-[1700px]:flex-row gap-4 items-stretch">
 
         {/* 1. Customer Info */}
-        <div className="flex-1 bg-neutral-900/90 border border-white/15 rounded-3xl overflow-visible shadow-2xl p-4 space-y-4 border-l-4 border-l-nexus-teal hover:border-white/25 relative z-[30]">
+        <div className="md:col-span-2 min-w-0 flex-1 bg-neutral-900/90 border border-white/15 rounded-3xl overflow-visible shadow-2xl p-4 space-y-4 border-l-4 border-l-nexus-teal hover:border-white/25 relative z-[30]">
           <div className="flex items-center justify-between border-b border-white/10 pb-2">
             <h3 className="text-base font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2">
               <Building2 size={16} /> ข้อมูลลูกค้า *
@@ -1102,7 +1103,7 @@ export default function QuotationEditPage() {
         </div>
 
         {/* 2. Extended CRM & Logistics Data */}
-        <div className="flex-1 bg-neutral-900/90 border border-white/15 rounded-3xl overflow-visible shadow-2xl p-4 space-y-4 border-l-4 border-l-nexus-blue hover:border-white/25 relative z-[20]">
+        <div className="flex-1 min-w-0 bg-neutral-900/90 border border-white/15 rounded-3xl overflow-visible shadow-2xl p-4 space-y-4 border-l-4 border-l-nexus-blue hover:border-white/25 relative z-[20]">
           <h3 className="text-base font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-2">
             รายละเอียดการขาย
           </h3>
@@ -1228,7 +1229,7 @@ export default function QuotationEditPage() {
                 )}
               </div>
             </div>
-            <div className="space-y-1 col-span-2">
+            <div className="space-y-1 col-span-3">
               <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">โอกาสการขาย (%)</label>
               <StepperInput
                 value={probability}
@@ -1239,7 +1240,7 @@ export default function QuotationEditPage() {
                 className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 text-white focus:text-nexus-teal text-[13px]"
               />
             </div>
-            <div className="space-y-1 col-span-2">
+            <div className="space-y-1 col-span-3">
               <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เวลาจัดส่ง (วัน)</label>
               <StepperInput
                 value={expectedDeliveryDays}
@@ -1248,7 +1249,7 @@ export default function QuotationEditPage() {
                 className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 text-white focus:text-nexus-teal text-[13px]"
               />
             </div>
-            <div className="space-y-1 col-span-2">
+            <div className="space-y-1 col-span-6">
               <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">คาดว่าปิดจบ</label>
               <NexusDatePicker value={expectedCloseDate} onChange={(e) => setExpectedCloseDate(e.target.value)} className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 leading-relaxed text-[13px] font-bold text-white font-mono focus:text-nexus-teal focus:outline-none transition-all text-left" />
             </div>
@@ -1296,7 +1297,7 @@ export default function QuotationEditPage() {
         </div>
 
         {/* 3. Document Info */}
-        <div className="w-full xl:w-[25%] shrink-0 bg-neutral-900/90 border border-white/15 rounded-3xl overflow-visible shadow-2xl p-4 space-y-4 border-l-4 border-l-purple-500 hover:border-white/25 relative z-[10]">
+        <div className="w-full min-w-0 min-[1700px]:w-[25%] shrink-0 bg-neutral-900/90 border border-white/15 rounded-3xl overflow-visible shadow-2xl p-4 space-y-4 border-l-4 border-l-purple-500 hover:border-white/25 relative z-[10]">
           <h3 className="text-base font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-2">
             <Calendar size={16} className="text-nexus-teal drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" /> ข้อมูลเอกสาร
           </h3>

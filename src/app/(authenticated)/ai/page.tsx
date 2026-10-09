@@ -1,229 +1,112 @@
 "use client";
 
-import React, { useState } from "react";
-import { 
-  BrainCircuit, 
-  Sparkles, 
-  Search, 
-  MessageSquare, 
-  TrendingUp, 
-  TrendingDown, 
-  AlertCircle,
-  Activity,
-  Zap,
-  ArrowRight,
-  PieChart,
-  Target,
-  Box,
-  ChevronRight,
-  ShieldCheck,
-  Cpu
-} from "lucide-react";
-import { 
-  PillButton, 
-  PillInput, 
-  MasterMetricCard, 
-  cn, 
-  Modal, 
-  Toast, 
-  NexusTable, 
-  NexusTableRow, 
-  NexusTableCell, 
-  StatusBadge, 
-  PillTabs,
-  GlassCard,
-  NexusSearchInput
-} from "@/components/ui/Base";
+import React, { useEffect, useRef, useState } from "react";
+import { BrainCircuit, Loader2, RotateCcw, Send, Sparkles } from "lucide-react";
+import { GlassCard, PillButton, cn } from "@/components/ui/Base";
+import { useAuth } from "@/context/AuthContext";
+import { apiFetch } from "@/lib/api-client";
+import { can } from "@/lib/permissions";
+
+interface Msg { role: "user" | "model"; text: string; error?: boolean }
+
+const SUGGESTIONS = [
+  "สรุปรายได้ ค่าใช้จ่าย และกำไร 6 เดือนล่าสุด",
+  "ลูกค้ารายไหนค้างชำระมากที่สุด และมีใบไหนเลยกำหนดบ้าง",
+  "สินค้าตัวไหนใกล้หมดและควรสั่งซื้อเพิ่ม",
+  "โครงการไหนใช้งบเกินหรือเสี่ยงไม่ทันกำหนด",
+  "เงินเข้า-ออก 30 วันล่าสุดเป็นอย่างไร",
+];
 
 export default function AIHubPage() {
-  const [query, setQuery] = useState("");
-  const [aiAnswer, setAiAnswer] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("brain");
+  const { companyId, role } = useAuth();
+  const allowed = can(role, "finance:view");
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const endRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages, busy]);
 
-  const handleNLQ = () => {
-    if (query.includes("งบประมาณ") || query.includes("กำไร")) {
-      setAiAnswer("โครงการ 'Hospital 01' (PRJ-26-001) กำลังใช้งบประมาณสูงสุดที่ ฿1.8M โดยมี Margin ปัจจุบันที่ 24.5% ซึ่งถือว่าสุขภาพดี แต่อย่างไรก็ตาม พบความเสี่ยงจากต้นทุนอุปกรณ์ Network ที่เพิ่มขึ้น 5% ในสัปดาห์นี้");
-    } else {
-      setAiAnswer("จากการวิเคราะห์ภาพรวม ระบบพบว่ายอดขายเดือนเมษายนเติบโตขึ้น 12% เมื่อเทียบกับเดือนที่ผ่านมา โดยมีสินค้ากลุ่ม 'Aruba Switch' เป็นตัวขับเคลื่อนหลัก");
+  const ask = async (q: string) => {
+    const question = q.trim();
+    if (!question || busy || !companyId) return;
+    const history = messages.filter((m) => !m.error).map(({ role, text }) => ({ role, text }));
+    setMessages((m) => [...m, { role: "user", text: question }]);
+    setInput("");
+    setBusy(true);
+    try {
+      const res = await apiFetch("/api/ai/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, question, history }) });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || "AI ตอบไม่สำเร็จ");
+      setMessages((m) => [...m, { role: "model", text: json.answer }]);
+    } catch (err: any) {
+      setMessages((m) => [...m, { role: "model", text: err.message, error: true }]);
+    } finally {
+      setBusy(false);
     }
   };
 
-  const tabs = [
-    { id: "brain", label: "วิเคราะห์ AI (NEXUS BRAIN)", icon: <BrainCircuit size={14} /> },
-    { id: "predictive", label: "พยากรณ์", icon: <TrendingUp size={14} /> },
-    { id: "insights", label: "ข้อมูลเชิงลึก", icon: <Cpu size={14} /> },
-  ];
-
   return (
-    <div className="p-10 space-y-10 max-w-[1600px] mx-auto animate-in fade-in duration-700">
-      
-      {/* Header Section */}
-      <div className="space-y-3">
-        <div className="space-y-1">
-          <p className="text-[11px] font-medium text-white/20 uppercase tracking-[0.2em]">เลเยอร์ปัญญาประดิษฐ์ระดับควอนตัม</p>
-          <div className="flex items-center gap-4">
-             <div className="w-10 h-10 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20">
-                <BrainCircuit size={22} />
-             </div>
-             <h1 className="text-2xl font-bold text-white tracking-tight uppercase">ศูนย์ปัญญาประดิษฐ์</h1>
+    <div className="flex flex-col h-[calc(100dvh-4rem)] overflow-hidden bg-transparent">
+      <header className="px-6 py-2.5 min-h-[60px] border-b border-white/5 flex items-center justify-between gap-3 bg-black/20 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/10"><BrainCircuit size={20} /></div>
+          <div>
+            <h1 className="text-lg font-bold text-white tracking-tight leading-none">ผู้ช่วยวิเคราะห์ธุรกิจ</h1>
+            <p className="text-xs font-semibold text-white/60 mt-1 leading-none">ถามเป็นภาษาไทย AI ตอบจากข้อมูลจริงของบริษัท</p>
           </div>
         </div>
+        {messages.length > 0 && (
+          <PillButton variant="glass" onClick={() => setMessages([])} disabled={busy} className="h-8 px-3 text-xs"><RotateCcw size={13} className="mr-1.5" /> เริ่มใหม่</PillButton>
+        )}
+      </header>
 
-        <div className="flex items-center justify-between">
-          <PillTabs 
-            tabs={tabs} 
-            activeTab={activeTab} 
-            onTabChange={(id: any) => setActiveTab(id)} 
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="p-5 max-w-4xl mx-auto space-y-4">
+          {!allowed && <div className="p-3 rounded-xl text-xs font-bold border bg-warning/10 border-warning/20 text-warning">ผู้ช่วยวิเคราะห์ใช้ได้เฉพาะผู้มีสิทธิ์ดูข้อมูลการเงิน</div>}
+
+          {messages.length === 0 && allowed && (
+            <GlassCard className="p-6 space-y-4">
+              <div className="flex items-center gap-2 text-white font-bold"><Sparkles size={18} className="text-nexus-teal" /> ลองถามเช่น</div>
+              <div className="flex flex-wrap gap-2">
+                {SUGGESTIONS.map((s) => (
+                  <button key={s} onClick={() => ask(s)} className="px-3.5 py-2 rounded-full border border-white/10 bg-white/[0.03] text-[13px] text-white/80 hover:border-nexus-teal/40 hover:text-white transition-colors text-left">{s}</button>
+                ))}
+              </div>
+              <p className="text-[12px] text-white/40">ระบบส่งเฉพาะตัวเลขสรุป (ยอดขาย ลูกหนี้ เจ้าหนี้ สต็อก โครงการ) ให้ AI ไม่ส่งเงินเดือนรายคน เลขบัตรประชาชน หรือเลขบัญชีธนาคาร · คำตอบควรตรวจสอบกับรายงานก่อนตัดสินใจ</p>
+            </GlassCard>
+          )}
+
+          {messages.map((m, i) => (
+            <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+              <div className={cn(
+                "max-w-[85%] rounded-2xl px-4 py-3 text-[14px] leading-relaxed whitespace-pre-wrap",
+                m.role === "user" ? "bg-nexus-teal/15 border border-nexus-teal/25 text-white" : m.error ? "bg-danger/10 border border-danger/20 text-danger" : "bg-white/[0.04] border border-white/10 text-white/90",
+              )}>
+                {m.text}
+              </div>
+            </div>
+          ))}
+          {busy && <div className="flex items-center gap-2 text-[13px] text-white/50"><Loader2 size={14} className="animate-spin" /> กำลังวิเคราะห์ข้อมูล...</div>}
+          <div ref={endRef} />
+        </div>
+      </div>
+
+      <div className="border-t border-white/5 bg-black/20 p-4 pr-24 shrink-0">
+        <form onSubmit={(e) => { e.preventDefault(); ask(input); }} className="max-w-4xl mx-auto flex items-end gap-2">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(input); } }}
+            rows={1}
+            disabled={!allowed || busy}
+            placeholder="พิมพ์คำถาม แล้วกด Enter (Shift+Enter ขึ้นบรรทัดใหม่)"
+            className="flex-1 min-h-[44px] max-h-40 resize-none rounded-2xl bg-white/[0.04] border border-white/10 px-4 py-3 text-[14px] text-white placeholder:text-white/30 focus:outline-none focus:border-nexus-teal/40"
           />
-          <div className="px-5 py-2 rounded-full bg-nexus-teal/10 border border-nexus-teal/20 flex items-center gap-3">
-             <div className="w-1.5 h-1.5 rounded-full bg-nexus-teal shadow-neon-teal animate-pulse" />
-             <span className="text-[11px] font-medium text-nexus-teal uppercase tracking-widest">Gemini 2.5 Flash Online</span>
-          </div>
-        </div>
-      </div>
-
-      {/* AI NLQ Interface */}
-      <GlassCard className="p-10 border-nexus-teal/20 bg-nexus-teal/5 shadow-neon-teal relative overflow-hidden group rounded-2xl">
-          <div className="absolute -top-10 -right-10 p-20 opacity-5 group-hover:opacity-10 transition-opacity">
-             <BrainCircuit size={240} />
-          </div>
-          
-          <div className="relative z-10 space-y-10 max-w-4xl">
-             <div className="space-y-3">
-                <h2 className="text-2xl font-bold text-white flex items-center gap-4">
-                   <Sparkles className="text-nexus-teal" size={32} />
-                   วิเคราะห์ข้อมูลด้วย NEXUS BRAIN
-                </h2>
-                <p className="text-base text-white/40 font-bold max-w-2xl leading-relaxed">
-                   เข้าถึงข้อมูลมหาศาลผ่านภาษาธรรมชาติ AI จะทำการรวบรวมข้อมูลจาก 10 โมดูลมาสรุปให้คุณทันที 
-                   <span className="text-white"> "ถามได้ทุกอย่างเกี่ยวกับธุรกิจของคุณ"</span>
-                </p>
-             </div>
-
-             <div className="flex flex-col md:flex-row gap-4 items-center bg-black/20 p-2 rounded-full border border-nexus-teal/20 backdrop-blur-xl">
-                <NexusSearchInput 
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="ป้อนคำถามของคุณ... (เช่น: สต็อกอะไรเหลือต่ำสุด? หรือ สรุปกำไรไตรมาสนี้)" 
-                  className="flex-1"
-                  kbd="ENTER"
-                />
-                <PillButton onClick={handleNLQ} className="px-12 h-11 shadow-neon-teal">
-                   <Sparkles size={18} className="mr-2" />
-                   เริ่มการวิเคราะห์
-                </PillButton>
-             </div>
-
-             {aiAnswer && (
-               <div className="p-5 rounded-xl bg-black/60 border border-nexus-teal/30 animate-in slide-in-from-top duration-500 shadow-2xl backdrop-blur-xl">
-                  <div className="flex gap-5">
-                     <div className="w-12 h-12 rounded-2xl bg-nexus-teal/20 flex items-center justify-center text-nexus-teal shrink-0">
-                        <Cpu size={24} className="animate-spin-slow" />
-                     </div>
-                     <div className="space-y-3">
-                        <p className="text-xl text-white leading-relaxed font-bold">
-                           {aiAnswer}
-                        </p>
-                        <div className="flex gap-4">
-                           <PillButton variant="glass" className="text-[11px] border-nexus-teal/20 text-nexus-teal">
-                              ดูข้อมูลเจาะลึก
-                              <ArrowRight size={14} className="ml-2" />
-                           </PillButton>
-                           <PillButton variant="primary" className="text-[11px] border-white/10">สร้างใบสั่งซื้อตามแนะนำ</PillButton>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-             )}
-          </div>
-      </GlassCard>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-         {/* Executive Briefing */}
-         <div className="lg:col-span-2 space-y-3">
-            <div className="flex items-center gap-4 px-4">
-               <Activity className="text-nexus-teal" size={24} />
-               <div className="space-y-0.5">
-                  <p className="text-[11px] font-medium text-white/20 uppercase tracking-widest">สรุปสถานการณ์ระดับผู้บริหาร</p>
-                  <h2 className="text-xl font-bold text-white uppercase">สรุปสถานการณ์แบบเรียลไทม์</h2>
-               </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-               <BriefItem icon={<Zap className="text-warning" />} label="จุดโฟกัสงานปฏิบัติการ" detail="การติดตั้ง Core Switch ที่ SITE-A กำลังล่าช้ากว่าแผน 2 วัน" />
-               <BriefItem icon={<TrendingUp className="text-nexus-teal" />} label="สภาพคล่องทางการเงิน" detail="ยอดเงินสดรับใน 7 วันข้างหน้า คาดการณ์ที่ ฿2.4M" />
-               <BriefItem icon={<AlertCircle className="text-danger" />} label="ความเสี่ยงด้านสัญญา" detail="ลูกค้า 2 ราย (PTT, EGAT) สัญญา MA จะหมดอายุในเดือนหน้า" />
-               <BriefItem icon={<Box className="text-nexus-blue" />} label="การจัดการทรัพยากร" detail="พบการเบิกจ่าย Aruba AP-505 ผิดปกติในไซต์งาน Hospital 01" />
-            </div>
-         </div>
-
-         {/* Predictive Layer */}
-         <GlassCard className="p-4 border-nexus-blue/20 bg-nexus-blue/5 rounded-xl">
-            <h3 className="text-sm font-bold text-nexus-blue uppercase tracking-widest mb-8">วิเคราะห์เชิงพยากรณ์</h3>
-            <div className="space-y-3">
-               <TrendItem label="ความต้องการสต็อกเดือนหน้า" value="+24%" isUp />
-               <TrendItem label="ดัชนีความเสี่ยงโครงการ" value="Low" isUp={false} isText />
-               <TrendItem label="ประสิทธิภาพกำไรต่อโปรเจกต์" value="28.4%" isUp />
-            </div>
-            <PillButton variant="glass" className="w-full mt-10 border-nexus-blue/20 text-nexus-blue hover:bg-nexus-blue/10 uppercase text-[11px]">
-               เปิดรายงานพยากรณ์ฉบับเต็ม
-            </PillButton>
-         </GlassCard>
-      </div>
-
-      {/* Suggested Actions */}
-      <div className="space-y-3">
-         <h3 className="text-[12px] font-medium text-white/20 uppercase tracking-[0.2em] px-4">ข้อแนะนำเชิงรุกจาก AI</h3>
-         <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-            <ActionCard title="สั่งซื้อ ACCESS POINTS" desc="แนะนำให้สั่งซื้อเพิ่ม 20 ตัว เพื่อรองรับงานเดือนหน้า" />
-            <ActionCard title="อัปเดตแผนไซต์งาน A" desc="พบปัญหาคอขวดในการส่งมอบงาน ให้เพิ่มทีมเทคนิค 2 คน" />
-            <ActionCard title="ส่งใบแจ้งหนี้ PRJ-002" desc="Milestone 2 เสร็จสมบูรณ์แล้ว สามารถเรียกเก็บเงินได้" />
-            <ActionCard title="ตรวจสอบราคา VENDOR B" desc="พบการปรับขึ้นราคาอุปกรณ์ 5% ให้พิจารณาเจ้าอื่น" />
-         </div>
+          <PillButton type="submit" variant="confirm" disabled={!allowed || busy || !input.trim()} className="h-11 w-11 p-0 flex items-center justify-center shrink-0" title="ส่งคำถาม">
+            <Send size={16} />
+          </PillButton>
+        </form>
       </div>
     </div>
-  );
-}
-
-function BriefItem({ icon, label, detail }: { icon: any, label: string, detail: string }) {
-  return (
-    <div className="flex gap-4 p-5 rounded-3xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-all group">
-       <div className="shrink-0 mt-1 transition-transform group-hover:scale-110">{icon}</div>
-       <div className="space-y-1">
-          <p className="text-[11px] font-medium text-white/20 uppercase tracking-widest">{label}</p>
-          <p className="text-sm font-bold text-white leading-snug">{detail}</p>
-       </div>
-    </div>
-  );
-}
-
-function TrendItem({ label, value, isUp, isText = false }: { label: string, value: string, isUp: boolean, isText?: boolean }) {
-  return (
-    <div className="flex justify-between items-center group">
-       <div className="space-y-1">
-          <p className="text-[11px] font-medium text-white/30 uppercase tracking-widest">{label}</p>
-          <p className="text-2xl font-bold text-white tracking-tighter">{value}</p>
-       </div>
-       <div className={cn(
-          "w-12 h-12 rounded-2xl border flex items-center justify-center transition-all group-hover:scale-110",
-          isUp ? "text-nexus-teal border-nexus-teal/20 bg-nexus-teal/10 shadow-neon-teal" : "text-danger border-danger/20 bg-danger/10"
-       )}>
-          {isText ? <Activity size={20} /> : isUp ? <TrendingUp size={24} /> : <TrendingDown size={24} />}
-       </div>
-    </div>
-  );
-}
-
-function ActionCard({ title, desc }: { title: string, desc: string }) {
-  return (
-    <GlassCard className="p-4 hover:border-nexus-teal/40 transition-all cursor-pointer group rounded-3xl">
-       <div className="flex justify-between items-start mb-4">
-          <h4 className="text-sm font-medium text-white uppercase group-hover:text-nexus-teal transition-colors leading-tight">{title}</h4>
-          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-nexus-teal/10 group-hover:text-nexus-teal transition-all">
-             <ChevronRight size={16} />
-          </div>
-       </div>
-       <p className="text-[10px] font-bold text-white/30 leading-relaxed uppercase tracking-wider">{desc}</p>
-    </GlassCard>
   );
 }

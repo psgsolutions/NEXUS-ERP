@@ -330,6 +330,14 @@ export default function SalesPage() {
       pipeline[stage].value += quoteAmount(q);
     }
   });
+  // ตัวเลขหัวหน้า: ยอดขายเดือนนี้ (ใบแจ้งหนี้), อัตราปิดการขาย (ใบเสนอราคาที่ส่งแล้ว), ใบแจ้งหนี้ค้างชำระ
+  const thisMonth = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 7);
+  const monthSales = invoicesList
+    .filter((inv: any) => !inv.isSample && toDateStr(firstOf(inv, ["issueDate", "issuedAt", "createdAt"])).startsWith(thisMonth))
+    .reduce((sum: number, inv: any) => sum + Number(firstOf(inv, ["grandTotal", "totalRevenue", "totalAmount"]) || 0), 0);
+  const decided = quotationsList.filter(q => !["DRAFT", ""].includes(String(q.status || "").toUpperCase()));
+  const winRate = decided.length ? Math.round((decided.filter(q => quoteStage(q.status) === "approved").length / decided.length) * 100) : null;
+  const unpaidInvoices = invoicesList.filter((inv: any) => !inv.isSample && inv.status !== "paid").length;
   const toCompactMoney = (n: number) => `฿${n >= 1_000_000 ? (n / 1_000_000).toFixed(1) + "M" : n >= 1_000 ? (n / 1_000).toFixed(0) + "K" : n.toFixed(0)}`;
   const followUps = filteredQuotations
     .filter(q => quoteStage(q.status) === "sent")
@@ -403,8 +411,8 @@ export default function SalesPage() {
               <Target size={16} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">ยอดขายเป้าหมาย</span>
-              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">฿2.4M</span>
+              <span className="text-[11px] font-medium text-white/60 tracking-widest leading-none">ยอดขายเดือนนี้</span>
+              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none" title={toMoney(monthSales)}>{toCompactMoney(monthSales)}</span>
             </div>
           </div>
           <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
@@ -412,8 +420,8 @@ export default function SalesPage() {
               <TrendingUp size={16} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">Win Rate</span>
-              <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none">68%</span>
+              <span className="text-[11px] font-medium text-white/60 tracking-widest leading-none">อัตราปิดการขาย</span>
+              <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none" title="ใบเสนอราคาที่อนุมัติ ÷ ใบเสนอราคาที่ส่งแล้วทั้งหมด">{winRate === null ? "-" : `${winRate}%`}</span>
             </div>
           </div>
           <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-white/20 hover:bg-white/[0.03]">
@@ -421,15 +429,15 @@ export default function SalesPage() {
               <MessageSquare size={16} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">กิจกรรมวันนี้</span>
-              <span className="text-[17px] font-bold text-white mt-0.5 mono-numbers leading-none">12</span>
+              <span className="text-[11px] font-medium text-white/60 tracking-widest leading-none">ใบแจ้งหนี้ค้างชำระ</span>
+              <span className="text-[17px] font-bold text-white mt-0.5 mono-numbers leading-none">{unpaidInvoices} ฉบับ</span>
             </div>
           </div>
         </div>
       </header>
 
       {/* Tab Navigation (Stepper) & Actions */}
-      <section className="px-6 h-[56px] bg-black/10 border-b border-white/5 flex items-center justify-between shrink-0">
+      <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
         <PillTabs
           tabs={tabs}
           activeTab={activeTab}

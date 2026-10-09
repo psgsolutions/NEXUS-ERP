@@ -119,7 +119,24 @@ export default function ProcurementPage() {
       approval: PO_STATUS_LABEL[st],
     };
   });
+  // ตัวเลขหัวหน้า (ข้อมูลจริง): ยอดสั่งซื้อเดือนนี้, ใบสั่งซื้อรอรับสินค้า, เอกสารรออนุมัติ
+  const thisMonth = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 7);
+  const poMonthTotal = initialPOs
+    .filter((po: any) => po.normalizedStatus !== "CANCELLED" && !po.isSample && toDay(po.poDate || po.orderDate || po.createdAt).startsWith(thisMonth))
+    .reduce((sum: number, po: any) => sum + po.totalAmount, 0);
+  const poAwaitingReceipt = initialPOs.filter((po: any) => ["APPROVED", "PARTIAL_RECEIVED"].includes(po.normalizedStatus)).length;
+  const pendingApprovals = initialPOs.filter((po: any) => po.normalizedStatus === "PENDING_APPROVAL").length + initialPRs.filter((pr: any) => pr.status === "pending").length;
+  const compactTHB = (n: number) => `฿${n >= 1_000_000 ? (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M" : n >= 1_000 ? (n / 1_000).toFixed(0) + "K" : n.toFixed(0)}`;
   const [expensesList, setExpensesList] = useState<any[]>([]);
+  const yearAgo = new Date(Date.now() - 365 * 86400e3).toISOString().slice(0, 10);
+  const topSuppliers = Object.entries(initialPOs
+    .filter((po: any) => po.normalizedStatus !== "CANCELLED" && !po.isSample && toDay(po.poDate || po.orderDate || po.createdAt) >= yearAgo)
+    .reduce((m: Record<string, number>, po: any) => { m[po.vendor] = (m[po.vendor] || 0) + po.totalAmount; return m; }, {}))
+    .sort((x, y) => y[1] - x[1]).slice(0, 5);
+  const topPayables = Object.entries(expensesList
+    .filter((e: any) => !e.isSample && e.isDeleted !== true && !String(e.status || "").startsWith("Paid"))
+    .reduce((m: Record<string, number>, e: any) => { const k = e.supplierName || e.vendor || e.employeeName || "-"; m[k] = (m[k] || 0) + Number(e.balance ?? e.totalAmount ?? 0); return m; }, {}))
+    .filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]).slice(0, 5);
   const [whtList, setWhtList] = useState<any[]>([]);
 
   React.useEffect(() => {
@@ -217,8 +234,8 @@ export default function ProcurementPage() {
               <ShoppingBag size={16} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">ยอดสั่งซื้อเดือนนี้</span>
-              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">฿1.8M</span>
+              <span className="text-sm font-medium text-white/60 tracking-widest leading-none">ยอดสั่งซื้อเดือนนี้</span>
+              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none" title={`฿${poMonthTotal.toLocaleString("th-TH", { minimumFractionDigits: 2 })}`}>{compactTHB(poMonthTotal)}</span>
             </div>
           </div>
           <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
@@ -226,8 +243,8 @@ export default function ProcurementPage() {
               <Clock size={16} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">Avg. Lead Time</span>
-              <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none">4.2 Days</span>
+              <span className="text-sm font-medium text-white/60 tracking-widest leading-none">รอรับสินค้า</span>
+              <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none">{poAwaitingReceipt} ใบ</span>
             </div>
           </div>
           <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-warning/30 hover:bg-white/[0.03]">
@@ -235,15 +252,15 @@ export default function ProcurementPage() {
               <AlertCircle size={16} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">รออนุมัติพิเศษ</span>
-              <span className="text-[17px] font-bold text-warning mt-0.5 mono-numbers leading-none">2 ฉบับ</span>
+              <span className="text-sm font-medium text-white/60 tracking-widest leading-none">รออนุมัติ</span>
+              <span className="text-[17px] font-bold text-warning mt-0.5 mono-numbers leading-none">{pendingApprovals} ฉบับ</span>
             </div>
           </div>
         </div>
       </header>
 
       {/* Tab Navigation & Actions */}
-      <section className="px-6 h-[56px] bg-black/10 border-b border-white/5 flex items-center justify-between shrink-0">
+      <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
         <PillTabs
           tabs={tabs}
           activeTab={activeTab}
@@ -406,25 +423,25 @@ export default function ProcurementPage() {
         {/* Right Sidebar Status */}
         <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-7 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
            <GlassCard accentColor="blue" className="p-5">
-              <h4 className="text-xs font-bold text-nexus-teal uppercase tracking-widest mb-4 flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-[10px] text-nexus-teal font-mono font-bold">01</span>
-                ดัชนีชี้วัดประสิทธิภาพคู่ค้า
-              </h4>
-              <div className="space-y-3">
-                 <PerformanceItem label="Cisco Thailand" score={98} />
-                 <PerformanceItem label="Aruba Solutions" score={85} />
-                 <PerformanceItem label="Local Vendor A" score={42} />
+              <h4 className="text-xs font-bold text-nexus-teal tracking-widest mb-4">ผู้จำหน่ายที่สั่งซื้อมากที่สุด (12 เดือน)</h4>
+              <div className="space-y-2.5">
+                 {topSuppliers.length === 0 && <p className="text-[13px] text-white/40">ยังไม่มีใบสั่งซื้อ</p>}
+                 {topSuppliers.map(([name, total]) => (
+                   <div key={name} className="space-y-1">
+                     <div className="flex justify-between gap-2 text-[13px]"><span className="text-white/80 truncate">{name}</span><span className="font-mono text-white shrink-0">{compactTHB(total)}</span></div>
+                     <div className="h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-nexus-teal" style={{ width: `${Math.round((total / topSuppliers[0][1]) * 100)}%` }} /></div>
+                   </div>
+                 ))}
               </div>
            </GlassCard>
 
            <GlassCard accentColor="purple" className="p-5">
-              <h4 className="text-xs font-bold text-white/70 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-[10px] text-purple-400 font-mono font-bold">02</span>
-                แนวโน้มราคาตลาด
-              </h4>
-              <div className="space-y-3">
-                 <PriceTrendItem item="CAT6 Cable 305m" change="-2.4%" trend="down" />
-                 <PriceTrendItem item="Core Switch 24P" change="+5.1%" trend="up" />
+              <h4 className="text-xs font-bold text-white/70 tracking-widest mb-4">ยอดค้างจ่ายผู้จำหน่าย</h4>
+              <div className="space-y-2">
+                 {topPayables.length === 0 && <p className="text-[13px] text-white/40">ไม่มียอดค้างจ่าย</p>}
+                 {topPayables.map(([name, total]) => (
+                   <div key={name} className="flex justify-between gap-2 text-[13px]"><span className="text-white/70 truncate">{name}</span><span className="font-mono text-warning shrink-0">{compactTHB(total)}</span></div>
+                 ))}
               </div>
            </GlassCard>
         </div>
@@ -612,33 +629,4 @@ function WHTRow({ id, expenseId, expRef, vendor, baseAmount, taxAmount, status, 
   );
 }
 
-function PerformanceItem({ label, score }: { label: string, score: number }) {
-  return (
-    <div className="space-y-2">
-       <div className="flex justify-between items-center text-sm font-medium uppercase tracking-widest">
-          <span className="text-white/60">{label}</span>
-          <span className={cn("text-white/80", score < 50 ? "text-danger" : "text-nexus-teal")}>{score}%</span>
-       </div>
-       <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-          <div className={cn("h-full", score < 50 ? "bg-danger" : "bg-nexus-teal")} style={{ width: score + "%" }} />
-       </div>
-    </div>
-  );
-}
 
-function PriceTrendItem({ item, change, trend }: { item: string, change: string, trend: "up" | "down" }) {
-  return (
-    <div className="flex items-center justify-between p-4 rounded-lg bg-white/[0.02] border border-white/5 group hover:bg-white/[0.05] transition-all">
-       <div className="flex items-center gap-3">
-          <div className={cn(
-            "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
-            trend === "down" ? " text-nexus-teal" : "bg-danger/10 text-danger"
-          )}>
-             {trend === "down" ? <TrendingDown size={14} /> : <TrendingDown size={14} className="rotate-180" />}
-          </div>
-          <span className="text-xs font-bold text-white">{item}</span>
-       </div>
-       <span className={cn("text-xs font-bold", trend === "down" ? "text-nexus-teal" : "text-danger")}>{change}</span>
-    </div>
-  );
-}

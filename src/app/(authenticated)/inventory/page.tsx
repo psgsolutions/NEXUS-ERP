@@ -58,6 +58,7 @@ import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase-client";
 import { collection, query, where, onSnapshot, orderBy, limit, doc, setDoc } from "firebase/firestore";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { toMs as toSerialMs, warrantyState } from "@/lib/serials";
 import { saveToFirestore } from "@/lib/firebaseUtils";
 import { auditService } from "@/services/audit.service";
 
@@ -415,11 +416,22 @@ export default function InventoryPage() {
 
   const { data: dbKits, loading: kitsLoading } = useRealtimeCollection<any>('kits');
   const { data: dbAssets, loading: assetsLoading } = useRealtimeCollection<any>('assets');
-  const { data: dbSerials, loading: serialsLoading } = useRealtimeCollection<any>('serials');
+  // หมายเลขเครื่องจริง: companies/{c}/serial_numbers (อัปเดตจากการรับ/เบิกสินค้า)
+  const { data: rawSerials, loading: serialsLoading } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/serial_numbers` : '', [], false);
 
   const kits = dbKits;
   const assets = dbAssets;
-  const serials = dbSerials;
+  const serials = rawSerials.map((s: any) => {
+    const prod = products.find((p: any) => p.id === s.productId);
+    const end = toSerialMs(s.warrantyEndDate);
+    return {
+      ...s,
+      sn: s.sn || s.id,
+      name: prod?.name || s.productId || "-",
+      location: s.lastLocation || s.location || "-",
+      expiry: end ? new Date(end).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" }) : "-",
+    };
+  });
 
   const filteredKits = kits.filter((k: any) =>
     (k.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -518,7 +530,7 @@ export default function InventoryPage() {
       </header>
 
       {/* Tab Navigation and Toolbars */}
-      <section className="px-6 h-[56px] bg-black/10 border-b border-white/5 flex items-center justify-between shrink-0">
+      <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
         <PillTabs 
           tabs={[
             { id: "items", label: "รายการพัสดุ", icon: <Package size={14} /> },
@@ -541,7 +553,7 @@ export default function InventoryPage() {
         />
         
         {activeTab !== "layout" && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <PillButton 
               variant="confirm"
               className="gap-1.5 shadow-neon-blue"
@@ -1035,7 +1047,7 @@ export default function InventoryPage() {
 
                       <div className="p-4 rounded-xl  border border-nexus-blue/10 space-y-2">
                         <span className="text-sm font-medium text-white/30 uppercase tracking-widest block">มูลค่าประเมินสินทรัพย์</span>
-                        <span className="text-2xl font-medium text-white mono-numbers">฿{selectedAsset.value.toLocaleString()}</span>
+                        <span className="text-2xl font-medium text-white mono-numbers">฿{(Number(selectedAsset.value) || 0).toLocaleString("th-TH")}</span>
                       </div>
 
                       <div className="space-y-3">
@@ -1063,11 +1075,11 @@ export default function InventoryPage() {
                     <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 text-xs font-medium">
                       <div className="flex justify-between items-center">
                         <span className="text-white/40">มูลค่าสินทรัพย์ถาวรสุทธิ</span>
-                        <span className="text-white font-medium mono-numbers">฿900,000</span>
+                        <span className="text-white font-medium mono-numbers">฿{assets.reduce((sum: number, a: any) => sum + (Number(a.value) || 0), 0).toLocaleString("th-TH")}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-white/40">จำนวนสินทรัพย์ในคลัง</span>
-                        <span className="text-white font-medium">5 รายการ</span>
+                        <span className="text-white font-medium">{assets.length} รายการ</span>
                       </div>
                     </div>
                   </GlassCard>
@@ -1095,8 +1107,8 @@ export default function InventoryPage() {
 
                       <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-2 text-center">
                         <span className="text-sm font-medium text-white/30 uppercase tracking-widest block">สถานะประกัน</span>
-                        <span className="text-xs font-medium text-nexus-teal uppercase tracking-widest flex items-center justify-center gap-1">
-                          <ShieldCheck size={14} /> ACTIVE / อยู่ในระยะประกัน
+                        <span className={cn("text-xs font-medium tracking-widest flex items-center justify-center gap-1", warrantyState(selectedSerial).tone)}>
+                          <ShieldCheck size={14} /> {warrantyState(selectedSerial).label}
                         </span>
                       </div>
 
@@ -1108,8 +1120,8 @@ export default function InventoryPage() {
                       </div>
 
                       <div className="pt-4 border-t border-white/5 space-y-2">
-                        <PillButton className="w-full text-xs shadow-neon-teal">
-                          ดำเนินการเคลมประกัน
+                        <PillButton className="w-full text-xs shadow-neon-teal" onClick={() => router.push(`/inventory/serials/${encodeURIComponent(selectedSerial.sn)}`)}>
+                          ดูประวัติเครื่อง
                         </PillButton>
                       </div>
                     </div>
@@ -1122,18 +1134,12 @@ export default function InventoryPage() {
                     </div>
 
                     <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 text-xs font-medium">
-                      <div className="flex justify-between items-center">
-                        <span className="text-white/40">พร้อมใช้งาน</span>
-                        <span className="text-nexus-teal font-medium">2 EA</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-white/40">ถูกจองติดตั้ง</span>
-                        <span className="text-warning font-medium">1 EA</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-white/40">ส่ง RMA</span>
-                        <span className="text-danger font-medium">1 EA</span>
-                      </div>
+                      {([["พร้อมใช้งาน", "available", "text-nexus-teal"], ["ติดตั้ง/ส่งมอบแล้ว", "deployed", "text-warning"], ["ส่ง RMA", "rma", "text-danger"]] as const).map(([label, key, tone]) => (
+                        <div key={key} className="flex justify-between items-center">
+                          <span className="text-white/40">{label}</span>
+                          <span className={cn(tone, "font-medium")}>{serials.filter((x: any) => (x.status || "available") === key).length} เครื่อง</span>
+                        </div>
+                      ))}
                     </div>
                   </GlassCard>
                 )

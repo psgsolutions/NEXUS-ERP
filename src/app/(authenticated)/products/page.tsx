@@ -71,7 +71,7 @@ export default function ProductsPage() {
       </header>
 
       {/* Tab Navigation */}
-      <section className="px-6 h-[56px] bg-black/10 border-b border-white/5 flex items-center justify-between shrink-0">
+      <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
         <PillTabs 
           tabs={tabs} 
           activeTab={activeTab} 

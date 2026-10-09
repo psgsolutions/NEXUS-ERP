@@ -461,12 +461,12 @@ export default function SalesPage() {
 
       {/* Tab Navigation (Stepper) & Actions */}
       <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
-        <PillTabs
+        <PillTabs className="flex-1 min-w-[min(100%,520px)]"
           tabs={tabs}
           activeTab={activeTab}
           onTabChange={(id: any) => setActiveTab(id)}
         />
-        <div className="flex gap-3 shrink-0">
+        <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
           {activeTab === "crm" && (
             <PillButton variant="primary" onClick={() => { setSelectedItem(null); setSelectedCustomer(null); router.push("/customers/new"); }} className="h-8 px-5 shadow-neon-teal">
               <Plus size={14} className="mr-1.5" />

@@ -163,38 +163,36 @@ export default function ProjectsPage() {
       </header>
 
       <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
-        <PillTabs tabs={tabs} activeTab={activeTab} onTabChange={(id: any) => setActiveTab(id)} />
+        <PillTabs className="flex-1 min-w-[min(100%,520px)]" tabs={tabs} activeTab={activeTab} onTabChange={(id: any) => setActiveTab(id)} />
+        <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
+          {activeTab === "list" && (
+            <PillButton variant="primary" onClick={() => router.push("/projects/new")} className="h-8 px-5 shadow-neon-teal">
+              <Plus size={14} className="mr-1.5" /> เริ่มโครงการใหม่
+            </PillButton>
+          )}
+          {activeTab === "planning" && (
+            <PillButton variant="primary" onClick={() => router.push("/projects/milestones/new")} className="h-8 px-5 shadow-neon-teal">
+              <Target size={14} className="mr-1.5" /> จัดการงวดงาน
+            </PillButton>
+          )}
+          {activeTab === "report" && (
+            <PillButton variant="primary" onClick={() => router.push("/service/work-orders/new")} className="h-8 px-5 shadow-neon-teal">
+              <FileText size={14} className="mr-1.5" /> สร้างใบสั่งงาน
+            </PillButton>
+          )}
+          {activeTab === "contractors" && (
+            <PillButton variant="primary" onClick={() => router.push("/procurement/suppliers/new")} className="h-8 px-5 shadow-neon-teal">
+              <Plus size={14} className="mr-1.5" /> เพิ่มทีมช่าง
+            </PillButton>
+          )}
+        </div>
       </section>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         <div className="p-5 max-w-[1800px] mx-auto">
           <div className="flex flex-col xl:flex-row items-start gap-4">
             <div className="flex-1 min-w-0 w-full space-y-3">
-              <div className="flex items-center gap-3">
-                <NexusSearchInput placeholder={searchPlaceholder[activeTab]} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} kbd="F" className="flex-1 min-w-0" />
-                <div className="flex gap-3 shrink-0">
-                  {activeTab === "list" && (
-                    <PillButton variant="primary" onClick={() => router.push("/projects/new")} className="h-8 px-5 shadow-neon-teal">
-                      <Plus size={14} className="mr-1.5" /> เริ่มโครงการใหม่
-                    </PillButton>
-                  )}
-                  {activeTab === "planning" && (
-                    <PillButton variant="primary" onClick={() => router.push("/projects/milestones/new")} className="h-8 px-5 shadow-neon-teal">
-                      <Target size={14} className="mr-1.5" /> จัดการงวดงาน
-                    </PillButton>
-                  )}
-                  {activeTab === "report" && (
-                    <PillButton variant="primary" onClick={() => router.push("/service/work-orders/new")} className="h-8 px-5 shadow-neon-teal">
-                      <FileText size={14} className="mr-1.5" /> สร้างใบสั่งงาน
-                    </PillButton>
-                  )}
-                  {activeTab === "contractors" && (
-                    <PillButton variant="primary" onClick={() => router.push("/procurement/suppliers/new")} className="h-8 px-5 shadow-neon-teal">
-                      <Plus size={14} className="mr-1.5" /> เพิ่มทีมช่าง
-                    </PillButton>
-                  )}
-                </div>
-              </div>
+              <NexusSearchInput placeholder={searchPlaceholder[activeTab]} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} kbd="F" />
 
               <GlassCard accentColor="teal" className="p-2 min-h-[560px]">
                 {activeTab === "list" && (

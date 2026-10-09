@@ -93,7 +93,7 @@ export default function SupportPage() {
 
       {/* Tab Navigation */}
       <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
-        <PillTabs 
+        <PillTabs className="flex-1 min-w-[min(100%,520px)]" 
           tabs={[
              { id: "tickets", label: "รายการแจ้งซ่อม", icon: <MessageSquare size={14} /> },
              { id: "pm", label: "การซ่อมบำรุงเชิงป้องกัน", icon: <Calendar size={14} /> },

@@ -531,7 +531,7 @@ export default function InventoryPage() {
 
       {/* Tab Navigation and Toolbars */}
       <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
-        <PillTabs 
+        <PillTabs className="flex-1 min-w-[min(100%,520px)]" 
           tabs={[
             { id: "items", label: "รายการพัสดุ", icon: <Package size={14} /> },
             { id: "assets", label: "ทะเบียนสินทรัพย์ถาวร", icon: <Box size={14} /> },
@@ -553,7 +553,7 @@ export default function InventoryPage() {
         />
         
         {activeTab !== "layout" && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
             <PillButton 
               variant="confirm"
               className="gap-1.5 shadow-neon-blue"

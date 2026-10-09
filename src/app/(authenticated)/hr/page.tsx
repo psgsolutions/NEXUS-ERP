@@ -92,18 +92,18 @@ export default function HRPage() {
         </div>
       </header>
 
-      <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex items-center shrink-0">
-        <PillTabs tabs={tabs} activeTab={activeTab} onTabChange={(id: any) => { setActiveTab(id); setSearchQuery(""); }} />
+      <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <PillTabs className="flex-1 min-w-[min(100%,520px)]" tabs={tabs} activeTab={activeTab} onTabChange={(id: any) => { setActiveTab(id); setSearchQuery(""); }} />
+        <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
+          <PillButton variant="primary" onClick={() => router.push(action[activeTab].href)} className="h-8 px-5 shadow-neon-teal">
+            <Plus size={14} className="mr-1.5" /> {action[activeTab].label}
+          </PillButton>
+        </div>
       </section>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         <div className="p-5 max-w-[1800px] mx-auto space-y-3">
-          <div className="flex items-center gap-3">
-            <NexusSearchInput placeholder="พิมพ์เพื่อค้นหา..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} kbd="F" className="flex-1 min-w-0" />
-            <PillButton variant="primary" onClick={() => router.push(action[activeTab].href)} className="h-8 px-5 shadow-neon-teal shrink-0">
-              <Plus size={14} className="mr-1.5" /> {action[activeTab].label}
-            </PillButton>
-          </div>
+          <NexusSearchInput placeholder="พิมพ์เพื่อค้นหา..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} kbd="F" />
 
           <GlassCard accentColor="teal" className="p-2 min-h-[560px]">
             {activeTab === "profiles" && (

@@ -48,6 +48,8 @@ export async function POST(request: Request) {
       if (action === "approve" || action === "reject") {
         need(status === "Pending Approval", "โครงการไม่ได้อยู่ในสถานะรออนุมัติ");
         const step = Number(cur.currentApprovalStep) || 1;
+        // นโยบายบริษัท (ยืนยัน 2026-10-09): คนเดียวอนุมัติหลายขั้นได้ ตรวจเฉพาะบทบาทที่มีสิทธิ์ในขั้นนั้น
+        // ไม่ตรวจว่าเคยอนุมัติขั้นก่อนหน้าแล้วหรือไม่
         need(canApproveStep(apiUser.role, step), `บทบาทของคุณอนุมัติขั้นที่ ${step} ไม่ได้`, 403);
         if (action === "reject") need(comment.length > 0, "กรุณาระบุเหตุผลที่ไม่อนุมัติ", 400);
         const approvals = (Array.isArray(cur.approvals) ? cur.approvals : APPROVAL_STEPS).map((a: any) => ({ ...a }));

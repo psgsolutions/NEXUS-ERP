@@ -1,540 +1,132 @@
-// @ts-nocheck
 "use client";
 
-import { useRouter } from 'next/navigation';
-import React, { useState, useEffect, useMemo } from "react";
-import {
-  Briefcase,
-  Search,
-  Plus,
-  Calendar,
-  Users,
-  BarChart3,
-  ClipboardList,
-  Target,
-  DollarSign,
-  Sparkles,
-  Clock,
-  ShieldCheck,
-  ChevronRight,
-  TrendingUp,
-  Activity,
-  FileText,
-  X,
-  Filter,
-  Trash2,
-  Settings,
-  Zap,
-  TrendingDown,
-  AlertCircle,
-  Package,
-  Star,
-  Phone,
-  Wrench
-} from "lucide-react";
-import NexusPageLayout from "@/components/layout/NexusPageLayout";
-import { useCompanyProjects } from "@/hooks/useCompanyProjects";
-import { OPEN_STATUSES, PROJECT_STATUS_BADGE, PROJECT_STATUS_TH, normalizeProjectStatus } from "@/lib/project-status";
-import { compactBaht } from "@/lib/dashboard-metrics";
-import {
-  PillButton,
-  PillInput,
-  PillSelect,
-  MasterMetricCard,
-  cn,
-  Modal,
-  Toast,
-  NexusTable,
-  NexusTableRow,
-  NexusTableCell,
-  StatusBadge,
-  PillTabs,
-  GlassCard,
-  NexusDataField,
-  NexusSearchInput
-} from "@/components/ui/Base";
-import { GanttChart } from "@/components/projects/GanttChart";
-import { ProfitForecaster } from "@/components/projects/ProfitForecaster";
-import { QuotationModal } from "@/components/commerce/QuotationModal";
-import { NumberStepper } from "@/components/ui/NumberStepper";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Activity, BarChart3, Briefcase, ClipboardList, Clock, DollarSign, FileText, Phone, Plus, Target, Users, Wrench } from "lucide-react";
+import {
+  GlassCard, NexusSearchInput, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillTabs, StatusBadge, cn,
+} from "@/components/ui/Base";
+import { GanttChart, type GanttItem } from "@/components/projects/GanttChart";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase-client";
-import { doc, setDoc, collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
-import { generateStockPilotId } from "@/lib/utils";
-import { KitEditor } from "@/components/projects/KitEditor";
-import { ContractorModal } from "@/components/projects/ContractorModal";
+import { useCompanyProjects } from "@/hooks/useCompanyProjects";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { OPEN_STATUSES, PROJECT_STATUS_BADGE, PROJECT_STATUS_TH, normalizeProjectStatus, type ProjectStatus } from "@/lib/project-status";
+import { milestoneStatus } from "@/lib/project-milestones";
+import { compactBaht } from "@/lib/dashboard-metrics";
 
+type Tab = "list" | "planning" | "report" | "costing" | "contractors";
 
-const WAREHOUSE_PRODUCTS = [
-  { sku: "SKU-LED-40212", name: "LED Panel P2.5 Indoor Cabinet", unit: "ชิ้น", cost: 45000, price: 65000, qty_on_hand: 120 },
-  { sku: "SKU-LED-40400", name: "LED Panel P3.9 Outdoor Waterproof", unit: "ชิ้น", cost: 55000, price: 78000, qty_on_hand: 80 },
-  { sku: "SKU-SW-9200", name: "Cisco Catalyst 9200 24-Port Switch", unit: "เครื่อง", cost: 85000, price: 120000, qty_on_hand: 12 },
-  { sku: "SKU-ARU-0992", name: "Aruba AP-505 Enterprise Access Point", unit: "เครื่อง", cost: 12000, price: 18000, qty_on_hand: 45 },
-  { sku: "SKU-CAB-006", name: "CAT6 SFTP Network Cable (305m Box)", unit: "กล่อง", cost: 3500, price: 5500, qty_on_hand: 50 },
-  { sku: "SKU-PWR-ラック", name: "PDU Rack Power Strip 8-Outlets", unit: "ชุด", cost: 1800, price: 2900, qty_on_hand: 30 },
-  { sku: "SKU-FIB-10G", name: "Fiber Optic Patch Cord OM3 LC-LC 3m", unit: "เส้น", cost: 450, price: 850, qty_on_hand: 150 }
-];
-
-const PRICING_HISTORY: Record<string, Record<string, number>> = {
-  "CUS-004": { // QSNCC
-    "SKU-LED-40212": 63000,
-    "SKU-SW-9200": 115000,
-    "SKU-CAB-006": 5200
-  },
-  "CUS-001": { // Taksin Hospital
-    "SKU-LED-40212": 62000,
-    "SKU-SW-9200": 118000
-  },
-  "CUS-002": { // PSG Solutions
-    "SKU-LED-40212": 60000,
-    "SKU-CAB-006": 4800
-  }
+const baht = (n: any) => (Number(n) || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const toMs = (v: any) => (!v ? 0 : v.seconds ? v.seconds * 1000 : typeof v.toMillis === "function" ? v.toMillis() : new Date(v).getTime() || 0);
+const thDate = (v: any) => { const t = toMs(v); return t ? new Date(t).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" }) : "-"; };
+const projectName = (p: any) => String(p?.projectName || p?.title || p?.name || "โครงการไม่มีชื่อ");
+const WO_STATUS: Record<string, { label: string; badge: "active" | "pending" | "warning" | "inactive" }> = {
+  ASSIGNED: { label: "รอเริ่มงาน", badge: "pending" },
+  IN_PROGRESS: { label: "กำลังทำงาน", badge: "warning" },
+  COMPLETED: { label: "เซ็นรับงานแล้ว", badge: "active" },
 };
-
-
-const MOCK_PROJECTS = [
-  { id: 'PRJ-2606-001', name: 'ระบบเครือข่ายไร้สาย (Wi-Fi 6) อาคาร A', customer: 'โรงพยาบาลตากสิน', value: 1250000, progress: 45, status: 'Active', startDate: '2026-06-01', endDate: '2026-08-30' },
-  { id: 'PRJ-2606-002', name: 'ติดตั้งระบบ CCTV และ Access Control', customer: 'ศูนย์ประชุมแห่งชาติ', value: 3400000, progress: 15, status: 'Active', startDate: '2026-06-15', endDate: '2026-11-30' }
-];
-
-
-type ProjectSubModule = "list" | "planning" | "report" | "costing";
 
 export default function ProjectsPage() {
   const router = useRouter();
-  const { user, companyId } = useAuth();
-  const [activeTab, setActiveTab] = useState<ProjectSubModule>("list");
+  const { companyId } = useAuth();
+  const [activeTab, setActiveTab] = useState<Tab>("list");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeModal, setActiveModal] = useState<string | null>(null);
-  const [modalActiveTab, setModalActiveTab] = useState("basic");
-  const [toast, setToast] = useState({ message: "", isVisible: false });
 
-  // Quotation Integration States
-
-  const [quotationInitialData, setQuotationInitialData] = useState<any>(null);
-
-  // Kit Editor States
-
-  const [kitEditorInitialData, setKitEditorInitialData] = useState<any>(null);
-  const [dbProducts, setDbProducts] = useState<any[]>([]);
-
-  // Contractor States
-
-  const [selectedContractor, setSelectedContractor] = useState<any>(null);
-  const [dbContractors, setDbContractors] = useState<any[]>([]);
-  useEffect(() => {
-    if (!companyId) return;
-
-    const q = query(
-      collection(db, "products"),
-      where("companyId", "==", companyId),
-      where("isDeleted", "==", false),
-      orderBy("updatedAt", "desc")
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items: any[] = [];
-      snapshot.forEach((doc) => {
-        items.push({ id: doc.id, ...doc.data() });
-      });
-      setDbProducts(items);
-    });
-
-    return () => unsubscribe();
-  }, [companyId]);
-
-  useEffect(() => {
-    if (!companyId) return;
-
-    const qc = query(
-      collection(db, "contractors"),
-      where("companyId", "==", companyId),
-      where("isActive", "==", true),
-      orderBy("updatedAt", "desc")
-    );
-
-    const unsubscribeCont = onSnapshot(qc, (snapshot) => {
-      const items: any[] = [];
-      snapshot.forEach((doc) => {
-        items.push({ id: doc.id, ...doc.data() });
-      });
-      setDbContractors(items);
-    });
-
-    return () => unsubscribeCont();
-  }, [companyId]);
-
-  // โครงการจริงของบริษัท (ที่เก็บหลัก + รุ่นเก่าที่ root ไม่นับซ้ำ)
   const { data: dbProjects } = useCompanyProjects();
+  const { data: workOrders } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/work_orders` : "");
+  const { data: allContractors } = useRealtimeCollection<any>("contractors");
 
-  // Active search ID for live product suggestions
-  const [activeSearchId, setActiveSearchId] = useState<number | null>(null);
+  const projects = useMemo(() => dbProjects
+    .filter((p: any) => p.isDeleted !== true)
+    .map((p: any) => ({ ...p, _status: normalizeProjectStatus(p.status) }))
+    .sort((a: any, b: any) => toMs(b.createdAt) - toMs(a.createdAt)), [dbProjects]);
+  const openProjects = useMemo(() => projects.filter((p: any) => OPEN_STATUSES.includes(p._status)), [projects]);
 
-  // Search query for Available Catalog items inside the split view
-  const [catalogSearchQuery, setCatalogSearchQuery] = useState("");
+  const q = searchQuery.trim().toLowerCase();
+  const match = (...vals: any[]) => !q || vals.some((v) => String(v || "").toLowerCase().includes(q));
 
-  // Project Creation States
-  const [projectName, setProjectName] = useState("ติดตั้งระบบ LED Wall - ศูนย์ประชุมหลัก");
-  const [projectCustomer, setProjectCustomer] = useState("CUS-004");
-  const [projectType, setProjectType] = useState("Infrastructure (งานระบบโครงสร้าง)");
-  const [projectPriority, setProjectPriority] = useState("HIGH (เร่งด่วน)");
-  const [projectRef, setProjectRef] = useState("REF-LED-2026");
-  const [startDate, setStartDate] = useState("2026-05-20");
-  const [endDate, setEndDate] = useState("2026-06-15");
-
-  // Custom Equipments List
-  const [projectEquipments, setProjectEquipments] = useState<any[]>([
-    { id: 1, name: "LED Panel P2.5 Indoor Cabinet", sku: "SKU-LED-40212", qty: 24, cost: 45000, price: 65000 },
-    { id: 2, name: "LED Video Processor V1 4K", sku: "SKU-LED-40400", qty: 2, cost: 75000, price: 110000 },
-    { id: 3, name: "CAT6 SFTP Network Cable (305m Box)", sku: "SKU-CAB-006", qty: 5, cost: 3500, price: 5500 }
-  ]);
-
-  // Custom Labors / Expenses List
-  const [projectLabors, setProjectLabors] = useState<any[]>([
-    {
-      id: 1,
-      name: "งานติดตั้งจุดเชื่อมต่อและเดินสาย LAN UTP CAT6",
-      type: "per-point",
-      points: 40,
-      materialSku: "SKU-CAB-006",
-      materialCost: 150,
-      laborCost: 350,
-      price: 750,
-      cost: 20000,
-      totalPrice: 30000
-    },
-    {
-      id: 2,
-      name: "ค่าบริการประกอบและติดตั้งโครงสร้างเหล็ก LED",
-      type: "lump-sum",
-      points: 1,
-      materialSku: "",
-      materialCost: 0,
-      laborCost: 35000,
-      price: 55000,
-      cost: 35000,
-      totalPrice: 55000
-    }
-  ]);
-
-  // Installation Packages Catalog (dynamic)
-  const [installationPackages, setInstallationPackages] = useState<any[]>([
-    {
-      id: "PKG-LED-001",
-      sku: "PKG-LED-SETUP",
-      name: "ชุดประกอบและติดตั้งโครงสร้างเหล็กจอ LED Panel OM3",
-      cost: 35000,
-      price: 55000,
-      qty_on_hand: 5,
-      unit: "ชุด",
-      details: "งานประกอบโครงสร้างพร้อมชุดยึดตู้เหล็ก LED"
-    },
-    {
-      id: "PKG-LAN-40",
-      sku: "PKG-UTP-CAT6",
-      name: "ชุดงานเดินสายแลนพร้อมบล็อกเต้ารับ UTP CAT6 (40 จุด)",
-      cost: 20000,
-      price: 30000,
-      qty_on_hand: 10,
-      unit: "ชุด",
-      details: "รวมสายแลน 5 กล่อง + ค่าแรงเดินสายเข้าหัว 40 จุด"
-    }
-  ]);
-
-  // Strategic Live Catalogs (Database + Mock Merge)
-  const activeWarehouseProducts = useMemo(() => {
-    if (dbProducts.length === 0) return WAREHOUSE_PRODUCTS;
-    return dbProducts.filter(p => p.category_id !== "Kit" && !p.isKit);
-  }, [dbProducts]);
-
-  const activeInstallationPackages = useMemo(() => {
-    const dbKits = dbProducts
-      .filter(p => p.category_id === "Kit" || p.isKit)
-      .map(p => ({
-        id: p.id,
-        sku: p.sku,
-        name: p.name,
-        cost: p.pricing?.costWAC || p.pricing?.avg_cost || 0,
-        price: p.pricing?.priceProject || p.pricing?.pricePOS || 0,
-        qty_on_hand: p.stockStatus?.onHand || 0,
-        unit: p.unit ? p.unit.split(" ")[0] : "ชุด",
-        details: p.description || "ชุดงานติดตั้งพร้อมใช้",
-        items: p.kitItems || [],
-        labor_items: p.kitLabors || []
-      }));
-
-    const combined = [...dbKits, ...installationPackages];
-    const unique = combined.filter((v, i, a) => a.findIndex(t => t.sku === v.sku) === i);
-    return unique;
-  }, [dbProducts, installationPackages]);
-
-  // Sub-tab state for warehouse items vs installation packages picker
-  const [catalogActiveSubTab, setCatalogActiveSubTab] = useState<"warehouse" | "packages">("warehouse");
-
-  // Selection sub-tab: Equipments list vs Labor & Services list
-  const [rightActiveSubTab, setRightActiveSubTab] = useState<"equipment" | "labor">("equipment");
-
-  const initialProjects = [
-    { id: "PRJ-26-001", name: "ติดตั้ง LED Wall - ศูนย์ประชุม", progress: 75, team: "4 คน", deadline: "24 พ.ค.", status: "active" as const },
-    { id: "PRJ-26-002", name: "วางระบบ Network - อาคาร PSG", progress: 100, team: "2 คน", deadline: "15 เม.ย.", status: "completed" as const },
-    { id: "PRJ-26-003", name: "MA Service - Hospital A", progress: 20, team: "1 คน", deadline: "30 มิ.ย.", status: "active" as const },
-  ];
-
-  const initialMilestones = [
-    { id: "1", task: "สรุปแบบติดตั้ง & ผังระบบ", start: "2026-04-01", end: "2026-04-10", progress: 100, status: "completed" as const },
-    { id: "2", task: "จัดส่งอุปกรณ์เข้าหน้างาน", start: "2026-04-11", end: "2026-04-15", progress: 100, status: "completed" as const },
-    { id: "3", task: "ติดตั้งจอ LED Wall (Phase 1)", start: "2026-04-16", end: "2026-04-30", progress: 75, status: "in-progress" as const },
-    { id: "4", task: "ทดสอบระบบและ UAT", start: "2026-05-01", end: "2026-05-10", progress: 0, status: "pending" as const },
-  ];
-
-  const formattedDbProjects = useMemo(() => {
-    return dbProjects
-      .filter((p: any) => p.isDeleted !== true)
-      .map((p: any) => {
-        const st = normalizeProjectStatus(p.status);
-        const end = p.endDate || p.deadline;
-        return {
-          docId: p.id as string,
-          id: String(p.projectId || p.id),
-          name: String(p.projectName || p.title || p.name || "โครงการไม่มีชื่อ"),
-          progress: Math.max(0, Math.min(100, Number(p.progress) || 0)),
-          team: `${(p.resources || p.team || []).length} คน`,
-          deadline: end ? new Date(end).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" }) : "-",
-          statusLabel: PROJECT_STATUS_TH[st],
-          statusBadge: PROJECT_STATUS_BADGE[st],
-          createdMs: p.createdAt?.seconds ? p.createdAt.seconds * 1000 : new Date(p.createdAt || 0).getTime() || 0,
-        };
-      })
-      .sort((a: any, b: any) => b.createdMs - a.createdMs);
-  }, [dbProjects]);
-
-  const combinedProjects = formattedDbProjects;
-
-  // สรุปจากโครงการจริง (เฉพาะที่ยังไม่ปิด/ยกเลิก)
+  // ---- สรุปภาพรวม (เฉพาะโครงการที่ยังไม่ปิด/ยกเลิก) ----
   const projectStats = useMemo(() => {
-    const open = dbProjects.filter((p: any) => p.isDeleted !== true && OPEN_STATUSES.includes(normalizeProjectStatus(p.status)));
-    const running = open.filter((p: any) => normalizeProjectStatus(p.status) === "In Progress");
+    const running = openProjects.filter((p: any) => p._status === "In Progress");
     const people = new Set<string>();
-    open.forEach((p: any) => {
+    openProjects.forEach((p: any) => {
       if (p.projectManagerUid) people.add(p.projectManagerUid);
       (p.teamUids || []).forEach((u: string) => people.add(u));
     });
     const allocated = running.reduce((s: number, p: any) => s + (Number(p.allocatedCost) || 0), 0);
     const actual = running.reduce((s: number, p: any) => s + (Number(p.actualCost) || 0), 0);
-    const today = new Date().toISOString().slice(0, 10);
-    const upcoming = open
-      .filter((p: any) => (p.endDate || "") >= today)
-      .sort((a: any, b: any) => String(a.endDate).localeCompare(String(b.endDate)))
-      .slice(0, 3);
+    const today = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
     return {
-      openCount: open.length,
-      totalValue: open.reduce((s: number, p: any) => s + (Number(p.budget) || 0), 0),
+      openCount: openProjects.length,
+      totalValue: openProjects.reduce((s: number, p: any) => s + (Number(p.budget) || 0), 0),
       people: people.size,
-      pendingCount: open.filter((p: any) => normalizeProjectStatus(p.status) === "Pending Approval").length,
+      pendingCount: openProjects.filter((p: any) => p._status === "Pending Approval").length,
       budgetUse: allocated > 0 ? Math.round((actual / allocated) * 100) : null,
       avgProgress: running.length ? Math.round(running.reduce((s: number, p: any) => s + (Number(p.progress) || 0), 0) / running.length) : null,
-      upcoming,
+      upcoming: openProjects
+        .filter((p: any) => (p.endDate || "") >= today)
+        .sort((a: any, b: any) => String(a.endDate).localeCompare(String(b.endDate)))
+        .slice(0, 3),
     };
-  }, [dbProjects]);
+  }, [openProjects]);
 
-  const filteredProjects = combinedProjects.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // ---- ทะเบียนโครงการ ----
+  const listRows = projects.filter((p: any) => match(projectName(p), p.projectId, p.id, p.customerName));
 
-  const filteredMilestones = initialMilestones.filter(m =>
-    m.task.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // ---- งวดงาน: ทุกงวดของโครงการที่ยังไม่ปิด ----
+  const gantt: GanttItem[] = useMemo(() => openProjects
+    .filter((p: any) => match(projectName(p), p.projectId, p.id))
+    .flatMap((p: any) => (Array.isArray(p.milestones) ? p.milestones : []).map((m: any) => ({
+      id: `${p.id}-${m.id}`,
+      task: m.name,
+      sub: p.projectId || p.id,
+      start: m.startDate,
+      end: m.endDate,
+      progress: Number(m.progress) || 0,
+      status: milestoneStatus(m),
+      href: `/projects/milestones/new?project=${encodeURIComponent(p.id)}`,
+    })))
+    .sort((a: GanttItem, b: GanttItem) => a.start.localeCompare(b.start)),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [openProjects, q]);
+  const projectsWithoutPlan = openProjects.filter((p: any) => !(Array.isArray(p.milestones) && p.milestones.length)).length;
 
-  const showToast = (message: string) => {
-    setToast({ message, isVisible: true });
-  };
+  // ---- รายงานบริการ: ใบสั่งงานช่าง ----
+  const projectByKey = useMemo(() => {
+    const m = new Map<string, any>();
+    projects.forEach((p: any) => { m.set(p.id, p); if (p.projectId) m.set(p.projectId, p); });
+    return m;
+  }, [projects]);
+  const reports = useMemo(() => workOrders
+    .filter((w: any) => w.isDeleted !== true)
+    .map((w: any) => ({ ...w, _project: w.projectId ? projectByKey.get(w.projectId) : null, _status: String(w.status || "").toUpperCase() }))
+    .filter((w: any) => match(w.woCode, w.id, w.customerName, w.technicianName, w._project && projectName(w._project), w.projectId))
+    .sort((a: any, b: any) => toMs(b.completedAt || b.createdAt) - toMs(a.completedAt || a.createdAt)),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [workOrders, projectByKey, q]);
 
-  // Add Equipment item in project modal
-  const addEquipment = () => {
-    setProjectEquipments(prev => [
-      ...prev,
-      { id: Date.now(), name: "ระบุรายการอุปกรณ์...", qty: 1, cost: 0, price: 0 }
-    ]);
-  };
-
-  // Remove Equipment
-  const removeEquipment = (id: number) => {
-    setProjectEquipments(prev => prev.filter(item => item.id !== id));
-  };
-
-  // Update Equipment field
-  const updateEquipment = (id: number, field: string, value: any) => {
-    setProjectEquipments(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
-  };
-
-  // Add Labor
-  const addLabor = () => {
-    setProjectLabors(prev => [
-      ...prev,
-      { id: Date.now(), name: "ระบุรายละเอียดงานบริการ...", type: "lump-sum", points: 1, materialSku: "", materialCost: 0, laborCost: 0, price: 0, cost: 0 }
-    ]);
-  };
-
-  // Remove Labor
-  const removeLabor = (id: number) => {
-    setProjectLabors(prev => prev.filter(item => item.id !== id));
-  };
-
-  // Update Labor
-  const updateLabor = (id: number, field: string, value: any) => {
-    setProjectLabors(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
-  };
-
-  // Save labor item as a re-usable package in catalog
-  const saveLaborAsPackage = async (laborItem: any) => {
-    let finalCost = 0;
-    let finalPrice = 0;
-
-    if (laborItem.type === "per-point") {
-      const matCost = laborItem.materialCost || 0;
-      const labCost = laborItem.laborCost || 0;
-      const pts = laborItem.points || 1;
-      finalCost = (matCost + labCost) * pts;
-      finalPrice = (laborItem.price || 0) * pts;
-    } else {
-      finalCost = laborItem.cost || 0;
-      finalPrice = laborItem.price || 0;
-    }
-
-    const newSku = `PKG-LAB-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    const newPkg = {
-      id: `PKG-${Date.now()}`,
-      sku: newSku,
-      name: `[ชุดงาน] ${laborItem.name}`,
-      cost: finalCost,
-      price: finalPrice,
-      qty_on_hand: 1,
-      unit: "ชุด",
-      details: laborItem.type === "per-point" ? `คิดตามจุด (${laborItem.points} จุด @ ฿${(laborItem.price || 0).toLocaleString()})` : "เหมาจ่ายรวม"
-    };
-
-    setInstallationPackages(prev => [newPkg, ...prev]);
-
-    // Save to Firestore products collection as a "Kit"
-    try {
-      const cid = companyId || "nexus-global-node";
-      const productId = `prod_kit_${Date.now()}`;
-
-      const productData = {
-        productId: productId,
-        sku: newSku,
-        name: `[ชุดงาน] ${laborItem.name}`,
-        description: laborItem.type === "per-point" ? `คิดตามจุด (${laborItem.points} จุด @ ฿${(laborItem.price || 0).toLocaleString()})` : "เหมาจ่ายรวม",
-        category: "ชุดงานติดตั้ง",
-        category_id: "Kit",
-        brand: "NEXUS-KIT",
-        unit: "ชุด",
-        stockStatus: {
-          onHand: 1,
-          reserved: 0,
-          available: 1
-        },
-        currentQty: 1,
-        pricing: {
-          costWAC: finalCost,
-          pricePOS: finalPrice,
-          priceProject: finalPrice
-        },
-        companyId: cid,
-        isDeleted: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        createdBy: user?.uid || "system",
-        updatedBy: user?.uid || "system"
-      };
-
-      await setDoc(doc(db, "products", productId), productData);
-      showToast(`บันทึกชุดงาน "${laborItem.name}" เป็นรายการพัสดุสำเร็จรูป และเพิ่มเป็นชุด Kit ในคลังสินค้าสำเร็จ! 📦`);
-    } catch (err: any) {
-      console.error("Error saving kit to Firestore:", err);
-      showToast(`บันทึกชุดงาน "${laborItem.name}" ในระบบเรียบร้อย แต่ไม่สามารถเชื่อมต่อคลังสินค้า Firestore ได้`);
-    }
-  };
-
-  // Live budget math
-  const budgetSummary = React.useMemo(() => {
-    const equipCost = projectEquipments.reduce((sum, item) => sum + ((item.cost || 0) * (item.qty || 1)), 0);
-    const equipRev = projectEquipments.reduce((sum, item) => sum + ((item.price || 0) * (item.qty || 1)), 0);
-
-    const laborCost = projectLabors.reduce((sum, item) => {
-      if (item.type === "per-point") {
-        const matCost = item.materialCost || 0;
-        const labCost = item.laborCost || 0;
-        const pts = item.points || 1;
-        return sum + ((matCost + labCost) * pts);
-      }
-      return sum + (item.cost || 0);
-    }, 0);
-
-    const laborRev = projectLabors.reduce((sum, item) => {
-      if (item.type === "per-point") {
-        const prc = item.price || 0;
-        const pts = item.points || 1;
-        return sum + (prc * pts);
-      }
-      return sum + (item.price || 0);
-    }, 0);
-
-    const totalCost = equipCost + laborCost;
-    const totalRev = equipRev + laborRev;
-    const grossProfit = totalRev - totalCost;
-    const gpPercent = totalRev > 0 ? Math.round((grossProfit / totalRev) * 100) : 0;
-
-    return { totalCost, totalRev, grossProfit, gpPercent };
-  }, [projectEquipments, projectLabors]);
-
-  // Automated Quotation Export Trigger
-  const handleGenerateQuotation = () => {
-    // Map project equipment and labors to standard quotation items
-    const aggregatedItems = [
-      ...projectEquipments.map(item => ({
-        id: Date.now() + Math.random(),
-        name: `[อุปกรณ์] ${item.name}`,
-        qty: item.qty,
-        unit: "Set",
-        cost: item.cost,
-        price: item.price
-      })),
-      ...projectLabors.map(item => {
-        if (item.type === "per-point") {
-          return {
-            id: Date.now() + Math.random(),
-            name: `[งานบริการ] ${item.name} (${item.points} จุด)`,
-            qty: item.points,
-            unit: "จุด",
-            cost: (item.materialCost || 0) + (item.laborCost || 0),
-            price: item.price
-          };
-        }
-        return {
-          id: Date.now() + Math.random(),
-          name: `[งานบริการ] ${item.name}`,
-          qty: 1,
-          unit: "Lot",
-          cost: item.cost,
-          price: item.price
-        };
-      })
-    ];
-
-    setQuotationInitialData({
-      title: projectName,
-      customer: projectCustomer,
-      items: aggregatedItems
+  // ---- งบประมาณ & กำไร ----
+  const costing = openProjects
+    .filter((p: any) => match(projectName(p), p.projectId, p.id))
+    .map((p: any) => {
+      const value = Number(p.budget) || 0;
+      const planned = Number(p.allocatedCost) || 0;
+      const actual = Number(p.actualCost) || 0;
+      const progress = Number(p.progress) || 0;
+      // ต้นทุนคาดการณ์เมื่อจบงาน: ถ้าใช้งบเร็วกว่าความคืบหน้า ประมาณจากอัตราใช้จริง มิฉะนั้นใช้งบที่วางไว้
+      const forecast = progress > 0 && actual / Math.max(progress, 1) * 100 > planned ? Math.round(actual / progress * 100) : Math.max(planned, actual);
+      const profit = value - forecast;
+      // ยังไม่มีข้อมูลต้นทุน: ไม่แสดงกำไร (จะดูเหมือนกำไร 100%)
+      const known = forecast > 0;
+      return { p, value, planned, actual, progress, forecast, profit: known ? profit : null, margin: known && value > 0 ? Math.round((profit / value) * 1000) / 10 : null, use: planned > 0 ? Math.round((actual / planned) * 100) : null };
     });
 
-    ; // Close project modal
-    router.push("/sales/quotations/new"); // Open QuotationModal automatically!
-    showToast("ดึงข้อมูลอุปกรณ์และงานค่าใช้จ่ายออกใบเสนอราคาสำเร็จ!");
-  };
+  // ---- ผู้รับเหมา ----
+  const contractors = allContractors
+    .filter((c: any) => c.companyId === companyId && c.isActive !== false && c.isDeleted !== true)
+    .filter((c: any) => match(c.name, c.phone, c.category))
+    .sort((a: any, b: any) => String(a.name || "").localeCompare(String(b.name || ""), "th"));
 
   const tabs = [
     { id: "list", label: "โครงการ", icon: <Briefcase size={14} /> },
@@ -543,10 +135,16 @@ export default function ProjectsPage() {
     { id: "costing", label: "งบประมาณ & กำไร", icon: <BarChart3 size={14} /> },
     { id: "contractors", label: "ผู้รับเหมา", icon: <Users size={14} /> },
   ];
+  const searchPlaceholder: Record<Tab, string> = {
+    list: "ค้นหาโครงการ, เลขที่ PRJ หรือลูกค้า...",
+    planning: "ค้นหาโครงการเพื่อดูงวดงาน...",
+    report: "ค้นหาเลขที่ใบงาน, ลูกค้า, ช่าง...",
+    costing: "ค้นหาโครงการ...",
+    contractors: "ค้นหาผู้รับเหมา / ทีมช่าง...",
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
-      {/* Compact Module Header */}
       <header className="px-6 py-2.5 min-h-[60px] border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-black/20 shrink-0">
         <div className="flex items-center gap-3 shrink-0">
           <div className="w-9 h-9 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
@@ -558,369 +156,211 @@ export default function ProjectsPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
-            <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
-              <Activity size={16} />
-            </div>
-            <div className="flex flex-col justify-center">
-              <span className="text-xs font-semibold text-white/60 tracking-wider leading-none">โครงการที่ยังไม่ปิด</span>
-              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">{projectStats.openCount} งาน</span>
-            </div>
-          </div>
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
-            <div className="w-8 h-8 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
-              <DollarSign size={16} />
-            </div>
-            <div className="flex flex-col justify-center">
-              <span className="text-xs font-semibold text-white/60 tracking-wider leading-none">มูลค่าโครงการรวม</span>
-              <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none" title={`฿${projectStats.totalValue.toLocaleString("th-TH")}`}>{compactBaht(projectStats.totalValue)}</span>
-            </div>
-          </div>
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-white/20 hover:bg-white/[0.03]">
-            <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white border border-white/10 shrink-0">
-              <Users size={16} />
-            </div>
-            <div className="flex flex-col justify-center">
-              <span className="text-xs font-semibold text-white/60 tracking-wider leading-none">ทีมงานในโครงการ</span>
-              <span className="text-[17px] font-bold text-white mt-0.5 mono-numbers leading-none">{projectStats.people} คน</span>
-            </div>
-          </div>
+          <HeaderStat icon={<Activity size={16} />} tone="teal" label="โครงการที่ยังไม่ปิด" value={`${projectStats.openCount} งาน`} />
+          <HeaderStat icon={<DollarSign size={16} />} tone="blue" label="มูลค่าโครงการรวม" value={compactBaht(projectStats.totalValue)} title={`฿${projectStats.totalValue.toLocaleString("th-TH")}`} />
+          <HeaderStat icon={<Users size={16} />} tone="white" label="ทีมงานในโครงการ" value={`${projectStats.people} คน`} />
         </div>
       </header>
 
-      {/* Tab Navigation & Actions */}
-      <section className="px-6 h-[56px] bg-black/10 border-b border-white/5 flex items-center justify-between shrink-0">
-        <PillTabs
-          tabs={tabs}
-          activeTab={activeTab}
-          onTabChange={(id: any) => setActiveTab(id)}
-        />
-        <div className="flex gap-3 shrink-0">
-           <PillButton variant="confirm" className="h-8 px-5 shadow-neon-blue" onClick={() => setActiveTab("report")}>
-             <ClipboardList size={14} className="mr-1.5" />
-             รายงานบริการ
-           </PillButton>
-
-           {activeTab === "list" && (
-             <PillButton variant="primary" onClick={() => { setModalActiveTab("basic"); router.push("/projects/new"); }} className="h-8 px-5 shadow-neon-teal">
-               <Plus size={14} className="mr-1.5" />
-               เริ่มโครงการใหม่
-             </PillButton>
-           )}
-           {activeTab === "planning" && (
-             <PillButton variant="primary" onClick={() => router.push("/projects/milestones/new")} className="h-8 px-5 shadow-neon-teal">
-               <Target size={14} className="mr-1.5" />
-               เพิ่มเป้าหมาย
-             </PillButton>
-           )}
-           {activeTab === "report" && (
-             <PillButton variant="primary" onClick={() => router.push("/projects/reports/new")} className="h-8 px-5 shadow-neon-teal">
-               <FileText size={14} className="mr-1.5" />
-               บันทึกงานใหม่
-             </PillButton>
-           )}
-        </div>
+      <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <PillTabs tabs={tabs} activeTab={activeTab} onTabChange={(id: any) => setActiveTab(id)} />
       </section>
 
-      {/* Main Content Scroll Area */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-      <div className="p-5 space-y-3 max-w-[1800px] mx-auto">
-
-      <div className="flex flex-col xl:flex-row items-start gap-4">
-        <div className="flex-1 w-full space-y-10">
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                 <Activity className="text-nexus-teal" size={24} />
-                 <div className="space-y-0.5">
-                    <p className="text-xs font-semibold text-white/60 tracking-wider">สถานะการติดตั้งโครงสร้างพื้นฐาน (เขตกรุงเทพฯ)</p>
-                    <h2 className="text-xl font-bold text-white">ทะเบียนข้อมูล</h2>
-                 </div>
+        <div className="p-5 max-w-[1800px] mx-auto">
+          <div className="flex flex-col xl:flex-row items-start gap-4">
+            <div className="flex-1 min-w-0 w-full space-y-3">
+              <div className="flex items-center gap-3">
+                <NexusSearchInput placeholder={searchPlaceholder[activeTab]} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} kbd="F" className="flex-1 min-w-0" />
+                <div className="flex gap-3 shrink-0">
+                  {activeTab === "list" && (
+                    <PillButton variant="primary" onClick={() => router.push("/projects/new")} className="h-8 px-5 shadow-neon-teal">
+                      <Plus size={14} className="mr-1.5" /> เริ่มโครงการใหม่
+                    </PillButton>
+                  )}
+                  {activeTab === "planning" && (
+                    <PillButton variant="primary" onClick={() => router.push("/projects/milestones/new")} className="h-8 px-5 shadow-neon-teal">
+                      <Target size={14} className="mr-1.5" /> จัดการงวดงาน
+                    </PillButton>
+                  )}
+                  {activeTab === "report" && (
+                    <PillButton variant="primary" onClick={() => router.push("/service/work-orders/new")} className="h-8 px-5 shadow-neon-teal">
+                      <FileText size={14} className="mr-1.5" /> สร้างใบสั่งงาน
+                    </PillButton>
+                  )}
+                  {activeTab === "contractors" && (
+                    <PillButton variant="primary" onClick={() => router.push("/procurement/suppliers/new")} className="h-8 px-5 shadow-neon-teal">
+                      <Plus size={14} className="mr-1.5" /> เพิ่มทีมช่าง
+                    </PillButton>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Tactical Command Bar */}
-            <div className="flex flex-col md:flex-row items-center gap-4 bg-white/[0.01] p-1.5 rounded-full border border-white/5 backdrop-blur-md">
-               <NexusSearchInput
-                 placeholder="ค้นหาโครงการ, เลขที่ PRJ หรือข้อมูลในทะเบียน..."
-                 value={searchQuery}
-                 onChange={(e) => setSearchQuery(e.target.value)}
-                 className="flex-1"
-                 kbd="F"
-               />
-               <div className="flex items-center gap-2 pr-1.5">
-                  <PillButton variant="glass" className="h-8 w-8 p-0 rounded-full border-white/5 hover:border-nexus-teal/30 hover:bg-nexus-teal/5">
-                    <Filter size={16} className="text-white/40" />
-                  </PillButton>
-               </div>
-            </div>
-
-            {/* List / Planning / Report / Costing Content - Conditional Rendering wrapped in standard GlassCard viewport */}
-            <GlassCard accentColor="teal" className="p-0 overflow-hidden min-h-[640px] flex flex-col justify-between">
-              <div className="overflow-x-auto custom-scrollbar flex-1 w-full p-2">
+              <GlassCard accentColor="teal" className="p-2 min-h-[560px]">
                 {activeTab === "list" && (
-                  <div className="animate-in fade-in duration-500">
-                    <NexusTable headers={["รหัสโครงการ", "ชื่อโครงการ", "ความคืบหน้า", "ทีมงาน", "กำหนดการ", "สถานะ"]}>
-                      {filteredProjects.length === 0 && (
-                        <NexusTableRow>
-                          <NexusTableCell colSpan={6} className="text-center py-10 text-white/40">ยังไม่มีโครงการ</NexusTableCell>
+                  <NexusTable headers={["รหัสโครงการ", "ชื่อโครงการ", "ความคืบหน้า", "ทีมงาน", "กำหนดเสร็จ", "สถานะ"]}>
+                    {listRows.length === 0 && <EmptyRow cols={6} text="ยังไม่มีโครงการ" />}
+                    {listRows.map((p: any) => {
+                      const href = `/projects/${encodeURIComponent(p.id)}`;
+                      const progress = Math.max(0, Math.min(100, Number(p.progress) || 0));
+                      return (
+                        <NexusTableRow key={p.id}>
+                          <NexusTableCell><Link href={href} className="font-mono text-[13px] text-nexus-blue font-medium">{p.projectId || p.id}</Link></NexusTableCell>
+                          <NexusTableCell><Link href={href} className="text-[13px] font-bold text-white/80 hover:text-white">{projectName(p)}</Link></NexusTableCell>
+                          <NexusTableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="h-1 w-20 2xl:w-28 bg-white/5 rounded-full overflow-hidden shrink-0"><div className="h-full bg-nexus-teal" style={{ width: `${progress}%` }} /></div>
+                              <span className="text-xs font-mono text-white/75">{progress}%</span>
+                            </div>
+                          </NexusTableCell>
+                          <NexusTableCell className="text-white/60">{(p.resources || p.team || []).length} คน</NexusTableCell>
+                          <NexusTableCell className="text-white/60">{thDate(p.endDate || p.deadline)}</NexusTableCell>
+                          <NexusTableCell><StatusBadge status={PROJECT_STATUS_BADGE[p._status as ProjectStatus]} label={PROJECT_STATUS_TH[p._status as ProjectStatus]} /></NexusTableCell>
                         </NexusTableRow>
-                      )}
-                      {filteredProjects.map(prj => (
-                        <ProjectRow
-                          key={prj.docId}
-                          docId={prj.docId}
-                          id={prj.id}
-                          name={prj.name}
-                          progress={prj.progress}
-                          team={prj.team}
-                          deadline={prj.deadline}
-                          statusLabel={prj.statusLabel}
-                          statusBadge={prj.statusBadge}
-                        />
-                      ))}
-                    </NexusTable>
-                  </div>
+                      );
+                    })}
+                  </NexusTable>
                 )}
 
                 {activeTab === "planning" && (
-                  <div className="animate-in fade-in duration-500 space-y-3">
-                    <GanttChart milestones={filteredMilestones} />
+                  <div className="space-y-2 p-1">
+                    <GanttChart milestones={gantt} />
+                    {projectsWithoutPlan > 0 && (
+                      <p className="text-[12px] text-white/50 px-1">มี {projectsWithoutPlan} โครงการที่ยังไม่ได้แบ่งงวดงาน · <Link href="/projects/milestones/new" className="text-nexus-teal hover:underline">จัดการงวดงาน</Link></p>
+                    )}
                   </div>
                 )}
 
                 {activeTab === "report" && (
-                  <div className="animate-in fade-in duration-500">
-                    <NexusTable headers={["เลขที่ Report", "โครงการ", "ช่างเทคนิค", "วันที่", "สถานะการเซ็น"]}>
-                      <ReportRow id="SR-2604-001" project="Hospital A" tech="Kriangkrai M." date="24/04/2026" status="active" />
-                      <ReportRow id="SR-2604-002" project="Hospital A" tech="Somchai J." date="25/04/2026" status="pending" />
-                    </NexusTable>
-                  </div>
+                  <NexusTable headers={["เลขที่ใบงาน", "ลูกค้า", "โครงการ", "ช่างผู้รับผิดชอบ", "วันนัดหมาย", "ปิดงานเมื่อ", "สถานะ"]}>
+                    {reports.length === 0 && <EmptyRow cols={7} text="ยังไม่มีใบสั่งงาน" />}
+                    {reports.map((w: any) => {
+                      const st = WO_STATUS[w._status] || { label: w.status || "-", badge: "inactive" as const };
+                      return (
+                        <NexusTableRow key={w.id}>
+                          <NexusTableCell className="font-mono text-[13px] text-nexus-teal">{w.woCode || w.id}</NexusTableCell>
+                          <NexusTableCell className="font-bold text-white/80">{w.customerName || "-"}</NexusTableCell>
+                          <NexusTableCell className="text-white/70">
+                            {w._project ? <Link href={`/projects/${encodeURIComponent(w._project.id)}`} className="hover:text-white">{projectName(w._project)}</Link> : (w.projectId || "-")}
+                          </NexusTableCell>
+                          <NexusTableCell className="text-white/70">{w.technicianName || "-"}</NexusTableCell>
+                          <NexusTableCell className="text-white/60">{thDate(w.scheduleDate)}</NexusTableCell>
+                          <NexusTableCell className="text-white/60">{thDate(w.completedAt)}</NexusTableCell>
+                          <NexusTableCell><StatusBadge status={st.badge} label={st.label} /></NexusTableCell>
+                        </NexusTableRow>
+                      );
+                    })}
+                  </NexusTable>
                 )}
 
                 {activeTab === "costing" && (
-                  <div className="animate-in fade-in duration-500">
-                    <ProfitForecaster data={{
-                      budget: 850000,
-                      actualSpend: 620000,
-                      progress: 75,
-                      estimatedTotal: 785000
-                    }} />
-                  </div>
+                  <NexusTable headers={["รหัสโครงการ", "ชื่อโครงการ", "มูลค่าสัญญา", "งบต้นทุน", "ต้นทุนจริง", "ใช้งบ / คืบหน้า %", "กำไรคาดการณ์", "กำไร %"]}>
+                    {costing.length === 0 && <EmptyRow cols={8} text="ไม่มีโครงการที่ยังไม่ปิด" />}
+                    {costing.map((c) => (
+                      <NexusTableRow key={c.p.id}>
+                        <NexusTableCell><Link href={`/projects/${encodeURIComponent(c.p.id)}`} className="font-mono text-[13px] text-nexus-blue">{c.p.projectId || c.p.id}</Link></NexusTableCell>
+                        <NexusTableCell className="font-bold text-white/80">{projectName(c.p)}</NexusTableCell>
+                        <NexusTableCell mono>{baht(c.value)}</NexusTableCell>
+                        <NexusTableCell mono className="text-white/70">{baht(c.planned)}</NexusTableCell>
+                        <NexusTableCell mono className={c.planned > 0 && c.actual > c.planned ? "text-danger" : "text-white"}>{baht(c.actual)}</NexusTableCell>
+                        <NexusTableCell mono className={c.use !== null && c.use > c.progress + 10 ? "text-warning" : "text-white/70"}>{c.use === null ? "-" : c.use} / {c.progress}</NexusTableCell>
+                        <NexusTableCell mono className={c.profit !== null && c.profit < 0 ? "text-danger" : "text-white"} title={c.profit === null ? "ยังไม่มีข้อมูลต้นทุน" : `ต้นทุนคาดการณ์เมื่อจบงาน ฿${baht(c.forecast)}`}>{c.profit === null ? "-" : baht(c.profit)}</NexusTableCell>
+                        <NexusTableCell mono className={c.margin !== null && c.margin < 0 ? "text-danger" : "text-white/80"}>{c.margin === null ? "-" : c.margin.toFixed(1)}</NexusTableCell>
+                      </NexusTableRow>
+                    ))}
+                  </NexusTable>
                 )}
 
                 {activeTab === "contractors" && (
-                  <div className="animate-in fade-in duration-500 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-bold text-white tracking-wider flex items-center gap-2">
-                        <Users size={16} className="text-nexus-blue" />
-                        ทำเนียบผู้รับเหมา และทีมช่างติดตั้ง
-                      </h3>
-                      <PillButton
-                        type="button"
-                        variant="confirm"
-                        onClick={() => {
-                          setSelectedContractor(null);
-                          router.push("/procurement/suppliers/new");
-                        }}
-                      >
-                        <Plus size={14} className="mr-1.5" /> เพิ่มทีมช่างใหม่
-                      </PillButton>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {dbContractors.length === 0 ? (
-                        <div className="col-span-full p-12 text-center text-white/30 border border-white/5 border-dashed rounded-3xl">
-                          ไม่มีข้อมูลผู้รับเหมาในระบบ
-                        </div>
-                      ) : (
-                        dbContractors.map(cont => (
-                          <div
-                            key={cont.id}
-                            onClick={() => {
-                              setSelectedContractor(cont);
-                              router.push("/procurement/suppliers/new");
-                            }}
-                            className="bg-white/[0.02] border border-white/5 p-5 rounded-[2rem] hover:bg-nexus-blue/5 hover:border-nexus-blue/30 transition-all cursor-pointer group"
-                          >
-                            <div className="flex justify-between items-start mb-3">
-                              <div className="p-3 bg-black/40 rounded-2xl border border-white/5 group-hover:border-nexus-blue/30 transition-all">
-                                <Users size={18} className="text-nexus-blue/70" />
-                              </div>
-                              <div className="flex items-center gap-1 bg-black/40 px-2 py-1 rounded-full border border-white/5">
-                                <Star size={10} className="text-warning fill-warning" />
-                                <span className="text-sm font-medium font-mono text-white/80">{cont.rating?.toFixed(1) || "5.0"}</span>
-                              </div>
-                            </div>
-                            <h4 className="text-[13px] font-bold text-white mb-1 truncate">{cont.name}</h4>
-                            <div className="text-xs text-white/60 font-medium mb-4 flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>
-                              พันธมิตรที่พร้อมทำงาน
-                            </div>
-
-                            <div className="space-y-1.5 border-t border-white/5 pt-4">
-                              <div className="flex items-center gap-2 text-xs text-white/60">
-                                <Phone size={12} className="text-white/40"/> {cont.phone || "-"}
-                              </div>
-                              <div className="flex items-center justify-between text-xs text-white/60 mt-1">
-                                <span className="flex items-center gap-2"><Wrench size={12} className="text-white/40"/> ชุดค่าแรงมาตรฐาน</span>
-                                <span className="font-mono text-nexus-blue">{cont.laborRates?.length || 0} รายการ</span>
-                              </div>
-                            </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3 p-2">
+                    {contractors.length === 0 ? (
+                      <div className="col-span-full p-12 text-center text-white/40 border border-white/5 border-dashed rounded-3xl text-[13px]">ยังไม่มีผู้รับเหมาหรือทีมช่างในระบบ</div>
+                    ) : contractors.map((c: any) => (
+                      <div key={c.id} className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h4 className="text-[13px] font-bold text-white truncate">{c.name || "-"}</h4>
+                            <p className="text-[12px] text-white/50">{c.category || "-"}{c.contact_person ? ` · ${c.contact_person}` : ""}</p>
                           </div>
-                        ))
-                      )}
-                    </div>
+                          <Users size={16} className="text-nexus-blue/70 shrink-0" />
+                        </div>
+                        <div className="flex items-center justify-between text-[12px] text-white/60 border-t border-white/5 pt-2">
+                          <span className="flex items-center gap-1.5"><Phone size={12} className="text-white/40" /> {c.phone || "-"}</span>
+                          <span className="flex items-center gap-1.5"><Wrench size={12} className="text-white/40" /> อัตราค่าแรง <span className="font-mono text-nexus-blue">{(c.labor_rates || c.laborRates || []).length}</span></span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
-              </div>
+              </GlassCard>
+            </div>
 
-              <div className="p-4 border-t border-white/5 bg-black/10 flex items-center justify-between text-xs text-white/60 font-semibold">
-                <span>สตรีมข้อมูลคลาวด์สด • ระบบประมวลผล NEXUS Real-time</span>
-                <span>มาตรฐานระบบ PSG Master V3.1</span>
-              </div>
-            </GlassCard>
-          </div>
-
-        </div>
-
-        {/* Right Sidebar Status */}
-        <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-4 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
-           <GlassCard accentColor="blue" className="p-5">
-              <h4 className="text-sm font-bold text-nexus-teal tracking-widest mb-6">ภาพรวมโครงการที่กำลังดำเนินการ</h4>
-              <div className="space-y-3">
-                 <HealthItem label="ใช้งบประมาณไปแล้ว" value={projectStats.budgetUse === null ? "-" : `${projectStats.budgetUse}%`} color={projectStats.budgetUse !== null && projectStats.budgetUse > 100 ? "bg-danger" : "bg-nexus-teal"} />
-                 <HealthItem label="ความคืบหน้าเฉลี่ย" value={projectStats.avgProgress === null ? "-" : `${projectStats.avgProgress}%`} color="bg-nexus-blue" />
-                 <div className="flex justify-between items-center text-sm font-medium pt-1">
+            {activeTab === "list" && <div className="w-full xl:w-[clamp(280px,24%,380px)] shrink-0 xl:sticky xl:top-4 space-y-4">
+              <GlassCard accentColor="blue" className="p-5">
+                <h4 className="text-sm font-bold text-nexus-teal mb-4">ภาพรวมโครงการที่กำลังดำเนินการ</h4>
+                <div className="space-y-3">
+                  <HealthItem label="ใช้งบประมาณไปแล้ว" value={projectStats.budgetUse === null ? "-" : `${projectStats.budgetUse}%`} color={projectStats.budgetUse !== null && projectStats.budgetUse > 100 ? "bg-danger" : "bg-nexus-teal"} />
+                  <HealthItem label="ความคืบหน้าเฉลี่ย" value={projectStats.avgProgress === null ? "-" : `${projectStats.avgProgress}%`} color="bg-nexus-blue" />
+                  <div className="flex justify-between items-center text-sm font-medium pt-1">
                     <span className="text-white/60">โครงการรออนุมัติ</span>
                     <span className="text-warning font-mono font-bold">{projectStats.pendingCount}</span>
-                 </div>
-              </div>
-           </GlassCard>
-
-           <GlassCard accentColor="purple" className="p-5">
-              <h4 className="text-sm font-bold text-white/60 tracking-widest mb-6">กำหนดส่งมอบที่ใกล้ถึง</h4>
-              <div className="space-y-3">
-                 {projectStats.upcoming.length === 0 && <p className="text-[13px] text-white/40">ไม่มีกำหนดส่งมอบที่ใกล้ถึง</p>}
-                 {projectStats.upcoming.map((p: any) => (
-                   <Link key={p.id} href={`/projects/${encodeURIComponent(p.id)}`} className="block">
-                     <DeadlineItem
-                       title={p.projectName || p.title || p.name || "-"}
-                       date={new Date(p.endDate).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" })}
-                       project={p.projectId || p.id}
-                     />
-                   </Link>
-                 ))}
-              </div>
-           </GlassCard>
+                  </div>
+                </div>
+              </GlassCard>
+              <GlassCard accentColor="purple" className="p-5">
+                <h4 className="text-sm font-bold text-white/60 mb-4">กำหนดส่งมอบที่ใกล้ถึง</h4>
+                <div className="space-y-2">
+                  {projectStats.upcoming.length === 0 && <p className="text-[13px] text-white/40">ไม่มีกำหนดส่งมอบที่ใกล้ถึง</p>}
+                  {projectStats.upcoming.map((p: any) => (
+                    <Link key={p.id} href={`/projects/${encodeURIComponent(p.id)}`} className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-all">
+                      <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-white/40 shrink-0"><Clock size={15} /></div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-white truncate">{projectName(p)}</p>
+                        <p className="text-xs text-white/60 mt-0.5">{p.projectId || p.id} • {thDate(p.endDate)}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </GlassCard>
+            </div>}
+          </div>
         </div>
       </div>
-      </div>
-      </div>
-      <Toast
-        message={toast.message}
-        isVisible={toast.isVisible}
-        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
-      />
     </div>
   );
 }
 
-function ProjectRow({ docId, id, name, progress, team, deadline, statusLabel, statusBadge }: { docId: string, id: string, name: string, progress: number, team: string, deadline: string, statusLabel: string, statusBadge: "active" | "inactive" | "pending" | "warning" | "danger" }) {
-  const href = `/projects/${encodeURIComponent(docId)}`;
+function HeaderStat({ icon, label, value, tone, title }: { icon: React.ReactNode; label: string; value: string; tone: "teal" | "blue" | "white"; title?: string }) {
+  const color = tone === "teal" ? "text-nexus-teal bg-nexus-teal/10 border-nexus-teal/20" : tone === "blue" ? "text-nexus-blue bg-nexus-blue/10 border-nexus-blue/20" : "text-white bg-white/5 border-white/10";
+  return (
+    <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px]">
+      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border shrink-0", color)}>{icon}</div>
+      <div className="flex flex-col justify-center">
+        <span className="text-xs font-semibold text-white/60 tracking-wider leading-none">{label}</span>
+        <span className={cn("text-[17px] font-bold mt-0.5 mono-numbers leading-none whitespace-nowrap", color.split(" ")[0])} title={title}>{value}</span>
+      </div>
+    </div>
+  );
+}
+
+function EmptyRow({ cols, text }: { cols: number; text: string }) {
   return (
     <NexusTableRow>
-      <NexusTableCell>
-        <Link href={href} className="font-mono text-[13px] text-nexus-blue font-medium">{id}</Link>
-      </NexusTableCell>
-      <NexusTableCell>
-        <Link href={href} className="text-[13px] font-bold text-white/80 group-hover:text-white transition-colors">{name}</Link>
-      </NexusTableCell>
-      <NexusTableCell>
-        <div className="flex items-center gap-2">
-          <div className="h-1 w-20 2xl:w-28 bg-white/5 rounded-full overflow-hidden shrink-0">
-            <div className="h-full bg-nexus-teal" style={{ width: `${progress}%` }} />
-          </div>
-          <span className="text-xs font-mono text-white/75">{progress}%</span>
-        </div>
-      </NexusTableCell>
-      <NexusTableCell className="text-white/60">{team}</NexusTableCell>
-      <NexusTableCell className="text-white/60">{deadline}</NexusTableCell>
-      <NexusTableCell>
-        <StatusBadge status={statusBadge} label={statusLabel} />
-      </NexusTableCell>
+      <NexusTableCell colSpan={cols} className="text-center py-10 text-white/40">{text}</NexusTableCell>
     </NexusTableRow>
   );
 }
 
-function MilestoneRow({ name, project, due, weight, status }: { name: string, project: string, due: string, weight: string, status: string }) {
-  return (
-    <NexusTableRow>
-      <NexusTableCell className="w-full font-bold text-white/80">{name}</NexusTableCell>
-      <NexusTableCell align="right" className="w-[1%] whitespace-nowrap align-middle pr-6 font-mono text-sm text-nexus-blue font-medium tracking-tight">{project}</NexusTableCell>
-      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap text-sm font-medium text-white/60 uppercase tracking-widest">{due}</NexusTableCell>
-      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap text-sm font-medium text-nexus-teal uppercase tracking-widest">{weight}</NexusTableCell>
-      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap">
-        <StatusBadge status={status as any} label={status === "active" ? "ดำเนินการอยู่" : "รอดำเนินการ"} />
-      </NexusTableCell>
-    </NexusTableRow>
-  );
-}
-
-function ReportRow({ id, project, tech, date, status }: { id: string, project: string, tech: string, date: string, status: string }) {
-  return (
-    <NexusTableRow>
-      <NexusTableCell align="right" className="w-[1%] whitespace-nowrap pr-6 font-mono text-sm text-nexus-teal font-medium tracking-tight">{id}</NexusTableCell>
-      <NexusTableCell className="w-full font-bold text-white/80">{project}</NexusTableCell>
-      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap text-sm font-medium text-white/60 uppercase tracking-widest">{tech}</NexusTableCell>
-      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap text-sm font-medium text-white/60 uppercase tracking-widest">{date}</NexusTableCell>
-      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap">
-        <StatusBadge status={status as any} label="เซ็นแล้ว" />
-      </NexusTableCell>
-    </NexusTableRow>
-  );
-}
-
-function CostRow({ name, budget, actual, balance, margin }: { name: string, budget: string, actual: string, balance: string, margin: string }) {
-  return (
-    <NexusTableRow>
-      <NexusTableCell className="w-full font-bold text-white/80">{name}</NexusTableCell>
-      <NexusTableCell align="right" className="w-[1%] whitespace-nowrap font-bold text-white/60 tracking-tight font-mono">{budget}</NexusTableCell>
-      <NexusTableCell align="right" className="w-[1%] whitespace-nowrap font-bold text-danger tracking-tight font-mono">{actual}</NexusTableCell>
-      <NexusTableCell align="right" className="w-[1%] whitespace-nowrap font-bold text-nexus-teal tracking-tight font-mono">{balance}</NexusTableCell>
-      <NexusTableCell align="center" className="w-[1%] whitespace-nowrap">
-        <span className="px-3 py-1 rounded-full  text-nexus-teal text-sm font-medium">{margin}</span>
-      </NexusTableCell>
-    </NexusTableRow>
-  );
-}
-
-function HealthItem({ label, value, color }: { label: string, value: string, color: string }) {
+function HealthItem({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div className="space-y-2">
-       <div className="flex justify-between items-center text-sm font-medium uppercase tracking-widest">
-          <span className="text-white/60">{label}</span>
-          <span className="text-white/80">{value}</span>
-       </div>
-       <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-          <div className={cn("h-full", color)} style={{ width: value.endsWith("%") ? `${Math.min(100, parseFloat(value))}%` : "0%" }} />
-       </div>
+      <div className="flex justify-between items-center text-sm font-medium">
+        <span className="text-white/60">{label}</span>
+        <span className="text-white/80">{value}</span>
+      </div>
+      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+        <div className={cn("h-full", color)} style={{ width: value.endsWith("%") ? `${Math.min(100, parseFloat(value))}%` : "0%" }} />
+      </div>
     </div>
   );
 }
-
-function DeadlineItem({ title, date, project }: { title: string, date: string, project: string }) {
-  return (
-    <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5 group hover:bg-white/[0.05] transition-all">
-       <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 group-hover:text-nexus-blue transition-colors">
-          <Clock size={16} />
-       </div>
-       <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold text-white truncate">{title}</p>
-          <p className="text-xs text-white/60 uppercase font-medium tracking-[0.1em] mt-0.5">{project} • {date}</p>
-       </div>
-    </div>
-  );
-}
-

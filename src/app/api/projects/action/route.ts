@@ -80,6 +80,7 @@ export async function POST(request: Request) {
           update.startedAt = now;
         } else if (action === "progress") {
           need(status === "In Progress", "อัปเดตความคืบหน้าได้เฉพาะโครงการที่กำลังดำเนินการ");
+          need(!(Array.isArray(cur.milestones) && cur.milestones.length), "โครงการนี้คำนวณความคืบหน้าจากงวดงาน กรุณาอัปเดตที่หน้างวดงาน");
           update.progress = Math.min(100, Math.max(0, Math.round(Number(body.progress) || 0)));
         } else if (action === "complete") {
           need(status === "In Progress", "ปิดได้เฉพาะโครงการที่กำลังดำเนินการ");

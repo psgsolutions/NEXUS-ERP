@@ -376,7 +376,15 @@ export default function ProjectDetailPage() {
           <div className="h-2 bg-white/5 rounded-full overflow-hidden">
             <div className="h-full bg-nexus-teal" style={{ width: `${progress}%` }} />
           </div>
-          {status === "In Progress" && canEditProject && !isLegacy && (
+          {!isLegacy && status !== "Cancelled" && (
+            <p className="mt-2 text-[12px] text-white/50">
+              {Array.isArray(p.milestones) && p.milestones.length ? `คำนวณจากงวดงาน ${p.milestones.length} งวด · ` : ""}
+              <Link href={`/projects/milestones/new?project=${encodeURIComponent(docId)}`} className="text-nexus-teal hover:underline">
+                {Array.isArray(p.milestones) && p.milestones.length ? "จัดการงวดงาน" : "แบ่งงวดงาน"}
+              </Link>
+            </p>
+          )}
+          {status === "In Progress" && canEditProject && !isLegacy && !(Array.isArray(p.milestones) && p.milestones.length) && (
             <div className="flex items-center gap-2 mt-3">
               <PillInput
                 type="number"

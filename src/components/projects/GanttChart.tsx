@@ -1,101 +1,107 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
+import Link from "next/link";
 import { cn } from "@/components/ui/Base";
-import { Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { MILESTONE_STATUS_TH, type MilestoneStatus } from "@/lib/project-milestones";
 
-interface Milestone {
+export interface GanttItem {
   id: string;
   task: string;
-  start: string; // e.g. "2026-04-01"
+  sub?: string; // บรรทัดรอง เช่น เลขที่โครงการ
+  start: string; // YYYY-MM-DD
   end: string;
   progress: number;
-  status: "completed" | "in-progress" | "pending";
+  status: MilestoneStatus;
+  href?: string;
 }
 
-interface GanttChartProps {
-  milestones: Milestone[];
-}
+const TH_MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+const DAY = 86400e3;
+const ms = (d: string) => Date.parse(`${d}T00:00:00Z`);
 
-export function GanttChart({ milestones }: GanttChartProps) {
-  // Simple Gantt Logic for V4.0
-  const months = ["เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค."];
-  
+const BAR: Record<MilestoneStatus, { track: string; fill: string; text: string }> = {
+  completed: { track: "bg-nexus-teal/15 border-nexus-teal/30", fill: "bg-nexus-teal/60", text: "text-nexus-teal" },
+  "in-progress": { track: "bg-nexus-blue/15 border-nexus-blue/30", fill: "bg-nexus-blue/60", text: "text-nexus-blue" },
+  overdue: { track: "bg-danger/10 border-danger/30", fill: "bg-danger/50", text: "text-danger" },
+  pending: { track: "bg-white/[0.04] border-white/15", fill: "bg-white/20", text: "text-white/50" },
+};
+
+/** แผนงานตามเวลาจริง: สเกลรายเดือนตามช่วงวันที่ของงวดงานทั้งหมด ยืดตามความกว้าง (ไม่มีแถบเลื่อนภายใน) */
+export function GanttChart({ milestones }: { milestones: GanttItem[] }) {
+  const scale = useMemo(() => {
+    const valid = milestones.filter((m) => m.start && m.end);
+    if (!valid.length) return null;
+    const minD = new Date(Math.min(...valid.map((m) => ms(m.start))));
+    const maxD = new Date(Math.max(...valid.map((m) => ms(m.end))));
+    const from = Date.UTC(minD.getUTCFullYear(), minD.getUTCMonth(), 1);
+    const to = Date.UTC(maxD.getUTCFullYear(), maxD.getUTCMonth() + 1, 1);
+    const months: { label: string; left: number; width: number }[] = [];
+    for (let t = from; t < to; ) {
+      const d = new Date(t);
+      const next = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
+      months.push({ label: `${TH_MONTHS[d.getUTCMonth()]} ${String((d.getUTCFullYear() + 543) % 100).padStart(2, "0")}`, left: (t - from) / (to - from), width: (next - t) / (to - from) });
+      t = next;
+    }
+    const today = Date.now() + 7 * 3600e3;
+    return { from, to, months, step: Math.ceil(months.length / 12), today: today >= from && today <= to ? (today - from) / (to - from) : null };
+  }, [milestones]);
+
+  if (!scale) {
+    return <div className="py-16 text-center text-[13px] text-white/40">ยังไม่มีงวดงาน</div>;
+  }
+  const pos = (start: string, end: string) => {
+    const l = (ms(start) - scale.from) / (scale.to - scale.from);
+    const w = (ms(end) + DAY - ms(start)) / (scale.to - scale.from);
+    return { left: `${l * 100}%`, width: `${Math.max(w * 100, 0.6)}%` };
+  };
+
   return (
-    <div className="w-full bg-white/[0.02] border border-white/5 rounded-2xl overflow-hidden">
-       <div className="grid grid-cols-[300px_1fr] divide-x divide-white/5">
-          {/* Left Side: Task List */}
-          <div className="bg-black/20">
-             <div className="h-14 border-b border-white/5 flex items-center px-8">
-                <span className="text-xs font-semibold text-white/60 tracking-wider">ชื่อแผนงาน</span>
-             </div>
-             <div className="divide-y divide-white/5">
-                {milestones.map((m) => (
-                   <div key={m.id} className="h-16 flex flex-col justify-center px-8 space-y-1">
-                      <p className="text-sm font-bold text-white tracking-tight truncate">{m.task}</p>
-                      <div className="flex items-center gap-2">
-                         <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", 
-                            m.status === "completed" ? "bg-nexus-teal/10 text-nexus-teal" :
-                            m.status === "in-progress" ? "bg-nexus-blue/10 text-nexus-blue" :
-                            "bg-white/5 text-white/40"
-                         )}>
-                            {m.status === "completed" ? "เสร็จสิ้น" : m.status === "in-progress" ? "กำลังดำเนินการ" : "รอดำเนินการ"}
-                         </span>
-                         <span className="text-xs font-semibold text-white/60">{m.progress}%</span>
-                      </div>
-                   </div>
-                ))}
-             </div>
-          </div>
+    <div className="w-full border border-white/5 rounded-2xl overflow-hidden bg-white/[0.02]">
+      <div className="grid grid-cols-[minmax(160px,26%)_minmax(0,1fr)]">
+        <div className="h-10 border-b border-r border-white/5 flex items-center px-4 text-[11px] font-bold text-white/50">งวดงาน</div>
+        <div className="h-10 border-b border-white/5 relative">
+          {scale.months.map((m, i) => (
+            <div key={m.label} className="absolute inset-y-0 border-l border-white/5 flex items-center justify-center text-[11px] font-bold text-white/50 overflow-hidden" style={{ left: `${m.left * 100}%`, width: `${m.width * 100}%` }}>
+              {i % scale.step === 0 ? <span className="whitespace-nowrap">{m.label}</span> : null}
+            </div>
+          ))}
+        </div>
 
-          {/* Right Side: Timeline Grid */}
-          <div className="overflow-x-auto custom-scrollbar">
-             <div className="min-w-[800px]">
-                <div className="h-14 border-b border-white/5 grid grid-cols-4 divide-x divide-white/5">
-                   {months.map((month) => (
-                      <div key={month} className="flex items-center justify-center text-xs font-semibold text-white/60 tracking-wider">
-                         {month} 2569
-                      </div>
-                   ))}
+        {milestones.map((m) => {
+          const tone = BAR[m.status] || BAR.pending;
+          const label = (
+            <>
+              <p className="text-[13px] font-bold text-white truncate">{m.task}</p>
+              <p className="text-[11px] text-white/50 truncate">{m.sub ? `${m.sub} · ` : ""}<span className={tone.text}>{MILESTONE_STATUS_TH[m.status]}</span> · {m.progress}%</p>
+            </>
+          );
+          return (
+            <React.Fragment key={m.id}>
+              <div className="h-12 border-b border-r border-white/5 px-4 flex flex-col justify-center min-w-0">
+                {m.href ? <Link href={m.href} className="min-w-0 hover:opacity-80">{label}</Link> : label}
+              </div>
+              <div className="h-12 border-b border-white/5 relative">
+                {scale.months.map((mo) => <div key={mo.label} className="absolute inset-y-0 border-l border-white/[0.04]" style={{ left: `${mo.left * 100}%` }} />)}
+                {scale.today !== null && <div className="absolute inset-y-0 w-px bg-warning/60" style={{ left: `${scale.today * 100}%` }} />}
+                <div
+                  className={cn("absolute top-1/2 -translate-y-1/2 h-5 rounded-md border overflow-hidden", tone.track)}
+                  style={pos(m.start, m.end)}
+                  title={`${m.task}: ${m.start} ถึง ${m.end} · ${MILESTONE_STATUS_TH[m.status]} ${m.progress}%`}
+                >
+                  <div className={cn("h-full", tone.fill)} style={{ width: `${Math.min(100, Math.max(0, m.progress))}%` }} />
                 </div>
-                <div className="relative divide-y divide-white/5">
-                   {/* Background Grid Lines */}
-                   <div className="absolute inset-0 grid grid-cols-4 divide-x divide-white/5 pointer-events-none" />
-                   
-                   {milestones.map((m, idx) => (
-                      <div key={m.id} className="h-16 relative flex items-center px-4">
-                         {/* Gantt Bar */}
-                         <div 
-                            className={cn("h-8 rounded-xl relative group cursor-pointer transition-all hover:scale-[1.02]",
-                               m.status === "completed" ? "bg-nexus-teal/20 border border-nexus-teal/30" :
-                               m.status === "in-progress" ? "bg-nexus-blue/20 border border-nexus-blue/30" :
-                               "bg-white/5 border border-white/10"
-                            )}
-                            style={{ 
-                               marginLeft: `${idx * 15}%`, // Simple positioning for demo
-                               width: `${25 + (m.progress / 2)}%` 
-                            }}
-                         >
-                            <div 
-                               className={cn("absolute inset-y-0 left-0 rounded-l-xl transition-all opacity-50",
-                                  m.status === "completed" ? "bg-nexus-teal shadow-neon-teal" :
-                                  m.status === "in-progress" ? "bg-nexus-blue shadow-neon-blue animate-pulse" :
-                                  "bg-white/10"
-                               )}
-                               style={{ width: `${m.progress}%` }}
-                            />
-                            
-                            {/* Tooltip on Hover */}
-                            <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950/90 backdrop-blur-md border border-cyan-500/40 px-3 py-1.5 rounded-xl whitespace-nowrap z-[9999] shadow-[0_0_15px_rgba(6,182,212,0.15)]">
-                                <p className="text-xs font-bold text-cyan-100">เสร็จสมบูรณ์ {m.progress}%</p>
-                            </div>
-                         </div>
-                      </div>
-                   ))}
-                </div>
-             </div>
-          </div>
-       </div>
+              </div>
+            </React.Fragment>
+          );
+        })}
+      </div>
+      <div className="px-4 py-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-white/50 border-t border-white/5">
+        {(Object.keys(BAR) as MilestoneStatus[]).map((s) => (
+          <span key={s} className="flex items-center gap-1.5"><span className={cn("w-3 h-2.5 rounded-sm border", BAR[s].track)} />{MILESTONE_STATUS_TH[s]}</span>
+        ))}
+        {scale.today !== null && <span className="flex items-center gap-1.5"><span className="w-px h-3 bg-warning/60" />วันนี้</span>}
+      </div>
     </div>
   );
 }

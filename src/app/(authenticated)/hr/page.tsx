@@ -1,468 +1,225 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { 
-  UserCog, 
-  Users, 
-  UserPlus, 
-  CalendarCheck, 
-  Search, 
-  ChevronRight,
-  Clock,
-  MapPin,
-  DollarSign,
-  ClipboardList,
-  Activity,
-  ShieldCheck,
-  TrendingUp,
-  MapIcon,
-  Briefcase,
-  Sparkles,
-  Plus,
-  Wallet,
-  Filter
-} from "lucide-react";
-import { 
-  PillButton, 
-  PillInput, 
-  MasterMetricCard, 
-  cn, 
-  Modal, 
-  Toast, 
-  NexusTable, 
-  NexusTableRow, 
-  NexusTableCell, 
-  StatusBadge, 
-  PillTabs,
-  GlassCard,
-  NexusSearchInput
-} from "@/components/ui/Base";
-import { DocumentFlowStepper } from "@/components/ui/DocumentFlowStepper";
-
-import { EmployeeModal } from "@/components/hr/EmployeeModal";
-import { AttendanceModal } from "@/components/hr/AttendanceModal";
-import { PayrollModal } from "@/components/hr/PayrollModal";
-import { getAuth } from "firebase/auth";
-import { nexusSequenceEngine } from "@/lib/sequence-engine";
-import { useAuth } from "@/context/AuthContext";
-import { auditService } from "@/services/audit.service";
-import { db } from "@/lib/firebase-client";
-import { collection, doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { saveToFirestore } from "@/lib/firebaseUtils";
-import { SecureDeleteAction } from "@/components/ui/SecureDeleteAction";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { useSystemDialog } from "@/context/DialogContext";
+import { useRouter } from "next/navigation";
+import { where } from "firebase/firestore";
+import { CalendarCheck, Clock, DollarSign, MapPin, Plus, UserX, Users, Wallet } from "lucide-react";
+import { GlassCard, NexusSearchInput, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillTabs, StatusBadge, cn } from "@/components/ui/Base";
+import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-type HRSubModule = "profiles" | "attendance" | "payroll" | "expenses";
+import { EMPLOYEE_STATUS, bkkParts, employeeName, employeeStatus } from "@/lib/hr";
+
+type Tab = "profiles" | "attendance" | "payroll" | "expenses";
+
+const baht = (n: any) => (Number(n) || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const toMs = (v: any) => (!v ? 0 : v.seconds ? v.seconds * 1000 : new Date(v).getTime() || 0);
+const thDate = (v: any) => { const t = typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? Date.parse(`${v}T00:00:00`) : toMs(v); return t ? new Date(t).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" }) : "-"; };
+const PAYROLL_STATUS: Record<string, { label: string; badge: "active" | "pending" | "warning" | "inactive" }> = {
+  draft: { label: "ร่าง", badge: "pending" },
+  approved: { label: "อนุมัติแล้ว", badge: "warning" },
+  paid: { label: "จ่ายแล้ว", badge: "active" },
+  cancelled: { label: "ยกเลิก", badge: "inactive" },
+};
 
 export default function HRPage() {
   const router = useRouter();
-  const { user, companyId } = useAuth();
-  const [activeTab, setActiveTab] = useState<HRSubModule>("profiles");
+  const { companyId } = useAuth();
+  const [activeTab, setActiveTab] = useState<Tab>("profiles");
   const [searchQuery, setSearchQuery] = useState("");
-  
-  const [modalActiveTab, setModalActiveTab] = useState("basic");
-  const { showAlert } = useSystemDialog();
+  const today = bkkParts(Date.now()).date;
 
-  const { data: dbEmployees, loading: employeesLoading } = useRealtimeCollection<any>('employees');
-  const { data: dbAttendance, loading: attendanceLoading } = useRealtimeCollection<any>('attendance');
-  const { data: dbPayrolls, loading: payrollsLoading } = useRealtimeCollection<any>('payrolls');
-  const { data: dbExpenses, loading: expensesLoading } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/expenses` : 'expenses');
+  const { data: employees, loading } = useRealtimeCollection<any>("employees");
+  const todayFilter = useMemo(() => [where("date", "==", today)], [today]);
+  const { data: attendance } = useRealtimeCollection<any>("attendance", todayFilter);
+  const { data: payrolls } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/payrolls` : "");
+  const { data: expenses } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/expenses` : "");
 
-  const employeesList = dbEmployees.map(e => ({
-    id: e.employeeId || e.id,
-    name: e.name || `${e.prefix === 'Mr.' ? 'นาย' : e.prefix === 'Mrs.' ? 'นาง' : e.prefix === 'Ms.' ? 'นางสาว' : 'คุณ'}${e.firstName || ''} ${e.lastName || ''}`.trim(),
-    role: e.position || e.role || 'Unknown',
-    dept: e.department || e.dept || 'Unknown',
-    location: e.location || 'สำนักงาน',
-    status: e.status || 'active'
-  }));
+  const q = searchQuery.trim().toLowerCase();
+  const match = (...vals: any[]) => !q || vals.some((v) => String(v || "").toLowerCase().includes(q));
 
-  const attendanceList = dbAttendance.map(a => ({
-    name: a.name || 'Unknown',
-    time: a.time || '-',
-    loc: a.loc || 'สำนักงาน',
-    type: a.type || 'IN',
-    status: a.status || 'active'
-  }));
+  const staff = useMemo(() => employees
+    .map((e: any) => ({ ...e, _name: employeeName(e), _status: employeeStatus(e) }))
+    .sort((a: any, b: any) => String(a.employeeId || a.id).localeCompare(String(b.employeeId || b.id))), [employees]);
+  const active = staff.filter((e: any) => e._status !== "resigned");
 
-  const payrollsList = dbPayrolls.map(p => ({
-    period: p.period || '-',
-    count: p.count || 0,
-    total: p.total || '฿0',
-    status: p.status || 'pending'
-  }));
+  // เวลาวันนี้ต่อพนักงาน
+  const todayBy = useMemo(() => {
+    const m = new Map<string, { in?: any; out?: any }>();
+    attendance.forEach((r: any) => {
+      const d = m.get(r.employeeDocId) || {};
+      if (r.type === "IN") d.in = r; else d.out = r;
+      m.set(r.employeeDocId, d);
+    });
+    return m;
+  }, [attendance]);
+  const present = active.filter((e: any) => todayBy.get(e.id)?.in);
+  const late = present.filter((e: any) => todayBy.get(e.id)?.in?.status === "late");
 
-  const expensesList = dbExpenses.map(e => ({
-    id: e.id,
-    date: e.date || '-',
-    employeeName: e.employeeName || e.requestedBy || 'Unknown',
-    description: e.description || '-',
-    amount: e.amount || 0,
-    status: e.status || 'pending_approval'
-  }));
-
-  const filteredEmployees = employeesList.filter(e => 
-    e.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    e.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    e.role.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const filteredAttendance = attendanceList.filter(a => 
-    a.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    a.loc.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const filteredPayrolls = payrollsList.filter(p => 
-    p.period.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const filteredExpenses = expensesList.filter(e => 
-    e.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    e.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-
-  const showToast = (message: string) => {
-    showAlert(message, "System Notification", "info");
-  };
+  const claims = expenses
+    .filter((x: any) => x.documentType === "ExpenseClaim")
+    .filter((x: any) => match(x.expenseId, x.employeeName, x.description))
+    .sort((a: any, b: any) => toMs(b.createdAt) - toMs(a.createdAt));
 
   const tabs = [
     { id: "profiles", label: "บุคลากร", icon: <Users size={14} /> },
     { id: "attendance", label: "ลงเวลาทำงาน", icon: <MapPin size={14} /> },
     { id: "payroll", label: "ระบบเงินเดือน", icon: <DollarSign size={14} /> },
-    { id: "expenses", label: "อนุมัติเบิกจ่าย", icon: <Wallet size={14} /> },
+    { id: "expenses", label: "เบิกค่าใช้จ่าย", icon: <Wallet size={14} /> },
   ];
+  const action: Record<Tab, { label: string; href: string }> = {
+    profiles: { label: "เพิ่มพนักงานใหม่", href: "/hr/employees/new" },
+    attendance: { label: "ลงเวลาเข้า / ออก", href: "/hr/attendance/new" },
+    payroll: { label: "ประมวลผลเงินเดือน", href: "/hr/payroll/new" },
+    expenses: { label: "บันทึกเบิกค่าใช้จ่าย", href: "/finance/expense-claims/new" },
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
-
-      {/* Compact Module Header — icon + title + inline metric chips on same plane */}
       <header className="px-6 py-2.5 min-h-[60px] border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-black/20 shrink-0">
         <div className="flex items-center gap-3 shrink-0">
-          <div className="w-9 h-9 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
-            <Users size={20} />
-          </div>
+          <div className="w-9 h-9 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10"><Users size={20} /></div>
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight leading-none">ศูนย์บริหารบุคลากร</h1>
-            <p className="text-[11px] font-medium text-white/30 uppercase mt-1 tracking-widest leading-none">Human Capital Management Hub</p>
+            <p className="text-xs font-semibold text-white/60 mt-1 tracking-wider leading-none">พนักงาน เวลาทำงาน เงินเดือน</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
-            <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
-              <Users size={16} />
-            </div>
-            <div className="flex flex-col justify-center">
-              <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">พนักงานทั้งหมด</span>
-              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">48 คน</span>
-            </div>
-          </div>
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
-            <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
-              <CalendarCheck size={16} />
-            </div>
-            <div className="flex flex-col justify-center">
-              <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">มาทำงานวันนี้</span>
-              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">45 คน</span>
-            </div>
-          </div>
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
-            <div className="w-8 h-8 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
-              <MapPin size={16} />
-            </div>
-            <div className="flex flex-col justify-center">
-              <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">ทำงานหน้างาน</span>
-              <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none">12 คน</span>
-            </div>
-          </div>
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-white/20 hover:bg-white/[0.03]">
-            <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white border border-white/10 shrink-0">
-              <Clock size={16} />
-            </div>
-            <div className="flex flex-col justify-center">
-              <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">เข้าสาย</span>
-              <span className="text-[17px] font-bold text-white mt-0.5 mono-numbers leading-none">0 คน</span>
-            </div>
-          </div>
+          <Stat icon={<Users size={16} />} label="พนักงาน" value={`${active.length} คน`} tone="teal" />
+          <Stat icon={<CalendarCheck size={16} />} label="มาทำงานวันนี้" value={`${present.length} คน`} tone="teal" />
+          <Stat icon={<Clock size={16} />} label="เข้าสายวันนี้" value={`${late.length} คน`} tone={late.length ? "warning" : "white"} />
+          <Stat icon={<UserX size={16} />} label="ยังไม่ลงเวลา" value={`${active.length - present.length} คน`} tone="white" />
         </div>
       </header>
 
-      {/* Main Content Scroll Area */}
+      <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex items-center shrink-0">
+        <PillTabs tabs={tabs} activeTab={activeTab} onTabChange={(id: any) => { setActiveTab(id); setSearchQuery(""); }} />
+      </section>
+
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-      <div className="p-5 space-y-3 max-w-[1800px] mx-auto">
-
-      <div className="flex flex-col xl:flex-row items-start gap-4">
-        <div className="flex-1 w-full space-y-10">
-          
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                 <Activity className="text-nexus-teal" size={24} />
-                 <div className="space-y-0.5">
-                    <p className="text-[11px] font-medium text-white/20 uppercase tracking-widest">ทะเบียนรายชื่อบุคลากร (2026-ปัจจุบัน)</p>
-                    <h2 className="text-xl font-bold text-white uppercase">ทะเบียนข้อมูล</h2>
-                 </div>
-              </div>
-              <div className="flex gap-3">
-                 <PillButton variant="confirm" className="h-9 px-6 rounded-full" onClick={() => showToast("กำลังดึงข้อมูลสลิปเงินเดือนระบบ Digital...")}>
-                   <ClipboardList size={18} />
-                   สลิปเงินเดือน
-                 </PillButton>
-                 <PillButton 
-                    variant="primary"
-                    onClick={() => {
-                       if (activeTab === "profiles") router.push("/hr/employees/new");
-                       else if (activeTab === "attendance") router.push("/hr/attendance/new");
-                       else if (activeTab === "payroll") router.push("/hr/payroll/new");
-                    }} 
-                 >
-                    {activeTab === "profiles" ? <Plus size={18} /> : 
-                     activeTab === "attendance" ? <MapIcon size={18} /> : 
-                     <Wallet size={18} />}
-                    {
-                       activeTab === "profiles" ? "เพิ่มพนักงานใหม่" : 
-                       activeTab === "attendance" ? "บันทึกเวลาเข้า/ออก" : 
-                       activeTab === "expenses" ? "บันทึกค่าใช้จ่ายใหม่" :
-                       "ประมวลผลเงินเดือน"
-                    }
-                 </PillButton>
-              </div>
-            </div>
-
-            {/* Tactical Command Bar */}
-            <div className="flex flex-col md:flex-row items-center gap-4 bg-white/[0.01] p-1.5 rounded-full border border-white/5 backdrop-blur-md">
-               <NexusSearchInput 
-                 placeholder="พิมพ์เพื่อค้นหา..." 
-                 value={searchQuery}
-                 onChange={(e) => setSearchQuery(e.target.value)}
-                 className="flex-1"
-                 kbd="F"
-               />
-               <div className="flex items-center gap-2 pr-1.5">
-                  <PillButton variant="glass" className="h-11 w-11 p-0 rounded-full border-white/5 hover:border-nexus-teal/30 hover:bg-nexus-teal/5">
-                    <Filter size={18} className="text-white/40" />
-                  </PillButton>
-               </div>
-            </div>
-
-            {/* Profile / Attendance / Payroll Content - Conditional Rendering wrapped in standard GlassCard viewport */}
-            <GlassCard accentColor="teal" className="p-0 overflow-hidden min-h-[640px] flex flex-col justify-between">
-              <div className="overflow-x-auto custom-scrollbar flex-1 w-full p-2">
-                {activeTab === "profiles" && (
-                  <div className="animate-in fade-in duration-500">
-                    <NexusTable headers={["รหัสพนักงาน", "ชื่อ-สกุล", "ตำแหน่ง", "แผนก", "สถานที่ทำงาน", "สถานะ", "จัดการ"]}>
-                      {employeesLoading ? (
-                        <NexusTableRow>
-                          <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
-                        </NexusTableRow>
-                      ) : filteredEmployees.length === 0 ? (
-                        <NexusTableRow>
-                          <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">ไม่พบข้อมูลในระบบ</NexusTableCell>
-                        </NexusTableRow>
-                      ) : filteredEmployees.map(e => (
-                        <EmployeeRow key={e.id} {...e} />
-                      ))}
-                    </NexusTable>
-                  </div>
-                )}
-
-                {activeTab === "attendance" && (
-                  <div className="animate-in fade-in duration-500">
-                    <NexusTable headers={["พนักงาน", "วัน/เวลา", "พิกัด GPS", "ประเภท", "สถานะ"]}>
-                      {attendanceLoading ? (
-                        <NexusTableRow>
-                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
-                        </NexusTableRow>
-                      ) : filteredAttendance.length === 0 ? (
-                        <NexusTableRow>
-                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">ไม่พบข้อมูลในระบบ</NexusTableCell>
-                        </NexusTableRow>
-                      ) : filteredAttendance.map((a, i) => (
-                        <AttendanceRow key={i} {...a} />
-                      ))}
-                    </NexusTable>
-                  </div>
-                )}
-
-                {activeTab === "payroll" && (
-                  <div className="animate-in fade-in duration-500">
-                    <NexusTable headers={["งวดเดือน", "จำนวนพนักงาน", "ยอดจ่ายสุทธิ", "สถานะการโอน", "เอกสาร"]}>
-                      {payrollsLoading ? (
-                        <NexusTableRow>
-                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
-                        </NexusTableRow>
-                      ) : filteredPayrolls.length === 0 ? (
-                        <NexusTableRow>
-                          <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">ไม่พบข้อมูลในระบบ</NexusTableCell>
-                        </NexusTableRow>
-                      ) : filteredPayrolls.map((p, i) => (
-                        <PayrollRow key={i} {...p} />
-                      ))}
-                    </NexusTable>
-                  </div>
-                )}
-
-                {activeTab === "expenses" && (
-                  <div className="animate-in fade-in duration-500">
-                    <NexusTable headers={["วันที่", "ผู้เบิก / พนักงาน", "รายละเอียด", "จำนวนเงิน", "สถานะ", "จัดการ"]}>
-                      {expensesLoading ? (
-                        <NexusTableRow>
-                          <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
-                        </NexusTableRow>
-                      ) : filteredExpenses.length === 0 ? (
-                        <NexusTableRow>
-                          <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">ไม่มีรายการรออนุมัติ</NexusTableCell>
-                        </NexusTableRow>
-                      ) : filteredExpenses.map((e, i) => (
-                        <ExpenseRow key={i} {...e} onApprove={() => showToast(`อนุมัติรายการ ${e.description} แล้ว (ข้อมูลไหลไปตั้งหนี้ AP)`)} />
-                      ))}
-                    </NexusTable>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-4 border-t border-white/5 bg-black/10 flex items-center justify-between text-xs text-white/30 font-bold">
-                <span>สตรีมข้อมูลคลาวด์สด • NEXUS Real-time Engine</span>
-                <span>PSG Master UI Standard V3.1</span>
-              </div>
-            </GlassCard>
+        <div className="p-5 max-w-[1800px] mx-auto space-y-3">
+          <div className="flex items-center gap-3">
+            <NexusSearchInput placeholder="พิมพ์เพื่อค้นหา..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} kbd="F" className="flex-1 min-w-0" />
+            <PillButton variant="primary" onClick={() => router.push(action[activeTab].href)} className="h-8 px-5 shadow-neon-teal shrink-0">
+              <Plus size={14} className="mr-1.5" /> {action[activeTab].label}
+            </PillButton>
           </div>
 
+          <GlassCard accentColor="teal" className="p-2 min-h-[560px]">
+            {activeTab === "profiles" && (
+              <NexusTable headers={["รหัสพนักงาน", "ชื่อ-สกุล", "ตำแหน่ง", "แผนก", "วันที่เริ่มงาน", "โทรศัพท์", "สถานะ"]}>
+                {loading && <Empty cols={7} text="กำลังโหลดข้อมูล..." />}
+                {!loading && staff.filter((e: any) => match(e._name, e.employeeId, e.position, e.department)).length === 0 && <Empty cols={7} text="ไม่พบพนักงาน" />}
+                {staff.filter((e: any) => match(e._name, e.employeeId, e.position, e.department)).map((e: any) => {
+                  const st = EMPLOYEE_STATUS[e._status];
+                  return (
+                    <NexusTableRow key={e.id} onClick={() => router.push(`/hr/employees/${encodeURIComponent(e.id)}`)}>
+                      <NexusTableCell className="font-mono text-[13px] text-nexus-blue">{e.employeeId || e.id}</NexusTableCell>
+                      <NexusTableCell className="font-bold text-white/80">{e._name}{e.nickname ? <span className="text-white/40 font-normal"> ({e.nickname})</span> : null}</NexusTableCell>
+                      <NexusTableCell className="text-white/70">{e.position || "-"}</NexusTableCell>
+                      <NexusTableCell className="text-white/60">{e.department || "-"}</NexusTableCell>
+                      <NexusTableCell className="text-white/60">{thDate(e.joinDate)}</NexusTableCell>
+                      <NexusTableCell className="font-mono text-white/60">{e.phone || "-"}</NexusTableCell>
+                      <NexusTableCell><StatusBadge status={st.badge} label={st.label} /></NexusTableCell>
+                    </NexusTableRow>
+                  );
+                })}
+              </NexusTable>
+            )}
+
+            {activeTab === "attendance" && (
+              <>
+                <p className="px-3 pt-2 pb-1 text-[12px] text-white/50">เวลาทำงานวันที่ {thDate(today)}</p>
+                <NexusTable headers={["รหัสพนักงาน", "พนักงาน", "แผนก", "เข้างาน", "ออกงาน", "สถานที่", "สถานะ"]}>
+                  {active.filter((e: any) => match(e._name, e.employeeId, e.department)).length === 0 && <Empty cols={7} text="ไม่พบพนักงาน" />}
+                  {active.filter((e: any) => match(e._name, e.employeeId, e.department)).map((e: any) => {
+                    const t = todayBy.get(e.id) || {};
+                    return (
+                      <NexusTableRow key={e.id} onClick={() => router.push(`/hr/employees/${encodeURIComponent(e.id)}`)}>
+                        <NexusTableCell className="font-mono text-[13px] text-nexus-blue">{e.employeeId || e.id}</NexusTableCell>
+                        <NexusTableCell className="font-bold text-white/80">{e._name}</NexusTableCell>
+                        <NexusTableCell className="text-white/60">{e.department || "-"}</NexusTableCell>
+                        <NexusTableCell mono className="text-white">{t.in?.time || "-"}</NexusTableCell>
+                        <NexusTableCell mono className="text-white">{t.out?.time || "-"}</NexusTableCell>
+                        <NexusTableCell className="text-white/60">{t.in?.location || "-"}</NexusTableCell>
+                        <NexusTableCell>
+                          <span className={cn("text-[12px] font-bold", !t.in ? "text-white/40" : t.in.status === "late" ? "text-warning" : "text-nexus-teal")}>
+                            {!t.in ? "ยังไม่ลงเวลา" : t.in.status === "late" ? "เข้าสาย" : "ตรงเวลา"}
+                          </span>
+                        </NexusTableCell>
+                      </NexusTableRow>
+                    );
+                  })}
+                </NexusTable>
+              </>
+            )}
+
+            {activeTab === "payroll" && (
+              <NexusTable headers={["งวดเดือน", "จำนวนพนักงาน", "รวมเงินได้", "ยอดจ่ายสุทธิ", "วันที่จ่าย", "สถานะ"]}>
+                {payrolls.length === 0 && <Empty cols={6} text="ยังไม่มีการประมวลผลเงินเดือน" />}
+                {payrolls
+                  .filter((p: any) => match(p.period, p.payrollNo))
+                  .sort((a: any, b: any) => String(b.period).localeCompare(String(a.period)))
+                  .map((p: any) => {
+                    const st = PAYROLL_STATUS[p.status] || PAYROLL_STATUS.draft;
+                    return (
+                      <NexusTableRow key={p.id} onClick={() => router.push(`/hr/payroll/new?period=${encodeURIComponent(p.period)}`)}>
+                        <NexusTableCell className="font-bold text-white">{p.periodLabel || p.period}</NexusTableCell>
+                        <NexusTableCell mono className="text-white/70">{p.employeeCount || 0}</NexusTableCell>
+                        <NexusTableCell mono className="text-white/70">{baht(p.totalGross)}</NexusTableCell>
+                        <NexusTableCell mono className="text-white">{baht(p.totalNet)}</NexusTableCell>
+                        <NexusTableCell className="text-white/60">{thDate(p.payDate)}</NexusTableCell>
+                        <NexusTableCell><StatusBadge status={st.badge} label={st.label} /></NexusTableCell>
+                      </NexusTableRow>
+                    );
+                  })}
+              </NexusTable>
+            )}
+
+            {activeTab === "expenses" && (
+              <NexusTable headers={["เลขที่", "วันที่", "พนักงาน", "รายละเอียด", "จำนวนเงิน", "สถานะ", "จัดการ"]}>
+                {claims.length === 0 && <Empty cols={7} text="ยังไม่มีรายการเบิกค่าใช้จ่าย" />}
+                {claims.map((x: any) => {
+                  const paid = String(x.status || "").startsWith("Paid");
+                  const partial = x.status === "Partially Paid";
+                  return (
+                    <NexusTableRow key={x.id}>
+                      <NexusTableCell className="font-mono text-[13px] text-nexus-teal">{x.expenseId || x.id}</NexusTableCell>
+                      <NexusTableCell className="text-white/60">{thDate(x.createdAt)}</NexusTableCell>
+                      <NexusTableCell className="font-bold text-white/80">{x.employeeName || "-"}</NexusTableCell>
+                      <NexusTableCell className="text-white/70">{x.description || "-"}</NexusTableCell>
+                      <NexusTableCell mono className="text-white">{baht(x.totalAmount)}</NexusTableCell>
+                      <NexusTableCell><StatusBadge status={paid ? "active" : partial ? "warning" : "pending"} label={paid ? "จ่ายแล้ว" : partial ? "จ่ายบางส่วน" : "รอจ่าย"} /></NexusTableCell>
+                      <NexusTableCell>
+                        {!paid && !x.isSample ? (
+                          <Link href={`/finance/payments/new?expense=${encodeURIComponent(x.id)}`} className="h-8 px-3 rounded-full border border-nexus-teal/30 text-nexus-teal text-[12px] font-bold inline-flex items-center hover:bg-nexus-teal/10">จ่ายชำระ</Link>
+                        ) : <span className="text-white/30">-</span>}
+                      </NexusTableCell>
+                    </NexusTableRow>
+                  );
+                })}
+              </NexusTable>
+            )}
+          </GlassCard>
         </div>
-
-        {/* Right Sidebar Status */}
-        <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-4 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
-           <GlassCard accentColor="blue" className="p-5">
-              <h4 className="text-xs font-bold text-nexus-teal uppercase tracking-widest mb-6">ดัชนีสุขภาพบุคลากร</h4>
-              <div className="space-y-3">
-                 <HRMetricItem label="ความพึงพอใจพนักงาน" value="92%" />
-                 <HRMetricItem label="การพัฒนาทักษะ" value="78%" />
-                 <HRMetricItem label="อัตราการลาออก" value="2.4%" />
-              </div>
-           </GlassCard>
-
-           <GlassCard accentColor="purple" className="p-5">
-              <h4 className="text-xs font-bold text-white/60 uppercase tracking-widest mb-6">บันทึกเวลาเข้างานล่าสุด</h4>
-              <div className="space-y-3">
-                 <AttendanceFeedItem name="Somchai R." location="ศูนย์ประชุมฯ" time="08:15 AM" />
-                 <AttendanceFeedItem name="Kriangkrai M." location="อาคาร PTT" time="08:42 AM" />
-              </div>
-           </GlassCard>
-        </div>
-      </div>
-      </div>
       </div>
     </div>
   );
 }
 
-function EmployeeRow({ id, name, role, dept, location, status }: { id: string, name: string, role: string, dept: string, location: string, status: "active" | "danger" }) {
-  const router = useRouter();
+function Stat({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string; tone: "teal" | "warning" | "white" }) {
+  const color = tone === "teal" ? "text-nexus-teal bg-nexus-teal/10 border-nexus-teal/20" : tone === "warning" ? "text-warning bg-warning/10 border-warning/20" : "text-white bg-white/5 border-white/10";
   return (
-    <NexusTableRow onClick={() => router.push(`/hr/employees/${id}`)}>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center align-middle">
-           <span className="font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</span>
-      </NexusTableCell>
-      <NexusTableCell className="w-full">
-           <span className="font-bold text-white/80 group-hover:text-white transition-colors">{name}</span>
-      </NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-white/40 uppercase tracking-widest">{role}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-white/40 uppercase tracking-widest">{dept}</NexusTableCell>
-      <NexusTableCell>
-         <div className="flex items-center gap-2">
-            <MapIcon size={12} className="text-nexus-blue" />
-            <span className="text-[11px] font-medium text-white/60 uppercase">{location}</span>
-         </div>
-      </NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status={status} label="ปฏิบัติงาน" />
-      </NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-         <div onClick={(e) => e.stopPropagation()}>
-            <SecureDeleteAction collectionName="employees" documentId={id} displayName={name} compact />
-         </div>
-      </NexusTableCell>
-    </NexusTableRow>
-  );
-}
-
-function AttendanceRow({ name, time, loc, type, status }: { name: string, time: string, loc: string, type: string, status: any }) {
-  return (
-    <NexusTableRow>
-      <NexusTableCell className="w-full font-bold text-white">{name}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-white/40 uppercase tracking-widest">{time}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-nexus-blue uppercase tracking-widest">{loc}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-nexus-teal uppercase tracking-widest">{type}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status={status} label="บันทึกแล้ว" />
-      </NexusTableCell>
-    </NexusTableRow>
-  );
-}
-
-function PayrollRow({ period, count, total, status }: { period: string, count: number, total: string, status: any }) {
-  return (
-    <NexusTableRow>
-      <NexusTableCell className="w-full font-bold text-white">{period}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-white/40 uppercase tracking-widest">{count} คน</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-nexus-teal mono-numbers">{total}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status={status} label={status === "active" ? "โอนแล้ว" : "รอดำเนินการ"} />
-      </NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center"><PillButton variant="glass" className="px-4 text-[10px]">ดาวน์โหลด</PillButton></NexusTableCell>
-    </NexusTableRow>
-  );
-}
-
-function HRMetricItem({ label, value }: { label: string, value: string }) {
-  return (
-    <div className="space-y-2">
-       <div className="flex justify-between items-center text-[11px] font-medium uppercase tracking-widest">
-          <span className="text-white/30">{label}</span>
-          <span className="text-white/80">{value}</span>
-       </div>
-       <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-          <div className="h-full bg-nexus-teal" style={{ width: value }} />
-       </div>
+    <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px]">
+      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border shrink-0", color)}>{icon}</div>
+      <div className="flex flex-col justify-center">
+        <span className="text-xs font-semibold text-white/60 tracking-wider leading-none">{label}</span>
+        <span className={cn("text-[17px] font-bold mt-0.5 mono-numbers leading-none whitespace-nowrap", color.split(" ")[0])}>{value}</span>
+      </div>
     </div>
   );
 }
 
-function AttendanceFeedItem({ name, location, time }: { name: string, location: string, time: string }) {
-  return (
-    <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5 group hover:bg-white/[0.05] transition-all">
-       <div className="w-10 h-10 rounded-xl  flex items-center justify-center text-nexus-blue group-hover:shadow-neon-blue transition-all">
-          <Clock size={16} />
-       </div>
-       <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate">{name}</p>
-          <p className="text-[12px] text-white/30 uppercase font-medium tracking-[0.1em] mt-0.5">{location} • {time}</p>
-       </div>
-    </div>
-  );
-}
-
-function ExpenseRow({ id, date, employeeName, description, amount, status, onApprove }: any) {
-  const isPending = status === 'pending_approval';
-  
-  return (
-    <NexusTableRow>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[11px] text-white/50">{date}</NexusTableCell>
-      <NexusTableCell className="w-full font-bold text-white">{employeeName}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-[12px] text-white/70">{description}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-warning mono-numbers">฿{amount.toLocaleString()}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status={isPending ? "pending" : "active"} label={isPending ? "รออนุมัติ" : "อนุมัติแล้ว"} />
-      </NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        {isPending && (
-          <div className="flex gap-2">
-            <PillButton className="h-7 px-3 text-[10px] bg-nexus-teal shadow-neon-teal" onClick={onApprove}>Approve</PillButton>
-          </div>
-        )}
-      </NexusTableCell>
-    </NexusTableRow>
-  );
+function Empty({ cols, text }: { cols: number; text: string }) {
+  return <NexusTableRow><NexusTableCell colSpan={cols} className="text-center py-10 text-white/40">{text}</NexusTableCell></NexusTableRow>;
 }

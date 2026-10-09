@@ -10,6 +10,7 @@ export type Permission =
   | "sales:view" | "sales:edit" | "sales:delete"
   | "projects:view" | "projects:edit" | "projects:delete"
   | "finance:view" | "finance:edit" | "finance:delete"
+  | "hr:view" | "hr:edit"
   | "users:manage"
   | "settings:manage"
   | "logs:view";
@@ -20,6 +21,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "sales:view", "sales:edit", "sales:delete",
     "projects:view", "projects:edit", "projects:delete",
     "finance:view", "finance:edit", "finance:delete",
+    "hr:view", "hr:edit",
     "users:manage", "settings:manage", "logs:view"
   ],
   ADMIN: [
@@ -27,6 +29,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "sales:view", "sales:edit", "sales:delete",
     "projects:view", "projects:edit", "projects:delete",
     "finance:view", "finance:edit", "finance:delete",
+    "hr:view", "hr:edit",
     "users:manage", "settings:manage", "logs:view"
   ],
   ENGINEER: [
@@ -37,6 +40,8 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ACCOUNTANT: [
     "sales:view",
     "finance:view", "finance:edit",
+    // ฝ่ายบัญชีดูแลเงินเดือน
+    "hr:view", "hr:edit",
     "logs:view"
   ],
   SALES: [

@@ -827,7 +827,7 @@ export default function QuotationEditPage() {
       alert(`บันทึกใบเสนอราคา ${quotationNumber} สำเร็จ\nสถานะ: ${QUOTATION_STATUS_LABELS[finalStatus as keyof typeof QUOTATION_STATUS_LABELS] || finalStatus}`);
       
       if (isSubmit && !showCreditWarning && !isGpBelowThreshold) {
-        router.push("/sales/quotations");
+        router.push("/sales?tab=quotations");
       }
     } catch (error) {
       console.error("Error saving quotation:", error);

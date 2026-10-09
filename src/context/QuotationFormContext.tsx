@@ -294,7 +294,7 @@ export function QuotationFormProvider({ children }: { children: React.ReactNode 
       await addDoc(collection(db, `companies/${currentCompanyId}/quotations`), payload);
       
       alert(`บันทึกใบเสนอราคาสำเร็จ: ${qtCode}`);
-      router.push('/sales/quotations');
+      router.push('/sales?tab=quotations');
     } catch (err) {
       console.error(err);
       alert("เกิดข้อผิดพลาดในการบันทึก");

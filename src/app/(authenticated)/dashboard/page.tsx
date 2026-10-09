@@ -41,6 +41,7 @@ import {
   type ActivityKind,
 } from "@/lib/dashboard-metrics";
 import Link from "next/link";
+import { quotationStage } from "@/lib/quotation-status";
 import { useRouter } from "next/navigation";
 
 const upper = (s: any) => String(s || "").toUpperCase();
@@ -86,7 +87,7 @@ export default function DashboardPage() {
     return [
       { label: "ใบขอซื้อรออนุมัติ", href: "/procurement", ...count(purchaseRequests, (x) => upper(x.status) === "PENDING_APPROVAL") },
       { label: "ใบสั่งซื้อรออนุมัติ", href: "/procurement", ...count(purchaseOrders, (x) => normalizePoStatus(x.status) === "PENDING_APPROVAL") },
-      { label: "ใบเสนอราคารออนุมัติ", href: "/sales/quotations", ...count(quotations, (x) => upper(x.status) === "PENDING_APPROVAL") },
+      { label: "ใบเสนอราคารออนุมัติ", href: "/sales?tab=quotations&status=pending", ...count(quotations, (x) => quotationStage(x) === "pending") },
       { label: "รายการบัญชีรอลงบัญชี", href: "/finance", ...count(journals, (x) => String(x.status || "").toLowerCase() === "draft") },
       { label: "ใบงานช่างที่ยังเปิดอยู่", href: "/mobile/technician", ...count(workOrders, (x) => ["ASSIGNED", "IN_PROGRESS"].includes(upper(x.status))) },
     ];

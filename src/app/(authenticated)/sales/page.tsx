@@ -27,7 +27,8 @@ import {
   RefreshCw,
   CalendarDays,
   Percent,
-  Printer
+  Printer,
+  Copy,
 } from "lucide-react";
 import {
   PillButton,
@@ -79,6 +80,7 @@ import { nexusSequenceEngine } from "@/lib/sequence-engine";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
+import { quotationCanDelete, QUOTATION_STAGE, quotationStage, quotationValidUntil, type QuotationStage } from "@/lib/quotation-status";
 
 
 // ---------- แปลงเอกสารจาก Firestore เป็นแถวในตาราง (ข้อมูลจริงเท่านั้น ไม่มี mock) ----------
@@ -111,6 +113,15 @@ export default function SalesPage() {
 
   const { user, companyId, role: userRole } = useAuth();
   const [activeTab, setActiveTab] = useState<SalesSubModule>("quotations");
+  const [quoteFilter, setQuoteFilter] = useState<"all" | QuotationStage>("all");
+  // เปิดแท็บ/ตัวกรองจาก URL เช่น /sales?tab=quotations&status=pending (หน้า /sales/quotations เดิมส่งต่อมาที่นี่)
+  useEffect(() => {
+    const qs = new URLSearchParams(window.location.search);
+    const tab = qs.get("tab") as SalesSubModule | null;
+    if (tab && ["crm", "opportunities", "quotations", "orders", "invoices", "billing", "receipts", "cndn"].includes(tab)) setActiveTab(tab);
+    const st = qs.get("status") as QuotationStage | null;
+    if (st && st in QUOTATION_STAGE) setQuoteFilter(st);
+  }, []);
 
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
@@ -204,6 +215,9 @@ export default function SalesPage() {
       title: firstOf(d, ["projectName", "subject", "title"]) || "-",
       value: toMoney(firstOf(d, ["grandTotal", "totalRevenue", "netTotal"])),
       status: d.status || "DRAFT",
+      stage: quotationStage(d),
+      validUntil: quotationValidUntil(d),
+      canDelete: quotationCanDelete(d),
     }), setQuotationsList);
 
     // Sales Orders
@@ -304,30 +318,25 @@ export default function SalesPage() {
     return cust ? (cust.name || cust.displayId) : id;
   };
 
-  const filteredQuotations = quotationsList.filter(q =>
+  const searchedQuotations = quotationsList.filter(q =>
     (q.customerNameRaw || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (q.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (q.title || "").toLowerCase().includes(searchQuery.toLowerCase())
-  ).map(q => ({
+  );
+  const stageCounts = searchedQuotations.reduce((m: Record<string, number>, q: any) => { m[q.stage] = (m[q.stage] || 0) + 1; return m; }, {});
+  const filteredQuotations = searchedQuotations.filter(q => quoteFilter === "all" || q.stage === quoteFilter).map(q => ({
     ...q,
     customer: getCustomerName(q.customerNameRaw)
   }));
 
   // สรุป pipeline และรายการต้องติดตาม จากใบเสนอราคาจริง
   const quoteAmount = (q: any) => Number(firstOf(q, ["grandTotal", "totalRevenue", "netTotal"]) || 0);
-  const quoteStage = (status: string) => {
-    const st = String(status || "").toUpperCase();
-    if (["APPROVED", "ACCEPTED", "WON"].includes(st)) return "approved";
-    if (["SENT", "PENDING_APPROVAL"].includes(st)) return "sent";
-    if (st === "DRAFT" || st === "") return "draft";
-    return null; // ยกเลิก/หมดอายุ ไม่นับใน pipeline
-  };
-  const pipeline = { draft: { count: 0, value: 0 }, sent: { count: 0, value: 0 }, approved: { count: 0, value: 0 } };
+  const pipelineStages: QuotationStage[] = ["draft", "pending", "sent", "won", "expired"];
+  const pipeline = Object.fromEntries(pipelineStages.map((k) => [k, { count: 0, value: 0 }])) as Record<string, { count: number; value: number }>;
   quotationsList.forEach(q => {
-    const stage = quoteStage(q.status);
-    if (stage) {
-      pipeline[stage].count++;
-      pipeline[stage].value += quoteAmount(q);
+    if (pipeline[q.stage]) {
+      pipeline[q.stage].count++;
+      pipeline[q.stage].value += quoteAmount(q);
     }
   });
   // ตัวเลขหัวหน้า: ยอดขายเดือนนี้ (ใบแจ้งหนี้), อัตราปิดการขาย (ใบเสนอราคาที่ส่งแล้ว), ใบแจ้งหนี้ค้างชำระ
@@ -335,12 +344,25 @@ export default function SalesPage() {
   const monthSales = invoicesList
     .filter((inv: any) => !inv.isSample && toDateStr(firstOf(inv, ["issueDate", "issuedAt", "createdAt"])).startsWith(thisMonth))
     .reduce((sum: number, inv: any) => sum + Number(firstOf(inv, ["grandTotal", "totalRevenue", "totalAmount"]) || 0), 0);
-  const decided = quotationsList.filter(q => !["DRAFT", ""].includes(String(q.status || "").toUpperCase()));
-  const winRate = decided.length ? Math.round((decided.filter(q => quoteStage(q.status) === "approved").length / decided.length) * 100) : null;
+  // อัตราปิดการขาย = ได้งาน ÷ ใบที่ส่งถึงลูกค้าแล้ว (ส่งแล้ว + ได้งาน + หมดอายุ)
+  const decided = quotationsList.filter(q => ["sent", "won", "expired"].includes(q.stage));
+  const winRate = decided.length ? Math.round((decided.filter(q => q.stage === "won").length / decided.length) * 100) : null;
   const unpaidInvoices = invoicesList.filter((inv: any) => !inv.isSample && inv.status !== "paid").length;
+  const duplicateQuotation = async (docId: string) => {
+    if (!companyId || !window.confirm("คัดลอกใบเสนอราคานี้เป็นใบใหม่ (ฉบับร่าง)?")) return;
+    try {
+      const res = await apiFetch(`/api/quotations/${encodeURIComponent(docId)}/duplicate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId }) });
+      const data = await res.json();
+      if (!res.ok || !data.success || !data.newQuotationId) throw new Error(data.error || "คัดลอกไม่สำเร็จ");
+      showToast(`คัดลอกเป็น ${data.newDocumentNo || "ใบใหม่"} แล้ว`);
+      router.push(`/sales/quotations/${encodeURIComponent(data.newQuotationId)}`);
+    } catch (err: any) {
+      showToast(err.message);
+    }
+  };
   const toCompactMoney = (n: number) => `฿${n >= 1_000_000 ? (n / 1_000_000).toFixed(1) + "M" : n >= 1_000 ? (n / 1_000).toFixed(0) + "K" : n.toFixed(0)}`;
   const followUps = filteredQuotations
-    .filter(q => quoteStage(q.status) === "sent")
+    .filter(q => q.stage === "sent")
     .map(q => {
       const sentDate = toDateStr(firstOf(q, ["docDate", "issueDate", "createdAt"]));
       const daysSince = sentDate === "-" ? 0 : Math.floor((Date.now() - new Date(sentDate).getTime()) / 86_400_000);
@@ -569,12 +591,24 @@ export default function SalesPage() {
                 )}
 
                 {activeTab === "quotations" && (
-                  <div className="animate-in fade-in duration-500">
+                  <div className="animate-in fade-in duration-500 space-y-2">
+                    <div className="flex flex-wrap gap-1.5 px-1 pt-1">
+                      {(["all", "draft", "pending", "sent", "won", "expired", "rejected", "superseded"] as const).map((k) => {
+                        const n = k === "all" ? searchedQuotations.length : stageCounts[k] || 0;
+                        if (k !== "all" && !n && quoteFilter !== k) return null;
+                        return (
+                          <button key={k} onClick={() => setQuoteFilter(k)} className={cn("h-7 px-3 rounded-full text-[12px] font-bold border transition-colors", quoteFilter === k ? "bg-nexus-teal/15 border-nexus-teal/40 text-nexus-teal" : "border-white/10 text-white/60 hover:text-white")}>
+                            {k === "all" ? "ทั้งหมด" : QUOTATION_STAGE[k].label} <span className="font-mono">{n}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                     <NexusTable
-                      className="table-fixed"
-                      headers={["เลขที่ใบเสนอราคา", "ชื่อลูกค้า", "ชื่อโครงการ", "มูลค่าสุทธิ", "สถานะ", "จัดการ"]}
-                      columnWidths={["w-[140px]", "w-auto", "w-auto", "w-[150px]", "w-[140px]", "w-[100px]"]}
+                      headers={["เลขที่ใบเสนอราคา", "ลูกค้า", "ชื่อโครงการ", "ยืนราคาถึง", "มูลค่าสุทธิ", "สถานะ", "จัดการ"]}
                     >
+                      {filteredQuotations.length === 0 && (
+                        <NexusTableRow><NexusTableCell colSpan={7} className="text-center py-10 text-white/40">ไม่พบใบเสนอราคา</NexusTableCell></NexusTableRow>
+                      )}
                       {filteredQuotations.map(q => (
                         <QuotationRow
                           key={q.docId}
@@ -583,9 +617,12 @@ export default function SalesPage() {
                           customer={q.customer}
                           title={q.title}
                           value={q.value}
-                          status={q.status}
+                          stage={q.stage}
+                          validUntil={q.validUntil}
+                          canDelete={q.canDelete}
                           companyId={companyId || "COM-NEXUS-01"}
                           onClick={() => setSelectedItem(q)}
+                          onDuplicate={() => duplicateQuotation(q.docId)}
                         />
                       ))}
                     </NexusTable>
@@ -813,7 +850,7 @@ export default function SalesPage() {
                     <h4 className="text-[14px] font-bold text-white">{selectedItem.title}</h4>
                     <p className="text-[11px] text-white/50">{selectedItem.id}</p>
                   </div>
-                  <StatusBadge {...quotationStatusBadge(selectedItem.status)} />
+                  <StatusBadge status={(QUOTATION_STAGE[selectedItem.stage as QuotationStage] || QUOTATION_STAGE.draft).badge} label={(QUOTATION_STAGE[selectedItem.stage as QuotationStage] || QUOTATION_STAGE.draft).label} />
                 </div>
 
                 <div className="space-y-3 text-xs font-medium text-white/70">
@@ -831,7 +868,7 @@ export default function SalesPage() {
                    </div>
                    <div className="flex items-center gap-3">
                      <ShieldCheck size={16} className="text-warning shrink-0" />
-                     <span>ยืนราคาถึง: {selectedItem.validUntil || selectedItem.expiryDate || "-"}</span>
+                     <span>ยืนราคาถึง: {selectedItem.validUntil || "-"}{selectedItem.stage === "expired" ? " (หมดอายุแล้ว)" : ""}</span>
                    </div>
                    <div className="flex items-center gap-3">
                      <RefreshCw size={16} className="text-nexus-purple shrink-0" />
@@ -847,7 +884,7 @@ export default function SalesPage() {
                    </div>
                    <div className="flex items-center gap-3 pt-3 border-t border-white/5">
                      <CreditCard size={16} className="text-nexus-blue shrink-0" />
-                     <span className="font-mono text-[14px] text-white">ยอดสุทธิ: {selectedItem.financials?.total ? new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format : (selectedItem.value || "฿ 0.00")}</span>
+                     <span className="font-mono text-[14px] text-white">ยอดสุทธิ: {selectedItem.value || "฿0.00"}</span>
                    </div>
                 </div>
 
@@ -906,8 +943,10 @@ export default function SalesPage() {
                   <h4 className="text-[12px] font-medium text-nexus-blue uppercase tracking-widest mb-6">ขั้นตอนการปิดการขาย</h4>
                   <div className="space-y-3">
                      <PipelineStage label="ร่าง" count={pipeline.draft.count} value={toCompactMoney(pipeline.draft.value)} />
-                     <PipelineStage label="ส่งแล้ว" count={pipeline.sent.count} value={toCompactMoney(pipeline.sent.value)} color="bg-nexus-blue" />
-                     <PipelineStage label="อนุมัติแล้ว" count={pipeline.approved.count} value={toCompactMoney(pipeline.approved.value)} color="bg-nexus-teal" />
+                     <PipelineStage label="รออนุมัติ" count={pipeline.pending.count} value={toCompactMoney(pipeline.pending.value)} color="bg-warning" />
+                     <PipelineStage label="ส่งลูกค้าแล้ว" count={pipeline.sent.count} value={toCompactMoney(pipeline.sent.value)} color="bg-nexus-blue" />
+                     <PipelineStage label="ได้งาน" count={pipeline.won.count} value={toCompactMoney(pipeline.won.value)} color="bg-nexus-teal" />
+                     {pipeline.expired.count > 0 && <PipelineStage label="หมดอายุ" count={pipeline.expired.count} value={toCompactMoney(pipeline.expired.value)} color="bg-danger" />}
                   </div>
                </GlassCard>
 
@@ -978,16 +1017,6 @@ function CustomerRow({ id, docId, name, industry, taxId, status, role, companyId
   );
 }
 
-function quotationStatusBadge(status: string) {
-  switch (String(status || "").toUpperCase()) {
-    case "DRAFT": return { status: "pending", label: "ร่าง" };
-    case "PENDING_APPROVAL": return { status: "warning", label: "รออนุมัติ" };
-    case "SENT": return { status: "active", label: "ส่งแล้ว" };
-    case "APPROVED": case "ACCEPTED": case "WON": return { status: "active", label: "อนุมัติแล้ว" };
-    case "EXPIRED": return { status: "inactive", label: "หมดอายุ" };
-    default: return { status: "danger", label: "ยกเลิก" };
-  }
-}
 
 function salesOrderStatusBadge(status: string) {
   switch (String(status || "").toUpperCase()) {
@@ -1000,19 +1029,22 @@ function salesOrderStatusBadge(status: string) {
   }
 }
 
-function QuotationRow({ id, docId, customer, title, value, status, companyId, onClick }: { id: string, docId: string, customer: string, title: string, value: string, status: string, companyId: string, onClick?: () => void }) {
+function QuotationRow({ id, docId, customer, title, value, stage, validUntil, canDelete, companyId, onClick, onDuplicate }: { id: string, docId: string, customer: string, title: string, value: string, stage: QuotationStage, validUntil: string, canDelete: boolean, companyId: string, onClick?: () => void, onDuplicate: () => void }) {
+  const st = QUOTATION_STAGE[stage] || QUOTATION_STAGE.draft;
+  const href = `/sales/quotations/${encodeURIComponent(docId)}`;
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[140px] whitespace-nowrap align-middle text-center text-nexus-teal tracking-tighter" mono>{id}</NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80 truncate">{customer}</NexusTableCell>
-      <NexusTableCell className="text-[14px] font-bold text-white/40 truncate text-left">{title}</NexusTableCell>
-      <NexusTableCell className="w-[150px] whitespace-nowrap text-right text-white" mono>{value}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge {...quotationStatusBadge(status)} />
-      </NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <div onClick={(e) => e.stopPropagation()} className="inline-block">
-          <SecureDeleteAction collectionName={`companies/${companyId}/quotations`} documentId={docId} displayName={title} compact />
+      <NexusTableCell mono><Link href={href} onClick={(e) => e.stopPropagation()} className="text-nexus-teal hover:underline" title="เปิดใบเสนอราคา">{id}</Link></NexusTableCell>
+      <NexusTableCell className="font-bold text-white/80">{customer}</NexusTableCell>
+      <NexusTableCell className="text-white/60">{title}</NexusTableCell>
+      <NexusTableCell className={stage === "expired" ? "text-danger" : "text-white/60"}>{validUntil ? new Date(`${validUntil}T00:00:00`).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" }) : "-"}</NexusTableCell>
+      <NexusTableCell className="text-white" mono>{value}</NexusTableCell>
+      <NexusTableCell><StatusBadge status={st.badge} label={st.label} /></NexusTableCell>
+      <NexusTableCell>
+        <div onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1.5">
+          <button onClick={onDuplicate} className="w-8 h-8 rounded-full border border-white/15 text-white/60 flex items-center justify-center hover:text-white hover:bg-white/[0.05]" title="คัดลอกเป็นใบเสนอราคาใหม่" aria-label="คัดลอก"><Copy size={14} /></button>
+          {/* ลบได้เฉพาะใบที่ยังไม่ส่งออกไปภายนอก เพื่อไม่ให้เลขเอกสารที่ลูกค้าเห็นแล้วหายไป (เว้นช่องไว้ให้ปุ่มตรงแนวกัน) */}
+          {canDelete ? <SecureDeleteAction collectionName={`companies/${companyId}/quotations`} documentId={docId} displayName={title} compact /> : <span className="inline-block w-10 h-8 shrink-0" aria-hidden />}
         </div>
       </NexusTableCell>
     </NexusTableRow>

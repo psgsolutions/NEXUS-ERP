@@ -4,7 +4,7 @@
  *   npx firebase emulators:exec --only firestore --project demo-nexus "node scripts/test-tenant-rules.js"
  */
 const { initializeTestEnvironment, assertFails, assertSucceeds } = require('@firebase/rules-unit-testing');
-const { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, addDoc } = require('firebase/firestore');
+const { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, addDoc, writeBatch } = require('firebase/firestore');
 const fs = require('fs');
 const path = require('path');
 
@@ -34,6 +34,12 @@ async function main() {
     await setDoc(doc(db, 'products/pB'), { companyId: 'B', name: 'B product' });
     await setDoc(doc(db, 'logs/logA'), { companyId: 'A' });
     await setDoc(doc(db, 'periodClosings/A_2026_01'), { companyId: 'A', status: 'closed' });
+    await setDoc(doc(db, 'companies/A/quotations/qDraft'), { companyId: 'A', status: 'DRAFT' });
+    await setDoc(doc(db, 'companies/A/quotations/qSent'), { companyId: 'A', status: 'SENT' });
+    await setDoc(doc(db, 'companies/A/quotations/qSent/lines/l1'), { qty: 1 });
+    await setDoc(doc(db, 'companies/A/receipts/RE-1'), { companyId: 'A', status: 'posted' });
+    await setDoc(doc(db, 'employees/eA'), { companyId: 'A', name: 'A' });
+    await setDoc(doc(db, 'employees/eB'), { companyId: 'B', name: 'B' });
   });
 
   const anon = testEnv.unauthenticatedContext().firestore();
@@ -96,6 +102,34 @@ async function main() {
     ['counters are server-only', () => assertFails(setDoc(doc(userA, 'counters/A_QT-26'), { seq: 1 }))],
     ['period closings readable by company', () => assertSucceeds(byCompany(userA, 'periodClosings', 'A'))],
     ['period closings are server-only', () => assertFails(setDoc(doc(userA, 'periodClosings/A_2026_02'), { companyId: 'A' }))],
+
+    // Quotations: create on screen, edit via API only, delete only before sending
+    ['member creates draft quotation', () => assertSucceeds(setDoc(doc(userA, 'companies/A/quotations/qNew'), { companyId: 'A', status: 'DRAFT' }))],
+    ['member cannot create quotation as APPROVED', () => assertFails(setDoc(doc(userA, 'companies/A/quotations/qBad'), { companyId: 'A', status: 'Approved' }))],
+    ['member cannot update a quotation directly', () => assertFails(updateDoc(doc(userA, 'companies/A/quotations/qDraft'), { grandTotal: 1 }))],
+    ['member cannot edit a sent quotation', () => assertFails(updateDoc(doc(userA, 'companies/A/quotations/qSent'), { grandTotal: 1 }))],
+    ['member deletes draft quotation', () => assertSucceeds(deleteDoc(doc(userA, 'companies/A/quotations/qDraft')))],
+    ['member cannot delete sent quotation', () => assertFails(deleteDoc(doc(userA, 'companies/A/quotations/qSent')))],
+    ['lines created with a new quotation in one batch', async () => {
+      const b = writeBatch(userA);
+      b.set(doc(userA, 'companies/A/quotations/qBatch'), { companyId: 'A', status: 'SENT' });
+      b.set(doc(userA, 'companies/A/quotations/qBatch/lines/l1'), { qty: 2 });
+      return assertSucceeds(b.commit());
+    }],
+    ['cannot add lines to a sent quotation later', () => assertFails(setDoc(doc(userA, 'companies/A/quotations/qSent/lines/l2'), { qty: 9 }))],
+    ['cannot change lines of a sent quotation', () => assertFails(updateDoc(doc(userA, 'companies/A/quotations/qSent/lines/l1'), { qty: 9 }))],
+    ['audit log entry on sent quotation allowed', () => assertSucceeds(addDoc(collection(userA, 'companies/A/quotations/qSent/audit_logs'), { action: 'VIEW' }))],
+    ['member reads sent quotation lines', () => assertSucceeds(getDocs(collection(userA, 'companies/A/quotations/qSent/lines')))],
+
+    // Server-only business documents
+    ['member reads receipt', () => assertSucceeds(getDoc(doc(userA, 'companies/A/receipts/RE-1')))],
+    ['member cannot edit receipt', () => assertFails(updateDoc(doc(userA, 'companies/A/receipts/RE-1'), { status: 'cancelled' }))],
+    ['member cannot create payment', () => assertFails(setDoc(doc(userA, 'companies/A/payments/PV-1'), { companyId: 'A' }))],
+    ['member cannot write payroll', () => assertFails(setDoc(doc(userA, 'companies/A/payrolls/2026-10'), { companyId: 'A' }))],
+    ['member reads own-company employee', () => assertSucceeds(getDoc(doc(userA, 'employees/eA')))],
+    ['member cannot read other-company employee', () => assertFails(getDoc(doc(userA, 'employees/eB')))],
+    ['member cannot edit employee (salary) directly', () => assertFails(updateDoc(doc(adminA, 'employees/eA'), { salary: 999999 }))],
+    ['member cannot write attendance directly', () => assertFails(addDoc(collection(userA, 'attendance'), { companyId: 'A', type: 'IN' }))],
 
     // SUPERADMIN
     ['superadmin (uid) reads other company', () => assertSucceeds(getDoc(doc(superUid, 'companies/B/quotations/q2')))],

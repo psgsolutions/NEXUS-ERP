@@ -5,6 +5,8 @@ rules_version = '2';
 // - companies/{companyId}/** เข้าถึงได้เฉพาะสมาชิกบริษัทนั้น (ใช้ users/{uid}.companyId ไม่ต้องตั้ง Custom Claims)
 // - Root collections: อ่าน/เขียนได้เฉพาะเอกสารบริษัทตัวเอง (query ฝั่ง client ต้องมี where("companyId", "==", ...) เสมอ)
 // - Audit log เขียนได้อย่างเดียว ห้ามแก้/ลบ; counters และ periodClosings เขียนได้ผ่าน Admin SDK (API) เท่านั้น
+// - เอกสารที่มี API ดูแลสถานะ (ใบเสร็จ ใบสำคัญจ่าย เงินเดือน พนักงาน ลงเวลา หมายเลขเครื่อง) เขียนผ่าน API เท่านั้น
+// - ใบเสนอราคา: สร้างได้จากหน้าจอ แต่แก้/อนุมัติ/ออกฉบับแก้ไขผ่าน API เท่านั้น และลบได้เฉพาะใบที่ยังไม่ส่งลูกค้า
 // ชุดเป้าหมายแบบเข้มงวด (Custom Claims + server-only journal) อยู่ที่ firestore.strict.rules
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -72,7 +74,7 @@ service cloud.firestore {
     // ---------- Root collections (generic) ----------
     // collection ที่มีกฎเฉพาะด้านล่างถูกตัดออกจาก wildcard เพื่อไม่ให้ wildcard อนุญาตทับ
     function isSpecialRoot(collectionName) {
-      return collectionName in ['users', 'companies', 'counters', 'periodClosings', 'logs', 'activity_logs'];
+      return collectionName in ['users', 'companies', 'counters', 'periodClosings', 'logs', 'activity_logs', 'employees', 'attendance'];
     }
 
     match /{collectionName}/{documentId} {
@@ -111,6 +113,19 @@ service cloud.firestore {
       allow write: if false; // ปิด/เปิดงวดผ่าน /api/accounting/period-close|period-reopen เท่านั้น
     }
 
+    // พนักงานและการลงเวลา: อ่านได้ภายในบริษัท เขียนผ่าน /api/hr/* เท่านั้น
+    match /employees/{employeeId} {
+      allow get: if isMember() && canGet();
+      allow list: if isMember() && canList();
+      allow write: if false;
+    }
+
+    match /attendance/{recordId} {
+      allow get: if isMember() && canGet();
+      allow list: if isMember() && canList();
+      allow write: if false;
+    }
+
     // ---------- Append-only audit logs ----------
     match /logs/{logId} {
       allow get: if isMember() && canGet();
@@ -134,7 +149,35 @@ service cloud.firestore {
       // ทุก subcollection (และลึกกว่านั้น) ยกเว้นที่มีกฎเฉพาะ
       match /{collection}/{rest=**} {
         allow read: if inCompany(companyId);
-        allow write: if inCompany(companyId) && !(collection in ['auditLogs', 'financialLedgers']);
+        allow write: if inCompany(companyId) && !(collection in ['auditLogs', 'financialLedgers', 'quotations', 'receipts', 'payments', 'payrolls', 'serial_numbers']);
+      }
+
+      // receipts / payments / payrolls / serial_numbers: อ่านได้ตามกฎด้านบน เขียนผ่าน API เท่านั้น (ตรวจยอดค้าง กลับรายการบัญชี ออกเลขที่ในทรานแซกชัน)
+
+      // ใบเสนอราคา
+      function quotationEditable(data) {
+        return data.get('status', 'DRAFT') in ['DRAFT', 'Draft', 'draft', 'REJECTED', 'Rejected', 'rejected'];
+      }
+
+      match /quotations/{quotationId} {
+        allow read: if inCompany(companyId);
+        allow create: if inCompany(companyId) && newDataInMyCompany() &&
+          request.resource.data.get('status', 'DRAFT') in ['DRAFT', 'Draft', 'PENDING_APPROVAL', 'SENT'];
+        allow update: if false; // /api/quotations/{id}/save | approval | create-revision | internal-notes
+        allow delete: if inCompany(companyId) && quotationEditable(resource.data);
+
+        // รายการสินค้า / บันทึกการทำงาน: เขียนจากหน้าจอได้เฉพาะตอนสร้างใบใหม่ (batch เดียวกับหัวเอกสาร) หรือใบที่ยังแก้ได้
+        match /{sub}/{subId} {
+          allow read: if inCompany(companyId);
+          allow create: if inCompany(companyId) && (
+            sub == 'audit_logs' ||
+            (!exists(/databases/$(database)/documents/companies/$(companyId)/quotations/$(quotationId)) &&
+              existsAfter(/databases/$(database)/documents/companies/$(companyId)/quotations/$(quotationId))) ||
+            quotationEditable(get(/databases/$(database)/documents/companies/$(companyId)/quotations/$(quotationId)).data)
+          );
+          allow update, delete: if inCompany(companyId) && sub != 'audit_logs' &&
+            quotationEditable(get(/databases/$(database)/documents/companies/$(companyId)/quotations/$(quotationId)).data);
+        }
       }
 
       match /auditLogs/{logId} {

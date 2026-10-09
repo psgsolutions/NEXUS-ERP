@@ -46,7 +46,7 @@ export async function POST(
       quotationNumber: newDocNo,
       docDate: todayStr,
       date: todayStr,
-      status: 'draft',
+      status: 'DRAFT',
       
       // RESET CUSTOMER FIELDS
       customerId: '',

@@ -76,3 +76,8 @@ export function initialApprovals() {
 }
 
 export type ProjectAction = "approve" | "reject" | "start" | "progress" | "complete" | "cancel";
+
+/** บทบาทที่ต้องได้รับแจ้งเตือนให้อนุมัติขั้นนั้น */
+export function approverRolesForStep(stepOrder: number): string[] {
+  return APPROVAL_STEPS.find((s) => s.stepOrder === stepOrder)?.roles || ["ADMIN"];
+}

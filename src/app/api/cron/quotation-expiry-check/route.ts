@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import * as admin from 'firebase-admin';
 import { isCronRequest } from '@/lib/api-auth';
 import { quotationStage, quotationValidUntil } from '@/lib/quotation-status';
+import { notificationPayload } from '@/lib/notifications.server';
 
 /**
  * [CRON] แจ้งเตือนใบเสนอราคาที่จะหมดอายุภายใน 3 วัน (รันวันละครั้งจาก Vercel Cron)
@@ -43,18 +43,16 @@ export async function GET(request: Request) {
         const notifRef = adminDb.doc(`companies/${companyId}/notifications/QEXP-${docSnap.id}-${validUntil}`);
         // create: มีอยู่แล้ว (แจ้งไปเมื่อวาน) ไม่ทับ — สถานะอ่านแล้วไม่ถูกรีเซ็ต
         pending.push(notifRef.create({
-          id: notifRef.id,
-          companyId,
-          type: 'QUOTATION_EXPIRING_SOON',
-          title: `ใบเสนอราคาใกล้หมดอายุ (${docNo})`,
-          message: `ใบเสนอราคา ${docNo} ของลูกค้า ${q.customerName || 'ไม่ระบุชื่อ'} จะหมดอายุวันที่ ${validUntil}`,
-          targetUserId: q.salesPersonId || q.createdBy || '',
+          ...notificationPayload(companyId, {
+            type: 'QUOTATION_EXPIRING_SOON',
+            title: `ใบเสนอราคาใกล้หมดอายุ (${docNo})`,
+            message: `${q.customerName || 'ไม่ระบุชื่อลูกค้า'} · หมดอายุวันที่ ${validUntil}`,
+            link: `/sales/quotations/${docSnap.id}`,
+            targetUserId: q.salesPersonId || q.createdBy || '',
+            documentNo: docNo,
+          }),
           targetDocId: docSnap.id,
-          documentNo: docNo,
           validUntil,
-          isRead: false,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          isDeleted: false,
         }).then(() => true, (e: any) => { if (e?.code !== 6) throw e; return false; }));
         notifications.push({ companyId, id: docSnap.id, documentNo: docNo, validUntil });
       });

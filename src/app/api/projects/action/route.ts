@@ -4,7 +4,8 @@ import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth"
 import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { auditServer } from "@/services/audit.server";
-import { APPROVAL_STEPS, canApproveStep, normalizeProjectStatus, type ProjectAction, type ProjectStatus } from "@/lib/project-status";
+import { notifyInTx } from "@/lib/notifications.server";
+import { APPROVAL_STEPS, approverRolesForStep, canApproveStep, normalizeProjectStatus, type ProjectAction, type ProjectStatus } from "@/lib/project-status";
 
 /**
  * [API-SERVER] ดำเนินการกับโครงการ
@@ -107,7 +108,23 @@ export async function POST(request: Request) {
       update.history = history;
 
       tx.update(ref, update);
-      return { projectId: cur.projectId || docId, from: status, to: next };
+
+      // แจ้งเตือน: ขั้นถัดไปถึงผู้อนุมัติ, ผลอนุมัติ/ไม่อนุมัติถึงผู้สร้าง
+      const pNo = cur.projectId || docId;
+      const pName = cur.projectName || cur.title || cur.name || "";
+      const link = `/projects/${docId}`;
+      if (action === "approve" && next === "Pending Approval") {
+        const nextStep = Number(update.currentApprovalStep);
+        notifyInTx(tx, companyId, { type: "PROJECT_PENDING_APPROVAL", title: `โครงการ ${pNo} รออนุมัติขั้นที่ ${nextStep}`, message: pName, link, targetRoles: approverRolesForStep(nextStep), documentNo: pNo }, apiUser.uid);
+      } else if ((action === "approve" && next === "Approved") || action === "reject") {
+        if (cur.createdBy) notifyInTx(tx, companyId, {
+          type: action === "approve" ? "PROJECT_APPROVED" : "PROJECT_REJECTED",
+          title: action === "approve" ? `โครงการ ${pNo} อนุมัติครบทุกขั้นแล้ว` : `โครงการ ${pNo} ไม่ได้รับอนุมัติ`,
+          message: action === "approve" ? `${pName} · เริ่มดำเนินการได้` : comment || pName,
+          link, targetUserId: cur.createdBy, documentNo: pNo,
+        }, apiUser.uid);
+      }
+      return { projectId: pNo, from: status, to: next };
     });
 
     await auditServer.logUpdate(apiUser.uid, companyId, "PROJECTS", result.projectId, { status: result.from }, { status: result.to, action });

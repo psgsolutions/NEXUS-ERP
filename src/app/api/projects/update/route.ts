@@ -5,7 +5,8 @@ import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { auditServer } from "@/services/audit.server";
 import { buildProjectFields } from "@/lib/project.server";
-import { EDITABLE_STATUSES, initialApprovals, normalizeProjectStatus } from "@/lib/project-status";
+import { EDITABLE_STATUSES, approverRolesForStep, initialApprovals, normalizeProjectStatus } from "@/lib/project-status";
+import { notifyInTx } from "@/lib/notifications.server";
 
 /**
  * [API-SERVER] แก้ไขโครงการที่ยังเป็นฉบับร่าง หรือถูกตีกลับ (Rejected)
@@ -55,6 +56,16 @@ export async function POST(request: Request) {
         updatedAt: now,
         updatedBy: apiUser.uid,
       });
+      if (!asDraft) {
+        notifyInTx(tx, companyId, {
+          type: "PROJECT_PENDING_APPROVAL",
+          title: `โครงการ ${cur.projectId || docId} ส่งขออนุมัติใหม่`,
+          message: String(built.fields.projectName || cur.projectName || ""),
+          link: `/projects/${docId}`,
+          targetRoles: approverRolesForStep(1),
+          documentNo: cur.projectId || docId,
+        }, apiUser.uid);
+      }
       return { projectId: cur.projectId || docId, status: asDraft ? status : "Pending Approval" };
     });
 

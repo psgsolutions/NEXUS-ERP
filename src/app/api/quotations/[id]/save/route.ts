@@ -5,6 +5,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { canWriteBackToProductMaster } from "@/lib/erp-logic";
 import { auditServer } from "@/services/audit.server";
+import { notifyInTx } from "@/lib/notifications.server";
 
 /**
  * [API-SERVER] บันทึกการแก้ไขใบเสนอราคา (แทนการเขียนจากเบราว์เซอร์โดยตรง)
@@ -139,6 +140,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             ? (gp !== null && body.requiresApproval !== true ? `ส่งขออนุมัติเนื่องจาก GP (${gp}%) ต่ำกว่าเกณฑ์` : "ส่งขออนุมัติ (เกินวงเงินเครดิตหรือเงื่อนไขพิเศษ)")
             : "บันทึกและส่งเอกสารให้ลูกค้า",
       });
+      if (nextStatus === "PENDING_APPROVAL" && curStatus !== "PENDING_APPROVAL") {
+        notifyInTx(tx, companyId, {
+          type: "QUOTATION_PENDING_APPROVAL",
+          title: `ใบเสนอราคา ${docNo} รออนุมัติ`,
+          message: `${header.customerName || cur.customerName || "ลูกค้า"} · ยอด ${num(header.grandTotal ?? cur.grandTotal).toLocaleString("th-TH")} บาท${gp !== null ? ` · GP ${gp}%` : ""}`,
+          link: `/sales/quotations/${id}`,
+          targetRoles: ["ADMIN", "MANAGER", "SUPERADMIN"],
+          documentNo: docNo,
+        }, apiUser.uid);
+      }
       return { docNo, status: nextStatus, gp, customerId };
     });
 

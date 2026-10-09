@@ -43,6 +43,7 @@ import { useAuth } from "@/context/AuthContext";
 import { auth as firebaseAuth } from "@/lib/firebase-client";
 import { signOut } from "firebase/auth";
 import { EntitySelector } from "@/components/layout/EntitySelector";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { TacticalQuickAction } from "@/components/shared/TacticalQuickAction";
 import { FirebaseConnectionStatus } from "@/components/ui/FirebaseConnectionStatus";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
@@ -169,6 +170,7 @@ export default function AuthenticatedLayout({
           </div>
 
           <div className="flex items-center gap-4">
+            <NotificationBell />
             <div className="flex items-center gap-4 relative" ref={profileRef}>
                {/* Redesigned Profile Capsule - Premium Static Glassmorphism */}
                <div 

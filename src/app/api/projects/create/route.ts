@@ -6,7 +6,8 @@ import { nexusSequenceServer } from "@/lib/sequence-server";
 import { can } from "@/lib/permissions";
 import { auditServer } from "@/services/audit.server";
 import { buildProjectFields } from "@/lib/project.server";
-import { initialApprovals } from "@/lib/project-status";
+import { approverRolesForStep, initialApprovals } from "@/lib/project-status";
+import { notify } from "@/lib/notifications.server";
 
 /**
  * [API-SERVER] สร้างโครงการ
@@ -56,6 +57,16 @@ export async function POST(request: Request) {
 
     // create(): ถ้าเลขซ้ำ (ไม่ควรเกิด) จะล้มเหลวแทนการเขียนทับโครงการเดิม
     await adminDb.doc(`companies/${companyId}/projects/${projectId}`).create(projectDoc);
+    if (!asDraft) {
+      await notify(companyId, {
+        type: "PROJECT_PENDING_APPROVAL",
+        title: `โครงการ ${projectId} รออนุมัติขั้นที่ 1`,
+        message: String(built.fields.projectName || ""),
+        link: `/projects/${projectId}`,
+        targetRoles: approverRolesForStep(1),
+        documentNo: projectId,
+      }, apiUser.uid);
+    }
 
     await auditServer.logCreate(apiUser.uid, companyId, "PROJECTS", projectId, {
       projectId,

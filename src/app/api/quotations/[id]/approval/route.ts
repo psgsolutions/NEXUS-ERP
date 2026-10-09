@@ -3,6 +3,7 @@ import * as admin from "firebase-admin";
 import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
 import { auditServer } from "@/services/audit.server";
+import { notifyInTx } from "@/lib/notifications.server";
 
 /**
  * [API-SERVER] อนุมัติ / ตีกลับใบเสนอราคาที่รออนุมัติ
@@ -48,6 +49,17 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         timestamp: new Date().toISOString(),
         details: decision === "approve" ? "อนุมัติใบเสนอราคา" : `ตีกลับให้แก้ไข${comment ? `: ${comment}` : ""}`,
       });
+      const owner = q.salesPersonId || q.createdBy;
+      if (owner) {
+        notifyInTx(tx, companyId, {
+          type: decision === "approve" ? "QUOTATION_APPROVED" : "QUOTATION_REJECTED",
+          title: decision === "approve" ? `ใบเสนอราคา ${docNo} อนุมัติแล้ว` : `ใบเสนอราคา ${docNo} ถูกตีกลับให้แก้ไข`,
+          message: decision === "approve" ? `${q.customerName || "ลูกค้า"} · ส่งให้ลูกค้าได้` : comment || "ไม่ได้ระบุเหตุผล",
+          link: `/sales/quotations/${id}`,
+          targetUserId: owner,
+          documentNo: docNo,
+        }, apiUser.uid);
+      }
       return { docNo, status };
     });
 

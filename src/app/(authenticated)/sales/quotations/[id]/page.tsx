@@ -28,7 +28,7 @@ import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { useAuth } from "@/context/AuthContext";
 import { SmartSelect, StepperInput, SciFiDropdownPortal } from "@/components/ui/SmartComponents";
 import { db } from "@/lib/firebase-client";
-import { writeBatch, doc, collection, serverTimestamp, getDoc, getDocs, updateDoc } from "firebase/firestore";
+import { doc, collection, getDoc, getDocs } from "firebase/firestore";
 import { apiFetch } from "@/lib/api-client";
 
 export default function QuotationEditPage() {
@@ -372,16 +372,18 @@ export default function QuotationEditPage() {
     const isApprove = targetStatus === "SENT";
     const actionLabel = isApprove ? "อนุมัติ" : "ไม่อนุมัติ";
     if (!confirm(`คุณต้องการ${actionLabel}ใบเสนอราคา ${quotationNumber} หรือไม่?`)) return;
+    const comment = isApprove ? "" : (window.prompt("เหตุผลที่ตีกลับให้แก้ไข (แสดงให้ผู้ขายเห็น)") || "");
 
     setIsApproving(true);
     try {
-      const docRef = doc(db, `companies/${companyId}/quotations`, params.id);
-      await updateDoc(docRef, {
-        status: targetStatus,
-        updatedAt: serverTimestamp(),
-        updatedBy: user?.uid || ""
+      const res = await apiFetch(`/api/quotations/${encodeURIComponent(params.id)}/approval`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, decision: isApprove ? "approve" : "reject", comment }),
       });
-      setStatus(targetStatus);
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || "ทำรายการไม่สำเร็จ");
+      setStatus(json.status);
       alert(`ทำรายการ${actionLabel}ใบเสนอราคาเรียบร้อยแล้ว`);
     } catch (err: any) {
       console.error("Error approving/rejecting quotation:", err);
@@ -651,27 +653,17 @@ export default function QuotationEditPage() {
 
     try {
       const isGpBelowThreshold = summary.profitMargin < minGpPercentForAutoSend;
-      const finalStatus = isSubmit
-        ? (isGpBelowThreshold || showCreditWarning ? "PENDING_APPROVAL" : "SENT")
-        : status;
-      const batch = writeBatch(db);
-
       let finalCustomerId = selectedCustomerId;
       let finalCustomerName = getCustomerName(selectedCustomer);
+      let newCustomer: { name: string; address: string; taxId: string } | null = null;
 
       if (!finalCustomerId && customerSearchTerm.trim()) {
-        const newCustomerRef = doc(collection(db, 'customers'));
-        batch.set(newCustomerRef, {
-          customerName: customerSearchTerm.trim(),
+        // ลูกค้าใหม่: เซิร์ฟเวอร์สร้างให้ในการบันทึกครั้งเดียวกัน
+        newCustomer = {
           name: customerSearchTerm.trim(),
           address: [addrLine1, addrLine2, subDistrict, district, province, postalCode].filter(Boolean).join(" "),
           taxId: customerTaxId,
-          companyId: companyId,
-          isDeleted: false,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-        finalCustomerId = newCustomerRef.id;
+        };
         finalCustomerName = customerSearchTerm.trim();
       }
 
@@ -694,25 +686,6 @@ export default function QuotationEditPage() {
         updatedAt: new Date().toISOString()
       };
 
-      const auditEntry = {
-        id: `LOG-${Date.now()}`,
-        userId: user?.uid || "anonymous",
-        userName: user?.displayName || user?.email || "ผู้ใช้งาน",
-        action: !isSubmit ? "SAVE_DRAFT" : isGpBelowThreshold || showCreditWarning ? "SUBMIT_APPROVAL" : `SEND_${sendChannel || 'MANUAL'}`,
-        channel: sendChannel || (isSubmit ? "SYSTEM" : "DRAFT"),
-        clientIp: "127.0.0.1",
-        timestamp: new Date().toISOString(),
-        details: !isSubmit
-          ? "บันทึกข้อมูลแก้ไขใบเสนอราคา"
-          : isGpBelowThreshold
-            ? `ส่งขออนุมัติเนื่องจาก GP (${summary.profitMargin}%) ต่ำกว่าเกณฑ์ (${minGpPercentForAutoSend}%)`
-            : showCreditWarning
-              ? "ส่งขออนุมัติเนื่องจากเกินวงเงินเครดิต"
-              : `บันทึกและส่งเอกสารผ่านช่องทาง ${sendChannel === 'EMAIL' ? 'อีเมล' : sendChannel === 'LINE' ? 'LINE' : sendChannel === 'DOWNLOAD' ? 'ดาวน์โหลด PDF' : 'ระบบ'}`
-      };
-
-      // 1. Update Header Ref
-      const finalDocRef = doc(db, `companies/${companyId}/quotations`, params.id);
 
       const headerPayload = {
         companyId,
@@ -726,7 +699,6 @@ export default function QuotationEditPage() {
         attachments: attachments || [],
         customerSnapshot: customerSnapshotPayload,
         nextFollowUpDate: nextFollowUpDate || "",
-        status: finalStatus,
         docDate,
         validUntil,
         paymentTerms,
@@ -772,80 +744,60 @@ export default function QuotationEditPage() {
         expectedDeliveryDays,
         shippingAddress,
         internalNotes,
-        updatedBy: user?.uid || "",
-        updatedAt: serverTimestamp(),
       };
 
-      batch.update(finalDocRef, headerPayload);
+      const linesPayload = items.map((item) => ({
+        productId: item.id || "",
+        sku: item.sku || "",
+        productName: item.name || "",
+        description: item.description || "",
+        details: item.details || "",
+        qty: Number(item.qty) || 0,
+        uom: item.unit || "ชิ้น",
+        costPrice: Number(item.cost) || 0,
+        unitPrice: Number(item.price) || 0,
+        discountString: item.discount || "",
+        discountType: item.discountType || "PERCENT",
+        discountValue: Number(item.discountValue) || 0,
+        glAccountId: item.incomeAccountId || "411100",
+        isOptional: !!item.isOptional,
+      }));
+      const productWritebacks = items
+        .filter((item) => item.saveToProductMaster && item.productId)
+        .map((item) => ({ productId: item.productId, technicalSpecs: item.details || "", datasheetUrl: item.datasheetUrl || "" }));
 
-      // 2. Delete existing lines first to avoid orphans
-      const existingLinesSnap = await getDocs(collection(db, `companies/${companyId}/quotations/${params.id}/lines`));
-      existingLinesSnap.forEach(d => {
-        batch.delete(d.ref);
+      // บันทึกผ่านเซิร์ฟเวอร์: ตรวจสถานะ (ส่งลูกค้าแล้วแก้ไม่ได้) และเกณฑ์ GP ซ้ำอีกครั้ง
+      const res = await apiFetch(`/api/quotations/${encodeURIComponent(params.id)}/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId,
+          submit: isSubmit,
+          requiresApproval: isSubmit && (isGpBelowThreshold || showCreditWarning),
+          sendChannel,
+          header: headerPayload,
+          lines: linesPayload,
+          newCustomer,
+          productWritebacks,
+        }),
       });
-
-      // 3. Create Line Items in subcollection
-      items.forEach((item, index) => {
-        const lineRef = doc(collection(db, `companies/${companyId}/quotations/${finalDocRef.id}/lines`));
-        const linePayload = {
-          sequence: index + 1,
-          productId: item.id || "",
-          sku: item.sku || "",
-          productName: item.name || "",
-          description: item.description || "",
-          details: item.details || "",
-          qty: Number(item.qty) || 0,
-          uom: item.unit || "ชิ้น",
-          uomConversionFactor: 1,
-          costPrice: Number(item.cost) || 0,
-          unitPrice: Number(item.price) || 0,
-          discountString: item.discount || "",
-          discountType: item.discountType || 'PERCENT',
-          discountValue: Number(item.discountValue) || 0,
-          lineTotal: (Number(item.qty) || 0) * (Number(item.price) || 0),
-          isVatable: true,
-          whtApplicable: false,
-          glAccountId: item.incomeAccountId || "411100",
-          isOptional: !!item.isOptional,
-          margin: (Number(item.price) || 0) - (Number(item.cost) || 0)
-        };
-        batch.set(lineRef, linePayload);
-
-        if (item.saveToProductMaster && item.productId && canWriteBackToProductMaster(role, true)) {
-          const productRef = doc(db, `companies/${companyId}/products`, item.productId);
-          const updatePayload: Record<string, any> = {
-            updatedAt: serverTimestamp()
-          };
-          if (item.details && item.details.trim()) {
-            updatePayload.technicalSpecs = item.details.trim();
-          }
-          if (item.datasheetUrl && item.datasheetUrl.trim()) {
-            updatePayload.datasheetUrl = item.datasheetUrl.trim();
-          }
-          if (Object.keys(updatePayload).length > 1) {
-            batch.update(productRef, updatePayload);
-          }
-        }
-      });
-
-      // 4. Record Audit Log Subcollection Entry (Patch 12)
-      const auditLogRef = doc(collection(db, `companies/${companyId}/quotations/${params.id}/audit_logs`));
-      batch.set(auditLogRef, auditEntry);
-
-      await batch.commit();
+      const saved = await res.json();
+      if (!res.ok || !saved.success) throw new Error(saved.error || "บันทึกไม่สำเร็จ");
+      setStatus(saved.status);
+      if (saved.customerId && !selectedCustomerId) setSelectedCustomerId(saved.customerId);
 
       if (sendChannel === 'DOWNLOAD') {
         setShowPreviewModal(true);
       }
 
-      alert(`บันทึกใบเสนอราคา ${quotationNumber} สำเร็จ\nสถานะ: ${QUOTATION_STATUS_LABELS[finalStatus as keyof typeof QUOTATION_STATUS_LABELS] || finalStatus}`);
+      alert(`บันทึกใบเสนอราคา ${quotationNumber} สำเร็จ\nสถานะ: ${QUOTATION_STATUS_LABELS[saved.status as keyof typeof QUOTATION_STATUS_LABELS] || saved.status}`);
 
-      if (isSubmit && !showCreditWarning && !isGpBelowThreshold) {
+      if (saved.status === "SENT") {
         router.push("/sales?tab=quotations");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving quotation:", error);
-      alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+      alert(error?.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
     }
   };
 
@@ -910,7 +862,7 @@ export default function QuotationEditPage() {
         {canRevise && (
           <PillButton
             variant="glass"
-            onClick={() => { setRevisionChangeSummary(""); setShowRevisionModal(true); }} 
+            onClick={() => { setRevisionChangeSummary(""); setShowRevisionModal(true); }}
             className="h-8 px-4 text-xs font-bold text-purple-300 border-purple-500/30 hover:bg-purple-500/10"
             title="สร้างฉบับแก้ไข (Revision) เพื่อปรับราคาหรือข้อเสนอโดยยังคงรักษาประวัติฉบับเดิมไว้"
           >

@@ -35,8 +35,11 @@ export const CHART_OF_ACCOUNTS: Account[] = [
   { code: "2112-00", name: "เจ้าหนี้อื่น", type: "liability" },
   { code: "2121-00", name: "ภาษีขาย", type: "liability" },
   { code: "2122-00", name: "ภาษีมูลค่าเพิ่มค้างชำระ", type: "liability" },
+  { code: "2131-00", name: "ภาษีหัก ณ ที่จ่ายค้างจ่าย (ภ.ง.ด.1)", type: "liability" },
   { code: "2132-00", name: "ภาษีหัก ณ ที่จ่ายค้างจ่าย", type: "liability" },
+  { code: "2133-00", name: "เงินประกันสังคมค้างจ่าย", type: "liability" },
   { code: "2141-00", name: "ค่าใช้จ่ายค้างจ่าย", type: "liability" },
+  { code: "2142-00", name: "เงินเดือนค้างจ่าย", type: "liability" },
   { code: "2151-00", name: "เงินรับล่วงหน้าจากลูกค้า", type: "liability" },
   { code: "2211-00", name: "เงินกู้ยืมระยะยาว", type: "liability" },
   // 3 ส่วนของเจ้าของ

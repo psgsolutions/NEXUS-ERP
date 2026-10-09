@@ -76,6 +76,7 @@ export async function POST(request: Request) {
         department: emp.department || "",
         type,
         date,
+        month: date.slice(0, 7),
         time,
         status,
         location: str(body.location, 160) || emp.workLocation || "",

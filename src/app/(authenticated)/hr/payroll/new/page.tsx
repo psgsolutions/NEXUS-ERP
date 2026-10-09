@@ -1,279 +1,279 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useSystemDialog } from "@/context/DialogContext";
-import { 
-  Wallet, 
-  Calculator, 
-  ShieldCheck, 
-  AlertCircle,
-  CheckCircle2,
-  ArrowRight,
-  TrendingUp,
-  Users,
-  ArrowLeft
-} from "lucide-react";
-import { 
-  PillButton, 
-  PillSelect, 
-  NexusDataField,
-  GlassCard,
-  cn 
-} from "@/components/ui/Base";
-import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { formatCurrency } from "@/lib/erp-logic";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { where } from "firebase/firestore";
+import { ArrowLeft, Ban, CheckCircle2, Landmark, Loader2, Save } from "lucide-react";
+import { GlassCard, PillButton, PillInput, StatusBadge, cn } from "@/components/ui/Base";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
-import { DocumentStepper } from "@/components/ui/DocumentStepper";
+import { useAuth } from "@/context/AuthContext";
+import { useSystemDialog } from "@/context/DialogContext";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
+import { apiFetch } from "@/lib/api-client";
+import { can } from "@/lib/permissions";
+import { employeeName, employeeStatus } from "@/lib/hr";
+import { SSO_MAX_WAGE, computeLine, payrollTotals, periodEnd, periodLabel, type PayrollInput, type PayrollLine } from "@/lib/payroll";
 
-export default function NewPayrollPage() {
+const baht = (n: any) => (Number(n) || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const nowBkk = () => new Date(Date.now() + 7 * 3600e3).toISOString();
+const STATUS: Record<string, { label: string; badge: "active" | "pending" | "warning" | "inactive" }> = {
+  new: { label: "ยังไม่บันทึก", badge: "inactive" },
+  draft: { label: "ร่าง", badge: "pending" },
+  approved: { label: "อนุมัติแล้ว รอจ่าย", badge: "warning" },
+  paid: { label: "จ่ายแล้ว", badge: "active" },
+  cancelled: { label: "ยกเลิก", badge: "inactive" },
+};
+const journalHref = (c: string, id: string) => `/finance/journal/${encodeURIComponent(`companies/${c}/journal_entries/${id}`)}`;
+
+function PayrollEditor() {
   const router = useRouter();
-  const { showAlert, showConfirm } = useSystemDialog();
+  const preset = useSearchParams()?.get("period") || "";
+  const { companyId, role } = useAuth();
+  const { showConfirm } = useSystemDialog();
+  const canEdit = can(role, "hr:edit");
+  const canPost = canEdit && can(role, "finance:edit");
 
-  const [step, setStep] = useState(1);
-  const [period, setPeriod] = useState("เมษายน 2569");
+  // ค่าเริ่มต้น: เดือนปัจจุบัน
+  const [period, setPeriod] = useState(() => (/^\d{4}-\d{2}$/.test(preset) ? preset : nowBkk().slice(0, 7)));
+  const { data: doc, loading } = useRealtimeDocument<any>(companyId ? `companies/${companyId}/payrolls/${period}` : null);
+  const { data: employees } = useRealtimeCollection<any>("employees");
+  const monthFilter = useMemo(() => [where("month", "==", period), where("type", "==", "IN")], [period]);
+  const { data: attendance } = useRealtimeCollection<any>("attendance", monthFilter);
 
-  const { data: employees } = useRealtimeCollection("employees");
+  const status: string = doc?.status || "new";
+  const editable = canEdit && (status === "new" || status === "draft" || status === "cancelled");
 
-  const employeeCount = employees?.length || 0;
-  const baseSalary = employees?.reduce((sum, emp) => sum + (emp.salary || 0), 0) || 0;
-  const overtime = 0; // Requires attendance logic, keeping 0 for now
-  
-  const socialSecurity = employees?.reduce((sum, emp) => sum + Math.min((emp.salary || 0) * 0.05, 750), 0) || 0;
-  const tax = baseSalary * 0.03; // Mock flat 3% tax
-  
-  const netPayout = baseSalary + overtime - socialSecurity - tax;
+  const [inputs, setInputs] = useState<Record<string, PayrollInput>>({});
+  const [loadedFor, setLoadedFor] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const [selected, setSelected] = useState("");
+  const [busy, setBusy] = useState("");
+  const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
+  const [payDate, setPayDate] = useState(() => nowBkk().slice(0, 10));
+  const [bankAccount, setBankAccount] = useState("");
+  const [reason, setReason] = useState("");
 
-  const payrollData = {
-    employeeCount,
-    baseSalary,
-    overtime,
-    socialSecurity,
-    tax,
-    netPayout
+  const end = periodEnd(period);
+  const daysWorked = useMemo(() => {
+    const m = new Map<string, number>();
+    attendance.forEach((a: any) => m.set(a.employeeDocId, (m.get(a.employeeDocId) || 0) + 1));
+    return m;
+  }, [attendance]);
+
+  // พนักงานในงวด: ยังไม่ลาออก และเริ่มงานไม่เกินวันสิ้นงวด
+  const roster = useMemo(() => employees
+    .filter((e: any) => employeeStatus(e) !== "resigned" && (!e.joinDate || e.joinDate <= end))
+    .sort((a: any, b: any) => String(a.employeeId || a.id).localeCompare(String(b.employeeId || b.id))), [employees, end]);
+
+  // โหลดค่าที่บันทึกไว้ครั้งเดียวต่องวด
+  useEffect(() => {
+    if (loading || loadedFor === period) return;
+    const saved: Record<string, PayrollInput> = {};
+    (doc?.lines || []).forEach((l: any) => { saved[l.employeeDocId] = { employeeDocId: l.employeeDocId, workDays: l.workDays, allowance: l.allowance, overtime: l.overtime, otherIncome: l.otherIncome, otherDeduction: l.otherDeduction, whtOverride: l.whtOverride }; });
+    setInputs(saved);
+    setLoadedFor(period);
+    setDirty(false);
+    setSelected("");
+  }, [doc, loading, loadedFor, period]);
+
+  // งวดที่อนุมัติ/จ่ายแล้วแสดงตามที่บันทึก, ร่าง/ใหม่คำนวณจากข้อมูลพนักงานปัจจุบัน
+  const lines: PayrollLine[] = useMemo(() => {
+    if (!editable && doc?.lines) return doc.lines;
+    return roster.map((e: any) => computeLine(e, inputs[e.id] || { employeeDocId: e.id, workDays: e.employmentType === "daily" ? daysWorked.get(e.id) || 0 : 0 }, employeeName));
+  }, [editable, doc, roster, inputs, daysWorked]);
+  const totals = payrollTotals(lines);
+  const sel = lines.find((l) => l.employeeDocId === selected);
+  const selInput = sel ? inputs[sel.employeeDocId] || { employeeDocId: sel.employeeDocId, workDays: sel.workDays } : null;
+  const setField = (k: keyof PayrollInput, v: string) => {
+    if (!sel) return;
+    setDirty(true);
+    const cur = inputs[sel.employeeDocId] || { employeeDocId: sel.employeeDocId, workDays: sel.workDays };
+    setInputs({ ...inputs, [sel.employeeDocId]: { ...cur, [k]: k === "whtOverride" ? (v === "" ? null : Number(v)) : Number(v) || 0 } });
   };
 
-  const handleBack = async () => {
-    if (step > 1) {
-      if (await showConfirm("คุณกำลังทำรายการค้างอยู่ ต้องการยกเลิกและย้อนกลับหรือไม่?")) {
-        router.back();
-      }
-    } else {
-      router.back();
+  const call = async (action: string, extra: any = {}, okText = "") => {
+    setBusy(action);
+    setMessage(null);
+    try {
+      const res = await apiFetch("/api/hr/payroll", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, period, action, ...extra }) });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || "ดำเนินการไม่สำเร็จ");
+      if (action === "save") { setDirty(false); setLoadedFor(""); }
+      setMessage({ text: okText });
+    } catch (err: any) {
+      setMessage({ text: err.message, error: true });
+    } finally {
+      setBusy("");
     }
   };
-
-  const handleConfirm = () => {
-    showAlert("ระบบกำลังประมวลผลการจ่ายเงินเดือนประจำงวด");
-    router.push("/hr");
+  const save = () => call("save", { lines: lines.map((l) => ({ employeeDocId: l.employeeDocId, workDays: l.workDays, allowance: l.allowance, overtime: l.overtime, otherIncome: l.otherIncome, otherDeduction: l.otherDeduction, whtOverride: l.whtOverride })) }, `บันทึกร่างเงินเดือนงวด ${periodLabel(period)} แล้ว`);
+  const approve = async () => { if (await showConfirm(`อนุมัติเงินเดือนงวด ${periodLabel(period)} ยอดสุทธิ ฿${baht(totals.net)}? ระบบจะตั้งค่าใช้จ่ายและหนี้สินลงวันที่ ${end}`)) call("approve", {}, "อนุมัติแล้ว สร้างรายการบัญชีตั้งค่าใช้จ่ายเงินเดือน (รออนุมัติลงบัญชี)"); };
+  const pay = async () => {
+    if (!bankAccount.trim()) return setMessage({ text: "กรุณาระบุบัญชีธนาคารที่จ่าย", error: true });
+    if (await showConfirm(`บันทึกจ่ายเงินเดือน ฿${baht(totals.net)} วันที่ ${payDate}?`)) call("pay", { payDate, bankAccount }, "บันทึกการจ่ายเงินเดือนแล้ว");
+  };
+  const cancel = async () => {
+    if (!reason.trim()) return setMessage({ text: "กรุณาระบุเหตุผลการยกเลิก", error: true });
+    if (await showConfirm(`ยกเลิกเงินเดือนงวด ${periodLabel(period)}?`)) call("cancel", { reason }, "ยกเลิกงวดเงินเดือนแล้ว");
   };
 
-  const headerContent = (
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
+  const back = async () => { if (!dirty || (await showConfirm("มีข้อมูลที่ยังไม่บันทึก ต้องการออกจากหน้านี้ใช่หรือไม่?"))) router.back(); };
+  const st = STATUS[status] || STATUS.draft;
+
+  const header = (
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-5 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <PillButton variant="glass" onClick={handleBack} className="w-10 h-10 p-0 flex items-center justify-center">
-          <ArrowLeft size={20} />
-        </PillButton>
+        <PillButton variant="glass" onClick={back} className="w-10 h-10 p-0 flex items-center justify-center"><ArrowLeft size={20} /></PillButton>
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">
-              ประมวลผลเงินเดือนพนักงาน
-            </h1>
-            <span className="px-3 py-1 rounded-full bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal text-sm font-mono font-bold select-none cursor-default pointer-events-none">
-              PAYROLL
-            </span>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl font-semibold text-white tracking-tight">เงินเดือนงวด {periodLabel(period)}</h1>
+            <StatusBadge status={st.badge} label={st.label} />
           </div>
-          <p className="text-sm text-white/60 font-medium mt-1">
-            คำนวณเงินเดือน เบี้ยเลี้ยง ค่าล่วงเวลา ภาษีหัก ณ ที่จ่าย และประกันสังคม
-          </p>
+          <p className="text-sm text-white/60 mt-1">คำนวณประกันสังคม (เพดานค่าจ้าง {SSO_MAX_WAGE.toLocaleString("th-TH")}) และภาษีหัก ณ ที่จ่าย ภ.ง.ด.1 อัตโนมัติ</p>
         </div>
       </div>
-      
-      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
-        <PillButton variant="glass" onClick={handleBack} className="h-8 px-4 text-xs font-bold text-white/50">
-          ยกเลิก
-        </PillButton>
-        {step === 1 ? (
-          <PillButton variant="primary" className="h-8 px-5 font-bold text-xs" onClick={() => setStep(2)}>
-            ตรวจสอบความถูกต้อง <ArrowRight size={14} className="ml-1.5" />
+      <div className="flex items-center gap-2 flex-wrap justify-end">
+        <PillInput type="month" value={period} onChange={(e) => { if (e.target.value) { setPeriod(e.target.value); setLoadedFor(""); } }} className="h-9 w-[150px] text-sm font-mono" />
+        {editable && (
+          <PillButton variant="glass" onClick={save} disabled={!!busy || !lines.length} className="h-9 px-4 text-xs font-bold">
+            {busy === "save" ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Save size={14} className="mr-1.5" />} บันทึกร่าง
           </PillButton>
-        ) : (
-          <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" onClick={handleConfirm}>
-            <ShieldCheck size={14} className="mr-1.5" />
-            ยืนยันโอนเงิน
+        )}
+        {status === "draft" && canPost && (
+          <PillButton variant="confirm" onClick={approve} disabled={!!busy || dirty} title={dirty ? "บันทึกร่างก่อนอนุมัติ" : undefined} className="h-9 px-4 text-xs font-bold">
+            {busy === "approve" ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <CheckCircle2 size={14} className="mr-1.5" />} อนุมัติเงินเดือน
           </PillButton>
         )}
       </div>
     </div>
   );
 
-  const leftContent = (
-    <div className="space-y-4 pr-2 pb-10">
-      <GlassCard className="p-12 space-y-12 animate-in fade-in duration-500 min-h-[60vh] border-white/5 bg-black/20">
-        
-        <div className="flex items-center gap-4">
-           <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 border border-cyan-500/20 shadow-[0_0_24px_rgba(6,182,212,0.15)]">
-              <Calculator size={32} />
-           </div>
-           <div>
-              <h4 className="text-2xl font-semibold text-white uppercase tracking-tight">ประมวลผลเงินเดือนประจำงวด</h4>
-              <p className="text-[12px] font-bold text-white/30 uppercase tracking-[0.2em] mt-1">Automated Salary Calculation</p>
-           </div>
+  const left = (
+    <div className="space-y-4 pb-10">
+      {message && <div className={cn("p-3 rounded-xl text-xs font-bold border", message.error ? "bg-danger/10 border-danger/20 text-danger" : "bg-nexus-teal/10 border-nexus-teal/20 text-nexus-teal")}>{message.text}</div>}
+      {dirty && <p className="text-[12px] text-warning px-1">มีการแก้ไขที่ยังไม่บันทึก</p>}
+      {editable && lines.some((l) => !l.rate) && (
+        <div className="p-3 rounded-xl text-xs border bg-warning/10 border-warning/20 text-warning">
+          ยังไม่ได้กำหนดเงินเดือน {lines.filter((l) => !l.rate).length} คน:{" "}
+          {lines.filter((l) => !l.rate).map((l, i) => (
+            <React.Fragment key={l.employeeDocId}>{i > 0 && ", "}<Link href={`/hr/employees/new?edit=${encodeURIComponent(l.employeeDocId)}`} className="underline">{l.name}</Link></React.Fragment>
+          ))}
         </div>
+      )}
 
-        {step === 1 && (
-          <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid grid-cols-2 gap-8 p-8 rounded-3xl bg-white/[0.02] border border-white/5">
-               <Field label="งวดการจ่าย (Payment Period)">
-                  <PillSelect value={period} onChange={(e) => setPeriod(e.target.value)} className="w-full h-9 px-6 rounded-full font-bold">
-                    <option>เมษายน 2569</option>
-                    <option>พฤษภาคม 2569</option>
-                  </PillSelect>
-               </Field>
-               <Field label="จำนวนพนักงานที่ร่วมรายการ (Total Employees)">
-                  <div className="h-9 px-6 rounded-full bg-white/5 border border-white/10 flex items-center text-sm font-bold text-white w-full">
-                     {payrollData.employeeCount} คน (ทั้งหมด)
-                  </div>
-               </Field>
-            </div>
-
-            <div className="grid grid-cols-3 gap-6">
-               <SummaryCard icon={<Users size={20} />} label="พนักงาน" value={`${payrollData.employeeCount} คน`} />
-               <SummaryCard icon={<TrendingUp size={20} />} label="เงินเดือนฐานรวม" value={formatCurrency(payrollData.baseSalary)} />
-               <SummaryCard icon={<TrendingUp size={20} />} label="OT รวม" value={formatCurrency(payrollData.overtime)} color="text-cyan-400" />
-            </div>
-
-            <div className="space-y-6">
-               <h5 className="text-[13px] font-semibold text-white/20 uppercase tracking-widest ml-1">รายการหัก (Deductions)</h5>
-               <div className="grid grid-cols-2 gap-6">
-                   <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
-                      <span className="text-[13px] font-bold text-white/40">ประกันสังคม</span>
-                      <span className="text-lg font-black text-danger font-mono">-{formatCurrency(payrollData.socialSecurity)}</span>
-                   </div>
-                   <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
-                      <span className="text-[13px] font-bold text-white/40">ภาษีหัก ณ ที่จ่าย (PND1)</span>
-                      <span className="text-lg font-black text-danger font-mono">-{formatCurrency(payrollData.tax)}</span>
-                   </div>
-               </div>
-            </div>
+      <GlassCard className="p-4 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+        {[
+          ["พนักงาน", `${lines.length} คน`],
+          ["รวมเงินได้", baht(totals.gross)],
+          ["ประกันสังคม (ลูกจ้าง)", baht(totals.sso)],
+          ["ประกันสังคม (นายจ้าง)", baht(totals.employerSso)],
+          ["ภาษีหัก ณ ที่จ่าย", baht(totals.wht)],
+          ["ยอดจ่ายสุทธิ", baht(totals.net)],
+        ].map(([k, v]) => (
+          <div key={k} className="min-w-0">
+            <p className="text-[12px] text-white/50 truncate">{k}</p>
+            <p className="text-[15px] font-bold font-mono text-white whitespace-nowrap">{v}</p>
           </div>
-        )}
-
-        {step === 2 && (
-          <div className="space-y-12 animate-in fade-in slide-in-from-right-4 duration-500 py-6">
-             <div className="p-16 rounded-[2.5rem] bg-cyan-500/5 border border-cyan-500/20 text-center space-y-8 relative overflow-hidden">
-                <div className="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center text-cyan-400 mx-auto relative z-10">
-                   <CheckCircle2 size={48} />
-                </div>
-                <div className="space-y-2 relative z-10">
-                   <h4 className="text-3xl font-semibold text-white uppercase tracking-tight">ยืนยันยอดจ่ายสุทธิประจำงวด</h4>
-                    <p className="text-5xl font-black text-cyan-400 font-mono drop-shadow-[0_0_15px_rgba(6,182,212,0.2)] mt-6 tracking-tight">
-                       {formatCurrency(payrollData.netPayout)}
-                    </p>
-                </div>
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(20,163,204,0.1)_0%,transparent_50%)] pointer-events-none" />
-             </div>
-
-             <div className="grid grid-cols-2 gap-12">
-                <div className="space-y-6">
-                   <h5 className="text-[13px] font-semibold text-white/30 uppercase tracking-widest">การตรวจสอบความถูกต้อง (Verifications)</h5>
-                   <div className="space-y-4">
-                      <CheckItem label="ยอดเงินในบัญชีบริษัทเพียงพอ" status="pass" />
-                      <CheckItem label="ข้อมูลตอกบัตรครบถ้วน" status="pass" />
-                      <CheckItem label="รายการโอทีผ่านการอนุมัติแล้ว" status="pass" />
-                   </div>
-                </div>
-                <div className="space-y-6">
-                   <h5 className="text-[13px] font-semibold text-white/30 uppercase tracking-widest">ขั้นตอนถัดไป (Next Steps)</h5>
-                   <ul className="space-y-4 text-[13px] text-white/50 font-bold">
-                      <li className="flex items-center gap-3"><ArrowRight size={16} className="text-cyan-400" /> สร้างไฟล์ K-Cash Connect / SMART</li>
-                      <li className="flex items-center gap-3"><ArrowRight size={16} className="text-cyan-400" /> ส่งสลิปเงินเดือนเข้า Mobile App</li>
-                      <li className="flex items-center gap-3"><ArrowRight size={16} className="text-cyan-400" /> บันทึกสมุดรายวันจ่าย อัตโนมัติ</li>
-                   </ul>
-                </div>
-             </div>
-          </div>
-        )}
-
+        ))}
       </GlassCard>
+
+      <GlassCard className="p-3">
+        <div className="nexus-table-wrap">
+          <table className="w-full table-fixed text-[13px]">
+            <colgroup><col /><col className="w-[11%]" /><col className="w-[11%]" /><col className="w-[12%]" /><col className="w-[10%]" /><col className="w-[10%]" /><col className="w-[9%]" /><col className="w-[12%]" /></colgroup>
+            <thead>
+              <tr className="text-[11px] font-bold text-white/50 border-b border-white/10">
+                <th className="py-2 px-1.5 text-left">พนักงาน</th>
+                <th className="py-2 px-1.5 text-right">ค่าจ้างพื้นฐาน</th>
+                <th className="py-2 px-1.5 text-right">เงินได้เพิ่ม</th>
+                <th className="py-2 px-1.5 text-right">รวมเงินได้</th>
+                <th className="py-2 px-1.5 text-right">ประกันสังคม</th>
+                <th className="py-2 px-1.5 text-right">ภาษี</th>
+                <th className="py-2 px-1.5 text-right">หักอื่น</th>
+                <th className="py-2 px-1.5 text-right">สุทธิ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!lines.length && <tr><td colSpan={8} className="py-8 text-center text-white/40">ไม่มีพนักงานในงวดนี้</td></tr>}
+              {lines.map((l) => (
+                <tr key={l.employeeDocId} onClick={() => setSelected(l.employeeDocId === selected ? "" : l.employeeDocId)} className={cn("border-b border-white/5 last:border-0 cursor-pointer hover:bg-white/[0.03]", selected === l.employeeDocId && "bg-nexus-teal/[0.06]")}>
+                  <td className="py-2 px-1.5 min-w-0"><p className="text-white font-bold truncate">{l.name}</p><p className="text-[11px] text-white/40 font-mono truncate">{l.employeeId}{l.employmentType === "daily" ? ` · รายวัน ${l.workDays} วัน` : ""}</p></td>
+                  <td className="py-2 px-1.5 text-right font-mono text-white/80 whitespace-nowrap">{baht(l.base)}</td>
+                  <td className="py-2 px-1.5 text-right font-mono text-white/80 whitespace-nowrap">{baht(l.allowance + l.overtime + l.otherIncome)}</td>
+                  <td className="py-2 px-1.5 text-right font-mono text-white whitespace-nowrap">{baht(l.gross)}</td>
+                  <td className="py-2 px-1.5 text-right font-mono text-white/70 whitespace-nowrap">{baht(l.sso)}</td>
+                  <td className={cn("py-2 px-1.5 text-right font-mono whitespace-nowrap", l.whtOverride !== null ? "text-warning" : "text-white/70")} title={l.whtOverride !== null ? "กำหนดเอง" : "คำนวณอัตโนมัติ"}>{baht(l.wht)}</td>
+                  <td className="py-2 px-1.5 text-right font-mono text-white/70 whitespace-nowrap">{baht(l.otherDeduction)}</td>
+                  <td className={cn("py-2 px-1.5 text-right font-mono font-bold whitespace-nowrap", l.net < 0 ? "text-danger" : "text-white")}>{baht(l.net)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {editable && <p className="text-[11px] text-white/40 px-1.5 pt-2">คลิกแถวเพื่อแก้เบี้ยเลี้ยง ค่าล่วงเวลา รายได้/รายการหักอื่น หรือกำหนดภาษีเอง · ค่าจ้างรายวันนับวันทำงานจากการลงเวลาเข้างาน</p>}
+      </GlassCard>
+
+      {sel && selInput && (
+        <GlassCard className="p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-bold text-white">{sel.name} <span className="text-white/40 font-normal">· {sel.position || "-"} · {sel.employmentType === "daily" ? `ค่าจ้างวันละ ${baht(sel.rate)}` : `เงินเดือน ${baht(sel.rate)}`}</span></h3>
+            {sel.bankAccount && <span className="text-[12px] text-white/50">{sel.bankName} {sel.bankAccount}</span>}
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+            {([
+              ...(sel.employmentType === "daily" ? [["workDays", "วันทำงาน", sel.workDays]] : []),
+              ["allowance", "เบี้ยเลี้ยง / สวัสดิการ", sel.allowance],
+              ["overtime", "ค่าล่วงเวลา", sel.overtime],
+              ["otherIncome", "รายได้อื่น", sel.otherIncome],
+              ["otherDeduction", "รายการหักอื่น", sel.otherDeduction],
+              ["whtOverride", "ภาษี (เว้นว่าง = คำนวณ)", sel.whtOverride ?? ""],
+            ] as [keyof PayrollInput, string, any][]).map(([k, label, v]) => (
+              <div key={k} className="space-y-1 min-w-0">
+                <label className="text-[12px] font-bold text-white/70 ml-1 truncate block">{label}</label>
+                <PillInput inputMode="decimal" disabled={!editable} value={String(selInput[k] ?? v ?? "")} onChange={(e) => setField(k, e.target.value.replace(/[^\d.]/g, ""))} placeholder={k === "whtOverride" ? baht(sel.wht) : "0"} className="w-full h-9 text-sm text-right font-mono" />
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
+
+      {status === "approved" && canPost && (
+        <GlassCard className="p-4 space-y-3">
+          <h3 className="text-sm font-bold text-white">จ่ายเงินเดือน</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-[150px_minmax(0,1fr)_auto] gap-3 items-end">
+            <div className="space-y-1"><label className="text-[12px] font-bold text-white/70 ml-1">วันที่จ่าย</label><PillInput type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} className="w-full h-9 text-sm font-mono" /></div>
+            <div className="space-y-1 min-w-0"><label className="text-[12px] font-bold text-white/70 ml-1">บัญชีธนาคารที่จ่าย <span className="text-danger">*</span></label><PillInput value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} placeholder="เช่น กสิกรไทย 123-4-56789-0" className="w-full h-9 text-sm" /></div>
+            <PillButton variant="confirm" onClick={pay} disabled={!!busy} className="h-9 px-5 text-xs font-bold">{busy === "pay" ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Landmark size={14} className="mr-1.5" />} บันทึกจ่าย ฿{baht(totals.net)}</PillButton>
+          </div>
+        </GlassCard>
+      )}
+
+      {(status === "draft" || status === "approved") && canPost && (
+        <GlassCard className="p-4 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
+          <div className="space-y-1 min-w-0"><label className="text-[12px] font-bold text-white/70 ml-1">ยกเลิกงวดนี้ (เหตุผล)</label><PillInput value={reason} onChange={(e) => setReason(e.target.value)} placeholder="เช่น คำนวณผิด ต้องทำใหม่" className="w-full h-9 text-sm" /></div>
+          <PillButton variant="danger" onClick={cancel} disabled={!!busy} className="h-9 px-4 text-xs font-bold"><Ban size={14} className="mr-1.5" /> ยกเลิกงวด</PillButton>
+        </GlassCard>
+      )}
+
+      {companyId && (doc?.accrualJournalId || doc?.paymentJournalId) && (
+        <p className="text-[12px] text-white/50 px-1 flex gap-4 flex-wrap">
+          {doc.accrualJournalId && <Link href={journalHref(companyId, doc.accrualJournalId)} className="text-nexus-teal hover:underline">รายการบัญชีตั้งค่าใช้จ่าย</Link>}
+          {doc.paymentJournalId && <Link href={journalHref(companyId, doc.paymentJournalId)} className="text-nexus-teal hover:underline">รายการบัญชีจ่ายเงินเดือน</Link>}
+          {doc.status === "cancelled" && <span>ยกเลิก: {doc.cancelReason}</span>}
+        </p>
+      )}
     </div>
   );
 
-  const rightSidebar = (
-    <GlassCard className="p-6 space-y-8 sticky top-0 bg-surface-1 shadow-2xl border-white/5 rounded-3xl overflow-hidden">
-      <div className="space-y-1 relative z-10 border-b border-white/5 pb-4">
-        <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">ลำดับขั้นการประมวลผล</p>
-        <h5 className="text-sm font-semibold text-white uppercase tracking-tight">Payroll Engine</h5>
-      </div>
-
-      <div className="space-y-4 relative z-10">
-         <div className={cn("p-4 rounded-3xl border transition-all", step === 1 ? "bg-cyan-500/10 border-cyan-500/20" : "bg-white/[0.02] border-white/5 opacity-40")}>
-            <p className="text-[10px] font-semibold text-cyan-400 uppercase tracking-widest mb-1">Step 1</p>
-            <p className="text-xs font-bold text-white uppercase tracking-widest">คำนวณยอดดิบ</p>
-         </div>
-         <div className={cn("p-4 rounded-3xl border transition-all", step === 2 ? "bg-cyan-500/10 border-cyan-500/20" : "bg-white/[0.02] border-white/5 opacity-40")}>
-            <p className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1">Step 2</p>
-            <p className="text-xs font-bold text-white uppercase tracking-widest">ตรวจสอบและยืนยัน</p>
-         </div>
-      </div>
-
-      <div className="pt-8 border-t border-white/5 space-y-4 relative z-10">
-         <p className="text-[10px] font-semibold text-white/20 uppercase tracking-widest">ข้อมูลสรุปผู้บริหาร</p>
-         <NexusDataField label="ยอดจ่ายทั้งหมด" value={formatCurrency(payrollData.netPayout)} highlight />
-         <NexusDataField label="ภาษีนำส่ง" value={formatCurrency(payrollData.tax)} />
-      </div>
-      
-      <div className="absolute bottom-0 right-0 w-48 h-48 bg-cyan-500/10 blur-[60px] translate-x-1/4 translate-y-1/4 rounded-full pointer-events-none" />
-    </GlassCard>
-  );
-
-  return (
-    <NexusPageLayout
-      header={headerContent}
-      leftContent={leftContent}
-      rightSidebar={rightSidebar}
-    />
-  );
+  return <NexusPageLayout header={header} leftContent={left} />;
 }
 
-function SummaryCard({ icon, label, value, color = "text-white" }: { icon: React.ReactNode, label: string, value: string, color?: string }) {
+export default function PayrollPage() {
   return (
-    <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5 space-y-4">
-       <div className="text-white/20">{icon}</div>
-       <div>
-          <p className="text-[12px] font-semibold text-white/30 uppercase tracking-widest">{label}</p>
-          <p className={cn("text-2xl font-black mt-2 font-mono", color)}>{value}</p>
-       </div>
-    </div>
-  );
-}
-
-function CheckItem({ label, status }: { label: string, status: "pass" | "fail" }) {
-  return (
-    <div className="flex items-center gap-3 text-[13px] font-bold text-white/60">
-       {status === "pass" ? <CheckCircle2 className="text-cyan-400" size={18} /> : <AlertCircle className="text-danger" size={18} />}
-       <span>{label}</span>
-    </div>
-  );
-}
-
-function Field({ label, children, required }: { label: string, children: React.ReactNode, required?: boolean }) {
-  const cleanLabel = label.replace('*', '').trim();
-  const hasAsterisk = required || label.includes('*');
-  const parts = cleanLabel.split(' (');
-  const thaiText = parts[0];
-  const engText = parts.length > 1 ? '(' + parts[1] : '';
-
-  return (
-    <div className="space-y-2 w-full flex flex-col items-start justify-center">
-      <label className="text-[12px] font-bold text-white/70 flex flex-wrap items-center gap-1 ml-1">
-        <span className="flex items-center">
-          {thaiText}
-          {hasAsterisk && <span className="text-danger ml-1 font-bold">*</span>}
-        </span>
-        {engText && <span className="text-white/40 font-normal uppercase tracking-widest text-[10px]">{engText}</span>}
-      </label>
-      {children}
-    </div>
+    <Suspense fallback={<div className="p-10 text-center text-white/50 text-sm">กำลังโหลด...</div>}>
+      <PayrollEditor />
+    </Suspense>
   );
 }

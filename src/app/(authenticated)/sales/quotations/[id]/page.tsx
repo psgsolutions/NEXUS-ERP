@@ -4,14 +4,15 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Save, Send, Building2, Calendar, Plus, Info, AlertTriangle, Search, Trash2, FileText, Mail, MessageSquare, Download, Edit3, ChevronDown, CheckCircle2, Lock, GitBranch, Copy, History, XCircle, FileSpreadsheet } from "lucide-react";
 import { PillButton, cn, NexusDatePicker, GlassCard, Modal } from "@/components/ui/Base";
+import Link from "next/link";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { DocumentAttachmentsCard } from "@/components/commerce/DocumentAttachmentsCard";
 import { DocumentViewerModal } from "@/components/commerce/DocumentViewerModal";
-import { 
-  calculateERPDocument, 
-  VatTypeV3, 
-  LineItem, 
-  formatCurrency, 
+import {
+  calculateERPDocument,
+  VatTypeV3,
+  LineItem,
+  formatCurrency,
   getProfitRainbowColor,
   validateQuotationDates,
   canWriteBackToProductMaster,
@@ -36,7 +37,7 @@ export default function QuotationEditPage() {
   const routeParams = useParams();
   const params = { id: decodeURIComponent(String(routeParams.id || "")) };
   const { user, companyId, role } = useAuth();
-  
+
   // Data Fetching from both root collection and company subcollection
   const effectiveCompanyId = companyId || 'COM-NEXUS-01';
   const { data: rootCustomers, loading: rootCustomersLoading } = useRealtimeCollection('customers');
@@ -54,7 +55,7 @@ export default function QuotationEditPage() {
 
     allItems.forEach((c: any) => {
       if (!c || !c.id || c.isDeleted === true) return;
-      
+
       const nameKey = (c.customerName || c.name || c.companyName || "").trim().toLowerCase();
       const taxKey = (c.taxId || c.customerTaxId || "").trim().toLowerCase();
       const uniqueKey = taxKey ? `tax_${taxKey}` : nameKey ? `name_${nameKey}` : `id_${c.id}`;
@@ -73,7 +74,7 @@ export default function QuotationEditPage() {
 
   // Auto-generated fields
   const [quotationNumber, setQuotationNumber] = useState("");
-  
+
   // Header State
   const [quotationType, setQuotationType] = useState("SALE");
   const [isQuotationTypeDropdownActive, setIsQuotationTypeDropdownActive] = useState(false);
@@ -81,12 +82,12 @@ export default function QuotationEditPage() {
   const [validUntil, setValidUntil] = useState(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [paymentTerms, setPaymentTerms] = useState("เครดิต 30 วัน");
   const [referenceNo, setReferenceNo] = useState("");
-  
+
   // Customer State
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const selectedCustomer = useMemo(() => customers.find(c => c.id === selectedCustomerId), [customers, selectedCustomerId]);
   const getCustomerName = (c: any) => c?.customerName || c?.name || c?.companyName || "";
-  
+
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [isSendMenuOpen, setIsSendMenuOpen] = useState(false);
@@ -165,7 +166,7 @@ export default function QuotationEditPage() {
         if (res.extracted) { soi = res.extracted; remaining = res.rest; }
 
         addr1 = remaining;
-        
+
         setAddrLine1(addr1);
         setAddrLine2([soi, road].filter(Boolean).join(" "));
         setSubDistrict(subDist);
@@ -233,7 +234,7 @@ export default function QuotationEditPage() {
   const filteredSalespersons = useMemo(() => {
     if (!debouncedSalespersonSearch) return users.slice(0, 50);
     const lower = debouncedSalespersonSearch.toLowerCase();
-    return users.filter((u: any) => 
+    return users.filter((u: any) =>
       (u.displayName && u.displayName.toLowerCase().includes(lower)) ||
       (u.name && u.name.toLowerCase().includes(lower)) ||
       (u.email && u.email.toLowerCase().includes(lower))
@@ -242,7 +243,7 @@ export default function QuotationEditPage() {
 
   // Table State
   const [items, setItems] = useState<any[]>([]);
-  
+
   // Summary State
   const [taxType, setTaxType] = useState<VatTypeV3>("EXCLUSIVE");
   const [termsAndConditions, setTermsAndConditions] = useState("1. กำหนดยืนราคา 30 วันนับจากวันที่เสนอราคา\n2. การรับประกันสินค้าเป็นไปตามเงื่อนไขของบริษัท");
@@ -281,6 +282,8 @@ export default function QuotationEditPage() {
 
   // Modals & Actions
   const [showRevisionModal, setShowRevisionModal] = useState(false);
+  const [linkedSo, setLinkedSo] = useState<string>("");
+  const [supersededBy, setSupersededBy] = useState<{ id: string; no: string } | null>(null);
   const [revisionChangeSummary, setRevisionChangeSummary] = useState("");
   const [isCreatingRevision, setIsCreatingRevision] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
@@ -404,7 +407,7 @@ export default function QuotationEditPage() {
       try {
         const docRef = doc(db, `companies/${companyId}/quotations`, params.id);
         const docSnap = await getDoc(docRef);
-        
+
         if (docSnap.exists()) {
           const data = docSnap.data();
           // ใบเสนอราคารูปแบบเก่า: เลขที่อยู่ใน quoteId, วันที่ใน date, สถานะตัวพิมพ์เล็ก ("Draft"),
@@ -417,10 +420,12 @@ export default function QuotationEditPage() {
           setValidUntil(data.validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
           setPaymentTerms(data.paymentTerms || "เครดิต 30 วัน");
           setReferenceNo(data.referenceNo || data.customerPoNo || "");
-          
+
           setRevisionNumber(data.revisionNumber || 1);
           setParentQuotationId(data.parentQuotationId || null);
           setRevisionHistory(data.revisionHistory || []);
+          setLinkedSo(data.linkedSo || "");
+          setSupersededBy(data.supersededBy ? { id: data.supersededBy, no: data.supersededByNo || "" } : null);
           setAttachments(data.attachments || []);
           setCustomerSnapshot(data.customerSnapshot || null);
           setNextFollowUpDate(data.nextFollowUpDate || "");
@@ -620,8 +625,17 @@ export default function QuotationEditPage() {
     }
   }), [quotationNumber, docDate, companyDocs, effectiveCompanyId, selectedCustomer, customerSearchTerm, addrLine1, addrLine2, subDistrict, district, province, postalCode, customerTaxId, items, summary]);
 
+  // แก้ไขบนใบเดิมได้เฉพาะก่อนส่งลูกค้า (ร่าง / รออนุมัติ / ตีกลับ)
+  // ส่งลูกค้าแล้ว = ล็อก ต้องออกฉบับแก้ไข (Revision), ได้งาน/ถูกแทนที่ = อ่านอย่างเดียว
+  const isLocked = !["DRAFT", "PENDING_APPROVAL", "REJECTED"].includes(status);
+  const canRevise = ["SENT", "ACCEPTED"].includes(status) && !linkedSo;
+
   // Handle Save with Multi-channel Audit Trail (Patch 11 & 12)
   const handleSave = async (isSubmit: boolean = false, sendChannel?: 'EMAIL' | 'LINE' | 'DOWNLOAD' | 'SYSTEM') => {
+    if (isLocked) {
+      alert(canRevise ? "ใบเสนอราคานี้ส่งลูกค้าแล้ว แก้ไขได้โดยสร้างฉบับแก้ไข (Revision)" : "ใบเสนอราคานี้แก้ไขไม่ได้แล้ว");
+      return;
+    }
     if (!selectedCustomerId && !customerSearchTerm.trim()) {
       alert("กรุณาระบุชื่อลูกค้า");
       return;
@@ -637,11 +651,11 @@ export default function QuotationEditPage() {
 
     try {
       const isGpBelowThreshold = summary.profitMargin < minGpPercentForAutoSend;
-      const finalStatus = isSubmit 
-        ? (isGpBelowThreshold || showCreditWarning ? "PENDING_APPROVAL" : "SENT") 
+      const finalStatus = isSubmit
+        ? (isGpBelowThreshold || showCreditWarning ? "PENDING_APPROVAL" : "SENT")
         : status;
       const batch = writeBatch(db);
-      
+
       let finalCustomerId = selectedCustomerId;
       let finalCustomerName = getCustomerName(selectedCustomer);
 
@@ -688,18 +702,18 @@ export default function QuotationEditPage() {
         channel: sendChannel || (isSubmit ? "SYSTEM" : "DRAFT"),
         clientIp: "127.0.0.1",
         timestamp: new Date().toISOString(),
-        details: !isSubmit 
-          ? "บันทึกข้อมูลแก้ไขใบเสนอราคา" 
-          : isGpBelowThreshold 
+        details: !isSubmit
+          ? "บันทึกข้อมูลแก้ไขใบเสนอราคา"
+          : isGpBelowThreshold
             ? `ส่งขออนุมัติเนื่องจาก GP (${summary.profitMargin}%) ต่ำกว่าเกณฑ์ (${minGpPercentForAutoSend}%)`
             : showCreditWarning
               ? "ส่งขออนุมัติเนื่องจากเกินวงเงินเครดิต"
               : `บันทึกและส่งเอกสารผ่านช่องทาง ${sendChannel === 'EMAIL' ? 'อีเมล' : sendChannel === 'LINE' ? 'LINE' : sendChannel === 'DOWNLOAD' ? 'ดาวน์โหลด PDF' : 'ระบบ'}`
       };
-      
+
       // 1. Update Header Ref
       const finalDocRef = doc(db, `companies/${companyId}/quotations`, params.id);
-      
+
       const headerPayload = {
         companyId,
         isDeleted: false,
@@ -825,7 +839,7 @@ export default function QuotationEditPage() {
       }
 
       alert(`บันทึกใบเสนอราคา ${quotationNumber} สำเร็จ\nสถานะ: ${QUOTATION_STATUS_LABELS[finalStatus as keyof typeof QUOTATION_STATUS_LABELS] || finalStatus}`);
-      
+
       if (isSubmit && !showCreditWarning && !isGpBelowThreshold) {
         router.push("/sales?tab=quotations");
       }
@@ -872,9 +886,9 @@ export default function QuotationEditPage() {
         <DocumentStepper steps={["ร่าง", "รออนุมัติ", "ส่งแล้ว", "ยอมรับแล้ว"]} currentStep={status === "DRAFT" ? 0 : status === "PENDING_APPROVAL" ? 1 : status === "SENT" ? 2 : 3} />
 
         {/* Live PDF Document Preview Button (Patch 12) */}
-        <PillButton 
+        <PillButton
           variant="glass"
-          onClick={() => setShowPreviewModal(true)} 
+          onClick={() => setShowPreviewModal(true)}
           className="h-8 px-4 text-xs font-bold text-nexus-teal border-nexus-teal/40 hover:bg-nexus-teal/10"
         >
           <FileText size={14} className="mr-1.5" /> ตัวอย่างเอกสาร
@@ -893,36 +907,60 @@ export default function QuotationEditPage() {
         )}
 
         {/* Revision Trigger */}
-        {['SENT', 'ACCEPTED'].includes(status) && (
-          <PillButton 
-            variant="glass" 
-            onClick={() => handleCreateRevisionSubmit()} 
+        {canRevise && (
+          <PillButton
+            variant="glass"
+            onClick={() => { setRevisionChangeSummary(""); setShowRevisionModal(true); }} 
             className="h-8 px-4 text-xs font-bold text-purple-300 border-purple-500/30 hover:bg-purple-500/10"
             title="สร้างฉบับแก้ไข (Revision) เพื่อปรับราคาหรือข้อเสนอโดยยังคงรักษาประวัติฉบับเดิมไว้"
           >
-            <FileSpreadsheet size={14} className="mr-1.5" /> สร้าง Revision ใหม่
+            <FileSpreadsheet size={14} className="mr-1.5" /> สร้างฉบับแก้ไข
           </PillButton>
         )}
 
         <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/50" onClick={() => router.back()}>
           ยกเลิก
         </PillButton>
-        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/80" onClick={() => handleSave(false)}>
-          <Save size={14} className="mr-1.5" /> บันทึกฉบับร่าง
-        </PillButton>
-        <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" onClick={() => handleSave(true)}>
-          <CheckCircle2 size={14} className="mr-1.5" /> ปรับปรุงใบเสนอราคา
-        </PillButton>
+        {!isLocked && (
+          <>
+            <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-white/80" onClick={() => handleSave(false)}>
+              <Save size={14} className="mr-1.5" /> บันทึกฉบับร่าง
+            </PillButton>
+            <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" onClick={() => handleSave(true)}>
+              <CheckCircle2 size={14} className="mr-1.5" /> ปรับปรุงใบเสนอราคา
+            </PillButton>
+          </>
+        )}
       </div>
     </div>
   );
 
   const leftContent = (
     <div className="space-y-4 pr-2 pb-10">
-      
+      {isLocked && status !== "" && (
+        <div className={cn("p-3 rounded-2xl text-[13px] border flex flex-wrap items-center justify-between gap-3",
+          status === "SUPERSEDED" ? "bg-white/[0.04] border-white/15 text-white/70" : "bg-purple-500/10 border-purple-500/25 text-purple-200")}>
+          <span>
+            {status === "SUPERSEDED"
+              ? <>ฉบับนี้ถูกแทนที่แล้ว (อ่านอย่างเดียว){supersededBy && <> · ฉบับล่าสุด <Link href={`/sales/quotations/${encodeURIComponent(supersededBy.id)}`} className="underline font-mono">{supersededBy.no || "เปิด"}</Link></>}</>
+              : linkedSo
+                ? <>ได้งานแล้ว (แปลงเป็นใบสั่งขาย {linkedSo}) อ่านอย่างเดียว · การเปลี่ยนแปลงให้ทำที่ใบสั่งขายหรือใบลดหนี้/เพิ่มหนี้</>
+                : canRevise
+                  ? <>ส่งลูกค้าแล้ว ข้อมูลถูกล็อกเพื่อให้ตรงกับเอกสารที่ลูกค้าได้รับ · ต้องการเปลี่ยนราคา รายการ หรือเงื่อนไข ให้สร้างฉบับแก้ไข</>
+                  : <>เอกสารนี้แก้ไขไม่ได้แล้ว (อ่านอย่างเดียว)</>}
+          </span>
+          {canRevise && (
+            <PillButton variant="glass" onClick={() => { setRevisionChangeSummary(""); setShowRevisionModal(true); }} className="h-8 px-4 text-xs font-bold text-purple-300 border-purple-500/30 hover:bg-purple-500/10">
+              <FileSpreadsheet size={14} className="mr-1.5" /> สร้างฉบับแก้ไข
+            </PillButton>
+          )}
+        </div>
+      )}
+      <fieldset disabled={isLocked} className="m-0 p-0 border-0 min-w-0 space-y-4">
+
       {/* Customer and Header Info */}
       <div className="flex flex-col xl:flex-row gap-4 items-stretch">
-        
+
         {/* 1. Customer Info */}
         <div className="flex-1 bg-neutral-900/90 border border-white/15 rounded-3xl overflow-visible shadow-2xl p-4 space-y-4 border-l-4 border-l-nexus-teal hover:border-white/25 relative z-[30]">
           <div className="flex items-center justify-between border-b border-white/10 pb-2">
@@ -935,7 +973,7 @@ export default function QuotationEditPage() {
               </span>
             )}
           </div>
-          
+
           <div className="space-y-3">
             <div className="space-y-1">
               <label className="text-[12px] font-bold text-white/70">ชื่อลูกค้า / นิติบุคคล <span className="text-danger">*</span></label>
@@ -976,7 +1014,7 @@ export default function QuotationEditPage() {
               </div>
 
               {!isEditingAddress ? (
-                <div 
+                <div
                   onClick={() => setIsEditingAddress(true)}
                   className="w-full h-8 px-4 rounded-full bg-black/20 hover:bg-white/[0.03] border border-white/10 flex items-center justify-between text-[13px] text-white/80 cursor-pointer transition-all truncate group"
                   title="คลิกเพื่อแก้ไขที่อยู่แบบละเอียด"
@@ -1289,7 +1327,7 @@ export default function QuotationEditPage() {
           <h3 className="text-base font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-2">
             <Calendar size={16} className="text-nexus-teal drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]" /> ข้อมูลเอกสาร
           </h3>
-          
+
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
@@ -1304,18 +1342,18 @@ export default function QuotationEditPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เงื่อนไขชำระ</label>
-                <input 
-                  type="text" 
-                  value={paymentTerms} 
+                <input
+                  type="text"
+                  value={paymentTerms}
                   onChange={(e) => setPaymentTerms(e.target.value)}
                   className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-2 py-0 leading-relaxed text-[13px] font-bold text-nexus-teal text-center focus:outline-none transition-all"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เลขอ้างอิง</label>
-                <input 
-                  type="text" 
-                  value={referenceNo} 
+                <input
+                  type="text"
+                  value={referenceNo}
                   onChange={(e) => setReferenceNo(e.target.value)}
                   placeholder="PR-2026-001"
                   className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-2 py-0 leading-relaxed text-[13px] font-bold text-nexus-teal font-mono text-center focus:outline-none placeholder:text-white/30 transition-all"
@@ -1332,7 +1370,7 @@ export default function QuotationEditPage() {
           <h3 className="text-base font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2">
             รายการสินค้า / บริการ
           </h3>
-          
+
           {items.length > 0 && canSeeCost && (
             <div className={cn("px-2.5 py-0.5 rounded-full border text-[12px] font-black uppercase tracking-widest flex items-center gap-1.5", rainbow.bg, rainbow.border, rainbow.text)}>
               <Info size={12} />
@@ -1340,17 +1378,17 @@ export default function QuotationEditPage() {
             </div>
           )}
         </div>
-        
-        <DocumentItemsTable 
-          items={items} 
-          onChange={setItems} 
+
+        <DocumentItemsTable
+          items={items}
+          onChange={setItems}
           taxType={taxType}
           priceDeviationWarningPercent={priceDeviationWarningPercent}
         />
       </div>
 
       {/* File Attachments Card */}
-      <DocumentAttachmentsCard 
+      <DocumentAttachmentsCard
         attachments={attachments}
         onChange={setAttachments}
         readOnly={status !== "DRAFT"}
@@ -1369,7 +1407,9 @@ export default function QuotationEditPage() {
                   <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">
                     Rev. {rev.revisionNumber}
                   </span>
-                  <span className="font-mono text-white font-semibold">{rev.documentNumber}</span>
+                  {rev.quotationId && rev.quotationId !== params.id
+                    ? <Link href={`/sales/quotations/${encodeURIComponent(rev.quotationId)}`} className="font-mono text-nexus-teal font-semibold hover:underline">{rev.documentNumber}</Link>
+                    : <span className="font-mono text-white font-semibold">{rev.documentNumber}{rev.quotationId === params.id ? " (ฉบับนี้)" : ""}</span>}
                   <span className="text-white/50">{rev.changeSummary || "ไม่มีรายละเอียดบันทึกการแก้ไข"}</span>
                 </div>
                 <div className="text-right font-mono text-white/70">
@@ -1387,7 +1427,7 @@ export default function QuotationEditPage() {
           <h3 className="text-base font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-2">
             เงื่อนไขการค้า
           </h3>
-          <textarea 
+          <textarea
             value={termsAndConditions}
             onChange={(e) => setTermsAndConditions(e.target.value)}
             className="w-full h-32 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed placeholder:text-white/30 transition-all"
@@ -1397,7 +1437,7 @@ export default function QuotationEditPage() {
           <h3 className="text-base font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-2">
             หมายเหตุ
           </h3>
-          <textarea 
+          <textarea
             value={remark}
             onChange={(e) => setRemark(e.target.value)}
             placeholder="หมายเหตุเพิ่มเติมที่ต้องการแสดงบนเอกสาร..."
@@ -1408,7 +1448,7 @@ export default function QuotationEditPage() {
           <h3 className="text-base font-semibold uppercase tracking-widest text-warning flex items-center gap-2 border-b border-warning/20 pb-2">
             หมายเหตุภายใน (ไม่พิมพ์)
           </h3>
-          <textarea 
+          <textarea
             value={internalNotes}
             onChange={(e) => setInternalNotes(e.target.value)}
             placeholder="ระบุเหตุผลการให้ส่วนลด หรือข้อความสำหรับผู้อนุมัติ (ลูกค้าจะไม่เห็นข้อความนี้)..."
@@ -1416,12 +1456,14 @@ export default function QuotationEditPage() {
           />
         </div>
       </div>
+      </fieldset>
     </div>
   );
 
   const rightSidebar = (
     <div className="space-y-4 h-fit pb-10">
-      
+      <fieldset disabled={isLocked} className="m-0 p-0 border-0 min-w-0 space-y-4">
+
       {/* Credit Limit Guardrail Warning */}
       {showCreditWarning && (
         <GlassCard className="p-4 border-danger/30 rounded-3xl bg-danger/10 shadow-[0_0_30px_rgba(239,68,68,0.15)] space-y-3 w-full">
@@ -1436,7 +1478,7 @@ export default function QuotationEditPage() {
       )}
 
       <GlassCard className="p-4 border-white/15 rounded-3xl bg-neutral-900/90 shadow-2xl space-y-4 w-full border-t-4 border-t-nexus-teal">
-        
+
         {/* Live Profit Margin Inspector with Target Line & Role Protection (Patch 11 & 13) */}
         {canSeeCost ? (
           <div className="flex flex-col gap-2 border-b border-white/5 pb-4">
@@ -1451,14 +1493,14 @@ export default function QuotationEditPage() {
                 </span>
               </div>
             </div>
-            
+
             {/* Progress bar with Target marker */}
             <div className="relative w-full h-3 bg-white/10 rounded-full overflow-hidden">
               <div
                 className={cn("h-full transition-all duration-500 rounded-full", summary.profitMargin < minGpPercentForAutoSend ? "bg-danger/80" : rainbow.bg)}
                 style={{ width: `${Math.min(Math.max(summary.profitMargin, 0), 100)}%` }}
               />
-              <div 
+              <div
                 className="absolute top-0 bottom-0 w-[2px] bg-white border-r border-black shadow-[0_0_6px_rgba(255,255,255,0.8)] z-10"
                 style={{ left: `${Math.min(Math.max(minGpPercentForAutoSend, 0), 100)}%` }}
                 title={`เกณฑ์ขั้นต่ำ ${minGpPercentForAutoSend}%`}
@@ -1637,8 +1679,8 @@ export default function QuotationEditPage() {
           <span className="text-sm font-semibold text-white/70 uppercase tracking-widest">ยอดชำระสุทธิ</span>
           <span className={cn(
             "font-mono tracking-tighter not-italic text-right transition-all",
-            summary.whtAmount > 0 
-              ? "text-3xl font-black text-nexus-teal drop-shadow-[0_0_15px_rgba(34,211,238,0.2)]" 
+            summary.whtAmount > 0
+              ? "text-3xl font-black text-nexus-teal drop-shadow-[0_0_15px_rgba(34,211,238,0.2)]"
               : "text-2xl font-bold text-white/90"
           )}>
             {formatCurrency(summary.netPayable)} <span className="text-sm font-normal text-white/60">บาท</span>
@@ -1649,7 +1691,8 @@ export default function QuotationEditPage() {
           <span className="text-[12px] font-black text-white/60 tracking-widest text-center">{summary.thaiBahtText}</span>
         </div>
       </GlassCard>
-      
+
+      </fieldset>
     </div>
   );
 
@@ -1684,10 +1727,10 @@ export default function QuotationEditPage() {
         <Modal isOpen={showRevisionModal} onClose={() => setShowRevisionModal(false)} title="สร้างฉบับแก้ไข (New Revision)">
           <div className="space-y-4 p-2">
             <p className="text-[13px] text-white/70">
-              ระบบจะสร้างใบเสนอราคาฉบับแก้ไขใหม่ (เลขที่ต่อท้ายด้วย -R{revisionNumber + 1}) และเปลี่ยนสถานะใบเสนอราคาปัจจุบันเป็น Superseded
+              ระบบจะสร้างใบเสนอราคาฉบับแก้ไข (เลขที่ต่อท้าย -R{revisionNumber + 1}) เป็นฉบับร่างให้แก้ไขต่อ และเปลี่ยนฉบับปัจจุบันเป็น "ถูกแทนที่" (อ่านอย่างเดียว)
             </p>
             <div className="space-y-1">
-              <label className="text-[12px] font-semibold text-white/60">สรุปการแก้ไข (Change Summary) *</label>
+              <label className="text-[12px] font-semibold text-white/60">สรุปการเปลี่ยนแปลง (บันทึกในประวัติฉบับแก้ไข) *</label>
               <textarea
                 value={revisionChangeSummary}
                 onChange={(e) => setRevisionChangeSummary(e.target.value)}

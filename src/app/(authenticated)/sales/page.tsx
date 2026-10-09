@@ -324,7 +324,8 @@ export default function SalesPage() {
     (q.title || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
   const stageCounts = searchedQuotations.reduce((m: Record<string, number>, q: any) => { m[q.stage] = (m[q.stage] || 0) + 1; return m; }, {});
-  const filteredQuotations = searchedQuotations.filter(q => quoteFilter === "all" || q.stage === quoteFilter).map(q => ({
+  // "ทั้งหมด" ไม่รวมฉบับที่ถูกแทนที่ด้วย Revision แล้ว (ดูได้จากตัวกรอง "ถูกแทนที่")
+  const filteredQuotations = searchedQuotations.filter(q => quoteFilter === "all" ? q.stage !== "superseded" : q.stage === quoteFilter).map(q => ({
     ...q,
     customer: getCustomerName(q.customerNameRaw)
   }));
@@ -594,7 +595,7 @@ export default function SalesPage() {
                   <div className="animate-in fade-in duration-500 space-y-2">
                     <div className="flex flex-wrap gap-1.5 px-1 pt-1">
                       {(["all", "draft", "pending", "sent", "won", "expired", "rejected", "superseded"] as const).map((k) => {
-                        const n = k === "all" ? searchedQuotations.length : stageCounts[k] || 0;
+                        const n = k === "all" ? searchedQuotations.length - (stageCounts.superseded || 0) : stageCounts[k] || 0;
                         if (k !== "all" && !n && quoteFilter !== k) return null;
                         return (
                           <button key={k} onClick={() => setQuoteFilter(k)} className={cn("h-7 px-3 rounded-full text-[12px] font-bold border transition-colors", quoteFilter === k ? "bg-nexus-teal/15 border-nexus-teal/40 text-nexus-teal" : "border-white/10 text-white/60 hover:text-white")}>

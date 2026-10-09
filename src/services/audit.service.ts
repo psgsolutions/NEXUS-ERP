@@ -10,7 +10,9 @@ const cleanData = (obj: any): any => {
   if (obj === undefined) return null;
   if (obj === null || typeof obj !== 'object') return obj;
   if (Array.isArray(obj)) return obj.map(cleanData);
-  
+  // ค่าพิเศษของ Firestore (serverTimestamp, Timestamp ฯลฯ) ต้องส่งตามเดิม ห้ามคัดลอกเป็นออบเจกต์ธรรมดา
+  if (Object.getPrototypeOf(obj) !== Object.prototype) return obj;
+
   const cleaned: any = {};
   for (const [key, value] of Object.entries(obj)) {
     if (value !== undefined) {
@@ -27,12 +29,12 @@ export const auditService = {
   async log(entry: Omit<AuditLog, "id" | "createdAt" | "updatedAt" | "isDeleted">) {
     try {
       const logRef = collection(db, "logs");
-      await addDoc(logRef, cleanData({
-        ...entry,
+      await addDoc(logRef, {
+        ...cleanData(entry),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         isDeleted: false,
-      }));
+      });
     } catch (error) {
       console.error("[AUDIT_LOG_FAILED]:", error);
     }

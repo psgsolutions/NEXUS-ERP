@@ -6,7 +6,7 @@ import { can } from "@/lib/permissions";
 import { prepareCounter } from "@/lib/sequence-server";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { auditServer } from "@/services/audit.server";
-import { CNDN_REASONS, CNDN_TYPE_TH, cndnAmounts, type CnDnType } from "@/lib/cndn";
+import { CNDN_REASONS, CNDN_TYPE_TH, applyArDelta, arPaymentStatus, cndnAmounts, type CnDnType } from "@/lib/cndn";
 
 /**
  * [API-SERVER] ออกใบลดหนี้ / ใบเพิ่มหนี้ อ้างอิงใบกำกับภาษีเดิม
@@ -15,9 +15,9 @@ import { CNDN_REASONS, CNDN_TYPE_TH, cndnAmounts, type CnDnType } from "@/lib/cn
  *
  * ทำในทรานแซกชันเดียว:
  *  - เลขที่ (CN-ปป-xxxx / DN-ปป-xxxx) ออกพร้อมการบันทึก เรียงต่อเนื่อง ไม่ข้าม
- *  - ใบลดหนี้: ห้ามเกินมูลค่าคงเหลือของใบกำกับ (หลังหักใบลดหนี้ก่อนหน้า) และห้ามเกินยอดค้างชำระ
- *    (ถ้าลูกค้าชำระแล้ว ต้องคืนเงิน — ยังไม่รองรับในขั้นตอนนี้)
+ *  - ใบลดหนี้: ห้ามเกินมูลค่าคงเหลือของใบกำกับ (หลังหักใบลดหนี้ก่อนหน้า)
  *  - ปรับยอดค้างของใบกำกับ: ลดหนี้ -> balance ลด, เพิ่มหนี้ -> balance เพิ่ม
+ *    ใบลดหนี้ที่เกินยอดค้าง (ลูกค้าชำระแล้ว) -> ส่วนเกินเป็นยอดค้างคืนลูกค้า (refundDue) คืนผ่าน /api/finance/customer-refunds
  *  - บันทึกบัญชี (รออนุมัติ) ลงวันที่ออกเอกสาร:
  *      ใบลดหนี้:  Dr รับคืนและส่วนลด 4113-00, Dr ภาษีขาย 2121-00 / Cr ลูกหนี้ 1131-00
  *      ใบเพิ่มหนี้: Dr ลูกหนี้ 1131-00 / Cr รายได้ 4111-00, Cr ภาษีขาย 2121-00
@@ -77,10 +77,12 @@ export async function POST(request: Request) {
       const balanceBefore = r2(inv.balance !== undefined ? Number(inv.balance) : grandTotal - paid);
       if (type === "CN") {
         if (amount > valueBefore + 0.009) throw new ApiAuthError(400, `ลดได้ไม่เกินมูลค่าคงเหลือของใบกำกับ ${valueBefore.toLocaleString("th-TH")} บาท (ก่อน VAT)`);
-        if (totalAmount > balanceBefore + 0.009) throw new ApiAuthError(409, `ยอดค้างชำระของ ${invNo} เหลือ ${balanceBefore.toLocaleString("th-TH")} บาท น้อยกว่ายอดลดหนี้ — ลูกค้าชำระแล้วต้องคืนเงิน (ยังไม่รองรับ)`);
       }
       const valueAfter = r2(type === "CN" ? valueBefore - amount : valueBefore + amount);
-      const balanceAfter = r2(type === "CN" ? balanceBefore - totalAmount : balanceBefore + totalAmount);
+      const refundDueBefore = r2(Number(inv.refundDue) || 0);
+      const ar = applyArDelta(balanceBefore, refundDueBefore, type === "CN" ? -totalAmount : totalAmount);
+      const balanceAfter = ar.balance;
+      const refundCreated = r2(Math.max(0, ar.refundDue - refundDueBefore));
       const docNo = seq.number;
       const customerName = inv.customerName || inv.customerSnapshot?.name || "";
 
@@ -93,12 +95,13 @@ export async function POST(request: Request) {
         customerId: inv.customerId || "", customerName, customerSnapshot: inv.customerSnapshot || null,
         issueDate, reason, reasonDetail,
         originalAmount: valueBefore, correctAmount: valueAfter, amount, vatRate, vatAmount, totalAmount,
-        journalId: journalRef.id, status: "issued",
+        journalId: journalRef.id, status: "issued", refundCreated,
         createdBy: apiUser.uid, createdAt: now, updatedAt: now, isDeleted: false,
       });
       tx.update(invRef, {
-        balance: Math.max(0, balanceAfter),
-        paymentStatus: balanceAfter <= 0.009 ? "paid" : paid > 0 ? "partial" : "unpaid",
+        balance: balanceAfter,
+        refundDue: ar.refundDue,
+        paymentStatus: arPaymentStatus(balanceAfter, paid),
         ...(type === "CN" ? { creditNoteTotal: r2(creditedBefore + amount) } : { debitNoteTotal: r2(debitedBefore + amount) }),
         adjustmentRefs: admin.firestore.FieldValue.arrayUnion(docNo),
         updatedAt: now, updatedBy: apiUser.uid,
@@ -121,7 +124,7 @@ export async function POST(request: Request) {
         isOfficialTax: vatAmount > 0, status: "draft",
         createdBy: apiUser.uid, createdAt: now, updatedAt: now, isDeleted: false,
       });
-      return { id: docRef.id, docNo, invoiceNo: invNo, amount, vatAmount, totalAmount, balanceAfter: Math.max(0, balanceAfter) };
+      return { id: docRef.id, docNo, invoiceNo: invNo, amount, vatAmount, totalAmount, balanceAfter, refundDue: ar.refundDue };
     });
 
     await auditServer.logCreate(apiUser.uid, companyId, type === "CN" ? "CREDIT_NOTE" : "DEBIT_NOTE", result.docNo, { invoice: result.invoiceNo, totalAmount: result.totalAmount, reason });

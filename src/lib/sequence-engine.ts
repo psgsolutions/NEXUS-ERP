@@ -7,7 +7,7 @@ import { doc, runTransaction, getDoc } from "firebase/firestore";
  * ระบบรันเลขเอกสารอัจฉริยะสำหรับ Enterprise ERP
  */
 
-export type SequencePrefix = "NXI" | "INV" | "POS" | "QT" | "PRJ" | "SO" | "PO" | "FIN" | "EXP" | "CUS" | "EMP" | "SUP" | "PRD" | "WO" | "DN" | "PR" | "WHT" | "RE" | "RV" | "PV" | "GR" | "IV" | "TAX";
+export type SequencePrefix = "NXI" | "INV" | "POS" | "QT" | "PRJ" | "SO" | "PO" | "FIN" | "EXP" | "CUS" | "EMP" | "SUP" | "PRD" | "WO" | "DN" | "PR" | "WHT" | "RE" | "RV" | "PV" | "RF" | "GR" | "IV" | "TAX";
 
 export interface ResolvedSequenceFormat {
   prefixPart: string; // ส่วนหน้าเลขลำดับ (ใช้เป็นเงื่อนไขรีเซ็ต: เปลี่ยนเมื่อขึ้นเดือน/ปีใหม่)

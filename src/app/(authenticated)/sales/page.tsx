@@ -255,6 +255,7 @@ export default function SalesPage() {
       total: toMoney(firstOf(d, ["grandTotal", "totalRevenue", "totalAmount"])),
       status: d.paymentStatus === "paid" || d.status === "Paid" ? "paid" : d.paymentStatus === "partial" ? "partial" : "pending",
       isSample: !!d.isSample,
+      refundDue: Number(d.refundDue) || 0,
     }), setInvoicesList);
 
     // Receipts
@@ -697,6 +698,7 @@ export default function SalesPage() {
                           total={inv.total}
                           status={inv.status}
                           isSample={inv.isSample}
+                          refundDue={inv.refundDue}
                           companyId={companyId || "COM-NEXUS-01"}
                           onClick={() => setSelectedItem(inv)}
                         />
@@ -1107,7 +1109,7 @@ function SalesOrderRow({ id, docId, customer, date, total, status, companyId, on
   );
 }
 
-function InvoiceRow({ id, docId, soRef, customer, date, dueDate, total, status, companyId, isSample, onClick }: { id: string, docId: string, soRef: string, customer: string, date: string, dueDate: string, total: string, status: string, companyId: string, isSample?: boolean, onClick?: () => void }) {
+function InvoiceRow({ id, docId, soRef, customer, date, dueDate, total, status, companyId, isSample, refundDue = 0, onClick }: { id: string, docId: string, soRef: string, customer: string, date: string, dueDate: string, total: string, status: string, companyId: string, isSample?: boolean, refundDue?: number, onClick?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
@@ -1117,13 +1119,22 @@ function InvoiceRow({ id, docId, soRef, customer, date, dueDate, total, status, 
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-warning">{dueDate}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white" mono>{total}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge
-          status={status === "paid" ? "active" : status === "partial" ? "warning" : "pending"}
-          label={status === "paid" ? "ชำระแล้ว" : status === "partial" ? "ชำระบางส่วน" : "รอชำระ"}
-        />
+        {refundDue > 0 ? (
+          <StatusBadge status="warning" label="ค้างคืนเงิน" />
+        ) : (
+          <StatusBadge
+            status={status === "paid" ? "active" : status === "partial" ? "warning" : "pending"}
+            label={status === "paid" ? "ชำระแล้ว" : status === "partial" ? "ชำระบางส่วน" : "รอชำระ"}
+          />
+        )}
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1.5">
+          {refundDue > 0 && !isSample && (
+            <Link href={`/finance/refunds/new?invoice=${encodeURIComponent(docId)}`} className="h-8 px-3 rounded-full border border-warning/40 text-warning text-[12px] font-bold flex items-center hover:bg-warning/10" title={`คืนเงินลูกค้า ฿${refundDue.toLocaleString("th-TH", { minimumFractionDigits: 2 })}`}>
+              คืนเงิน
+            </Link>
+          )}
           {status !== "paid" && !isSample && (
             <Link href={`/finance/receipts/new?invoice=${encodeURIComponent(docId)}`} className="h-8 px-3 rounded-full border border-nexus-teal/30 text-nexus-teal text-[12px] font-bold flex items-center hover:bg-nexus-teal/10">
               รับชำระ

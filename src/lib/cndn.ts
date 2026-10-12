@@ -32,3 +32,16 @@ export function cndnAmounts(diff: number, invoice: { vatAmount?: number; subTota
   const vatAmount = hasVat ? r2(amount * 0.07) : 0;
   return { amount, vatAmount, totalAmount: r2(amount + vatAmount), vatRate: hasVat ? 7 : 0 };
 }
+
+/**
+ * ปรับยอดลูกหนี้ของใบกำกับ: delta > 0 = ลูกค้าค้างเพิ่ม, delta < 0 = ค้างลดลง
+ * ยอดค้างชำระ (balance) กับยอดที่ต้องคืนลูกค้า (refundDue) หักกลบกันเสมอ — ไม่มีทั้งสองอย่างพร้อมกัน
+ */
+export function applyArDelta(balance: number, refundDue: number, delta: number): { balance: number; refundDue: number } {
+  const net = r2((Number(balance) || 0) - (Number(refundDue) || 0) + (Number(delta) || 0));
+  return net >= 0 ? { balance: net, refundDue: 0 } : { balance: 0, refundDue: r2(-net) };
+}
+
+export function arPaymentStatus(balance: number, paid: number): "paid" | "partial" | "unpaid" {
+  return balance <= 0.009 ? "paid" : paid > 0 ? "partial" : "unpaid";
+}

@@ -11,7 +11,7 @@ import { useSystemDialog } from "@/context/DialogContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
-import { CNDN_REASONS, CNDN_TYPE_TH, cndnAmounts, type CnDnType } from "@/lib/cndn";
+import { CNDN_REASONS, CNDN_TYPE_TH, cndnAmounts, type CnDnType , applyArDelta } from "@/lib/cndn";
 
 const baht = (n: any) => (Number(n) || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const today = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
@@ -49,13 +49,14 @@ function CnDnForm() {
   const balanceBefore = inv ? (inv.balance !== undefined ? Number(inv.balance) : (Number(inv.grandTotal) || 0) - (Number(inv.paidAmount) || 0)) : 0;
   const calc = cndnAmounts(Number(amount) || 0, inv || {});
   const valueAfter = type === "CN" ? valueBefore - calc.amount : valueBefore + calc.amount;
-  const balanceAfter = type === "CN" ? balanceBefore - calc.totalAmount : balanceBefore + calc.totalAmount;
+  // ยอดค้างชำระกับยอดค้างคืนหักกลบกัน: ลดหนี้เกินยอดค้าง (ลูกค้าชำระแล้ว) -> ส่วนเกินเป็นยอดค้างคืนลูกค้า
+  const arAfter = applyArDelta(balanceBefore, Number(inv?.refundDue) || 0, type === "CN" ? -calc.totalAmount : calc.totalAmount);
+  const balanceAfter = arAfter.balance;
 
   const problems = [
     !inv && "เลือกใบกำกับภาษีที่อ้างอิง",
     !(calc.amount > 0) && "ระบุจำนวนเงิน",
     type === "CN" && inv && calc.amount > valueBefore + 0.009 && "ลดเกินมูลค่าคงเหลือของใบกำกับ",
-    type === "CN" && inv && calc.totalAmount > balanceBefore + 0.009 && "ยอดลดหนี้เกินยอดค้างชำระ (ลูกค้าชำระแล้วต้องคืนเงิน)",
     !reason && "เลือกเหตุผล",
     reason === "อื่น ๆ" && !reasonDetail.trim() && "ระบุรายละเอียดเหตุผล",
     inv && issueDate < String(inv.issueDate || "").slice(0, 10) && "วันที่ต้องไม่ก่อนวันที่ใบกำกับ",
@@ -178,7 +179,12 @@ function CnDnForm() {
         {row(type === "CN" ? "ผลต่าง (ลดลง)" : "ผลต่าง (เพิ่มขึ้น)", baht(calc.amount))}
         {row(`ภาษีมูลค่าเพิ่ม ${calc.vatRate}%`, baht(calc.vatAmount))}
         <div className="border-t border-white/10 mt-1 pt-1">{row("รวมทั้งสิ้น", baht(calc.totalAmount), true)}</div>
-        {inv && row("ยอดค้างชำระหลังออกเอกสาร", baht(Math.max(0, balanceAfter)))}
+        {inv && row("ยอดค้างชำระหลังออกเอกสาร", baht(balanceAfter))}
+        {inv && arAfter.refundDue > 0 && (
+          <div className="mt-2 p-2.5 rounded-xl border border-warning/30 bg-warning/10 text-[12px] text-warning">
+            ลูกค้าชำระแล้ว ยอดที่ต้องคืนลูกค้า ฿{baht(arAfter.refundDue)} — คืนเงินได้ที่ การเงิน › ลูกหนี้ › ค้างคืนเงินลูกค้า
+          </div>
+        )}
       </GlassCard>
       <GlassCard className="p-4">
         <h4 className="text-sm font-bold text-white mb-2">รายการบัญชี (รออนุมัติ)</h4>

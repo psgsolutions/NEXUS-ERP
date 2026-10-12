@@ -6,6 +6,7 @@ import { can } from "@/lib/permissions";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { voidOrReverseJournal } from "@/lib/journal-reversal.server";
 import { auditServer } from "@/services/audit.server";
+import { applyArDelta } from "@/lib/cndn";
 
 /**
  * [API-SERVER] ยกเลิกใบเสร็จรับเงิน / ใบสำคัญจ่าย
@@ -72,7 +73,11 @@ export async function POST(request: Request) {
         const paid = round2(Math.max(0, (Number(x.paidAmount) || 0) - (Number(l.amount) || 0)));
         // คืนยอดค้างจากยอดปัจจุบัน (คงผลของใบลดหนี้/ใบเพิ่มหนี้) — เอกสารรุ่นเก่าที่ไม่มี balance ใช้ยอดรวม - ชำระแล้ว
         const currentBalance = x.balance !== undefined ? Number(x.balance) : total - (Number(x.paidAmount) || 0);
-        const balance = round2(Math.max(0, currentBalance + (Number(l.amount) || 0)));
+        // ใบแจ้งหนี้: หักกลบกับยอดค้างคืนลูกค้า (เกิดจากใบลดหนี้หลังชำระ) ก่อน
+        const ar = isReceipt
+          ? applyArDelta(currentBalance, Number(x.refundDue) || 0, Number(l.amount) || 0)
+          : { balance: round2(Math.max(0, currentBalance + (Number(l.amount) || 0))), refundDue: 0 };
+        const balance = ar.balance;
         const paymentStatus = paid <= 0.009 ? "unpaid" : balance <= 0.009 ? "paid" : "partial";
         const update: Record<string, any> = {
           paidAmount: paid,
@@ -83,6 +88,7 @@ export async function POST(request: Request) {
         };
         if (isReceipt) {
           update.receiptRefs = admin.firestore.FieldValue.arrayRemove(docNo);
+          update.refundDue = ar.refundDue;
         } else {
           update.paymentRefs = admin.firestore.FieldValue.arrayRemove(docNo);
           update.status = paid <= 0.009 ? "Awaiting Payment" : balance <= 0.009 ? "Paid" : "Partially Paid";

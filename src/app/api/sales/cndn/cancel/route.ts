@@ -6,7 +6,7 @@ import { can } from "@/lib/permissions";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { voidOrReverseJournal } from "@/lib/journal-reversal.server";
 import { auditServer } from "@/services/audit.server";
-import { CNDN_TYPE_TH } from "@/lib/cndn";
+import { CNDN_TYPE_TH, applyArDelta, arPaymentStatus } from "@/lib/cndn";
 
 /**
  * [API-SERVER] ยกเลิกใบลดหนี้ / ใบเพิ่มหนี้
@@ -15,7 +15,7 @@ import { CNDN_TYPE_TH } from "@/lib/cndn";
  *
  * ทำในทรานแซกชันเดียว:
  *  - คืนผลต่อใบกำกับภาษี: ใบลดหนี้ -> ยอดค้างเพิ่มกลับ, ใบเพิ่มหนี้ -> ยอดค้างลดลง
- *    (ใบเพิ่มหนี้ที่ลูกค้าชำระส่วนเพิ่มไปแล้ว ยกเลิกไม่ได้ ต้องคืนเงินก่อน)
+ *    ยอดค้างชำระกับยอดค้างคืนลูกค้า (refundDue) หักกลบกัน — ใบเพิ่มหนี้ที่ลูกค้าชำระแล้ว ส่วนที่ชำระเกินเป็นยอดค้างคืน
  *  - รายการบัญชีเดิม: ยังไม่อนุมัติ -> ยกเลิกทิ้ง, ลงบัญชีแล้ว -> รายการกลับบัญชีลงวันที่ยกเลิก (ภาษีขายปรับในเดือนที่ยกเลิก)
  *  - เอกสารคงอยู่พร้อมสถานะ cancelled (เลขที่ไม่ถูกนำกลับมาใช้ ตามข้อกำหนดเลขเรียงต่อเนื่อง)
  */
@@ -67,15 +67,14 @@ export async function POST(request: Request) {
       const total = r2(Number(d.totalAmount) || 0);      // รวม VAT
       const paid = r2(Number(inv.paidAmount) || 0);
       const balanceBefore = r2(inv.balance !== undefined ? Number(inv.balance) : (Number(inv.grandTotal) || 0) - paid);
-      const balanceAfter = r2(type === "CN" ? balanceBefore + total : balanceBefore - total);
-      if (balanceAfter < -0.009) {
-        throw new ApiAuthError(409, `ลูกค้าชำระยอดตาม${label} ${docNo} แล้ว (ยอดค้างเหลือ ${balanceBefore.toLocaleString("th-TH")} บาท) ต้องคืนเงินก่อนยกเลิก`);
-      }
+      const ar = applyArDelta(balanceBefore, Number(inv.refundDue) || 0, type === "CN" ? total : -total);
+      const balanceAfter = ar.balance;
 
       // ---- เขียน ----
       tx.update(invRef, {
-        balance: Math.max(0, balanceAfter),
-        paymentStatus: balanceAfter <= 0.009 ? "paid" : paid > 0 ? "partial" : "unpaid",
+        balance: balanceAfter,
+        refundDue: ar.refundDue,
+        paymentStatus: arPaymentStatus(balanceAfter, paid),
         ...(type === "CN"
           ? { creditNoteTotal: r2(Math.max(0, (Number(inv.creditNoteTotal) || 0) - amount)) }
           : { debitNoteTotal: r2(Math.max(0, (Number(inv.debitNoteTotal) || 0) - amount)) }),
@@ -99,7 +98,7 @@ export async function POST(request: Request) {
         ...(journal.reversalId ? { reversalJournalId: journal.reversalId } : {}),
         updatedAt: now,
       });
-      return { docNo, type, invoiceNo: d.invoiceNo, balanceAfter: Math.max(0, balanceAfter), journal: journal.mode, reversalJournalId: journal.reversalId || null };
+      return { docNo, type, invoiceNo: d.invoiceNo, balanceAfter, refundDue: ar.refundDue, journal: journal.mode, reversalJournalId: journal.reversalId || null };
     });
 
     await auditServer.logUpdate(apiUser.uid, companyId, result.type === "CN" ? "CREDIT_NOTE" : "DEBIT_NOTE", result.docNo, { status: "issued" }, { status: "cancelled", reason, journal: result.journal });

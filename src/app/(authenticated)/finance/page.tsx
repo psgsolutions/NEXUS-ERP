@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/Base";
 import { DocumentFlowStepper } from "@/components/ui/DocumentFlowStepper";
 import { ReceiptModal } from "@/components/finance/ReceiptModal";
+import { CustomerRefundsPanel } from "@/components/finance/CustomerRefundsPanel";
 import { PaymentModal } from "@/components/finance/PaymentModal";
 import { TaxFilingModal } from "@/components/finance/TaxFilingModal";
 import { AssetDepreciationModal } from "@/components/finance/AssetDepreciationModal";
@@ -425,6 +426,7 @@ export default function FinancePage() {
 
                 {activeTab === "ar" && (
                   <div className="animate-in fade-in duration-500">
+                    <CustomerRefundsPanel companyId={companyId || ""} />
                     <NexusTable headers={["ลูกหนี้", "เลขที่ INV", "ครบกำหนด", "ยอดค้างชำระ", "สถานะ"]}>
                       {arLoading ? (
                         <NexusTableRow>

@@ -43,6 +43,7 @@ async function main() {
     await setDoc(doc(db, 'companies/A/invoices/invSample'), { companyId: 'A', isSample: true });
     await setDoc(doc(db, 'employees/eB'), { companyId: 'B', name: 'B' });
     await setDoc(doc(db, 'companies/A/projects/P1'), { companyId: 'A', status: 'In Progress' });
+    await setDoc(doc(db, 'companies/A/customer_refunds/RF-1'), { companyId: 'A', amount: 100 });
     await setDoc(doc(db, 'companies/A/projects/P1/change_orders/co1'), { status: 'PENDING' });
   });
 
@@ -135,6 +136,11 @@ async function main() {
     ['member cannot read other-company employee', () => assertFails(getDoc(doc(userA, 'employees/eB')))],
     ['member cannot edit employee (salary) directly', () => assertFails(updateDoc(doc(adminA, 'employees/eA'), { salary: 999999 }))],
     ['member cannot write attendance directly', () => assertFails(addDoc(collection(userA, 'attendance'), { companyId: 'A', type: 'IN' }))],
+
+    // Customer refunds: API only
+    ['member reads customer refund', () => assertSucceeds(getDoc(doc(userA, 'companies/A/customer_refunds/RF-1')))],
+    ['member cannot create customer refund directly', () => assertFails(setDoc(doc(userA, 'companies/A/customer_refunds/RF-2'), { amount: 1 }))],
+    ['admin cannot edit customer refund', () => assertFails(updateDoc(doc(adminA, 'companies/A/customer_refunds/RF-1'), { amount: 999 }))],
 
     // Project change orders: API only; other project subcollections stay client-writable
     ['member reads project change order', () => assertSucceeds(getDoc(doc(userA, 'companies/A/projects/P1/change_orders/co1')))],

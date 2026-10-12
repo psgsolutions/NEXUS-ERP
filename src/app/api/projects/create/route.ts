@@ -8,6 +8,7 @@ import { auditServer } from "@/services/audit.server";
 import { buildProjectFields } from "@/lib/project.server";
 import { approverRolesForStep, initialApprovals } from "@/lib/project-status";
 import { notify } from "@/lib/notifications.server";
+import { createCustomerInTx } from "@/lib/quotation.server";
 
 /**
  * [API-SERVER] สร้างโครงการ
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
     if (!built.ok) return badRequest(built.error);
     const asDraft = body.asDraft === true;
     if (!asDraft && !built.hasLines) return badRequest("กรุณาเพิ่มรายการสินค้าหรืองานบริการอย่างน้อย 1 รายการ");
+    if (!asDraft && built.fields.projectStage !== "CONTRACTED") return badRequest("โครงการที่ยังไม่ได้งานบันทึกเป็นแผนโครงการได้เท่านั้น — เปลี่ยนขั้นเป็น 'ได้งาน / ลงนามสัญญาแล้ว' ก่อนส่งขออนุมัติ");
 
     const projectId = await nexusSequenceServer("PRJ", companyId);
     const now = admin.firestore.FieldValue.serverTimestamp();
@@ -56,7 +58,11 @@ export async function POST(request: Request) {
     };
 
     // create(): ถ้าเลขซ้ำ (ไม่ควรเกิด) จะล้มเหลวแทนการเขียนทับโครงการเดิม
-    await adminDb.doc(`companies/${companyId}/projects/${projectId}`).create(projectDoc);
+    // ลูกค้าใหม่ (พิมพ์ชื่อเข้ามา) สร้างพร้อมโครงการในทรานแซกชันเดียว
+    await adminDb.runTransaction(async (tx) => {
+      if (built.newCustomer) (projectDoc as Record<string, any>).customerId = createCustomerInTx(tx, companyId, built.newCustomer);
+      tx.create(adminDb.doc(`companies/${companyId}/projects/${projectId}`), projectDoc);
+    });
     if (!asDraft) {
       await notify(companyId, {
         type: "PROJECT_PENDING_APPROVAL",

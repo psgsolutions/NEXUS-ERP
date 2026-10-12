@@ -1,3 +1,5 @@
+import { expenseAmount, type ProjectExpense } from "./project-templates";
+
 /**
  * โครงสร้างรายการ (BOQ) และงบประมาณโครงการ — ใช้ร่วมกันทั้งหน้าจอและ server
  * server คำนวณซ้ำจากรายการเสมอ (ไม่เชื่อตัวเลขสรุปที่ส่งมาจาก browser)
@@ -108,8 +110,9 @@ export function normalizeLaborLine(labor: any, index: number): ProjectLine {
     costAmount: round2(qty * Math.max(0, unitCost)),
     origin: "labor",
     laborType: perPoint ? "per-point" : "lump-sum",
-    materialUnitCost: perPoint ? Math.max(0, num(labor.materialCost)) : 0,
-    laborUnitCost: perPoint ? Math.max(0, num(labor.laborCost)) : Math.max(0, unitCost),
+    // เหมาจ่าย: ต้นทุน = cost (แยกค่าวัสดุ/ค่าแรงไว้ถ้ามี)
+    materialUnitCost: perPoint ? Math.max(0, num(labor.materialCost)) : Math.min(Math.max(0, unitCost), Math.max(0, num(labor.materialCost))),
+    laborUnitCost: perPoint ? Math.max(0, num(labor.laborCost)) : Math.max(0, unitCost - Math.min(Math.max(0, unitCost), Math.max(0, num(labor.materialCost)))),
   };
 }
 
@@ -126,8 +129,8 @@ export function linesToForm(lines: any[]): { items: any[]; labors: any[] } {
         name: l.name || "",
         type: perPoint ? "per-point" : "lump-sum",
         points: perPoint ? l.qty : 1,
-        materialCost: perPoint ? l.materialUnitCost || 0 : 0,
-        laborCost: perPoint ? l.laborUnitCost || 0 : 0,
+        materialCost: l.materialUnitCost || 0,
+        laborCost: perPoint ? l.laborUnitCost || 0 : (l.laborUnitCost ?? l.unitCost) || 0,
         cost: perPoint ? 0 : l.unitCost || 0,
         price: l.unitPrice || 0,
         whtRate: l.whtRate,
@@ -159,10 +162,12 @@ export interface ProjectBudgetOptions {
   vatRate?: number; // ค่าเริ่มต้น 7%
   startDate?: string;
   endDate?: string;
+  /** ค่าใช้จ่ายดำเนินงาน (ถ้าส่งมา ใช้แทนเงินสำรองคงที่ 5%; รายการ key RISK = เงินสำรองความเสี่ยง) */
+  expenses?: ProjectExpense[];
 }
 
 export function computeProjectBudget(lines: ProjectLine[], opts: ProjectBudgetOptions = {}) {
-  const contingencyRate = opts.contingencyRate ?? 0.05;
+  const useExpenses = Array.isArray(opts.expenses);
   const vatRate = opts.vatRate ?? 0.07;
   const counted = lines.filter((l) => l.kind !== "GROUP" && !l.isOptional);
   const equip = counted.filter((l) => l.kind !== "LABOR");
@@ -175,8 +180,15 @@ export function computeProjectBudget(lines: ProjectLine[], opts: ProjectBudgetOp
   const laborCost = sum(labor, "costAmount");
   const totalRev = round2(equipRev + laborRev);
   const totalCost = round2(equipCost + laborCost);
-  const contingencyBuffer = round2(totalCost * contingencyRate);
-  const grandTotalCost = round2(totalCost + contingencyBuffer);
+  const expenseLines = (opts.expenses || []).map((e) => ({ ...e, amount: expenseAmount(e, totalCost, totalRev) }));
+  const risk = expenseLines.find((e) => e.key === "RISK");
+  const contingencyRate = useExpenses
+    ? (risk && risk.basis === "PCT_DIRECT" ? risk.value / 100 : 0)
+    : opts.contingencyRate ?? 0.05;
+  const contingencyBuffer = useExpenses ? round2(risk?.amount || 0) : round2(totalCost * contingencyRate);
+  /** ค่าใช้จ่ายดำเนินงานรวม (รวมเงินสำรองความเสี่ยง) */
+  const expensesTotal = useExpenses ? round2(expenseLines.reduce((s, e) => s + e.amount, 0)) : contingencyBuffer;
+  const grandTotalCost = round2(totalCost + expensesTotal);
   const grossProfit = round2(totalRev - totalCost);
   const netProfit = round2(totalRev - grandTotalCost);
   const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 1000) / 10 : 0);
@@ -202,6 +214,8 @@ export function computeProjectBudget(lines: ProjectLine[], opts: ProjectBudgetOp
     totalRev,
     contingencyRate,
     contingencyBuffer,
+    expenseLines,
+    expensesTotal,
     grandTotalCost,
     grossProfit,
     netProfit,

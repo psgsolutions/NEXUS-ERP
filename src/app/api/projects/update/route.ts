@@ -5,6 +5,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { auditServer } from "@/services/audit.server";
 import { buildProjectFields } from "@/lib/project.server";
+import { createCustomerInTx } from "@/lib/quotation.server";
 import { EDITABLE_STATUSES, approverRolesForStep, initialApprovals, normalizeProjectStatus } from "@/lib/project-status";
 import { notifyInTx } from "@/lib/notifications.server";
 
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
     if (!built.ok) return badRequest(built.error);
     const asDraft = body.asDraft === true;
     if (!asDraft && !built.hasLines) return badRequest("กรุณาเพิ่มรายการสินค้าหรืองานบริการอย่างน้อย 1 รายการ");
+    if (!asDraft && built.fields.projectStage !== "CONTRACTED") return badRequest("โครงการที่ยังไม่ได้งานบันทึกเป็นแผนโครงการได้เท่านั้น — เปลี่ยนขั้นเป็น 'ได้งาน / ลงนามสัญญาแล้ว' ก่อนส่งขออนุมัติ");
 
     const ref = adminDb.doc(`companies/${companyId}/projects/${docId}`);
     const result = await adminDb.runTransaction(async (tx) => {
@@ -46,6 +48,7 @@ export async function POST(request: Request) {
       }
       const now = admin.firestore.FieldValue.serverTimestamp();
       const del = admin.firestore.FieldValue.delete();
+      if (built.newCustomer) built.fields.customerId = createCustomerInTx(tx, companyId, built.newCustomer);
       tx.update(ref, {
         ...built.fields,
         // เปลี่ยนประเภทลูกค้า: ลบข้อมูลสัญญาของอีกประเภททิ้ง

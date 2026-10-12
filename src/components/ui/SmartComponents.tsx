@@ -332,13 +332,8 @@ export function SmartSelect({
           )}
           <div className="max-h-[240px] overflow-y-auto custom-scrollbar space-y-1 p-0.5">
             {filteredOptions.length === 0 ? (
-              searchQuery.trim() ? (
-                <div className="p-3 text-center text-xs font-semibold text-nexus-teal bg-nexus-teal/20 border border-nexus-teal/40 backdrop-blur-md rounded-xl flex items-center justify-center gap-1.5">
-                  <span>🆕 จะสร้าง &quot;{searchQuery.trim()}&quot; เป็นรายการใหม่เมื่อกดบันทึก</span>
-                </div>
-              ) : (
-                <div className="p-3 text-center text-xs text-white/40 font-semibold">ไม่พบข้อมูลที่ค้นหา</div>
-              )
+              // พิมพ์ชื่อใหม่: แสดงแค่แถบ "จะสร้าง..." ด้านบนแถบเดียว (ไม่ซ้ำ)
+              isCustomTyped ? null : <div className="p-3 text-center text-xs text-white/40 font-semibold">ไม่พบข้อมูลที่ค้นหา</div>
             ) : (
               filteredOptions.map((opt: SmartSelectOption, index: number) => (
                 <button

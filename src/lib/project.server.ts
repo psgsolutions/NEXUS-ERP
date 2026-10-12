@@ -2,6 +2,11 @@ import { adminDb } from "./firebase-admin";
 import type { ApiUser } from "./api-auth";
 import { PROJECT_TYPE_CONFIGS, ProjectTypeCode } from "@/types/database";
 import { computeProjectBudget, normalizeItemLine, normalizeLaborLine } from "./project-budget";
+import { milestoneStatus } from "./project-milestones";
+import {
+  BUDGET_SOURCES, DOC_SECTIONS, PROCUREMENT_METHODS, fiscalYearOf, legalReferences, normalizeExpenses,
+  normalizeStage, normalizeTimeline, timelineError,
+} from "./project-templates";
 
 /**
  * [SERVER-ONLY] สร้างข้อมูลโครงการจากฟอร์ม (ใช้ทั้งสร้างใหม่และแก้ไขฉบับร่าง)
@@ -32,16 +37,30 @@ async function findCustomer(companyId: string, customerId: string) {
 
 export type BuildResult =
   | { ok: false; error: string }
-  | { ok: true; fields: Record<string, any>; budget: ReturnType<typeof computeProjectBudget>; hasLines: boolean };
+  | {
+      ok: true;
+      fields: Record<string, any>;
+      budget: ReturnType<typeof computeProjectBudget>;
+      hasLines: boolean;
+      /** ลูกค้าใหม่ที่พิมพ์ชื่อเข้ามา — route สร้างในทรานแซกชันแล้วใส่ customerId */
+      newCustomer: { name: string } | null;
+    };
 
 export async function buildProjectFields(body: any, apiUser: ApiUser, companyId: string): Promise<BuildResult> {
   const projectName = str(body.projectName, 200);
   if (projectName.length < 3) return { ok: false, error: "กรุณาระบุชื่อโครงการอย่างน้อย 3 ตัวอักษร" };
 
-  const customerId = str(body.selectedCustomerId, 120);
-  if (!customerId) return { ok: false, error: "กรุณาเลือกลูกค้าของโครงการ" };
-  const customer = await findCustomer(companyId, customerId);
-  if (!customer) return { ok: false, error: "ไม่พบลูกค้านี้ในบริษัท" };
+  // ลูกค้า: เลือกจากรายชื่อ หรือพิมพ์ชื่อใหม่ (สร้างให้ตอนบันทึก)
+  let customerId = str(body.selectedCustomerId, 120);
+  let customer: any = customerId ? await findCustomer(companyId, customerId) : null;
+  const newCustomerName = str(body.newCustomerName, 200);
+  let newCustomer: { name: string } | null = null;
+  if (!customer) {
+    if (newCustomerName.length < 2) return { ok: false, error: customerId ? "ไม่พบลูกค้านี้ในบริษัท" : "กรุณาเลือกลูกค้าของโครงการ" };
+    newCustomer = { name: newCustomerName };
+    customer = { customerName: newCustomerName };
+    customerId = "";
+  }
 
   const startDate = isDate(body.startDate) ? body.startDate : new Date().toISOString().slice(0, 10);
   const endDate = isDate(body.endDate) ? body.endDate : startDate;
@@ -49,7 +68,8 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
 
   const typeCode = ([1, 2, 3, 4].includes(Number(body.projectTypeCode)) ? Number(body.projectTypeCode) : 4) as ProjectTypeCode;
   const typeConfig = PROJECT_TYPE_CONFIGS[typeCode];
-  const sectorType = body.sectorType === "Government" ? "Government" : "Private";
+  const sectorType = body.sectorType === "Private" ? "Private" : "Government";
+  const projectStage = normalizeStage(body.projectStage);
 
   // ---- BOQ + งบประมาณ ----
   const rawItems: any[] = Array.isArray(body.items) ? body.items : [];
@@ -59,7 +79,27 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
   const itemLines = rawItems.filter((i) => i && i.type !== "lump-sum" && i.type !== "per-point").map(normalizeItemLine);
   const laborLines = rawLabors.map(normalizeLaborLine);
   const lines = [...itemLines, ...laborLines].filter((l) => l.kind === "GROUP" || l.name);
-  const budget = computeProjectBudget(lines, { startDate, endDate });
+  const expenses = normalizeExpenses(body.expenses);
+  const budget = computeProjectBudget(lines, { startDate, endDate, expenses });
+
+  // ---- แผนงาน -> งวดงาน (งวดเงิน = สัดส่วน × มูลค่ารวม VAT) ----
+  const timeline = normalizeTimeline(body.timeline);
+  if (body.asDraft !== true) {
+    const tErr = timelineError(timeline);
+    if (tErr) return { ok: false, error: tErr };
+  }
+  const contractValue = budget.grandTotalWithVat;
+  const milestones = timeline.map((p, i) => {
+    const m = {
+      id: p.id, seq: i + 1, name: p.name, startDate: p.startDate, endDate: p.endDate,
+      weight: p.weight, amount: Math.round(contractValue * p.weight) / 100, progress: 0, note: "",
+    };
+    return { ...m, status: milestoneStatus(m) };
+  });
+
+  // ---- รายละเอียดโครงการ ----
+  const rawDoc = body.docSections && typeof body.docSections === "object" ? body.docSections : {};
+  const docSections = Object.fromEntries(DOC_SECTIONS.map((d) => [d.key, str(rawDoc[d.key], 12000)]));
 
   // ---- ผู้จัดการโครงการ/ทีมงาน ต้องเป็นผู้ใช้ของบริษัท ----
   const pmUid = str(body.projectManagerUid, 128) || apiUser.uid;
@@ -91,7 +131,10 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
     clientReference: str(body.clientReference, 120),
     projectTypeCode: typeCode,
     projectType: typeConfig.nameTh,
+    typeAuto: body.typeAuto !== false,
     sectorType,
+    projectStage,
+    isBidding: sectorType === "Government" && projectStage !== "CONTRACTED",
     priority: str(body.priority || "ปานกลาง", 30),
     documentChecklist: typeConfig.requiredDocuments.map((d) => ({
       docCode: d.docCode,
@@ -112,6 +155,12 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
     resources,
     teamUids: resources.map((r) => r.userId),
     items: lines,
+    expenses,
+    targetMargin: Math.min(90, Math.max(0, Number(body.targetMargin) || 0)),
+    warrantyMonths: Math.min(120, Math.max(0, Math.round(Number(body.warrantyMonths) || 0))),
+    milestones,
+    docSections,
+    legalRefs: legalReferences(sectorType),
     budget: budget.totalRev,
     allocatedCost: budget.totalCost,
     grossProfit: budget.grossProfit,
@@ -119,7 +168,12 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
     budgetSummary: budget,
     governmentDetails: sectorType === "Government" ? {
       torDocNo: str(body.governmentDetails?.torDocNo, 120),
+      egpProjectNo: str(body.governmentDetails?.egpProjectNo, 60),
       referencePrice: Math.max(0, Number(body.governmentDetails?.referencePrice) || 0),
+      budgetAmount: Math.max(0, Number(body.governmentDetails?.budgetAmount) || 0),
+      budgetSource: BUDGET_SOURCES.includes(body.governmentDetails?.budgetSource) ? body.governmentDetails.budgetSource : BUDGET_SOURCES[0],
+      fiscalYear: Math.round(Number(body.governmentDetails?.fiscalYear) || fiscalYearOf(startDate)),
+      procurementMethod: PROCUREMENT_METHODS.includes(body.governmentDetails?.procurementMethod) ? body.governmentDetails.procurementMethod : PROCUREMENT_METHODS[0],
       govContractNo: str(body.governmentDetails?.govContractNo, 120),
     } : undefined,
     privateDetails: sectorType === "Private" ? {
@@ -128,5 +182,5 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
     } : undefined,
   });
 
-  return { ok: true, fields, budget, hasLines: lines.some((l) => l.kind !== "GROUP") };
+  return { ok: true, fields, budget, hasLines: lines.some((l) => l.kind !== "GROUP"), newCustomer };
 }

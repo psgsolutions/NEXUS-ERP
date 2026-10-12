@@ -263,8 +263,11 @@ export default function ProjectDetailPage() {
         {financeRow("ราคาขายก่อนภาษี", baht(budget.totalRev), "text-nexus-teal")}
         {financeRow("ต้นทุนสินค้าและพัสดุ", baht(budget.equipCost))}
         {financeRow("ต้นทุนงานบริการและค่าแรง", baht(budget.laborCost))}
-        {financeRow(`สำรองความเสี่ยง (${Math.round((budget.contingencyRate ?? 0.05) * 100)}%)`, baht(budget.contingencyBuffer))}
+        {Array.isArray(budget.expenseLines)
+          ? financeRow(`ค่าใช้จ่ายดำเนินงาน (${budget.expenseLines.length} รายการ)`, baht(budget.expensesTotal))
+          : financeRow(`สำรองความเสี่ยง (${Math.round((budget.contingencyRate ?? 0.05) * 100)}%)`, baht(budget.contingencyBuffer))}
         {financeRow("กำไรขั้นต้น", `${baht(budget.grossProfit)} (${budget.gpPercent}%)`, budget.grossProfit < 0 ? "text-danger" : "text-white")}
+        {financeRow("กำไรสุทธิ", `${baht(budget.netProfit)} (${budget.netProfitPercent}%)`, budget.netProfit < 0 ? "text-danger" : "text-white")}
         {financeRow("ภาษีมูลค่าเพิ่ม", baht(budget.vatAmount))}
         {financeRow("มูลค่ารวมภาษี", baht(budget.grandTotalWithVat))}
       </GlassCard>

@@ -165,6 +165,14 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
     docSections,
     aiNotes: str(body.aiNotes, 4000),
     specChoices: normalizeSpecChoices(body.specChoices),
+    // โครงการบำรุงรักษาต่อจากโครงการเดิม
+    maintenanceOf: body.maintenanceOf?.projectDocId ? {
+      projectDocId: str(body.maintenanceOf.projectDocId, 120),
+      projectId: str(body.maintenanceOf.projectId, 60),
+      projectName: str(body.maintenanceOf.projectName, 200),
+      level: [1, 2, 3].includes(Number(body.maintenanceOf.level)) ? Number(body.maintenanceOf.level) : 1,
+      rounds: Math.min(52, Math.max(1, Math.round(Number(body.maintenanceOf.rounds) || 1))),
+    } : null,
     docSources: Object.fromEntries(Object.entries(body.docSources && typeof body.docSources === "object" ? body.docSources : {})
       .filter(([k, v]) => ALL_DOC_KEYS.includes(k as any) && (v === "edited" || v === "ai"))),
     quotationDocId: str(body.quotationDocId, 120),

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft, Briefcase, Building2, CalendarDays, CheckCircle2, ClipboardList, FileText, History,
-  Loader2, MapPin, Package, Pencil, PlayCircle, Printer, ShieldCheck, Users, Wallet, XCircle,
+  Loader2, MapPin, Package, Pencil, PlayCircle, Printer, ShieldCheck, Users, Wallet, Wrench, XCircle,
 } from "lucide-react";
 import {
   GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillInput, PillTabs, StatusBadge, cn,
@@ -142,10 +142,18 @@ export default function ProjectDetailPage() {
           <p className="text-sm text-white/60 mt-1">
             {p.customerName || p.customer || "-"} · {p.projectType || "-"}
             {isLegacy && <span className="text-warning ml-2">(โครงการรุ่นเก่า แสดงผลอย่างเดียว)</span>}
+            {p.maintenanceOf?.projectDocId && (
+              <> · บำรุงรักษาต่อจาก <a href={`/projects/${encodeURIComponent(p.maintenanceOf.projectDocId)}`} className="text-nexus-teal hover:underline">{p.maintenanceOf.projectId}</a></>
+            )}
           </p>
         </div>
       </div>
       <div className="flex items-center gap-2 flex-wrap justify-end">
+        {!isLegacy && canEditProject && ["Approved", "In Progress", "Completed"].includes(status) && lines.some((l: any) => (l.kind || "PRODUCT") === "PRODUCT") && (
+          <PillButton variant="glass" onClick={() => router.push(`/projects/new?maintenanceFrom=${encodeURIComponent(docId)}`)} className="h-9 px-4 text-xs font-bold" title="นำอุปกรณ์ในโครงการนี้ไปตั้งโครงการบำรุงรักษา">
+            <Wrench size={14} className="mr-1.5" /> สร้างโครงการบำรุงรักษา
+          </PillButton>
+        )}
         {p?.docSections && Object.values(p.docSections).some((v: any) => String(v || "").trim()) && (
           <PillButton variant="glass" onClick={() => router.push(`/projects/${encodeURIComponent(docId)}/tor`)} className="h-9 px-4 text-xs font-bold">
             <Printer size={14} className="mr-1.5" /> {p.sectorType === "Private" ? "พิมพ์รายละเอียดโครงการ" : "พิมพ์ร่าง TOR"}

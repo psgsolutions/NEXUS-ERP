@@ -350,6 +350,8 @@ export interface DocContext {
   productSpecs?: Record<string, string>;
   /** ข้อความจากคลังสเปกตามรูปแบบที่เลือก (lineId -> ข้อความ) */
   specClauses?: Record<string, string[]>;
+  /** โครงการบำรุงรักษาต่อจากโครงการเดิม */
+  maintenance?: { level: MaintenanceLevel; rounds: number; sourceName: string } | null;
 }
 
 const OBJECTIVES: Record<ProjectTypeCode, string[]> = {
@@ -413,6 +415,14 @@ export function generateSection(key: DocSectionKey, c: DocContext): string {
     case "qualifications":
       return sub(QUALIFICATIONS(agency));
     case "scope":
+      if (c.maintenance) {
+        const def = MAINTENANCE_LEVELS.find((l) => l.code === c.maintenance!.level) || MAINTENANCE_LEVELS[0];
+        return [
+          `ผู้รับจ้างต้องบำรุงรักษาอุปกรณ์${c.maintenance.sourceName ? `ตามโครงการ${c.maintenance.sourceName}` : ""} ระดับ${def.label} จำนวน ${c.maintenance.rounds} ครั้ง ตลอดระยะเวลาสัญญา ประกอบด้วย`,
+          sub(def.duties),
+          `รายการอุปกรณ์ที่อยู่ในความรับผิดชอบเป็นไปตามข้อ ${sectionNumber(c.sector, "specs")} คุณลักษณะเฉพาะ`,
+        ].join("\n");
+      }
       return [
         `ผู้รับจ้างต้องดำเนินการ${name} ให้แล้วเสร็จครบถ้วนใช้งานได้ดี ประกอบด้วย`,
         sub(c.timeline.length ? c.timeline.map((p) => p.name) : ["จัดหาและส่งมอบตามคุณลักษณะเฉพาะ"]),
@@ -486,4 +496,69 @@ export function legalReferences(sector: Sector): string[] {
         "ระเบียบกระทรวงการคลังว่าด้วยการจัดซื้อจัดจ้างและการบริหารพัสดุภาครัฐ พ.ศ. 2560",
       ]
     : ["ประมวลกฎหมายแพ่งและพาณิชย์ ลักษณะซื้อขาย และจ้างทำของ", "ประมวลรัษฎากร"];
+}
+
+// ---------------------------------------------------------------------------
+// โครงการบำรุงรักษาต่อจากโครงการเดิม (นำอุปกรณ์ในโครงการไปทำสัญญาบำรุงรักษา)
+// ---------------------------------------------------------------------------
+export type MaintenanceLevel = 1 | 2 | 3;
+
+export interface MaintenanceLevelDef {
+  code: MaintenanceLevel;
+  label: string;
+  /** ค่าบริการต่อปี (% ของมูลค่าอุปกรณ์) */
+  annualRate: number;
+  /** สำรองค่าอะไหล่/อุปกรณ์ทดแทน (% ของมูลค่าอุปกรณ์ต่อปี) */
+  sparePct: number;
+  duties: string[];
+}
+
+const DUTY_CLEAN = [
+  "ทำความสะอาดอุปกรณ์ทั้งภายนอกและภายในตามรอบที่กำหนด",
+  "ตรวจสอบสภาพและการทำงานทั่วไปของอุปกรณ์ พร้อมจัดทำรายงานผลการบำรุงรักษาทุกครั้ง",
+];
+const DUTY_SOFTWARE = [
+  "ตรวจสอบและปรับปรุงซอฟต์แวร์/เฟิร์มแวร์ของอุปกรณ์ให้เป็นรุ่นที่เหมาะสมและปลอดภัย",
+  "สำรองข้อมูลการตั้งค่าระบบ และตรวจสอบบันทึกการทำงาน (Log) ของระบบ",
+];
+const DUTY_REPAIR = [
+  "ซ่อมแก้ไขอุปกรณ์ที่ชำรุดให้กลับมาใช้งานได้ตามปกติภายในระยะเวลาที่กำหนด",
+  "จัดหาอะไหล่หรืออุปกรณ์ทดแทนที่มีคุณลักษณะเทียบเท่าหรือดีกว่าเดิม ในกรณีที่ซ่อมไม่ได้",
+];
+
+export const MAINTENANCE_LEVELS: MaintenanceLevelDef[] = [
+  { code: 1, label: "ทำความสะอาด", annualRate: 3, sparePct: 0, duties: DUTY_CLEAN },
+  { code: 2, label: "ทำความสะอาดและดูแลซอฟต์แวร์", annualRate: 6, sparePct: 0, duties: [...DUTY_CLEAN, ...DUTY_SOFTWARE] },
+  { code: 3, label: "ทำความสะอาด ซ่อมบำรุง และเปลี่ยนอะไหล่", annualRate: 8, sparePct: 5, duties: [...DUTY_CLEAN, ...DUTY_SOFTWARE, ...DUTY_REPAIR] },
+];
+
+export interface MaintenanceEquipment { lineId: string; name: string; qty: number; unit: string; unitPrice: number }
+
+/** สัดส่วนต้นทุนต่อราคาขายของค่าบริการบำรุงรักษา (ใช้ตั้งต้นทุน แก้ไขได้) */
+const MAINT_COST_RATIO = 0.6;
+
+/**
+ * รายการงานบริการของโครงการบำรุงรักษา (รูปแบบเดียวกับ "งานบริการและค่าแรง" ของหน้าโครงการ)
+ *  - อุปกรณ์แต่ละรายการ: คิดต่อจุด จำนวน = จำนวนอุปกรณ์ × จำนวนรอบ, ราคา/ครั้ง = มูลค่าอุปกรณ์ × อัตราต่อปี × ปี / จำนวนรอบ
+ *  - ระดับ 3: เพิ่มเงินสำรองค่าอะไหล่แบบเหมาจ่าย
+ */
+export function buildMaintenanceLabors(equipment: MaintenanceEquipment[], level: MaintenanceLevel, rounds: number, years: number): any[] {
+  const def = MAINTENANCE_LEVELS.find((l) => l.code === level) || MAINTENANCE_LEVELS[0];
+  const n = Math.max(1, Math.round(rounds));
+  const y = Math.max(0.25, years);
+  const out: any[] = equipment.filter((e) => e.qty > 0).map((e, i) => {
+    const pricePerVisit = Math.ceil((e.unitPrice * def.annualRate / 100) * y / n);
+    const costPerVisit = Math.round(pricePerVisit * MAINT_COST_RATIO);
+    return {
+      id: `MT-${e.lineId}-${i}`, maint: true,
+      name: `บำรุงรักษา (${def.label}) ${e.name}`,
+      type: "per-point", points: e.qty * n, materialCost: 0, laborCost: costPerVisit, cost: 0, price: pricePerVisit,
+    };
+  });
+  if (def.sparePct > 0) {
+    const value = equipment.reduce((s, e) => s + e.qty * e.unitPrice, 0);
+    const spare = Math.ceil((value * def.sparePct / 100) * y / 100) * 100;
+    if (spare > 0) out.push({ id: "MT-SPARE", maint: true, name: "สำรองค่าอะไหล่และอุปกรณ์ทดแทน", type: "lump-sum", points: 1, materialCost: Math.round(spare * 0.85), laborCost: 0, cost: Math.round(spare * 0.85), price: spare });
+  }
+  return out;
 }

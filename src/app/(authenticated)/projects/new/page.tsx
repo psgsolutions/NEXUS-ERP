@@ -53,10 +53,10 @@ import { apiFetch } from "@/lib/api-client";
 import { computeProjectBudget, linesToForm, normalizeItemLine, normalizeLaborLine } from "@/lib/project-budget";
 import { APPROVAL_STEPS, EDITABLE_STATUSES, normalizeProjectStatus } from "@/lib/project-status";
 import {
-  AI_DOC_KEYS, BUDGET_SOURCES, PROCUREMENT_METHODS, PROJECT_STAGES,
+  AI_DOC_KEYS, BUDGET_SOURCES, MAINTENANCE_LEVELS, PROCUREMENT_METHODS, PROJECT_STAGES, buildMaintenanceLabors,
   defaultExpenses, defaultTimeline, docSectionsFor, fiscalYearOf, generateAllSections, inferProjectType,
   normalizeStage, priceForMargin, resolveExpenses, roundUpPrice, sectionNumber, timelineError,
-  type DocSectionKey, type ExpenseContext, type ProjectExpense, type ProjectStage, type Sector, type TimelinePhase,
+  type DocSectionKey, type ExpenseContext, type MaintenanceEquipment, type MaintenanceLevel, type ProjectExpense, type ProjectStage, type Sector, type TimelinePhase,
 } from "@/lib/project-templates";
 import { mergeSpecLibrary, specClausesFor, suggestSpec, type SpecChoice } from "@/lib/spec-library";
 
@@ -169,6 +169,12 @@ export default function NewProjectPage() {
   const [productSpecs, setProductSpecs] = useState<Record<string, string>>({});
   const [specUser, setSpecUser] = useState<Record<string, SpecChoice>>({}); // รูปแบบสเปกที่ผู้ใช้เลือกเอง (lineId)
 
+  // ---------- โครงการบำรุงรักษาต่อจากโครงการเดิม (?maintenanceFrom=<id เอกสารโครงการ>) ----------
+  const [maintSource, setMaintSource] = useState<{ docId: string; projectId: string; name: string; equipment: MaintenanceEquipment[] } | null>(null);
+  const [maintLevel, setMaintLevel] = useState<MaintenanceLevel>(1);
+  const [maintRounds, setMaintRounds] = useState(4);
+  const [maintSelected, setMaintSelected] = useState<Set<string>>(new Set());
+
   // ---------- 5: ทีมงาน ----------
   const [projectManagerUid, setProjectManagerUid] = useState<string>(user?.uid || "");
   const [assignedTeam, setAssignedTeam] = useState<{ uid: string; name: string; role: string; allocation: number }[]>([]);
@@ -230,7 +236,8 @@ export default function NewProjectPage() {
     projectName, customerName, sector: sectorType, typeCode: projectTypeCode, stage,
     startDate, endDate, durationDays, budgetAmount, referencePrice: govReferencePrice,
     budgetSource: govBudgetSource, fiscalYear, warrantyMonths, lines, timeline, productSpecs, specClauses,
-  }), [projectName, customerName, sectorType, projectTypeCode, stage, startDate, endDate, durationDays, budgetAmount, govReferencePrice, govBudgetSource, fiscalYear, warrantyMonths, lines, timeline, productSpecs, specClauses]);
+    maintenance: maintSource ? { level: maintLevel, rounds: maintRounds, sourceName: maintSource.name } : null,
+  }), [projectName, customerName, sectorType, projectTypeCode, stage, startDate, endDate, durationDays, budgetAmount, govReferencePrice, govBudgetSource, fiscalYear, warrantyMonths, lines, timeline, productSpecs, specClauses, maintSource, maintLevel, maintRounds]);
   const lockedKeys = useMemo(() => new Set(docDefs.filter((d) => d.locked).map((d) => d.key)), [docDefs]);
   const docSections = useMemo(() => {
     const out = { ...autoDoc } as Record<DocSectionKey, string>;
@@ -312,6 +319,11 @@ export default function NewProjectPage() {
       setDocSource(Object.fromEntries(Object.keys(savedDoc).map((k) => [k, sources[k] || "edited"])));
       setAiNotes(d.aiNotes || "");
       if (d.specChoices && typeof d.specChoices === "object") setSpecUser(d.specChoices);
+      if (d.maintenanceOf?.projectDocId) {
+        setMaintLevel((Number(d.maintenanceOf.level) || 1) as MaintenanceLevel);
+        setMaintRounds(Number(d.maintenanceOf.rounds) || 4);
+        loadMaintSource(d.maintenanceOf.projectDocId, false);
+      }
       if (d.quotationDocId) setQuotation({ id: d.quotationDocId, docNo: d.clientReference || d.quotationDocId });
       setVisited(new Set(STEPS.map((_, i) => i)));
       setEditLoaded(true);
@@ -321,6 +333,54 @@ export default function NewProjectPage() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editDocId, currentCompanyId]);
+
+  // ---------- โครงการบำรุงรักษา: โหลดอุปกรณ์จากโครงการเดิม ----------
+  const loadMaintSource = async (sourceDocId: string, prefill: boolean) => {
+    try {
+      const snap = await getDoc(doc(db, `companies/${currentCompanyId}/projects`, sourceDocId));
+      if (!snap.exists()) return showToast("ไม่พบโครงการต้นทาง", true);
+      const src: any = snap.data();
+      const equipment: MaintenanceEquipment[] = (Array.isArray(src.items) ? src.items : [])
+        .filter((l: any) => (l.kind || "PRODUCT") === "PRODUCT" && !l.isOptional && l.name && Number(l.qty) > 0)
+        .map((l: any, i: number) => ({ lineId: String(l.lineId || `L${i + 1}`), name: l.name, qty: Number(l.qty) || 0, unit: l.unit || "ชิ้น", unitPrice: Number(l.unitPrice ?? l.price) || 0 }));
+      const srcName = src.projectName || src.title || "";
+      setMaintSource({ docId: sourceDocId, projectId: src.projectId || sourceDocId, name: srcName, equipment });
+      setMaintSelected(new Set(equipment.map((e) => e.lineId)));
+      if (!prefill) return;
+      setSectorType(src.sectorType === "Private" ? "Private" : "Government");
+      setSelectedCustomerId(src.customerId || "");
+      setProjectName(`บำรุงรักษา${srcName}`);
+      setManualTypeCode(2);
+      setTypeAuto(false);
+      setClientReference(src.projectId || sourceDocId);
+      setSiteLocation(src.siteLocation || "");
+      setSiteContactName(src.siteContact?.name || "");
+      setSiteContactPhone(src.siteContact?.phone || "");
+      setWarrantyMonths(0);
+      const after = src.endDate && src.endDate >= today() ? addDays(src.endDate, 1) : today();
+      setStartDate(after);
+      setEndDate(addDays(after, 364));
+      setProjectLabors(buildMaintenanceLabors(equipment, 1, 4, 1));
+      showToast(`นำอุปกรณ์ ${equipment.length} รายการจากโครงการ ${src.projectId || ""} มาตั้งโครงการบำรุงรักษาแล้ว`, false);
+    } catch (e) {
+      console.error("load maintenance source:", e);
+      showToast("โหลดโครงการต้นทางไม่สำเร็จ", true);
+    }
+  };
+  useEffect(() => {
+    const from = searchParams?.get("maintenanceFrom");
+    if (!from || !currentCompanyId || editDocId) return;
+    loadMaintSource(from, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, currentCompanyId]);
+  const regenerateMaintenance = () => {
+    if (!maintSource) return;
+    const chosen = maintSource.equipment.filter((e) => maintSelected.has(e.lineId));
+    if (!chosen.length) return showToast("กรุณาเลือกอุปกรณ์อย่างน้อย 1 รายการ", true);
+    setProjectLabors((prev) => [...prev.filter((l: any) => !l.maint && !String(l.id).startsWith("MT-")), ...buildMaintenanceLabors(chosen, maintLevel, maintRounds, Math.max(1, durationDays) / 365)]);
+    setTimelineEdited(null);
+    showToast(`สร้างรายการบำรุงรักษา ${chosen.length} อุปกรณ์ × ${maintRounds} ครั้ง แล้ว`, false);
+  };
 
   // ---------- นำเข้าจากใบเสนอราคา (?fromQuotationId=) ----------
   useEffect(() => {
@@ -573,6 +633,7 @@ export default function NewProjectPage() {
         docSources: docSource,
         aiNotes,
         specChoices: Object.fromEntries(Object.entries(specChoices).filter(([, c]) => c)),
+        maintenanceOf: maintSource ? { projectDocId: maintSource.docId, projectId: maintSource.projectId, projectName: maintSource.name, level: maintLevel, rounds: maintRounds } : null,
         resources: assignedTeam.map((m) => ({ userId: m.uid, name: m.name, role: m.role, allocation: m.allocation })),
         governmentDetails: {
           torDocNo: govTorDocNo, egpProjectNo: govEgpNo, referencePrice: govReferencePrice, budgetAmount: govBudgetAmount,
@@ -678,8 +739,59 @@ export default function NewProjectPage() {
   );
 
   // ---------- ขั้นที่ 1: ข้อมูลโครงการ ----------
+  const maintDef = MAINTENANCE_LEVELS.find((l) => l.code === maintLevel) || MAINTENANCE_LEVELS[0];
+  const maintenanceCard = maintSource && (
+    <GlassCard className="p-5 space-y-3 border-nexus-blue/25">
+      {cardTitle(<Wrench size={16} className="text-nexus-blue" />, `บำรุงรักษาอุปกรณ์จากโครงการ ${maintSource.projectId}`,
+        <span className="text-[11px] text-white/40 truncate max-w-[50%]" title={maintSource.name}>{maintSource.name}</span>)}
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1.5">
+          {segLabel("ระดับการบำรุงรักษา")}
+          <div className="flex gap-2 flex-wrap">
+            {MAINTENANCE_LEVELS.map((l) => (
+              <button key={l.code} type="button" onClick={() => setMaintLevel(l.code)} className={segBtn(maintLevel === l.code)} title={l.duties.join("\n")}>
+                {l.code}. {l.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <Field label="จำนวนครั้งตลอดสัญญา" w={140}>
+          <NumCell value={maintRounds} onChange={(v) => setMaintRounds(Math.min(52, Math.max(1, Math.round(v))))} suffix="ครั้ง" />
+        </Field>
+      </div>
+      <p className="text-[12px] text-white/45 ml-1">
+        ค่าบริการต่อปี {maintDef.annualRate}% ของมูลค่าอุปกรณ์{maintDef.sparePct > 0 && ` + สำรองอะไหล่ ${maintDef.sparePct}%`} · ปรับราคาได้ที่ขั้นรายการและต้นทุน
+      </p>
+      {maintSource.equipment.length === 0 ? (
+        <p className="text-[13px] text-white/40">โครงการต้นทางไม่มีรายการอุปกรณ์</p>
+      ) : (
+        <div className="space-y-1">
+          {maintSource.equipment.map((e) => {
+            const on = maintSelected.has(e.lineId);
+            return (
+              <button key={e.lineId} type="button" onClick={() => setMaintSelected((prev) => { const n = new Set(prev); if (n.has(e.lineId)) n.delete(e.lineId); else n.add(e.lineId); return n; })}
+                className={cn("w-full grid grid-cols-[20px_minmax(0,1fr)_100px_140px] gap-2 items-center px-3 py-1.5 rounded-xl border text-left text-[13px]",
+                  on ? "border-nexus-teal/30 bg-nexus-teal/5 text-white" : "border-white/5 text-white/40")}>
+                <span className={cn("w-4 h-4 rounded border flex items-center justify-center", on ? "bg-nexus-teal border-nexus-teal text-black" : "border-white/30")}>{on && <Check size={11} />}</span>
+                <span className="truncate" title={e.name}>{e.name}</span>
+                <span className="text-right font-mono">{e.qty.toLocaleString("th-TH")} {e.unit}</span>
+                <span className="text-right font-mono">{baht(e.qty * e.unitPrice)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div className="flex justify-end">
+        <PillButton variant="confirm" onClick={regenerateMaintenance} className="h-9 px-4 text-xs font-bold">
+          <Sparkles size={13} className="mr-1.5" /> สร้างรายการบำรุงรักษา
+        </PillButton>
+      </div>
+    </GlassCard>
+  );
+
   const stepGeneral = (
     <div className="space-y-4">
+      {maintenanceCard}
       <GlassCard className="p-5 space-y-4">
         <div className="flex flex-wrap gap-x-6 gap-y-3">
           <div className="space-y-1.5">

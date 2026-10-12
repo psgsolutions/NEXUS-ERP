@@ -2,10 +2,10 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, Briefcase, Building2, CalendarDays, CheckCircle2, ClipboardList, FileText, History,
-  Loader2, MapPin, Package, Pencil, PlayCircle, Printer, ShieldCheck, Users, Wallet, Wrench, XCircle,
+  Loader2, MapPin, Package, Pencil, PlayCircle, Printer, GitPullRequest, ShieldCheck, Users, Wallet, Wrench, XCircle,
 } from "lucide-react";
 import {
   GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillInput, PillTabs, StatusBadge, cn,
@@ -14,6 +14,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { ChangeOrdersPanel } from "@/components/projects/ChangeOrdersPanel";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
 import { computeProjectBudget } from "@/lib/project-budget";
@@ -62,7 +63,8 @@ export default function ProjectDetailPage() {
 
   const { data: workOrders } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/work_orders` : "");
 
-  const [tab, setTab] = useState("overview");
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState(() => searchParams?.get("tab") || "overview");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
   const [pending, setPending] = useState<ProjectAction | null>(null); // รอเหตุผล (ไม่อนุมัติ/ยกเลิก)
@@ -341,6 +343,7 @@ export default function ProjectDetailPage() {
           { id: "boq", label: `รายการ (${lines.filter((l: any) => l.kind !== "GROUP").length})`, icon: <Package size={14} /> },
           { id: "finance", label: "งบประมาณ", icon: <Wallet size={14} /> },
           { id: "docs", label: "เอกสารบังคับ", icon: <FileText size={14} /> },
+          { id: "changes", label: `เปลี่ยนแปลง${Number(p.pendingChangeOrders) > 0 ? ` · รอ ${p.pendingChangeOrders}` : ""}`, icon: <GitPullRequest size={14} /> },
           { id: "history", label: "ประวัติ", icon: <History size={14} /> },
         ]}
         activeTab={tab}
@@ -350,6 +353,17 @@ export default function ProjectDetailPage() {
       {tab === "boq" && boq}
       {tab === "finance" && finance}
       {tab === "docs" && docs}
+      {tab === "changes" && (
+        <ChangeOrdersPanel
+          companyId={companyId || ""}
+          docId={docId}
+          project={p}
+          status={status}
+          canRequest={!isLegacy && canEditProject}
+          canApprove={!isLegacy && isAdmin}
+          onMessage={(text, error) => setMessage({ text, error })}
+        />
+      )}
       {tab === "history" && history}
     </div>
   );

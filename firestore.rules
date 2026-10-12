@@ -147,9 +147,18 @@ service cloud.firestore {
       allow create, delete: if isSuperAdmin();
 
       // ทุก subcollection (และลึกกว่านั้น) ยกเว้นที่มีกฎเฉพาะ
-      match /{collection}/{rest=**} {
+      function apiOnlyCollection(collection) {
+        return collection in ['auditLogs', 'financialLedgers', 'quotations', 'receipts', 'payments', 'payrolls', 'serial_numbers', 'invoices', 'billing_notes', 'cndn'];
+      }
+      match /{collection}/{docId} {
         allow read: if inCompany(companyId);
-        allow write: if inCompany(companyId) && !(collection in ['auditLogs', 'financialLedgers', 'quotations', 'receipts', 'payments', 'payrolls', 'serial_numbers', 'invoices', 'billing_notes', 'cndn']);
+        allow write: if inCompany(companyId) && !apiOnlyCollection(collection);
+      }
+      match /{collection}/{docId}/{sub}/{rest=**} {
+        allow read: if inCompany(companyId);
+        // คำขอเปลี่ยนแปลงโครงการ: ยื่น/อนุมัติผ่าน /api/projects/change-orders เท่านั้น
+        allow write: if inCompany(companyId) && !apiOnlyCollection(collection)
+          && !(collection == 'projects' && sub == 'change_orders');
       }
 
       // receipts / payments / payrolls / serial_numbers: อ่านได้ตามกฎด้านบน เขียนผ่าน API เท่านั้น (ตรวจยอดค้าง กลับรายการบัญชี ออกเลขที่ในทรานแซกชัน)

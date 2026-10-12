@@ -42,12 +42,15 @@ async function main() {
     await setDoc(doc(db, 'companies/A/invoices/inv1'), { companyId: 'A', invoiceNo: 'INV-26-0001' });
     await setDoc(doc(db, 'companies/A/invoices/invSample'), { companyId: 'A', isSample: true });
     await setDoc(doc(db, 'employees/eB'), { companyId: 'B', name: 'B' });
+    await setDoc(doc(db, 'companies/A/projects/P1'), { companyId: 'A', status: 'In Progress' });
+    await setDoc(doc(db, 'companies/A/projects/P1/change_orders/co1'), { status: 'PENDING' });
   });
 
   const anon = testEnv.unauthenticatedContext().firestore();
   const stranger = testEnv.authenticatedContext('stranger', { email: 'x@evil.com' }).firestore();
   const userA = testEnv.authenticatedContext('userA', { email: 'a@a.com' }).firestore();
   const adminA = testEnv.authenticatedContext('adminA', { email: 'admin@a.com' }).firestore();
+  const userB = testEnv.authenticatedContext('userB', { email: 'b@b.com' }).firestore();
   const superUid = testEnv.authenticatedContext(SUPERADMIN_UID, {}).firestore();
   const superEmail = testEnv.authenticatedContext('other-uid', { email: 'sadmin@admin.com' }).firestore();
 
@@ -132,6 +135,14 @@ async function main() {
     ['member cannot read other-company employee', () => assertFails(getDoc(doc(userA, 'employees/eB')))],
     ['member cannot edit employee (salary) directly', () => assertFails(updateDoc(doc(adminA, 'employees/eA'), { salary: 999999 }))],
     ['member cannot write attendance directly', () => assertFails(addDoc(collection(userA, 'attendance'), { companyId: 'A', type: 'IN' }))],
+
+    // Project change orders: API only; other project subcollections stay client-writable
+    ['member reads project change order', () => assertSucceeds(getDoc(doc(userA, 'companies/A/projects/P1/change_orders/co1')))],
+    ['member cannot create change order directly', () => assertFails(setDoc(doc(userA, 'companies/A/projects/P1/change_orders/co2'), { status: 'APPROVED' }))],
+    ['admin cannot approve change order directly', () => assertFails(updateDoc(doc(adminA, 'companies/A/projects/P1/change_orders/co1'), { status: 'APPROVED' }))],
+    ['member writes other project subcollection', () => assertSucceeds(setDoc(doc(userA, 'companies/A/projects/P1/notes/n1'), { text: 'x' }))],
+    ['member writes project document', () => assertSucceeds(updateDoc(doc(userA, 'companies/A/projects/P1'), { note: 'x' }))],
+    ['other company cannot read change order', () => assertFails(getDoc(doc(userB, 'companies/A/projects/P1/change_orders/co1')))],
 
     // Tax documents
     ['member reads invoice', () => assertSucceeds(getDoc(doc(userA, 'companies/A/invoices/inv1')))],

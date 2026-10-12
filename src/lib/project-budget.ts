@@ -180,7 +180,7 @@ export function computeProjectBudget(lines: ProjectLine[], opts: ProjectBudgetOp
   const laborCost = sum(labor, "costAmount");
   const totalRev = round2(equipRev + laborRev);
   const totalCost = round2(equipCost + laborCost);
-  const expenseLines = (opts.expenses || []).map((e) => ({ ...e, amount: expenseAmount(e, totalCost, totalRev) }));
+  const expenseLines = (opts.expenses || []).map((e) => ({ ...e, amount: expenseAmount(e, { equipCost, laborCost, price: totalRev }) }));
   const risk = expenseLines.find((e) => e.key === "RISK");
   const contingencyRate = useExpenses
     ? (risk && risk.basis === "PCT_DIRECT" ? risk.value / 100 : 0)

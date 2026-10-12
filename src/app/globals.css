@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  /* วรรณยุกต์ไทยซ้อน 3 ชั้น (เช่น ตั้ง ปั้ม) ต้องไม่ถูกตัดขอบบนในช่องกรอกที่ไม่มีระยะขอบ */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea {
+    line-height: 1.75;
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+}
+
 :root {
   --background: #0D0D0D;
   --surface-0: #0D0D0D;   /* Base app canvas */

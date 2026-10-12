@@ -10,6 +10,8 @@ import {
   CalendarRange,
   Check,
   ClipboardList,
+  ExternalLink,
+  FileSignature,
   FileSpreadsheet,
   FileText,
   Landmark,
@@ -42,25 +44,27 @@ import { db } from "@/lib/firebase-client";
 import { doc, getDoc, getDocs, collection } from "firebase/firestore";
 import { can } from "@/lib/permissions";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
-import { DocSectionsEditor, ExpensesEditor, NumCell, TimelineEditor } from "@/components/projects/ProjectPlanEditors";
+import {
+  DocSectionsEditor, ExpensesEditor, FIELD_W, Field, NumCell, TimelineEditor, type DocSource,
+} from "@/components/projects/ProjectPlanEditors";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { ProjectTypeCode, PROJECT_TYPE_CONFIGS } from "@/types/database";
 import { apiFetch } from "@/lib/api-client";
 import { computeProjectBudget, linesToForm, normalizeItemLine, normalizeLaborLine } from "@/lib/project-budget";
 import { APPROVAL_STEPS, EDITABLE_STATUSES, normalizeProjectStatus } from "@/lib/project-status";
 import {
-  BUDGET_SOURCES, PROCUREMENT_METHODS, PROJECT_STAGES,
-  defaultExpenses, defaultTimeline, fiscalYearOf, generateAllSections, inferProjectType, legalReferences,
-  normalizeStage, priceForMargin, timelineError,
-  type DocSectionKey, type ProjectExpense, type ProjectStage, type Sector, type TimelinePhase,
+  AI_DOC_KEYS, BUDGET_SOURCES, PROCUREMENT_METHODS, PROJECT_STAGES,
+  defaultExpenses, defaultTimeline, docSectionsFor, fiscalYearOf, generateAllSections, inferProjectType,
+  normalizeStage, priceForMargin, resolveExpenses, roundUpPrice, sectionNumber, timelineError,
+  type DocSectionKey, type ExpenseContext, type ProjectExpense, type ProjectStage, type Sector, type TimelinePhase,
 } from "@/lib/project-templates";
 
 const STEPS = [
-  { title: "ข้อมูลโครงการ", icon: Briefcase },
-  { title: "รายการและต้นทุน", icon: FileSpreadsheet },
-  { title: "แผนงานและงวดงาน", icon: CalendarRange },
-  { title: "รายละเอียดโครงการ", icon: FileText },
-  { title: "ทีมงานและตรวจทาน", icon: ShieldCheck },
+  { title: "ข้อมูลโครงการ" },
+  { title: "รายการและต้นทุน" },
+  { title: "แผนงานและงวดงาน" },
+  { title: "รายละเอียดโครงการ" },
+  { title: "ทีมงานและตรวจทาน" },
 ];
 
 const PROJECT_TYPES: { code: ProjectTypeCode; label: string }[] = [
@@ -82,6 +86,7 @@ const daysBetween = (a: string, b: string) => {
   const e = Date.parse(`${b}T00:00:00Z`);
   return Number.isFinite(s) && Number.isFinite(e) && e >= s ? Math.round((e - s) / DAY) + 1 : 0;
 };
+const laborUnitCost = (l: any) => (l.type === "per-point" ? (Number(l.materialCost) || 0) + (Number(l.laborCost) || 0) : Number(l.cost) || 0);
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -119,7 +124,7 @@ export default function NewProjectPage() {
   const [selectedCustomerId, setSelectedCustomerId] = useState(""); // id ลูกค้า หรือชื่อที่พิมพ์ใหม่
   const [sectorType, setSectorType] = useState<Sector>("Government");
   const [projectStage, setProjectStage] = useState<ProjectStage>("CONTRACTED");
-  const [manualTypeCode, setManualTypeCode] = useState<ProjectTypeCode>(4);
+  const [manualTypeCode, setManualTypeCode] = useState<ProjectTypeCode | null>(null); // ว่าง = ให้ระบบเลือกจากรายการ
   const [typeAuto, setTypeAuto] = useState(true);
   const [projectPriority, setProjectPriority] = useState("ปานกลาง");
   const [clientReference, setClientReference] = useState("");
@@ -147,14 +152,20 @@ export default function NewProjectPage() {
   // ---------- 2: รายการและต้นทุน ----------
   const [documentItems, setDocumentItems] = useState<any[]>([]);
   const [projectLabors, setProjectLabors] = useState<any[]>([]);
-  const [expensesEdited, setExpensesEdited] = useState<ProjectExpense[] | null>(null); // null = ค่าเริ่มต้นตามประเภทลูกค้า
+  const [expenseRows, setExpenseRows] = useState<ProjectExpense[] | null>(null); // null = ชุดมาตรฐาน (อัตโนมัติทุกแถว)
   const [targetMargin, setTargetMargin] = useState(10);
+  const [quotation, setQuotation] = useState<{ id: string; docNo: string } | null>(null);
+  const [quoting, setQuoting] = useState(false);
 
   // ---------- 3: แผนงาน ----------
   const [timelineEdited, setTimelineEdited] = useState<TimelinePhase[] | null>(null); // null = ตามรูปแบบงาน
 
   // ---------- 4: รายละเอียดโครงการ ----------
-  const [docEdited, setDocEdited] = useState<Partial<Record<DocSectionKey, string>>>({}); // หัวข้อที่แก้เอง
+  const [docEdited, setDocEdited] = useState<Partial<Record<DocSectionKey, string>>>({}); // หัวข้อที่แก้เอง/AI
+  const [docSource, setDocSource] = useState<Partial<Record<DocSectionKey, DocSource>>>({});
+  const [aiNotes, setAiNotes] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [productSpecs, setProductSpecs] = useState<Record<string, string>>({});
 
   // ---------- 5: ทีมงาน ----------
   const [projectManagerUid, setProjectManagerUid] = useState<string>(user?.uid || "");
@@ -176,31 +187,54 @@ export default function NewProjectPage() {
     [documentItems, projectLabors]
   );
   const inferredType = useMemo(() => inferProjectType(lines, manualTypeCode), [lines, manualTypeCode]);
-  const projectTypeCode: ProjectTypeCode = typeAuto && inferredType ? inferredType : manualTypeCode;
+  const projectTypeCode: ProjectTypeCode | null = typeAuto ? inferredType ?? manualTypeCode : manualTypeCode;
 
-  const expenses = useMemo(() => expensesEdited ?? defaultExpenses(sectorType), [expensesEdited, sectorType]);
-  const budget = useMemo(() => computeProjectBudget(lines, { startDate, endDate, expenses }), [lines, startDate, endDate, expenses]);
-  const contractValue = budget.grandTotalWithVat;
   const isGov = sectorType === "Government";
   const stage: ProjectStage = isGov ? projectStage : "CONTRACTED";
+  const durationDays = daysBetween(startDate, endDate);
+
+  // ค่าใช้จ่าย: อัตราอัตโนมัติคำนวณจากต้นทุนอุปกรณ์/ค่าแรง รูปแบบงาน และระยะเวลา
+  const directBudget = useMemo(() => computeProjectBudget(lines, { startDate, endDate }), [lines, startDate, endDate]);
+  const expenseCtx: ExpenseContext = useMemo(() => ({
+    sector: sectorType, typeCode: projectTypeCode, equipCost: directBudget.equipCost, laborCost: directBudget.laborCost, durationDays,
+  }), [sectorType, projectTypeCode, directBudget.equipCost, directBudget.laborCost, durationDays]);
+  const expenses = useMemo(() => resolveExpenses(expenseRows ?? defaultExpenses(expenseCtx), expenseCtx), [expenseRows, expenseCtx]);
+
+  const budget = useMemo(() => computeProjectBudget(lines, { startDate, endDate, expenses }), [lines, startDate, endDate, expenses]);
+  const expenseAmounts = useMemo(() => Object.fromEntries(budget.expenseLines.map((e) => [e.id, e.amount])), [budget.expenseLines]);
+  const contractValue = budget.grandTotalWithVat;
   const fiscalYear = govFiscalYear ?? fiscalYearOf(startDate);
   const budgetAmount = isGov && govBudgetAmount > 0 ? govBudgetAmount : contractValue;
-  const durationDays = daysBetween(startDate, endDate);
   const overBudget = isGov && govBudgetAmount > 0 && contractValue > govBudgetAmount + 0.009;
   const overRefPrice = isGov && govReferencePrice > 0 && contractValue > govReferencePrice + 0.009;
+  const suggestedPrice = priceForMargin(budget.equipCost, budget.laborCost, expenses, targetMargin);
 
   const autoTimeline = useMemo(() => defaultTimeline(projectTypeCode, startDate, endDate), [projectTypeCode, startDate, endDate]);
   const timeline = timelineEdited ?? autoTimeline;
 
+  const docDefs = useMemo(() => docSectionsFor(sectorType), [sectorType]);
   const autoDoc = useMemo(() => generateAllSections({
     projectName, customerName, sector: sectorType, typeCode: projectTypeCode, stage,
     startDate, endDate, durationDays, budgetAmount, referencePrice: govReferencePrice,
-    budgetSource: govBudgetSource, fiscalYear, warrantyMonths, lines, timeline,
-  }), [projectName, customerName, sectorType, projectTypeCode, stage, startDate, endDate, durationDays, budgetAmount, govReferencePrice, govBudgetSource, fiscalYear, warrantyMonths, lines, timeline]);
-  const docSections = { ...autoDoc, ...docEdited } as Record<DocSectionKey, string>;
-  const legalRefs = legalReferences(sectorType);
+    budgetSource: govBudgetSource, fiscalYear, warrantyMonths, lines, timeline, productSpecs,
+  }), [projectName, customerName, sectorType, projectTypeCode, stage, startDate, endDate, durationDays, budgetAmount, govReferencePrice, govBudgetSource, fiscalYear, warrantyMonths, lines, timeline, productSpecs]);
+  const lockedKeys = useMemo(() => new Set(docDefs.filter((d) => d.locked).map((d) => d.key)), [docDefs]);
+  const docSections = useMemo(() => {
+    const out = { ...autoDoc } as Record<DocSectionKey, string>;
+    Object.entries(docEdited).forEach(([k, v]) => { if (!lockedKeys.has(k as DocSectionKey) && v !== undefined) out[k as DocSectionKey] = v; });
+    return out;
+  }, [autoDoc, docEdited, lockedKeys]);
 
-  const suggestedPrice = priceForMargin(budget.totalCost, expenses, targetMargin);
+  // สเปกจากทะเบียนสินค้า ใช้สร้างคุณลักษณะเฉพาะเมื่อรายการไม่มีรายละเอียด
+  const productIdsKey = Array.from(new Set(documentItems.map((i: any) => i.productId).filter(Boolean))).sort().join("|");
+  useEffect(() => {
+    if (!currentCompanyId || !productIdsKey) return;
+    const missing = productIdsKey.split("|").filter((id) => !(id in productSpecs));
+    if (!missing.length) return;
+    Promise.all(missing.map((id) => getDoc(doc(db, `companies/${currentCompanyId}/products`, id)).then((s) => [id, String(s.data()?.technicalSpecs || "")] as const).catch(() => [id, ""] as const)))
+      .then((pairs) => setProductSpecs((prev) => ({ ...prev, ...Object.fromEntries(pairs) })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentCompanyId, productIdsKey]);
 
   // ---------- แก้ไขฉบับร่าง / โครงการที่ถูกตีกลับ (?edit=<id เอกสารโครงการ>) ----------
   const editDocId = searchParams?.get("edit") || "";
@@ -224,7 +258,7 @@ export default function NewProjectPage() {
       setProjectName(d.projectName || d.title || "");
       setSelectedCustomerId(d.customerId || "");
       setClientReference(d.clientReference || "");
-      if ([1, 2, 3, 4].includes(Number(d.projectTypeCode))) setManualTypeCode(Number(d.projectTypeCode) as ProjectTypeCode);
+      setManualTypeCode([1, 2, 3, 4].includes(Number(d.projectTypeCode)) ? (Number(d.projectTypeCode) as ProjectTypeCode) : null);
       setTypeAuto(d.typeAuto === true);
       setSectorType(d.sectorType === "Private" ? "Private" : "Government");
       setProjectStage(normalizeStage(d.projectStage));
@@ -251,12 +285,20 @@ export default function NewProjectPage() {
       const form = linesToForm(d.items || []);
       setDocumentItems(form.items);
       setProjectLabors(form.labors);
-      if (Array.isArray(d.expenses)) setExpensesEdited(d.expenses);
+      if (Array.isArray(d.expenses) && d.expenses.length) setExpenseRows(d.expenses);
       if (d.targetMargin) setTargetMargin(Number(d.targetMargin));
       if (Array.isArray(d.milestones) && d.milestones.length) {
         setTimelineEdited(d.milestones.map((m: any) => ({ id: m.id, name: m.name, startDate: m.startDate, endDate: m.endDate, weight: Number(m.weight) || 0 })));
       }
-      if (d.docSections) setDocEdited(Object.fromEntries(Object.entries(d.docSections).filter(([, v]) => String(v || "").trim())) as any);
+      // ข้อความที่บันทึกไว้เป็นของโครงการนี้: ถือเป็นฉบับแก้ไข (ไม่ถูกสร้างทับ)
+      // หัวข้ออัตโนมัติสร้างใหม่ตามข้อมูลล่าสุด (บันทึกรุ่นเก่าที่ไม่มี docSources ถือว่าแก้เองทั้งหมด)
+      const sources: Record<string, DocSource> = d.docSources && typeof d.docSources === "object" ? d.docSources : {};
+      const savedDoc = Object.fromEntries(Object.entries(d.docSections || {})
+        .filter(([k, v]) => String(v || "").trim() && (!d.docSources || sources[k] === "edited" || sources[k] === "ai"))) as Partial<Record<DocSectionKey, string>>;
+      setDocEdited(savedDoc);
+      setDocSource(Object.fromEntries(Object.keys(savedDoc).map((k) => [k, sources[k] || "edited"])));
+      setAiNotes(d.aiNotes || "");
+      if (d.quotationDocId) setQuotation({ id: d.quotationDocId, docNo: d.clientReference || d.quotationDocId });
       setVisited(new Set(STEPS.map((_, i) => i)));
       setEditLoaded(true);
     })().catch((e) => {
@@ -281,6 +323,7 @@ export default function NewProjectPage() {
         const docNo = data.documentNo || data.quotationNumber || data.quoteId || headerSnap.id;
         setProjectName(data.projectName || data.subject || "");
         setClientReference(docNo);
+        setQuotation({ id: headerSnap.id, docNo });
         // รูปแบบเก่าเก็บชื่อลูกค้าไว้ใน customerId: จับคู่กับรายชื่อลูกค้าตามชื่อ
         const byId = rawCustomers.find((c: any) => c.id === data.customerId);
         const byName = rawCustomers.find((c: any) => (c.customerName || c.name) === (data.customerName || data.customerId));
@@ -322,7 +365,10 @@ export default function NewProjectPage() {
       if (selectedCustomerId.trim().length < 2) return isGov ? "กรุณาเลือกหรือพิมพ์ชื่อหน่วยงาน" : "กรุณาเลือกหรือพิมพ์ชื่อลูกค้า";
       if (!startDate || !endDate || endDate < startDate) return "วันที่ส่งมอบต้องไม่อยู่ก่อนวันที่เริ่ม";
     }
-    if (i === 1 && budget.equipCount + budget.laborCount === 0) return "กรุณาเพิ่มรายการสินค้าหรืองานบริการอย่างน้อย 1 รายการ";
+    if (i === 1) {
+      if (budget.equipCount + budget.laborCount === 0) return "กรุณาเพิ่มรายการสินค้าหรืองานบริการอย่างน้อย 1 รายการ";
+      if (!projectTypeCode) return "กรุณาเลือกรูปแบบงาน";
+    }
     if (i === 2) return timeline.length ? timelineError(timeline) : "กรุณากำหนดงวดงานอย่างน้อย 1 งวด";
     if (i === 4 && !projectManagerUid) return "กรุณาเลือกผู้จัดการโครงการ";
     return null;
@@ -341,7 +387,7 @@ export default function NewProjectPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ---------- ปรับราคาขายให้ได้กำไรตามเป้า ----------
+  // ---------- ปรับราคาขายให้ได้กำไรตามเป้า แล้วปัดราคาต่อหน่วยขึ้นเป็นเลขกลม ----------
   const applyTargetMargin = () => {
     if (!(suggestedPrice > 0)) {
       showToast("คำนวณราคาไม่ได้ — ตรวจสอบต้นทุนและอัตรากำไร/ค่าใช้จ่าย (รวมกันต้องน้อยกว่า 100%)", true);
@@ -351,22 +397,112 @@ export default function NewProjectPage() {
     let labors = projectLabors;
     for (let pass = 0; pass < 4; pass++) {
       const b = computeProjectBudget([...items.map(normalizeItemLine), ...labors.map(normalizeLaborLine)], { expenses });
-      const target = priceForMargin(b.totalCost, expenses, targetMargin);
+      const target = priceForMargin(b.equipCost, b.laborCost, expenses, targetMargin);
       if (b.totalRev > 0) {
         const k = target / b.totalRev;
-        if (Math.abs(k - 1) < 1e-5) break;
-        items = items.map((it) => (it.itemType === "GROUP_HEADER" ? it : { ...it, price: r2((Number(it.price) || 0) * k) }));
-        labors = labors.map((l) => ({ ...l, price: r2((Number(l.price) || 0) * k) }));
+        if (Math.abs(k - 1) < 1e-6) break;
+        items = items.map((it) => (it.itemType === "GROUP_HEADER" ? it : { ...it, price: (Number(it.price) || 0) * k }));
+        labors = labors.map((l) => ({ ...l, price: (Number(l.price) || 0) * k }));
       } else if (b.totalCost > 0) {
         const k = target / b.totalCost;
-        items = items.map((it) => (it.itemType === "GROUP_HEADER" ? it : { ...it, price: r2((Number(it.cost) || 0) * k) }));
-        const unitCost = (l: any) => (l.type === "per-point" ? (Number(l.materialCost) || 0) + (Number(l.laborCost) || 0) : Number(l.cost) || 0);
-        labors = labors.map((l) => ({ ...l, price: r2(unitCost(l) * k) }));
+        items = items.map((it) => (it.itemType === "GROUP_HEADER" ? it : { ...it, price: (Number(it.cost) || 0) * k }));
+        labors = labors.map((l) => ({ ...l, price: laborUnitCost(l) * k }));
       } else break;
     }
+    // ราคาต่อหน่วยเป็นเลขกลม (ปัดขึ้น กำไรไม่ต่ำกว่าเป้า)
+    items = items.map((it) => (it.itemType === "GROUP_HEADER" ? it : { ...it, price: roundUpPrice(it.price) }));
+    labors = labors.map((l) => ({ ...l, price: roundUpPrice(l.price) }));
     setDocumentItems(items);
     setProjectLabors(labors);
-    showToast(`ปรับราคาขายทุกรายการให้ได้กำไรสุทธิประมาณ ${targetMargin}% แล้ว`, false);
+    showToast(`ปรับราคาขายให้ได้กำไรสุทธิไม่ต่ำกว่า ${targetMargin}% และปัดราคาต่อหน่วยเป็นเลขกลมแล้ว`, false);
+  };
+
+  // ---------- ออก/ปรับปรุงใบเสนอราคาจากรายการ ----------
+  const issueQuotation = async () => {
+    if (!can(role, "sales:edit")) return showToast("บัญชีของคุณไม่มีสิทธิ์ออกใบเสนอราคา", true);
+    if (selectedCustomerId.trim().length < 2) { setStep(0); return showToast("กรุณาระบุลูกค้าก่อนออกใบเสนอราคา", true); }
+    if (budget.equipCount + budget.laborCount === 0) return showToast("กรุณาเพิ่มรายการสินค้าหรืองานบริการก่อน", true);
+    const docDate = today();
+    const vat = r2(budget.totalRev * 0.07);
+    const qLines = [
+      ...documentItems.map((it: any) => ({
+        itemType: it.itemType || "PRODUCT", productId: it.productId || "", sku: it.sku || "", productName: it.name || "",
+        description: it.details || "", details: it.details || "", qty: Number(it.qty) || 0, uom: it.unit || "ชิ้น",
+        costPrice: Number(it.cost) || 0, unitPrice: Number(it.price) || 0,
+        discountType: it.discountType || "PERCENT", discountValue: Number(it.discountValue) || 0, whtRate: Number(it.whtRate) || 0, isOptional: !!it.isOptional,
+      })),
+      ...projectLabors.filter((l: any) => l.name).map((l: any) => ({
+        itemType: "LABOR", productName: l.name, description: "", qty: l.type === "per-point" ? Number(l.points) || 1 : 1,
+        uom: l.type === "per-point" ? "จุด" : "งาน", costPrice: laborUnitCost(l), unitPrice: Number(l.price) || 0,
+        discountType: "PERCENT", discountValue: 0, whtRate: 3,
+      })),
+    ];
+    const header = {
+      docDate, date: docDate, validUntil: addDays(docDate, 30), validDays: 30,
+      customerId: isNewCustomer ? "" : selectedCustomerId, customerName,
+      customerSnapshot: { customerId: isNewCustomer ? "" : selectedCustomerId, name: customerName },
+      projectName, quotationType: "PROJECT", taxType: "EXCLUSIVE", currency: "THB", exchangeRate: 1,
+      subTotal: budget.totalRev, netTotal: budget.totalRev, vatAmount: vat, grandTotal: r2(budget.totalRev + vat), netPayable: r2(budget.totalRev + vat),
+      docDiscountType: "PERCENT", docDiscountValue: 0, docDiscountAmount: 0, discountTotal: 0,
+      referenceNo: isGov ? govEgpNo || govTorDocNo : pvtCustomerPO,
+      internalNotes: `สร้างจากหน้าสร้างโครงการ${projectId ? ` ${projectId}` : ""}`,
+    };
+    try {
+      setQuoting(true);
+      const res = await apiFetch(quotation ? `/api/quotations/${encodeURIComponent(quotation.id)}/save` : "/api/quotations/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: currentCompanyId, submit: false, header, lines: qLines, ...(isNewCustomer ? { newCustomer: { name: customerName } } : {}) }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "ออกใบเสนอราคาไม่สำเร็จ");
+      const q = { id: quotation?.id || data.id, docNo: data.docNo || quotation?.docNo || "" };
+      setQuotation(q);
+      setClientReference(q.docNo);
+      if (isNewCustomer && data.customerId) setSelectedCustomerId(data.customerId); // ลูกค้าถูกสร้างแล้ว ไม่สร้างซ้ำตอนบันทึกโครงการ
+      showToast(quotation ? `ปรับปรุงใบเสนอราคา ${q.docNo} ตามรายการล่าสุดแล้ว` : `ออกใบเสนอราคา ${q.docNo} (ฉบับร่าง) แล้ว`, false);
+    } catch (e: any) {
+      showToast(e.message || "ออกใบเสนอราคาไม่สำเร็จ", true);
+    } finally {
+      setQuoting(false);
+    }
+  };
+
+  // ---------- ให้ AI ช่วยเรียบเรียงรายละเอียดโครงการ ----------
+  const runAi = async () => {
+    if (!projectName.trim()) return showToast("กรุณาระบุชื่อโครงการก่อน", true);
+    const targets = docDefs.filter((d) => d.ai && AI_DOC_KEYS.includes(d.key));
+    try {
+      setAiBusy(true);
+      const res = await apiFetch("/api/ai/project-doc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId: currentCompanyId,
+          notes: aiNotes,
+          project: {
+            projectName, customer: customerName, sector: isGov ? "ภาครัฐ" : "เอกชน",
+            projectType: PROJECT_TYPES.find((t) => t.code === projectTypeCode)?.label || "-", stage,
+            durationDays, siteLocation, timeline: timeline.map((p) => p.name),
+            lines: lines.filter((l) => l.name && !l.isOptional).map((l) => ({
+              kind: l.kind, name: l.name, qty: l.qty, unit: l.unit,
+              details: l.details || (l.productId && productSpecs[l.productId]) || "",
+            })),
+          },
+          sections: Object.fromEntries(targets.map((d) => [d.key, { number: sectionNumber(sectorType, d.key), title: d.title, current: docSections[d.key] }])),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "AI เรียบเรียงไม่สำเร็จ");
+      const got = data.sections as Partial<Record<DocSectionKey, string>>;
+      setDocEdited((prev) => ({ ...prev, ...got }));
+      setDocSource((prev) => ({ ...prev, ...Object.fromEntries(Object.keys(got).map((k) => [k, "ai"])) }));
+      showToast(`AI เรียบเรียง ${Object.keys(got).length} หัวข้อแล้ว ตรวจทานก่อนบันทึก`, false);
+    } catch (e: any) {
+      showToast(e.message || "AI เรียบเรียงไม่สำเร็จ", true);
+    } finally {
+      setAiBusy(false);
+    }
   };
 
   // ---------- บันทึก ----------
@@ -400,6 +536,7 @@ export default function NewProjectPage() {
         selectedCustomerId: isNewCustomer ? "" : selectedCustomerId,
         newCustomerName: isNewCustomer ? selectedCustomerId.trim() : "",
         clientReference,
+        quotationDocId: quotation?.id || "",
         projectTypeCode,
         typeAuto,
         sectorType,
@@ -419,6 +556,8 @@ export default function NewProjectPage() {
         targetMargin,
         timeline,
         docSections,
+        docSources: docSource,
+        aiNotes,
         resources: assignedTeam.map((m) => ({ userId: m.uid, name: m.name, role: m.role, allocation: m.allocation })),
         governmentDetails: {
           torDocNo: govTorDocNo, egpProjectNo: govEgpNo, referencePrice: govReferencePrice, budgetAmount: govBudgetAmount,
@@ -448,11 +587,8 @@ export default function NewProjectPage() {
   };
 
   // ---------- ส่วนประกอบเล็ก ----------
-  const label = (text: string, required = false, extra?: React.ReactNode) => (
-    <label className="text-[12px] font-bold text-white/70 ml-1 flex items-center gap-1.5 min-h-[18px]">
-      <span>{text}{required && <span className="text-danger ml-0.5">*</span>}</span>
-      {extra}
-    </label>
+  const segLabel = (text: string, extra?: React.ReactNode) => (
+    <label className="text-[12px] font-bold text-white/70 ml-1 flex items-center gap-1.5 min-h-[18px]">{text}{extra}</label>
   );
   const segBtn = (activeOn: boolean) => cn(
     "h-9 px-4 rounded-full text-[13px] font-bold border transition-all flex items-center gap-1.5 whitespace-nowrap",
@@ -464,8 +600,9 @@ export default function NewProjectPage() {
       {right}
     </div>
   );
-  const typeLabel = PROJECT_TYPES.find((t) => t.code === projectTypeCode)?.label || "-";
-  const typeConfig = PROJECT_TYPE_CONFIGS[projectTypeCode];
+  const row = (children: React.ReactNode) => <div className="flex flex-wrap gap-3">{children}</div>;
+  const typeLabel = PROJECT_TYPES.find((t) => t.code === projectTypeCode)?.label || "ยังไม่เลือก";
+  const typeConfig = projectTypeCode ? PROJECT_TYPE_CONFIGS[projectTypeCode] : null;
   const gpLow = budget.totalRev > 0 && budget.gpPercent < GP_TARGET;
 
   // ---------- Header ----------
@@ -531,7 +668,7 @@ export default function NewProjectPage() {
       <GlassCard className="p-5 space-y-4">
         <div className="flex flex-wrap gap-x-6 gap-y-3">
           <div className="space-y-1.5">
-            {label("ประเภทลูกค้า")}
+            {segLabel("ประเภทลูกค้า")}
             <div className="flex gap-2">
               <button type="button" onClick={() => setSectorType("Government")} className={segBtn(isGov)}><Landmark size={14} /> ภาครัฐ</button>
               <button type="button" onClick={() => setSectorType("Private")} className={segBtn(!isGov)}><Store size={14} /> เอกชน</button>
@@ -539,7 +676,7 @@ export default function NewProjectPage() {
           </div>
           {isGov && (
             <div className="space-y-1.5 min-w-0">
-              {label("ขั้นของโครงการ")}
+              {segLabel("ขั้นของโครงการ")}
               <div className="flex gap-2 flex-wrap">
                 {PROJECT_STAGES.map((s) => (
                   <button key={s.code} type="button" onClick={() => setProjectStage(s.code)} className={segBtn(projectStage === s.code)} title={s.hint}>{s.label}</button>
@@ -548,30 +685,26 @@ export default function NewProjectPage() {
             </div>
           )}
         </div>
-        {isGov && (
-          <p className="text-[12px] text-white/45 -mt-2 ml-1">{PROJECT_STAGES.find((s) => s.code === projectStage)?.hint}</p>
-        )}
+        {isGov && <p className="text-[12px] text-white/45 -mt-2 ml-1">{PROJECT_STAGES.find((s) => s.code === projectStage)?.hint}</p>}
 
-        <div className="grid grid-cols-12 gap-3">
-          <div className="space-y-1 col-span-12 lg:col-span-7">
-            {label("ชื่อโครงการ", true)}
+        {row(<>
+          <Field label="ชื่อโครงการ" required w={320} grow>
             <PillInput value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="เช่น จัดซื้อพร้อมติดตั้งระบบกล้องโทรทัศน์วงจรปิด อาคาร B" className="w-full h-9 text-sm font-bold" />
-          </div>
-          <div className="space-y-1 col-span-12 lg:col-span-5">
-            {label(isGov ? "หน่วยงาน / ลูกค้า" : "ลูกค้า", true)}
+          </Field>
+          <Field label={isGov ? "หน่วยงาน / ลูกค้า" : "ลูกค้า"} required w={260} grow>
             <SmartSelect
               options={customerOptions}
               value={selectedCustomerId}
               onChange={(val) => setSelectedCustomerId(val)}
-              placeholder={isGov ? "พิมพ์ค้นหา หรือพิมพ์ชื่อหน่วยงานใหม่..." : "พิมพ์ค้นหา หรือพิมพ์ชื่อลูกค้าใหม่..."}
+              placeholder={isGov ? "ค้นหา หรือพิมพ์ชื่อหน่วยงานใหม่..." : "ค้นหา หรือพิมพ์ชื่อลูกค้าใหม่..."}
             />
-          </div>
-        </div>
+          </Field>
+        </>)}
 
         <div className="space-y-1.5">
-          {label("รูปแบบงาน", false, typeAuto
-            ? <span className="text-[11px] font-bold text-nexus-teal flex items-center gap-1"><Sparkles size={11} /> อัตโนมัติจากรายการสินค้า/บริการ</span>
-            : <button type="button" onClick={() => setTypeAuto(true)} className="text-[11px] font-bold text-white/50 hover:text-nexus-teal">ใช้แบบอัตโนมัติ</button>)}
+          {segLabel("รูปแบบงาน", typeAuto
+            ? <span className="text-[11px] font-bold text-nexus-teal flex items-center gap-1"><Sparkles size={11} /> {inferredType ? "เลือกจากรายการสินค้า/บริการ" : "ยังไม่เลือก — เลือกเอง หรือระบบเลือกให้เมื่อเพิ่มรายการ"}</span>
+            : <button type="button" onClick={() => setTypeAuto(true)} className="text-[11px] font-bold text-white/50 hover:text-nexus-teal">ให้ระบบเลือกจากรายการ</button>)}
           <div className="flex gap-2 flex-wrap">
             {PROJECT_TYPES.map((t) => (
               <button key={t.code} type="button" onClick={() => { setManualTypeCode(t.code); setTypeAuto(false); }} className={segBtn(projectTypeCode === t.code)}>{t.label}</button>
@@ -579,122 +712,111 @@ export default function NewProjectPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_96px_104px_128px] 2xl:grid-cols-[200px_200px_110px_120px_160px] gap-3">
-          <div className="space-y-1">
-            {label("วันที่เริ่ม", true)}
+        {row(<>
+          <Field label="วันที่เริ่ม" required w={FIELD_W.date}>
             <PillInput type="date" value={startDate} onChange={(e) => {
               const v = e.target.value;
               if (!v) return;
               setEndDate(addDays(v, Math.max(1, durationDays) - 1)); // คงระยะเวลาเดิม
               setStartDate(v);
             }} className="w-full h-9 text-sm font-mono px-4" />
-          </div>
-          <div className="space-y-1">
-            {label("วันที่ส่งมอบ", true)}
+          </Field>
+          <Field label="วันที่ส่งมอบ" required w={FIELD_W.date}>
             <PillInput type="date" value={endDate} onChange={(e) => e.target.value && setEndDate(e.target.value)} className="w-full h-9 text-sm font-mono px-4" />
-          </div>
-          <div className="space-y-1">
-            {label("ระยะเวลา")}
+          </Field>
+          <Field label="ระยะเวลา" w={FIELD_W.days}>
             <NumCell value={durationDays} onChange={(v) => setEndDate(addDays(startDate, Math.max(1, Math.round(v)) - 1))} suffix="วัน" />
-          </div>
-          <div className="space-y-1">
-            {label("รับประกัน")}
+          </Field>
+          <Field label="รับประกัน" w={FIELD_W.months}>
             <NumCell value={warrantyMonths} onChange={(v) => setWarrantyMonths(Math.min(120, Math.round(v)))} suffix="เดือน" />
-          </div>
-          <div className="space-y-1">
-            {label("ความสำคัญ")}
+          </Field>
+          <Field label="ความสำคัญ" w={136}>
             <PillSelect value={projectPriority} onChange={(e) => setProjectPriority(e.target.value)} className="w-full h-9 text-sm">
               <option value="ทั่วไป">ทั่วไป</option>
               <option value="ปานกลาง">ปานกลาง</option>
               <option value="เร่งด่วน">เร่งด่วน</option>
               <option value="วิกฤต">วิกฤต</option>
             </PillSelect>
-          </div>
-        </div>
+          </Field>
+          <Field label="ใบเสนอราคาอ้างอิง" w={FIELD_W.code} grow>
+            <PillInput value={clientReference} onChange={(e) => setClientReference(e.target.value)} placeholder="เลขที่ใบเสนอราคา" className="w-full h-9 text-sm font-mono" />
+          </Field>
+        </>)}
       </GlassCard>
 
       <GlassCard className="p-5 space-y-3">
         {cardTitle(<Receipt size={16} className="text-nexus-teal" />, isGov ? "งบประมาณและการจัดซื้อจัดจ้าง" : "เงื่อนไขการว่าจ้าง")}
         {isGov ? (
-          <div className="grid grid-cols-12 gap-3">
-            <div className="space-y-1 col-span-4 md:col-span-2">
-              {label("ปีงบประมาณ")}
-              <NumCell value={fiscalYear} onChange={(v) => setGovFiscalYear(Math.round(v) || null)} />
-            </div>
-            <div className="space-y-1 col-span-8 md:col-span-4">
-              {label("แหล่งงบประมาณ")}
-              <PillSelect value={govBudgetSource} onChange={(e) => setGovBudgetSource(e.target.value)} className="w-full h-9 text-sm">
-                {BUDGET_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </PillSelect>
-            </div>
-            <div className="space-y-1 col-span-6 md:col-span-3">
-              {label("วงเงินงบประมาณ (บาท)", false, govBudgetAmount === 0 && contractValue > 0 ? <span className="text-[11px] text-white/40 font-normal">= มูลค่าโครงการ</span> : null)}
-              <NumCell value={govBudgetAmount || r2(contractValue)} onChange={(v) => setGovBudgetAmount(v)} className={overBudget ? "[&_input]:border-warning/60" : ""} />
-            </div>
-            <div className="space-y-1 col-span-6 md:col-span-3">
-              {label("ราคากลาง (บาท)")}
-              <NumCell value={govReferencePrice} onChange={(v) => setGovReferencePrice(v)} className={overRefPrice ? "[&_input]:border-warning/60" : ""} />
-            </div>
-            <div className="space-y-1 col-span-12 md:col-span-4">
-              {label("วิธีจัดซื้อจัดจ้าง")}
-              <PillSelect value={govMethod} onChange={(e) => setGovMethod(e.target.value)} className="w-full h-9 text-sm">
-                {PROCUREMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
-              </PillSelect>
-            </div>
-            <div className="space-y-1 col-span-6 md:col-span-4">
-              {label("เลขที่โครงการ (e-GP)")}
-              <PillInput value={govEgpNo} onChange={(e) => setGovEgpNo(e.target.value)} placeholder="ระบุเมื่อประกาศแล้ว" className="w-full h-9 text-sm font-mono" />
-            </div>
-            <div className="space-y-1 col-span-6 md:col-span-4">
-              {label("เลขที่สัญญา")}
-              <PillInput value={govContractNo} onChange={(e) => setGovContractNo(e.target.value)} disabled={stage !== "CONTRACTED"} placeholder={stage === "CONTRACTED" ? "เช่น 15/2569" : "ระบุเมื่อได้งาน"} className="w-full h-9 text-sm font-mono" />
-            </div>
-            <div className="space-y-1 col-span-6 md:col-span-4">
-              {label("เลขที่ TOR / ประกาศ")}
-              <PillInput value={govTorDocNo} onChange={(e) => setGovTorDocNo(e.target.value)} placeholder="เช่น TOR-2569-015" className="w-full h-9 text-sm font-mono" />
-            </div>
-            <div className="space-y-1 col-span-6 md:col-span-4">
-              {label("ใบเสนอราคาอ้างอิง")}
-              <PillInput value={clientReference} onChange={(e) => setClientReference(e.target.value)} placeholder="เลขที่ใบเสนอราคา" className="w-full h-9 text-sm font-mono" />
-            </div>
-            <div className="col-span-12 md:col-span-4 flex items-end">
-              <div className={cn("w-full h-9 px-4 rounded-full border flex items-center justify-between gap-2 text-[12px]",
-                overBudget ? "border-warning/40 bg-warning/10 text-warning" : "border-white/10 bg-white/[0.02] text-white/60")}>
-                <span>มูลค่าโครงการ (รวม VAT)</span>
-                <b className="font-mono">{baht(contractValue)}</b>
-              </div>
-            </div>
+          <>
+            {row(<>
+              <Field label="ปีงบประมาณ" w={FIELD_W.year}>
+                <NumCell kind="year" value={fiscalYear} onChange={(v) => setGovFiscalYear(Math.round(v) || null)} />
+              </Field>
+              <Field label="แหล่งงบประมาณ" w={196}>
+                <PillSelect value={govBudgetSource} onChange={(e) => setGovBudgetSource(e.target.value)} className="w-full h-9 text-sm">
+                  {BUDGET_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </PillSelect>
+              </Field>
+              <Field label="วงเงินงบประมาณ (บาท)" w={FIELD_W.money} extra={govBudgetAmount === 0 && contractValue > 0 ? <span className="text-[11px] text-white/40 font-normal">= มูลค่าโครงการ</span> : null}>
+                <NumCell kind="money" value={govBudgetAmount || r2(contractValue)} onChange={(v) => setGovBudgetAmount(v)} warn={overBudget} />
+              </Field>
+              <Field label="ราคากลาง (บาท)" w={FIELD_W.money}>
+                <NumCell kind="money" value={govReferencePrice} onChange={(v) => setGovReferencePrice(v)} warn={overRefPrice} />
+              </Field>
+              <Field label="วิธีจัดซื้อจัดจ้าง" w={280} grow>
+                <PillSelect value={govMethod} onChange={(e) => setGovMethod(e.target.value)} className="w-full h-9 text-sm">
+                  {PROCUREMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
+                </PillSelect>
+              </Field>
+            </>)}
+            {row(<>
+              <Field label="เลขที่โครงการ (e-GP)" w={FIELD_W.code} grow>
+                <PillInput value={govEgpNo} onChange={(e) => setGovEgpNo(e.target.value)} placeholder="ระบุเมื่อประกาศ" className="w-full h-9 text-sm font-mono" />
+              </Field>
+              <Field label="เลขที่สัญญา" w={140} grow>
+                <PillInput value={govContractNo} onChange={(e) => setGovContractNo(e.target.value)} disabled={stage !== "CONTRACTED"} placeholder={stage === "CONTRACTED" ? "เช่น 15/2569" : "เมื่อได้งาน"} className="w-full h-9 text-sm font-mono" />
+              </Field>
+              <Field label="เลขที่ TOR / ประกาศ" w={FIELD_W.code} grow>
+                <PillInput value={govTorDocNo} onChange={(e) => setGovTorDocNo(e.target.value)} placeholder="เช่น TOR-2569-015" className="w-full h-9 text-sm font-mono" />
+              </Field>
+              <Field label="มูลค่าโครงการ (รวม VAT)" w={200} grow>
+                <div className={cn("h-9 px-4 rounded-full border flex items-center justify-end text-[13px] font-mono font-bold",
+                  overBudget || overRefPrice ? "border-warning/40 bg-warning/10 text-warning" : "border-white/10 bg-white/[0.02] text-white/80")}>
+                  {baht(contractValue)}
+                </div>
+              </Field>
+            </>)}
             {(overBudget || overRefPrice) && (
-              <p className="col-span-12 text-[12px] text-warning flex items-center gap-1.5">
+              <p className="text-[12px] text-warning flex items-center gap-1.5">
                 <AlertCircle size={13} /> มูลค่าโครงการสูงกว่า{overBudget ? "วงเงินงบประมาณ" : "ราคากลาง"} — ปรับราคาที่ขั้น &ldquo;รายการและต้นทุน&rdquo;
               </p>
             )}
-          </div>
+          </>
         ) : (
-          <div className="grid grid-cols-12 gap-3">
-            <div className="space-y-1 col-span-6 md:col-span-3">
-              {label("เลขที่ใบสั่งซื้อ (PO)")}
+          row(<>
+            <Field label="เลขที่ใบสั่งซื้อ (PO)" w={FIELD_W.code}>
               <PillInput value={pvtCustomerPO} onChange={(e) => setPvtCustomerPO(e.target.value)} placeholder="เช่น PO-2026-9912" className="w-full h-9 text-sm font-mono" />
-            </div>
-            <div className="space-y-1 col-span-6 md:col-span-3">
-              {label("ใบเสนอราคาอ้างอิง")}
-              <PillInput value={clientReference} onChange={(e) => setClientReference(e.target.value)} placeholder="เลขที่ใบเสนอราคา" className="w-full h-9 text-sm font-mono" />
-            </div>
-            <div className="space-y-1 col-span-12 md:col-span-6">
-              {label("เงื่อนไขการชำระเงิน")}
+            </Field>
+            <Field label="เงื่อนไขการชำระเงิน" w={300} grow>
               <PillInput value={pvtPaymentTerms} onChange={(e) => setPvtPaymentTerms(e.target.value)} placeholder="เว้นว่าง = ตามงวดงาน" className="w-full h-9 text-sm" />
-            </div>
-          </div>
+            </Field>
+          </>)
         )}
       </GlassCard>
 
       <GlassCard className="p-5 space-y-3">
         {cardTitle(<MapPin size={16} className="text-nexus-blue" />, "สถานที่และผู้ติดต่อหน้างาน")}
-        <div className="grid grid-cols-12 gap-3">
-          <div className="space-y-1 col-span-12 md:col-span-6">{label("สถานที่ดำเนินงาน")}<PillInput value={siteLocation} onChange={(e) => setSiteLocation(e.target.value)} placeholder="อาคาร / ชั้น / ที่อยู่ หรือลิงก์แผนที่" className="w-full h-9 text-sm" /></div>
-          <div className="space-y-1 col-span-6 md:col-span-3">{label("ผู้ติดต่อ")}<PillInput value={siteContactName} onChange={(e) => setSiteContactName(e.target.value)} placeholder="ชื่อ-นามสกุล" className="w-full h-9 text-sm" /></div>
-          <div className="space-y-1 col-span-6 md:col-span-3">{label("เบอร์โทร")}<PillInput value={siteContactPhone} onChange={(e) => setSiteContactPhone(e.target.value)} placeholder="08x-xxx-xxxx" className="w-full h-9 text-sm font-mono" /></div>
-        </div>
+        {row(<>
+          <Field label="สถานที่ดำเนินงาน" w={280} grow>
+            <PillInput value={siteLocation} onChange={(e) => setSiteLocation(e.target.value)} placeholder="อาคาร / ชั้น / ที่อยู่ หรือลิงก์แผนที่" className="w-full h-9 text-sm" />
+          </Field>
+          <Field label="ผู้ติดต่อ" w={180} grow>
+            <PillInput value={siteContactName} onChange={(e) => setSiteContactName(e.target.value)} placeholder="ชื่อ-นามสกุล" className="w-full h-9 text-sm" />
+          </Field>
+          <Field label="เบอร์โทร" w={FIELD_W.phone}>
+            <PillInput value={siteContactPhone} onChange={(e) => setSiteContactPhone(e.target.value)} placeholder="08x-xxx-xxxx" className="w-full h-9 text-sm font-mono" />
+          </Field>
+        </>)}
 
         <div className="pt-3 border-t border-white/10 space-y-2">
           <div className="flex items-center justify-between gap-2">
@@ -704,12 +826,12 @@ export default function NewProjectPage() {
           {projectFollowers.map((fol) => {
             const upd = (field: string, value: string) => setProjectFollowers((prev) => prev.map((f) => (f.id === fol.id ? { ...f, [field]: value } : f)));
             return (
-              <div key={fol.id} className="grid grid-cols-12 gap-2 items-center">
-                <PillInput value={fol.name} onChange={(e) => upd("name", e.target.value)} placeholder="ชื่อ-นามสกุล" className="col-span-6 md:col-span-3 h-9 text-sm" />
-                <PillInput value={fol.role} onChange={(e) => upd("role", e.target.value)} placeholder="ตำแหน่ง / บทบาท" className="col-span-6 md:col-span-3 h-9 text-sm" />
-                <PillInput value={fol.phone} onChange={(e) => upd("phone", e.target.value)} placeholder="เบอร์โทร" className="col-span-5 md:col-span-2 h-9 text-sm font-mono" />
-                <PillInput value={fol.note || ""} onChange={(e) => upd("note", e.target.value)} placeholder="หมายเหตุ" className="col-span-6 md:col-span-3 h-9 text-sm" />
-                <button type="button" onClick={() => setProjectFollowers((prev) => prev.filter((f) => f.id !== fol.id))} className="col-span-1 justify-self-end p-1 text-white/40 hover:text-danger" title="ลบรายชื่อ"><Trash2 size={15} /></button>
+              <div key={fol.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_148px_minmax(0,1fr)_24px] gap-2 items-center">
+                <PillInput value={fol.name} onChange={(e) => upd("name", e.target.value)} placeholder="ชื่อ-นามสกุล" className="h-9 text-sm" />
+                <PillInput value={fol.role} onChange={(e) => upd("role", e.target.value)} placeholder="ตำแหน่ง / บทบาท" className="h-9 text-sm" />
+                <PillInput value={fol.phone} onChange={(e) => upd("phone", e.target.value)} placeholder="เบอร์โทร" className="h-9 text-sm font-mono" />
+                <PillInput value={fol.note || ""} onChange={(e) => upd("note", e.target.value)} placeholder="หมายเหตุ" className="h-9 text-sm" />
+                <button type="button" onClick={() => setProjectFollowers((prev) => prev.filter((f) => f.id !== fol.id))} className="justify-self-end p-1 text-white/40 hover:text-danger" title="ลบรายชื่อ"><Trash2 size={15} /></button>
               </div>
             );
           })}
@@ -726,13 +848,27 @@ export default function NewProjectPage() {
     if (next.type !== "per-point") next.cost = (Number(next.materialCost) || 0) + (Number(next.laborCost) || 0);
     return next;
   }));
-  const laborCols = "grid grid-cols-[minmax(0,1fr)_104px_64px_92px_92px_100px_24px] 2xl:grid-cols-[minmax(0,1fr)_110px_72px_110px_110px_120px_120px_28px] gap-1.5 2xl:gap-2 items-center";
+  const laborCols = "grid grid-cols-[minmax(0,1fr)_72px_64px_100px_100px_104px_24px] 2xl:grid-cols-[minmax(0,1fr)_80px_72px_128px_128px_136px_136px_28px] gap-1.5 2xl:gap-2 items-center";
   const head = "text-[11px] font-bold text-white/45 uppercase tracking-wide";
+  const hasLines = budget.equipCount + budget.laborCount > 0;
+
+  const quotationActions = (
+    <div className="flex flex-wrap items-center gap-2">
+      {quotation && (
+        <a href={`/sales/quotations/${encodeURIComponent(quotation.id)}`} target="_blank" rel="noreferrer" className="h-8 px-3 rounded-full border border-white/10 text-xs font-bold text-white/70 hover:text-nexus-teal flex items-center gap-1.5">
+          <ExternalLink size={13} /> {quotation.docNo}
+        </a>
+      )}
+      <PillButton variant="glass" onClick={issueQuotation} disabled={quoting || !hasLines} className="h-8 px-3 text-xs font-bold text-nexus-teal border-nexus-teal/30" title="สร้างใบเสนอราคา (ฉบับร่าง) จากรายการสินค้าและงานบริการ">
+        <FileSignature size={13} className="mr-1.5" /> {quoting ? "กำลังบันทึก..." : quotation ? "ปรับปรุงใบเสนอราคา" : "ออกใบเสนอราคา"}
+      </PillButton>
+    </div>
+  );
 
   const stepItems = (
     <div className="space-y-4">
       <GlassCard className="p-5 space-y-3">
-        {cardTitle(<FileSpreadsheet size={16} className="text-nexus-teal" />, `สินค้าและพัสดุ (${documentItems.length} รายการ)`)}
+        {cardTitle(<FileSpreadsheet size={16} className="text-nexus-teal" />, `สินค้าและพัสดุ (${documentItems.length} รายการ)`, quotationActions)}
         <DocumentItemsTable items={documentItems} onChange={(newItems) => setDocumentItems(newItems)} isLocked={false} taxType="EXCLUSIVE" />
       </GlassCard>
 
@@ -746,10 +882,10 @@ export default function NewProjectPage() {
             <div className={cn(laborCols, "px-1")}>
               <span className={head}>ชื่องาน</span>
               <span className={head}>วิธีคิด</span>
-              <span className={cn(head, "text-right")}>จำนวน</span>
-              <span className={cn(head, "text-right")}>วัสดุ/หน่วย</span>
-              <span className={cn(head, "text-right")}>ค่าแรง/หน่วย</span>
-              <span className={cn(head, "text-right")}>ขาย/หน่วย</span>
+              <span className={cn(head, "text-right pr-3")}>จำนวน</span>
+              <span className={cn(head, "text-right pr-3")}>วัสดุ/หน่วย</span>
+              <span className={cn(head, "text-right pr-3")}>ค่าแรง/หน่วย</span>
+              <span className={cn(head, "text-right pr-3")}>ขาย/หน่วย</span>
               <span className={cn(head, "text-right hidden 2xl:block")}>รวมขาย</span>
               <span />
             </div>
@@ -758,16 +894,20 @@ export default function NewProjectPage() {
               const qty = perPoint ? Number(lab.points) || 1 : 1;
               return (
                 <div key={lab.id} className={laborCols}>
-                  <PillInput value={lab.name} onChange={(e) => updateLabor(lab.id, { name: e.target.value })} placeholder="เช่น เดินสาย LAN ร้อยท่อ EMT" className="h-9 text-sm" />
-                  <PillSelect value={perPoint ? "per-point" : "lump-sum"} onChange={(e) => updateLabor(lab.id, { type: e.target.value })} className="h-9 text-sm">
-                    <option value="lump-sum">เหมา</option>
-                    <option value="per-point">ต่อจุด</option>
-                  </PillSelect>
+                  <PillInput value={lab.name} title={lab.name} onChange={(e) => updateLabor(lab.id, { name: e.target.value })} placeholder="เช่น เดินสาย LAN ร้อยท่อ EMT" className="h-9 text-sm px-4" />
+                  <button
+                    type="button"
+                    onClick={() => updateLabor(lab.id, { type: perPoint ? "lump-sum" : "per-point" })}
+                    title="กดเพื่อสลับ เหมาจ่าย / คิดต่อจุด"
+                    className={cn("h-9 rounded-full border text-[12px] font-bold whitespace-nowrap", perPoint ? "border-nexus-blue/40 bg-nexus-blue/10 text-nexus-blue" : "border-white/10 bg-white/[0.03] text-white/70")}
+                  >
+                    {perPoint ? "ต่อจุด" : "เหมา"}
+                  </button>
                   <NumCell value={qty} disabled={!perPoint} onChange={(v) => updateLabor(lab.id, { points: Math.max(1, Math.round(v)) })} title={perPoint ? "จำนวนจุด" : "เหมาจ่าย = 1 งาน"} />
-                  <NumCell value={Number(lab.materialCost) || 0} onChange={(v) => updateLabor(lab.id, { materialCost: v })} />
-                  <NumCell value={Number(lab.laborCost) || 0} onChange={(v) => updateLabor(lab.id, { laborCost: v })} />
-                  <NumCell value={Number(lab.price) || 0} onChange={(v) => updateLabor(lab.id, { price: v })} />
-                  <span className="text-[13px] font-mono text-white text-right pr-1 whitespace-nowrap hidden 2xl:block">{baht(qty * (Number(lab.price) || 0))}</span>
+                  <NumCell kind="money" value={Number(lab.materialCost) || 0} onChange={(v) => updateLabor(lab.id, { materialCost: v })} />
+                  <NumCell kind="money" value={Number(lab.laborCost) || 0} onChange={(v) => updateLabor(lab.id, { laborCost: v })} />
+                  <NumCell kind="money" value={Number(lab.price) || 0} onChange={(v) => updateLabor(lab.id, { price: v })} />
+                  <span className="text-[13px] font-mono text-white text-right whitespace-nowrap hidden 2xl:block">{baht(qty * (Number(lab.price) || 0))}</span>
                   <button type="button" onClick={() => setProjectLabors((prev) => prev.filter((item) => item.id !== lab.id))} className="p-1 text-white/40 hover:text-danger justify-self-end" title="ลบรายการ"><Trash2 size={15} /></button>
                 </div>
               );
@@ -778,14 +918,8 @@ export default function NewProjectPage() {
 
       <GlassCard className="p-5 space-y-3">
         {cardTitle(<Receipt size={16} className="text-warning" />, "ค่าใช้จ่ายดำเนินงานโครงการ",
-          <span className="text-[11px] text-white/40">{expensesEdited ? "แก้ไขเอง" : `ค่าเริ่มต้นสำหรับลูกค้า${isGov ? "ภาครัฐ" : "เอกชน"}`}</span>)}
-        <ExpensesEditor
-          expenses={expenses}
-          onChange={(next) => setExpensesEdited(next)}
-          onReset={() => setExpensesEdited(null)}
-          directCost={budget.totalCost}
-          price={budget.totalRev}
-        />
+          <span className="text-[11px] text-white/40">อัตราอัตโนมัติตามขนาด รูปแบบงาน และระยะเวลาโครงการ · แก้ไขได้ทุกแถว</span>)}
+        <ExpensesEditor expenses={expenses} amounts={expenseAmounts} onChange={(next) => setExpenseRows(next)} onReset={() => setExpenseRows(null)} />
       </GlassCard>
 
       <GlassCard className="p-5 space-y-4">
@@ -804,13 +938,11 @@ export default function NewProjectPage() {
           ))}
         </div>
         <div className="flex flex-wrap items-end gap-3">
-          <div className="space-y-1 w-[140px]">
-            {label("กำไรสุทธิเป้าหมาย")}
-            <NumCell value={targetMargin} onChange={(v) => setTargetMargin(Math.min(80, v))} suffix="%" />
-          </div>
-          <div className="space-y-1 flex-1 min-w-[200px]">
-            {label("ราคาขายที่ได้กำไรตามเป้า (ก่อน VAT)")}
-            <div className="h-9 px-4 rounded-full border border-white/10 bg-white/[0.02] flex items-center justify-between text-[13px]">
+          <Field label="กำไรสุทธิเป้าหมาย" w={136}>
+            <NumCell kind="pct" value={targetMargin} onChange={(v) => setTargetMargin(Math.min(80, v))} suffix="%" />
+          </Field>
+          <Field label="ราคาขายที่ได้กำไรตามเป้า (ก่อน VAT)" w={260} grow>
+            <div className="h-9 px-4 rounded-full border border-white/10 bg-white/[0.02] flex items-center justify-between gap-3 text-[13px]">
               <b className="font-mono text-white">{suggestedPrice > 0 ? baht(suggestedPrice) : "-"}</b>
               {suggestedPrice > 0 && budget.totalRev > 0 && (
                 <span className={cn("font-mono text-[12px]", suggestedPrice >= budget.totalRev ? "text-warning" : "text-nexus-teal")}>
@@ -818,8 +950,8 @@ export default function NewProjectPage() {
                 </span>
               )}
             </div>
-          </div>
-          <PillButton variant="confirm" onClick={applyTargetMargin} disabled={!(budget.totalCost > 0)} className="h-9 px-4 text-xs font-bold">
+          </Field>
+          <PillButton variant="confirm" onClick={applyTargetMargin} disabled={!(budget.totalCost > 0)} className="h-9 px-4 text-xs font-bold" title="ปรับราคาขายทุกรายการตามสัดส่วน แล้วปัดราคาต่อหน่วยขึ้นเป็นเลขกลม">
             <Sparkles size={13} className="mr-1.5" /> ปรับราคาขายทุกรายการตามเป้า
           </PillButton>
         </div>
@@ -853,17 +985,24 @@ export default function NewProjectPage() {
   // ---------- ขั้นที่ 4: รายละเอียดโครงการ ----------
   const stepDocument = (
     <GlassCard className="p-5 space-y-4">
-      {cardTitle(<FileText size={16} className="text-nexus-teal" />, "รายละเอียดโครงการ",
-        <PillButton variant="glass" onClick={() => setDocEdited({})} className="h-8 px-3 text-xs font-bold text-white/60">
+      {cardTitle(<FileText size={16} className="text-nexus-teal" />, isGov ? "รายละเอียดโครงการ (ร่างขอบเขตของงาน)" : "รายละเอียดโครงการ",
+        <PillButton variant="glass" onClick={() => { setDocEdited({}); setDocSource({}); }} className="h-8 px-3 text-xs font-bold text-white/60">
           <Sparkles size={13} className="mr-1" /> สร้างใหม่ทั้งหมด
         </PillButton>)}
-      <p className="text-[12px] text-white/45 -mt-2">ข้อความสร้างจากข้อมูลโครงการ รายการ และงวดงานโดยอัตโนมัติ หัวข้อที่แก้เองจะไม่ถูกเขียนทับ</p>
+      <p className="text-[12px] text-white/45 -mt-2">เรียงหัวข้อตามแบบ{isGov ? "ร่างขอบเขตของงาน (TOR) ภาครัฐ" : "เอกสารโครงการ"} ข้อความที่แก้ไขหรือให้ AI เรียบเรียงจะบันทึกเป็นของโครงการนี้ และไม่ถูกสร้างทับ</p>
       <DocSectionsEditor
+        defs={docDefs}
         sections={docSections}
-        dirty={Object.fromEntries(Object.keys(docEdited).map((k) => [k, true]))}
-        onChange={(key, value) => setDocEdited((prev) => ({ ...prev, [key]: value }))}
-        onRegenerate={(key) => setDocEdited((prev) => { const n = { ...prev }; delete n[key]; return n; })}
-        legalRefs={legalRefs}
+        source={docSource}
+        onChange={(key, value) => { setDocEdited((prev) => ({ ...prev, [key]: value })); setDocSource((prev) => ({ ...prev, [key]: "edited" })); }}
+        onRegenerate={(key) => {
+          setDocEdited((prev) => { const n = { ...prev }; delete n[key]; return n; });
+          setDocSource((prev) => { const n = { ...prev }; delete n[key]; return n; });
+        }}
+        aiNotes={aiNotes}
+        onAiNotes={setAiNotes}
+        onAi={runAi}
+        aiBusy={aiBusy}
       />
     </GlassCard>
   );
@@ -880,16 +1019,14 @@ export default function NewProjectPage() {
     <div className="space-y-4">
       <GlassCard className="p-5 space-y-4">
         {cardTitle(<Users size={16} className="text-nexus-blue" />, "ผู้จัดการโครงการและทีมงาน")}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            {label("ผู้จัดการโครงการ", true)}
+        {row(<>
+          <Field label="ผู้จัดการโครงการ" required w={240} grow>
             <PillSelect value={projectManagerUid} onChange={(e) => setProjectManagerUid(e.target.value)} className="w-full h-9 text-sm font-bold">
               <option value="">-- เลือกผู้จัดการโครงการ --</option>
               {userOptions.map((u: any) => <option key={u.uid} value={u.uid}>{u.name}</option>)}
             </PillSelect>
-          </div>
-          <div className="space-y-1">
-            {label("เพิ่มทีมงาน")}
+          </Field>
+          <Field label="เพิ่มทีมงาน" w={240} grow>
             <PillSelect
               value=""
               onChange={(e) => {
@@ -903,8 +1040,8 @@ export default function NewProjectPage() {
               <option value="">-- เลือกผู้ใช้เพื่อเพิ่มเข้าทีม --</option>
               {userOptions.filter((u: any) => !assignedTeam.some((m) => m.uid === u.uid)).map((u: any) => <option key={u.uid} value={u.uid}>{u.name}</option>)}
             </PillSelect>
-          </div>
-        </div>
+          </Field>
+        </>)}
         {assignedTeam.length > 0 && (
           <div className="space-y-2">
             {assignedTeam.map((member) => (
@@ -942,6 +1079,7 @@ export default function NewProjectPage() {
             {isGov
               ? reviewRow("งบประมาณ", `${baht(budgetAmount)} · ${govBudgetSource} ปี ${fiscalYear} · ${govMethod}`)
               : reviewRow("เงื่อนไข", [pvtCustomerPO && `PO ${pvtCustomerPO}`, pvtPaymentTerms || "ตามงวดงาน"].filter(Boolean).join(" · "))}
+            {reviewRow("ใบเสนอราคา", quotation?.docNo || clientReference)}
             {reviewRow("งวดงาน", `${timeline.length} งวด`)}
             {reviewRow("ผู้จัดการโครงการ", projectManagerName)}
             {reviewRow("ทีมงาน", assignedTeam.length ? assignedTeam.map((m) => m.name).join(", ") : "-")}
@@ -977,6 +1115,7 @@ export default function NewProjectPage() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <GlassCard className="p-5 space-y-2">
           {cardTitle(<ClipboardList size={16} className="text-nexus-teal" />, `เอกสารบังคับ (${typeConfig?.requiredDocuments.length || 0} รายการ)`)}
+          {!typeConfig && <p className="text-[13px] text-white/40">เลือกรูปแบบงานเพื่อดูเอกสารที่ต้องใช้</p>}
           {typeConfig?.requiredDocuments.map((d) => (
             <div key={d.docCode} className="flex items-center justify-between gap-3 py-1.5 border-b border-white/5 last:border-0">
               <span className="text-[13px] text-white/80">{d.docName}</span>

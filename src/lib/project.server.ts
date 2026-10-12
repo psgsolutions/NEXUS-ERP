@@ -4,7 +4,7 @@ import { PROJECT_TYPE_CONFIGS, ProjectTypeCode } from "@/types/database";
 import { computeProjectBudget, normalizeItemLine, normalizeLaborLine } from "./project-budget";
 import { milestoneStatus } from "./project-milestones";
 import {
-  BUDGET_SOURCES, DOC_SECTIONS, PROCUREMENT_METHODS, fiscalYearOf, legalReferences, normalizeExpenses,
+  ALL_DOC_KEYS, BUDGET_SOURCES, PROCUREMENT_METHODS, fiscalYearOf, legalReferences, normalizeExpenses,
   normalizeStage, normalizeTimeline, timelineError,
 } from "./project-templates";
 
@@ -66,8 +66,10 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
   const endDate = isDate(body.endDate) ? body.endDate : startDate;
   if (endDate < startDate) return { ok: false, error: "วันสิ้นสุดโครงการต้องไม่อยู่ก่อนวันที่เริ่ม" };
 
-  const typeCode = ([1, 2, 3, 4].includes(Number(body.projectTypeCode)) ? Number(body.projectTypeCode) : 4) as ProjectTypeCode;
-  const typeConfig = PROJECT_TYPE_CONFIGS[typeCode];
+  // รูปแบบงาน: ฉบับร่างเว้นว่างได้ (เลือกภายหลังหรือคำนวณจากรายการ) ส่งอนุมัติต้องระบุ
+  const typeCode = ([1, 2, 3, 4].includes(Number(body.projectTypeCode)) ? Number(body.projectTypeCode) : null) as ProjectTypeCode | null;
+  if (!typeCode && body.asDraft !== true) return { ok: false, error: "กรุณาเลือกรูปแบบงาน" };
+  const typeConfig = typeCode ? PROJECT_TYPE_CONFIGS[typeCode] : null;
   const sectorType = body.sectorType === "Private" ? "Private" : "Government";
   const projectStage = normalizeStage(body.projectStage);
 
@@ -99,7 +101,7 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
 
   // ---- รายละเอียดโครงการ ----
   const rawDoc = body.docSections && typeof body.docSections === "object" ? body.docSections : {};
-  const docSections = Object.fromEntries(DOC_SECTIONS.map((d) => [d.key, str(rawDoc[d.key], 12000)]));
+  const docSections = Object.fromEntries(ALL_DOC_KEYS.map((k) => [k, str(rawDoc[k], 12000)]));
 
   // ---- ผู้จัดการโครงการ/ทีมงาน ต้องเป็นผู้ใช้ของบริษัท ----
   const pmUid = str(body.projectManagerUid, 128) || apiUser.uid;
@@ -130,13 +132,13 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
     customerName: str(customer.customerName || customer.name || customer.companyName || customerId, 200),
     clientReference: str(body.clientReference, 120),
     projectTypeCode: typeCode,
-    projectType: typeConfig.nameTh,
+    projectType: typeConfig?.nameTh || "",
     typeAuto: body.typeAuto !== false,
     sectorType,
     projectStage,
     isBidding: sectorType === "Government" && projectStage !== "CONTRACTED",
     priority: str(body.priority || "ปานกลาง", 30),
-    documentChecklist: typeConfig.requiredDocuments.map((d) => ({
+    documentChecklist: (typeConfig?.requiredDocuments || []).map((d) => ({
       docCode: d.docCode,
       docName: d.docName,
       isMandatory: d.isMandatory,
@@ -160,6 +162,10 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
     warrantyMonths: Math.min(120, Math.max(0, Math.round(Number(body.warrantyMonths) || 0))),
     milestones,
     docSections,
+    aiNotes: str(body.aiNotes, 4000),
+    docSources: Object.fromEntries(Object.entries(body.docSources && typeof body.docSources === "object" ? body.docSources : {})
+      .filter(([k, v]) => ALL_DOC_KEYS.includes(k as any) && (v === "edited" || v === "ai"))),
+    quotationDocId: str(body.quotationDocId, 120),
     legalRefs: legalReferences(sectorType),
     budget: budget.totalRev,
     allocatedCost: budget.totalCost,

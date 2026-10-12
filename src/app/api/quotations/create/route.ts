@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       writeProductWritebacks(tx, companyId, apiUser.role, body.productWritebacks);
       tx.set(ref.collection("audit_logs").doc(), auditEntry(apiUser.uid, apiUser.email || apiUser.uid, submit, status, body.sendChannel, gp, requiresApproval, true));
       if (status === "PENDING_APPROVAL") notifyPendingApproval(tx, companyId, ref.id, docNo, header.customerName, header.grandTotal, gp, apiUser.uid);
-      return { docNo, status, gp };
+      return { docNo, status, gp, customerId: String(header.customerId || "") };
     });
 
     await auditServer.logCreate(apiUser.uid, companyId, "SALES_QUOTATION", result.docNo, { status: result.status, grandTotal: header.grandTotal, customerName: header.customerName });

@@ -2,11 +2,11 @@
  * ค่ากลางของโครงการ — ใช้ร่วมกันทั้งหน้าจอและ server
  *  - ขั้นของโครงการ (วางแผนก่อนจัดซื้อจัดจ้าง / ประกวดราคา / ได้งานแล้ว)
  *  - ข้อมูลภาครัฐ: วิธีจัดซื้อจัดจ้าง แหล่งงบประมาณ ปีงบประมาณ
- *  - ค่าใช้จ่ายดำเนินงานมาตรฐาน (ตั้งให้อัตโนมัติ แก้ไขได้)
+ *  - ค่าใช้จ่ายดำเนินงาน: อัตราที่เหมาะสมคำนวณอัตโนมัติตามขนาด/รูปแบบ/ระยะเวลาโครงการ (แก้ไขได้)
  *  - แผนงาน/งวดงานตามรูปแบบงาน
- *  - หัวข้อรายละเอียดโครงการ (สร้างข้อความอัตโนมัติ แก้ไขได้)
- *  - ข้อกำหนดทางกฎหมาย (อ้างอิงอัตโนมัติ ไม่ต้องแก้ไข)
+ *  - รายละเอียดโครงการเรียงตามร่างขอบเขตของงาน (TOR) ภาครัฐ
  *  - รูปแบบงานอัตโนมัติจากรายการสินค้า/บริการ
+ *  - การปัดราคาขายเป็นตัวเลขกลม
  */
 
 import type { ProjectTypeCode } from "@/types/database";
@@ -21,7 +21,7 @@ export type Sector = "Government" | "Private";
 export type ProjectStage = "PLANNING" | "BIDDING" | "CONTRACTED";
 
 export const PROJECT_STAGES: { code: ProjectStage; label: string; hint: string }[] = [
-  { code: "PLANNING", label: "วางแผน / ก่อนจัดซื้อจัดจ้าง", hint: "ช่วยหน่วยงานวางแผน จัดทำงบประมาณและคุณลักษณะเฉพาะ (TOR)" },
+  { code: "PLANNING", label: "วางแผน / ก่อนจัดซื้อจัดจ้าง", hint: "ช่วยหน่วยงานวางแผน จัดทำงบประมาณและร่างขอบเขตของงาน (TOR)" },
   { code: "BIDDING", label: "ระหว่างประกวดราคา", hint: "ประกาศ e-bidding แล้ว รอผลการพิจารณา" },
   { code: "CONTRACTED", label: "ได้งาน / ลงนามสัญญาแล้ว", hint: "พร้อมส่งขออนุมัติเปิดโครงการ" },
 ];
@@ -40,11 +40,11 @@ export const PROCUREMENT_METHODS = [
 ];
 
 export const BUDGET_SOURCES = [
-  "งบประมาณรายจ่ายประจำปี",
+  "งบประมาณประจำปี",
   "เงินรายได้ของหน่วยงาน",
   "เงินอุดหนุน",
   "เงินกู้",
-  "เงินนอกงบประมาณอื่น ๆ",
+  "เงินนอกงบประมาณ",
 ];
 
 /** ปีงบประมาณ (พ.ศ.) ของวันที่ — เริ่ม 1 ต.ค. */
@@ -57,13 +57,15 @@ export function fiscalYearOf(date: string): number {
 // ---------------------------------------------------------------------------
 // ค่าใช้จ่ายดำเนินงาน
 // ---------------------------------------------------------------------------
-/** PCT_DIRECT = % ของต้นทุนตรง (สินค้า+ค่าแรง), PCT_PRICE = % ของราคาขาย, AMOUNT = จำนวนเงิน */
-export type ExpenseBasis = "PCT_DIRECT" | "PCT_PRICE" | "AMOUNT";
+/** ฐานคำนวณ: % ต้นทุนรวม / % ค่าอุปกรณ์ / % ค่าแรง / % ราคาขาย / จำนวนเงิน */
+export type ExpenseBasis = "PCT_DIRECT" | "PCT_EQUIP" | "PCT_LABOR" | "PCT_PRICE" | "AMOUNT";
 
 export const EXPENSE_BASIS_TH: Record<ExpenseBasis, string> = {
   PCT_DIRECT: "% ต้นทุน",
+  PCT_EQUIP: "% อุปกรณ์",
+  PCT_LABOR: "% ค่าแรง",
   PCT_PRICE: "% ราคาขาย",
-  AMOUNT: "จำนวนเงิน",
+  AMOUNT: "บาท",
 };
 
 export interface ProjectExpense {
@@ -72,60 +74,123 @@ export interface ProjectExpense {
   name: string;
   basis: ExpenseBasis;
   value: number; // % หรือ บาท ตาม basis
+  /** true = อัตราคำนวณอัตโนมัติตามข้อมูลโครงการ (แก้ค่าเองแล้วจะเป็น false) */
+  auto?: boolean;
 }
 
-export function defaultExpenses(sector: Sector): ProjectExpense[] {
-  const list: Omit<ProjectExpense, "id">[] = [
-    { key: "TRANSPORT", name: "ค่าขนส่งและยกย้ายอุปกรณ์", basis: "PCT_DIRECT", value: 1 },
-    { key: "TRAVEL", name: "ค่าเดินทาง ที่พัก เบี้ยเลี้ยงทีมงาน", basis: "AMOUNT", value: 0 },
-    { key: "OVERHEAD", name: "ค่าดำเนินงานและบริหารโครงการ", basis: "PCT_DIRECT", value: 5 },
-    ...(sector === "Government"
-      ? [{ key: "GUARANTEE", name: "ค่าธรรมเนียมหนังสือค้ำประกันสัญญา", basis: "PCT_PRICE" as const, value: 0.1 }]
-      : []),
-    { key: "RISK", name: "เงินสำรองความเสี่ยง", basis: "PCT_DIRECT", value: 5 },
-  ];
-  return list.map((e, i) => ({ ...e, id: `EXP-${e.key || i}` }));
+export interface ExpenseContext {
+  sector: Sector;
+  typeCode: ProjectTypeCode | null;
+  equipCost: number;
+  laborCost: number;
+  durationDays: number;
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const num = (v: any) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
-export function expenseAmount(e: Pick<ProjectExpense, "basis" | "value">, directCost: number, price: number): number {
+type ExpenseTpl = { key: string; name: string; basis: ExpenseBasis; govOnly?: boolean; rate: (c: ExpenseContext) => number; when?: (c: ExpenseContext) => boolean };
+
+/** อัตรามาตรฐาน — ปรับตามขนาด รูปแบบงาน และระยะเวลาโครงการ */
+const EXPENSE_TEMPLATES: ExpenseTpl[] = [
+  {
+    key: "TRANSPORT", name: "ค่าขนส่งและยกย้ายอุปกรณ์", basis: "PCT_EQUIP",
+    rate: (c) => (c.equipCost < 100_000 ? 2 : c.equipCost < 1_000_000 ? 1.5 : 1),
+  },
+  {
+    key: "TRAVEL", name: "ค่าเดินทาง ที่พัก เบี้ยเลี้ยงทีมงาน", basis: "PCT_LABOR",
+    rate: (c) => (c.durationDays > 180 ? 10 : c.durationDays > 60 ? 8 : 6),
+  },
+  {
+    key: "OVERHEAD", name: "ค่าดำเนินงานและบริหารโครงการ", basis: "PCT_DIRECT",
+    rate: (c) => { const t = c.equipCost + c.laborCost; return t < 300_000 ? 8 : t < 3_000_000 ? 5 : 3; },
+  },
+  {
+    key: "GUARANTEE", name: "ค่าธรรมเนียมหนังสือค้ำประกันสัญญา", basis: "PCT_PRICE", govOnly: true,
+    // หลักประกัน 5% × ค่าธรรมเนียมธนาคารราว 2% ต่อปี ≈ 0.1% ของราคาต่อปี
+    rate: (c) => r2(0.1 * Math.max(1, Math.ceil(c.durationDays / 365))),
+  },
+  {
+    key: "STAMP", name: "ค่าอากรแสตมป์สัญญาจ้าง", basis: "PCT_PRICE", govOnly: true,
+    rate: () => 0.1,
+    when: (c) => c.typeCode !== 1, // ซื้อขายอย่างเดียวไม่ใช่สัญญาจ้างทำของ
+  },
+  {
+    key: "RISK", name: "เงินสำรองความเสี่ยง", basis: "PCT_DIRECT",
+    rate: (c) => ({ 1: 2, 2: 3, 3: 5, 4: 5 } as Record<number, number>)[c.typeCode || 4] + (c.durationDays > 180 ? 1 : 0),
+  },
+];
+
+const tplOf = (key?: string) => EXPENSE_TEMPLATES.find((t) => t.key === key);
+
+/** ค่าใช้จ่ายเริ่มต้นของโครงการ (ทุกแถวคำนวณอัตโนมัติ) */
+export function defaultExpenses(c: ExpenseContext): ProjectExpense[] {
+  return EXPENSE_TEMPLATES
+    .filter((t) => (!t.govOnly || c.sector === "Government") && (!t.when || t.when(c)))
+    .map((t) => ({ id: `EXP-${t.key}`, key: t.key, name: t.name, basis: t.basis, value: t.rate(c), auto: true }));
+}
+
+/** แถวที่ยังเป็นอัตโนมัติ: คำนวณอัตราใหม่ตามข้อมูลโครงการล่าสุด */
+export function resolveExpenses(rows: ProjectExpense[], c: ExpenseContext): ProjectExpense[] {
+  return rows.map((e) => {
+    const t = tplOf(e.key);
+    return e.auto && t ? { ...e, basis: t.basis, value: t.rate(c) } : e;
+  });
+}
+
+export interface CostBase { equipCost: number; laborCost: number; price: number }
+
+export function expenseAmount(e: Pick<ProjectExpense, "basis" | "value">, b: CostBase): number {
   const v = Math.max(0, num(e.value));
-  if (e.basis === "AMOUNT") return r2(v);
-  return r2((e.basis === "PCT_PRICE" ? price : directCost) * (v / 100));
+  switch (e.basis) {
+    case "AMOUNT": return r2(v);
+    case "PCT_EQUIP": return r2(b.equipCost * v / 100);
+    case "PCT_LABOR": return r2(b.laborCost * v / 100);
+    case "PCT_PRICE": return r2(b.price * v / 100);
+    default: return r2((b.equipCost + b.laborCost) * v / 100);
+  }
 }
 
 export function normalizeExpenses(raw: any): ProjectExpense[] {
+  const bases: ExpenseBasis[] = ["PCT_DIRECT", "PCT_EQUIP", "PCT_LABOR", "PCT_PRICE", "AMOUNT"];
   return (Array.isArray(raw) ? raw : []).slice(0, 30)
     .map((e: any, i: number) => ({
       id: String(e?.id || `EXP-${i}`).slice(0, 40),
       ...(e?.key ? { key: String(e.key).slice(0, 20) } : {}),
       name: String(e?.name ?? "").trim().slice(0, 200),
-      basis: (["PCT_DIRECT", "PCT_PRICE", "AMOUNT"].includes(e?.basis) ? e.basis : "AMOUNT") as ExpenseBasis,
+      basis: (bases.includes(e?.basis) ? e.basis : "AMOUNT") as ExpenseBasis,
       value: r2(Math.max(0, num(e?.value))),
+      auto: e?.auto === true,
     }))
     .filter((e) => e.name);
 }
 
 /**
  * ราคาขาย (ก่อน VAT) ที่ทำให้ได้กำไรสุทธิตามเป้า หลังหักต้นทุนตรงและค่าใช้จ่ายดำเนินงาน
- * price × (1 − margin − Σ%ราคา) = ต้นทุนตรง × (1 + Σ%ต้นทุน) + Σจำนวนเงิน
+ * price × (1 − margin − Σ%ราคา) = ต้นทุน + ค่าใช้จ่ายที่ไม่ขึ้นกับราคา
  */
-export function priceForMargin(directCost: number, expenses: ProjectExpense[], marginPercent: number): number {
-  const pd = expenses.filter((e) => e.basis === "PCT_DIRECT").reduce((s, e) => s + num(e.value), 0) / 100;
+export function priceForMargin(equipCost: number, laborCost: number, expenses: ProjectExpense[], marginPercent: number): number {
+  const fixed = equipCost + laborCost + expenses.filter((e) => e.basis !== "PCT_PRICE")
+    .reduce((s, e) => s + expenseAmount(e, { equipCost, laborCost, price: 0 }), 0);
   const pp = expenses.filter((e) => e.basis === "PCT_PRICE").reduce((s, e) => s + num(e.value), 0) / 100;
-  const fixed = expenses.filter((e) => e.basis === "AMOUNT").reduce((s, e) => s + num(e.value), 0);
   const denom = 1 - marginPercent / 100 - pp;
   if (denom <= 0) return 0;
-  return r2((directCost * (1 + pd) + fixed) / denom);
+  return r2(fixed / denom);
+}
+
+/** ปัดราคาขายต่อหน่วยขึ้นเป็นเลขกลม: < 1,000 ปัดเต็มบาท, < 100,000 ปัดหลักสิบ, ตั้งแต่หลักแสน ปัดหลักร้อย */
+export function roundUpPrice(p: number): number {
+  const v = Math.max(0, Number(p) || 0);
+  if (v === 0) return 0;
+  const step = v < 1_000 ? 1 : v < 100_000 ? 10 : 100;
+  return Math.ceil(v / step - 1e-9) * step;
 }
 
 // ---------------------------------------------------------------------------
 // รูปแบบงานอัตโนมัติ
 // ---------------------------------------------------------------------------
 /** สินค้าอย่างเดียว = ซื้อขาย, บริการอย่างเดียว = ติดตั้ง (หรือคงบำรุงรักษาไว้), มีทั้งคู่ = ซื้อขายพร้อมติดตั้ง */
-export function inferProjectType(lines: Pick<ProjectLine, "kind" | "name">[], current: ProjectTypeCode): ProjectTypeCode | null {
+export function inferProjectType(lines: Pick<ProjectLine, "kind" | "name">[], current: ProjectTypeCode | null): ProjectTypeCode | null {
   const real = lines.filter((l) => l.kind !== "GROUP" && l.name);
   const hasProduct = real.some((l) => l.kind === "PRODUCT");
   const hasService = real.some((l) => l.kind === "SERVICE" || l.kind === "LABOR");
@@ -173,8 +238,8 @@ const DAY = 86400e3;
 const toMs = (d: string) => Date.parse(`${d}T00:00:00Z`);
 const toDate = (t: number) => new Date(t).toISOString().slice(0, 10);
 
-/** แผนงานเริ่มต้นตามรูปแบบงาน แบ่งช่วงเวลาตามสัดส่วนระหว่างวันเริ่ม-วันส่งมอบ */
-export function defaultTimeline(typeCode: ProjectTypeCode, startDate: string, endDate: string): TimelinePhase[] {
+/** แผนงานเริ่มต้นตามรูปแบบงาน (ยังไม่เลือก = แบบซื้อขายพร้อมติดตั้ง) แบ่งช่วงเวลาตามสัดส่วน */
+export function defaultTimeline(typeCode: ProjectTypeCode | null, startDate: string, endDate: string): TimelinePhase[] {
   const s = toMs(startDate);
   const e = toMs(endDate);
   if (!Number.isFinite(s) || !Number.isFinite(e) || e < s) return [];
@@ -190,7 +255,7 @@ export function defaultTimeline(typeCode: ProjectTypeCode, startDate: string, en
       share: 100 / rounds,
       weight: i === rounds - 1 ? r2(100 - w * (rounds - 1)) : w,
     }));
-  } else tpl = PHASES[typeCode];
+  } else tpl = PHASES[typeCode || 4];
 
   const out: TimelinePhase[] = [];
   let cursor = 0;
@@ -227,25 +292,49 @@ export function timelineError(phases: TimelinePhase[]): string | null {
 }
 
 // ---------------------------------------------------------------------------
-// รายละเอียดโครงการ (เอกสาร)
+// รายละเอียดโครงการ (ร่างขอบเขตของงาน)
 // ---------------------------------------------------------------------------
-export type DocSectionKey = "background" | "objectives" | "scope" | "budget" | "duration" | "specs" | "payment";
+export type DocSectionKey =
+  | "background" | "objectives" | "qualifications" | "scope" | "specs" | "duration"
+  | "criteria" | "budget" | "payment" | "penalty" | "warranty" | "reservation" | "legal";
 
-export const DOC_SECTIONS: { key: DocSectionKey; title: string; rows: number }[] = [
-  { key: "background", title: "ความเป็นมา", rows: 4 },
-  { key: "objectives", title: "วัตถุประสงค์", rows: 4 },
-  { key: "scope", title: "ขอบเขตของงาน", rows: 5 },
-  { key: "budget", title: "งบประมาณและแหล่งงบประมาณ", rows: 3 },
-  { key: "duration", title: "ระยะเวลาดำเนินการ", rows: 2 },
-  { key: "specs", title: "คุณลักษณะเฉพาะ", rows: 10 },
-  { key: "payment", title: "การส่งมอบ การชำระเงิน และการรับประกัน", rows: 5 },
+export interface DocSectionDef {
+  key: DocSectionKey;
+  title: string;
+  /** ข้อความมาตรฐานตามกฎหมาย — ไม่ต้องแก้ไข */
+  locked?: boolean;
+  /** ให้ AI ช่วยเรียบเรียงได้ (หัวข้อที่เป็นตัวเลข/กฎหมาย ระบบสร้างจากข้อมูลจริงเท่านั้น) */
+  ai?: boolean;
+  sectors: Sector[];
+}
+
+/** เรียงตามแบบร่างขอบเขตของงาน (TOR) ภาครัฐ; เอกชนใช้เฉพาะหัวข้อที่เกี่ยวข้อง */
+const SECTION_DEFS: DocSectionDef[] = [
+  { key: "background", title: "ความเป็นมา", ai: true, sectors: ["Government", "Private"] },
+  { key: "objectives", title: "วัตถุประสงค์", ai: true, sectors: ["Government", "Private"] },
+  { key: "qualifications", title: "คุณสมบัติของผู้ยื่นข้อเสนอ", locked: true, sectors: ["Government"] },
+  { key: "scope", title: "ขอบเขตของงาน", ai: true, sectors: ["Government", "Private"] },
+  { key: "specs", title: "คุณลักษณะเฉพาะ", ai: true, sectors: ["Government", "Private"] },
+  { key: "duration", title: "ระยะเวลาดำเนินการและส่งมอบ", sectors: ["Government", "Private"] },
+  { key: "criteria", title: "หลักเกณฑ์การพิจารณาคัดเลือกข้อเสนอ", sectors: ["Government"] },
+  { key: "budget", title: "วงเงินงบประมาณและราคากลาง", sectors: ["Government"] },
+  { key: "budget", title: "มูลค่าโครงการ", sectors: ["Private"] },
+  { key: "payment", title: "งวดงานและการจ่ายเงิน", sectors: ["Government", "Private"] },
+  { key: "penalty", title: "อัตราค่าปรับ", sectors: ["Government", "Private"] },
+  { key: "warranty", title: "การรับประกันความชำรุดบกพร่อง", sectors: ["Government", "Private"] },
+  { key: "reservation", title: "ข้อสงวนสิทธิ์", locked: true, sectors: ["Government"] },
+  { key: "legal", title: "ข้อกำหนดตามกฎหมาย", locked: true, sectors: ["Private"] },
 ];
+
+export const docSectionsFor = (sector: Sector) => SECTION_DEFS.filter((d) => d.sectors.includes(sector));
+export const ALL_DOC_KEYS = Array.from(new Set(SECTION_DEFS.map((d) => d.key)));
+export const AI_DOC_KEYS = Array.from(new Set(SECTION_DEFS.filter((d) => d.ai).map((d) => d.key)));
 
 export interface DocContext {
   projectName: string;
   customerName: string;
   sector: Sector;
-  typeCode: ProjectTypeCode;
+  typeCode: ProjectTypeCode | null;
   stage: ProjectStage;
   startDate: string;
   endDate: string;
@@ -257,6 +346,8 @@ export interface DocContext {
   warrantyMonths: number;
   lines: ProjectLine[];
   timeline: TimelinePhase[];
+  /** สเปกจากทะเบียนสินค้า (productId -> ข้อความ) ใช้เมื่อรายการไม่มีรายละเอียด */
+  productSpecs?: Record<string, string>;
 }
 
 const OBJECTIVES: Record<ProjectTypeCode, string[]> = {
@@ -274,82 +365,122 @@ export const thaiDate = (d: string) => {
 };
 const qtyText = (n: number) => (Number(n) || 0).toLocaleString("th-TH", { maximumFractionDigits: 2 });
 
+/** แปลงรายละเอียดสินค้าเป็นภาษาข้อกำหนด: "รองรับ 4K" -> "ต้องรองรับ 4K", "ขนาด 1000VA" -> "ต้องมีขนาด 1000VA" */
+export function specSentence(raw: string): string {
+  const s = raw.trim().replace(/^[-•*·]\s*/, "").replace(/^\d+(\.\d+)*[.)]?\s+/, "");
+  if (!s) return "";
+  if (/^(ต้อง|ไม่)/.test(s)) return s;
+  if (/^(มี|เป็น|สามารถ|รองรับ|ได้รับ|ผ่าน|ใช้|ทำงาน|ติดตั้ง|ประกอบ|ผลิต|รับประกัน)/.test(s)) return `ต้อง${s}`;
+  return `ต้องมี${s}`;
+}
+
+/** หัวข้อที่ n ของเอกสาร (เลขข้อ) */
+export function sectionNumber(sector: Sector, key: DocSectionKey): number {
+  return docSectionsFor(sector).findIndex((d) => d.key === key) + 1;
+}
+
+const QUALIFICATIONS = (agency: string) => [
+  "มีความสามารถตามกฎหมาย",
+  "ไม่เป็นบุคคลล้มละลาย",
+  "ไม่อยู่ระหว่างเลิกกิจการ",
+  "ไม่เป็นบุคคลซึ่งอยู่ระหว่างถูกระงับการยื่นข้อเสนอหรือทำสัญญากับหน่วยงานของรัฐไว้ชั่วคราว เนื่องจากเป็นผู้ที่ไม่ผ่านเกณฑ์การประเมินผลการปฏิบัติงานของผู้ประกอบการตามระเบียบที่รัฐมนตรีว่าการกระทรวงการคลังกำหนด ตามที่ประกาศเผยแพร่ในระบบเครือข่ายสารสนเทศของกรมบัญชีกลาง",
+  "ไม่เป็นบุคคลซึ่งถูกระบุชื่อไว้ในบัญชีรายชื่อผู้ทิ้งงานและได้แจ้งเวียนชื่อให้เป็นผู้ทิ้งงานของหน่วยงานของรัฐในระบบเครือข่ายสารสนเทศของกรมบัญชีกลาง ซึ่งรวมถึงนิติบุคคลที่ผู้ทิ้งงานเป็นหุ้นส่วนผู้จัดการ กรรมการผู้จัดการ ผู้บริหาร ผู้มีอำนาจในการดำเนินงานในกิจการของนิติบุคคลนั้นด้วย",
+  "มีคุณสมบัติและไม่มีลักษณะต้องห้ามตามที่คณะกรรมการนโยบายการจัดซื้อจัดจ้างและการบริหารพัสดุภาครัฐกำหนดในราชกิจจานุเบกษา",
+  "เป็นนิติบุคคลหรือบุคคลธรรมดาผู้มีอาชีพขายหรือรับจ้างงานที่จัดซื้อจัดจ้างในครั้งนี้",
+  `ไม่เป็นผู้มีผลประโยชน์ร่วมกันกับผู้ยื่นข้อเสนอรายอื่นที่เข้ายื่นข้อเสนอให้แก่${agency} ณ วันประกาศ หรือไม่เป็นผู้กระทำการอันเป็นการขัดขวางการแข่งขันอย่างเป็นธรรม`,
+  "ไม่เป็นผู้ได้รับเอกสิทธิ์หรือความคุ้มกัน ซึ่งอาจปฏิเสธไม่ยอมขึ้นศาลไทย เว้นแต่รัฐบาลของผู้ยื่นข้อเสนอได้มีคำสั่งให้สละเอกสิทธิ์และความคุ้มกันเช่นว่านั้น",
+  "ผู้ยื่นข้อเสนอต้องลงทะเบียนในระบบจัดซื้อจัดจ้างภาครัฐด้วยอิเล็กทรอนิกส์ (Electronic Government Procurement : e-GP) ของกรมบัญชีกลาง",
+];
+
 export function generateSection(key: DocSectionKey, c: DocContext): string {
   const gov = c.sector === "Government";
-  const customer = c.customerName || (gov ? "หน่วยงาน" : "ผู้ว่าจ้าง");
+  const n = sectionNumber(c.sector, key) || 1;
+  const sub = (items: string[]) => items.map((t, i) => `${n}.${i + 1} ${t}`).join("\n");
+  const agency = c.customerName || (gov ? "หน่วยงาน" : "ผู้ว่าจ้าง");
   const name = c.projectName || "โครงการ";
+  const type = c.typeCode || 4;
+  const isPurchase = type === 1;
   const real = c.lines.filter((l) => l.name && !l.isOptional);
   switch (key) {
     case "background":
       return gov
-        ? `ด้วย${customer} มีความจำเป็นต้องดำเนิน${name} เพื่อให้การปฏิบัติงานและการให้บริการเป็นไปอย่างมีประสิทธิภาพ ต่อเนื่อง และรองรับความต้องการที่เพิ่มขึ้น จึงได้จัดทำโครงการนี้เพื่อจัดหาตามระเบียบการจัดซื้อจัดจ้างและการบริหารพัสดุภาครัฐ`
-        : `${customer} มีความประสงค์จะดำเนิน${name} เพื่อเพิ่มประสิทธิภาพการดำเนินงาน จึงว่าจ้างให้ดำเนินการตามขอบเขตของงานและคุณลักษณะเฉพาะที่กำหนดในเอกสารนี้`;
+        ? `ด้วย${agency} มีความจำเป็นต้องดำเนิน${name} เพื่อให้การปฏิบัติงานและการให้บริการเป็นไปอย่างมีประสิทธิภาพ ต่อเนื่อง และรองรับความต้องการที่เพิ่มขึ้น จึงได้จัดทำโครงการนี้เพื่อจัดหาตามระเบียบการจัดซื้อจัดจ้างและการบริหารพัสดุภาครัฐ`
+        : `${agency} มีความประสงค์จะดำเนิน${name} เพื่อเพิ่มประสิทธิภาพการดำเนินงาน จึงว่าจ้างให้ดำเนินการตามขอบเขตของงานและคุณลักษณะเฉพาะที่กำหนดในเอกสารนี้`;
     case "objectives":
-      return OBJECTIVES[c.typeCode].map((o, i) => `${i + 1}. ${o}`).join("\n");
-    case "scope": {
-      const phases = c.timeline.length ? c.timeline.map((p, i) => `${i + 1}. ${p.name}`) : [];
+      return sub(OBJECTIVES[type]);
+    case "qualifications":
+      return sub(QUALIFICATIONS(agency));
+    case "scope":
       return [
-        `ผู้รับจ้างต้องดำเนินการ${name} ให้แล้วเสร็จครบถ้วน ประกอบด้วย`,
-        ...phases,
-        "รายละเอียดอุปกรณ์และงานบริการเป็นไปตามคุณลักษณะเฉพาะ",
+        `ผู้รับจ้างต้องดำเนินการ${name} ให้แล้วเสร็จครบถ้วนใช้งานได้ดี ประกอบด้วย`,
+        sub(c.timeline.length ? c.timeline.map((p) => p.name) : ["จัดหาและส่งมอบตามคุณลักษณะเฉพาะ"]),
+        `รายละเอียดอุปกรณ์และงานบริการเป็นไปตามข้อ ${sectionNumber(c.sector, "specs")} คุณลักษณะเฉพาะ`,
       ].join("\n");
+    case "specs": {
+      const out: string[] = [];
+      let i = 0;
+      for (const l of real) {
+        if (l.kind === "GROUP") { out.push(`${out.length ? "\n" : ""}${l.name}`); continue; }
+        i += 1;
+        const details = String(l.details || (l.productId && c.productSpecs?.[l.productId]) || "")
+          .split(/\r?\n/).map(specSentence).filter(Boolean);
+        out.push(`${n}.${i} ${l.name} จำนวน ${qtyText(l.qty)} ${l.unit}${details.length ? " มีคุณลักษณะดังนี้" : ""}`);
+        details.forEach((d, j) => out.push(`    ${n}.${i}.${j + 1} ${d}`));
+      }
+      return out.join("\n") || "ยังไม่มีรายการ";
     }
+    case "duration":
+      return gov && c.stage !== "CONTRACTED"
+        ? `ผู้รับจ้างต้องดำเนินการให้แล้วเสร็จและส่งมอบภายใน ${c.durationDays} วัน นับถัดจากวันลงนามในสัญญา`
+        : `ระยะเวลาดำเนินการ ${c.durationDays} วัน ตั้งแต่วันที่ ${thaiDate(c.startDate)} ถึงวันที่ ${thaiDate(c.endDate)}`;
+    case "criteria":
+      return `การพิจารณาคัดเลือกข้อเสนอจะใช้เกณฑ์ราคา โดยพิจารณาจากราคารวมต่ำสุดของผู้ยื่นข้อเสนอที่มีคุณสมบัติและข้อเสนอทางเทคนิคถูกต้องครบถ้วนตามเงื่อนไขที่กำหนด`;
     case "budget":
       if (gov) {
-        const amt = c.budgetAmount;
         return [
-          `วงเงินงบประมาณ ${fmt(amt)} บาท (${arabicToThaiBaht(amt)}) รวมภาษีมูลค่าเพิ่ม`,
-          `แหล่งงบประมาณ: ${c.budgetSource || "-"} ประจำปีงบประมาณ พ.ศ. ${c.fiscalYear}`,
+          `วงเงินงบประมาณ ${fmt(c.budgetAmount)} บาท (${arabicToThaiBaht(c.budgetAmount)}) รวมภาษีมูลค่าเพิ่มและค่าใช้จ่ายทั้งปวง`,
+          `แหล่งงบประมาณ: ${c.budgetSource || "-"} ปีงบประมาณ พ.ศ. ${c.fiscalYear}`,
           ...(c.referencePrice > 0 ? [`ราคากลาง ${fmt(c.referencePrice)} บาท (${arabicToThaiBaht(c.referencePrice)})`] : []),
         ].join("\n");
       }
       return `มูลค่าโครงการ ${fmt(c.budgetAmount)} บาท (${arabicToThaiBaht(c.budgetAmount)}) รวมภาษีมูลค่าเพิ่มแล้ว`;
-    case "duration":
-      return gov && c.stage !== "CONTRACTED"
-        ? `ระยะเวลาดำเนินการ ${c.durationDays} วัน นับถัดจากวันลงนามในสัญญา`
-        : `ระยะเวลาดำเนินการ ${c.durationDays} วัน ตั้งแต่วันที่ ${thaiDate(c.startDate)} ถึงวันที่ ${thaiDate(c.endDate)}`;
-    case "specs": {
-      const out: string[] = [];
-      let n = 0;
-      for (const l of real) {
-        if (l.kind === "GROUP") { out.push(`${out.length ? "\n" : ""}หมวด ${l.name}`); continue; }
-        n += 1;
-        out.push(`${n}. ${l.name} จำนวน ${qtyText(l.qty)} ${l.unit}`);
-        String(l.details || "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
-          .forEach((d) => out.push(`   - ${d.replace(/^[-•*]\s*/, "")}`));
-      }
-      return out.join("\n") || "ยังไม่มีรายการ";
-    }
     case "payment": {
-      const lines = c.timeline.filter((p) => p.weight > 0).map((p, i) =>
-        `งวดที่ ${i + 1} ร้อยละ ${qtyText(p.weight)} ของวงเงิน (${fmt((c.budgetAmount * p.weight) / 100)} บาท) เมื่อ${p.name}แล้วเสร็จและผ่านการตรวจรับ`);
-      return [
-        ...(lines.length ? lines : ["ชำระเงินครั้งเดียวเมื่อส่งมอบงานครบถ้วนและผ่านการตรวจรับ"]),
-        `รับประกันความชำรุดบกพร่องเป็นระยะเวลา ${c.warrantyMonths} เดือน นับถัดจากวันที่ตรวจรับงาน`,
-      ].join("\n");
+      const paid = c.timeline.filter((p) => p.weight > 0);
+      return paid.length
+        ? paid.map((p, i) => `${n}.${i + 1} งวดที่ ${i + 1} เป็นเงินร้อยละ ${qtyText(p.weight)} ของวงเงินตามสัญญา (${fmt((c.budgetAmount * p.weight) / 100)} บาท) เมื่อผู้รับจ้างดำเนินการ${p.name}แล้วเสร็จ และคณะกรรมการตรวจรับพัสดุได้ตรวจรับเรียบร้อยแล้ว`).join("\n")
+        : "ชำระเงินครั้งเดียวเมื่อผู้รับจ้างส่งมอบงานครบถ้วนและผ่านการตรวจรับแล้ว";
     }
+    case "penalty":
+      return isPurchase
+        ? `หากผู้ขายส่งมอบพัสดุล่าช้ากว่ากำหนด ต้องชำระค่าปรับเป็นรายวันในอัตราร้อยละ 0.20 ของราคาพัสดุที่ยังไม่ได้รับมอบ นับถัดจากวันครบกำหนดส่งมอบจนถึงวันที่ส่งมอบถูกต้องครบถ้วน`
+        : `หากผู้รับจ้างส่งมอบงานล่าช้ากว่ากำหนด ต้องชำระค่าปรับเป็นรายวันในอัตราร้อยละ 0.10 ของราคาค่าจ้างตามสัญญา แต่ไม่ต่ำกว่าวันละ 100 บาท นับถัดจากวันครบกำหนดจนถึงวันที่ทำงานแล้วเสร็จ`;
+    case "warranty":
+      return `ผู้รับจ้างต้องรับประกันความชำรุดบกพร่องของงานเป็นระยะเวลาไม่น้อยกว่า ${c.warrantyMonths} เดือน นับถัดจากวันที่ผู้ว่าจ้างได้รับมอบงาน หากเกิดความชำรุดบกพร่องภายในระยะเวลาดังกล่าว ผู้รับจ้างต้องซ่อมแซมแก้ไขให้ใช้การได้ดีดังเดิมภายใน 7 วัน นับถัดจากวันที่ได้รับแจ้ง โดยไม่คิดค่าใช้จ่ายใด ๆ`;
+    case "reservation":
+      return sub([
+        `การจัดซื้อจัดจ้างครั้งนี้จะมีการลงนามในสัญญาต่อเมื่อ${agency}ได้รับอนุมัติเงินงบประมาณแล้ว`,
+        `${agency}สงวนสิทธิ์ที่จะยกเลิกการจัดซื้อจัดจ้าง หรือไม่พิจารณาจัดซื้อจัดจ้างก็ได้ หากมีเหตุอันสมควรตามระเบียบ`,
+        "ผู้รับจ้างต้องวางหลักประกันสัญญาเป็นจำนวนเงินเท่ากับร้อยละ 5 ของราคาค่าจ้างตามสัญญา",
+        "การดำเนินการเป็นไปตามพระราชบัญญัติการจัดซื้อจัดจ้างและการบริหารพัสดุภาครัฐ พ.ศ. 2560 และระเบียบกระทรวงการคลังว่าด้วยการจัดซื้อจัดจ้างและการบริหารพัสดุภาครัฐ พ.ศ. 2560",
+      ]);
+    case "legal":
+      return sub([
+        "สัญญาเป็นไปตามประมวลกฎหมายแพ่งและพาณิชย์ ลักษณะซื้อขาย และจ้างทำของ",
+        "ราคารวมภาษีมูลค่าเพิ่มร้อยละ 7 ผู้ว่าจ้างหักภาษีเงินได้ ณ ที่จ่ายค่าบริการร้อยละ 3 ตามประมวลรัษฎากร",
+      ]);
   }
 }
 
 export function generateAllSections(c: DocContext): Record<DocSectionKey, string> {
-  return Object.fromEntries(DOC_SECTIONS.map((s) => [s.key, generateSection(s.key, c)])) as Record<DocSectionKey, string>;
+  return Object.fromEntries(docSectionsFor(c.sector).map((s) => [s.key, generateSection(s.key, c)])) as Record<DocSectionKey, string>;
 }
 
-// ---------------------------------------------------------------------------
-// ข้อกำหนดทางกฎหมาย (อ้างอิงอัตโนมัติ ไม่ต้องแก้ไข)
-// ---------------------------------------------------------------------------
+/** ข้อกำหนดที่ล็อกไว้ (บันทึกเป็นสำเนาในโครงการ) */
 export function legalReferences(sector: Sector): string[] {
   return sector === "Government"
     ? [
         "พระราชบัญญัติการจัดซื้อจัดจ้างและการบริหารพัสดุภาครัฐ พ.ศ. 2560",
         "ระเบียบกระทรวงการคลังว่าด้วยการจัดซื้อจัดจ้างและการบริหารพัสดุภาครัฐ พ.ศ. 2560",
-        "ผู้ยื่นข้อเสนอต้องลงทะเบียนในระบบจัดซื้อจัดจ้างภาครัฐด้วยอิเล็กทรอนิกส์ (e-GP)",
-        "หลักประกันสัญญาร้อยละ 5 ของวงเงินตามสัญญา",
-        "ค่าปรับกรณีส่งมอบล่าช้าเป็นรายวันตามอัตราที่กำหนดในสัญญา",
-        "ส่วนราชการหักภาษีเงินได้ ณ ที่จ่ายร้อยละ 1 · ภาษีมูลค่าเพิ่มร้อยละ 7",
       ]
-    : [
-        "ประมวลกฎหมายแพ่งและพาณิชย์ ลักษณะซื้อขาย และจ้างทำของ",
-        "ภาษีมูลค่าเพิ่มร้อยละ 7 · ภาษีเงินได้หัก ณ ที่จ่ายค่าบริการร้อยละ 3 (ประมวลรัษฎากร)",
-      ];
+    : ["ประมวลกฎหมายแพ่งและพาณิชย์ ลักษณะซื้อขาย และจ้างทำของ", "ประมวลรัษฎากร"];
 }

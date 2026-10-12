@@ -3,11 +3,10 @@
 @tailwind utilities;
 
 @layer base {
-  /* วรรณยุกต์ไทยซ้อน 3 ชั้น (เช่น ตั้ง ปั้ม) ต้องไม่ถูกตัดขอบบนในช่องกรอกที่ไม่มีระยะขอบ */
+  /* วรรณยุกต์ไทยซ้อน 3 ชั้น (เช่น ตั้ง ทั่ว ปั้ม) ของ Sarabun สูง ~1.3em เหนือเส้นฐาน
+     แต่บรรทัดสูง 1.5 เผื่อไว้แค่ ~1.18em ช่องกรอกตัดข้อความที่ความสูงบรรทัด จึงต้องใช้อย่างน้อย 1.9 */
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea {
-    line-height: 1.75;
-    padding-top: 2px;
-    padding-bottom: 2px;
+    line-height: 1.9;
   }
 }
 
@@ -360,4 +359,11 @@ input, select, textarea, button, td, th {
 .nexus-table td [class*="max-w-"].truncate {
   white-space: nowrap !important;
   max-width: none !important;
+}
+
+/* ข้อความที่ตัดท้ายด้วย ... (truncate) ให้ขอบตัดเผื่อด้านบน/ล่าง วรรณยุกต์ไทยชั้นบนสุดจะไม่ถูกตัด
+   (ไม่เปลี่ยนขนาดหรือตำแหน่งของกล่อง) */
+.truncate {
+  overflow: clip;
+  overflow-clip-margin: 0.35em;
 }

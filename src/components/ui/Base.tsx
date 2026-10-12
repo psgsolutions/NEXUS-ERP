@@ -52,7 +52,7 @@ export const PillInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttri
       <input
         ref={ref}
         className={cn(
-          "h-8 px-5 py-1 leading-normal rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all placeholder:text-white/30 backdrop-blur-sm truncate w-full",
+          "h-8 px-5 py-0 leading-[1.9] rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all placeholder:text-white/30 backdrop-blur-sm truncate w-full",
           className
         )}
         {...props}
@@ -86,7 +86,7 @@ export function NexusSearchInput({
         value={value}
         onChange={onChange}
         className={cn(
-          "w-full h-8 pl-10 pr-12 py-1 leading-normal rounded-full bg-white/[0.02] border border-white/5",
+          "w-full h-8 pl-10 pr-12 py-0 leading-[1.9] rounded-full bg-white/[0.02] border border-white/5",
           "text-white text-[13px] font-bold tracking-wide",
           "focus:outline-none focus:border-nexus-teal/30 focus:bg-white/[0.05] focus:shadow-[0_0_30px_rgba(0,255,209,0.05)]",
           "transition-all duration-500 placeholder:text-white/10 placeholder:font-black placeholder:uppercase placeholder:tracking-widest",
@@ -216,7 +216,7 @@ export function PillSelect({ className, children, value, onChange, placeholder =
           className
         )}
       >
-        <span className="truncate pr-2 pt-1">{selectedOption?.label || placeholder}</span>
+        <span className="truncate pr-2">{selectedOption?.label || placeholder}</span>
         <ChevronDown 
           className={cn(
             "absolute right-4 top-1/2 -translate-y-1/2 text-white/20 transition-all pointer-events-none",

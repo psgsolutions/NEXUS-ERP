@@ -29,7 +29,7 @@ import { useAuth } from "@/context/AuthContext";
 import { SmartSelect, StepperInput, SciFiDropdownPortal } from "@/components/ui/SmartComponents";
 import { searchAddressByPostalCode } from "@/lib/thailand-address-helper";
 import { db } from "@/lib/firebase-client";
-import { writeBatch, doc, collection, serverTimestamp } from "firebase/firestore";
+import { apiFetch } from "@/lib/api-client";
 
 export default function QuotationCreationPage() {
   const router = useRouter();
@@ -52,7 +52,7 @@ export default function QuotationCreationPage() {
 
     allItems.forEach((c: any) => {
       if (!c || !c.id || c.isDeleted === true) return;
-      
+
       const nameKey = (c.customerName || c.name || c.companyName || "").trim().toLowerCase();
       const taxKey = (c.taxId || c.customerTaxId || "").trim().toLowerCase();
       const uniqueKey = taxKey ? `tax_${taxKey}` : nameKey ? `name_${nameKey}` : `id_${c.id}`;
@@ -68,7 +68,8 @@ export default function QuotationCreationPage() {
   }, [rootCustomers, companyCustomers]);
 
   // Auto-generated fields
-  const [quotationNumber] = useState(`QT-${new Date().getFullYear().toString().slice(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}-0001`);
+  // เลขที่เอกสารออกโดยเซิร์ฟเวอร์ตอนบันทึกครั้งแรก (เลขจริงตามลำดับ ไม่ซ้ำ)
+  const [quotationNumber, setQuotationNumber] = useState("");
 
   // Header State
   const [quotationType, setQuotationType] = useState("SALE");
@@ -428,7 +429,7 @@ export default function QuotationCreationPage() {
   // PDF Document Preview Data
   const previewDocumentData = useMemo(() => ({
     title: "ใบเสนอราคา (QUOTATION)",
-    docNo: quotationNumber,
+    docNo: quotationNumber || "(ร่าง ยังไม่ออกเลข)",
     date: docDate,
     companyName: companyDocs.find((c: any) => c.id === effectiveCompanyId)?.name || "NEXUS TECHNOLOGY CO., LTD.",
     companyAddress: companyDocs.find((c: any) => c.id === effectiveCompanyId)?.address || "123 อาคารเน็กซัสทาวเวอร์ ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110",
@@ -515,61 +516,23 @@ export default function QuotationCreationPage() {
 
     try {
       const isGpBelowThreshold = summary.profitMargin < minGpPercentForAutoSend;
-      const finalStatus = isSubmit 
-        ? (isGpBelowThreshold || showCreditWarning ? "PENDING_APPROVAL" : "SENT") 
-        : status;
-      const batch = writeBatch(db);
-
       let finalCustomerId = selectedCustomerId;
       let finalCustomerName = getCustomerName(selectedCustomer);
+      let newCustomer: { name: string; address: string; taxId: string } | null = null;
 
       if (!finalCustomerId && customerSearchTerm.trim()) {
-        const newCustomerRef = doc(collection(db, 'customers'));
-        batch.set(newCustomerRef, {
-          customerName: customerSearchTerm.trim(),
+        // ลูกค้าใหม่: เซิร์ฟเวอร์สร้างให้ในการบันทึกครั้งเดียวกัน
+        newCustomer = {
           name: customerSearchTerm.trim(),
           address: [addrLine1, addrLine2, subDistrict, district, province, postalCode].filter(Boolean).join(" "),
           taxId: customerTaxId,
-          companyId: companyId,
-          isDeleted: false,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-        finalCustomerId = newCustomerRef.id;
+        };
         finalCustomerName = customerSearchTerm.trim();
       }
 
-      // 1. Create Header Ref
-      const quotationRef = doc(collection(db, `companies/${companyId}/quotations`));
       const fullAddressStr = [addrLine1, addrLine2, subDistrict, district, province, postalCode].filter(Boolean).join(" ");
 
-      const auditEntry = {
-        id: `LOG-${Date.now()}`,
-        userId: user?.uid || "anonymous",
-        userName: user?.displayName || user?.email || "ผู้ใช้งาน",
-        action: !isSubmit ? "SAVE_DRAFT" : isGpBelowThreshold || showCreditWarning ? "SUBMIT_APPROVAL" : `SEND_${sendChannel || 'MANUAL'}`,
-        channel: sendChannel || (isSubmit ? "SYSTEM" : "DRAFT"),
-        clientIp: "127.0.0.1",
-        timestamp: new Date().toISOString(),
-        details: !isSubmit 
-          ? "บันทึกร่างเอกสารใบเสนอราคา" 
-          : isGpBelowThreshold 
-            ? `ส่งขออนุมัติเนื่องจาก GP (${summary.profitMargin}%) ต่ำกว่าเกณฑ์ (${minGpPercentForAutoSend}%)`
-            : showCreditWarning
-              ? "ส่งขออนุมัติเนื่องจากเกินวงเงินเครดิต"
-              : `บันทึกและส่งเอกสารผ่านช่องทาง ${sendChannel === 'EMAIL' ? 'อีเมล' : sendChannel === 'LINE' ? 'LINE' : sendChannel === 'DOWNLOAD' ? 'ดาวน์โหลด PDF' : 'ระบบ'}`
-      };
-
       const headerPayload = {
-        companyId,
-        isDeleted: false,
-        documentNo: quotationNumber,
-        quotationNumber,
-        revision: 0,
-        revisionNumber: 1,
-        parentQuotationId: null,
-        revisionHistory: [],
-        status: finalStatus,
         docDate,
         validUntil,
         paymentTerms,
@@ -646,77 +609,51 @@ export default function QuotationCreationPage() {
         incoTerms,
         expectedDeliveryDays,
         internalNotes,
-        createdBy: user?.uid || "",
-        createdAt: serverTimestamp(),
         date: docDate,
-        auditLogs: [auditEntry]
       };
 
-      const finalDocRef = doc(db, `companies/${companyId}/quotations`, quotationRef.id);
-      batch.set(finalDocRef, headerPayload);
+      const linesPayload = items.map((item) => ({
+        itemType: item.itemType || "PRODUCT",
+        productId: item.productId || item.id || "",
+        sku: item.sku || "",
+        productName: item.name || "",
+        description: item.details || item.description || "",
+        qty: Number(item.qty) || 0,
+        uom: item.unit || "ชิ้น",
+        costPrice: Number(item.cost ?? item.costPrice) || 0,
+        unitPrice: Number(item.price) || 0,
+        discountType: item.discountType || "PERCENT",
+        discountValue: Number(item.discountValue) || 0,
+        whtRate: Number(item.whtRate) || 0,
+        glAccountId: item.incomeAccountId || "411100",
+        isOptional: !!item.isOptional,
+      }));
+      const productWritebacks = items
+        .filter((item) => item.saveToProductMaster && item.productId)
+        .map((item) => ({ productId: item.productId, technicalSpecs: item.details || "", datasheetUrl: item.datasheetUrl || "" }));
 
-      // Save audit log to subcollection
-      const auditRef = doc(collection(db, `companies/${companyId}/quotations/${finalDocRef.id}/audit_logs`));
-      batch.set(auditRef, {
-        ...auditEntry,
-        createdAt: serverTimestamp()
+      // บันทึกผ่านเซิร์ฟเวอร์: ครั้งแรกสร้างใบใหม่ (ออกเลขที่จริง) ครั้งถัดไปบนหน้าเดิมเป็นการแก้ไขใบเดิม
+      const endpoint = savedQuotationId ? `/api/quotations/${encodeURIComponent(savedQuotationId)}/save` : "/api/quotations/create";
+      const res = await apiFetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId,
+          submit: isSubmit,
+          requiresApproval: isSubmit && (isGpBelowThreshold || showCreditWarning),
+          sendChannel,
+          header: headerPayload,
+          lines: linesPayload,
+          newCustomer,
+          productWritebacks,
+        }),
       });
+      const saved = await res.json();
+      if (!res.ok || !saved.success) throw new Error(saved.error || "บันทึกไม่สำเร็จ");
+      if (saved.id) setSavedQuotationId(saved.id);
+      if (saved.docNo) setQuotationNumber(saved.docNo);
+      if (saved.status) setStatus(saved.status);
 
-      // 2. Create Line Items in subcollection
-      items.forEach((item, index) => {
-        const lineRef = doc(collection(db, `companies/${companyId}/quotations/${finalDocRef.id}/lines`));
-        const lineSubtotal = (Number(item.qty) || 0) * (Number(item.price) || 0);
-        const lineDiscAmt = item.discountType === 'PERCENT' ? lineSubtotal * ((Number(item.discountValue) || 0) / 100) : Number(item.discountValue) || 0;
-        const lineTotalAmt = Math.max(0, lineSubtotal - lineDiscAmt);
-
-        const linePayload = {
-          sequence: index + 1,
-          productId: item.productId || item.id || "",
-          sku: item.sku || "",
-          productName: item.name || "",
-          description: item.details || item.description || "",
-          qty: Number(item.qty) || 0,
-          uom: item.unit || "ชิ้น",
-          uomConversionFactor: 1,
-          costPrice: Number(item.cost ?? item.costPrice) || 0,
-          unitPrice: Number(item.price) || 0,
-          itemType: item.itemType || 'PRODUCT',
-          discountType: item.discountType || 'PERCENT',
-          discountValue: Number(item.discountValue) || 0,
-          discountAmount: lineDiscAmt,
-          whtRate: Number(item.whtRate) || 0,
-          lineTotal: lineTotalAmt,
-          isVatable: true,
-          whtApplicable: (Number(item.whtRate) || 0) > 0,
-          glAccountId: item.incomeAccountId || "411100",
-          isOptional: !!item.isOptional,
-          margin: (Number(item.price) || 0) - (Number(item.cost ?? item.costPrice) || 0),
-          saveToProductMaster: !!item.saveToProductMaster
-        };
-        batch.set(lineRef, linePayload);
-
-        // Update product master if user checked saveToProductMaster and has RBAC permission
-        if (item.saveToProductMaster && item.productId && canWriteBackToProductMaster(role, true)) {
-          const productRef = doc(db, `companies/${companyId}/products`, item.productId);
-          const updatePayload: Record<string, any> = {
-            updatedAt: serverTimestamp()
-          };
-          if (item.details && item.details.trim()) {
-            updatePayload.technicalSpecs = item.details.trim();
-          }
-          if (item.datasheetUrl && item.datasheetUrl.trim()) {
-            updatePayload.datasheetUrl = item.datasheetUrl.trim();
-          }
-          if (Object.keys(updatePayload).length > 1) {
-            batch.update(productRef, updatePayload);
-          }
-        }
-      });
-
-      await batch.commit();
-
-      setSavedQuotationId(finalDocRef.id);
-      
       if (sendChannel === 'DOWNLOAD') {
         setShowPreviewModal(true);
       } else if (sendChannel === 'EMAIL') {
@@ -745,8 +682,8 @@ export default function QuotationCreationPage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">สร้างใบเสนอราคาใหม่</h1>
-            <span className="font-mono text-sm font-bold text-nexus-teal bg-nexus-teal/10 px-3 py-1 rounded-full border border-nexus-teal/30 select-none cursor-default pointer-events-none">
-              {quotationNumber}
+            <span className="font-mono text-sm font-bold text-nexus-teal bg-nexus-teal/10 px-3 py-1 rounded-full border border-nexus-teal/30 whitespace-nowrap select-none cursor-default pointer-events-none">
+              {quotationNumber || "รอออกเลข"}
             </span>
           </div>
           <p className="text-sm text-white/60 font-medium mt-1">ระบุรายละเอียดลูกค้า รายการสินค้า และเงื่อนไขทางการค้าเพื่อออกใบเสนอราคา</p>
@@ -755,7 +692,7 @@ export default function QuotationCreationPage() {
 
       <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
         <DocumentStepper steps={["ร่าง", "รออนุมัติ", "ส่งแล้ว", "ยอมรับแล้ว"]} currentStep={status === "PENDING_APPROVAL" ? 1 : status === "SENT" ? 2 : status === "ACCEPTED" ? 3 : 0} />
-        
+
         {/* PDF Preview Button */}
         <PillButton
           variant="glass"
@@ -862,7 +799,7 @@ export default function QuotationCreationPage() {
                 <span>ค้นหาและเลือกลูกค้า <span className="text-danger">*</span></span>
                 {customersLoading && <span className="text-[10px] text-white/40">กำลังโหลด...</span>}
               </label>
-              
+
               {!selectedCustomerId ? (
                 <div className="relative">
                   <SmartSelect
@@ -1544,7 +1481,7 @@ export default function QuotationCreationPage() {
                 </span>
               </div>
             </div>
-            
+
             {/* Progress bar with Target marker */}
             <div className="relative w-full h-3 bg-white/10 rounded-full overflow-hidden">
               <div
@@ -1552,7 +1489,7 @@ export default function QuotationCreationPage() {
                 style={{ width: `${Math.min(Math.max(summary.profitMargin, 0), 100)}%` }}
               />
               {/* Target Marker at minGpPercentForAutoSend (default 15%) */}
-              <div 
+              <div
                 className="absolute top-0 bottom-0 w-[2px] bg-white border-r border-black shadow-[0_0_6px_rgba(255,255,255,0.8)] z-10"
                 style={{ left: `${Math.min(Math.max(minGpPercentForAutoSend, 0), 100)}%` }}
                 title={`เกณฑ์ขั้นต่ำ ${minGpPercentForAutoSend}%`}
@@ -1731,8 +1668,8 @@ export default function QuotationCreationPage() {
           <span className="text-sm font-semibold text-white/70 uppercase tracking-widest">ยอดชำระสุทธิ</span>
           <span className={cn(
             "font-mono tracking-tighter not-italic text-right transition-all",
-            summary.whtAmount > 0 
-              ? "text-3xl font-black text-nexus-teal drop-shadow-[0_0_15px_rgba(34,211,238,0.2)]" 
+            summary.whtAmount > 0
+              ? "text-3xl font-black text-nexus-teal drop-shadow-[0_0_15px_rgba(34,211,238,0.2)]"
               : "text-2xl font-bold text-white/90"
           )}>
             {formatCurrency(summary.netPayable)} <span className="text-sm font-normal text-white/60">บาท</span>

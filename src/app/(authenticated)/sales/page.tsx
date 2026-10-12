@@ -29,6 +29,7 @@ import {
   Percent,
   Printer,
   Copy,
+  Ban
 } from "lucide-react";
 import {
   PillButton,
@@ -79,6 +80,7 @@ import { nexusSequenceEngine } from "@/lib/sequence-engine";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
+import { can } from "@/lib/permissions";
 import { quotationCanDelete, QUOTATION_STAGE, quotationStage, quotationValidUntil, type QuotationStage } from "@/lib/quotation-status";
 
 
@@ -123,6 +125,23 @@ export default function SalesPage() {
   }, []);
 
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [cndnCancel, setCndnCancel] = useState<{ docId: string; no: string; reason: string } | null>(null);
+  const [cndnBusy, setCndnBusy] = useState(false);
+  const cancelCndn = async () => {
+    if (!cndnCancel || !companyId) return;
+    try {
+      setCndnBusy(true);
+      const res = await apiFetch("/api/sales/cndn/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, cndnId: cndnCancel.docId, reason: cndnCancel.reason }) });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "ยกเลิกไม่สำเร็จ");
+      showToast(`ยกเลิก ${data.docNo} แล้ว — ยอดค้างใบกำกับ ${data.invoiceNo} เหลือ ฿${Number(data.balanceAfter).toLocaleString("th-TH", { minimumFractionDigits: 2 })}${data.journal === "reversed" ? " · สร้างรายการกลับบัญชีรออนุมัติ" : ""}`);
+      setCndnCancel(null);
+    } catch (e: any) {
+      showToast(e.message);
+    } finally {
+      setCndnBusy(false);
+    }
+  };
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState({ message: "", isVisible: false });
@@ -265,6 +284,7 @@ export default function SalesPage() {
       invoiceNo: d.invoiceNo || d.refInvoiceId || "-",
       reason: d.reason || "",
       status: d.status || "issued",
+      cancellable: !!d.invoiceDocId && !d.isSample,
     }), setCndnList);
 
     // Real-time listener for Opportunities
@@ -711,8 +731,16 @@ export default function SalesPage() {
 
                 {activeTab === "cndn" && (
                   <div className="animate-in fade-in duration-500">
+                    {cndnCancel && (
+                      <div className="flex flex-wrap items-center gap-2 mb-3 px-4 py-3 rounded-2xl border border-danger/25 bg-danger/[0.04]">
+                        <span className="text-[13px] text-white/80">ยกเลิก {cndnCancel.no}</span>
+                        <input autoFocus value={cndnCancel.reason} onChange={(e) => setCndnCancel({ ...cndnCancel, reason: e.target.value })} placeholder="เหตุผลการยกเลิก (จำเป็น)" className="h-8 flex-1 min-w-[220px] px-3 rounded-full bg-white/[0.03] border border-white/10 text-[13px] text-white focus:outline-none" />
+                        <button type="button" disabled={cndnBusy || cndnCancel.reason.trim().length < 3} onClick={cancelCndn} className="h-8 px-3 rounded-full border border-danger/40 text-danger text-[12px] font-bold disabled:opacity-40">{cndnBusy ? "กำลังยกเลิก..." : "ยืนยันยกเลิก"}</button>
+                        <button type="button" onClick={() => setCndnCancel(null)} className="h-8 px-3 rounded-full border border-white/10 text-white/60 text-[12px] font-bold">ปิด</button>
+                      </div>
+                    )}
                     <NexusTable
-                      headers={["เลขที่เอกสาร", "ลูกค้า", "ประเภท", "อ้างอิงใบกำกับ", "วันที่ออก", "ยอดรวม", "เหตุผล"]}
+                      headers={["เลขที่เอกสาร", "ลูกค้า", "ประเภท", "อ้างอิงใบกำกับ", "วันที่ออก", "ยอดรวม", "สถานะ", ""]}
                     >
                       {filteredCndn.map(cndn => (
                         <CndnRow
@@ -725,6 +753,9 @@ export default function SalesPage() {
                           reason={cndn.reason}
                           date={cndn.date}
                           total={cndn.total}
+                          status={cndn.status}
+                          canCancel={cndn.cancellable && (can(userRole, "sales:edit") || can(userRole, "finance:edit"))}
+                          onCancel={() => setCndnCancel({ docId: cndn.docId, no: cndn.id, reason: "" })}
                           onClick={() => setSelectedItem(cndn)}
                         />
                       ))}
@@ -1131,16 +1162,22 @@ function BillingNoteRow({ id, docId, customer, date, dueDate, total, status, com
   );
 }
 
-function CndnRow({ id, customer, type, invoiceNo, reason, date, total, onClick }: any) {
+function CndnRow({ id, customer, type, invoiceNo, reason, date, total, status, canCancel, onCancel, onClick }: any) {
+  const cancelled = String(status || "").toLowerCase() === "cancelled";
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="font-mono text-[13px] text-nexus-blue">{id}</NexusTableCell>
+      <NexusTableCell className="font-mono text-[13px] text-nexus-blue"><span title={reason ? `เหตุผล: ${reason}` : undefined}>{id}</span></NexusTableCell>
       <NexusTableCell className="font-bold text-white/80">{customer}</NexusTableCell>
       <NexusTableCell><span className={type === "DN" ? "text-warning text-[12px] font-bold" : "text-nexus-teal text-[12px] font-bold"}>{type === "DN" ? "ใบเพิ่มหนี้" : "ใบลดหนี้"}</span></NexusTableCell>
       <NexusTableCell className="font-mono text-[13px] text-white/60">{invoiceNo}</NexusTableCell>
       <NexusTableCell className="text-white/60">{date}</NexusTableCell>
       <NexusTableCell className="text-white" mono>{total}</NexusTableCell>
-      <NexusTableCell className="text-white/60">{reason || "-"}</NexusTableCell>
+      <NexusTableCell>{cancelled ? <StatusBadge status="danger" label="ยกเลิกแล้ว" /> : <StatusBadge status="active" label="ออกแล้ว" />}</NexusTableCell>
+      <NexusTableCell>
+        {!cancelled && canCancel ? (
+          <button type="button" onClick={(e) => { e.stopPropagation(); onCancel(); }} className="w-8 h-8 rounded-full border border-white/15 text-white/50 hover:text-danger hover:border-danger/40 inline-flex items-center justify-center" title={`ยกเลิก ${id}`} aria-label={`ยกเลิก ${id}`}><Ban size={14} /></button>
+        ) : null}
+      </NexusTableCell>
     </NexusTableRow>
   );
 }

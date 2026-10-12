@@ -39,6 +39,8 @@ async function main() {
     await setDoc(doc(db, 'companies/A/quotations/qSent/lines/l1'), { qty: 1 });
     await setDoc(doc(db, 'companies/A/receipts/RE-1'), { companyId: 'A', status: 'posted' });
     await setDoc(doc(db, 'employees/eA'), { companyId: 'A', name: 'A' });
+    await setDoc(doc(db, 'companies/A/invoices/inv1'), { companyId: 'A', invoiceNo: 'INV-26-0001' });
+    await setDoc(doc(db, 'companies/A/invoices/invSample'), { companyId: 'A', isSample: true });
     await setDoc(doc(db, 'employees/eB'), { companyId: 'B', name: 'B' });
   });
 
@@ -130,6 +132,15 @@ async function main() {
     ['member cannot read other-company employee', () => assertFails(getDoc(doc(userA, 'employees/eB')))],
     ['member cannot edit employee (salary) directly', () => assertFails(updateDoc(doc(adminA, 'employees/eA'), { salary: 999999 }))],
     ['member cannot write attendance directly', () => assertFails(addDoc(collection(userA, 'attendance'), { companyId: 'A', type: 'IN' }))],
+
+    // Tax documents
+    ['member reads invoice', () => assertSucceeds(getDoc(doc(userA, 'companies/A/invoices/inv1')))],
+    ['member cannot create invoice directly', () => assertFails(setDoc(doc(userA, 'companies/A/invoices/inv2'), { companyId: 'A' }))],
+    ['member cannot edit invoice balance', () => assertFails(updateDoc(doc(userA, 'companies/A/invoices/inv1'), { balance: 0 }))],
+    ['member cannot delete real invoice', () => assertFails(deleteDoc(doc(userA, 'companies/A/invoices/inv1')))],
+    ['member deletes sample invoice', () => assertSucceeds(deleteDoc(doc(userA, 'companies/A/invoices/invSample')))],
+    ['member cannot write credit note directly', () => assertFails(setDoc(doc(userA, 'companies/A/cndn/c1'), { companyId: 'A' }))],
+    ['member cannot write billing note directly', () => assertFails(setDoc(doc(userA, 'companies/A/billing_notes/b1'), { companyId: 'A' }))],
 
     // SUPERADMIN
     ['superadmin (uid) reads other company', () => assertSucceeds(getDoc(doc(superUid, 'companies/B/quotations/q2')))],

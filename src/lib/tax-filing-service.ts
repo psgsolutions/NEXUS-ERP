@@ -116,24 +116,22 @@ export async function calculatePP30Tax(companyId: string, yearMonth: string): Pr
           const credit = Number(line.credit || line.cr || 0);
           const memo = String(line.description || line.memo || data.description || "").toLowerCase();
 
-          // Account 213100: Output VAT (ภาษีขาย) or credit in sales journal
-          if (OUTPUT_VAT_CODES.includes(accountCode) || memo.includes("ภาษีขาย") || memo.includes("output vat")) {
+          // ระบุบัญชีจากรหัสเป็นหลัก; ใช้คำอธิบายเฉพาะบรรทัดที่ไม่มีรหัสบัญชี (ข้อมูลรุ่นเก่า)
+          const isOutput = accountCode ? OUTPUT_VAT_CODES.includes(accountCode) : (memo.includes("ภาษีขาย") || memo.includes("output vat"));
+          const isInput = accountCode ? INPUT_VAT_CODES.includes(accountCode) : (memo.includes("ภาษีซื้อ") || memo.includes("input vat"));
+
+          // ภาษีขาย: รวมแบบมีเครื่องหมาย — ใบลดหนี้ (Dr ภาษีขาย) ลดภาษีขายของเดือนนั้น
+          if (isOutput) {
             const vatVal = credit - debit;
-            if (vatVal > 0) {
-              outputVat += vatVal;
-              // Estimate Sales Base at 7% VAT rounded to 2 decimal places
-              salesBase += Math.round((vatVal / 0.07) * 100) / 100;
-            }
+            outputVat += vatVal;
+            salesBase += Math.round((vatVal / 0.07) * 100) / 100;
           }
 
-          // Account 115100: Input VAT (ภาษีซื้อ) or debit in procurement journal
-          if (INPUT_VAT_CODES.includes(accountCode) || memo.includes("ภาษีซื้อ") || memo.includes("input vat")) {
+          // ภาษีซื้อ: รวมแบบมีเครื่องหมาย (กลับรายการ/ลดหนี้จากผู้ขายลดภาษีซื้อ)
+          if (isInput) {
             const vatVal = debit - credit;
-            if (vatVal > 0) {
-              inputVat += vatVal;
-              // Estimate Purchase Base at 7% VAT rounded to 2 decimal places
-              purchaseBase += Math.round((vatVal / 0.07) * 100) / 100;
-            }
+            inputVat += vatVal;
+            purchaseBase += Math.round((vatVal / 0.07) * 100) / 100;
           }
         });
       }

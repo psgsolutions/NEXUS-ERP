@@ -70,7 +70,9 @@ export async function POST(request: Request) {
         const x = t.data()!;
         const total = round2(Number(isReceipt ? x.grandTotal : x.totalAmount) || 0);
         const paid = round2(Math.max(0, (Number(x.paidAmount) || 0) - (Number(l.amount) || 0)));
-        const balance = round2(Math.max(0, total - paid));
+        // คืนยอดค้างจากยอดปัจจุบัน (คงผลของใบลดหนี้/ใบเพิ่มหนี้) — เอกสารรุ่นเก่าที่ไม่มี balance ใช้ยอดรวม - ชำระแล้ว
+        const currentBalance = x.balance !== undefined ? Number(x.balance) : total - (Number(x.paidAmount) || 0);
+        const balance = round2(Math.max(0, currentBalance + (Number(l.amount) || 0)));
         const paymentStatus = paid <= 0.009 ? "unpaid" : balance <= 0.009 ? "paid" : "partial";
         const update: Record<string, any> = {
           paidAmount: paid,

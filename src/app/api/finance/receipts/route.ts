@@ -97,7 +97,8 @@ export async function POST(request: Request) {
         const whtAmount = round2(whtBase * (whtRate / 100));
 
         const paidAfter = round2(paidBefore + amount);
-        const balanceAfter = round2(Math.max(0, grandTotal - paidAfter));
+        // ลดจากยอดค้างปัจจุบัน (รวมผลของใบลดหนี้/ใบเพิ่มหนี้แล้ว) ไม่คำนวณใหม่จากยอดรวมใบกำกับ
+        const balanceAfter = round2(Math.max(0, balance - amount));
         return {
           ref: refs[i],
           line: { invoiceDocId: snap.id, invoiceNo: invNo, invoiceTotal: grandTotal, balanceBefore: balance, amount, whtRate, whtBase, whtAmount, netReceived: round2(amount - whtAmount) },

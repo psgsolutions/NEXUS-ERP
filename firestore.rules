@@ -149,10 +149,15 @@ service cloud.firestore {
       // ทุก subcollection (และลึกกว่านั้น) ยกเว้นที่มีกฎเฉพาะ
       match /{collection}/{rest=**} {
         allow read: if inCompany(companyId);
-        allow write: if inCompany(companyId) && !(collection in ['auditLogs', 'financialLedgers', 'quotations', 'receipts', 'payments', 'payrolls', 'serial_numbers']);
+        allow write: if inCompany(companyId) && !(collection in ['auditLogs', 'financialLedgers', 'quotations', 'receipts', 'payments', 'payrolls', 'serial_numbers', 'invoices', 'billing_notes', 'cndn']);
       }
 
       // receipts / payments / payrolls / serial_numbers: อ่านได้ตามกฎด้านบน เขียนผ่าน API เท่านั้น (ตรวจยอดค้าง กลับรายการบัญชี ออกเลขที่ในทรานแซกชัน)
+      // ใบกำกับภาษี / ใบวางบิล / ใบลดหนี้-เพิ่มหนี้: ออกผ่าน /api/sales/* เท่านั้น (เลขต้องเรียงต่อเนื่อง)
+      // ลบจากหน้าจอได้เฉพาะเอกสารตัวอย่าง
+      match /invoices/{invoiceId} {
+        allow delete: if inCompany(companyId) && resource.data.get('isSample', false) == true;
+      }
 
       // ใบเสนอราคา
       function quotationEditable(data) {

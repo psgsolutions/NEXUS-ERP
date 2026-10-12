@@ -262,7 +262,9 @@ export default function SalesPage() {
       date: toDateStr(firstOf(d, ["issueDate", "createdAt"])),
       total: toMoney(firstOf(d, ["totalAmount", "grandTotal"])),
       type: d.type || "CN",
-      status: d.status || "active",
+      invoiceNo: d.invoiceNo || d.refInvoiceId || "-",
+      reason: d.reason || "",
+      status: d.status || "issued",
     }), setCndnList);
 
     // Real-time listener for Opportunities
@@ -490,6 +492,11 @@ export default function SalesPage() {
               ดึงจาก SO
             </PillButton>
           )}
+          {activeTab === "cndn" && (
+            <PillButton variant="primary" onClick={() => router.push("/sales/cndn/new")} className="h-8 px-5 shadow-neon-teal">
+              <Plus size={14} className="mr-1.5" /> ออกใบลดหนี้ / เพิ่มหนี้
+            </PillButton>
+          )}
           {activeTab === "receipts" && (
             <PillButton variant="save" onClick={() => router.push("/finance/receipts/new")} className="h-8 px-5 shadow-neon-teal">
               <Landmark size={14} className="mr-1.5" />
@@ -705,8 +712,7 @@ export default function SalesPage() {
                 {activeTab === "cndn" && (
                   <div className="animate-in fade-in duration-500">
                     <NexusTable
-                      headers={["รหัสเอกสาร", "ลูกค้า", "ประเภท", "วันที่ออก", "ยอดรวม", "สถานะ", "จัดการ"]}
-                      columnWidths={["w-[140px]", "w-auto", "w-[100px]", "w-[120px]", "w-[150px]", "w-[120px]", "w-[100px]"]}
+                      headers={["เลขที่เอกสาร", "ลูกค้า", "ประเภท", "อ้างอิงใบกำกับ", "วันที่ออก", "ยอดรวม", "เหตุผล"]}
                     >
                       {filteredCndn.map(cndn => (
                         <CndnRow
@@ -715,10 +721,10 @@ export default function SalesPage() {
                           id={cndn.id}
                           customer={cndn.customer}
                           type={cndn.type}
+                          invoiceNo={cndn.invoiceNo}
+                          reason={cndn.reason}
                           date={cndn.date}
                           total={cndn.total}
-                          status={cndn.status}
-                          companyId={companyId || "COM-NEXUS-01"}
                           onClick={() => setSelectedItem(cndn)}
                         />
                       ))}
@@ -1092,7 +1098,14 @@ function InvoiceRow({ id, docId, soRef, customer, date, dueDate, total, status, 
               รับชำระ
             </Link>
           )}
-          <SecureDeleteAction collectionName={`companies/${companyId}/invoices`} documentId={docId} displayName={customer} compact />
+          {/* ใบกำกับภาษีลบไม่ได้ (เลขต้องต่อเนื่อง) — แก้มูลค่าด้วยใบลดหนี้/เพิ่มหนี้; ลบได้เฉพาะเอกสารตัวอย่าง */}
+          {isSample ? (
+            <SecureDeleteAction collectionName={`companies/${companyId}/invoices`} documentId={docId} displayName={customer} compact />
+          ) : (
+            <Link href={`/sales/cndn/new?invoice=${encodeURIComponent(docId)}`} className="h-8 px-3 rounded-full border border-white/15 text-white/70 text-[12px] font-bold flex items-center hover:bg-white/[0.05]" title="ออกใบลดหนี้ / ใบเพิ่มหนี้อ้างอิงใบกำกับนี้">
+              ลดหนี้
+            </Link>
+          )}
         </div>
       </NexusTableCell>
     </NexusTableRow>
@@ -1111,30 +1124,23 @@ function BillingNoteRow({ id, docId, customer, date, dueDate, total, status, com
         <StatusBadge status={status === "Paid" ? "active" : "pending"} label={status === "Paid" ? "รับชำระแล้ว" : "รอดำเนินการ"} />
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <div onClick={(e) => e.stopPropagation()} className="inline-block">
-          <SecureDeleteAction collectionName={`companies/${companyId}/billing_notes`} documentId={docId} displayName={id} compact />
-        </div>
+        {/* ใบวางบิลออกคู่กับใบกำกับภาษี จึงไม่ให้ลบแยก */}
+        <span className="text-white/30">-</span>
       </NexusTableCell>
     </NexusTableRow>
   );
 }
 
-function CndnRow({ id, docId, customer, type, date, total, status, companyId, onClick }: any) {
+function CndnRow({ id, customer, type, invoiceNo, reason, date, total, onClick }: any) {
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
-      <NexusTableCell className="font-bold text-white/80 w-full">{customer}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-bold text-[11px] uppercase tracking-widest text-white/40">{type}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-white/40">{date}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white" mono>{total}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status={status === "Applied" ? "active" : "pending"} label={status === "Applied" ? "ใช้สิทธิ์แล้ว" : "ยังไม่ได้ใช้"} />
-      </NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <div onClick={(e) => e.stopPropagation()} className="inline-block">
-          <SecureDeleteAction collectionName={`companies/${companyId}/cndn`} documentId={docId} displayName={id} compact />
-        </div>
-      </NexusTableCell>
+      <NexusTableCell className="font-mono text-[13px] text-nexus-blue">{id}</NexusTableCell>
+      <NexusTableCell className="font-bold text-white/80">{customer}</NexusTableCell>
+      <NexusTableCell><span className={type === "DN" ? "text-warning text-[12px] font-bold" : "text-nexus-teal text-[12px] font-bold"}>{type === "DN" ? "ใบเพิ่มหนี้" : "ใบลดหนี้"}</span></NexusTableCell>
+      <NexusTableCell className="font-mono text-[13px] text-white/60">{invoiceNo}</NexusTableCell>
+      <NexusTableCell className="text-white/60">{date}</NexusTableCell>
+      <NexusTableCell className="text-white" mono>{total}</NexusTableCell>
+      <NexusTableCell className="text-white/60">{reason || "-"}</NexusTableCell>
     </NexusTableRow>
   );
 }

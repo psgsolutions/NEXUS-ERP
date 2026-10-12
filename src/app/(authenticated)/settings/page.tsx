@@ -24,7 +24,8 @@ import {
   ImageIcon,
   Plus,
   Trash2,
-  Sparkles
+  Sparkles,
+  BookOpen
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { 
@@ -46,6 +47,7 @@ import { AddressFormGroup, parseAddress } from "@/components/ui/AddressFormGroup
 import { UltimateDocumentBuilder, getInitialTemplate } from "@/components/reports/UltimateDocumentBuilder";
 import UsersPage from "./users/page";
 import { db } from "@/lib/firebase-client";
+import { SpecLibraryManager } from "@/components/projects/SpecLibraryManager";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
 import { 
@@ -61,7 +63,7 @@ import {
   serverTimestamp 
 } from "firebase/firestore";
 
-type SettingsTab = "company" | "sequence" | "templates" | "security" | "users";
+type SettingsTab = "company" | "sequence" | "templates" | "specs" | "security" | "users";
 
 
 export default function SettingsPage() {
@@ -334,6 +336,7 @@ export default function SettingsPage() {
     { id: "users", label: "จัดการผู้ใช้งาน", icon: <Users size={14} /> },
     { id: "sequence", label: "รูปแบบเลขที่", icon: <Fingerprint size={14} /> },
     { id: "templates", label: "ต้นแบบเอกสาร", icon: <FileText size={14} /> },
+    { id: "specs", label: "คลังสเปก TOR", icon: <BookOpen size={14} /> },
     { id: "security", label: "ความปลอดภัย", icon: <ShieldCheck size={14} /> },
   ];
 
@@ -358,13 +361,13 @@ export default function SettingsPage() {
             activeTab={activeTab} 
             onTabChange={(id: any) => setActiveTab(id)} 
           />
-          <PillButton className="px-10 shadow-neon-teal" onClick={() => {
+          {activeTab !== "specs" && <PillButton className="px-10 shadow-neon-teal" onClick={() => {
             if (activeTab === "sequence") saveSequenceFormats();
             else showToast("บันทึกการตั้งค่าสำเร็จ");
           }}>
             <Save size={18} />
             บันทึกการตั้งค่า
-          </PillButton>
+          </PillButton>}
         </div>
       </div>
 
@@ -517,6 +520,12 @@ export default function SettingsPage() {
                      ))}
                   </div>
                )}
+            </div>
+          )}
+
+          {activeTab === "specs" && (
+            <div className="animate-in slide-in-from-bottom duration-500">
+              <SpecLibraryManager />
             </div>
           )}
 

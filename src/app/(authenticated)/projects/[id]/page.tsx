@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft, Briefcase, Building2, CalendarDays, CheckCircle2, ClipboardList, FileText, History,
-  Loader2, MapPin, Package, Pencil, PlayCircle, ShieldCheck, Users, Wallet, XCircle,
+  Loader2, MapPin, Package, Pencil, PlayCircle, Printer, ShieldCheck, Users, Wallet, XCircle,
 } from "lucide-react";
 import {
   GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillInput, PillTabs, StatusBadge, cn,
@@ -146,6 +146,11 @@ export default function ProjectDetailPage() {
         </div>
       </div>
       <div className="flex items-center gap-2 flex-wrap justify-end">
+        {p?.docSections && Object.values(p.docSections).some((v: any) => String(v || "").trim()) && (
+          <PillButton variant="glass" onClick={() => router.push(`/projects/${encodeURIComponent(docId)}/tor`)} className="h-9 px-4 text-xs font-bold">
+            <Printer size={14} className="mr-1.5" /> {p.sectorType === "Private" ? "พิมพ์รายละเอียดโครงการ" : "พิมพ์ร่าง TOR"}
+          </PillButton>
+        )}
         {canEditThis && (
           <PillButton variant="glass" onClick={() => router.push(`/projects/new?edit=${encodeURIComponent(docId)}`)} className="h-9 px-4 text-xs font-bold">
             <Pencil size={14} className="mr-1.5" /> {status === "Rejected" ? "แก้ไขและส่งอนุมัติใหม่" : "แก้ไข / ส่งอนุมัติ"}

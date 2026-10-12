@@ -3,6 +3,7 @@ import type { ApiUser } from "./api-auth";
 import { PROJECT_TYPE_CONFIGS, ProjectTypeCode } from "@/types/database";
 import { computeProjectBudget, normalizeItemLine, normalizeLaborLine } from "./project-budget";
 import { milestoneStatus } from "./project-milestones";
+import { normalizeSpecChoices } from "./spec-library";
 import {
   ALL_DOC_KEYS, BUDGET_SOURCES, PROCUREMENT_METHODS, fiscalYearOf, legalReferences, normalizeExpenses,
   normalizeStage, normalizeTimeline, timelineError,
@@ -163,6 +164,7 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
     milestones,
     docSections,
     aiNotes: str(body.aiNotes, 4000),
+    specChoices: normalizeSpecChoices(body.specChoices),
     docSources: Object.fromEntries(Object.entries(body.docSources && typeof body.docSources === "object" ? body.docSources : {})
       .filter(([k, v]) => ALL_DOC_KEYS.includes(k as any) && (v === "edited" || v === "ai"))),
     quotationDocId: str(body.quotationDocId, 120),

@@ -45,7 +45,7 @@ import { doc, getDoc, getDocs, collection } from "firebase/firestore";
 import { can } from "@/lib/permissions";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import {
-  DocSectionsEditor, ExpensesEditor, FIELD_W, Field, NumCell, TimelineEditor, type DocSource,
+  DocSectionsEditor, ExpensesEditor, FIELD_W, Field, NumCell, SpecChoiceEditor, TimelineEditor, type DocSource, type SpecRow,
 } from "@/components/projects/ProjectPlanEditors";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { ProjectTypeCode, PROJECT_TYPE_CONFIGS } from "@/types/database";
@@ -58,6 +58,7 @@ import {
   normalizeStage, priceForMargin, resolveExpenses, roundUpPrice, sectionNumber, timelineError,
   type DocSectionKey, type ExpenseContext, type ProjectExpense, type ProjectStage, type Sector, type TimelinePhase,
 } from "@/lib/project-templates";
+import { mergeSpecLibrary, specClausesFor, suggestSpec, type SpecChoice } from "@/lib/spec-library";
 
 const STEPS = [
   { title: "ข้อมูลโครงการ" },
@@ -166,6 +167,7 @@ export default function NewProjectPage() {
   const [aiNotes, setAiNotes] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [productSpecs, setProductSpecs] = useState<Record<string, string>>({});
+  const [specUser, setSpecUser] = useState<Record<string, SpecChoice>>({}); // รูปแบบสเปกที่ผู้ใช้เลือกเอง (lineId)
 
   // ---------- 5: ทีมงาน ----------
   const [projectManagerUid, setProjectManagerUid] = useState<string>(user?.uid || "");
@@ -213,11 +215,22 @@ export default function NewProjectPage() {
   const timeline = timelineEdited ?? autoTimeline;
 
   const docDefs = useMemo(() => docSectionsFor(sectorType), [sectorType]);
+  // คลังคุณลักษณะเฉพาะ: แม่แบบมาตรฐาน + ฉบับของบริษัท, จับคู่กับรายการอัตโนมัติ (เลือกเองได้)
+  const { data: companySpecDocs } = useRealtimeCollection<any>(currentCompanyId ? `companies/${currentCompanyId}/spec_templates` : "");
+  const specLibrary = useMemo(() => mergeSpecLibrary(companySpecDocs), [companySpecDocs]);
+  const specRows: SpecRow[] = useMemo(
+    () => lines.filter((l) => l.kind !== "GROUP" && l.name).map((l) => ({ lineId: l.lineId, name: l.name, kind: l.kind, qty: l.qty, unit: l.unit })),
+    [lines]
+  );
+  const specChoices = useMemo(() => Object.fromEntries(specRows.map((r) => [r.lineId, specUser[r.lineId] ?? suggestSpec(r.name, r.kind, specLibrary)])) as Record<string, SpecChoice | null>, [specRows, specUser, specLibrary]);
+  const specClauses = useMemo(() => Object.fromEntries(Object.entries(specChoices).map(([k, c]) => [k, specClausesFor(c, specLibrary)])), [specChoices, specLibrary]);
+  const specAutoIds = useMemo(() => new Set(specRows.filter((r) => !specUser[r.lineId]).map((r) => r.lineId)), [specRows, specUser]);
+
   const autoDoc = useMemo(() => generateAllSections({
     projectName, customerName, sector: sectorType, typeCode: projectTypeCode, stage,
     startDate, endDate, durationDays, budgetAmount, referencePrice: govReferencePrice,
-    budgetSource: govBudgetSource, fiscalYear, warrantyMonths, lines, timeline, productSpecs,
-  }), [projectName, customerName, sectorType, projectTypeCode, stage, startDate, endDate, durationDays, budgetAmount, govReferencePrice, govBudgetSource, fiscalYear, warrantyMonths, lines, timeline, productSpecs]);
+    budgetSource: govBudgetSource, fiscalYear, warrantyMonths, lines, timeline, productSpecs, specClauses,
+  }), [projectName, customerName, sectorType, projectTypeCode, stage, startDate, endDate, durationDays, budgetAmount, govReferencePrice, govBudgetSource, fiscalYear, warrantyMonths, lines, timeline, productSpecs, specClauses]);
   const lockedKeys = useMemo(() => new Set(docDefs.filter((d) => d.locked).map((d) => d.key)), [docDefs]);
   const docSections = useMemo(() => {
     const out = { ...autoDoc } as Record<DocSectionKey, string>;
@@ -298,6 +311,7 @@ export default function NewProjectPage() {
       setDocEdited(savedDoc);
       setDocSource(Object.fromEntries(Object.keys(savedDoc).map((k) => [k, sources[k] || "edited"])));
       setAiNotes(d.aiNotes || "");
+      if (d.specChoices && typeof d.specChoices === "object") setSpecUser(d.specChoices);
       if (d.quotationDocId) setQuotation({ id: d.quotationDocId, docNo: d.clientReference || d.quotationDocId });
       setVisited(new Set(STEPS.map((_, i) => i)));
       setEditLoaded(true);
@@ -486,7 +500,7 @@ export default function NewProjectPage() {
             durationDays, siteLocation, timeline: timeline.map((p) => p.name),
             lines: lines.filter((l) => l.name && !l.isOptional).map((l) => ({
               kind: l.kind, name: l.name, qty: l.qty, unit: l.unit,
-              details: l.details || (l.productId && productSpecs[l.productId]) || "",
+              details: [l.details || (l.productId && productSpecs[l.productId]) || "", ...(specClauses[l.lineId] || [])].filter(Boolean).join("\n"),
             })),
           },
           sections: Object.fromEntries(targets.map((d) => [d.key, { number: sectionNumber(sectorType, d.key), title: d.title, current: docSections[d.key] }])),
@@ -558,6 +572,7 @@ export default function NewProjectPage() {
         docSections,
         docSources: docSource,
         aiNotes,
+        specChoices: Object.fromEntries(Object.entries(specChoices).filter(([, c]) => c)),
         resources: assignedTeam.map((m) => ({ userId: m.uid, name: m.name, role: m.role, allocation: m.allocation })),
         governmentDetails: {
           torDocNo: govTorDocNo, egpProjectNo: govEgpNo, referencePrice: govReferencePrice, budgetAmount: govBudgetAmount,
@@ -984,6 +999,20 @@ export default function NewProjectPage() {
 
   // ---------- ขั้นที่ 4: รายละเอียดโครงการ ----------
   const stepDocument = (
+    <div className="space-y-4">
+    <GlassCard className="p-5 space-y-3">
+      {cardTitle(<ClipboardList size={16} className="text-nexus-teal" />, "รูปแบบคุณลักษณะเฉพาะของแต่ละรายการ",
+        <span className="text-[11px] text-white/40">เลือกได้หลายรูปแบบต่อรายการ · ข้อความไปอยู่ในหัวข้อคุณลักษณะเฉพาะ</span>)}
+      <SpecChoiceEditor
+        rows={specRows}
+        library={specLibrary}
+        choices={specChoices}
+        autoIds={specAutoIds}
+        onChange={(id, c) => setSpecUser((prev) => ({ ...prev, [id]: c }))}
+        onReset={(id) => setSpecUser((prev) => { const n = { ...prev }; delete n[id]; return n; })}
+        manageHref={can(role, "settings:manage") ? "/settings?tab=specs" : undefined}
+      />
+    </GlassCard>
     <GlassCard className="p-5 space-y-4">
       {cardTitle(<FileText size={16} className="text-nexus-teal" />, isGov ? "รายละเอียดโครงการ (ร่างขอบเขตของงาน)" : "รายละเอียดโครงการ",
         <PillButton variant="glass" onClick={() => { setDocEdited({}); setDocSource({}); }} className="h-8 px-3 text-xs font-bold text-white/60">
@@ -1005,6 +1034,7 @@ export default function NewProjectPage() {
         aiBusy={aiBusy}
       />
     </GlassCard>
+    </div>
   );
 
   // ---------- ขั้นที่ 5: ทีมงานและตรวจทาน ----------

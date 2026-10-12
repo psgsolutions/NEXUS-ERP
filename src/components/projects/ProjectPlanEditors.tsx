@@ -12,6 +12,7 @@ import React, { useState } from "react";
 import { Bot, Lock, Plus, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import { PillButton, PillInput, PillSelect, cn } from "@/components/ui/Base";
 import { GanttChart } from "@/components/projects/GanttChart";
+import type { SpecChoice, SpecTemplate } from "@/lib/spec-library";
 import {
   EXPENSE_BASIS_TH, type DocSectionDef, type DocSectionKey, type ExpenseBasis, type ProjectExpense, type TimelinePhase,
 } from "@/lib/project-templates";
@@ -318,6 +319,77 @@ export function DocSectionsEditor({ defs, sections, source, onChange, onRegenera
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+export interface SpecRow { lineId: string; name: string; kind: string; qty: number; unit: string }
+
+/** เลือกแม่แบบคุณลักษณะเฉพาะและรูปแบบการเขียนของแต่ละรายการ (เลือกได้หลายรูปแบบ) */
+export function SpecChoiceEditor({ rows, library, choices, autoIds, onChange, onReset, manageHref }: {
+  rows: SpecRow[];
+  library: SpecTemplate[];
+  choices: Record<string, SpecChoice | null>;
+  /** รายการที่ยังใช้การจับคู่อัตโนมัติ */
+  autoIds: Set<string>;
+  onChange: (lineId: string, choice: SpecChoice) => void;
+  onReset: (lineId: string) => void;
+  manageHref?: string;
+}) {
+  if (!rows.length) return <div className="p-4 border border-dashed border-white/10 rounded-2xl text-center text-white/40 text-xs">ยังไม่มีรายการสินค้าหรืองานบริการ</div>;
+  return (
+    <div className="space-y-2">
+      {rows.map((r) => {
+        const ch = choices[r.lineId] || null;
+        const t = ch?.templateId ? library.find((x) => x.id === ch.templateId) : undefined;
+        const want = r.kind === "PRODUCT" ? "PRODUCT" : "SERVICE";
+        const options = library.filter((x) => x.appliesTo === want);
+        return (
+          <div key={r.lineId} className="grid grid-cols-[minmax(0,1fr)_220px] 2xl:grid-cols-[minmax(0,300px)_240px_minmax(0,1fr)] gap-x-2 gap-y-1.5 items-center p-2.5 rounded-2xl border border-white/5 bg-white/[0.02]">
+            <div className="min-w-0 pl-1">
+              <p className="text-[13px] font-bold text-white truncate" title={r.name}>{r.name}</p>
+              <p className="text-[11px] text-white/40">จำนวน {r.qty.toLocaleString("th-TH")} {r.unit} · {want === "PRODUCT" ? "สินค้า" : "งานบริการ"}
+                {autoIds.has(r.lineId) && ch?.templateId && <span className="text-nexus-teal ml-1.5">· จับคู่อัตโนมัติ</span>}
+                {!autoIds.has(r.lineId) && <button type="button" onClick={() => onReset(r.lineId)} className="ml-1.5 text-white/50 hover:text-nexus-teal">· ใช้การจับคู่อัตโนมัติ</button>}
+              </p>
+            </div>
+            <PillSelect
+              value={ch?.templateId || "NONE"}
+              onChange={(e) => {
+                const id = e.target.value === "NONE" ? null : e.target.value;
+                const nt = library.find((x) => x.id === id);
+                const defs = nt?.variants.filter((v) => v.isDefault).map((v) => v.id) || [];
+                onChange(r.lineId, { templateId: id, variantIds: defs.length ? defs : nt?.variants.slice(0, 1).map((v) => v.id) || [] });
+              }}
+              className="h-9 text-sm"
+            >
+              <option value="NONE">— ใช้รายละเอียดของรายการ —</option>
+              {options.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+            </PillSelect>
+            <div className="col-span-2 2xl:col-span-1 flex flex-wrap gap-1.5 min-w-0">
+              {t ? t.variants.map((v) => {
+                const on = !!ch?.variantIds.includes(v.id);
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    title={v.clauses.join("\n")}
+                    onClick={() => onChange(r.lineId, { templateId: t.id, variantIds: on ? ch!.variantIds.filter((x) => x !== v.id) : [...(ch?.variantIds || []), v.id] })}
+                    className={cn("h-8 px-3 rounded-full border text-[12px] font-bold whitespace-nowrap flex items-center gap-1",
+                      on ? "border-nexus-teal/40 bg-nexus-teal/15 text-nexus-teal" : "border-white/10 bg-white/[0.02] text-white/50 hover:text-white")}
+                  >
+                    {on && <span aria-hidden>✓</span>}{v.name}
+                  </button>
+                );
+              }) : <span className="text-[12px] text-white/35 pl-1">ใช้รายละเอียดสินค้า/สเปกจากทะเบียนสินค้า</span>}
+            </div>
+          </div>
+        );
+      })}
+      {manageHref && (
+        <p className="text-[11px] text-white/40 pt-1">เพิ่ม/แก้ไขแม่แบบและรูปแบบการเขียนได้ที่ <a href={manageHref} target="_blank" rel="noreferrer" className="text-nexus-teal hover:underline">ตั้งค่า › คลังสเปก TOR</a></p>
+      )}
     </div>
   );
 }

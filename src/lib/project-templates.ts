@@ -348,6 +348,8 @@ export interface DocContext {
   timeline: TimelinePhase[];
   /** สเปกจากทะเบียนสินค้า (productId -> ข้อความ) ใช้เมื่อรายการไม่มีรายละเอียด */
   productSpecs?: Record<string, string>;
+  /** ข้อความจากคลังสเปกตามรูปแบบที่เลือก (lineId -> ข้อความ) */
+  specClauses?: Record<string, string[]>;
 }
 
 const OBJECTIVES: Record<ProjectTypeCode, string[]> = {
@@ -422,8 +424,9 @@ export function generateSection(key: DocSectionKey, c: DocContext): string {
       for (const l of real) {
         if (l.kind === "GROUP") { out.push(`${out.length ? "\n" : ""}${l.name}`); continue; }
         i += 1;
-        const details = String(l.details || (l.productId && c.productSpecs?.[l.productId]) || "")
-          .split(/\r?\n/).map(specSentence).filter(Boolean);
+        const own = String(l.details || (l.productId && c.productSpecs?.[l.productId]) || "").split(/\r?\n/);
+        // รายละเอียดของรายการแปลงเป็นภาษาข้อกำหนด; ข้อความจากคลังสเปกเป็นประโยคข้อกำหนดอยู่แล้ว
+        const details = Array.from(new Set([...own.map(specSentence), ...(c.specClauses?.[l.lineId] || []).map((x) => x.trim())].filter(Boolean)));
         out.push(`${n}.${i} ${l.name} จำนวน ${qtyText(l.qty)} ${l.unit}${details.length ? " มีคุณลักษณะดังนี้" : ""}`);
         details.forEach((d, j) => out.push(`    ${n}.${i}.${j + 1} ${d}`));
       }

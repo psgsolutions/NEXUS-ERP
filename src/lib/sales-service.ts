@@ -36,41 +36,6 @@ export interface Quotation {
   paymentTerms?: string;
 }
 
-export async function createQuotation(quote: Quotation) {
-  const { companyId, items } = quote;
-
-  // 1. Calculate Margin & Validation
-  let totalRevenue = 0;
-  let totalCost = 0;
-  items.forEach(item => {
-    totalRevenue += item.price * item.quantity;
-    totalCost += item.cost * item.quantity;
-  });
-
-  const margin = totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0;
-  
-  // Rule: Reject if margin < 10% (unless override by superadmin)
-  if (margin < 10 && totalRevenue > 0) {
-    throw new Error(`กำไรต่ำกว่าเกณฑ์ (${margin.toFixed(2)}%) กรุณาขออนุมัติจาก Superadmin`);
-  }
-
-  // 2. Generate QT ID
-  const quoteId = quote.id || await nexusSequenceEngine("QT", companyId);
-
-  // 3. Save to Firestore
-  const quoteRef = doc(db, `companies/${companyId}/quotations`, quoteId);
-  await setDoc(quoteRef, {
-    ...quote,
-    id: quoteId,
-    quoteId,
-    totalRevenue,
-    margin,
-    status: quote.id && quote.id.includes("-REV") ? "Draft" : "Draft", // Keep Draft for revisions
-    createdAt: serverTimestamp()
-  }, { merge: true });
-
-  return quoteId;
-}
 
 export async function createSalesOrder(data: any, companyId: string) {
   const soId = data.id || await nexusSequenceEngine("SO", companyId);

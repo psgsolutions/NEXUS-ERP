@@ -61,7 +61,7 @@ import { useAuth } from "@/context/AuthContext";
 import { auditService } from "@/services/audit.service";
 import { db } from "@/lib/firebase-client";
 import { collection, query, where, onSnapshot, doc, setDoc } from "firebase/firestore";
-import { createQuotation, createSalesOrder, autoGenerateOrdersFromSO, createInvoiceFromSO } from "@/lib/sales-service";
+import { createSalesOrder, autoGenerateOrdersFromSO, createInvoiceFromSO } from "@/lib/sales-service";
 
 export async function handleConvertSOApi(quoteId: string, companyId: string) {
   const res = await apiFetch("/api/sales/convert-so", {

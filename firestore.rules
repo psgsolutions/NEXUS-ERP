@@ -6,7 +6,7 @@ rules_version = '2';
 // - Root collections: อ่าน/เขียนได้เฉพาะเอกสารบริษัทตัวเอง (query ฝั่ง client ต้องมี where("companyId", "==", ...) เสมอ)
 // - Audit log เขียนได้อย่างเดียว ห้ามแก้/ลบ; counters และ periodClosings เขียนได้ผ่าน Admin SDK (API) เท่านั้น
 // - เอกสารที่มี API ดูแลสถานะ (ใบเสร็จ ใบสำคัญจ่าย เงินเดือน พนักงาน ลงเวลา หมายเลขเครื่อง) เขียนผ่าน API เท่านั้น
-// - ใบเสนอราคา: สร้างได้จากหน้าจอ แต่แก้/อนุมัติ/ออกฉบับแก้ไขผ่าน API เท่านั้น และลบได้เฉพาะใบที่ยังไม่ส่งลูกค้า
+// - ใบเสนอราคา: สร้าง/แก้/อนุมัติ/ออกฉบับแก้ไขผ่าน API เท่านั้น ลบจากหน้าจอได้เฉพาะใบที่ยังไม่ส่งลูกค้า
 // ชุดเป้าหมายแบบเข้มงวด (Custom Claims + server-only journal) อยู่ที่ firestore.strict.rules
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -161,22 +161,13 @@ service cloud.firestore {
 
       match /quotations/{quotationId} {
         allow read: if inCompany(companyId);
-        allow create: if inCompany(companyId) && newDataInMyCompany() &&
-          request.resource.data.get('status', 'DRAFT') in ['DRAFT', 'Draft', 'PENDING_APPROVAL', 'SENT'];
-        allow update: if false; // /api/quotations/{id}/save | approval | create-revision | internal-notes
+        // สร้าง/แก้/อนุมัติ/ออกฉบับแก้ไข ผ่าน /api/quotations/* เท่านั้น (ออกเลขที่และตรวจ GP ฝั่งเซิร์ฟเวอร์)
+        allow create, update: if false;
         allow delete: if inCompany(companyId) && quotationEditable(resource.data);
 
-        // รายการสินค้า / บันทึกการทำงาน: เขียนจากหน้าจอได้เฉพาะตอนสร้างใบใหม่ (batch เดียวกับหัวเอกสาร) หรือใบที่ยังแก้ได้
         match /{sub}/{subId} {
           allow read: if inCompany(companyId);
-          allow create: if inCompany(companyId) && (
-            sub == 'audit_logs' ||
-            (!exists(/databases/$(database)/documents/companies/$(companyId)/quotations/$(quotationId)) &&
-              existsAfter(/databases/$(database)/documents/companies/$(companyId)/quotations/$(quotationId))) ||
-            quotationEditable(get(/databases/$(database)/documents/companies/$(companyId)/quotations/$(quotationId)).data)
-          );
-          allow update, delete: if inCompany(companyId) && sub != 'audit_logs' &&
-            quotationEditable(get(/databases/$(database)/documents/companies/$(companyId)/quotations/$(quotationId)).data);
+          allow write: if false;
         }
       }
 

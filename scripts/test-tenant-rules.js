@@ -104,21 +104,21 @@ async function main() {
     ['period closings are server-only', () => assertFails(setDoc(doc(userA, 'periodClosings/A_2026_02'), { companyId: 'A' }))],
 
     // Quotations: create on screen, edit via API only, delete only before sending
-    ['member creates draft quotation', () => assertSucceeds(setDoc(doc(userA, 'companies/A/quotations/qNew'), { companyId: 'A', status: 'DRAFT' }))],
+    ['member cannot create quotation directly (API only)', () => assertFails(setDoc(doc(userA, 'companies/A/quotations/qNew'), { companyId: 'A', status: 'DRAFT' }))],
     ['member cannot create quotation as APPROVED', () => assertFails(setDoc(doc(userA, 'companies/A/quotations/qBad'), { companyId: 'A', status: 'Approved' }))],
     ['member cannot update a quotation directly', () => assertFails(updateDoc(doc(userA, 'companies/A/quotations/qDraft'), { grandTotal: 1 }))],
     ['member cannot edit a sent quotation', () => assertFails(updateDoc(doc(userA, 'companies/A/quotations/qSent'), { grandTotal: 1 }))],
     ['member deletes draft quotation', () => assertSucceeds(deleteDoc(doc(userA, 'companies/A/quotations/qDraft')))],
     ['member cannot delete sent quotation', () => assertFails(deleteDoc(doc(userA, 'companies/A/quotations/qSent')))],
-    ['lines created with a new quotation in one batch', async () => {
+    ['cannot create quotation + lines in a batch from client', async () => {
       const b = writeBatch(userA);
       b.set(doc(userA, 'companies/A/quotations/qBatch'), { companyId: 'A', status: 'SENT' });
       b.set(doc(userA, 'companies/A/quotations/qBatch/lines/l1'), { qty: 2 });
-      return assertSucceeds(b.commit());
+      return assertFails(b.commit());
     }],
     ['cannot add lines to a sent quotation later', () => assertFails(setDoc(doc(userA, 'companies/A/quotations/qSent/lines/l2'), { qty: 9 }))],
     ['cannot change lines of a sent quotation', () => assertFails(updateDoc(doc(userA, 'companies/A/quotations/qSent/lines/l1'), { qty: 9 }))],
-    ['audit log entry on sent quotation allowed', () => assertSucceeds(addDoc(collection(userA, 'companies/A/quotations/qSent/audit_logs'), { action: 'VIEW' }))],
+    ['client cannot write quotation audit log', () => assertFails(addDoc(collection(userA, 'companies/A/quotations/qSent/audit_logs'), { action: 'FAKE' }))],
     ['member reads sent quotation lines', () => assertSucceeds(getDocs(collection(userA, 'companies/A/quotations/qSent/lines')))],
 
     // Server-only business documents

@@ -95,3 +95,29 @@ export async function nextCounterSequence(type: IdType, companyId: string, conte
     return nextSeq;
   });
 }
+
+/**
+ * [SERVER-ONLY] เหมือน nextCounterSequence (ตัวนับรูปแบบ idService เช่น INV, BN) แต่ออกเลขภายใน transaction ของผู้เรียก
+ * เลขถูกใช้เฉพาะเมื่อ transaction สำเร็จ — ใบกำกับภาษีต้องเรียงเลขต่อเนื่อง ห้ามข้าม
+ *
+ * const take = prepareCounter("INV", companyId);
+ * await adminDb.runTransaction(async (tx) => { const seq = await take(tx); ... seq.commit(); });
+ */
+export function prepareCounter(type: IdType, companyId: string, context?: string) {
+  if (!companyId) throw new Error("Company ID is required for sequence generation.");
+  const yy = new Date().getFullYear().toString().slice(-2);
+  const counterRef = adminDb.collection("counters").doc(idService.counterId(type, companyId, context));
+  return async (tx: FirebaseFirestore.Transaction) => {
+    const snap = await tx.get(counterRef);
+    const data = snap.data() || {};
+    const currentSeq = snap.exists && !(type !== "SKU" && data.year && data.year !== yy) ? data.currentValue || data.seq || 0 : 0;
+    const nextSeq = currentSeq + 1;
+    return {
+      number: idService.formatId(type, nextSeq, context),
+      commit: () => {
+        const now = admin.firestore.FieldValue.serverTimestamp();
+        tx.set(counterRef, { currentValue: nextSeq, seq: nextSeq, updatedAt: now, lastUpdated: now, type, docType: type, year: yy, companyId, is_deleted: false, _v: 1 }, { merge: true });
+      },
+    };
+  };
+}

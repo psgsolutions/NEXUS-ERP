@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { apiFetch } from "@/lib/api-client";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Building2, Calendar, CheckCircle2, FileText, MapPin, Truck, XCircle, AlertTriangle } from "lucide-react";
 import { PillButton, GlassCard, StatusBadge, NexusTable, NexusTableRow, NexusTableCell } from "@/components/ui/Base";
@@ -9,7 +10,6 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
-import { DocumentFlowService } from "@/services/documentFlow.service";
 import { soPickRemaining } from "@/lib/picking";
 import { db } from "@/lib/firebase-client";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
@@ -79,7 +79,7 @@ export default function SalesOrderDetailPage() {
     setBusy(true);
     setMessage(null);
     try {
-      const result = await DocumentFlowService.issueTaxInvoiceAndBillingNoteFromSO(companyId, { ...so, id: soDocId }, userId);
+      const result = await issueTaxInvoiceApi(companyId, soDocId);
       setMessage({ type: "ok", text: `ออกใบกำกับภาษี ${result.taxInvoiceNo} และใบวางบิล ${result.billingNoteNo} แล้ว` });
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "ออกใบกำกับภาษีไม่สำเร็จ" });
@@ -243,4 +243,12 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
       <span className="text-white font-mono font-bold text-right">{value}</span>
     </div>
   );
+}
+
+/** ออกใบกำกับภาษี + ใบวางบิลจากใบสั่งขาย ผ่านเซิร์ฟเวอร์ (เลขเรียงต่อเนื่อง ออกได้ครั้งเดียว) */
+async function issueTaxInvoiceApi(companyId: string, salesOrderId: string) {
+  const res = await apiFetch("/api/sales/tax-invoice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, salesOrderId }) });
+  const json = await res.json();
+  if (!res.ok || !json.success) throw new Error(json.error || "ออกใบกำกับภาษีไม่สำเร็จ");
+  return json as { taxInvoiceNo: string; billingNoteNo: string };
 }

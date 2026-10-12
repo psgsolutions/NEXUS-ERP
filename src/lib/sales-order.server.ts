@@ -2,12 +2,25 @@ import * as admin from "firebase-admin";
 import { adminDb } from "./firebase-admin";
 import { nexusSequenceServer } from "./sequence-server";
 import { assertPeriodOpen } from "./period-close-service";
-import type { Quotation } from "./sales-service";
+
+/** ข้อมูลใบเสนอราคาที่ใช้ตอนแปลงเป็นใบสั่งขาย */
+interface Quotation {
+  id?: string;
+  customerId: string;
+  items: { productId: string; quantity: number; price: number; cost: number }[];
+  discount?: number;
+  companyId: string;
+  subject?: string;
+  date?: string;
+  validUntil?: string;
+  taxMode?: string;
+  paymentTerms?: string;
+}
 
 /**
  * [SERVER-ONLY: Admin SDK] แปลงใบเสนอราคาเป็นใบสั่งขาย (ใช้ผ่าน POST /api/sales/convert-so)
  * จองสต็อก (3-State Lock), สร้าง SO และอัปเดตใบเสนอราคาใน transaction เดียว
- * ไม่ลงบัญชีรายได้ที่นี่: รายได้และภาษีขายรับรู้ตอนออกใบกำกับภาษี (DocumentFlowService.issueTaxInvoiceAndBillingNoteFromSO)
+ * ไม่ลงบัญชีรายได้ที่นี่: รายได้และภาษีขายรับรู้ตอนออกใบกำกับภาษี (POST /api/sales/tax-invoice)
  */
 export async function convertToSalesOrder(quoteId: string, companyId: string) {
   await assertPeriodOpen(companyId);

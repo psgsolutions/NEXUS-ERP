@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
+import { apiFetch } from "@/lib/api-client";
 import { useRouter } from "next/navigation";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { PillButton, NexusTable, NexusTableRow, NexusTableCell, NexusSearchInput, StatusBadge, GlassCard } from "@/components/ui/Base";
 import { Plus, FileCheck, Calendar, Building2, Search, DollarSign, Clock, CheckCircle2, Truck, PackageCheck, FileText } from "lucide-react";
-import { DocumentFlowService } from "@/services/documentFlow.service";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
 
@@ -192,11 +192,7 @@ export default function SalesOrderDashboardPage() {
                             className="h-8 px-4 text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 backdrop-blur-md hover:bg-emerald-500/30"
                             onClick={async () => {
                               try {
-                                const result = await DocumentFlowService.issueTaxInvoiceAndBillingNoteFromSO(
-                                  companyId || "COMP-001",
-                                  so,
-                                  user?.uid || "OPERATOR"
-                                );
+                                const result = await issueTaxInvoice(companyId || "", so.id);
                                 showAlert(`ออกใบกำกับภาษี (${result.taxInvoiceNo}) และใบวางบิล (${result.billingNoteNo}) เรียบร้อยแล้ว`);
                               } catch (err: any) {
                                 showAlert(`เกิดข้อผิดพลาด: ${err.message}`);
@@ -277,4 +273,12 @@ export default function SalesOrderDashboardPage() {
 
     </div>
   );
+}
+
+/** ออกใบกำกับภาษี + ใบวางบิลจากใบสั่งขาย ผ่านเซิร์ฟเวอร์ (เลขเรียงต่อเนื่อง ออกได้ครั้งเดียว) */
+async function issueTaxInvoice(companyId: string, salesOrderId: string) {
+  const res = await apiFetch("/api/sales/tax-invoice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, salesOrderId }) });
+  const json = await res.json();
+  if (!res.ok || !json.success) throw new Error(json.error || "ออกใบกำกับภาษีไม่สำเร็จ");
+  return json as { taxInvoiceNo: string; billingNoteNo: string };
 }

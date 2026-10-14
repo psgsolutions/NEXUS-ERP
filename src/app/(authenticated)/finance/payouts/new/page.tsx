@@ -15,7 +15,7 @@ export default function CreatePayoutPage() {
   const { user, companyId } = useAuth();
   const currentCompanyId = companyId || "";
 
-  const { data: salesOrders } = useRealtimeCollection('sales_orders');
+  const { data: salesOrders } = useRealtimeCollection(currentCompanyId ? `companies/${currentCompanyId}/sales_orders` : '');
   
   const [formData, setFormData] = useState({
     soId: '',

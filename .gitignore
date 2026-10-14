@@ -41,3 +41,10 @@ serviceAccountKey*.json
 temp_log.txt
 firestore-debug.log
 /NEXUS-ERP/
+
+# Local junk (installers, logs, nested checkouts)
+*.exe
+firestore-debug.log
+temp_log.txt
+recovered_page.tsx
+/NEXUS-ERP/

@@ -51,7 +51,8 @@ export async function POST(request: Request) {
       const snap = await tx.get(ref);
       if (!snap.exists) throw new ApiAuthError(404, `ไม่พบ${label} ${id}`);
       const d = snap.data()!;
-      const docNo = d.poCode || d.expenseId || d.whtId || d.soId || d.documentNo || id;
+      const own = { purchase_order: d.poCode, expense: d.expenseId, wht: d.whtId, sales_order: d.soId }[kind];
+      const docNo = String(own || d.documentNo || id);
 
       if (kind === "purchase_order") {
         const st = normalizePoStatus(d.status);

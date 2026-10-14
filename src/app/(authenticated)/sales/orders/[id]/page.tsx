@@ -96,7 +96,7 @@ export default function SalesOrderDetailPage() {
   if (!so) {
     return (
       <div className="p-10 space-y-4">
-        <p className="text-white/60 text-sm">ไม่พบใบสั่งขาย "{soDocId}"</p>
+        <p className="text-white/60 text-sm">ไม่พบใบสั่งขาย &quot;{soDocId}&quot;</p>
         <PillButton variant="glass" onClick={() => router.push("/sales/orders")}>กลับไปหน้ารายการใบสั่งขาย</PillButton>
       </div>
     );

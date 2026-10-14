@@ -45,7 +45,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@firebase/rules-unit-testing": "^5.0.2",
+    "@firebase/rules-unit-testing": "^3.0.4",
     "@playwright/test": "^1.63.0",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",

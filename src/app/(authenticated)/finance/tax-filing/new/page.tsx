@@ -9,9 +9,9 @@ import { formatCurrency } from "@/lib/erp-logic";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase-client";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { apiFetch } from "@/lib/api-client";
 import {
-  calculatePP30Tax, fetchWHTTaxRecords, checkTaxFilingExportLock, lockTaxFilingExport,
+  calculatePP30Tax, fetchWHTTaxRecords, checkTaxFilingExportLock,
   exportPP30ToCSV, exportWHTToCSV, PP30TaxData, WHTTaxRecord, TaxFilingLock,
 } from "@/lib/tax-filing-service";
 
@@ -84,23 +84,14 @@ export default function NewTaxFilingPage() {
     if (!companyId || !user) return;
     setIsSaving(true);
     try {
-      // ล็อกงวด (กันยื่นซ้ำ) + บันทึกประวัติการยื่นให้แสดงในหน้าการเงิน แท็บภาษี
-      await lockTaxFilingExport(companyId, taxType, period, user.uid);
-      const [year, month] = period.split("-").map(Number);
-      await addDoc(collection(db, "taxFilings"), {
-        companyId,
-        type: taxType,
-        yearMonth: period,
-        year,
-        month,
-        revenue: baseAmount,
-        taxAmount: taxDue,
-        recordCount: taxType === "VAT30" ? (vat?.journalCount ?? 0) : wht.length,
-        status: "filed",
-        filedBy: user.email || user.uid,
-        createdAt: serverTimestamp(),
-        isDeleted: false,
+      // บันทึกที่ server: คำนวณยอดซ้ำจากข้อมูลจริง ล็อกงวด และเก็บประวัติการยื่นในทรานแซกชันเดียว
+      const res = await apiFetch("/api/finance/tax-filings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, taxType, period }),
       });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
       showAlert(`บันทึกการยื่น ${TAX_LABEL[taxType]} งวด ${periodLabel(period)} แล้ว`);
       router.push("/finance");
     } catch (err: any) {

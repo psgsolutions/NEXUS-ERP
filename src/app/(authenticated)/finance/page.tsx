@@ -47,13 +47,8 @@ import { DocumentFlowStepper } from "@/components/ui/DocumentFlowStepper";
 import { ReceiptModal } from "@/components/finance/ReceiptModal";
 import { CustomerRefundsPanel } from "@/components/finance/CustomerRefundsPanel";
 import { PaymentModal } from "@/components/finance/PaymentModal";
-import { TaxFilingModal } from "@/components/finance/TaxFilingModal";
-import { AssetDepreciationModal } from "@/components/finance/AssetDepreciationModal";
 import { useAuth } from "@/context/AuthContext";
-import { auditService } from "@/services/audit.service";
 import { db } from "@/lib/firebase-client";
-import { collection, doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { saveToFirestore } from "@/lib/firebaseUtils";
 import { useSystemDialog } from "@/context/DialogContext";
 import Link from "next/link";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
@@ -69,8 +64,6 @@ export default function FinancePage() {
   const { user, companyId, role } = useAuth();
   const [activeTab, setActiveTab] = useState<FinanceSubModule>("overview");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isTaxModalOpen, setIsTaxModalOpen] = useState(false);
-  const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
 
   const [modalActiveTab, setModalActiveTab] = useState("basic");
   const { showAlert } = useSystemDialog();
@@ -582,58 +575,6 @@ export default function FinancePage() {
 
       {/* Finance Management Modals */}
 
-
-      <TaxFilingModal
-        isOpen={isTaxModalOpen}
-        onClose={() => setIsTaxModalOpen(false)}
-        onConfirm={async (data) => {
-          if (!user || !companyId) return;
-          try {
-            const saveOp = async () => {
-              const taxRef = doc(collection(db, "taxFilings"));
-              await setDoc(taxRef, {
-                ...data,
-                companyId,
-                status: "filed",
-                createdAt: serverTimestamp()
-              });
-              await auditService.logCreate(user.uid, companyId, "FINANCE_TAX", "NEW", data);
-            };
-            await saveToFirestore(saveOp());
-            setIsTaxModalOpen(false);
-            showAlert(`ยื่นแบบ ${data.type} งวด ${data.month || 'เดือนนี้'} สำเร็จ`, "System Notification", "info");
-          } catch (err: any) {
-            console.error(err);
-            showAlert(`ซิงค์ข้อมูลล้มเหลว: ${err.message}`, "System Notification", "error");
-          }
-        }}
-      />
-
-      <AssetDepreciationModal
-        isOpen={isAssetModalOpen}
-        onClose={() => setIsAssetModalOpen(false)}
-        onConfirm={async (data) => {
-          if (!user || !companyId) return;
-          try {
-            const saveOp = async () => {
-              const depRef = doc(collection(db, "assetDepreciations"));
-              await setDoc(depRef, {
-                ...data,
-                companyId,
-                status: "posted",
-                createdAt: serverTimestamp()
-              });
-              await auditService.logCreate(user.uid, companyId, "FINANCE_ASSETS", "NEW", data);
-            };
-            await saveToFirestore(saveOp());
-            setIsAssetModalOpen(false);
-            showAlert(`ประมวลผลค่าเสื่อมราคาสำเร็จ`, "System Notification", "info");
-          } catch (err: any) {
-            console.error(err);
-            showAlert(`ซิงค์ข้อมูลล้มเหลว: ${err.message}`, "System Notification", "error");
-          }
-        }}
-      />
 
       <Toast message={toast.message} isVisible={toast.isVisible} onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} />
     </div>

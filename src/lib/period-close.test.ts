@@ -1,9 +1,4 @@
 import assert from "node:assert";
-import { assertPeriodOpen } from "./period-close-service";
-import { AccountingEngine } from "@/services/accountingEngine";
-import { postToGL } from "./financeEngine";
-import { convertToSalesOrder } from "./sales-order.server";
-import { processStockMovement } from "./stock-service";
 
 /**
  * Integration Test for Period Close Lock V3.0

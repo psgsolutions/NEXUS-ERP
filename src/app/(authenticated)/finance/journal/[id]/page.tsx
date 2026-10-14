@@ -7,13 +7,10 @@ import { PillButton, GlassCard, StatusBadge, NexusTable, NexusTableRow, NexusTab
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { formatCurrency } from "@/lib/erp-logic";
 import { useAuth } from "@/context/AuthContext";
-import { assertPeriodOpen } from "@/lib/period-close-service";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
-import { db } from "@/lib/firebase-client";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
-
-// ผู้มีสิทธิ์อนุมัติลงบัญชี (รายการอัตโนมัติถูกสร้างเป็น draft ให้นักบัญชีตรวจก่อน)
-const POSTING_ROLES = ["SUPERADMIN", "ADMIN", "ACCOUNTANT"];
+import { useSystemDialog } from "@/context/DialogContext";
+import { apiFetch } from "@/lib/api-client";
+import { JOURNAL_POSTING_ROLES, isOwnJournal } from "@/lib/journal-posting";
 
 const toDate = (v: any) => {
   if (!v) return "-";
@@ -25,6 +22,7 @@ export default function JournalDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user, companyId, role } = useAuth();
+  const { showConfirm } = useSystemDialog();
 
   // id = path ของเอกสาร (companies/{companyId}/journal_entries/{id} หรือ journal_entries/{id}) หรือ ID อย่างเดียว
   const raw = decodeURIComponent(String(params.id || ""));
@@ -50,21 +48,24 @@ export default function JournalDetailPage() {
   const totalCr = lines.reduce((s, l) => s + (Number(l.credit) || 0), 0);
   const balanced = Math.abs(totalDr - totalCr) < 0.01;
   const isDraft = String(jv.status || "posted").toLowerCase() === "draft";
-  const canPost = isDraft && balanced && POSTING_ROLES.includes(String(role || "").toUpperCase());
+  const roleUpper = String(role || "").toUpperCase();
+  // ลงบัญชีผ่าน API เท่านั้น (รายการรุ่นเก่าที่ root ลงบัญชีจากหน้านี้ไม่ได้)
+  const isCompanyJournal = !!allowedPath && allowedPath.startsWith(`companies/${companyId}/journal_entries/`);
+  const ownEntry = isOwnJournal(jv, user?.uid, user?.email) && roleUpper !== "SUPERADMIN";
+  const canPost = isDraft && balanced && isCompanyJournal && !ownEntry && JOURNAL_POSTING_ROLES.includes(roleUpper);
 
   const post = async () => {
-    if (!confirm("ยืนยันอนุมัติลงบัญชีรายการนี้? หลังลงบัญชีแล้วแก้ไขไม่ได้ ต้องกลับรายการเท่านั้น")) return;
+    if (!(await showConfirm("ยืนยันอนุมัติลงบัญชีรายการนี้? หลังลงบัญชีแล้วแก้ไขไม่ได้ ต้องกลับรายการเท่านั้น"))) return;
     setBusy(true);
     setMessage(null);
     try {
-      await assertPeriodOpen(companyId || "", (jv.date || jv.createdAt?.toDate?.()) as any);
-      await updateDoc(doc(db, allowedPath!), {
-        status: "posted",
-        isImmutable: true,
-        postedBy: user?.email || user?.uid || "",
-        postedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+      const res = await apiFetch("/api/accounting/journal-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, journalId: allowedPath!.split("/").pop() }),
       });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "ลงบัญชีไม่สำเร็จ");
       setMessage({ type: "ok", text: "อนุมัติลงบัญชีแล้ว" });
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "ลงบัญชีไม่สำเร็จ" });
@@ -95,7 +96,11 @@ export default function JournalDetailPage() {
           </PillButton>
         )}
         {isDraft && !balanced && <span className="text-[11px] text-danger">เดบิตไม่เท่ากับเครดิต ลงบัญชีไม่ได้</span>}
-        {isDraft && balanced && !canPost && <span className="text-[11px] text-white/40">รอนักบัญชีหรือผู้ดูแลระบบอนุมัติ</span>}
+        {isDraft && balanced && !canPost && (
+          <span className="text-[11px] text-white/40">
+            {ownEntry ? "รายการที่คุณสร้าง ต้องให้ผู้อื่นในฝ่ายบัญชีอนุมัติ" : !isCompanyJournal ? "รายการรุ่นเก่า อนุมัติจากหน้านี้ไม่ได้" : "รอนักบัญชีหรือผู้ดูแลระบบอนุมัติ"}
+          </span>
+        )}
       </div>
       {message && (
         <div className={`w-full sm:basis-full p-3 rounded-xl text-[12px] font-bold flex items-center gap-2 ${message.type === "ok" ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400" : "bg-red-500/10 border border-red-500/30 text-red-400"}`}>

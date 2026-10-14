@@ -45,6 +45,8 @@ async function main() {
     await setDoc(doc(db, 'companies/A/projects/P1'), { companyId: 'A', status: 'In Progress' });
     await setDoc(doc(db, 'companies/A/customer_refunds/RF-1'), { companyId: 'A', amount: 100 });
     await setDoc(doc(db, 'companies/A/counters/RE'), { lastSeq: 5 });
+    await setDoc(doc(db, 'companies/A/journal_entries/J1'), { companyId: 'A', status: 'draft' });
+    await setDoc(doc(db, 'taxFilings/T1'), { companyId: 'A' });
     await setDoc(doc(db, 'companies/A/projects/P1/change_orders/co1'), { status: 'PENDING' });
   });
 
@@ -84,8 +86,8 @@ async function main() {
     ['member cannot list all companies', () => assertFails(getDocs(collection(userA, 'companies')))],
     ['member reads own company subcollection', () => assertSucceeds(getDoc(doc(userA, 'companies/A/quotations/q1')))],
     ['member cannot read other company subcollection', () => assertFails(getDoc(doc(userA, 'companies/B/quotations/q2')))],
-    ['member writes own company subcollection', () => assertSucceeds(setDoc(doc(userA, 'companies/A/journal_entries/j1'), { companyId: 'A' }))],
-    ['member cannot write other company subcollection', () => assertFails(setDoc(doc(userA, 'companies/B/journal_entries/j1'), { companyId: 'B' }))],
+    ['member writes own company subcollection', () => assertSucceeds(setDoc(doc(userA, 'companies/A/site_notes/n1'), { companyId: 'A' }))],
+    ['member cannot write other company subcollection', () => assertFails(setDoc(doc(userA, 'companies/B/site_notes/n1'), { companyId: 'B' }))],
     ['member cannot create a company', () => assertFails(setDoc(doc(userA, 'companies/C'), { name: 'C' }))],
 
     // Users / privilege escalation
@@ -137,6 +139,17 @@ async function main() {
     ['member cannot read other-company employee', () => assertFails(getDoc(doc(userA, 'employees/eB')))],
     ['member cannot edit employee (salary) directly', () => assertFails(updateDoc(doc(adminA, 'employees/eA'), { salary: 999999 }))],
     ['member cannot write attendance directly', () => assertFails(addDoc(collection(userA, 'attendance'), { companyId: 'A', type: 'IN' }))],
+
+    // Journals & tax filings: API only (posting needs role, period and separation-of-duties checks)
+    ['member reads own journal', () => assertSucceeds(getDoc(doc(userA, 'companies/A/journal_entries/J1')))],
+    ['member cannot create journal directly', () => assertFails(setDoc(doc(userA, 'companies/A/journal_entries/J2'), { companyId: 'A', status: 'posted' }))],
+    ['admin cannot post journal directly', () => assertFails(updateDoc(doc(adminA, 'companies/A/journal_entries/J1'), { status: 'posted' }))],
+    ['admin cannot delete journal', () => assertFails(deleteDoc(doc(adminA, 'companies/A/journal_entries/J1')))],
+    ['member cannot write legacy root journal', () => assertFails(setDoc(doc(userA, 'journal_entries/x'), { companyId: 'A' }))],
+    ['member reads own tax filing', () => assertSucceeds(getDoc(doc(userA, 'taxFilings/T1')))],
+    ['member cannot create tax filing', () => assertFails(setDoc(doc(userA, 'taxFilings/T2'), { companyId: 'A' }))],
+    ['member cannot fake tax filing lock', () => assertFails(setDoc(doc(userA, 'companies/A/tax_filing_locks/L1'), { isLocked: true }))],
+    ['member cannot write depreciation run', () => assertFails(setDoc(doc(userA, 'assetDepreciations/A_2026-10'), { companyId: 'A' }))],
 
     // Company document counters: API only (tax numbers RE/QT/RF live here)
     ["member reads company counter", () => assertSucceeds(getDoc(doc(userA, "companies/A/counters/RE")))],

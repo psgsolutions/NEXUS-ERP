@@ -74,7 +74,7 @@ service cloud.firestore {
     // ---------- Root collections (generic) ----------
     // collection ที่มีกฎเฉพาะด้านล่างถูกตัดออกจาก wildcard เพื่อไม่ให้ wildcard อนุญาตทับ
     function isSpecialRoot(collectionName) {
-      return collectionName in ['users', 'companies', 'counters', 'periodClosings', 'logs', 'activity_logs', 'employees', 'attendance'];
+      return collectionName in ['users', 'companies', 'counters', 'periodClosings', 'logs', 'activity_logs', 'employees', 'attendance', 'journal_entries', 'taxFilings', 'assetDepreciations'];
     }
 
     match /{collectionName}/{documentId} {
@@ -113,6 +113,23 @@ service cloud.firestore {
       allow write: if false; // ปิด/เปิดงวดผ่าน /api/accounting/period-close|period-reopen เท่านั้น
     }
 
+    // รายการบัญชีรุ่นเก่า / ประวัติการยื่นภาษี / การประมวลผลค่าเสื่อม: อ่านได้ เขียนผ่าน API เท่านั้น
+    match /journal_entries/{entryId} {
+      allow get: if isMember() && canGet();
+      allow list: if isMember() && canList();
+      allow write: if false;
+    }
+    match /taxFilings/{filingId} {
+      allow get: if isMember() && canGet();
+      allow list: if isMember() && canList();
+      allow write: if false; // /api/finance/tax-filings
+    }
+    match /assetDepreciations/{runId} {
+      allow get: if isMember() && canGet();
+      allow list: if isMember() && canList();
+      allow write: if false; // /api/finance/depreciation
+    }
+
     // พนักงานและการลงเวลา: อ่านได้ภายในบริษัท เขียนผ่าน /api/hr/* เท่านั้น
     match /employees/{employeeId} {
       allow get: if isMember() && canGet();
@@ -148,7 +165,7 @@ service cloud.firestore {
 
       // ทุก subcollection (และลึกกว่านั้น) ยกเว้นที่มีกฎเฉพาะ
       function apiOnlyCollection(collection) {
-        return collection in ['auditLogs', 'financialLedgers', 'quotations', 'receipts', 'payments', 'payrolls', 'serial_numbers', 'invoices', 'billing_notes', 'cndn', 'customer_refunds', 'counters'];
+        return collection in ['auditLogs', 'financialLedgers', 'quotations', 'receipts', 'payments', 'payrolls', 'serial_numbers', 'invoices', 'billing_notes', 'cndn', 'customer_refunds', 'counters', 'journal_entries', 'tax_filing_locks'];
       }
       match /{collection}/{docId} {
         allow read: if inCompany(companyId);

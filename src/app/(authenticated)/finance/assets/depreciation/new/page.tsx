@@ -22,8 +22,9 @@ import {
   cn 
 } from "@/components/ui/Base";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { where, doc, getDoc, collection, writeBatch, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase-client";
+import { where } from "firebase/firestore";
+import { apiFetch } from "@/lib/api-client";
+import { assetBookValue, monthlyDepreciation } from "@/lib/depreciation";
 import { formatCurrency } from "@/lib/erp-logic";
 import { useAuth } from "@/context/AuthContext";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
@@ -40,15 +41,9 @@ export default function NewAssetDepreciationPage() {
   
   const { data: assets } = useRealtimeCollection("assets", currentCompanyId ? [where('companyId', '==', currentCompanyId)] : []);
 
-  const cost = (a: any) => Number(a.purchasePrice ?? a.purchaseValue ?? 0);
-  const salvage = (a: any) => Number(a.salvageValue ?? 0);
-  const bookValue = (a: any) => Number(a.netBookValue ?? a.bookValue ?? (cost(a) - Number(a.accumulatedDepreciation ?? 0)));
-  const monthlyFor = (a: any) => {
-    const life = Number(a.usefulLifeYears) || 0;
-    if (life <= 0 || String(a.status || "active") !== "active") return 0;
-    const m = (cost(a) - salvage(a)) / (life * 12);
-    return Math.max(0, Math.min(m, bookValue(a) - salvage(a)));
-  };
+  // สูตรเดียวกับที่ API ใช้บันทึกจริง (lib/depreciation)
+  const bookValue = assetBookValue;
+  const monthlyFor = (a: any) => (a.lastDepreciationPeriod === period ? 0 : monthlyDepreciation(a));
   const depreciable = (assets || []).filter((a: any) => monthlyFor(a) > 0);
 
   const totalAssets = depreciable.length;
@@ -78,45 +73,15 @@ export default function NewAssetDepreciationPage() {
     if (depreciable.length === 0) return void showAlert("ไม่มีสินทรัพย์ที่ต้องคิดค่าเสื่อมในงวดนี้");
     setIsSaving(true);
     try {
-      // กันประมวลผลซ้ำงวดเดียวกัน
-      const runRef = doc(db, "assetDepreciations", `${currentCompanyId}_${period}`);
-      if ((await getDoc(runRef)).exists()) throw new Error(`งวด ${period} ประมวลผลค่าเสื่อมไปแล้ว`);
-
-      const batch = writeBatch(db);
-      const items = depreciable.map((a: any) => {
-        const amount = Math.round(monthlyFor(a) * 100) / 100;
-        batch.update(doc(db, "assets", a.id), {
-          accumulatedDepreciation: Math.round((Number(a.accumulatedDepreciation ?? 0) + amount) * 100) / 100,
-          netBookValue: Math.round((bookValue(a) - amount) * 100) / 100,
-          lastDepreciationPeriod: period,
-          updatedAt: serverTimestamp(),
-        });
-        return { assetId: a.id, name: a.name || a.assetId || a.id, amount };
+      // บันทึกที่ server: คำนวณซ้ำจากข้อมูลจริง ปรับทรัพย์สิน กันประมวลผลซ้ำ และสร้างรายการบัญชี (ร่าง) ลงวันสิ้นงวด
+      const res = await apiFetch("/api/finance/depreciation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: currentCompanyId, period }),
       });
-      batch.set(runRef, {
-        companyId: currentCompanyId, period, amount: depreciationAmount, assetCount: items.length, items,
-        createdBy: user.email || user.uid, createdAt: serverTimestamp(), isDeleted: false,
-      });
-      // Dr ค่าเสื่อมราคา 5310-00 / Cr ค่าเสื่อมราคาสะสม 1591-00 (ร่าง รอนักบัญชีอนุมัติ)
-      batch.set(doc(collection(db, `companies/${currentCompanyId}/journal_entries`)), {
-        companyId: currentCompanyId,
-        date: serverTimestamp(),
-        bookType: "JV",
-        description: `[AUTO] ค่าเสื่อมราคาประจำงวด ${period} (${items.length} รายการ)`,
-        reference: `DEP-${period}`,
-        totalDebit: depreciationAmount,
-        totalCredit: depreciationAmount,
-        status: "draft",
-        items: [
-          { accountCode: "5310-00", accountName: "ค่าเสื่อมราคา", debit: depreciationAmount, credit: 0 },
-          { accountCode: "1591-00", accountName: "ค่าเสื่อมราคาสะสม", debit: 0, credit: depreciationAmount },
-        ],
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        isDeleted: false,
-      });
-      await batch.commit();
-      showAlert(`ประมวลผลค่าเสื่อมราคางวด ${period} สำเร็จ (${formatCurrency(depreciationAmount)} บาท)`);
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "ประมวลผลไม่สำเร็จ");
+      showAlert(`ประมวลผลค่าเสื่อมราคางวด ${period} สำเร็จ (${formatCurrency(data.amount)} บาท · ${data.assetCount} รายการ · รายการบัญชีรออนุมัติ)`);
       router.push("/finance");
     } catch (err: any) {
       showAlert(err.message || "ประมวลผลไม่สำเร็จ");

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiUser, authErrorResponse } from "@/lib/api-auth";
+import { can } from "@/lib/permissions";
 import * as admin from "firebase-admin";
 import { adminDb } from "@/lib/firebase-admin";
 import { auditServer } from "@/services/audit.server";
@@ -8,6 +9,9 @@ import { auditServer } from "@/services/audit.server";
  * [API-SERVER] Server-Side Journal Entry Posting API
  * Project: NEXUS ERP (Intelligence OS)
  * Endpoint: POST /api/accounting/post-journal
+ *
+ * สร้างรายการบัญชีเป็นฉบับร่าง (draft) เสมอ — ลงบัญชีผ่าน /api/accounting/journal-post โดยผู้อื่นในฝ่ายบัญชี
+ * ต้องมีสิทธิ์ finance:edit
  */
 
 import { assertPeriodOpen } from "@/lib/period-close-service";
@@ -20,6 +24,9 @@ export async function POST(request: Request) {
     const { companyId, description, reference, items, bookType = "JV", date } = body;
     const apiUser = await requireApiUser(request, companyId);
     const userId = apiUser.email || apiUser.uid;
+    if (!can(apiUser.role, "finance:edit")) {
+      return NextResponse.json({ success: false, error: "สิทธิ์การใช้งานไม่เพียงพอสำหรับการบันทึกบัญชี" }, { status: 403 });
+    }
 
     // 1. Tenant & Field Validation
     if (!companyId) {
@@ -50,7 +57,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const postingDate = date || new Date().toISOString();
+    // วันที่รายการเป็น YYYY-MM-DD ตามเวลาไทย (ใช้จัดเข้างวดบัญชี/ภาษี)
+    const postingDate = typeof date === "string" && /^\d{4}-\d{2}-\d{2}/.test(date) ? date.slice(0, 10) : new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
 
     // 3. Period Lock Check
     await assertPeriodOpen(companyId, postingDate);
@@ -72,8 +80,9 @@ export async function POST(request: Request) {
       })),
       totalDebit,
       totalCredit,
-      status: "posted",
-      createdBy: userId,
+      status: "draft",
+      createdBy: apiUser.uid,
+      createdByEmail: apiUser.email || "",
       updatedBy: userId,
       isDeleted: false,
       createdAt: new Date().toISOString(),

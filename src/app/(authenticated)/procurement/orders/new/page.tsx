@@ -38,7 +38,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { nexusSequenceEngine } from "@/lib/sequence-engine";
+import { nextDocumentNumber } from "@/lib/sequence-client";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 
@@ -148,7 +148,7 @@ function NewPurchaseOrderScreen() {
 
     setSaving(true);
     try {
-      const poCode = await nexusSequenceEngine("PO", companyId);
+      const poCode = await nextDocumentNumber("PO", companyId);
       const supplier = suppliers.find((s: any) => s.id === form.supplier);
       const project = projects.find((p: any) => p.id === form.project_id);
       const rate = form.currency === "THB" ? 1 : (Number(form.exchange_rate) || 1);

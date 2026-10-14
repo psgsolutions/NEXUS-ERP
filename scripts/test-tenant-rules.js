@@ -44,6 +44,7 @@ async function main() {
     await setDoc(doc(db, 'employees/eB'), { companyId: 'B', name: 'B' });
     await setDoc(doc(db, 'companies/A/projects/P1'), { companyId: 'A', status: 'In Progress' });
     await setDoc(doc(db, 'companies/A/customer_refunds/RF-1'), { companyId: 'A', amount: 100 });
+    await setDoc(doc(db, 'companies/A/counters/RE'), { lastSeq: 5 });
     await setDoc(doc(db, 'companies/A/projects/P1/change_orders/co1'), { status: 'PENDING' });
   });
 
@@ -136,6 +137,11 @@ async function main() {
     ['member cannot read other-company employee', () => assertFails(getDoc(doc(userA, 'employees/eB')))],
     ['member cannot edit employee (salary) directly', () => assertFails(updateDoc(doc(adminA, 'employees/eA'), { salary: 999999 }))],
     ['member cannot write attendance directly', () => assertFails(addDoc(collection(userA, 'attendance'), { companyId: 'A', type: 'IN' }))],
+
+    // Company document counters: API only (tax numbers RE/QT/RF live here)
+    ["member reads company counter", () => assertSucceeds(getDoc(doc(userA, "companies/A/counters/RE")))],
+    ["member cannot bump company counter", () => assertFails(setDoc(doc(userA, "companies/A/counters/RE"), { lastSeq: 1 }))],
+    ["admin cannot reset company counter", () => assertFails(updateDoc(doc(adminA, "companies/A/counters/RE"), { lastSeq: 0 }))],
 
     // Customer refunds: API only
     ['member reads customer refund', () => assertSucceeds(getDoc(doc(userA, 'companies/A/customer_refunds/RF-1')))],

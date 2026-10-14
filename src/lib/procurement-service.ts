@@ -5,7 +5,7 @@ import {
   serverTimestamp,
   getDoc
 } from "firebase/firestore";
-import { nexusSequenceEngine } from "./sequence-engine";
+import { nextDocumentNumber } from "./sequence-client";
 
 /**
  * [PROC-STRATEGY-V2.0]
@@ -71,7 +71,7 @@ export async function createExpenseFromPO(poId: string, companyId: string) {
   }
 
   const poData = poSnap.data();
-  const expId = await nexusSequenceEngine("EXP", companyId);
+  const expId = await nextDocumentNumber("EXP", companyId);
   const expRef = doc(db, `companies/${companyId}/expenses`, expId);
 
   await setDoc(expRef, {
@@ -103,7 +103,7 @@ export async function createWHTFromExpense(expId: string, companyId: string, wht
   }
 
   const expData = expSnap.data();
-  const whtId = await nexusSequenceEngine("WHT", companyId);
+  const whtId = await nextDocumentNumber("WHT", companyId);
   const whtRef = doc(db, `companies/${companyId}/withholding_taxes`, whtId);
 
   // Parse total string if necessary, fallback to 0

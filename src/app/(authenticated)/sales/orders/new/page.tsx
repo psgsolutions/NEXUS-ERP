@@ -10,7 +10,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { nexusSequenceEngine } from "@/lib/sequence-engine";
+import { nextDocumentNumber } from "@/lib/sequence-client";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
@@ -100,7 +100,7 @@ export default function SalesOrderPage() {
 
     setSaving(true);
     try {
-      const soId = await nexusSequenceEngine("SO", companyId);
+      const soId = await nextDocumentNumber("SO", companyId);
       const project = projects.find((p: any) => p.id === projectId);
       await setDoc(doc(db, `companies/${companyId}/sales_orders`, soId), {
         soId,

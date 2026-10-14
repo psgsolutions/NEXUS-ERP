@@ -9,7 +9,7 @@ import { Save, Wrench, Search, FileText, UserCircle, ArrowLeft } from 'lucide-re
 import { db } from '@/lib/firebase-client';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
-import { nexusSequenceEngine } from '@/lib/sequence-engine';
+import { nextDocumentNumber } from "@/lib/sequence-client";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useRouter } from "next/navigation";
@@ -97,7 +97,7 @@ export default function CreateWorkOrderPage() {
 
     try {
       setLoading(true);
-      const woCode = await nexusSequenceEngine('WO', companyId);
+      const woCode = await nextDocumentNumber('WO', companyId);
 
       await setDoc(doc(db, `companies/${companyId}/work_orders`, woCode), {
         woCode,

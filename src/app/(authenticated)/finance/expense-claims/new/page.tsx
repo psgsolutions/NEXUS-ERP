@@ -25,7 +25,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { nexusSequenceEngine } from "@/lib/sequence-engine";
+import { nextDocumentNumber } from "@/lib/sequence-client";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
@@ -77,7 +77,7 @@ export default function NewExpenseClaimPage() {
 
     setSaving(true);
     try {
-      const expId = await nexusSequenceEngine("EXP", companyId);
+      const expId = await nextDocumentNumber("EXP", companyId);
       const employee = employees.find((e: any) => e.id === formData.employeeId);
       const round = (n: number) => Math.round(n * 100) / 100;
       await setDoc(doc(db, `companies/${companyId}/expenses`, expId), {

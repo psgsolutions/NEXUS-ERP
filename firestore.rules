@@ -148,7 +148,7 @@ service cloud.firestore {
 
       // ทุก subcollection (และลึกกว่านั้น) ยกเว้นที่มีกฎเฉพาะ
       function apiOnlyCollection(collection) {
-        return collection in ['auditLogs', 'financialLedgers', 'quotations', 'receipts', 'payments', 'payrolls', 'serial_numbers', 'invoices', 'billing_notes', 'cndn', 'customer_refunds'];
+        return collection in ['auditLogs', 'financialLedgers', 'quotations', 'receipts', 'payments', 'payrolls', 'serial_numbers', 'invoices', 'billing_notes', 'cndn', 'customer_refunds', 'counters'];
       }
       match /{collection}/{docId} {
         allow read: if inCompany(companyId);

@@ -28,7 +28,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { nexusSequenceEngine } from "@/lib/sequence-engine";
+import { nextDocumentNumber } from "@/lib/sequence-client";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
@@ -123,7 +123,7 @@ export default function NewPurchaseRequestPage() {
 
     setSaving(true);
     try {
-      const prCode = await nexusSequenceEngine("PR", companyId);
+      const prCode = await nextDocumentNumber("PR", companyId);
       const vendor = suppliers.find((x: any) => x.id === vendorId);
       const project = projects.find((x: any) => x.id === header.projectRef);
       const round = (n: number) => Math.round(n * 100) / 100;

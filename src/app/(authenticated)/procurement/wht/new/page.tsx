@@ -9,7 +9,7 @@ import { auditService } from "@/services/audit.service";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { nexusSequenceEngine } from "@/lib/sequence-engine";
+import { nextDocumentNumber } from "@/lib/sequence-client";
 import { useAuth } from "@/context/AuthContext";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
@@ -63,7 +63,7 @@ export default function NewWHTPage() {
     try {
       const expense = openExpenses.find((e: any) => e.id === form.expenseId);
       const taxAmount = Math.round(form.baseAmount * (form.whtRate / 100) * 100) / 100;
-      const whtId = await nexusSequenceEngine("WHT", currentCompanyId);
+      const whtId = await nextDocumentNumber("WHT", currentCompanyId);
       const whtData = {
         id: whtId,
         whtId,

@@ -7,7 +7,7 @@ import { Save, HardHat, FileText, ArrowLeft } from 'lucide-react';
 import { db } from '@/lib/firebase-client';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
-import { nexusSequenceEngine } from '@/lib/sequence-engine';
+import { nextDocumentNumber } from "@/lib/sequence-client";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 
@@ -65,7 +65,7 @@ export default function CreatePayoutPage() {
     
     try {
       setLoading(true);
-      const pvCode = await nexusSequenceEngine('PV', currentCompanyId);
+      const pvCode = await nextDocumentNumber('PV', currentCompanyId);
       
       await addDoc(collection(db, 'payouts'), {
         payoutCode: pvCode,

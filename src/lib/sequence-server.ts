@@ -5,7 +5,7 @@ import { idService } from "./idService";
 import { resolveSequenceFormat, SequencePrefix } from "./sequence-engine";
 
 /**
- * [SERVER-ONLY] Admin SDK version of nexusSequenceEngine (same counter doc and format)
+ * [SERVER-ONLY] ออกเลขตามรูปแบบของบริษัท (companies/{id}/counters/{prefix})
  * Path: companies/{companyId}/counters/{prefix}
  */
 export async function nexusSequenceServer(prefix: SequencePrefix, companyId: string): Promise<string> {

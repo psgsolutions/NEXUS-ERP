@@ -24,8 +24,6 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { apiFetch } from "@/lib/api-client";
-import { db } from "@/lib/firebase-client";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { listLocations } from "@/lib/warehouse-location";
 
 const DEFAULT_WAREHOUSE = "Main Warehouse";
@@ -130,6 +128,7 @@ function NewInventoryInScreen() {
         body: JSON.stringify({
           companyId,
           poRef: activeTab === "po" ? header.poRef : "",
+          poDocPath: activeTab === "po" ? header.poDocPath : "",
           supplier: supplierName(header.supplierId) || header.supplierId,
           receiptDate: header.date,
           deliveryNote: header.reference,
@@ -141,23 +140,6 @@ function NewInventoryInScreen() {
       });
       const result = await res.json();
       if (!res.ok || !result.success) throw new Error(result.error || "บันทึกรับสินค้าไม่สำเร็จ");
-
-      // อัปเดตจำนวนที่รับแล้วในใบสั่งซื้อ
-      if (activeTab === "po" && header.poDocPath) {
-        const po = openPOs.find((p: any) => p._path === header.poDocPath);
-        if (po) {
-          const poItems = (po.items || []).map((pi: any, idx: number) => {
-            const got = lines.filter((l) => l.poLineIndex === idx).reduce((sum, l) => sum + l.qtyReceived, 0);
-            return { ...pi, qtyReceived: (Number(pi.qtyReceived) || 0) + got };
-          });
-          const allReceived = poItems.every((pi: any) => (Number(pi.qtyReceived) || 0) >= (Number(pi.qty ?? pi.qtyOrdered) || 0));
-          await updateDoc(doc(db, header.poDocPath), {
-            items: poItems,
-            status: allReceived ? "RECEIVED" : "PARTIAL_RECEIVED",
-            updatedAt: serverTimestamp(),
-          });
-        }
-      }
 
       showAlert(`บันทึกรับสินค้าเข้าคลังเรียบร้อย (เลขที่ ${result.grId}) มูลค่า ${formatCurrency(result.totalAmount)}`);
       router.push(receiveLocation.endsWith("-RECV") ? "/inventory/putaway" : "/inventory");

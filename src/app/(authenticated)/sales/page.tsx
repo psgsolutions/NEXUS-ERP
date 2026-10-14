@@ -605,7 +605,7 @@ export default function SalesPage() {
                           taxId={cus.displayTaxId}
                           status={cus.status || "active"}
                           role={userRole || ""}
-                          companyId={companyId || "COM-NEXUS-01"}
+                          companyId={companyId || ""}
                           onClick={() => setSelectedCustomer(cus)}
                         />
                       ))}
@@ -647,7 +647,7 @@ export default function SalesPage() {
                           stage={q.stage}
                           validUntil={q.validUntil}
                           canDelete={q.canDelete}
-                          companyId={companyId || "COM-NEXUS-01"}
+                          companyId={companyId || ""}
                           onClick={() => setSelectedItem(q)}
                           onDuplicate={() => duplicateQuotation(q.docId)}
                         />
@@ -671,7 +671,7 @@ export default function SalesPage() {
                           date={so.date}
                           total={so.total}
                           status={so.status}
-                          companyId={companyId || "COM-NEXUS-01"}
+                          companyId={companyId || ""}
                           onClick={() => setSelectedItem(so)}
                         />
                       ))}
@@ -698,7 +698,7 @@ export default function SalesPage() {
                           status={inv.status}
                           isSample={inv.isSample}
                           refundDue={inv.refundDue}
-                          companyId={companyId || "COM-NEXUS-01"}
+                          companyId={companyId || ""}
                           onClick={() => setSelectedItem(inv)}
                         />
                       ))}
@@ -722,7 +722,7 @@ export default function SalesPage() {
                           dueDate={bill.dueDate}
                           total={bill.total}
                           status={bill.status}
-                          companyId={companyId || "COM-NEXUS-01"}
+                          companyId={companyId || ""}
                           onClick={() => setSelectedItem(bill)}
                         />
                       ))}
@@ -780,7 +780,7 @@ export default function SalesPage() {
                           date={rec.date}
                           total={rec.total}
                           status={rec.status}
-                          companyId={companyId || "COM-NEXUS-01"}
+                          companyId={companyId || ""}
                           onClick={() => setSelectedItem(rec)}
                         />
                       ))}
@@ -1043,7 +1043,7 @@ function CustomerRow({ id, docId, name, industry, taxId, status, role, companyId
          {(role === "ADMIN" || role === "SUPERADMIN") && (
            <div onClick={(e) => e.stopPropagation()} className="inline-block">
              <SecureDeleteAction
-               collectionName={`companies/${companyId || "COM-NEXUS-01"}/customers`}
+               collectionName={`companies/${companyId || ""}/customers`}
                documentId={docId}
                displayName={name}
                compact
@@ -1101,7 +1101,7 @@ function SalesOrderRow({ id, docId, customer, date, total, status, companyId, on
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-block">
-          <SecureDeleteAction collectionName={`companies/${companyId}/sales_orders`} documentId={docId} displayName={customer} compact />
+          <SecureDeleteAction serverKind="sales_order" documentId={docId} displayName={customer} compact />
         </div>
       </NexusTableCell>
     </NexusTableRow>

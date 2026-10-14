@@ -11,8 +11,7 @@ import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { soPickRemaining } from "@/lib/picking";
-import { db } from "@/lib/firebase-client";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { useSystemDialog } from "@/context/DialogContext";
 
 const STEPS = ["ร่าง", "อนุมัติแล้ว", "ส่งมอบแล้ว", "ออกใบกำกับแล้ว"];
 
@@ -41,7 +40,8 @@ export default function SalesOrderDetailPage() {
   const router = useRouter();
   const params = useParams();
   const soDocId = decodeURIComponent(String(params.id || ""));
-  const { user, companyId } = useAuth();
+  const { companyId } = useAuth();
+  const { showConfirm } = useSystemDialog();
   const { data: so, loading } = useRealtimeDocument<any>(companyId && soDocId ? `companies/${companyId}/sales_orders/${soDocId}` : null);
 
   const [busy, setBusy] = useState(false);
@@ -50,21 +50,22 @@ export default function SalesOrderDetailPage() {
   const status = normalizeStatus(so?.status);
   const view = STATUS_VIEW[status];
   const items: any[] = (so?.items || []).filter((it: any) => it.itemType !== "GROUP_HEADER");
-  const userId = user?.email || user?.uid || "";
   // มีสินค้าที่ต้องเบิกจากคลัง: ส่งมอบผ่านหน้าเบิกสินค้า (ตัดสต็อก + ลงต้นทุนขาย) แทนการกดส่งมอบตรง
   const needsPicking = so ? soPickRemaining(so).size > 0 : false;
 
-  const setStatus = async (next: string, extra: Record<string, any> = {}) => {
+  // เปลี่ยนสถานะที่ server: ตรวจวงเงินเครดิต ตรวจการเบิกสินค้า และคืนยอดจองเมื่อยกเลิก
+  const setStatus = async (action: "confirm" | "deliver" | "cancel") => {
     if (!companyId || !so) return;
     setBusy(true);
     setMessage(null);
     try {
-      await updateDoc(doc(db, `companies/${companyId}/sales_orders`, soDocId), {
-        status: next,
-        ...extra,
-        updatedBy: userId,
-        updatedAt: serverTimestamp(),
+      const res = await apiFetch("/api/sales/orders/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, soId: soDocId, action }),
       });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "อัปเดตสถานะไม่สำเร็จ");
       setMessage({ type: "ok", text: "อัปเดตสถานะเรียบร้อย" });
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "อัปเดตสถานะไม่สำเร็จ" });
@@ -75,7 +76,7 @@ export default function SalesOrderDetailPage() {
 
   const issueTaxInvoice = async () => {
     if (!companyId || !so) return;
-    if (!confirm("ยืนยันออกใบกำกับภาษีและใบวางบิล? ระบบจะลงบัญชีรายได้และภาษีขายทันที")) return;
+    if (!(await showConfirm("ยืนยันออกใบกำกับภาษีและใบวางบิล? ระบบจะลงบัญชีรายได้และภาษีขายทันที"))) return;
     setBusy(true);
     setMessage(null);
     try {
@@ -124,7 +125,7 @@ export default function SalesOrderDetailPage() {
       <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
         {status !== "CANCELLED" && <DocumentStepper steps={STEPS} currentStep={view.step} />}
         {status === "DRAFT" && (
-          <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={() => setStatus("Confirmed")}>
+          <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={() => setStatus("confirm")}>
             <CheckCircle2 size={14} className="mr-1.5" /> อนุมัติใบสั่งขาย
           </PillButton>
         )}
@@ -134,7 +135,7 @@ export default function SalesOrderDetailPage() {
           </PillButton>
         )}
         {status === "CONFIRMED" && !needsPicking && (
-          <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={() => setStatus("DELIVERED", { deliveredAt: serverTimestamp() })}>
+          <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={() => setStatus("deliver")}>
             <Truck size={14} className="mr-1.5" /> บันทึกส่งมอบแล้ว
           </PillButton>
         )}
@@ -148,7 +149,7 @@ export default function SalesOrderDetailPage() {
             variant="glass"
             className="h-8 px-4 text-xs font-bold text-red-400"
             disabled={busy}
-            onClick={() => confirm("ยืนยันยกเลิกใบสั่งขายนี้?") && setStatus("CANCELLED")}
+            onClick={async () => { if (await showConfirm("ยืนยันยกเลิกใบสั่งขายนี้?")) setStatus("cancel"); }}
           >
             <XCircle size={14} className="mr-1.5" /> ยกเลิก
           </PillButton>

@@ -9,7 +9,7 @@ import { Save, Wrench, Search, FileText, UserCircle, ArrowLeft } from 'lucide-re
 import { db } from '@/lib/firebase-client';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
-import { nextDocumentNumber } from "@/lib/sequence-client";
+import { apiFetch } from "@/lib/api-client";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useRouter } from "next/navigation";
@@ -97,27 +97,14 @@ export default function CreateWorkOrderPage() {
 
     try {
       setLoading(true);
-      const woCode = await nextDocumentNumber('WO', companyId);
-
-      await setDoc(doc(db, `companies/${companyId}/work_orders`, woCode), {
-        woCode,
-        soId: formData.soId,
-        soCode: formData.soCode,
-        customerId: formData.customerId,
-        customerName: formData.customerName,
-        projectId: formData.projectId || null,
-        technicianUid: formData.technicianUid,
-        technicianName: formData.technicianName,
-        scheduleDate: formData.scheduleDate,
-        remarks: formData.remarks,
-        items,
-        companyId,
-        createdAt: serverTimestamp(),
-        createdBy: user?.uid || 'SYSTEM',
-        isDeleted: false,
-        status: 'ASSIGNED'
+      const res = await apiFetch("/api/service/work-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, soId: formData.soId, technicianUid: formData.technicianUid, scheduleDate: formData.scheduleDate, remarks: formData.remarks, items }),
       });
-
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
+      const woCode = data.woCode;
       alert(`สร้างใบสั่งงานสำเร็จ: ${woCode}`);
       setItems([]);
       setFormData({ soId: '', soCode: '', customerId: '', customerName: '', projectId: '', technicianUid: '', technicianName: '', scheduleDate: '', remarks: '' });

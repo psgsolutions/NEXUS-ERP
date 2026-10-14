@@ -19,7 +19,7 @@ import { useSystemDialog } from "@/context/DialogContext";
 export const BuilderLayout: React.FC = () => {
   const router = useRouter();
   const { user, companyId } = useAuth();
-  const currentCompanyId = companyId || 'COMP-001';
+  const currentCompanyId = companyId || "";
   const [template, setTemplate] = useState<FormTemplate | null>(null);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(true);

@@ -28,7 +28,7 @@ const TOOLBOX_ITEMS = [
 
 export default function FormBuilderPage() {
   const { user, companyId } = useAuth();
-  const currentCompanyId = companyId || 'COMP-001';
+  const currentCompanyId = companyId || "";
 
   const [templateName, setTemplateName] = useState('Standard Quotation (แม่แบบมาตรฐาน)');
   const [documentType, setDocumentType] = useState('QUOTATION');

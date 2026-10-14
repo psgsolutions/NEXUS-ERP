@@ -7,7 +7,18 @@ import { apiFetch } from "@/lib/api-client";
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeCollection } from '@/hooks/useRealtimeCollection';
 import { db } from '@/lib/firebase-client';
-import { doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+
+// เช็คอิน/ปิดงานผ่าน server (ตรวจช่างที่รับผิดชอบ ลำดับสถานะ และหลักฐานก่อนปิดงาน)
+async function workOrderAction(companyId: string, woId: string, action: 'checkin' | 'complete', extra: Record<string, any>) {
+  const res = await apiFetch('/api/service/work-orders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ companyId, action, woId, ...extra }),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.success) throw new Error(data.error || 'บันทึกไม่สำเร็จ');
+}
 
 type Gps = { lat: number; lng: number; accuracy: number } | null;
 type PhotoType = 'before' | 'after' | 'signature';
@@ -198,16 +209,12 @@ export default function FieldTechnicianApp() {
   };
 
   const handleCheckIn = async (withoutGps = false) => {
-    if (!woPath) return;
+    if (!woPath || !companyId || !wo) return;
     setGpsLoading(true);
     setGpsError('');
     try {
       const gps = withoutGps ? null : await getGps();
-      await updateDoc(doc(db, woPath), {
-        status: 'IN_PROGRESS',
-        checkIn: { at: serverTimestamp(), by: user?.uid || null, gps, ...(withoutGps ? { note: 'ไม่มีพิกัด GPS' } : {}) },
-        updatedAt: serverTimestamp(),
-      });
+      await workOrderAction(companyId, wo.id, 'checkin', { gps, withoutGps });
     } catch (err: any) {
       setGpsError(err.message || 'เช็คอินไม่สำเร็จ');
     } finally {
@@ -278,18 +285,12 @@ export default function FieldTechnicianApp() {
 
   const canComplete = isCheckedIn && !!photo('after') && !!photo('signature');
   const handleComplete = async () => {
-    if (!woPath || !canComplete) return;
+    if (!woPath || !companyId || !canComplete) return;
     setCompleting(true);
     try {
       // พิกัดตอนปิดงาน (ถ้าจับไม่ได้ก็ปิดงานต่อได้)
       const gps = await getGps(8000).catch(() => null);
-      await updateDoc(doc(db, woPath), {
-        status: 'COMPLETED',
-        checkOut: { at: serverTimestamp(), by: user?.uid || null, gps },
-        completedAt: serverTimestamp(),
-        completedBy: user?.uid || null,
-        updatedAt: serverTimestamp(),
-      });
+      await workOrderAction(companyId, wo.id, 'complete', { gps });
       setMessage(`ปิดงาน ${wo.woCode || wo.id} เรียบร้อย`);
       setSelectedId(null);
     } catch (err: any) {

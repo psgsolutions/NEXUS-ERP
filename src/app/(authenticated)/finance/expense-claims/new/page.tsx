@@ -25,7 +25,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { nextDocumentNumber } from "@/lib/sequence-client";
+import { apiFetch } from "@/lib/api-client";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
@@ -77,31 +77,14 @@ export default function NewExpenseClaimPage() {
 
     setSaving(true);
     try {
-      const expId = await nextDocumentNumber("EXP", companyId);
-      const employee = employees.find((e: any) => e.id === formData.employeeId);
-      const round = (n: number) => Math.round(n * 100) / 100;
-      await setDoc(doc(db, `companies/${companyId}/expenses`, expId), {
-        id: expId,
-        expenseId: expId,
-        companyId,
-        documentType: "ExpenseClaim",
-        employeeId: formData.employeeId,
-        employeeName: employeeName(employee),
-        supplierName: employeeName(employee),
-        vendor: employeeName(employee),
-        expenseAccountCode: formData.expenseAccountCode,
-        description: formData.description,
-        hasVat: formData.hasVat,
-        subTotal: round(formData.subtotal),
-        vatAmount: round(vatAmount),
-        totalAmount: round(grandTotal),
-        status: "Awaiting Payment",
-        dueDate: new Date().toISOString().split("T")[0],
-        createdBy: user.email || user.uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        isDeleted: false,
+      const res = await apiFetch("/api/finance/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, action: "claim", employeeId: formData.employeeId, expenseAccountCode: formData.expenseAccountCode, description: formData.description, hasVat: formData.hasVat, subtotal: formData.subtotal }),
       });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
+      const expId = data.expenseId;
       showAlert(`ส่งคำขอเบิกเงินเรียบร้อยแล้ว (${expId})`);
       router.push("/finance");
     } catch (err: any) {

@@ -45,7 +45,7 @@ export default function CustomerDataEntryPage() {
   const { user, companyId } = useAuth();
   const router = useRouter();
   const { showAlert } = useSystemDialog();
-  const currentCompanyId = companyId || 'COMP-001';
+  const currentCompanyId = companyId || "";
 
   const [formData, setFormData] = useState({
     customerName: '',

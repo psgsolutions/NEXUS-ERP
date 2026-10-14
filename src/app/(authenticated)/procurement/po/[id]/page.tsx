@@ -9,10 +9,9 @@ import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { formatCurrency } from "@/lib/erp-logic";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
-import { approvePurchaseOrder } from "@/lib/procurement-service";
+import { approvePurchaseOrder, cancelPurchaseOrder } from "@/lib/procurement-service";
 import { normalizePoStatus } from "@/lib/procurement-status";
-import { db } from "@/lib/firebase-client";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { useSystemDialog } from "@/context/DialogContext";
 
 const STEPS = ["รออนุมัติ", "อนุมัติแล้ว", "รับบางส่วน", "รับครบแล้ว"];
 
@@ -29,6 +28,7 @@ export default function PODetailPage() {
   const router = useRouter();
   const poDocId = decodeURIComponent(String(params.id || ""));
   const { user, companyId, role } = useAuth();
+  const { showConfirm } = useSystemDialog();
   const path = companyId && poDocId ? `companies/${companyId}/purchase_orders/${poDocId}` : null;
   const { data: po, loading } = useRealtimeDocument<any>(path);
 
@@ -39,7 +39,7 @@ export default function PODetailPage() {
   if (!po) {
     return (
       <div className="p-10 space-y-4">
-        <p className="text-white/60 text-sm">ไม่พบใบสั่งซื้อ "{poDocId}"</p>
+        <p className="text-white/60 text-sm">ไม่พบใบสั่งซื้อ &ldquo;{poDocId}&rdquo;</p>
         <PillButton variant="glass" onClick={() => router.push("/procurement")}>กลับหน้าจัดซื้อ</PillButton>
       </div>
     );
@@ -65,13 +65,14 @@ export default function PODetailPage() {
 
   const approve = () => run(async () => {
     if (!user || !companyId) throw new Error("ไม่พบข้อมูลผู้ใช้");
-    await approvePurchaseOrder(poDocId, user.uid, companyId, role || undefined);
+    await approvePurchaseOrder(poDocId, companyId);
   }, "อนุมัติใบสั่งซื้อแล้ว");
 
-  const cancel = () => {
-    if (!confirm("ยืนยันยกเลิกใบสั่งซื้อนี้?")) return;
+  const cancel = async () => {
+    if (!(await showConfirm("ยืนยันยกเลิกใบสั่งซื้อนี้?"))) return;
     run(async () => {
-      await updateDoc(doc(db, path!), { status: "CANCELLED", cancelledAt: serverTimestamp(), updatedAt: serverTimestamp(), updatedBy: user?.uid || "" });
+      if (!companyId) throw new Error("ไม่พบรหัสบริษัท");
+      await cancelPurchaseOrder(poDocId, companyId);
     }, "ยกเลิกใบสั่งซื้อแล้ว");
   };
 

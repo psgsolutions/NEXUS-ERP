@@ -165,7 +165,9 @@ service cloud.firestore {
 
       // ทุก subcollection (และลึกกว่านั้น) ยกเว้นที่มีกฎเฉพาะ
       function apiOnlyCollection(collection) {
-        return collection in ['auditLogs', 'financialLedgers', 'quotations', 'receipts', 'payments', 'payrolls', 'serial_numbers', 'invoices', 'billing_notes', 'cndn', 'customer_refunds', 'counters', 'journal_entries', 'tax_filing_locks'];
+        return collection in ['auditLogs', 'financialLedgers', 'quotations', 'receipts', 'payments', 'payrolls', 'serial_numbers', 'invoices', 'billing_notes', 'cndn', 'customer_refunds', 'counters', 'journal_entries', 'tax_filing_locks',
+          // จัดซื้อ / ค่าใช้จ่าย / ขาย / งานบริการ: ออกเลข ตรวจสถานะ และอนุมัติที่ server
+          'purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders'];
       }
       match /{collection}/{docId} {
         allow read: if inCompany(companyId);
@@ -174,8 +176,10 @@ service cloud.firestore {
       match /{collection}/{docId}/{sub}/{rest=**} {
         allow read: if inCompany(companyId);
         // คำขอเปลี่ยนแปลงโครงการ: ยื่น/อนุมัติผ่าน /api/projects/change-orders เท่านั้น
-        allow write: if inCompany(companyId) && !apiOnlyCollection(collection)
-          && !(collection == 'projects' && sub == 'change_orders');
+        allow write: if (inCompany(companyId) && !apiOnlyCollection(collection)
+          && !(collection == 'projects' && sub == 'change_orders'))
+          // ยกเว้นรูปถ่าย/ลายเซ็นหน้างานของใบสั่งงาน (เช็คอิน/ปิดงานผ่าน /api/service/work-orders)
+          || (inCompany(companyId) && collection == 'work_orders' && sub == 'attachments');
       }
 
       // receipts / payments / payrolls / serial_numbers: อ่านได้ตามกฎด้านบน เขียนผ่าน API เท่านั้น (ตรวจยอดค้าง กลับรายการบัญชี ออกเลขที่ในทรานแซกชัน)

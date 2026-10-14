@@ -5,6 +5,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { processStockMovements, StockMovement } from "@/lib/stock-service";
 import { auditServer } from "@/services/audit.server";
+import { normalizePoStatus } from "@/lib/procurement-status";
 
 /**
  * [API-SERVER] Goods Receipt & Real-time WAC / GL Posting API
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
       receivedBy,
       warehouse,
       warehouseCode,
+      poDocPath,
       items = []
     } = body;
     const apiUser = await requireApiUser(request, companyId);
@@ -76,6 +78,36 @@ export async function POST(request: Request) {
       );
     }
 
+    // 3.1 รับตามใบสั่งซื้อ: ใบต้องเป็นของบริษัทและอนุมัติแล้ว รับไม่เกินจำนวนคงค้าง
+    let poDocRef: FirebaseFirestore.DocumentReference | null = null;
+    if (poDocPath) {
+      const p = String(poDocPath);
+      const m = p.match(/^companies\/([^/]+)\/purchase_orders\/([^/]+)$/) || p.match(/^purchase_orders\/([^/]+)$/);
+      if (!m || (m.length === 3 && m[1] !== companyId)) {
+        return NextResponse.json({ success: false, error: "ใบสั่งซื้อไม่ถูกต้อง" }, { status: 400 });
+      }
+      poDocRef = adminDb.doc(p);
+    }
+    let poUpdate: Record<string, any> | null = null;
+    const readPO = async (transaction: FirebaseFirestore.Transaction) => {
+      poUpdate = null;
+      if (!poDocRef) return;
+      const snap = await transaction.get(poDocRef);
+      const po: any = snap.data();
+      if (!snap.exists || (po.companyId && po.companyId !== companyId)) throw new Error("ไม่พบใบสั่งซื้อ");
+      if (!["APPROVED", "PARTIAL_RECEIVED"].includes(normalizePoStatus(po.status))) throw new Error("ใบสั่งซื้อนี้ยังไม่อนุมัติหรือรับสินค้าครบแล้ว");
+      const poItems = (po.items || []).map((pi: any, idx: number) => {
+        const got = items.filter((l: any) => Number(l.poLineIndex) === idx && l.poLineIndex !== null && l.poLineIndex !== undefined)
+          .reduce((sum: number, l: any) => sum + (Number(l.qtyReceived || l.qty) || 0), 0);
+        const ordered = Number(pi.qty ?? pi.qtyOrdered) || 0;
+        const prev = Number(pi.qtyReceived) || 0;
+        if (got > 0 && prev + got > ordered + 1e-9) throw new Error(`รับเกินจำนวนคงค้างในใบสั่งซื้อ (${pi.name || pi.description || "รายการ " + (idx + 1)})`);
+        return { ...pi, qtyReceived: prev + got };
+      });
+      const allReceived = poItems.every((pi: any) => (Number(pi.qtyReceived) || 0) >= (Number(pi.qty ?? pi.qtyOrdered) || 0));
+      poUpdate = { items: poItems, status: allReceived ? "RECEIVED" : "PARTIAL_RECEIVED", updatedAt: admin.firestore.FieldValue.serverTimestamp(), updatedBy: apiUser.uid };
+    };
+
     // 4. Goods Receipt Document
     const grRef = adminDb.collection(`companies/${companyId}/goods_receipts`).doc();
     const grData = {
@@ -101,6 +133,7 @@ export async function POST(request: Request) {
     //    Journal: Dr สินค้าคงเหลือ / Cr เจ้าหนี้การค้า (โครงสร้างเดียวกับ AccountingEngine.postGoodsReceipt แบบ Non-VAT)
     await processStockMovements(movements, (transaction) => {
       transaction.set(grRef, grData);
+      if (poDocRef && poUpdate) transaction.update(poDocRef, poUpdate);
       if (totalReceiptAmount > 0) {
         const now = admin.firestore.FieldValue.serverTimestamp();
         transaction.set(adminDb.collection(`companies/${companyId}/journal_entries`).doc(), {
@@ -120,7 +153,7 @@ export async function POST(request: Request) {
           updatedAt: now
         });
       }
-    });
+    }, readPO);
 
     // 6. Write Audit Log
     await auditServer.logCreate(

@@ -839,7 +839,7 @@ export const getInitialTemplate = (name: string): DocumentTemplateV3 => {
   return {
     templateName: name,
     targetModule,
-    companyId: "COMP-001",
+    companyId: "", // ผู้เรียกใส่รหัสบริษัทจริงก่อนบันทึก
     isDeleted: false,
     globalStyles: {
       fontFamily: "Sarabun",
@@ -860,7 +860,7 @@ interface UltimateDocumentBuilderProps {
 
 export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocumentBuilderProps) {
   const { user, companyId } = useAuth();
-  const currentCompanyId = companyId || "COMP-001";
+  const currentCompanyId = companyId || "";
 
   const [template, setTemplate] = useState<DocumentTemplateV3>(() => getInitialTemplate(templateName));
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);

@@ -28,9 +28,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { nextDocumentNumber } from "@/lib/sequence-client";
-import { db } from "@/lib/firebase-client";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { apiFetch } from "@/lib/api-client";
 
 function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
@@ -123,38 +121,26 @@ export default function NewPurchaseRequestPage() {
 
     setSaving(true);
     try {
-      const prCode = await nextDocumentNumber("PR", companyId);
       const vendor = suppliers.find((x: any) => x.id === vendorId);
       const project = projects.find((x: any) => x.id === header.projectRef);
-      const round = (n: number) => Math.round(n * 100) / 100;
-      await setDoc(doc(db, `companies/${companyId}/purchase_requests`, prCode), {
-        prCode,
-        documentNo: prCode,
-        companyId,
-        requester: header.requester,
-        requesterUid: user.uid,
-        department: header.department,
-        requestDate: header.requestDate,
-        requiredDate: header.requiredDate,
-        priority: header.priority,
-        projectId: header.projectRef || "",
-        projectName: project ? (project.title || project.name || project.projectId || "") : "",
-        reason: header.reason,
-        suggestedSupplierId: vendorId || "",
-        suggestedSupplierName: vendor ? (vendor.name || vendor.supplierName || "") : "",
-        vatMode,
-        whtRate,
-        items: lines,
-        subTotal: round(preVat),
-        vatAmount: round(vatAmount),
-        whtAmount: round(whtAmount),
-        totalAmount: round(grandTotal),
-        status: "PENDING_APPROVAL",
-        createdBy: user.uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        isDeleted: false,
+      // บันทึกที่ server: เลข PR ไม่ข้าม และคำนวณยอดซ้ำจากรายการ
+      const res = await apiFetch("/api/procurement/purchase-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId, action: "create", items: lines,
+          header: {
+            requester: header.requester, department: header.department, requestDate: header.requestDate, requiredDate: header.requiredDate,
+            priority: header.priority, projectId: header.projectRef || "",
+            projectName: project ? (project.title || project.name || project.projectId || "") : "",
+            reason: header.reason, suggestedSupplierId: vendorId || "",
+            suggestedSupplierName: vendor ? (vendor.name || vendor.supplierName || "") : "", vatMode, whtRate,
+          },
+        }),
       });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
+      const prCode = data.prCode;
       showAlert(`ส่งขออนุมัติซื้อเรียบร้อยแล้ว (${prCode})`);
       router.push("/procurement");
     } catch (err: any) {

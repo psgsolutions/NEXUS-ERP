@@ -39,7 +39,7 @@ export default function QuotationEditPage() {
   const { user, companyId, role } = useAuth();
 
   // Data Fetching from both root collection and company subcollection
-  const effectiveCompanyId = companyId || 'COM-NEXUS-01';
+  const effectiveCompanyId = companyId || "";
   const { data: rootCustomers, loading: rootCustomersLoading } = useRealtimeCollection('customers');
   const { data: companyCustomers, loading: companyCustomersLoading } = useRealtimeCollection(`companies/${effectiveCompanyId}/customers`, [], false);
   const { data: users, loading: usersLoading } = useRealtimeCollection('users');
@@ -323,7 +323,7 @@ export default function QuotationEditPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           changeSummary: revisionChangeSummary,
-          companyId: companyId || "COM-NEXUS-01",
+          companyId: companyId || "",
           userUid: user?.uid || ""
         })
       });
@@ -351,7 +351,7 @@ export default function QuotationEditPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          companyId: companyId || "COM-NEXUS-01",
+          companyId: companyId || "",
           userUid: user?.uid || ""
         })
       });

@@ -36,7 +36,7 @@ export default function QuotationCreationPage() {
   const { user, companyId, role } = useAuth();
 
   // Data Fetching from both root collection and company subcollection
-  const effectiveCompanyId = companyId || 'COM-NEXUS-01';
+  const effectiveCompanyId = companyId || "";
   const { data: rootCustomers, loading: rootCustomersLoading } = useRealtimeCollection('customers');
   const { data: companyCustomers, loading: companyCustomersLoading } = useRealtimeCollection(`companies/${effectiveCompanyId}/customers`, [], false);
   const { data: users, loading: usersLoading } = useRealtimeCollection('users');

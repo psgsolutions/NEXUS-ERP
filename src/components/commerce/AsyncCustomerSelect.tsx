@@ -38,7 +38,7 @@ export function AsyncCustomerSelect({
   isActive = false
 }: AsyncCustomerSelectProps) {
   const { companyId } = useAuth();
-  const currentCompanyId = companyId || 'COMP-001';
+  const currentCompanyId = companyId || "";
   
   const customerConditions = React.useMemo(() => [
     where('companyId', '==', currentCompanyId)

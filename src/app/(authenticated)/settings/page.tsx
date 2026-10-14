@@ -78,7 +78,7 @@ export default function SettingsPage() {
   const [companyAddress, setCompanyAddress] = useState("เลขที่ 1/1 ถนนวิภาวดีรังสิต แขวงลาดยาว เขตจตุจักร กรุงเทพมหานคร 10900");
 
   const { user, companyId } = useAuth();
-  const currentCompanyId = companyId || "COMP-001";
+  const currentCompanyId = companyId || "";
 
   // Dynamic templates states
   const [dbTemplates, setDbTemplates] = useState<any[]>([]);

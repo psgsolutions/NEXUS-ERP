@@ -9,7 +9,7 @@ import { auditService } from "@/services/audit.service";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { nextDocumentNumber } from "@/lib/sequence-client";
+import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
@@ -61,30 +61,14 @@ export default function NewWHTPage() {
 
     setIsSubmitting(true);
     try {
-      const expense = openExpenses.find((e: any) => e.id === form.expenseId);
-      const taxAmount = Math.round(form.baseAmount * (form.whtRate / 100) * 100) / 100;
-      const whtId = await nextDocumentNumber("WHT", currentCompanyId);
-      const whtData = {
-        id: whtId,
-        whtId,
-        expenseId: form.expenseId,
-        expRef: form.expenseId,
-        vendor: expense?.supplierName || expense?.vendor || expense?.supplier || "",
-        supplierId: expense?.supplierId || "",
-        baseAmount: form.baseAmount,
-        whtRate: form.whtRate,
-        taxAmount,
-        status: "pending",
-        filingDate: form.filingDate,
-        companyId: currentCompanyId,
-        createdBy: user.uid,
-        createdAt: serverTimestamp(),
-        isDeleted: false,
-      };
-      await setDoc(doc(db, `companies/${currentCompanyId}/withholding_taxes`, whtId), whtData);
-      await updateDoc(doc(db, `companies/${currentCompanyId}/expenses`, form.expenseId), { whtId, whtAmount: taxAmount, updatedAt: serverTimestamp() });
-      await auditService.logCreate(user.uid, currentCompanyId, "PROCURE_WHT", whtId, whtData);
-      
+      // ออกที่ server: เลข WHT ไม่ข้าม กันออกซ้ำต่อรายการ และฐานภาษีไม่เกินยอดก่อน VAT
+      const res = await apiFetch("/api/finance/wht-certificates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: currentCompanyId, expenseId: form.expenseId, whtRate: form.whtRate, baseAmount: form.baseAmount, filingDate: form.filingDate }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
       showAlert("บันทึกหนังสือรับรองการหักภาษี ณ ที่จ่ายเรียบร้อยแล้ว", "System Notification", "info");
       router.push("/procurement?tab=wht");
     } catch (err: any) {

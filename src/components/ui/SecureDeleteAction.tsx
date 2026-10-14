@@ -8,9 +8,15 @@ import { auditService } from "@/services/audit.service";
 import { doc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase-client";
 import { useSystemDialog } from "@/context/DialogContext";
+import { apiFetch } from "@/lib/api-client";
+
+/** เอกสารที่ต้องลบผ่าน server (ตรวจเอกสารอ้างอิงและคืนสถานะเอกสารต้นทางในทรานแซกชันเดียว) */
+export type ServerDeleteKind = "purchase_order" | "expense" | "wht" | "sales_order";
 
 interface SecureDeleteActionProps {
-  collectionName: string;
+  collectionName?: string;
+  /** ระบุเมื่อเอกสารต้องลบผ่าน /api/documents/delete */
+  serverKind?: ServerDeleteKind;
   documentId: string;
   displayName: string;
   onSuccess?: () => void;
@@ -20,6 +26,7 @@ interface SecureDeleteActionProps {
 
 export function SecureDeleteAction({
   collectionName,
+  serverKind,
   documentId,
   displayName,
   onSuccess,
@@ -50,11 +57,21 @@ export function SecureDeleteAction({
 
     setIsDeleting(true);
     try {
-      const docRef = doc(db, collectionName, documentId);
-      await deleteDoc(docRef);
+      if (serverKind) {
+        const res = await apiFetch("/api/documents/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ companyId, kind: serverKind, id: documentId }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || "ลบไม่สำเร็จ");
+      } else {
+        if (!collectionName) throw new Error("ไม่พบตำแหน่งเอกสาร");
+        await deleteDoc(doc(db, collectionName, documentId));
 
       // Audit Logging
-      await auditService.logDelete(user.uid, companyId, `DELETE_${collectionName.toUpperCase()}`, documentId);
+        await auditService.logDelete(user.uid, companyId, `DELETE_${collectionName.toUpperCase()}`, documentId);
+      }
 
       setIsOpen(false);
       setConfirmText("");

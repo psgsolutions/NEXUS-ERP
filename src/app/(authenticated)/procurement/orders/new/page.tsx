@@ -38,9 +38,9 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { nextDocumentNumber } from "@/lib/sequence-client";
+import { apiFetch } from "@/lib/api-client";
 import { db } from "@/lib/firebase-client";
-import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 
 const ORDER_TYPES: { id: POType, label: string, icon: any }[] = [
   { id: 'STOCK', label: 'สต็อกพัสดุ', icon: <Package size={14} /> },
@@ -148,52 +148,28 @@ function NewPurchaseOrderScreen() {
 
     setSaving(true);
     try {
-      const poCode = await nextDocumentNumber("PO", companyId);
       const supplier = suppliers.find((s: any) => s.id === form.supplier);
       const project = projects.find((p: any) => p.id === form.project_id);
-      const rate = form.currency === "THB" ? 1 : (Number(form.exchange_rate) || 1);
-      const round = (n: number) => Math.round(n * 100) / 100;
-      await setDoc(doc(db, `companies/${companyId}/purchase_orders`, poCode), {
-        poCode,
-        documentNo: poCode,
-        companyId,
-        orderType: form.order_type,
-        supplierId: form.supplier,
-        supplierName: supplier?.name || supplier?.supplierName || form.supplier,
-        reference: form.reference,
-        prRef: prId || "",
-        projectId: form.project_id || "",
-        projectName: project ? (project.title || project.name || project.projectId || "") : "",
-        department: form.department || "",
-        warehouseCode: form.order_type === "STOCK" ? (warehouses[0]?.code || "") : "",
-        date: form.date,
-        expectedDate: form.delivery_date,
-        vatType: form.vat_type,
-        currency: form.currency,
-        exchangeRate: rate,
-        incoterm: form.incoterm,
-        incotermPlace: form.incoterm_place,
-        paymentTerm: form.payment_term,
-        shippingMethod: form.shipping_method,
-        terms: form.terms,
-        items: lines.map((it) => ({ ...it, qtyReceived: 0 })),
-        // ยอดเป็นบาท (THB) ตามอัตราแลกเปลี่ยน
-        subTotal: round(financials.net * rate),
-        vatAmount: round(financials.vat * rate),
-        totalAmount: round(financials.total * rate),
-        totalAmountForeign: round(financials.total),
-        status: "PENDING_APPROVAL",
-        createdBy: user.uid,
-        createdByEmail: user.email || "",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        isDeleted: false,
+      // บันทึกที่ server: เลข PO ไม่ข้าม คำนวณยอดซ้ำ และแปลงใบขอซื้อในทรานแซกชันเดียวกัน
+      const res = await apiFetch("/api/procurement/purchase-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId, action: "create", prId: prId || "", items: lines,
+          header: {
+            orderType: form.order_type, supplierId: form.supplier, supplierName: supplier?.name || supplier?.supplierName || "",
+            reference: form.reference, projectId: form.project_id || "",
+            projectName: project ? (project.title || project.name || project.projectId || "") : "",
+            department: form.department || "", warehouseCode: form.order_type === "STOCK" ? (warehouses[0]?.code || "") : "",
+            date: form.date, expectedDate: form.delivery_date, vatType: form.vat_type, currency: form.currency,
+            exchangeRate: form.exchange_rate, incoterm: form.incoterm, incotermPlace: form.incoterm_place,
+            paymentTerm: form.payment_term, shippingMethod: form.shipping_method, terms: form.terms,
+          },
+        }),
       });
-      if (prId) {
-        await updateDoc(doc(db, `companies/${companyId}/purchase_requests`, prId), {
-          status: "CONVERTED", poCode, updatedAt: serverTimestamp(),
-        });
-      }
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
+      const poCode = data.poCode;
       showAlert(`สร้างใบสั่งซื้อสำเร็จ (${poCode}) รออนุมัติ`);
       router.push(`/procurement/po/${encodeURIComponent(poCode)}`);
     } catch (err: any) {

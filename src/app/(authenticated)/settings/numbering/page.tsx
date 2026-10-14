@@ -32,6 +32,7 @@ import {
   DEFAULT_NUMBERING_SCHEMES 
 } from "@/types/numbering";
 import { apiFetch } from "@/lib/api-client";
+import { useAuth } from "@/context/AuthContext";
 
 const DOC_TYPES = [
   { id: "QO", title: "ใบเสนอราคา (Quotation)", color: "border-l-nexus-teal" },
@@ -46,7 +47,8 @@ const DOC_TYPES = [
 ];
 
 export default function NumberingSettingsPage() {
-  const [companyId, setCompanyId] = useState<string>("COMP-01");
+  const { companyId: authCompanyId } = useAuth();
+  const companyId = authCompanyId || "";
   const [schemes, setSchemes] = useState<Record<string, NumberingScheme>>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [savingMap, setSavingMap] = useState<Record<string, boolean>>({});
@@ -54,7 +56,7 @@ export default function NumberingSettingsPage() {
   const [errorMessageMap, setErrorMessageMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetchSchemes();
+    if (companyId) fetchSchemes();
   }, [companyId]);
 
   const fetchSchemes = async () => {

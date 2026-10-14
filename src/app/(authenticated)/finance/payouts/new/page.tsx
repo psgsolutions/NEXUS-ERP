@@ -7,13 +7,13 @@ import { Save, HardHat, FileText, ArrowLeft } from 'lucide-react';
 import { db } from '@/lib/firebase-client';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
-import { nextDocumentNumber } from "@/lib/sequence-client";
+import { apiFetch } from "@/lib/api-client";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 
 export default function CreatePayoutPage() {
   const { user, companyId } = useAuth();
-  const currentCompanyId = companyId || 'COMP-001';
+  const currentCompanyId = companyId || "";
 
   const { data: salesOrders } = useRealtimeCollection('sales_orders');
   
@@ -65,27 +65,15 @@ export default function CreatePayoutPage() {
     
     try {
       setLoading(true);
-      const pvCode = await nextDocumentNumber('PV', currentCompanyId);
-      
-      await addDoc(collection(db, 'payouts'), {
-        payoutCode: pvCode,
-        soId: formData.soId,
-        soCode: formData.soCode,
-        subcontractorName: formData.subcontractorName,
-        subcontractorTaxId: formData.subcontractorTaxId,
-        remarks: formData.remarks,
-        items: laborItems,
-        subTotal,
-        whtAmount,
-        netTotal,
-        companyId: currentCompanyId,
-        createdAt: serverTimestamp(),
-        createdBy: user?.uid || 'SYSTEM',
-        isDeleted: false,
-        status: 'POSTED'
+      // ตั้งเบิกค่าแรงช่างเป็นรายการค่าใช้จ่ายของบริษัท (เลข EXP ไม่ข้าม) แล้วจ่ายจริงที่ การเงิน › จ่ายชำระ (หัก ณ ที่จ่าย 3% และบันทึกบัญชีตอนจ่าย)
+      const res = await apiFetch("/api/finance/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: currentCompanyId, action: "subcontract", soId: formData.soId, soCode: formData.soCode, subcontractorName: formData.subcontractorName, subcontractorTaxId: formData.subcontractorTaxId, remarks: formData.remarks, items: laborItems.map((it: any) => ({ description: it.description || it.name || it.taskName || "ค่าแรง", payoutAmount: it.payoutAmount })) }),
       });
-      
-      alert(`บันทึกใบสำคัญจ่ายค่าแรงสำเร็จ: ${pvCode}`);
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
+      alert(`ตั้งเบิกค่าแรงช่างสำเร็จ: ${data.expenseId} — จ่ายเงินได้ที่ การเงิน › จ่ายชำระ`);
       // Reset form
       setLaborItems([]);
       setFormData({ soId: '', soCode: '', subcontractorName: '', subcontractorTaxId: '', remarks: '' });

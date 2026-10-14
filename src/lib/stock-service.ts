@@ -59,14 +59,16 @@ export async function processStockMovement(movement: StockMovement) {
 
 /**
  * Applies several stock movements in ONE Firestore transaction (all-or-nothing).
- * `extraWrites` runs inside the same transaction after all reads, so callers can
+ * `extraReads` runs first inside the transaction (before any write) so callers can read
+ * and validate related documents; `extraWrites` runs inside the same transaction after all reads, so callers can
  * commit related documents (e.g. the GR document and its journal entry) atomically.
  * IN movements do not post to the GL here: the caller that owns the source document
  * (e.g. Goods Receipt) posts the Inventory/AP entry, so it is never booked twice.
  */
 export async function processStockMovements(
   movements: StockMovement[],
-  extraWrites?: (transaction: Transaction) => void | Promise<void>
+  extraWrites?: (transaction: Transaction) => void | Promise<void>,
+  extraReads?: (transaction: Transaction) => Promise<void>
 ): Promise<string[]> {
   if (movements.length === 0) return [];
 
@@ -98,6 +100,7 @@ export async function processStockMovements(
 
   await adminDb.runTransaction(async (transaction) => {
     auditEntries.length = 0; // transaction callback may be retried
+    await extraReads?.(transaction);
 
     // 2. Read phase (Firestore requires every read before any write)
     const products = new Map<string, {

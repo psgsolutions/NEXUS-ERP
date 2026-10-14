@@ -47,6 +47,9 @@ async function main() {
     await setDoc(doc(db, 'companies/A/counters/RE'), { lastSeq: 5 });
     await setDoc(doc(db, 'companies/A/journal_entries/J1'), { companyId: 'A', status: 'draft' });
     await setDoc(doc(db, 'taxFilings/T1'), { companyId: 'A' });
+    for (const c of ['purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders']) {
+      await setDoc(doc(db, `companies/A/${c}/D1`), { companyId: 'A', status: 'PENDING_APPROVAL' });
+    }
     await setDoc(doc(db, 'companies/A/projects/P1/change_orders/co1'), { status: 'PENDING' });
   });
 
@@ -149,6 +152,16 @@ async function main() {
     ['member reads own tax filing', () => assertSucceeds(getDoc(doc(userA, 'taxFilings/T1')))],
     ['member cannot create tax filing', () => assertFails(setDoc(doc(userA, 'taxFilings/T2'), { companyId: 'A' }))],
     ['member cannot fake tax filing lock', () => assertFails(setDoc(doc(userA, 'companies/A/tax_filing_locks/L1'), { isLocked: true }))],
+    // จัดซื้อ / ค่าใช้จ่าย / ขาย / งานบริการ: อ่านได้ เขียนผ่าน API เท่านั้น
+    ...['purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders'].flatMap((c) => [
+      [`member reads ${c}`, () => assertSucceeds(getDoc(doc(userA, `companies/A/${c}/D1`)))],
+      [`member cannot create ${c}`, () => assertFails(setDoc(doc(userA, `companies/A/${c}/D2`), { companyId: 'A' }))],
+      [`admin cannot approve ${c} directly`, () => assertFails(updateDoc(doc(adminA, `companies/A/${c}/D1`), { status: 'APPROVED' }))],
+      [`admin cannot delete ${c} directly`, () => assertFails(deleteDoc(doc(adminA, `companies/A/${c}/D1`)))],
+    ]),
+    ['member uploads work order photo', () => assertSucceeds(setDoc(doc(userA, 'companies/A/work_orders/D1/attachments/after'), { companyId: 'A', type: 'after' }))],
+    ['member cannot upload photo to other company work order', () => assertFails(setDoc(doc(userA, 'companies/B/work_orders/D1/attachments/after'), { companyId: 'B' }))],
+    ['member cannot write other work order subcollection', () => assertFails(setDoc(doc(userA, 'companies/A/work_orders/D1/logs/x'), { companyId: 'A' }))],
     ['member cannot write depreciation run', () => assertFails(setDoc(doc(userA, 'assetDepreciations/A_2026-10'), { companyId: 'A' }))],
 
     // Company document counters: API only (tax numbers RE/QT/RF live here)

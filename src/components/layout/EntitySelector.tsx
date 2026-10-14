@@ -7,14 +7,24 @@ import { Building2, ChevronRight, ShieldCheck } from "lucide-react";
 import { cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
+import { db } from "@/lib/firebase-client";
+import { collection, getDocs } from "firebase/firestore";
 
 const TYPE_TH: Record<string, string> = { HEADQUARTERS: "สำนักงานใหญ่", BRANCH: "สาขา" };
 
 /** บริษัทที่ผู้ใช้สังกัด (ข้อมูลจริงจาก companies/{companyId}) พร้อมรายละเอียดเมื่อคลิก */
 export function EntitySelector() {
-  const { companyId } = useAuth();
-  const { data: company } = useRealtimeDocument<any>(companyId ? `companies/${companyId}` : null);
+  const { companyId, role, switchCompany } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
+  const isSuper = role === "SUPERADMIN";
+  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    if (!isSuper || !isOpen || companies.length) return;
+    getDocs(collection(db, "companies"))
+      .then((snap) => setCompanies(snap.docs.map((d) => ({ id: d.id, name: String(d.data().name || d.id) }))))
+      .catch(() => setCompanies([]));
+  }, [isSuper, isOpen, companies.length]);
+  const { data: company } = useRealtimeDocument<any>(companyId ? `companies/${companyId}` : null);
   const anchorRef = useRef<HTMLDivElement>(null);
   const floatingRef = useRef<HTMLDivElement>(null);
 
@@ -59,6 +69,18 @@ export function EntitySelector() {
         {company?.address && <p className="text-[12px] text-white/60 leading-relaxed">{company.address}</p>}
         <p className="text-[11px] text-white/40 font-mono">{companyId}</p>
         <Link href="/settings" onClick={() => setIsOpen(false)} className="block text-[12px] text-nexus-teal hover:underline pt-1">ตั้งค่าข้อมูลบริษัท</Link>
+        {isSuper && companies.length > 1 && (
+          <div className="pt-2 mt-1 border-t border-white/10 space-y-1">
+            <p className="text-[11px] font-bold text-white/40">สลับบริษัท (SUPERADMIN)</p>
+            {companies.map((c) => (
+              <button key={c.id} type="button" disabled={c.id === companyId}
+                onClick={() => { switchCompany(c.id); setIsOpen(false); }}
+                className={cn("w-full text-left px-2 py-1.5 rounded-lg text-[12px] truncate", c.id === companyId ? "text-nexus-teal bg-nexus-teal/10" : "text-white/70 hover:bg-white/5")}>
+                {c.name}
+              </button>
+            ))}
+          </div>
+        )}
       </FloatingLayer>
     </div>
   );

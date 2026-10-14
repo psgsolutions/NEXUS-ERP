@@ -145,14 +145,14 @@ export default function ProcurementPage() {
     const qExp = query(collection(db, `companies/${companyId}/expenses`));
     const unsubExp = onSnapshot(qExp, (snap) => {
       const list: any[] = [];
-      snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+      snap.forEach(doc => list.push({ id: doc.id, ...doc.data(), _docId: doc.id }));
       setExpensesList(list);
     });
 
     const qWht = query(collection(db, `companies/${companyId}/withholding_taxes`));
     const unsubWht = onSnapshot(qWht, (snap) => {
       const list: any[] = [];
-      snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+      snap.forEach(doc => list.push({ id: doc.id, ...doc.data(), _docId: doc.id }));
       setWhtList(list);
     });
 
@@ -365,9 +365,9 @@ export default function ProcurementPage() {
                            <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">ไม่มีข้อมูลใบสั่งซื้อ</NexusTableCell>
                          </NexusTableRow>
                        ) : filteredPOs.map(po => (
-                         <PORow key={po.docId} {...po} companyId={companyId || "COM-NEXUS-01"} onExpenseCreate={async () => {
+                         <PORow key={po.docId} {...po} companyId={companyId || ""} onExpenseCreate={async () => {
                             try {
-                              const expId = await createExpenseFromPO(po.docId, companyId || "COM-NEXUS-01");
+                              const expId = await createExpenseFromPO(po.docId, companyId || "");
                               showToast(`สร้างใบสำคัญจ่ายสำเร็จ (${expId})`);
                               setActiveTab("expense");
                             } catch (e: any) {
@@ -383,11 +383,11 @@ export default function ProcurementPage() {
                            <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">ไม่มีข้อมูลบันทึกรายจ่าย</NexusTableCell>
                          </NexusTableRow>
                        ) : filteredExpenses.map(exp => (
-                         <ExpenseRow key={exp.id} {...exp} companyId={companyId || "COM-NEXUS-01"}
+                         <ExpenseRow key={exp.id} {...exp} companyId={companyId || ""}
                            onClick={() => { setSelectedItem(exp); setIsExpenseOpen(true); }}
                            onWhtCreate={async () => {
                             try {
-                              const whtId = await createWHTFromExpense(exp.id, companyId || "COM-NEXUS-01");
+                              const whtId = await createWHTFromExpense(exp.id, companyId || "");
                               showToast(`ออกภาษีหัก ณ ที่จ่ายสำเร็จ (${whtId})`);
                               setActiveTab("wht");
                             } catch (e: any) {
@@ -403,7 +403,7 @@ export default function ProcurementPage() {
                            <NexusTableCell colSpan={7} className="text-center text-white/50 py-8">ไม่มีข้อมูลภาษีหัก ณ ที่จ่าย</NexusTableCell>
                          </NexusTableRow>
                        ) : filteredWHTs.map(wht => (
-                         <WHTRow key={wht.id} {...wht} companyId={companyId || "COM-NEXUS-01"}
+                         <WHTRow key={wht.id} {...wht} companyId={companyId || ""}
                            onClick={() => { setSelectedItem(wht); setIsWHTOpen(true); }}
                          />
                        ))}
@@ -550,7 +550,7 @@ function PORow({ id, docId, vendor, totalAmount, amount, approval, normalizedSta
              <button onClick={onExpenseCreate} className="px-2 py-1 text-[10px] bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500 hover:text-white transition-colors">รับ+ตั้งหนี้</button>
           )}
           {normalizedStatus === "PENDING_APPROVAL" && (
-            <SecureDeleteAction collectionName={`companies/${companyId}/purchase_orders`} documentId={docId} displayName={id} compact />
+            <SecureDeleteAction serverKind="purchase_order" documentId={docId} displayName={id} compact />
           )}
         </div>
       </NexusTableCell>
@@ -558,7 +558,7 @@ function PORow({ id, docId, vendor, totalAmount, amount, approval, normalizedSta
   );
 }
 
-function ExpenseRow({ id, poRef, vendor, supplier, totalAmount, amount, balance, paidAmount, vatAmount, apPosted, documentType, status, isSample, whtId, paymentRefs, companyId, onWhtCreate, onClick }: any) {
+function ExpenseRow({ id, _docId, poRef, vendor, supplier, totalAmount, amount, balance, paidAmount, vatAmount, apPosted, documentType, status, isSample, whtId, paymentRefs, companyId, onWhtCreate, onClick }: any) {
   const pvRefs: string[] = Array.isArray(paymentRefs) ? paymentRefs : [];
   const displayVendor = vendor || supplier || "-";
   const displayAmount = totalAmount ? `฿${totalAmount.toLocaleString()}` : (amount ? `฿${amount}` : "฿0.00");
@@ -600,14 +600,14 @@ function ExpenseRow({ id, poRef, vendor, supplier, totalAmount, amount, balance,
             </Link>
           )}
           {/* จ่ายเงินแล้วลบไม่ได้ ต้องยกเลิกใบสำคัญจ่ายก่อน */}
-          {!(Number(paidAmount) > 0) && <SecureDeleteAction collectionName={`companies/${companyId}/expenses`} documentId={id} displayName={id} compact />}
+          {!(Number(paidAmount) > 0) && <SecureDeleteAction serverKind="expense" documentId={_docId || id} displayName={id} compact />}
         </div>
       </NexusTableCell>
     </NexusTableRow>
   );
 }
 
-function WHTRow({ id, expenseId, expRef, vendor, baseAmount, taxAmount, status, companyId, onClick }: any) {
+function WHTRow({ id, _docId, expenseId, expRef, vendor, baseAmount, taxAmount, status, companyId, onClick }: any) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
@@ -622,7 +622,7 @@ function WHTRow({ id, expenseId, expRef, vendor, baseAmount, taxAmount, status, 
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-block">
-          <SecureDeleteAction collectionName="withholding_taxes" documentId={id} displayName={id} compact />
+          <SecureDeleteAction serverKind="wht" documentId={_docId || id} displayName={id} compact />
         </div>
       </NexusTableCell>
     </NexusTableRow>

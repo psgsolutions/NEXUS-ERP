@@ -1,154 +1,37 @@
 import { db } from "./firebase-client";
-import { 
-  doc, 
-  runTransaction, 
-  serverTimestamp,
-  getDoc
-} from "firebase/firestore";
-import { nextDocumentNumber } from "./sequence-client";
+import { apiFetch } from "./api-client";
 
 /**
- * [PROC-STRATEGY-V2.0]
- * Procurement & Approval Intelligence
+ * [PROC-STRATEGY-V3]
+ * จัดซื้อ: การเขียนข้อมูลทำที่ server ทั้งหมด (ตรวจสิทธิ์ สถานะ วงเงินอนุมัติ และออกเลขในทรานแซกชัน)
+ *  - อนุมัติ/ยกเลิกใบสั่งซื้อ   -> /api/procurement/purchase-orders
+ *  - ตั้งเบิกจากใบสั่งซื้อ       -> /api/finance/expenses (fromPO)
+ *  - หนังสือรับรองหัก ณ ที่จ่าย -> /api/finance/wht-certificates
  */
 
-export async function approvePurchaseOrder(poId: string, userId: string, companyId: string, sessionRole?: string) {
-  const poRef = doc(db, `companies/${companyId}/purchase_orders`, poId);
-  const userRef = doc(db, "users", userId);
-
-  await runTransaction(db, async (transaction) => {
-    const poSnap = await transaction.get(poRef);
-    const userSnap = await transaction.get(userRef);
-
-    if (!poSnap.exists()) throw new Error("ไม่พบใบสั่งซื้อ");
-    const poData = poSnap.data();
-    const userData = userSnap.data();
-
-    // Multi-level Approval Logic
-    const amount = poData.totalAmount;
-    // role จากโปรไฟล์ ถ้าไม่มี (เช่น SUPERADMIN ที่ไม่มีเอกสาร users) ใช้ role จาก session
-    const role = (userData?.role || sessionRole || "").toUpperCase();
-
-    if (amount > 50000 && role !== "SUPERADMIN") {
-      throw new Error("ยอดเกิน 50,000 บาท ต้องให้ Superadmin อนุมัติเท่านั้น");
-    }
-
-    transaction.update(poRef, { 
-      status: "Approved", 
-      approvedBy: userId,
-      approvedAt: serverTimestamp() 
-    });
-  });
+async function post(url: string, body: any) {
+  const res = await apiFetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.success) throw new Error(data.error || "ทำรายการไม่สำเร็จ");
+  return data;
 }
 
-export async function processGoodsReceipt(poId: string, items: any[], companyId: string) {
-  const poRef = doc(db, `companies/${companyId}/purchase_orders`, poId);
-  
-  await runTransaction(db, async (transaction) => {
-    // 1. Update PO Status
-    transaction.update(poRef, { status: "Received", receivedAt: serverTimestamp() });
-
-    // 2. Trigger Inventory Update (Call stock-service logic here in real app)
-    // For each item, update location balance
-  });
+export async function approvePurchaseOrder(poId: string, companyId: string) {
+  return post("/api/procurement/purchase-orders", { companyId, action: "approve", poId });
 }
 
-// ==========================================
-// THAI ACCOUNTING EXPENSE FLOW (PHASE 2)
-// ==========================================
-
-import { setDoc } from "firebase/firestore";
-
-/**
- * Creates an Expense Document (บันทึกรายจ่าย / ใบสำคัญจ่าย) from an existing PO
- */
-export async function createExpenseFromPO(poId: string, companyId: string) {
-  const poRef = doc(db, `companies/${companyId}/purchase_orders`, poId);
-  const poSnap = await getDoc(poRef);
-
-  if (!poSnap.exists()) {
-    throw new Error(`Purchase Order ${poId} not found`);
-  }
-
-  const poData = poSnap.data();
-  const expId = await nextDocumentNumber("EXP", companyId);
-  const expRef = doc(db, `companies/${companyId}/expenses`, expId);
-
-  await setDoc(expRef, {
-    ...poData,
-    id: expId,
-    expenseId: expId,
-    poRef: poId,
-    vendor: poData.supplierName || poData.vendor || "",
-    documentType: "Expense",
-    status: "Awaiting Payment", // รอจ่ายเงิน
-    issuedAt: serverTimestamp(),
-    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days default credit term
-    companyId,
-    createdAt: serverTimestamp(),
-  });
-
-  return expId;
+export async function cancelPurchaseOrder(poId: string, companyId: string) {
+  return post("/api/procurement/purchase-orders", { companyId, action: "cancel", poId });
 }
 
-/**
- * Creates a Withholding Tax Certificate (หนังสือรับรองการหักภาษี ณ ที่จ่าย) from an Expense
- */
-export async function createWHTFromExpense(expId: string, companyId: string, whtRate: number = 3) {
-  const expRef = doc(db, `companies/${companyId}/expenses`, expId);
-  const expSnap = await getDoc(expRef);
+/** ตั้งเบิกค่าใช้จ่ายจากใบสั่งซื้อที่อนุมัติแล้ว (ครั้งเดียวต่อใบ) คืนเลข EXP */
+export async function createExpenseFromPO(poId: string, companyId: string): Promise<string> {
+  return (await post("/api/finance/expenses", { companyId, action: "fromPO", poId })).expenseId;
+}
 
-  if (!expSnap.exists()) {
-    throw new Error(`Expense ${expId} not found`);
-  }
-
-  const expData = expSnap.data();
-  const whtId = await nextDocumentNumber("WHT", companyId);
-  const whtRef = doc(db, `companies/${companyId}/withholding_taxes`, whtId);
-
-  // Parse total string if necessary, fallback to 0
-  let baseAmount = 0;
-  // ฐานภาษีหัก ณ ที่จ่าย = ยอดก่อน VAT (ไม่ใช่ยอดรวม VAT)
-  if (typeof expData.subTotal === 'number') {
-    baseAmount = expData.subTotal;
-  } else if (typeof expData.totalAmount === 'number') {
-    baseAmount = expData.totalAmount - (Number(expData.vatAmount) || 0);
-  } else if (typeof expData.amount === 'string') {
-    baseAmount = parseFloat(expData.amount.replace(/[^0-9.-]+/g,"")) || 0;
-  }
-
-  const whtAmount = Math.round(baseAmount * whtRate) / 100;
-
-  // Run in transaction to update Expense status and create WHT
-  await runTransaction(db, async (transaction) => {
-    transaction.set(whtRef, {
-      id: whtId,
-      whtId,
-      expRef: expId,
-      vendor: expData.supplierName || expData.vendor || expData.supplier || "",
-      supplierId: expData.supplierId || "",
-      taxAmount: whtAmount,
-      documentType: "Withholding Tax (50 Tawi)",
-      whtRate,
-      baseAmount,
-      whtAmount,
-      status: "Issued",
-      issuedAt: serverTimestamp(),
-      companyId,
-      createdAt: serverTimestamp(),
-    });
-
-    // ผูกหนังสือรับรองฯ กับค่าใช้จ่ายเท่านั้น: การจ่ายเงินจริงทำผ่าน POST /api/finance/payments
-    // (ซึ่งจะหักภาษีตามหนังสือนี้และตัดยอดเจ้าหนี้)
-    transaction.update(expRef, {
-      whtRef: whtId,
-      whtId,
-      whtAmount,
-      whtRate,
-    });
-  });
-
-  return whtId;
+/** ออกหนังสือรับรองหัก ณ ที่จ่ายล่วงหน้าให้รายการค่าใช้จ่าย คืนเลข WHT */
+export async function createWHTFromExpense(expId: string, companyId: string, whtRate: number = 3): Promise<string> {
+  return (await post("/api/finance/wht-certificates", { companyId, expenseId: expId, whtRate })).whtId;
 }
 
 export interface SupplierPriceRecord {

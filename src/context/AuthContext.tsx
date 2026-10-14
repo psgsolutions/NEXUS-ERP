@@ -7,7 +7,7 @@ import {
   User as FirebaseUser
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase-client";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, query } from "firebase/firestore";
 
 import { can, Permission } from "@/lib/permissions";
 import { inactiveReason, isSuperAdminAccount } from "@/lib/user-status";
@@ -34,6 +34,18 @@ const AuthContext = createContext<AuthContextType>({
 // ใน production build จะไม่มีทางล็อกอินผ่าน localStorage ได้
 const MOCK_AUTH_ENABLED = process.env.NODE_ENV === "development";
 
+// โปรไฟล์ล่าสุดของผู้ใช้ (uid, role, companyId) ใช้แสดงผลระหว่างรอโหลดโปรไฟล์จริง — เฉพาะผู้ใช้คนเดิมเท่านั้น
+const PROFILE_CACHE_KEY = "nexus_profile_cache";
+const readProfileCache = (uid: string): { role: string; companyId: string } | null => {
+  try {
+    const c = JSON.parse(localStorage.getItem(PROFILE_CACHE_KEY) || "null");
+    return c && c.uid === uid && c.companyId ? { role: String(c.role || ""), companyId: String(c.companyId) } : null;
+  } catch { return null; }
+};
+const writeProfileCache = (uid: string, role: string, companyId: string) => {
+  try { localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ uid, role, companyId })); } catch { /* ignore */ }
+};
+
 const readMockUser = (): any | null => {
   if (!MOCK_AUTH_ENABLED || typeof window === "undefined") return null;
   const mock = localStorage.getItem("nexus_mock_auth_user");
@@ -43,19 +55,17 @@ const readMockUser = (): any | null => {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<FirebaseUser | null>(() => readMockUser());
-  const [companyId, setCompanyId] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return readMockUser()?.companyId || localStorage.getItem('selectedCompanyId') || 'COM-NEXUS-01';
-    }
-    return null;
-  });
+  // ไม่มีบริษัทตั้งต้นแบบพิมพ์ตายตัว: ได้จากโปรไฟล์ผู้ใช้เท่านั้น (SUPERADMIN เลือกบริษัทได้)
+  const [companyId, setCompanyId] = useState<string | null>(() => readMockUser()?.companyId || null);
   const [role, setRole] = useState<string | null>(() => {
     const mock = readMockUser();
     return mock ? (mock.role || 'ADMIN') : null;
   });
   const [loading, setLoading] = useState<boolean>(() => !readMockUser());
 
+  // สลับบริษัทได้เฉพาะ SUPERADMIN (ผู้ใช้ทั่วไปผูกกับบริษัทในโปรไฟล์)
   const switchCompany = (newCompanyId: string) => {
+    if (role !== "SUPERADMIN") return;
     setCompanyId(newCompanyId);
     localStorage.setItem("selectedCompanyId", newCompanyId);
   };
@@ -68,66 +78,56 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
-        // [1] Optimistic UI: Set defaults based on LocalStorage & Email to unblock loading immediately
-        const cachedCompanyId = localStorage.getItem("selectedCompanyId") || "COM-NEXUS-01";
-        let defaultRole = "ADMIN";
-        if (user.uid === "fgIglIug2dh4aNMMeachaugIyFM2" || user.email === "sadmin@admin.com") {
-          defaultRole = "SUPERADMIN";
+        const superAdmin = isSuperAdminAccount(user.uid, user.email);
+        // [1] แสดงผลทันทีจากโปรไฟล์ล่าสุดของผู้ใช้คนเดิม (ถ้ามี) — ไม่สมมติสิทธิ์ ADMIN หรือบริษัทใด ๆ ให้
+        const cached = readProfileCache(user.uid);
+        if (cached) {
+          setCompanyId(superAdmin ? localStorage.getItem("selectedCompanyId") || cached.companyId : cached.companyId);
+          setRole(superAdmin ? "SUPERADMIN" : cached.role);
+          setLoading(false);
         }
-        
-        setCompanyId(cachedCompanyId);
-        setRole(defaultRole);
-        setLoading(false); // <--- ปลดล็อกหน้า Loading ทันที ไม่ต้องรอ Firestore
 
-        // [2] Background Fetch: ไปดึงข้อมูล Profile จริงทีหลัง
+        // [2] โปรไฟล์จริงจาก Firestore
         try {
-          const fetchWithTimeout = async () => {
-             return new Promise((resolve, reject) => {
-               const timer = setTimeout(() => reject(new Error('TIMEOUT')), 15000);
-               getDoc(doc(db, "users", user.uid))
-                 .then(res => {
-                   clearTimeout(timer);
-                   resolve(res);
-                 })
-                 .catch(err => {
-                   clearTimeout(timer);
-                   reject(err);
-                 });
-             });
-          };
-
-          const userDoc: any = await fetchWithTimeout();
-
-          let data: any = {};
-          if (userDoc && typeof userDoc.exists === 'function' && userDoc.exists()) {
-            data = userDoc.data();
-          }
+          const userDoc: any = await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error("TIMEOUT")), 15000);
+            getDoc(doc(db, "users", user.uid))
+              .then((res) => { clearTimeout(timer); resolve(res); })
+              .catch((err) => { clearTimeout(timer); reject(err); });
+          });
+          const exists = !!userDoc?.exists?.();
+          const data: any = exists ? userDoc.data() : {};
 
           // บัญชีรออนุมัติ/ถูกระงับ หรือยังไม่ผูกบริษัท -> ออกจากระบบทันที (หน้า login แสดงเหตุผล)
-          if (!isSuperAdminAccount(user.uid, user.email) && userDoc?.exists?.() && (inactiveReason(data) || !data.companyId)) {
+          if (!superAdmin && (!exists || inactiveReason(data) || !data.companyId)) {
             await signOut(auth);
             return;
           }
 
-          const finalCompanyId = data.companyId || cachedCompanyId;
-          let finalRole = data.role?.toUpperCase() || defaultRole;
-
-          if (user.uid === "fgIglIug2dh4aNMMeachaugIyFM2" || user.email === "sadmin@admin.com") {
-            finalRole = "SUPERADMIN";
+          const finalRole = superAdmin ? "SUPERADMIN" : String(data.role || "").toUpperCase();
+          let finalCompanyId: string | null = superAdmin
+            ? localStorage.getItem("selectedCompanyId") || data.companyId || null
+            : data.companyId;
+          if (superAdmin && !finalCompanyId) {
+            // SUPERADMIN ยังไม่เคยเลือกบริษัท -> เริ่มที่บริษัทแรก (สลับได้ที่ตัวเลือกบริษัท)
+            const first = await getDocs(query(collection(db, "companies"), limit(1)));
+            finalCompanyId = first.docs[0]?.id || null;
           }
-
-          // Update state with the real data from DB if it differs
           setCompanyId(finalCompanyId);
           setRole(finalRole);
+          if (finalCompanyId) writeProfileCache(user.uid, finalRole, finalCompanyId);
         } catch (error: any) {
           console.warn("Network timeout or error fetching user profile:", error?.message || error);
-          // Keep optimistic defaults
+          // ไม่มีโปรไฟล์ในเครื่องให้ใช้ -> ไม่ปล่อยเข้าระบบด้วยสิทธิ์ที่เดาเอง
+          if (!cached) { await signOut(auth); return; }
+        } finally {
+          setLoading(false);
         }
       } else {
         const mock = readMockUser();
         if (mock) {
           setUser(mock as any);
-          setCompanyId(mock.companyId || localStorage.getItem('selectedCompanyId') || 'COM-NEXUS-01');
+          setCompanyId(mock.companyId || null);
           setRole(mock.role || 'ADMIN');
           setLoading(false);
         } else {

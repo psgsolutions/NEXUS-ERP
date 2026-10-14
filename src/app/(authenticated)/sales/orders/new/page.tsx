@@ -10,7 +10,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { nextDocumentNumber } from "@/lib/sequence-client";
+import { apiFetch } from "@/lib/api-client";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
@@ -100,44 +100,15 @@ export default function SalesOrderPage() {
 
     setSaving(true);
     try {
-      const soId = await nextDocumentNumber("SO", companyId);
-      const project = projects.find((p: any) => p.id === projectId);
-      await setDoc(doc(db, `companies/${companyId}/sales_orders`, soId), {
-        soId,
-        documentNo: soId,
-        companyId,
-        docDate,
-        customerId: customer.id,
-        customerName: customerName(customer),
-        customerSnapshot: {
-          name: customerName(customer),
-          taxId: customer.taxId || "",
-          branch: customer.branch || customer.branchCode || "",
-          address: billingAddress,
-        },
-        billingAddress,
-        deliveryAddress: isSameAsBilling ? billingAddress : deliveryAddress,
-        projectId: projectId || "",
-        projectName: project ? (project.title || project.name || project.projectId || "") : "",
-        paymentTermDays: Number(paymentTerm),
-        vatType: VAT_TYPE_LABEL[taxType],
-        taxMode: VAT_TYPE_LABEL[taxType],
-        isVatRegistered: taxType !== "none",
-        items: lines,
-        subTotal: summary.preVat,
-        totalDiscount: summary.discount,
-        vatAmount: summary.vat,
-        grandTotal: summary.grandTotal,
-        totalAmount: summary.grandTotal,
-        totalRevenue: summary.grandTotal,
-        status,
-        fulfillmentStatus: "pending",
-        createdBy: user?.email || user?.uid || "",
-        updatedBy: user?.email || user?.uid || "",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        isDeleted: false,
+      // บันทึกที่ server: เลข SO ไม่ข้าม คำนวณยอดซ้ำ และตรวจวงเงินเครดิตจากยอดค้างจริง
+      const res = await apiFetch("/api/sales/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, status, items: lines, header: { customerId: customer.id, docDate, projectId: projectId || "", paymentTermDays: Number(paymentTerm), vatType: VAT_TYPE_LABEL[taxType], billingAddress, deliveryAddress: isSameAsBilling ? billingAddress : deliveryAddress } }),
       });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
+      const soId = data.soId;
       router.push(`/sales/orders/${soId}`);
     } catch (err: any) {
       console.error("[SO_SAVE_ERROR]", err);

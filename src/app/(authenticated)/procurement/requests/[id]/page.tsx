@@ -8,8 +8,8 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { formatCurrency } from "@/lib/erp-logic";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
-import { db } from "@/lib/firebase-client";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { apiFetch } from "@/lib/api-client";
+import { useSystemDialog } from "@/context/DialogContext";
 
 const VIEW: Record<string, { badge: "active" | "inactive" | "pending" | "warning" | "danger"; label: string }> = {
   PENDING_APPROVAL: { badge: "pending", label: "รออนุมัติ" },
@@ -25,6 +25,7 @@ export default function PurchaseRequestDetailPage() {
   const router = useRouter();
   const prDocId = decodeURIComponent(String(params.id || ""));
   const { user, companyId, role } = useAuth();
+  const { showConfirm } = useSystemDialog();
   const path = companyId && prDocId ? `companies/${companyId}/purchase_requests/${prDocId}` : null;
   const { data: pr, loading } = useRealtimeDocument<any>(path);
   const [busy, setBusy] = useState(false);
@@ -34,7 +35,7 @@ export default function PurchaseRequestDetailPage() {
   if (!pr) {
     return (
       <div className="p-10 space-y-4">
-        <p className="text-white/60 text-sm">ไม่พบใบขอซื้อ "{prDocId}"</p>
+        <p className="text-white/60 text-sm">ไม่พบใบขอซื้อ &ldquo;{prDocId}&rdquo;</p>
         <PillButton variant="glass" onClick={() => router.push("/procurement")}>กลับหน้าจัดซื้อ</PillButton>
       </div>
     );
@@ -46,11 +47,18 @@ export default function PurchaseRequestDetailPage() {
   // ผู้ขอซื้ออนุมัติใบของตัวเองไม่ได้ (ยกเว้น SUPERADMIN)
   const canApprove = status === "PENDING_APPROVAL" && (role === "SUPERADMIN" || (pr.requesterUid && pr.requesterUid !== user?.uid));
 
-  const setStatus = async (next: string, extra: Record<string, any> = {}) => {
+  const setStatus = async (next: string) => {
     setBusy(true);
     setMessage(null);
     try {
-      await updateDoc(doc(db, path!), { status: next, ...extra, updatedBy: user?.uid || "", updatedAt: serverTimestamp() });
+      const action = next === "APPROVED" ? "approve" : next === "REJECTED" ? "reject" : "cancel";
+      const res = await apiFetch("/api/procurement/purchase-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, action, prId: path!.split("/").pop() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "ทำรายการไม่สำเร็จ");
       setMessage({ type: "ok", text: next === "APPROVED" ? "อนุมัติใบขอซื้อแล้ว" : next === "REJECTED" ? "ไม่อนุมัติใบขอซื้อ" : "ยกเลิกใบขอซื้อแล้ว" });
     } catch (err: any) {
       setMessage({ type: "error", text: err?.message || "ทำรายการไม่สำเร็จ" });
@@ -77,10 +85,10 @@ export default function PurchaseRequestDetailPage() {
       <div className="flex items-center gap-2.5 flex-wrap justify-end">
         {canApprove && (
           <>
-            <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={() => setStatus("APPROVED", { approvedBy: user?.uid || "", approvedAt: serverTimestamp() })}>
+            <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={() => setStatus("APPROVED")}>
               <CheckCircle2 size={14} className="mr-1.5" /> อนุมัติ
             </PillButton>
-            <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-red-400" disabled={busy} onClick={() => confirm("ยืนยันไม่อนุมัติใบขอซื้อนี้?") && setStatus("REJECTED")}>
+            <PillButton variant="glass" className="h-8 px-4 text-xs font-bold text-red-400" disabled={busy} onClick={async () => { if (await showConfirm("ยืนยันไม่อนุมัติใบขอซื้อนี้?")) setStatus("REJECTED"); }}>
               <XCircle size={14} className="mr-1.5" /> ไม่อนุมัติ
             </PillButton>
           </>

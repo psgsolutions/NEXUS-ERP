@@ -10,6 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
+import { BankPaymentFields, bankError, bankPayload, emptyBank } from "@/components/finance/BankPaymentFields";
 
 const baht = (n: number) => (Number(n) || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const today = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
@@ -32,7 +33,7 @@ export default function NewCustomerRefundPage() {
   const [amount, setAmount] = useState(0);
   const [refundDate, setRefundDate] = useState(today);
   const [method, setMethod] = useState("TRANSFER");
-  const [bankAccount, setBankAccount] = useState("");
+  const [bank, setBank] = useState(emptyBank);
   const [reference, setReference] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -46,6 +47,7 @@ export default function NewCustomerRefundPage() {
     !(amount > 0) && "ระบุจำนวนเงินที่คืน",
     inv && amount > Number(inv.refundDue) + 0.009 && "คืนเกินยอดค้างคืน",
     refundDate > today() && "ลงวันที่ล่วงหน้าไม่ได้",
+    bankError(method, bank, "จ่ายคืน"),
   ].filter(Boolean) as string[];
 
   const save = async () => {
@@ -54,7 +56,7 @@ export default function NewCustomerRefundPage() {
       setSaving(true);
       const res = await apiFetch("/api/finance/customer-refunds", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId, action: "create", invoiceDocId, amount, refundDate, paymentMethod: method, bankAccount, reference, note }),
+        body: JSON.stringify({ companyId, action: "create", invoiceDocId, amount, refundDate, paymentMethod: method, ...bankPayload(method, bank), reference, note }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
@@ -115,11 +117,11 @@ export default function NewCustomerRefundPage() {
             </div>
           </div>
           {method !== "CASH" && (
-            <Field label="บัญชีธนาคารที่จ่าย" w={220} grow>
-              <PillInput value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} placeholder="เช่น กสิกร 123-4-56789-0" className="w-full h-9 text-sm" />
-            </Field>
+            <div className="w-full grid grid-cols-1 xl:grid-cols-2 gap-3">
+              <BankPaymentFields method={method} value={bank} onChange={setBank} purpose="จ่ายคืน" />
+            </div>
           )}
-          <Field label={method === "CHEQUE" ? "เลขที่เช็ค" : "เลขอ้างอิงการโอน"} w={FIELD_W.code} grow>
+          <Field label="เลขอ้างอิง" w={FIELD_W.code} grow>
             <PillInput value={reference} onChange={(e) => setReference(e.target.value)} className="w-full h-9 text-sm font-mono" />
           </Field>
         </div>

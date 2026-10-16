@@ -192,11 +192,13 @@ service cloud.firestore {
       function apiOnlyCollection(collection) {
         return collection in ['auditLogs', 'financialLedgers', 'quotations', 'receipts', 'payments', 'payrolls', 'serial_numbers', 'invoices', 'billing_notes', 'cndn', 'customer_refunds', 'counters', 'journal_entries', 'tax_filing_locks',
           // จัดซื้อ / ค่าใช้จ่าย / ขาย / งานบริการ: ออกเลข ตรวจสถานะ และอนุมัติที่ server
-          'purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders'];
+          'purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders',
+          // ทะเบียนบัญชีธนาคาร เช็ค และการกระทบยอด: บันทึกผ่าน /api/finance/* เท่านั้น
+          'bank_accounts', 'cheques', 'bank_reconciliations'];
       }
       // ข้อมูลการเงินอ่านได้เฉพาะตำแหน่งที่เกี่ยวข้อง (ส่วนอื่นอ่านได้ทุกคนในบริษัท)
       function restrictedRead(collection) {
-        return collection in ['journal_entries', 'payments', 'financialLedgers', 'tax_filing_locks', 'customer_refunds', 'payrolls', 'expenses', 'withholding_taxes'];
+        return collection in ['journal_entries', 'payments', 'financialLedgers', 'tax_filing_locks', 'customer_refunds', 'payrolls', 'expenses', 'withholding_taxes', 'cheques', 'bank_reconciliations'];
       }
       function canReadCollection(collection) {
         return !restrictedRead(collection) || (

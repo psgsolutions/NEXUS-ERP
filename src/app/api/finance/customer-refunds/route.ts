@@ -7,6 +7,7 @@ import { prepareSequence } from "@/lib/sequence-server";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { voidOrReverseJournal } from "@/lib/journal-reversal.server";
 import { auditServer } from "@/services/audit.server";
+import { readChequeForCancel, resolveBankTarget, writeCheque } from "@/lib/bank-cheque.server";
 import { applyArDelta, arPaymentStatus } from "@/lib/cndn";
 
 /**
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
       if (!METHODS[method]) throw new ApiAuthError(400, "วิธีคืนเงินไม่ถูกต้อง");
       if (refundDate > todayBkk()) throw new ApiAuthError(400, "ลงวันที่คืนเงินล่วงหน้าไม่ได้");
       await assertPeriodOpen(companyId, refundDate);
+      const bank = await resolveBankTarget(companyId, method, body, "คืนเงิน");
 
       const invRef = adminDb.doc(`companies/${companyId}/invoices/${invoiceDocId}`);
       const journalRef = adminDb.collection(`companies/${companyId}/journal_entries`).doc();
@@ -74,11 +76,13 @@ export async function POST(request: Request) {
         const ar = applyArDelta(Number(inv.balance) || 0, due, amount);
 
         seq.commit();
+        writeCheque(tx, companyId, bank, { direction: "OUT", docKind: "refund", docNo: refundNo, docDate: refundDate, party: customerName, amount, uid: apiUser.uid });
         tx.create(adminDb.doc(`companies/${companyId}/customer_refunds/${refundNo}`), {
           id: refundNo, refundNo, documentNo: refundNo, companyId,
           invoiceDocId, invoiceNo: invNo, customerId: inv.customerId || "", customerName,
           refundDate, amount, paymentMethod: method, paymentMethodLabel: METHODS[method].label,
-          bankAccount: str(body.bankAccount, 120), reference: str(body.reference, 120), note: str(body.note, 500),
+          bankAccountId: bank.bankAccountId, bankAccount: bank.bankAccount, ...(bank.cheque ? { cheque: bank.cheque } : {}),
+          reference: str(body.reference, 120), note: str(body.note, 500),
           journalId: journalRef.id, status: "issued",
           createdBy: apiUser.uid, createdAt: now, updatedAt: now, isDeleted: false,
         });
@@ -124,7 +128,11 @@ export async function POST(request: Request) {
         const invRef = adminDb.doc(`companies/${companyId}/invoices/${d.invoiceDocId}`);
         const invSnap = await tx.get(invRef);
         const journalSnap = d.journalId ? await tx.get(adminDb.doc(`companies/${companyId}/journal_entries/${d.journalId}`)) : null;
+        const cheque = await readChequeForCancel(tx, companyId, refundNo);
         const amount = r2(Number(d.amount) || 0);
+        if (cheque && !["CANCELLED", "BOUNCED"].includes(String(cheque.data.status))) {
+          tx.update(cheque.ref, { status: "CANCELLED", history: admin.firestore.FieldValue.arrayUnion({ status: "CANCELLED", at: new Date().toISOString(), by: apiUser.uid, note: "ยกเลิกเอกสาร" }), updatedAt: now });
+        }
 
         if (invSnap.exists) {
           const inv = invSnap.data()!;

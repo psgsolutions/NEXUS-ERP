@@ -6,6 +6,7 @@ import { can } from "@/lib/permissions";
 import { prepareSequence } from "@/lib/sequence-server";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { auditServer } from "@/services/audit.server";
+import { resolveBankTarget, writeCheque } from "@/lib/bank-cheque.server";
 import { expenseAccountOf, payeeKeyOf } from "@/lib/payables";
 
 /**
@@ -48,8 +49,8 @@ export async function POST(request: Request) {
     const rawLines: any[] = Array.isArray(body.lines) ? body.lines : [];
     if (!payeeKey) throw new ApiAuthError(400, "กรุณาเลือกผู้รับเงิน");
     if (!METHODS[method]) throw new ApiAuthError(400, "วิธีจ่ายเงินไม่ถูกต้อง");
-    if (method !== "CASH" && !str(body.bankAccount)) throw new ApiAuthError(400, "กรุณาระบุบัญชีธนาคารที่จ่ายเงิน");
     if (rawLines.length === 0) throw new ApiAuthError(400, "กรุณาเลือกรายการที่จ่ายชำระ");
+    const bank = await resolveBankTarget(companyId, method, body, "จ่ายเงิน");
 
     await assertPeriodOpen(companyId, paymentDate);
 
@@ -200,6 +201,7 @@ export async function POST(request: Request) {
         tx.update(l.ref, l.update);
       });
 
+      writeCheque(tx, companyId, bank, { direction: "OUT", docKind: "payment", docNo: pv.number, docDate: paymentDate, party: payeeName, amount: netPaid, uid: apiUser.uid });
       tx.create(adminDb.doc(`companies/${companyId}/payments/${pv.number}`), {
         companyId,
         paymentNo: pv.number,
@@ -210,7 +212,9 @@ export async function POST(request: Request) {
         paymentDate,
         paymentMethod: method,
         paymentMethodLabel: pay.label,
-        bankAccount: method === "CASH" ? "" : str(body.bankAccount, 120),
+        bankAccountId: bank.bankAccountId,
+        bankAccount: bank.bankAccount,
+        ...(bank.cheque ? { cheque: bank.cheque } : {}),
         reference: str(body.reference, 120),
         note: str(body.note, 500),
         lines: lines.map((l) => l.line),

@@ -7,6 +7,7 @@ import { assertPeriodOpen } from "@/lib/period-close-service";
 import { voidOrReverseJournal } from "@/lib/journal-reversal.server";
 import { auditServer } from "@/services/audit.server";
 import { applyArDelta } from "@/lib/cndn";
+import { readChequeForCancel } from "@/lib/bank-cheque.server";
 
 /**
  * [API-SERVER] ยกเลิกใบเสร็จรับเงิน / ใบสำคัญจ่าย
@@ -60,10 +61,15 @@ export async function POST(request: Request) {
       const targetRefs = lines.map((l) => adminDb.doc(`companies/${companyId}/${isReceipt ? "invoices" : "expenses"}/${isReceipt ? l.invoiceDocId : l.expenseDocId}`));
       const targetSnaps = await tx.getAll(...targetRefs);
       const journalSnap = d.journalId ? await tx.get(adminDb.doc(`companies/${companyId}/journal_entries/${d.journalId}`)) : null;
+      // เช็คที่ผูกกับเอกสาร (ถ้ามี) ถูกยกเลิกไปพร้อมกัน
+      const cheque = await readChequeForCancel(tx, companyId, docNo);
 
       const certs: string[] = isReceipt ? [] : Array.isArray(d.whtCertificates) ? d.whtCertificates : [];
 
       // ---- เขียน ----
+      if (cheque && !["CANCELLED", "BOUNCED"].includes(String(cheque.data.status))) {
+        tx.update(cheque.ref, { status: "CANCELLED", history: admin.firestore.FieldValue.arrayUnion({ status: "CANCELLED", at: new Date().toISOString(), by: apiUser.uid, note: "ยกเลิกเอกสาร " }), updatedAt: now });
+      }
       const restored = lines.map((l, i) => {
         const t = targetSnaps[i];
         const no = isReceipt ? l.invoiceNo : l.expenseNo;

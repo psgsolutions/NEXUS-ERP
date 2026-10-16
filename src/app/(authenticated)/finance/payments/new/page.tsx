@@ -14,6 +14,7 @@ import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
 import { toMillis } from "@/lib/dashboard-metrics";
 import { expenseAccountOf, payeeKeyOf } from "@/lib/payables";
+import { BankPaymentFields, bankError, bankPayload, emptyBank } from "@/components/finance/BankPaymentFields";
 
 type Method = "CASH" | "TRANSFER" | "CHEQUE";
 const METHODS: { id: Method; label: string; icon: React.ReactNode; account: string }[] = [
@@ -106,7 +107,7 @@ function PaymentForm() {
   const [payeeKey, setPayeeKey] = useState("");
   const [paymentDate, setPaymentDate] = useState(() => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10));
   const [method, setMethod] = useState<Method>("TRANSFER");
-  const [bankAccount, setBankAccount] = useState("");
+  const [bank, setBank] = useState(emptyBank);
   const [reference, setReference] = useState("");
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<Record<string, LineState>>({});
@@ -163,14 +164,15 @@ function PaymentForm() {
     if (!payeeKey) return setMessage({ text: "กรุณาเลือกผู้รับเงิน", error: true });
     if (chosen.length === 0) return setMessage({ text: "กรุณาเลือกรายการที่จ่ายชำระ", error: true });
     if (hasError) return setMessage({ text: "ยอดจ่ายต้องมากกว่า 0 และไม่เกินยอดค้าง", error: true });
-    if (method !== "CASH" && !bankAccount.trim()) return setMessage({ text: "กรุณาระบุบัญชีธนาคารที่จ่ายเงิน", error: true });
+    const bankMsg = bankError(method, bank, "จ่ายเงิน");
+    if (bankMsg) return setMessage({ text: bankMsg, error: true });
     setSaving(true);
     try {
       const res = await apiFetch("/api/finance/payments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          companyId, payeeKey, paymentDate, paymentMethod: method, bankAccount, reference, note,
+          companyId, payeeKey, paymentDate, paymentMethod: method, ...bankPayload(method, bank), reference, note,
           lines: chosen.map((c) => ({ expenseDocId: c.p.docId, amount: c.amount, whtRate: c.l.whtRate })),
         }),
       });
@@ -230,7 +232,7 @@ function PaymentForm() {
             <PillInput type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="w-full h-9 text-sm font-mono" />
           </div>
           <div className="space-y-1">
-            <label className="text-[12px] font-bold text-white/70 ml-1">เลขอ้างอิงการโอน / เลขเช็ค</label>
+            <label className="text-[12px] font-bold text-white/70 ml-1">เลขอ้างอิง (เช่น เลขที่โอนเงิน)</label>
             <PillInput value={reference} onChange={(e) => setReference(e.target.value)} placeholder="ถ้ามี" className="w-full h-9 text-sm" />
           </div>
         </div>
@@ -246,12 +248,7 @@ function PaymentForm() {
               ))}
             </div>
           </div>
-          {method !== "CASH" && (
-            <div className="space-y-1">
-              <label className="text-[12px] font-bold text-white/70 ml-1">บัญชีธนาคารที่จ่ายเงิน <span className="text-danger">*</span></label>
-              <PillInput value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} placeholder="เช่น กสิกรไทย 123-4-56789-0" className="w-full h-9 text-sm" />
-            </div>
-          )}
+          <BankPaymentFields method={method} value={bank} onChange={setBank} purpose="จ่ายเงิน" />
         </div>
         <div className="space-y-1">
           <label className="text-[12px] font-bold text-white/70 ml-1">หมายเหตุ</label>

@@ -6,6 +6,7 @@ import { can } from "@/lib/permissions";
 import { prepareSequence } from "@/lib/sequence-server";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { auditServer } from "@/services/audit.server";
+import { resolveBankTarget, writeCheque } from "@/lib/bank-cheque.server";
 
 /**
  * [API-SERVER] รับชำระเงินจากลูกค้า (ใบเสร็จรับเงิน)
@@ -51,8 +52,8 @@ export async function POST(request: Request) {
     const rawLines: any[] = Array.isArray(body.lines) ? body.lines : [];
     if (!customerId) throw new ApiAuthError(400, "กรุณาเลือกลูกค้า");
     if (!METHODS[method]) throw new ApiAuthError(400, "วิธีรับชำระไม่ถูกต้อง");
-    if (method !== "CASH" && !str(body.bankAccount)) throw new ApiAuthError(400, "กรุณาระบุบัญชีธนาคารที่รับเงิน");
     if (rawLines.length === 0) throw new ApiAuthError(400, "กรุณาเลือกใบแจ้งหนี้ที่รับชำระ");
+    const bank = await resolveBankTarget(companyId, method, body, "รับเงิน");
 
     // ปิดงวดแล้วบันทึกไม่ได้
     await assertPeriodOpen(companyId, paymentDate);
@@ -136,7 +137,9 @@ export async function POST(request: Request) {
         paymentDate,
         paymentMethod: method,
         paymentMethodLabel: METHODS[method].label,
-        bankAccount: method === "CASH" ? "" : str(body.bankAccount, 120),
+        bankAccountId: bank.bankAccountId,
+        bankAccount: bank.bankAccount,
+        ...(bank.cheque ? { cheque: bank.cheque } : {}),
         reference: str(body.reference, 120),
         note: str(body.note, 500),
         lines: lines.map((l) => l.line),
@@ -154,6 +157,7 @@ export async function POST(request: Request) {
         updatedAt: now,
       });
       lines.forEach((l) => tx.update(l.ref, l.invUpdate));
+      writeCheque(tx, companyId, bank, { direction: "IN", docKind: "receipt", docNo: receiptNo, docDate: paymentDate, party: customerName, amount: cashReceived, uid: apiUser.uid });
       tx.set(journalRef, {
         companyId,
         date: paymentDate,

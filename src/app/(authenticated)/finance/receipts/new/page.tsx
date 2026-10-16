@@ -13,6 +13,7 @@ import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
 import { toMillis } from "@/lib/dashboard-metrics";
+import { BankPaymentFields, bankError, bankPayload, emptyBank } from "@/components/finance/BankPaymentFields";
 
 type Method = "CASH" | "TRANSFER" | "CHEQUE";
 const METHODS: { id: Method; label: string; icon: React.ReactNode; account: string }[] = [
@@ -92,7 +93,7 @@ function ReceiptForm() {
   const [customerId, setCustomerId] = useState("");
   const [paymentDate, setPaymentDate] = useState(() => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10));
   const [method, setMethod] = useState<Method>("TRANSFER");
-  const [bankAccount, setBankAccount] = useState("");
+  const [bank, setBank] = useState(emptyBank);
   const [reference, setReference] = useState("");
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<Record<string, LineState>>({});
@@ -138,7 +139,8 @@ function ReceiptForm() {
     if (!customerId) return setMessage({ text: "กรุณาเลือกลูกค้า", error: true });
     if (chosen.length === 0) return setMessage({ text: "กรุณาเลือกใบแจ้งหนี้ที่รับชำระ", error: true });
     if (hasError) return setMessage({ text: "ยอดรับชำระต้องมากกว่า 0 และไม่เกินยอดค้าง", error: true });
-    if (method !== "CASH" && !bankAccount.trim()) return setMessage({ text: "กรุณาระบุบัญชีธนาคารที่รับเงิน", error: true });
+    const bankMsg = bankError(method, bank, "รับเงิน");
+    if (bankMsg) return setMessage({ text: bankMsg, error: true });
     setSaving(true);
     try {
       const res = await apiFetch("/api/finance/receipts", {
@@ -149,7 +151,7 @@ function ReceiptForm() {
           customerId,
           paymentDate,
           paymentMethod: method,
-          bankAccount,
+          ...bankPayload(method, bank),
           reference,
           note,
           lines: chosen.map((c) => ({ invoiceDocId: c.o.docId, amount: c.amount, whtRate: c.l.whtRate })),
@@ -209,7 +211,7 @@ function ReceiptForm() {
             <PillInput type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="w-full h-9 text-sm font-mono" />
           </div>
           <div className="space-y-1">
-            <label className="text-[12px] font-bold text-white/70 ml-1">เลขอ้างอิงการโอน / เลขเช็ค</label>
+            <label className="text-[12px] font-bold text-white/70 ml-1">เลขอ้างอิง (เช่น เลขที่โอนเงิน)</label>
             <PillInput value={reference} onChange={(e) => setReference(e.target.value)} placeholder="ถ้ามี" className="w-full h-9 text-sm" />
           </div>
         </div>
@@ -225,12 +227,7 @@ function ReceiptForm() {
               ))}
             </div>
           </div>
-          {method !== "CASH" && (
-            <div className="space-y-1">
-              <label className="text-[12px] font-bold text-white/70 ml-1">บัญชีธนาคารที่รับเงิน <span className="text-danger">*</span></label>
-              <PillInput value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} placeholder="เช่น กสิกรไทย 123-4-56789-0" className="w-full h-9 text-sm" />
-            </div>
-          )}
+          <BankPaymentFields method={method} value={bank} onChange={setBank} purpose="รับเงิน" chequeIncoming />
         </div>
         <div className="space-y-1">
           <label className="text-[12px] font-bold text-white/70 ml-1">หมายเหตุ</label>

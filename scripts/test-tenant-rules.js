@@ -53,6 +53,8 @@ async function main() {
     await setDoc(doc(db, 'taxFilings/T1'), { companyId: 'A' });
     await setDoc(doc(db, 'companies/A/payrolls/P1'), { companyId: 'A' });
     await setDoc(doc(db, 'companies/A/payments/PV1'), { companyId: 'A' });
+    await setDoc(doc(db, 'companies/A/bank_accounts/BA1'), { companyId: 'A', name: 'K-Bank' });
+    await setDoc(doc(db, 'companies/A/cheques/RE1'), { companyId: 'A', status: 'PENDING' });
     for (const c of ['purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders']) {
       await setDoc(doc(db, `companies/A/${c}/D1`), { companyId: 'A', status: 'PENDING_APPROVAL' });
     }
@@ -171,6 +173,12 @@ async function main() {
     ['sales cannot read journal', () => assertFails(getDoc(doc(userA, 'companies/A/journal_entries/J1')))],
     ['system admin (roles) cannot read journal', () => assertFails(getDoc(doc(adminR, 'companies/A/journal_entries/J1')))],
     ['sales cannot read payment voucher', () => assertFails(getDoc(doc(userA, 'companies/A/payments/PV1')))],
+    // ทะเบียนธนาคาร/เช็ค
+    ['sales reads bank account list (receipt form)', () => assertSucceeds(getDoc(doc(userA, 'companies/A/bank_accounts/BA1')))],
+    ['accountant cannot write bank account directly', () => assertFails(setDoc(doc(acctA, 'companies/A/bank_accounts/BA2'), { companyId: 'A' }))],
+    ['accountant reads cheque', () => assertSucceeds(getDoc(doc(acctA, 'companies/A/cheques/RE1')))],
+    ['sales cannot read cheque', () => assertFails(getDoc(doc(userA, 'companies/A/cheques/RE1')))],
+    ['accountant cannot clear cheque directly', () => assertFails(updateDoc(doc(acctA, 'companies/A/cheques/RE1'), { status: 'CLEARED' }))],
     ['accountant reads payment voucher', () => assertSucceeds(getDoc(doc(acctA, 'companies/A/payments/PV1')))],
     ['HR reads payroll', () => assertSucceeds(getDoc(doc(adminR, 'companies/A/payrolls/P1')))],
     ['sales cannot read payroll', () => assertFails(getDoc(doc(userA, 'companies/A/payrolls/P1')))],

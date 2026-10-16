@@ -117,6 +117,7 @@ export default function AuthenticatedLayout({
             <NavGroup title="การบริหารจัดการ">
               {show("/executive") && <SideLink href="/executive" icon={<TrendingUp size={20} />} label="แดชบอร์ดผู้บริหาร" active={pathname === "/executive"} title="Executive" />}
               {show("/finance") && <SideLink href="/finance" icon={<Landmark size={20} />} label="บัญชีแยกประเภท" active={pathname === "/finance"} title="GL" />}
+              {show("/finance/reports") && <SideLink href="/finance/reports" icon={<FileText size={20} />} label="รายงานบัญชีและภาษี" active={pathname === "/finance/reports"} title="Reports" />}
               {show("/ai") && <SideLink href="/ai" icon={<Bot size={20} />} label="วิเคราะห์ข้อมูล" active={pathname === "/ai"} title="AI Analytics" />}
             </NavGroup>
 

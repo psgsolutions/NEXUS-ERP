@@ -254,8 +254,12 @@ export default function ReportsPage() {
               </span>
             </div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-              ระบบวิเคราะห์ข้อมูลและสร้างแบบฟอร์มเอกสาร
+              สร้างแบบฟอร์มเอกสาร
             </h1>
+            <p className="text-[13px] text-white/50 mt-1">
+              ออกแบบแบบฟอร์มและบันทึกข้อมูลตามเทมเพลต · งบการเงินและรายงานภาษีดูได้ที่{" "}
+              <a href="/finance/reports" className="text-nexus-teal hover:underline">รายงานบัญชีและภาษี</a>
+            </p>
           </div>
         </div>
 

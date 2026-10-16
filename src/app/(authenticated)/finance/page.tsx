@@ -318,6 +318,10 @@ export default function FinancePage() {
           onTabChange={(id: any) => setActiveTab(id)}
         />
         <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
+           <PillButton variant="glass" className="h-8 px-5 rounded-full text-[11px] uppercase tracking-widest font-black" onClick={() => router.push("/finance/reports")}>
+             <FileText size={14} className="mr-1.5" />
+             รายงานบัญชี
+           </PillButton>
            <PillButton variant="confirm" className="h-8 px-5 rounded-full text-[11px] uppercase tracking-widest font-black" onClick={() => router.push("/finance/period-close/new")}>
              <ShieldCheck size={14} className="mr-1.5" />
              ปิดงวดบัญชี

@@ -31,6 +31,7 @@ function barPath(x: number, y: number, w: number, h: number): string {
 }
 
 export function RevenueExpenseChart({ data }: { data: MonthlyPL[] }) {
+  const periodText = `${data.length} เดือนล่าสุด`;
   const boxRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(640);
   const [hover, setHover] = useState<number | null>(null);
@@ -103,7 +104,7 @@ export function RevenueExpenseChart({ data }: { data: MonthlyPL[] }) {
         <div ref={boxRef} className="relative w-full" onMouseLeave={() => setHover(null)}>
           {!hasData && (
             <div className="absolute inset-0 flex items-center justify-center text-[13px] text-white/40 z-10 pointer-events-none">
-              ยังไม่มีรายการบัญชีรายได้หรือค่าใช้จ่ายใน 6 เดือนล่าสุด
+              ยังไม่มีรายการบัญชีรายได้หรือค่าใช้จ่ายใน {periodText}
             </div>
           )}
           <svg width={width} height={HEIGHT} role="img" aria-label="กราฟรายได้และค่าใช้จ่ายรายเดือน" className="block">

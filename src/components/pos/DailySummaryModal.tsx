@@ -41,7 +41,7 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
       const ms = t.createdAt?.seconds ? t.createdAt.seconds * 1000 : 0;
       return ms && new Date(ms + 7 * 3600e3).toISOString().startsWith(todayKey);
     });
-    const payments = { CASH: 0, CARD: 0, TRANSFER: 0 } as Record<string, number>;
+    const payments = { CASH: 0, PROMPTPAY: 0, CARD: 0, TRANSFER: 0 } as Record<string, number>;
     const byProduct = new Map<string, { name: string; qty: number; total: number }>();
     let revenue = 0;
     for (const t of today) {
@@ -93,6 +93,7 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
                     <h5 className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">สัดส่วนการชำระเงิน (Payment Breakdown)</h5>
                     <div className="grid grid-cols-1 gap-4">
                        <PaymentRow icon={<Banknote size={16} />} label="เงินสด (Cash)" value={summary.payments.CASH} total={summary.revenue} color="bg-nexus-teal" />
+                       <PaymentRow icon={<ArrowRightLeft size={16} />} label="พร้อมเพย์ (QR)" value={summary.payments.PROMPTPAY} total={summary.revenue} color="bg-nexus-blue/60" />
                        <PaymentRow icon={<CreditCard size={16} />} label="บัตรเครดิต (Credit Card)" value={summary.payments.CARD} total={summary.revenue} color="bg-nexus-blue" />
                        <PaymentRow icon={<ArrowRightLeft size={16} />} label="เงินโอน (Transfer)" value={summary.payments.TRANSFER} total={summary.revenue} color="bg-white/20" />
                     </div>

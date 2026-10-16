@@ -65,6 +65,9 @@ export function TacticalQuickAction() {
 
   const actions = getContextActions();
 
+  // หน้าที่มีปุ่มหลักด้านล่าง (ขายหน้าร้าน งานของฉัน) ไม่แสดงปุ่มลอย เพื่อไม่ให้บังปุ่มชำระเงิน/รับงาน
+  if (pathname.startsWith("/pos") || pathname.startsWith("/mobile/")) return null;
+
   return (
     <div className="absolute bottom-8 right-8 z-[100] flex flex-col items-end gap-4">
       {/* Action Menu */}

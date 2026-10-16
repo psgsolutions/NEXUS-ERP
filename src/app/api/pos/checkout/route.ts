@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireApiUser, authErrorResponse } from "@/lib/api-auth";
+import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth";
+import { can } from "@/lib/permissions";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { processPOSBatchCheckout, POSCheckoutPayload } from "@/services/posBatch.service";
 
@@ -12,8 +13,9 @@ import { processPOSBatchCheckout, POSCheckoutPayload } from "@/services/posBatch
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { companyId, items, paymentMethod, cashReceived } = body as POSCheckoutPayload;
+    const { companyId, items, paymentMethod, cashReceived, discount, paymentRef, customer } = body as POSCheckoutPayload;
     const apiUser = await requireApiUser(request, companyId);
+    if (!can(apiUser.roles, "sales:edit")) throw new ApiAuthError(403, "ขายหน้าร้านได้เฉพาะฝ่ายขาย");
     const userId = apiUser.email || apiUser.uid;
 
     // 1. Tenant & Field Validation
@@ -39,16 +41,16 @@ export async function POST(request: Request) {
       userId,
       items,
       paymentMethod,
-      cashReceived
+      cashReceived,
+      discount,
+      paymentRef,
+      customer,
     });
 
     return NextResponse.json({
-      success: true,
+      ...result,
       message: "ชำระเงินและตัดสต็อก POS สำเร็จ",
-      transactionId: result.transactionId,
-      transactionNo: result.transactionNo,
-      grandTotal: result.grandTotal,
-      change: result.change
+      cashier: apiUser.email || apiUser.uid,
     });
   } catch (err: any) {
     const authRes = authErrorResponse(err);

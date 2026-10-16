@@ -92,7 +92,7 @@ const laborUnitCost = (l: any) => (l.type === "per-point" ? (Number(l.materialCo
 export default function NewProjectPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, companyId, role } = useAuth();
+  const { user, companyId, role, roles } = useAuth();
   const currentCompanyId = companyId || "";
   const [step, setStep] = useState(0);
   const [visited, setVisited] = useState<Set<number>>(() => new Set([0]));
@@ -493,7 +493,7 @@ export default function NewProjectPage() {
 
   // ---------- ออก/ปรับปรุงใบเสนอราคาจากรายการ ----------
   const issueQuotation = async () => {
-    if (!can(role, "sales:edit")) return showToast("บัญชีของคุณไม่มีสิทธิ์ออกใบเสนอราคา", true);
+    if (!can(roles, "sales:edit")) return showToast("บัญชีของคุณไม่มีสิทธิ์ออกใบเสนอราคา", true);
     if (selectedCustomerId.trim().length < 2) { setStep(0); return showToast("กรุณาระบุลูกค้าก่อนออกใบเสนอราคา", true); }
     if (budget.equipCount + budget.laborCount === 0) return showToast("กรุณาเพิ่มรายการสินค้าหรืองานบริการก่อน", true);
     const docDate = today();
@@ -580,7 +580,7 @@ export default function NewProjectPage() {
   };
 
   // ---------- บันทึก ----------
-  const canCreate = can(role, "projects:edit");
+  const canCreate = can(roles, "projects:edit");
   const handleSaveProject = async (asDraft = false) => {
     const checks = asDraft ? [0] : [0, 1, 2, 4];
     for (const i of checks) {
@@ -1122,7 +1122,7 @@ export default function NewProjectPage() {
         autoIds={specAutoIds}
         onChange={(id, c) => setSpecUser((prev) => ({ ...prev, [id]: c }))}
         onReset={(id) => setSpecUser((prev) => { const n = { ...prev }; delete n[id]; return n; })}
-        manageHref={can(role, "settings:manage") ? "/settings?tab=specs" : undefined}
+        manageHref={can(roles, "settings:manage") ? "/settings?tab=specs" : undefined}
       />
     </GlassCard>
     <GlassCard className="p-5 space-y-4">

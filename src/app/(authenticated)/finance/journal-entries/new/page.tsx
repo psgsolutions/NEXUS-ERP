@@ -26,8 +26,8 @@ const ACCOUNT_OPTIONS = CHART_OF_ACCOUNTS.map((a) => ({ value: a.code, label: `$
 export default function NewJournalEntryPage() {
   const router = useRouter();
   const { showConfirm } = useSystemDialog();
-  const { companyId, role } = useAuth();
-  const canSave = can(role, "finance:edit");
+  const { companyId, role, roles } = useAuth();
+  const canSave = can(roles, "finance:edit");
 
   const [date, setDate] = useState(today);
   const [bookType, setBookType] = useState("JV");

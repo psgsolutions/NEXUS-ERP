@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     if (!companyId) return badRequest("ไม่พบรหัสบริษัท");
 
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "projects:edit")) {
+    if (!can(apiUser.roles, "projects:edit")) {
       return NextResponse.json({ success: false, error: "สิทธิ์การใช้งานไม่เพียงพอสำหรับการสร้างโครงการ" }, { status: 403 });
     }
 

@@ -24,6 +24,7 @@ async function main() {
     const db = ctx.firestore();
     await setDoc(doc(db, 'users/adminA'), { companyId: 'A', role: 'ADMIN' });
     await setDoc(doc(db, 'users/userA'), { companyId: 'A', role: 'SALES' });
+    await setDoc(doc(db, 'users/adminR'), { companyId: 'A', role: 'ADMIN', roles: ['ADMIN', 'HR'] });
     await setDoc(doc(db, 'users/userB'), { companyId: 'B', role: 'ADMIN' });
     await setDoc(doc(db, 'companies/A'), { name: 'Company A' });
     await setDoc(doc(db, 'companies/B'), { name: 'Company B' });
@@ -57,6 +58,7 @@ async function main() {
   const stranger = testEnv.authenticatedContext('stranger', { email: 'x@evil.com' }).firestore();
   const userA = testEnv.authenticatedContext('userA', { email: 'a@a.com' }).firestore();
   const adminA = testEnv.authenticatedContext('adminA', { email: 'admin@a.com' }).firestore();
+  const adminR = testEnv.authenticatedContext('adminR', { email: 'adminr@a.com' }).firestore();
   const userB = testEnv.authenticatedContext('userB', { email: 'b@b.com' }).firestore();
   const superUid = testEnv.authenticatedContext(SUPERADMIN_UID, {}).firestore();
   const superEmail = testEnv.authenticatedContext('other-uid', { email: 'sadmin@admin.com' }).firestore();
@@ -100,7 +102,14 @@ async function main() {
     ['user cannot change own role', () => assertFails(updateDoc(doc(userA, 'users/userA'), { role: 'ADMIN' }))],
     ['user cannot change own company', () => assertFails(updateDoc(doc(userA, 'users/userA'), { companyId: 'B' }))],
     ['stranger cannot create own profile', () => assertFails(setDoc(doc(stranger, 'users/stranger'), { companyId: 'A', role: 'ADMIN' }))],
-    ['company admin creates user in own company', () => assertSucceeds(setDoc(doc(adminA, 'users/newA'), { companyId: 'A', role: 'SALES' }))],
+    // บัญชีและตำแหน่ง: สร้าง/กำหนดผ่าน API (SUPERADMIN) เท่านั้น
+    ['company admin cannot create user directly', () => assertFails(setDoc(doc(adminA, 'users/newA'), { companyId: 'A', role: 'SALES' }))],
+    ['company admin cannot change user roles', () => assertFails(updateDoc(doc(adminA, 'users/userA'), { roles: ['EXECUTIVE'] }))],
+    ['company admin cannot change user legacy role', () => assertFails(updateDoc(doc(adminA, 'users/userA'), { role: 'ADMIN' }))],
+    ['company admin cannot change user status', () => assertFails(updateDoc(doc(adminA, 'users/userA'), { status: 'ACTIVE' }))],
+    ['company admin edits user name', () => assertSucceeds(updateDoc(doc(adminA, 'users/userA'), { name: 'สมชาย' }))],
+    ['roles-array admin edits user name', () => assertSucceeds(updateDoc(doc(adminR, 'users/userA'), { phone: '081' }))],
+    ['user cannot grant self roles', () => assertFails(updateDoc(doc(userA, 'users/userA'), { roles: ['ADMIN'] }))],
     ['company admin cannot create SUPERADMIN', () => assertFails(setDoc(doc(adminA, 'users/newA2'), { companyId: 'A', role: 'SUPERADMIN' }))],
     ['company admin cannot create user in other company', () => assertFails(setDoc(doc(adminA, 'users/newB'), { companyId: 'B', role: 'SALES' }))],
     ['company admin cannot edit other company user', () => assertFails(updateDoc(doc(adminA, 'users/userB'), { role: 'SALES' }))],

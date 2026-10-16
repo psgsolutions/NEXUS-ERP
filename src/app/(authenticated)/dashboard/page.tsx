@@ -43,26 +43,31 @@ import {
 import Link from "next/link";
 import { quotationStage } from "@/lib/quotation-status";
 import { useRouter } from "next/navigation";
+import { can, type Permission } from "@/lib/permissions";
 
 const upper = (s: any) => String(s || "").toUpperCase();
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { companyId } = useAuth();
+  const { companyId, roles } = useAuth();
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
-  const co = (sub: string) => (companyId ? `companies/${companyId}/${sub}` : "");
+  const has = (perm: Permission) => can(roles, perm);
+  // ตัวเลขการเงิน (รายได้ กำไร ลูกหนี้) เห็นเฉพาะฝ่ายบัญชี/ผู้บริหาร — ไม่โหลดข้อมูลเลยถ้าไม่มีสิทธิ์
+  const seeMoney = has("finance:view");
+  const seeStock = has("inventory:view") || has("procurement:view");
+  const co = (sub: string, allowed = true) => (companyId && allowed ? `companies/${companyId}/${sub}` : "");
 
   // ข้อมูลจริงของบริษัท (useRealtimeCollection กรองตาม companyId ให้อัตโนมัติ)
-  const { data: companyJournals, loading: journalsLoading } = useRealtimeCollection<any>(co("journal_entries"));
-  const { data: legacyJournals } = useRealtimeCollection<any>("journal_entries");
+  const { data: companyJournals, loading: journalsLoading } = useRealtimeCollection<any>(co("journal_entries", seeMoney));
+  const { data: legacyJournals } = useRealtimeCollection<any>(seeMoney ? "journal_entries" : "");
   const { data: products, loading: productsLoading } = useRealtimeCollection<any>("products");
   const { data: allProjects } = useCompanyProjects();
-  const { data: invoices } = useRealtimeCollection<any>(co("invoices"));
+  const { data: invoices } = useRealtimeCollection<any>(co("invoices", seeMoney));
   const { data: purchaseOrders } = useRealtimeCollection<any>(co("purchase_orders"));
   const { data: purchaseRequests } = useRealtimeCollection<any>(co("purchase_requests"));
   const { data: quotations } = useRealtimeCollection<any>(co("quotations"));
   const { data: workOrders } = useRealtimeCollection<any>(co("work_orders"));
-  const { data: logs, loading: logsLoading } = useRealtimeCollection<any>("logs");
+  const { data: logs, loading: logsLoading } = useRealtimeCollection<any>(has("logs:view") ? "logs" : "");
 
   const journals = useMemo(() => [...companyJournals, ...legacyJournals], [companyJournals, legacyJournals]);
   const months = useMemo(() => lastMonthKeys(6), []);
@@ -84,14 +89,16 @@ export default function DashboardPage() {
       const hit = list.filter((x) => x.isDeleted !== true && pred(x));
       return { total: hit.length, samples: hit.filter((x) => x.isSample).length };
     };
-    return [
-      { label: "ใบขอซื้อรออนุมัติ", href: "/procurement", ...count(purchaseRequests, (x) => upper(x.status) === "PENDING_APPROVAL") },
-      { label: "ใบสั่งซื้อรออนุมัติ", href: "/procurement", ...count(purchaseOrders, (x) => normalizePoStatus(x.status) === "PENDING_APPROVAL") },
-      { label: "ใบเสนอราคารออนุมัติ", href: "/sales?tab=quotations&status=pending", ...count(quotations, (x) => quotationStage(x) === "pending") },
-      { label: "รายการบัญชีรอลงบัญชี", href: "/finance", ...count(journals, (x) => String(x.status || "").toLowerCase() === "draft") },
-      { label: "ใบงานช่างที่ยังเปิดอยู่", href: "/mobile/technician", ...count(workOrders, (x) => ["ASSIGNED", "IN_PROGRESS"].includes(upper(x.status))) },
+    const rows = [
+      { show: has("procurement:approve"), label: "ใบขอซื้อรออนุมัติ", href: "/procurement", ...count(purchaseRequests, (x) => upper(x.status) === "PENDING_APPROVAL") },
+      { show: has("procurement:approve"), label: "ใบสั่งซื้อรออนุมัติ", href: "/procurement", ...count(purchaseOrders, (x) => normalizePoStatus(x.status) === "PENDING_APPROVAL") },
+      { show: has("sales:approve") || has("sales:edit"), label: "ใบเสนอราคารออนุมัติ", href: "/sales?tab=quotations&status=pending", ...count(quotations, (x) => quotationStage(x) === "pending") },
+      { show: has("finance:post"), label: "รายการบัญชีรอลงบัญชี", href: "/finance", ...count(journals, (x) => String(x.status || "").toLowerCase() === "draft") },
+      { show: has("service:field") || has("projects:edit"), label: "ใบงานช่างที่ยังเปิดอยู่", href: "/mobile/technician", ...count(workOrders, (x) => ["ASSIGNED", "IN_PROGRESS"].includes(upper(x.status))) },
     ];
-  }, [purchaseRequests, purchaseOrders, quotations, journals, workOrders]);
+    return rows.filter((r) => r.show);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [purchaseRequests, purchaseOrders, quotations, journals, workOrders, roles]);
   const pendingTotal = pending.reduce((s, p) => s + p.total, 0);
 
   // เรื่องที่ควรดำเนินการก่อน (เรียงตามความเร่งด่วน)
@@ -105,7 +112,7 @@ export default function DashboardPage() {
         action: "ติดตามหนี้",
       });
     }
-    if (lowStock.length > 0) {
+    if (seeStock && lowStock.length > 0) {
       const top = lowStock[0];
       items.push({
         text: <>สินค้าต่ำกว่าจุดสั่งซื้อ <span className="text-warning">{lowStock.length} รายการ</span> เช่น {top.name} เหลือ {top.onHand} {top.unit} (จุดสั่งซื้อ {top.min})</>,
@@ -123,7 +130,7 @@ export default function DashboardPage() {
       });
     }
     return items;
-  }, [overdue, lowStock, pending]);
+  }, [overdue, lowStock, pending, seeStock]);
 
   const loadingMoney = journalsLoading;
   const kpiValue = (v: string) => (loadingMoney ? "…" : v);
@@ -184,8 +191,8 @@ export default function DashboardPage() {
       <div className="flex flex-col 2xl:flex-row justify-between w-full gap-4 2xl:gap-5">
 
         {/* HERO METRICS */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
-          <div className="w-full" title={thisMonth ? `รายได้เดือน ${thisMonth.label}: ${fullBaht(thisMonth.revenue)}` : undefined}>
+        <div className={cn("grid grid-cols-2 gap-4 flex-1", seeMoney ? "md:grid-cols-4" : "md:grid-cols-2")}>
+          {seeMoney && <div className="w-full" title={thisMonth ? `รายได้เดือน ${thisMonth.label}: ${fullBaht(thisMonth.revenue)}` : undefined}>
             <MasterMetricCard
               icon={<BadgeDollarSign size={24} />}
               label="รายได้เดือนนี้"
@@ -195,8 +202,8 @@ export default function DashboardPage() {
               onClick={() => router.push("/finance")}
               className="bg-nexus-teal/[0.1]"
             />
-          </div>
-          <div className="w-full" title="กำไรสุทธิเดือนนี้ = (รายได้ - ต้นทุนและค่าใช้จ่าย) / รายได้">
+          </div>}
+          {seeMoney && <div className="w-full" title="กำไรสุทธิเดือนนี้ = (รายได้ - ต้นทุนและค่าใช้จ่าย) / รายได้">
             <MasterMetricCard
               icon={<TrendingUp size={24} />}
               label="กำไรสุทธิเดือนนี้"
@@ -206,8 +213,8 @@ export default function DashboardPage() {
               onClick={() => router.push("/finance")}
               className="bg-nexus-blue/[0.1]"
             />
-          </div>
-          <div className="w-full" title="โครงการที่ยังไม่ปิด">
+          </div>}
+          {has("projects:view") && <div className="w-full" title="โครงการที่ยังไม่ปิด">
             <MasterMetricCard
               icon={<FolderKanban size={24} />}
               label="โครงการที่ดำเนินอยู่"
@@ -216,33 +223,33 @@ export default function DashboardPage() {
               onClick={() => router.push("/projects")}
               className="bg-amber-500/[0.1]"
             />
-          </div>
-          <div className="w-full" title="สินค้าต่ำกว่าจุดสั่งซื้อ + ใบแจ้งหนี้เกินกำหนด">
+          </div>}
+          {(seeStock || seeMoney) && <div className="w-full" title={seeMoney ? "สินค้าต่ำกว่าจุดสั่งซื้อ + ใบแจ้งหนี้เกินกำหนด" : "สินค้าต่ำกว่าจุดสั่งซื้อ"}>
             <MasterMetricCard
               icon={<AlertTriangle size={24} />}
               label="จุดวิกฤต"
-              value={productsLoading ? "…" : `${lowStock.length + overdue.length} จุด`}
+              value={productsLoading ? "…" : `${(seeStock ? lowStock.length : 0) + overdue.length} จุด`}
               color="text-danger"
               onClick={() => router.push(overdue.length > 0 ? "/finance" : "/inventory")}
               className="bg-danger/[0.1]"
             />
-          </div>
+          </div>}
         </div>
 
         {/* QUICK ACTIONS */}
         <div className="grid grid-cols-4 gap-3 2xl:flex 2xl:flex-nowrap 2xl:w-auto">
-          <div className="w-full 2xl:w-[110px]">
+          {has("sales:edit") && <div className="w-full 2xl:w-[110px]">
             <QuickActionCard icon={<BadgeDollarSign size={16} />} label="เสนอราคา" color="text-nexus-teal bg-nexus-teal/20" link="/sales/quotations/new" />
-          </div>
-          <div className="w-full 2xl:w-[110px]">
+          </div>}
+          {has("inventory:view") && <div className="w-full 2xl:w-[110px]">
             <QuickActionCard icon={<Warehouse size={16} />} label="คลังสินค้า" color="text-nexus-blue bg-nexus-blue/20" link="/inventory" />
-          </div>
-          <div className="w-full 2xl:w-[110px]">
+          </div>}
+          {has("sales:view") && <div className="w-full 2xl:w-[110px]">
             <QuickActionCard icon={<UsersRound size={16} />} label="ลูกค้า" color="text-amber-500 bg-amber-500/20" link="/customers" />
-          </div>
-          <div className="w-full 2xl:w-[110px]">
+          </div>}
+          {has("procurement:edit") && <div className="w-full 2xl:w-[110px]">
             <QuickActionCard icon={<ShoppingBasket size={16} />} label="สั่งซื้อ" color="text-rose-500 bg-rose-500/20" link="/procurement/orders/new" />
-          </div>
+          </div>}
         </div>
       </div>
 
@@ -268,7 +275,7 @@ export default function DashboardPage() {
                 สิ่งที่ต้องดำเนินการ{attention.length > 1 ? ` (${attention.length} เรื่อง)` : ""}
               </h3>
               <p className="text-[15px] font-bold text-white leading-relaxed">
-                {productsLoading ? "กำลังตรวจสอบข้อมูล…" : attention.length > 0 ? attention[0].text : "ไม่มีเรื่องเร่งด่วน สต็อกและการรับชำระเป็นปกติ"}
+                {productsLoading ? "กำลังตรวจสอบข้อมูล…" : attention.length > 0 ? attention[0].text : "ไม่มีเรื่องเร่งด่วนในส่วนงานของคุณ"}
               </p>
               {attention.length > 1 && (
                 <ul className="mt-1 space-y-0.5">
@@ -287,8 +294,8 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* รายได้และค่าใช้จ่าย 6 เดือน */}
-          <GlassCard accentColor="teal" className="p-5 relative">
+          {/* รายได้และค่าใช้จ่าย 6 เดือน (ฝ่ายบัญชี/ผู้บริหาร) */}
+          {seeMoney && <GlassCard accentColor="teal" className="p-5 relative">
             <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
               <div className="space-y-1">
                 <h3 className="text-sm font-bold text-white uppercase flex items-center gap-2 tracking-[0.15em]">
@@ -307,11 +314,11 @@ export default function DashboardPage() {
               )}
             </div>
             <RevenueExpenseChart data={monthly} />
-          </GlassCard>
+          </GlassCard>}
 
           {/* Bottom Operational Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <GlassCard accentColor="blue" className="p-5">
+            {has("projects:view") && <GlassCard accentColor="blue" className="p-5">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-3">
                   <Briefcase size={16} className="text-nexus-blue" />
@@ -336,9 +343,9 @@ export default function DashboardPage() {
                   );
                 })}
               </div>
-            </GlassCard>
+            </GlassCard>}
 
-            <GlassCard accentColor="purple" className="p-5">
+            {seeStock && <GlassCard accentColor="purple" className="p-5">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-3">
                   <Package size={16} className="text-nexus-teal" />
@@ -358,14 +365,14 @@ export default function DashboardPage() {
                 ดูสต็อกทั้งหมด
                 <ChevronRight size={14} className="ml-2" />
               </PillButton>
-            </GlassCard>
+            </GlassCard>}
           </div>
         </div>
 
         {/* RIGHT: TACTICAL SIDEBAR */}
         <div className="w-full xl:w-[clamp(320px,30%,476px)] flex-shrink-0 space-y-4">
-          {/* กิจกรรมล่าสุด จากบันทึกระบบ */}
-          <GlassCard accentColor="amber" className="flex flex-col overflow-hidden">
+          {/* กิจกรรมล่าสุด จากบันทึกระบบ (ผู้มีสิทธิ์ดูบันทึก) */}
+          {has("logs:view") && <GlassCard accentColor="amber" className="flex flex-col overflow-hidden">
             <div className="p-5 border-b border-white/10 flex items-center justify-between bg-white/[0.04] gap-4">
               <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-3 min-w-0">
                 <Bell size={16} className="text-warning flex-shrink-0" />
@@ -383,10 +390,10 @@ export default function DashboardPage() {
             <Link href="/logs" className="w-full py-4 px-4 text-[13px] font-medium text-white/40 hover:text-white hover:bg-white/[0.02] transition-all flex items-center justify-center gap-2 border-t border-white/5">
               ดูประวัติระบบทั้งหมด <ArrowUpRight size={14} className="flex-shrink-0" />
             </Link>
-          </GlassCard>
+          </GlassCard>}
 
           {/* งานรอดำเนินการ */}
-          <GlassCard accentColor="emerald" className="p-5">
+          {pending.length > 0 && <GlassCard accentColor="emerald" className="p-5">
             <div className="flex items-center justify-between mb-4 gap-3">
               <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-3">
                 <ClipboardList size={16} className="text-nexus-blue" />
@@ -405,7 +412,7 @@ export default function DashboardPage() {
                 </Link>
               ))}
             </div>
-          </GlassCard>
+          </GlassCard>}
         </div>
       </div>
     </div>

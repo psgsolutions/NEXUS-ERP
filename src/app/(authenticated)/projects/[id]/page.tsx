@@ -54,7 +54,7 @@ export default function ProjectDetailPage() {
   const router = useRouter();
   const routeParams = useParams();
   const docId = decodeURIComponent(String(routeParams.id || ""));
-  const { user, role, companyId } = useAuth();
+  const { user, role, roles, companyId } = useAuth();
 
   const { data: own, loading } = useRealtimeDocument<any>(companyId && docId ? `companies/${companyId}/projects/${docId}` : null);
   const { data: legacy, loading: legacyLoading } = useRealtimeDocument<any>(!loading && !own && docId ? `projects/${docId}` : null);
@@ -84,9 +84,10 @@ export default function ProjectDetailPage() {
     [workOrders, docId, p?.projectId]
   );
 
-  const canEditProject = can(role, "projects:edit");
+  const canEditProject = can(roles, "projects:edit");
   const isOwner = p?.createdBy === user?.uid;
-  const isAdmin = role === "ADMIN" || role === "SUPERADMIN";
+  // ผู้บริหาร (projects:approve) แก้ไข/ยกเลิกแทนผู้สร้างได้
+  const isAdmin = can(roles, "projects:approve");
   const canEditThis = !isLegacy && EDITABLE_STATUSES.includes(status) && canEditProject && (isOwner || isAdmin);
   const canApproveNow = !isLegacy && status === "Pending Approval" && step > 0 && canApproveStep(role, step);
   const canCancel = !isLegacy && ["Draft", "Pending Approval", "Rejected", "Approved"].includes(status) && (isOwner || isAdmin);

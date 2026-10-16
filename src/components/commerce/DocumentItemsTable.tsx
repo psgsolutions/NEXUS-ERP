@@ -144,9 +144,9 @@ const InlineRow = ({
   availableProducts,
   priceDeviationWarningPercent = 10
 }: any) => {
-  const { role, checkPermission } = useAuth();
-  const canEditProduct = checkPermission ? checkPermission("inventory:edit") : can(role, "inventory:edit");
-  const canSeeCost = canViewCost(role);
+  const { role, roles, checkPermission } = useAuth();
+  const canEditProduct = checkPermission ? checkPermission("inventory:edit") : can(roles, "inventory:edit");
+  const canSeeCost = canViewCost(roles);
   const [activeSearchField, setActiveSearchField] = useState<'sku' | 'name' | null>(null);
   const [searchTerm, setSearchTerm] = useState(item.productId ? item.name : "");
   const [isEditingPrice, setIsEditingPrice] = useState(false);

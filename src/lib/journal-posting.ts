@@ -3,7 +3,6 @@
  */
 
 /** บทบาทที่อนุมัติลงบัญชีได้ */
-export const JOURNAL_POSTING_ROLES = ["SUPERADMIN", "ADMIN", "ACCOUNTANT"];
 
 /** วันที่ของรายการเป็น YYYY-MM-DD ตามเวลาไทย (รองรับ string / Timestamp / Date) */
 export function journalDateStr(value: any): string {

@@ -32,7 +32,9 @@ import {
   Wrench,
   Library,
   Sparkles,
-  Settings
+  Settings,
+  Lock,
+  TrendingUp
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import Link from "next/link";
@@ -47,6 +49,7 @@ import { NotificationBell } from "@/components/layout/NotificationBell";
 import { TacticalQuickAction } from "@/components/shared/TacticalQuickAction";
 import { FirebaseConnectionStatus } from "@/components/ui/FirebaseConnectionStatus";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { canAccessRoute, roleLabel } from "@/lib/permissions";
 
 export default function AuthenticatedLayout({
   children,
@@ -54,7 +57,11 @@ export default function AuthenticatedLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { user, role } = useAuth();
+  const { user, roles, loading } = useAuth();
+  // เมนูและหน้าที่เปิดได้ตามตำแหน่ง (server ตรวจสิทธิ์ซ้ำทุกครั้งที่บันทึก)
+  const show = (href: string) => canAccessRoute(roles, href);
+  const roleText = roles.length ? roles.map(roleLabel).join(" · ") : "ไม่มีสิทธิ์";
+  const pageAllowed = loading || !pathname || canAccessRoute(roles, pathname);
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
   const profileRef = React.useRef<HTMLDivElement>(null);
 
@@ -91,29 +98,31 @@ export default function AuthenticatedLayout({
           <nav className="space-y-4 relative z-50">
             {/* SERVICE TIER */}
             <NavGroup title="บริการ">
-              <SideLink href="/pos" icon={<Store size={20} />} label="ขายหน้าร้าน" active={pathname === "/pos"} title="POS" />
-              <SideLink href="/support" icon={<Wrench size={20} />} label="งานบริการ" active={pathname === "/support"} title="Service" />
+              {show("/pos") && <SideLink href="/pos" icon={<Store size={20} />} label="ขายหน้าร้าน" active={pathname === "/pos"} title="POS" />}
+              {show("/support") && <SideLink href="/support" icon={<Wrench size={20} />} label="งานบริการ" active={pathname === "/support"} title="Service" />}
+              {show("/mobile/technician") && <SideLink href="/mobile/technician" icon={<HardHat size={20} />} label="งานช่างหน้างาน" active={pathname === "/mobile/technician"} title="Field" />}
             </NavGroup>
 
             {/* OPERATIONS TIER */}
             <NavGroup title="การปฏิบัติงาน">
-              <SideLink href="/dashboard" icon={<PieChart size={20} />} label="ภาพรวม" active={pathname === "/dashboard"} title="Dashboard" />
-              <SideLink href="/sales" icon={<BadgeDollarSign size={20} />} label="งานขาย" active={pathname === "/sales"} title="Sales" />
-              <SideLink href="/projects" icon={<FolderKanban size={20} />} label="โครงการ" active={pathname === "/projects"} title="Projects" />
-              <SideLink href="/hr" icon={<UsersRound size={20} />} label="บุคลากร" active={pathname === "/hr"} title="HR" />
-              <SideLink href="/inventory" icon={<Warehouse size={20} />} label="คลังสินค้า" active={pathname === "/inventory"} title="Inventory" />
-              <SideLink href="/procurement" icon={<ShoppingBasket size={20} />} label="จัดซื้อ" active={pathname === "/procurement"} title="Procurement" />
+              {show("/dashboard") && <SideLink href="/dashboard" icon={<PieChart size={20} />} label="ภาพรวม" active={pathname === "/dashboard"} title="Dashboard" />}
+              {show("/sales") && <SideLink href="/sales" icon={<BadgeDollarSign size={20} />} label="งานขาย" active={pathname === "/sales"} title="Sales" />}
+              {show("/projects") && <SideLink href="/projects" icon={<FolderKanban size={20} />} label="โครงการ" active={pathname === "/projects"} title="Projects" />}
+              {show("/hr") && <SideLink href="/hr" icon={<UsersRound size={20} />} label="บุคลากร" active={pathname === "/hr"} title="HR" />}
+              {show("/inventory") && <SideLink href="/inventory" icon={<Warehouse size={20} />} label="คลังสินค้า" active={pathname === "/inventory"} title="Inventory" />}
+              {show("/procurement") && <SideLink href="/procurement" icon={<ShoppingBasket size={20} />} label="จัดซื้อ" active={pathname === "/procurement"} title="Procurement" />}
             </NavGroup>
 
             {/* MANAGEMENT TIER */}
             <NavGroup title="การบริหารจัดการ">
-              <SideLink href="/finance" icon={<Landmark size={20} />} label="บัญชีแยกประเภท" active={pathname === "/finance"} title="GL" />
-              <SideLink href="/ai" icon={<Bot size={20} />} label="วิเคราะห์ข้อมูล" active={pathname === "/ai"} title="AI Analytics" />
+              {show("/executive") && <SideLink href="/executive" icon={<TrendingUp size={20} />} label="แดชบอร์ดผู้บริหาร" active={pathname === "/executive"} title="Executive" />}
+              {show("/finance") && <SideLink href="/finance" icon={<Landmark size={20} />} label="บัญชีแยกประเภท" active={pathname === "/finance"} title="GL" />}
+              {show("/ai") && <SideLink href="/ai" icon={<Bot size={20} />} label="วิเคราะห์ข้อมูล" active={pathname === "/ai"} title="AI Analytics" />}
             </NavGroup>
 
             {/* SYSTEM TIER */}
             <NavGroup title="ระบบงาน">
-              <SideLink href="/settings" icon={<Settings size={20} />} label="ตั้งค่า" active={pathname?.startsWith("/settings")} title="Settings" />
+              {show("/settings") && <SideLink href="/settings" icon={<Settings size={20} />} label="ตั้งค่า" active={pathname?.startsWith("/settings")} title="Settings" />}
             </NavGroup>
           </nav>
         </div>
@@ -126,7 +135,7 @@ export default function AuthenticatedLayout({
              </div>
              <div className="flex-1 min-w-0">
                 <p className="text-[12px] font-semibold text-white truncate uppercase leading-none">{user?.email?.split('@')[0] || 'ผู้ใช้งาน'}</p>
-                <p className="text-[11px] font-bold text-nexus-teal uppercase tracking-widest mt-1 leading-none">{role || 'ไม่มีสิทธิ์'}</p>
+                <p className="text-[11px] font-bold text-nexus-teal tracking-wide mt-1 leading-normal truncate" title={roleText}>{roleText}</p>
              </div>
           </div>
           
@@ -209,7 +218,7 @@ export default function AuthenticatedLayout({
                        <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2 text-[10px]">
                           <span className="font-bold text-white/30 uppercase tracking-wider">LEVEL:</span>
                           <span className="font-semibold text-nexus-teal uppercase tracking-widest bg-nexus-teal/10 px-2 py-0.5 rounded border border-nexus-teal/20">
-                             {role || 'SYSTEM_ADMIN'}
+                             {roleText}
                           </span>
                        </div>
                        
@@ -249,7 +258,7 @@ export default function AuthenticatedLayout({
           <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-nexus-blue/5 blur-[120px] rounded-full pointer-events-none translate-y-1/2" />
           
           <div className="relative z-20">
-            {children}
+            {pageAllowed ? children : <NoAccess />}
           </div>
         </main>
 
@@ -261,7 +270,23 @@ export default function AuthenticatedLayout({
   );
 }
 
+/** หน้าที่ตำแหน่งของผู้ใช้ไม่มีสิทธิ์เปิด */
+function NoAccess() {
+  return (
+    <div className="flex flex-col items-center justify-center text-center gap-3 py-32 px-4">
+      <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40">
+        <Lock size={22} />
+      </div>
+      <p className="text-[15px] font-semibold text-white">ไม่มีสิทธิ์เข้าถึงหน้านี้</p>
+      <p className="text-[13px] text-white/50 max-w-sm leading-relaxed">ตำแหน่งของคุณยังไม่ได้รับสิทธิ์ใช้งานส่วนนี้ หากต้องใช้งาน กรุณาติดต่อผู้ดูแลสูงสุดเพื่อกำหนดตำแหน่งเพิ่ม</p>
+      <Link href="/" className="text-[13px] text-nexus-teal hover:underline">กลับหน้าแรก</Link>
+    </div>
+  );
+}
+
 function NavGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  // ซ่อนหัวข้อกลุ่มเมื่อไม่มีเมนูที่ผู้ใช้เปิดได้
+  if (!React.Children.toArray(children).some(Boolean)) return null;
   return (
     <div className="space-y-4">
       <p className="tactical-label !text-white/20 px-4">{title}</p>

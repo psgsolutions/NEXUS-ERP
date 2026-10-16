@@ -4,7 +4,8 @@ import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth"
 import { adminDb } from "@/lib/firebase-admin";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { auditServer } from "@/services/audit.server";
-import { JOURNAL_POSTING_ROLES, journalDateStr, journalTotals, isOwnJournal } from "@/lib/journal-posting";
+import { journalDateStr, journalTotals, isOwnJournal } from "@/lib/journal-posting";
+import { can } from "@/lib/permissions";
 
 /**
  * [API-SERVER] อนุมัติลงบัญชีรายการบัญชี (draft -> posted)
@@ -25,8 +26,8 @@ export async function POST(request: Request) {
     const journalId = str(body.journalId);
     if (!companyId || !journalId) throw new ApiAuthError(400, "ข้อมูลไม่ครบ");
     const apiUser = await requireApiUser(request, companyId);
-    const role = String(apiUser.role || "").toUpperCase();
-    if (!JOURNAL_POSTING_ROLES.includes(role)) throw new ApiAuthError(403, "อนุมัติลงบัญชีได้เฉพาะฝ่ายบัญชีหรือผู้ดูแลระบบ");
+    const role = apiUser.role;
+    if (!can(apiUser.roles, "finance:post")) throw new ApiAuthError(403, "อนุมัติลงบัญชีได้เฉพาะฝ่ายบัญชี");
 
     const ref = adminDb.doc(`companies/${companyId}/journal_entries/${journalId}`);
     const pre = await ref.get();

@@ -30,10 +30,10 @@ const journalHref = (c: string, id: string) => `/finance/journal/${encodeURIComp
 function PayrollEditor() {
   const router = useRouter();
   const preset = useSearchParams()?.get("period") || "";
-  const { companyId, role } = useAuth();
+  const { companyId, role, roles } = useAuth();
   const { showConfirm } = useSystemDialog();
-  const canEdit = can(role, "hr:edit");
-  const canPost = canEdit && can(role, "finance:edit");
+  const canEdit = can(roles, "hr:edit");
+  const canPost = can(roles, "finance:edit");
 
   // ค่าเริ่มต้น: เดือนปัจจุบัน
   const [period, setPeriod] = useState(() => (/^\d{4}-\d{2}$/.test(preset) ? preset : nowBkk().slice(0, 7)));

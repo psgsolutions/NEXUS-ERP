@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     const take = await prepareSequence("EXP", companyId);
 
     if (action === "claim") {
-      if (!["finance:edit", "projects:edit", "inventory:edit", "sales:edit", "hr:edit"].some((p) => can(apiUser.role, p as any))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+      if (!["finance:edit", "projects:edit", "inventory:edit", "sales:edit", "hr:edit"].some((p) => can(apiUser.roles, p as any))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
       const subtotal = r2(Math.max(0, Number(body.subtotal) || 0));
       if (!(subtotal > 0)) throw new ApiAuthError(400, "กรุณาระบุยอดเงินเบิก");
       if (!str(body.description)) throw new ApiAuthError(400, "กรุณาระบุรายละเอียดการเบิก");
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "fromPO") {
-      if (!["finance:edit", "inventory:edit"].some((p) => can(apiUser.role, p as any))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+      if (!["finance:edit", "inventory:edit"].some((p) => can(apiUser.roles, p as any))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
       const poRef = adminDb.doc(`companies/${companyId}/purchase_orders/${str(body.poId, 120)}`);
       const id = await adminDb.runTransaction(async (tx) => {
         const snap = await tx.get(poRef);
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "subcontract") {
-      if (!["finance:edit", "projects:edit"].some((p) => can(apiUser.role, p as any))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+      if (!["finance:edit", "projects:edit"].some((p) => can(apiUser.roles, p as any))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
       const name = str(body.subcontractorName, 200);
       const items = (Array.isArray(body.items) ? body.items : []).slice(0, 100)
         .map((it: any) => ({ description: str(it.description || it.name, 300), payoutAmount: r2(Math.max(0, Number(it.payoutAmount) || 0)) }))

@@ -10,6 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { apiFetch } from "@/lib/api-client";
 import { useSystemDialog } from "@/context/DialogContext";
+import { can } from "@/lib/permissions";
 
 const VIEW: Record<string, { badge: "active" | "inactive" | "pending" | "warning" | "danger"; label: string }> = {
   PENDING_APPROVAL: { badge: "pending", label: "รออนุมัติ" },
@@ -24,7 +25,7 @@ export default function PurchaseRequestDetailPage() {
   const params = useParams();
   const router = useRouter();
   const prDocId = decodeURIComponent(String(params.id || ""));
-  const { user, companyId, role } = useAuth();
+  const { user, companyId, role, roles } = useAuth();
   const { showConfirm } = useSystemDialog();
   const path = companyId && prDocId ? `companies/${companyId}/purchase_requests/${prDocId}` : null;
   const { data: pr, loading } = useRealtimeDocument<any>(path);
@@ -44,8 +45,9 @@ export default function PurchaseRequestDetailPage() {
   const status = String(pr.status || "PENDING_APPROVAL").toUpperCase();
   const view = VIEW[status] || VIEW.PENDING_APPROVAL;
   const items: any[] = (pr.items || []).filter((it: any) => it.itemType !== "GROUP_HEADER");
-  // ผู้ขอซื้ออนุมัติใบของตัวเองไม่ได้ (ยกเว้น SUPERADMIN)
-  const canApprove = status === "PENDING_APPROVAL" && (role === "SUPERADMIN" || (pr.requesterUid && pr.requesterUid !== user?.uid));
+  // อนุมัติได้เฉพาะฝ่ายบัญชี/ผู้บริหาร และผู้ขอซื้ออนุมัติใบของตัวเองไม่ได้ (ยกเว้น SUPERADMIN)
+  const canApprove = status === "PENDING_APPROVAL" && can(roles, "procurement:approve")
+    && (role === "SUPERADMIN" || (pr.requesterUid && pr.requesterUid !== user?.uid));
 
   const setStatus = async (next: string) => {
     setBusy(true);

@@ -21,6 +21,12 @@ export function useRealtimeCollection<T = any>(
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    // ไม่ระบุ collection (เช่น ผู้ใช้ไม่มีสิทธิ์ดูข้อมูลนี้ หรือยังไม่ได้เลือกเอกสาร) -> ไม่โหลด
+    if (!collectionName) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
     // If company scope is required but not available, wait.
     if (requiresCompanyScope && !companyId) {
       setLoading(true);

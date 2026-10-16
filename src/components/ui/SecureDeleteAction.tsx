@@ -9,9 +9,21 @@ import { doc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase-client";
 import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
+import { can, type Permission } from "@/lib/permissions";
 
 /** เอกสารที่ต้องลบผ่าน server (ตรวจเอกสารอ้างอิงและคืนสถานะเอกสารต้นทางในทรานแซกชันเดียว) */
 export type ServerDeleteKind = "purchase_order" | "expense" | "wht" | "sales_order";
+
+/** สิทธิ์ที่ต้องมีเพื่อลบเอกสาร (ตรงกับ /api/documents/delete) */
+function deletePermission(kind?: ServerDeleteKind, collectionName?: string): Permission {
+  if (kind) return kind === "sales_order" ? "sales:delete" : "finance:delete";
+  const col = String(collectionName || "").split("/").pop() || "";
+  if (["customers", "quotations", "sales_orders"].includes(col)) return "sales:delete";
+  if (["invoices", "expenses", "withholding_taxes", "purchase_orders"].includes(col)) return "finance:delete";
+  if (["products", "warehouses"].includes(col)) return "inventory:delete";
+  if (col === "projects") return "projects:delete";
+  return "settings:manage";
+}
 
 interface SecureDeleteActionProps {
   collectionName?: string;
@@ -33,14 +45,14 @@ export function SecureDeleteAction({
   className,
   compact = false
 }: SecureDeleteActionProps) {
-  const { role, companyId, user } = useAuth();
+  const { roles, companyId, user } = useAuth();
   const { showAlert } = useSystemDialog();
   const [isOpen, setIsOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // SEC-V3.0: Only SUPERADMIN and ADMIN can see the delete button globally.
-  const canDelete = role === "SUPERADMIN" || role === "ADMIN";
+  // ลบได้ตามสิทธิ์ของประเภทเอกสาร (server ตรวจซ้ำอีกชั้น)
+  const canDelete = can(roles, deletePermission(serverKind, collectionName));
 
   if (!canDelete) return null;
 

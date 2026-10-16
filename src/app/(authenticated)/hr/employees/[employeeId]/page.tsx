@@ -28,9 +28,9 @@ function tenure(join?: string) {
 export default function EmployeeDetailPage() {
   const router = useRouter();
   const key = decodeURIComponent(String(useParams()?.employeeId || "")).trim();
-  const { role } = useAuth();
-  const canEdit = can(role, "hr:edit");
-  const canSeePay = can(role, "hr:view");
+  const { role, roles } = useAuth();
+  const canEdit = can(roles, "hr:edit");
+  const canSeePay = can(roles, "hr:view");
   const { data: employees, loading } = useRealtimeCollection<any>("employees");
   const e = employees.find((x: any) => x.id === key || String(x.employeeId || "").trim() === key) || null;
 

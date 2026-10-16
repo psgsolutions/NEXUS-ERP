@@ -9,14 +9,17 @@ import {
 import { auth, db } from "@/lib/firebase-client";
 import { collection, doc, getDoc, getDocs, limit, query } from "firebase/firestore";
 
-import { can, Permission } from "@/lib/permissions";
+import { can, Permission, primaryRole, resolveRoles } from "@/lib/permissions";
 import { inactiveReason, isSuperAdminAccount } from "@/lib/user-status";
 
 interface AuthContextType {
   user: FirebaseUser | null;
   loading: boolean;
   companyId: string | null;
+  /** ตำแหน่งหลัก (แสดงผล/เทียบกับ "SUPERADMIN") — ตรวจสิทธิ์ให้ใช้ checkPermission หรือ can(roles, ...) */
   role: string | null;
+  /** ทุกตำแหน่งของผู้ใช้ */
+  roles: string[];
   checkPermission: (permission: Permission) => boolean;
   switchCompany: (newCompanyId: string) => void;
 }
@@ -26,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   companyId: null,
   role: null,
+  roles: [],
   checkPermission: () => false,
   switchCompany: () => {},
 });
@@ -34,17 +38,18 @@ const AuthContext = createContext<AuthContextType>({
 // ใน production build จะไม่มีทางล็อกอินผ่าน localStorage ได้
 const MOCK_AUTH_ENABLED = process.env.NODE_ENV === "development";
 
-// โปรไฟล์ล่าสุดของผู้ใช้ (uid, role, companyId) ใช้แสดงผลระหว่างรอโหลดโปรไฟล์จริง — เฉพาะผู้ใช้คนเดิมเท่านั้น
+// โปรไฟล์ล่าสุดของผู้ใช้ (uid, roles, companyId) ใช้แสดงผลระหว่างรอโหลดโปรไฟล์จริง — เฉพาะผู้ใช้คนเดิมเท่านั้น
 const PROFILE_CACHE_KEY = "nexus_profile_cache";
-const readProfileCache = (uid: string): { role: string; companyId: string } | null => {
+const readProfileCache = (uid: string): { roles: string[]; companyId: string } | null => {
   try {
     const c = JSON.parse(localStorage.getItem(PROFILE_CACHE_KEY) || "null");
-    return c && c.uid === uid && c.companyId ? { role: String(c.role || ""), companyId: String(c.companyId) } : null;
+    return c && c.uid === uid && c.companyId ? { roles: resolveRoles(c), companyId: String(c.companyId) } : null;
   } catch { return null; }
 };
-const writeProfileCache = (uid: string, role: string, companyId: string) => {
-  try { localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ uid, role, companyId })); } catch { /* ignore */ }
+const writeProfileCache = (uid: string, roles: string[], companyId: string) => {
+  try { localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ uid, roles, companyId })); } catch { /* ignore */ }
 };
+const mockRoles = (mock: any): string[] => resolveRoles({ role: mock?.role || "ADMIN", roles: mock?.roles });
 
 const readMockUser = (): any | null => {
   if (!MOCK_AUTH_ENABLED || typeof window === "undefined") return null;
@@ -57,10 +62,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<FirebaseUser | null>(() => readMockUser());
   // ไม่มีบริษัทตั้งต้นแบบพิมพ์ตายตัว: ได้จากโปรไฟล์ผู้ใช้เท่านั้น (SUPERADMIN เลือกบริษัทได้)
   const [companyId, setCompanyId] = useState<string | null>(() => readMockUser()?.companyId || null);
-  const [role, setRole] = useState<string | null>(() => {
+  const [roles, setRoles] = useState<string[]>(() => {
     const mock = readMockUser();
-    return mock ? (mock.role || 'ADMIN') : null;
+    return mock ? mockRoles(mock) : [];
   });
+  const role = roles.length ? primaryRole(roles) : null;
   const [loading, setLoading] = useState<boolean>(() => !readMockUser());
 
   // สลับบริษัทได้เฉพาะ SUPERADMIN (ผู้ใช้ทั่วไปผูกกับบริษัทในโปรไฟล์)
@@ -71,7 +77,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const checkPermission = (permission: Permission) => {
-    return can(role, permission);
+    return can(roles, permission);
   };
 
   useEffect(() => {
@@ -83,7 +89,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const cached = readProfileCache(user.uid);
         if (cached) {
           setCompanyId(superAdmin ? localStorage.getItem("selectedCompanyId") || cached.companyId : cached.companyId);
-          setRole(superAdmin ? "SUPERADMIN" : cached.role);
+          setRoles(superAdmin ? ["SUPERADMIN"] : cached.roles);
           setLoading(false);
         }
 
@@ -104,7 +110,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             return;
           }
 
-          const finalRole = superAdmin ? "SUPERADMIN" : String(data.role || "").toUpperCase();
+          const finalRoles = superAdmin ? ["SUPERADMIN"] : resolveRoles(data);
           let finalCompanyId: string | null = superAdmin
             ? localStorage.getItem("selectedCompanyId") || data.companyId || null
             : data.companyId;
@@ -114,8 +120,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             finalCompanyId = first.docs[0]?.id || null;
           }
           setCompanyId(finalCompanyId);
-          setRole(finalRole);
-          if (finalCompanyId) writeProfileCache(user.uid, finalRole, finalCompanyId);
+          setRoles(finalRoles);
+          if (finalCompanyId) writeProfileCache(user.uid, finalRoles, finalCompanyId);
         } catch (error: any) {
           console.warn("Network timeout or error fetching user profile:", error?.message || error);
           // ไม่มีโปรไฟล์ในเครื่องให้ใช้ -> ไม่ปล่อยเข้าระบบด้วยสิทธิ์ที่เดาเอง
@@ -128,12 +134,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (mock) {
           setUser(mock as any);
           setCompanyId(mock.companyId || null);
-          setRole(mock.role || 'ADMIN');
+          setRoles(mockRoles(mock));
           setLoading(false);
         } else {
           setUser(null);
           setCompanyId(null);
-          setRole(null);
+          setRoles([]);
           setLoading(false);
         }
       }
@@ -143,7 +149,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, companyId, role, checkPermission, switchCompany }}>
+    <AuthContext.Provider value={{ user, loading, companyId, role, roles, checkPermission, switchCompany }}>
       {children}
     </AuthContext.Provider>
   );

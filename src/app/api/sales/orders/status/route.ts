@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     const companyId = str(body.companyId, 80);
     if (!companyId) throw new ApiAuthError(400, "ไม่พบรหัสบริษัท");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "sales:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+    if (!can(apiUser.roles, "sales:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
     const action = str(body.action, 20) as (typeof ACTIONS)[number];
     const soId = str(body.soId, 120);
     if (!ACTIONS.includes(action) || !soId || soId.includes("/")) throw new ApiAuthError(400, "ข้อมูลไม่ครบ");

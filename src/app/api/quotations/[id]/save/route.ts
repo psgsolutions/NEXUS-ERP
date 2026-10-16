@@ -31,7 +31,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const companyId = str(body.companyId, 80).trim();
     if (!companyId || !id) throw new ApiAuthError(400, "ข้อมูลไม่ครบ");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "sales:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+    if (!can(apiUser.roles, "sales:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
 
     const header = cleanHeader(body.header);
     const lines = normalizeLines(body.lines);
@@ -75,7 +75,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       });
       existingLines.forEach((d) => tx.delete(d.ref));
       lines.forEach((l) => tx.set(ref.collection("lines").doc(), l));
-      writeProductWritebacks(tx, companyId, apiUser.role, body.productWritebacks);
+      writeProductWritebacks(tx, companyId, apiUser.roles, body.productWritebacks);
       tx.set(ref.collection("audit_logs").doc(), auditEntry(apiUser.uid, apiUser.email || apiUser.uid, submit, nextStatus, body.sendChannel, gp, requiresApproval, false));
       if (nextStatus === "PENDING_APPROVAL" && curStatus !== "PENDING_APPROVAL") {
         notifyPendingApproval(tx, companyId, id, docNo, header.customerName || cur.customerName, header.grandTotal ?? cur.grandTotal, gp, apiUser.uid);

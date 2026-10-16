@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import * as admin from "firebase-admin";
 import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
-import { can } from "@/lib/permissions";
+import { can, purchaseApprovalLimit } from "@/lib/permissions";
 import { prepareSequence } from "@/lib/sequence-server";
 import { auditServer } from "@/services/audit.server";
 import { computeDocTotals, normalizeVatMode, sanitizeLines } from "@/lib/doc-totals";
@@ -20,8 +20,7 @@ import { computeDocTotals, normalizeVatMode, sanitizeLines } from "@/lib/doc-tot
 const str = (v: any, max = 300) => String(v ?? "").trim().slice(0, max);
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const isDate = (v: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ""));
-const EDIT = ["inventory:edit", "finance:edit"] as const;
-const APPROVAL_LIMIT = 50000;
+const EDIT = ["procurement:edit", "finance:edit"] as const;
 
 export async function POST(request: Request) {
   try {
@@ -29,10 +28,11 @@ export async function POST(request: Request) {
     const companyId = str(body.companyId, 80);
     if (!companyId) throw new ApiAuthError(400, "ไม่พบรหัสบริษัท");
     const apiUser = await requireApiUser(request, companyId);
-    if (!EDIT.some((p) => can(apiUser.role, p))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
     const action = str(body.action, 20);
     const now = admin.firestore.FieldValue.serverTimestamp();
-    const role = String(apiUser.role || "").toUpperCase();
+    const allowed = action === "approve" ? can(apiUser.roles, "procurement:approve") : EDIT.some((p) => can(apiUser.roles, p)) || can(apiUser.roles, "procurement:approve");
+    if (!allowed) throw new ApiAuthError(403, action === "approve" ? "อนุมัติใบสั่งซื้อได้เฉพาะฝ่ายบัญชีหรือผู้บริหาร" : "สิทธิ์การใช้งานไม่เพียงพอ");
+    const approvalLimit = purchaseApprovalLimit(apiUser.roles);
 
     if (action === "create") {
       const h = body.header || {};
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
         const st = String(po.status || "").toUpperCase();
         if (action === "approve") {
           if (!["PENDING_APPROVAL", "PENDING", "DRAFT"].includes(st)) throw new ApiAuthError(409, "ใบสั่งซื้อนี้อนุมัติไปแล้วหรือถูกยกเลิก");
-          if (Number(po.totalAmount) > APPROVAL_LIMIT && role !== "SUPERADMIN") throw new ApiAuthError(403, `ยอดเกิน ${APPROVAL_LIMIT.toLocaleString("th-TH")} บาท ต้องให้ Superadmin อนุมัติเท่านั้น`);
+          if (Number(po.totalAmount) > approvalLimit) throw new ApiAuthError(403, `ยอดเกินวงเงินอนุมัติของคุณ (${approvalLimit.toLocaleString("th-TH")} บาท) ต้องให้ผู้บริหารอนุมัติ`);
           tx.update(ref, { status: "Approved", approvedBy: apiUser.uid, approvedAt: now, updatedAt: now, updatedBy: apiUser.uid });
           return "Approved";
         }

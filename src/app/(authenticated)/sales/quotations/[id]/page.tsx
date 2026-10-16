@@ -36,7 +36,7 @@ export default function QuotationEditPage() {
   // Next 16: params ของ page เป็น Promise จึงอ่านผ่าน useParams แทน
   const routeParams = useParams();
   const params = { id: decodeURIComponent(String(routeParams.id || "")) };
-  const { user, companyId, role } = useAuth();
+  const { user, companyId, role, roles } = useAuth();
 
   // Data Fetching from both root collection and company subcollection
   const effectiveCompanyId = companyId || "";
@@ -91,7 +91,7 @@ export default function QuotationEditPage() {
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [isSendMenuOpen, setIsSendMenuOpen] = useState(false);
-  const canSeeCost = canViewCost(role);
+  const canSeeCost = canViewCost(roles);
 
   const [addrLine1, setAddrLine1] = useState("");
   const [addrLine2, setAddrLine2] = useState("");

@@ -23,9 +23,9 @@ type Form = typeof EMPTY;
 function EmployeeForm() {
   const router = useRouter();
   const editId = useSearchParams()?.get("edit") || "";
-  const { companyId, role } = useAuth();
+  const { companyId, role, roles } = useAuth();
   const { showConfirm } = useSystemDialog();
-  const canEdit = can(role, "hr:edit");
+  const canEdit = can(roles, "hr:edit");
   const { data: existing } = useRealtimeDocument<any>(editId ? `employees/${editId}` : null);
 
   const [form, setForm] = useState<Form>(EMPTY);

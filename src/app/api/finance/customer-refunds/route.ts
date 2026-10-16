@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     const companyId = str(body.companyId, 80);
     if (!companyId) throw new ApiAuthError(400, "ไม่พบรหัสบริษัท");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "finance:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+    if (!can(apiUser.roles, "finance:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
     const now = admin.firestore.FieldValue.serverTimestamp();
     const action = str(body.action, 20);
 

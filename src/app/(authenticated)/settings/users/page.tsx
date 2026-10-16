@@ -2,18 +2,20 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Users, ShieldCheck, UserCheck, Link2, Loader2, RefreshCw } from "lucide-react";
-import { GlassCard, PillButton, PillSelect, StatusBadge, cn, NexusSearchInput, NexusTable, NexusTableRow, NexusTableCell } from "@/components/ui/Base";
+import { GlassCard, PillButton, StatusBadge, cn, NexusSearchInput, NexusTable, NexusTableRow, NexusTableCell } from "@/components/ui/Base";
 import { SecurityGuard } from "@/components/shared/SecurityGuard";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api-client";
-import { getPermissions, type Permission } from "@/lib/permissions";
+import { ASSIGNABLE_ROLES, getPermissions, roleLabel, type Permission } from "@/lib/permissions";
+import { RoleAssignDialog } from "@/components/settings/RoleAssignDialog";
 
 interface ManagedUser {
   uid: string;
   name: string;
   email: string;
   role: string;
+  roles: string[];
   status: "ACTIVE" | "PENDING" | "SUSPENDED" | "REJECTED";
   expired: boolean;
   companyId: string | null;
@@ -32,28 +34,38 @@ interface Registration {
   ownerUid: string;
 }
 
-const ROLE_OPTIONS = [
-  { value: "ADMIN", label: "ผู้ดูแลระบบ" },
-  { value: "ENGINEER", label: "วิศวกร" },
-  { value: "ACCOUNTANT", label: "บัญชี" },
-  { value: "SALES", label: "ฝ่ายขาย" },
-  { value: "TECHNICIAN", label: "ช่างเทคนิค" },
-  { value: "CUSTOMER", label: "ลูกค้า" },
-];
-const roleLabel = (r: string) => (r === "SUPERADMIN" ? "ผู้ดูแลสูงสุด" : ROLE_OPTIONS.find((o) => o.value === r)?.label || r);
-
+// ตารางสิทธิ์ต่อตำแหน่ง (ไม่รวมลูกค้า ซึ่งไม่มีสิทธิ์หลังบ้าน)
+const MATRIX_ROLES = ASSIGNABLE_ROLES.filter((r) => r.value !== "CUSTOMER");
 const PERMISSION_LABELS: { key: Permission; label: string }[] = [
+  { key: "dashboard:executive", label: "แดชบอร์ดผู้บริหาร" },
   { key: "sales:view", label: "ดูงานขาย" },
-  { key: "sales:edit", label: "แก้ไขงานขาย" },
+  { key: "sales:edit", label: "ทำงานขาย" },
+  { key: "sales:cost", label: "เห็นต้นทุน/กำไรต่อรายการ" },
+  { key: "sales:approve", label: "อนุมัติใบเสนอราคา" },
+  { key: "procurement:view", label: "ดูงานจัดซื้อ" },
+  { key: "procurement:edit", label: "ทำใบขอซื้อ/ใบสั่งซื้อ" },
+  { key: "procurement:approve", label: "อนุมัติซื้อ" },
   { key: "inventory:view", label: "ดูคลังสินค้า" },
-  { key: "inventory:edit", label: "แก้ไขคลังสินค้า" },
+  { key: "inventory:edit", label: "รับ/เบิกสินค้า" },
   { key: "projects:view", label: "ดูโครงการ" },
-  { key: "projects:edit", label: "แก้ไขโครงการ" },
-  { key: "finance:view", label: "ดูการเงิน" },
-  { key: "finance:edit", label: "แก้ไขการเงิน" },
+  { key: "projects:edit", label: "ทำงานโครงการ" },
+  { key: "projects:approve", label: "อนุมัติโครงการ" },
+  { key: "finance:view", label: "ดูเอกสารบัญชี/การเงิน" },
+  { key: "finance:edit", label: "รับ-จ่ายเงิน ทำเอกสารบัญชี" },
+  { key: "finance:post", label: "ลงบัญชี ปิดงวด ยื่นภาษี" },
+  { key: "hr:view", label: "ดูข้อมูลบุคคล/เงินเดือน" },
+  { key: "hr:edit", label: "จัดการพนักงาน/เงินเดือน" },
+  { key: "service:field", label: "แอปช่างหน้างาน" },
   { key: "users:manage", label: "จัดการผู้ใช้" },
   { key: "settings:manage", label: "ตั้งค่าระบบ" },
 ];
+
+// แสดงตำแหน่งแบบสั้นในตาราง (ครบทุกตำแหน่งดูได้จาก tooltip)
+const rolesSummary = (roles: string[]) => {
+  if (!roles.length) return "ยังไม่มีตำแหน่ง";
+  const shown = roles.slice(0, 2).map(roleLabel).join(" · ");
+  return roles.length > 2 ? `${shown} +${roles.length - 2}` : shown;
+};
 
 const formatDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" }) : "-";
@@ -71,6 +83,8 @@ export default function UsersPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
+  // หน้าต่างกำหนดตำแหน่ง (SUPERADMIN): ตอนอนุมัติ หรือแก้ไขตำแหน่ง
+  const [assign, setAssign] = useState<{ user: ManagedUser; mode: "approve" | "setRoles" } | null>(null);
 
   const load = useCallback(async () => {
     if (!canManage) return;
@@ -93,7 +107,7 @@ export default function UsersPage() {
     if (user) load();
   }, [user, load]);
 
-  const runAction = async (uid: string, action: string, newRole?: string) => {
+  const runAction = async (uid: string, action: string, roles?: string[]) => {
     setBusyUid(uid);
     setError("");
     setNotice("");
@@ -101,11 +115,13 @@ export default function UsersPage() {
       const res = await apiFetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid, action, role: newRole }),
+        body: JSON.stringify({ uid, action, ...(roles ? { roles } : {}) }),
       });
       const result = await res.json();
       if (!res.ok || !result.success) throw new Error(result.error || "ดำเนินการไม่สำเร็จ");
       if (action === "approve" && result.companyId) setNotice(`อนุมัติแล้ว ผูกกับบริษัท ${result.companyId}`);
+      if (action === "setRoles") setNotice("บันทึกตำแหน่งแล้ว ผู้ใช้จะได้สิทธิ์ใหม่เมื่อรีเฟรชหน้าเว็บ");
+      setAssign(null);
       await load();
     } catch (e: any) {
       setError(e.message);
@@ -129,7 +145,7 @@ export default function UsersPage() {
   const members = users.filter((u) => u.status === "ACTIVE" || u.status === "SUSPENDED");
   const q = search.trim().toLowerCase();
   const matches = (u: ManagedUser) =>
-    !q || [u.name, u.email, u.role, u.companyId, u.requestedCompanyName].some((v) => String(v || "").toLowerCase().includes(q));
+    !q || [u.name, u.email, ...u.roles.map(roleLabel), u.companyId, u.requestedCompanyName].some((v) => String(v || "").toLowerCase().includes(q));
 
   const headerContent = (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
@@ -185,7 +201,7 @@ export default function UsersPage() {
       const needsSuper = !!u.registrationId && !isSuper;
       return (
         <div className="flex gap-2 justify-end">
-          <PillButton variant="confirm" disabled={needsSuper} onClick={() => runAction(u.uid, "approve")} className="h-8 px-4 text-xs">
+          <PillButton variant="confirm" disabled={needsSuper} onClick={() => (isSuper && !u.registrationId ? setAssign({ user: u, mode: "approve" }) : runAction(u.uid, "approve"))} className="h-8 px-4 text-xs">
             อนุมัติ
           </PillButton>
           <SecurityGuard onConfirm={() => runAction(u.uid, "reject")} actionLabel="ปฏิเสธคำขอ" message={`ปฏิเสธคำขอของ ${u.email}? บัญชีนี้จะถูกปิดการใช้งาน`}>
@@ -220,8 +236,8 @@ export default function UsersPage() {
       <NexusTable
         headers={
           mode === "pending"
-            ? ["ผู้สมัคร", "คำขอ", "สิทธิ์ที่ขอ", "วันที่สมัคร", "สถานะ", ""]
-            : ["ผู้ใช้งาน", ...(isSuper ? ["บริษัท"] : []), "บทบาท", "สถานะ", ""]
+            ? ["ผู้สมัคร", "คำขอ", "ประเภทที่ขอ", "วันที่สมัคร", "สถานะ", ""]
+            : ["ผู้ใช้งาน", ...(isSuper ? ["บริษัท"] : []), "ตำแหน่ง", "สถานะ", ""]
         }
         minWidth="min-w-[900px]"
         itemCount={rows.length}
@@ -271,20 +287,16 @@ export default function UsersPage() {
                 <>
                   {isSuper && <NexusTableCell className="text-[12px] text-white/60 font-mono">{u.companyId || "-"}</NexusTableCell>}
                   <NexusTableCell>
-                    {u.uid === user?.uid || u.role === "SUPERADMIN" || u.status !== "ACTIVE" ? (
-                      <span className="text-[13px] text-white/70">{roleLabel(u.role)}</span>
-                    ) : (
-                      <PillSelect
-                        value={u.role}
-                        onChange={(e) => runAction(u.uid, "setRole", e.target.value)}
-                        className="h-9 px-4 w-44 bg-white/[0.03] border-white/10 text-[13px]"
-                      >
-                        {!ROLE_OPTIONS.some((o) => o.value === u.role) && <option value={u.role}>{u.role}</option>}
-                        {ROLE_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                      </PillSelect>
-                    )}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-[13px] text-white/80 truncate min-w-0" title={u.roles.map(roleLabel).join(" · ")}>
+                        {rolesSummary(u.roles)}
+                      </span>
+                      {isSuper && u.uid !== user?.uid && !u.roles.includes("SUPERADMIN") && u.status === "ACTIVE" && (
+                        <button type="button" onClick={() => setAssign({ user: u, mode: "setRoles" })} className="text-[12px] text-nexus-teal hover:underline whitespace-nowrap flex-shrink-0">
+                          กำหนดตำแหน่ง
+                        </button>
+                      )}
+                    </div>
                   </NexusTableCell>
                 </>
               )}
@@ -299,11 +311,11 @@ export default function UsersPage() {
 
   const rolesTable = (
     <GlassCard accentColor="teal" className="p-0 overflow-hidden">
-      <NexusTable headers={["สิทธิ์", ...ROLE_OPTIONS.slice(0, 4).map((r) => r.label)]} minWidth="min-w-[700px]">
+      <NexusTable headers={["สิทธิ์", ...MATRIX_ROLES.map((r) => r.label)]} minWidth="min-w-[1000px]">
         {PERMISSION_LABELS.map((p) => (
           <NexusTableRow key={p.key}>
-            <NexusTableCell className="text-[13px] text-white/80">{p.label}</NexusTableCell>
-            {ROLE_OPTIONS.slice(0, 4).map((r) => (
+            <NexusTableCell className="text-[13px] text-white/80 whitespace-nowrap">{p.label}</NexusTableCell>
+            {MATRIX_ROLES.map((r) => (
               <NexusTableCell key={r.value} className="text-center">
                 {getPermissions(r.value).includes(p.key) ? (
                   <span className="text-nexus-teal font-bold">✓</span>
@@ -315,6 +327,9 @@ export default function UsersPage() {
           </NexusTableRow>
         ))}
       </NexusTable>
+      <p className="px-6 py-4 text-[12px] text-white/50 border-t border-white/5">
+        ผู้ใช้ 1 คนมีได้หลายตำแหน่ง สิทธิ์รวมกันตามทุกตำแหน่ง · ฝ่ายบัญชีอนุมัติใบสั่งซื้อได้ไม่เกิน 500,000 บาท เกินกว่านั้นต้องเป็นผู้บริหาร · กำหนดตำแหน่งได้เฉพาะผู้ดูแลสูงสุด
+      </p>
     </GlassCard>
   );
 
@@ -325,7 +340,7 @@ export default function UsersPage() {
       <div className="flex gap-2 p-1 bg-white/5 rounded-full w-fit border border-white/5 shadow-inner h-11">
         {tabButton("users", <Users size={16} />, "ผู้ใช้งาน")}
         {tabButton("pending", <UserCheck size={16} />, "รออนุมัติ", pending.length)}
-        {tabButton("roles", <ShieldCheck size={16} />, "บทบาทและสิทธิ์")}
+        {tabButton("roles", <ShieldCheck size={16} />, "ตำแหน่งและสิทธิ์")}
       </div>
 
       {error && (
@@ -341,7 +356,7 @@ export default function UsersPage() {
             <h3 className="tactical-label !mb-0">{tab === "pending" ? "คำขอสมัครใช้งาน" : "บัญชีผู้ใช้"}</h3>
           </div>
           <NexusSearchInput
-            placeholder="ค้นหาชื่อ อีเมล บทบาท..."
+            placeholder="ค้นหาชื่อ อีเมล ตำแหน่ง..."
             className="w-full md:w-80"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -354,6 +369,17 @@ export default function UsersPage() {
         {tab === "pending" && userTable(pending.filter(matches), "pending")}
         {tab === "roles" && rolesTable}
       </div>
+
+      <RoleAssignDialog
+        open={!!assign}
+        title={assign?.mode === "approve" ? "อนุมัติและกำหนดตำแหน่ง" : "กำหนดตำแหน่ง"}
+        subtitle={assign ? `${assign.user.name || "-"} · ${assign.user.email}` : ""}
+        initialRoles={assign?.user.roles || []}
+        confirmLabel={assign?.mode === "approve" ? "อนุมัติ" : "บันทึกตำแหน่ง"}
+        busy={!!assign && busyUid === assign.user.uid}
+        onClose={() => setAssign(null)}
+        onConfirm={(roles) => assign && runAction(assign.user.uid, assign.mode, roles)}
+      />
     </div>
   );
 

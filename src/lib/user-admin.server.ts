@@ -2,6 +2,7 @@ import * as admin from "firebase-admin";
 import { adminAuth, adminDb } from "./firebase-admin";
 import { ApiAuthError, type ApiUser } from "./api-auth";
 import { isPendingExpired, normalizeUserStatus } from "./user-status";
+import { ASSIGNABLE_ROLES as ROLE_OPTIONS, FULL_ACCESS_ROLES, can, primaryRole, resolveRoles } from "./permissions";
 
 /**
  * [SERVER-ONLY: Admin SDK] สมัครใช้งาน / อนุมัติผู้ใช้
@@ -11,8 +12,18 @@ import { isPendingExpired, normalizeUserStatus } from "./user-status";
  */
 
 export const SELF_REGISTER_ROLES = ["CUSTOMER", "TECHNICIAN"] as const;
-// ตรงกับ src/lib/permissions.ts (+ TECHNICIAN/CUSTOMER สำหรับหน้าช่าง/ลูกค้า)
-export const ASSIGNABLE_ROLES = ["ADMIN", "ENGINEER", "ACCOUNTANT", "SALES", "TECHNICIAN", "CUSTOMER"] as const;
+// ตำแหน่งที่ SUPERADMIN กำหนดได้ (นิยามสิทธิ์อยู่ที่ src/lib/permissions.ts)
+export const ASSIGNABLE_ROLES = ROLE_OPTIONS.map((r) => r.value) as string[];
+// เจ้าของกิจการที่เปิดบริษัทใหม่: ได้ทุกตำแหน่งงาน (SUPERADMIN ปรับลดภายหลังได้)
+const BUSINESS_OWNER_ROLES: string[] = FULL_ACCESS_ROLES;
+
+/** ตรวจรายการตำแหน่งที่ส่งมา: ต้องเป็นตำแหน่งที่กำหนดได้ อย่างน้อย 1 ตำแหน่ง */
+function cleanRoles(raw: any): string[] {
+  const list = Array.from(new Set((Array.isArray(raw) ? raw : []).map((r: any) => String(r || "").toUpperCase())));
+  if (!list.length) bad("กรุณาเลือกตำแหน่งอย่างน้อย 1 ตำแหน่ง");
+  if (list.some((r) => !ASSIGNABLE_ROLES.includes(r))) bad("ตำแหน่งไม่ถูกต้อง");
+  return list;
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const now = () => admin.firestore.FieldValue.serverTimestamp();
@@ -145,7 +156,7 @@ function serializeTime(v: any): string | null {
 
 /** รายชื่อผู้ใช้ที่ผู้เรียกจัดการได้: ADMIN เห็นบริษัทตัวเอง (+คำขอเข้าบริษัท), SUPERADMIN เห็นทั้งหมด */
 export async function listManagedUsers(caller: ApiUser) {
-  const isSuper = caller.role === "SUPERADMIN";
+  const isSuper = caller.roles.includes("SUPERADMIN");
   let docs: FirebaseFirestore.QueryDocumentSnapshot[];
   if (isSuper) {
     docs = (await adminDb.collection("users").get()).docs;
@@ -164,6 +175,7 @@ export async function listManagedUsers(caller: ApiUser) {
       name: x.name || x.displayName || "",
       email: x.email || "",
       role: String(x.role || "USER").toUpperCase(),
+      roles: resolveRoles(x),
       status: normalizeUserStatus(x.status),
       expired: isPendingExpired(x),
       companyId: x.companyId || null,
@@ -192,12 +204,18 @@ async function nextCompanyId(): Promise<string> {
   return `COM-NEXUS-${String(max + 1).padStart(2, "0")}`;
 }
 
-export type UserAction = "approve" | "reject" | "suspend" | "reactivate" | "setRole";
+export type UserAction = "approve" | "reject" | "suspend" | "reactivate" | "setRoles";
 
-/** อนุมัติ/ระงับ/เปลี่ยนสิทธิ์ผู้ใช้ */
-export async function applyUserAction(caller: ApiUser, uid: string, action: UserAction, role?: string) {
-  const isSuper = caller.role === "SUPERADMIN";
-  if (!isSuper && caller.role !== "ADMIN") throw new ApiAuthError(403, "ต้องเป็นผู้ดูแลระบบเท่านั้น");
+/**
+ * อนุมัติ/ระงับ/กำหนดตำแหน่งผู้ใช้
+ * - ผู้ดูแลระบบ (users:manage): อนุมัติตามประเภทที่สมัคร (ลูกค้า/ช่าง) ปฏิเสธ ระงับ เปิดใช้งาน
+ * - กำหนดตำแหน่ง (approve พร้อม roles / setRoles): เฉพาะ SUPERADMIN
+ */
+export async function applyUserAction(caller: ApiUser, uid: string, action: UserAction, roles?: any) {
+  const isSuper = caller.roles.includes("SUPERADMIN");
+  if (!isSuper && !can(caller.roles, "users:manage")) throw new ApiAuthError(403, "ต้องเป็นผู้ดูแลระบบเท่านั้น");
+  const assigning = roles !== undefined && roles !== null;
+  if (assigning && !isSuper) throw new ApiAuthError(403, "กำหนดตำแหน่งได้เฉพาะ SUPERADMIN");
   if (uid === caller.uid) bad("ไม่สามารถเปลี่ยนสถานะบัญชีของตัวเองได้");
 
   const ref = adminDb.collection("users").doc(uid);
@@ -220,9 +238,13 @@ export async function applyUserAction(caller: ApiUser, uid: string, action: User
         if (!isSuper) throw new ApiAuthError(403, "การเปิดบริษัทใหม่ต้องอนุมัติโดย SUPERADMIN");
         return approveBusiness(caller, uid, u.registrationId);
       }
-      await ref.update({ status: "ACTIVE", companyId: u.requestedCompanyId, approvedAt: now(), approvedBy: caller.uid, ...stamp });
+      const assigned = assigning ? cleanRoles(roles) : null;
+      await ref.update({
+        status: "ACTIVE", companyId: u.requestedCompanyId, approvedAt: now(), approvedBy: caller.uid, ...stamp,
+        ...(assigned ? { roles: assigned, role: primaryRole(assigned) } : {}),
+      });
       await adminAuth.updateUser(uid, { disabled: false });
-      return { companyId: u.requestedCompanyId };
+      return { companyId: u.requestedCompanyId, roles: assigned || resolveRoles(u) };
     }
     case "reject": {
       if (status !== "PENDING") bad("ผู้ใช้นี้ไม่ได้อยู่ในสถานะรออนุมัติ");
@@ -235,7 +257,7 @@ export async function applyUserAction(caller: ApiUser, uid: string, action: User
     }
     case "suspend": {
       if (status !== "ACTIVE") bad("ระงับได้เฉพาะบัญชีที่ใช้งานอยู่");
-      if (!isSuper && String(u.role).toUpperCase() === "SUPERADMIN") throw new ApiAuthError(403, "ไม่มีสิทธิ์");
+      if (!isSuper && resolveRoles(u).includes("SUPERADMIN")) throw new ApiAuthError(403, "ไม่มีสิทธิ์");
       await ref.update({ status: "SUSPENDED", ...stamp });
       await adminAuth.revokeRefreshTokens(uid);
       return {};
@@ -245,11 +267,12 @@ export async function applyUserAction(caller: ApiUser, uid: string, action: User
       await ref.update({ status: "ACTIVE", ...stamp });
       return {};
     }
-    case "setRole": {
-      const next = String(role || "").toUpperCase();
-      if (!(ASSIGNABLE_ROLES as readonly string[]).includes(next)) bad("สิทธิ์ไม่ถูกต้อง");
-      await ref.update({ role: next, ...stamp });
-      return { role: next };
+    case "setRoles": {
+      if (!isSuper) throw new ApiAuthError(403, "กำหนดตำแหน่งได้เฉพาะ SUPERADMIN");
+      if (resolveRoles(u).includes("SUPERADMIN")) throw new ApiAuthError(403, "เปลี่ยนตำแหน่งของ SUPERADMIN ไม่ได้");
+      const next = cleanRoles(roles);
+      await ref.update({ roles: next, role: primaryRole(next), ...stamp });
+      return { roles: next };
     }
     default:
       bad("คำสั่งไม่ถูกต้อง");
@@ -280,6 +303,7 @@ async function approveBusiness(caller: ApiUser, uid: string, registrationId: str
     status: "ACTIVE",
     companyId,
     role: "ADMIN",
+    roles: BUSINESS_OWNER_ROLES,
     approvedAt: now(),
     approvedBy: caller.uid,
     updatedAt: now(),

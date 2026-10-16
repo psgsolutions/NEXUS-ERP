@@ -20,9 +20,9 @@ const thDate = (d?: string) => (d ? new Date(`${String(d).slice(0, 10)}T00:00:00
 function CnDnForm() {
   const router = useRouter();
   const qs = useSearchParams();
-  const { companyId, role } = useAuth();
+  const { companyId, role, roles } = useAuth();
   const { showConfirm } = useSystemDialog();
-  const canSave = can(role, "sales:edit") || can(role, "finance:edit");
+  const canSave = can(roles, "sales:edit") || can(roles, "finance:edit");
   const { data: invoices } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/invoices` : "");
 
   const [type, setType] = useState<CnDnType>(qs?.get("type") === "DN" ? "DN" : "CN");

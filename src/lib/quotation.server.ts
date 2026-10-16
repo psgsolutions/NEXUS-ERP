@@ -94,8 +94,8 @@ export function createCustomerInTx(tx: admin.firestore.Transaction, companyId: s
   return ref.id;
 }
 
-export function writeProductWritebacks(tx: admin.firestore.Transaction, companyId: string, role: string | undefined, raw: any) {
-  if (!canWriteBackToProductMaster(role, true)) return;
+export function writeProductWritebacks(tx: admin.firestore.Transaction, companyId: string, roles: string[], raw: any) {
+  if (!canWriteBackToProductMaster(roles, true)) return;
   const now = admin.firestore.FieldValue.serverTimestamp();
   (Array.isArray(raw) ? raw : []).slice(0, 100).forEach((w: any) => {
     const pid = str(w.productId, 120);
@@ -127,7 +127,7 @@ export function notifyPendingApproval(tx: admin.firestore.Transaction, companyId
     title: `ใบเสนอราคา ${docNo} รออนุมัติ`,
     message: `${customerName || "ลูกค้า"} · ยอด ${num(grandTotal).toLocaleString("th-TH")} บาท${gp !== null ? ` · GP ${gp}%` : ""}`,
     link: `/sales/quotations/${quotationId}`,
-    targetRoles: ["ADMIN", "MANAGER", "SUPERADMIN"],
+    targetRoles: ["EXECUTIVE", "SUPERADMIN"],
     documentNo: docNo,
   }, by);
 }

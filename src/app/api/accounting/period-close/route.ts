@@ -28,10 +28,9 @@ function parsePeriod(yearInput: any, monthInput: any) {
   return { year, month, label: `${THAI_MONTHS[month - 1]} ${year + 543}` };
 }
 
-function assertCanClose(role?: string) {
-  const r = String(role || "").toUpperCase();
-  if (!(["SUPERADMIN", "ADMIN", "ACCOUNTANT"].includes(r) || can(role, "finance:edit"))) {
-    throw new ApiAuthError(403, "ไม่มีสิทธิ์ปิดงวดบัญชี (ต้องเป็นผู้ดูแลระบบหรือนักบัญชี)");
+function assertCanClose(roles: string[]) {
+  if (!can(roles, "finance:post")) {
+    throw new ApiAuthError(403, "ไม่มีสิทธิ์ปิดงวดบัญชี (ต้องเป็นฝ่ายบัญชี)");
   }
 }
 
@@ -98,7 +97,7 @@ export async function GET(request: Request) {
     const companyId = String(url.searchParams.get("companyId") || "");
     if (!companyId) throw new ApiAuthError(400, "ไม่พบรหัสบริษัท");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "finance:view") && !can(apiUser.role, "finance:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+    if (!can(apiUser.roles, "finance:view") && !can(apiUser.roles, "finance:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
     const { year, month } = parsePeriod(url.searchParams.get("year"), url.searchParams.get("month"));
     return NextResponse.json({ success: true, ...(await inspect(companyId, year, month)) });
   } catch (err: any) {
@@ -115,7 +114,7 @@ export async function POST(request: Request) {
     const companyId = String(body.companyId || "");
     if (!companyId) throw new ApiAuthError(400, "ไม่พบรหัสบริษัท");
     const apiUser = await requireApiUser(request, companyId);
-    assertCanClose(apiUser.role);
+    assertCanClose(apiUser.roles);
     const { year, month, label } = parsePeriod(body.year, body.month);
 
     const r = await inspect(companyId, year, month);

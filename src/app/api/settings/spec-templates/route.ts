@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const companyId = String(body.companyId || "").trim();
     if (!companyId) throw new ApiAuthError(400, "ไม่พบรหัสบริษัท");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "settings:manage")) throw new ApiAuthError(403, "แก้ไขคลังสเปกได้เฉพาะผู้ดูแลระบบ");
+    if (!can(apiUser.roles, "settings:manage")) throw new ApiAuthError(403, "แก้ไขคลังสเปกได้เฉพาะผู้ดูแลระบบ");
 
     const col = adminDb.collection(`companies/${companyId}/spec_templates`);
     const now = admin.firestore.FieldValue.serverTimestamp();

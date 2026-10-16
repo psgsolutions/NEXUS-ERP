@@ -15,6 +15,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { inactiveReason, isSuperAdminAccount } from "@/lib/user-status";
+import { resolveRoles } from "@/lib/permissions";
 
 const authErrorText = (code?: string) => {
   switch (code) {
@@ -77,8 +78,8 @@ export default function LoginPage() {
       }
 
       localStorage.setItem("selectedCompanyId", profile.companyId);
-      const role = String(profile.role || "").toUpperCase();
-      router.push(role === "TECHNICIAN" ? "/mobile/technician" : "/");
+      const roles = resolveRoles(profile);
+      router.push(roles.length === 1 && roles[0] === "TECHNICIAN" ? "/mobile/technician" : "/");
       router.refresh();
     } catch (err: any) {
       console.error("Login Error:", err?.code || err);

@@ -17,8 +17,8 @@ const baht = (n: number) => (Number(n) || 0).toLocaleString("th-TH", { minimumFr
 function TaxInvoiceForm() {
   const router = useRouter();
   const expenseId = useSearchParams()?.get("expense") || "";
-  const { companyId, role } = useAuth();
-  const canSave = can(role, "finance:edit");
+  const { companyId, role, roles } = useAuth();
+  const canSave = can(roles, "finance:edit");
   const { data: e, loading } = useRealtimeDocument<any>(companyId && expenseId ? `companies/${companyId}/expenses/${expenseId}` : null);
 
   const [taxInvoiceNo, setTaxInvoiceNo] = useState("");

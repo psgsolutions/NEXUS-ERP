@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     const soId = String(body.salesOrderId || "").trim();
     if (!companyId || !soId) throw new ApiAuthError(400, "ข้อมูลไม่ครบ");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "sales:edit") && !can(apiUser.role, "finance:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+    if (!can(apiUser.roles, "sales:edit") && !can(apiUser.roles, "finance:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
 
     const issueDate = todayBkk();
     await assertPeriodOpen(companyId, issueDate);

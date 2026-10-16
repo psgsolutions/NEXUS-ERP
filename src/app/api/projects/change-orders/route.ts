@@ -21,7 +21,7 @@ import { CHANGEABLE_STATUSES, CHANGE_ORDER_TYPES, changeOrderPatch, normalizeCha
  */
 
 const str = (v: any, max = 120) => String(v ?? "").trim().slice(0, max);
-const isApprover = (role?: string) => ["ADMIN", "SUPERADMIN"].includes(String(role || "").toUpperCase());
+const isApprover = (roles: string[]) => can(roles, "projects:approve");
 
 export async function POST(request: Request) {
   try {
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     const docId = str(body.projectDocId);
     if (!companyId || !docId) throw new ApiAuthError(400, "ข้อมูลไม่ครบ");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "projects:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+    if (!can(apiUser.roles, "projects:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
 
     const projectRef = adminDb.doc(`companies/${companyId}/projects/${docId}`);
     const now = admin.firestore.FieldValue.serverTimestamp();
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
           title: `โครงการ ${projectNo} ขอเปลี่ยนแปลง ${coNo}`,
           message: `${CHANGE_ORDER_TYPES.find((t) => t.code === n.value.type)?.label}: ${n.summary}`,
           link: `/projects/${encodeURIComponent(docId)}?tab=changes`,
-          targetRoles: ["ADMIN"],
+          targetRoles: ["EXECUTIVE"],
           documentNo: projectNo,
         }, apiUser.uid);
         return { id: coRef.id, coNo, projectNo };
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "approve" || action === "reject") {
-      if (!isApprover(apiUser.role)) throw new ApiAuthError(403, "อนุมัติการเปลี่ยนแปลงได้เฉพาะผู้ดูแลระบบ");
+      if (!isApprover(apiUser.roles)) throw new ApiAuthError(403, "อนุมัติการเปลี่ยนแปลงได้เฉพาะผู้บริหาร");
       const coId = str(body.coId);
       const note = str(body.note, 500);
       if (action === "reject" && note.length < 3) throw new ApiAuthError(400, "กรุณาระบุเหตุผลที่ไม่อนุมัติ");

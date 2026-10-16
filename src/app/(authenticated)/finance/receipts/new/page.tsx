@@ -46,8 +46,8 @@ interface LineState { selected: boolean; amount: string; whtRate: number }
 function ReceiptForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { companyId, role } = useAuth();
-  const canSave = can(role, "finance:edit") || can(role, "sales:edit");
+  const { companyId, role, roles } = useAuth();
+  const canSave = can(roles, "finance:edit") || can(roles, "sales:edit");
 
   const { data: invoices, loading } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/invoices` : "");
 

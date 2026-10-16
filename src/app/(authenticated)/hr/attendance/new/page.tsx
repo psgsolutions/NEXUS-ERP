@@ -17,8 +17,8 @@ type Gps = { lat: number; lng: number; accuracy: number } | null;
 
 export default function AttendancePage() {
   const router = useRouter();
-  const { user, companyId, role } = useAuth();
-  const isHr = can(role, "hr:edit");
+  const { user, companyId, role, roles } = useAuth();
+  const isHr = can(roles, "hr:edit");
   const { data: employees } = useRealtimeCollection<any>("employees");
 
   const [now, setNow] = useState(() => Date.now());

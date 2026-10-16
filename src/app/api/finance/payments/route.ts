@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     const companyId = str(body.companyId, 80);
     if (!companyId) throw new ApiAuthError(400, "ไม่พบรหัสบริษัท");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "finance:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอสำหรับการจ่ายเงิน");
+    if (!can(apiUser.roles, "finance:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอสำหรับการจ่ายเงิน");
 
     const payeeKey = str(body.payeeKey, 200);
     const method = (str(body.paymentMethod).toUpperCase() || "TRANSFER") as Method;

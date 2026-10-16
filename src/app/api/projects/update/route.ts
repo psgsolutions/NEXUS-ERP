@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     if (!companyId || !docId) return badRequest("ข้อมูลไม่ครบ");
 
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "projects:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+    if (!can(apiUser.roles, "projects:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
 
     const built = await buildProjectFields(body, apiUser, companyId);
     if (!built.ok) return badRequest(built.error);
@@ -43,8 +43,8 @@ export async function POST(request: Request) {
         throw new ApiAuthError(409, "แก้ไขได้เฉพาะโครงการฉบับร่างหรือที่ถูกตีกลับ");
       }
       const isOwner = cur.createdBy === apiUser.uid;
-      if (!isOwner && apiUser.role !== "ADMIN" && apiUser.role !== "SUPERADMIN") {
-        throw new ApiAuthError(403, "แก้ไขได้เฉพาะผู้สร้างโครงการหรือผู้ดูแลระบบ");
+      if (!isOwner && !can(apiUser.roles, "projects:approve")) {
+        throw new ApiAuthError(403, "แก้ไขได้เฉพาะผู้สร้างโครงการหรือผู้บริหาร");
       }
       const now = admin.firestore.FieldValue.serverTimestamp();
       const del = admin.firestore.FieldValue.delete();

@@ -60,15 +60,16 @@ export interface ApprovalStepDef {
 }
 
 export const APPROVAL_STEPS: ApprovalStepDef[] = [
-  { stepOrder: 1, title: "หัวหน้าฝ่าย", description: "ตรวจขอบเขตและเป้าหมายโครงการ", roles: ["ADMIN", "ENGINEER"] },
-  { stepOrder: 2, title: "ฝ่ายการเงิน", description: "อนุมัติกรอบวงเงินและกำไรขั้นต้น", roles: ["ADMIN", "ACCOUNTANT"] },
-  { stepOrder: 3, title: "ผู้บริหาร", description: "อนุมัติเปิดโครงการ", roles: ["ADMIN"] },
+  { stepOrder: 1, title: "หัวหน้าฝ่าย", description: "ตรวจขอบเขตและเป้าหมายโครงการ", roles: ["EXECUTIVE", "ENGINEER"] },
+  { stepOrder: 2, title: "ฝ่ายการเงิน", description: "อนุมัติกรอบวงเงินและกำไรขั้นต้น", roles: ["EXECUTIVE", "ACCOUNTANT"] },
+  { stepOrder: 3, title: "ผู้บริหาร", description: "อนุมัติเปิดโครงการ", roles: ["EXECUTIVE"] },
 ];
 
-export function canApproveStep(role: string | null | undefined, stepOrder: number): boolean {
-  const r = String(role || "").toUpperCase();
-  if (r === "SUPERADMIN") return true;
-  return !!APPROVAL_STEPS.find((s) => s.stepOrder === stepOrder)?.roles.includes(r);
+export function canApproveStep(roles: string | string[] | null | undefined, stepOrder: number): boolean {
+  const list = (Array.isArray(roles) ? roles : roles ? [roles] : []).map((r) => String(r || "").toUpperCase());
+  if (list.includes("SUPERADMIN")) return true;
+  const allowed = APPROVAL_STEPS.find((s) => s.stepOrder === stepOrder)?.roles || [];
+  return list.some((r) => allowed.includes(r));
 }
 
 export function initialApprovals() {
@@ -79,5 +80,5 @@ export type ProjectAction = "approve" | "reject" | "start" | "progress" | "compl
 
 /** บทบาทที่ต้องได้รับแจ้งเตือนให้อนุมัติขั้นนั้น */
 export function approverRolesForStep(stepOrder: number): string[] {
-  return APPROVAL_STEPS.find((s) => s.stepOrder === stepOrder)?.roles || ["ADMIN"];
+  return APPROVAL_STEPS.find((s) => s.stepOrder === stepOrder)?.roles || ["EXECUTIVE"];
 }

@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const companyId = str(body.companyId, 80).trim();
     if (!companyId) throw new ApiAuthError(400, "ไม่พบรหัสบริษัท");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "sales:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+    if (!can(apiUser.roles, "sales:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
 
     const header = cleanHeader(body.header);
     const lines = normalizeLines(body.lines);
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
         ...(status === "SENT" ? { sentAt: now, sentBy: apiUser.uid, sentChannel: str(body.sendChannel || "SYSTEM", 20) } : {}),
       });
       lines.forEach((l) => tx.set(ref.collection("lines").doc(), l));
-      writeProductWritebacks(tx, companyId, apiUser.role, body.productWritebacks);
+      writeProductWritebacks(tx, companyId, apiUser.roles, body.productWritebacks);
       tx.set(ref.collection("audit_logs").doc(), auditEntry(apiUser.uid, apiUser.email || apiUser.uid, submit, status, body.sendChannel, gp, requiresApproval, true));
       if (status === "PENDING_APPROVAL") notifyPendingApproval(tx, companyId, ref.id, docNo, header.customerName, header.grandTotal, gp, apiUser.uid);
       return { docNo, status, gp, customerId: String(header.customerId || "") };

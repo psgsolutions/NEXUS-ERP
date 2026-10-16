@@ -51,7 +51,7 @@ export async function POST(request: Request) {
         const step = Number(cur.currentApprovalStep) || 1;
         // นโยบายบริษัท (ยืนยัน 2026-10-09): คนเดียวอนุมัติหลายขั้นได้ ตรวจเฉพาะบทบาทที่มีสิทธิ์ในขั้นนั้น
         // ไม่ตรวจว่าเคยอนุมัติขั้นก่อนหน้าแล้วหรือไม่
-        need(canApproveStep(apiUser.role, step), `บทบาทของคุณอนุมัติขั้นที่ ${step} ไม่ได้`, 403);
+        need(canApproveStep(apiUser.roles, step), `บทบาทของคุณอนุมัติขั้นที่ ${step} ไม่ได้`, 403);
         if (action === "reject") need(comment.length > 0, "กรุณาระบุเหตุผลที่ไม่อนุมัติ", 400);
         const approvals = (Array.isArray(cur.approvals) ? cur.approvals : APPROVAL_STEPS).map((a: any) => ({ ...a }));
         const idx = approvals.findIndex((a: any) => Number(a.stepOrder) === step);
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
           update.currentApprovalStep = step + 1;
         }
       } else {
-        need(can(apiUser.role, "projects:edit"), "สิทธิ์การใช้งานไม่เพียงพอ", 403);
+        need(can(apiUser.roles, "projects:edit"), "สิทธิ์การใช้งานไม่เพียงพอ", 403);
         if (action === "start") {
           need(status === "Approved", "เริ่มดำเนินการได้เมื่ออนุมัติครบทุกขั้นแล้ว");
           next = "In Progress";
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
           need(["Draft", "Pending Approval", "Rejected", "Approved"].includes(status), "ยกเลิกได้เฉพาะโครงการที่ยังไม่เริ่มดำเนินการ");
           need(comment.length > 0, "กรุณาระบุเหตุผลที่ยกเลิก", 400);
           const isOwner = cur.createdBy === apiUser.uid;
-          need(isOwner || apiUser.role === "ADMIN" || apiUser.role === "SUPERADMIN", "ยกเลิกได้เฉพาะผู้สร้างโครงการหรือผู้ดูแลระบบ", 403);
+          need(isOwner || can(apiUser.roles, "projects:approve"), "ยกเลิกได้เฉพาะผู้สร้างโครงการหรือผู้บริหาร", 403);
           next = "Cancelled";
           update.cancelledAt = now;
           update.cancelReason = comment;

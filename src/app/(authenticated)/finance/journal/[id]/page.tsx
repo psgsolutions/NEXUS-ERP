@@ -10,7 +10,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
-import { JOURNAL_POSTING_ROLES, isOwnJournal } from "@/lib/journal-posting";
+import { isOwnJournal } from "@/lib/journal-posting";
+import { can } from "@/lib/permissions";
 
 const toDate = (v: any) => {
   if (!v) return "-";
@@ -21,7 +22,7 @@ const toDate = (v: any) => {
 export default function JournalDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, companyId, role } = useAuth();
+  const { user, companyId, role, roles } = useAuth();
   const { showConfirm } = useSystemDialog();
 
   // id = path ของเอกสาร (companies/{companyId}/journal_entries/{id} หรือ journal_entries/{id}) หรือ ID อย่างเดียว
@@ -52,7 +53,7 @@ export default function JournalDetailPage() {
   // ลงบัญชีผ่าน API เท่านั้น (รายการรุ่นเก่าที่ root ลงบัญชีจากหน้านี้ไม่ได้)
   const isCompanyJournal = !!allowedPath && allowedPath.startsWith(`companies/${companyId}/journal_entries/`);
   const ownEntry = isOwnJournal(jv, user?.uid, user?.email) && roleUpper !== "SUPERADMIN";
-  const canPost = isDraft && balanced && isCompanyJournal && !ownEntry && JOURNAL_POSTING_ROLES.includes(roleUpper);
+  const canPost = isDraft && balanced && isCompanyJournal && !ownEntry && can(roles, "finance:post");
 
   const post = async () => {
     if (!(await showConfirm("ยืนยันอนุมัติลงบัญชีรายการนี้? หลังลงบัญชีแล้วแก้ไขไม่ได้ ต้องกลับรายการเท่านั้น"))) return;

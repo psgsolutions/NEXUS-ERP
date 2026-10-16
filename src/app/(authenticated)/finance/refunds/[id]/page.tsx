@@ -16,7 +16,7 @@ const baht = (n: number) => `฿${(Number(n) || 0).toLocaleString("th-TH", { min
 export default function CustomerRefundPage() {
   const params = useParams();
   const router = useRouter();
-  const { companyId, role } = useAuth();
+  const { companyId, role, roles } = useAuth();
   const refundNo = decodeURIComponent(String(params?.id || ""));
   const { data: d, loading } = useRealtimeDocument<any>(companyId && refundNo ? `companies/${companyId}/customer_refunds/${refundNo}` : null);
   const [cancelling, setCancelling] = useState(false);
@@ -60,7 +60,7 @@ export default function CustomerRefundPage() {
             <p className="text-sm text-white/60">{d?.customerName || (loading ? "กำลังโหลด..." : "ไม่พบเอกสาร")}</p>
           </div>
         </div>
-        {d && !cancelled && can(role, "finance:edit") && !cancelling && (
+        {d && !cancelled && can(roles, "finance:edit") && !cancelling && (
           <PillButton variant="glass" onClick={() => setCancelling(true)} className="h-9 px-4 text-xs font-bold text-danger border-danger/30">
             <Ban size={14} className="mr-1.5" /> ยกเลิกใบคืนเงิน
           </PillButton>

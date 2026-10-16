@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const { companyId, description, reference, items, bookType = "JV", date } = body;
     const apiUser = await requireApiUser(request, companyId);
     const userId = apiUser.email || apiUser.uid;
-    if (!can(apiUser.role, "finance:edit")) {
+    if (!can(apiUser.roles, "finance:edit")) {
       return NextResponse.json({ success: false, error: "สิทธิ์การใช้งานไม่เพียงพอสำหรับการบันทึกบัญชี" }, { status: 403 });
     }
 

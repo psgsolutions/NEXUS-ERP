@@ -23,7 +23,7 @@ const METHODS = [
 export default function NewCustomerRefundPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { companyId, role } = useAuth();
+  const { companyId, role, roles } = useAuth();
   const { data: invoices } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/invoices` : "");
   const due = useMemo(() => invoices.filter((i: any) => Number(i.refundDue) > 0.009 && !i.isSample), [invoices]);
 
@@ -40,7 +40,7 @@ export default function NewCustomerRefundPage() {
 
   useEffect(() => { if (inv) setAmount(Number(inv.refundDue) || 0); }, [inv?.id, inv?.refundDue]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const canSave = can(role, "finance:edit");
+  const canSave = can(roles, "finance:edit");
   const problems = [
     !inv && "เลือกใบกำกับภาษีที่มียอดค้างคืน",
     !(amount > 0) && "ระบุจำนวนเงินที่คืน",

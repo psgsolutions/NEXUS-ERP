@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     const docId = str(body.projectDocId, 120);
     if (!companyId || !docId) throw new ApiAuthError(400, "ข้อมูลไม่ครบ");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "projects:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+    if (!can(apiUser.roles, "projects:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
 
     const raw: any[] = Array.isArray(body.milestones) ? body.milestones : [];
     if (raw.length > 60) throw new ApiAuthError(400, "งวดงานมากเกินไป (สูงสุด 60 งวด)");
@@ -65,9 +65,8 @@ export async function POST(request: Request) {
       const p = snap.data()!;
       if (p.isSample) throw new ApiAuthError(400, "โครงการตัวอย่างแก้ไขไม่ได้");
       if (normalizeProjectStatus(p.status) === "Cancelled") throw new ApiAuthError(409, "โครงการถูกยกเลิกแล้ว");
-      const role = String(apiUser.role || "").toUpperCase();
-      const allowed = role === "ADMIN" || role === "SUPERADMIN" || p.createdBy === apiUser.uid || p.projectManagerUid === apiUser.uid || (p.teamUids || []).includes(apiUser.uid);
-      if (!allowed) throw new ApiAuthError(403, "แก้ไขงวดงานได้เฉพาะผู้สร้าง ผู้จัดการโครงการ ทีมงาน หรือผู้ดูแลระบบ");
+      const allowed = can(apiUser.roles, "projects:approve") || p.createdBy === apiUser.uid || p.projectManagerUid === apiUser.uid || (p.teamUids || []).includes(apiUser.uid);
+      if (!allowed) throw new ApiAuthError(403, "แก้ไขงวดงานได้เฉพาะผู้สร้าง ผู้จัดการโครงการ ทีมงาน หรือผู้บริหาร");
 
       const progress = weightedProgress(milestones);
       tx.update(ref, {

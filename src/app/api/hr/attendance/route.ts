@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     const type = body.type === "OUT" ? "OUT" : body.type === "IN" ? "IN" : "";
     if (!type) throw new ApiAuthError(400, "กรุณาเลือกเข้างานหรือออกงาน");
 
-    const isHr = can(apiUser.role, "hr:edit");
+    const isHr = can(apiUser.roles, "hr:edit");
     const requested = str(body.employeeDocId, 120);
     let empSnap: FirebaseFirestore.DocumentSnapshot;
     if (requested) {

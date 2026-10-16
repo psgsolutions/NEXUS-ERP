@@ -33,7 +33,7 @@ export async function POST(
     const changeSummary = String(body.changeSummary || '').trim().slice(0, 500);
     if (!companyId) throw new ApiAuthError(400, 'ไม่พบรหัสบริษัท');
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, 'sales:edit')) throw new ApiAuthError(403, 'สิทธิ์การใช้งานไม่เพียงพอ');
+    if (!can(apiUser.roles, 'sales:edit')) throw new ApiAuthError(403, 'สิทธิ์การใช้งานไม่เพียงพอ');
     if (!id) throw new ApiAuthError(400, 'ID เอกสารเป็นค่าว่าง');
     if (!changeSummary) throw new ApiAuthError(400, 'กรุณาระบุสรุปการเปลี่ยนแปลงของฉบับแก้ไข');
 

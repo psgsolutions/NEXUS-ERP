@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRealtimeCollection } from '@/hooks/useRealtimeCollection';
 import { db } from '@/lib/firebase-client';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { canAny } from "@/lib/permissions";
 
 // เช็คอิน/ปิดงานผ่าน server (ตรวจช่างที่รับผิดชอบ ลำดับสถานะ และหลักฐานก่อนปิดงาน)
 async function workOrderAction(companyId: string, woId: string, action: 'checkin' | 'complete', extra: Record<string, any>) {
@@ -163,8 +164,9 @@ function SignaturePad({ onClear, onSave }: { onClear: () => void, onSave: (dataU
 }
 
 export default function FieldTechnicianApp() {
-  const { user, role, companyId } = useAuth();
-  const isTechnician = role === 'TECHNICIAN';
+  const { user, roles, companyId } = useAuth();
+  // ช่างเห็นเฉพาะงานที่ได้รับมอบหมาย ผู้มีสิทธิ์จัดการงานเห็นทุกใบ
+  const isTechnician = !canAny(roles, ['projects:edit', 'sales:edit', 'inventory:edit']);
 
   const { data: workOrders, loading: woLoading } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/work_orders` : '');
   const myOrders = useMemo(

@@ -5,9 +5,10 @@ import { adminDb } from "@/lib/firebase-admin";
 import { auditServer } from "@/services/audit.server";
 import { normalizePoStatus } from "@/lib/procurement-status";
 import { journalDateStr } from "@/lib/journal-posting";
+import { can, type Permission } from "@/lib/permissions";
 
 /**
- * [API-SERVER] ลบเอกสารที่ยังไม่มีผลต่อเนื่อง (เฉพาะ ADMIN / SUPERADMIN)
+ * [API-SERVER] ลบเอกสารที่ยังไม่มีผลต่อเนื่อง (ฝ่ายบัญชี: เอกสารจัดซื้อ/ค่าใช้จ่าย, ฝ่ายขาย: ใบสั่งขายร่าง)
  * Endpoint: POST /api/documents/delete
  * body: { companyId, kind: "purchase_order" | "expense" | "wht" | "sales_order", id }
  *
@@ -26,6 +27,12 @@ const KINDS = {
   sales_order: { col: "sales_orders", label: "ใบสั่งขาย", audit: "SALES_ORDER" },
 } as const;
 type Kind = keyof typeof KINDS;
+const DELETE_PERMISSION: Record<Kind, Permission> = {
+  purchase_order: "finance:delete",
+  expense: "finance:delete",
+  wht: "finance:delete",
+  sales_order: "sales:delete",
+};
 
 export async function POST(request: Request) {
   try {
@@ -33,11 +40,10 @@ export async function POST(request: Request) {
     const companyId = str(body.companyId, 80);
     if (!companyId) throw new ApiAuthError(400, "ไม่พบรหัสบริษัท");
     const apiUser = await requireApiUser(request, companyId);
-    if (!["ADMIN", "SUPERADMIN"].includes(String(apiUser.role || "").toUpperCase())) throw new ApiAuthError(403, "ลบเอกสารได้เฉพาะผู้ดูแลระบบ");
-
     const kind = str(body.kind, 40) as Kind;
     const id = str(body.id, 120);
     if (!(kind in KINDS) || !id || id.includes("/")) throw new ApiAuthError(400, "ไม่พบเอกสารที่ต้องการลบ");
+    if (!can(apiUser.roles, DELETE_PERMISSION[kind])) throw new ApiAuthError(403, "ไม่มีสิทธิ์ลบเอกสารประเภทนี้");
     const { col, label, audit } = KINDS[kind];
     const ref = adminDb.doc(`companies/${companyId}/${col}/${id}`);
     const now = admin.firestore.FieldValue.serverTimestamp();

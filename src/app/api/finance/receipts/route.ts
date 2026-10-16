@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     if (!companyId) return NextResponse.json({ success: false, error: "ไม่พบรหัสบริษัท" }, { status: 400 });
 
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "finance:edit") && !can(apiUser.role, "sales:edit")) {
+    if (!can(apiUser.roles, "finance:edit") && !can(apiUser.roles, "sales:edit")) {
       throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอสำหรับการรับชำระเงิน");
     }
 

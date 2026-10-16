@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const companyId = str(body.companyId, 80);
     if (!companyId) throw new ApiAuthError(400, "ไม่พบรหัสบริษัท");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "hr:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอสำหรับข้อมูลบุคคล");
+    if (!can(apiUser.roles, "hr:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอสำหรับข้อมูลบุคคล");
 
     const firstName = str(body.firstName, 80);
     const lastName = str(body.lastName, 80);

@@ -111,7 +111,7 @@ type SalesSubModule = "crm" | "opportunities" | "quotations" | "orders" | "invoi
 export default function SalesPage() {
   const router = useRouter();
 
-  const { user, companyId, role: userRole } = useAuth();
+  const { user, companyId, role: userRole, roles } = useAuth();
   const [activeTab, setActiveTab] = useState<SalesSubModule>("quotations");
   const [quoteFilter, setQuoteFilter] = useState<"all" | QuotationStage>("all");
   // เปิดแท็บ/ตัวกรองจาก URL เช่น /sales?tab=quotations&status=pending (หน้า /sales/quotations เดิมส่งต่อมาที่นี่)
@@ -604,7 +604,7 @@ export default function SalesPage() {
                           industry={cus.industry || "-"}
                           taxId={cus.displayTaxId}
                           status={cus.status || "active"}
-                          role={userRole || ""}
+                          canDelete={can(roles, "sales:delete")}
                           companyId={companyId || ""}
                           onClick={() => setSelectedCustomer(cus)}
                         />
@@ -755,7 +755,7 @@ export default function SalesPage() {
                           date={cndn.date}
                           total={cndn.total}
                           status={cndn.status}
-                          canCancel={cndn.cancellable && (can(userRole, "sales:edit") || can(userRole, "finance:edit"))}
+                          canCancel={cndn.cancellable && (can(roles, "sales:edit") || can(roles, "finance:edit"))}
                           onCancel={() => setCndnCancel({ docId: cndn.docId, no: cndn.id, reason: "" })}
                           onClick={() => setSelectedItem(cndn)}
                         />
@@ -1029,7 +1029,7 @@ export default function SalesPage() {
   );
 }
 
-function CustomerRow({ id, docId, name, industry, taxId, status, role, companyId, onClick }: { id: string, docId: string, name: string, industry: string, taxId: string, status: "active" | "inactive", role: string, companyId: string, onClick?: () => void }) {
+function CustomerRow({ id, docId, name, industry, taxId, status, canDelete, companyId, onClick }: { id: string, docId: string, name: string, industry: string, taxId: string, status: "active" | "inactive", canDelete: boolean, companyId: string, onClick?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
@@ -1040,7 +1040,7 @@ function CustomerRow({ id, docId, name, industry, taxId, status, role, companyId
         <StatusBadge status={status} label={status === "active" ? "ใช้งาน" : "ปิดใช้งาน"} />
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-         {(role === "ADMIN" || role === "SUPERADMIN") && (
+         {canDelete && (
            <div onClick={(e) => e.stopPropagation()} className="inline-block">
              <SecureDeleteAction
                collectionName={`companies/${companyId || ""}/customers`}

@@ -17,8 +17,8 @@ import { computeDocTotals, normalizeVatMode, sanitizeLines } from "@/lib/doc-tot
 
 const str = (v: any, max = 300) => String(v ?? "").trim().slice(0, max);
 const isDate = (v: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ""));
-const EDIT = ["inventory:edit", "projects:edit", "finance:edit", "sales:edit"] as const;
-const APPROVE = ["inventory:edit", "finance:edit"] as const;
+const EDIT = ["procurement:edit", "inventory:edit", "projects:edit", "finance:edit", "sales:edit"] as const;
+const APPROVE = ["procurement:approve"] as const;
 
 export async function POST(request: Request) {
   try {
@@ -28,10 +28,10 @@ export async function POST(request: Request) {
     const apiUser = await requireApiUser(request, companyId);
     const action = str(body.action, 20);
     const now = admin.firestore.FieldValue.serverTimestamp();
-    const role = String(apiUser.role || "").toUpperCase();
+    const role = apiUser.role;
 
     if (action === "create") {
-      if (!EDIT.some((p) => can(apiUser.role, p))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+      if (!EDIT.some((p) => can(apiUser.roles, p))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
       const h = body.header || {};
       const items = sanitizeLines(body.items);
       if (!items.length) throw new ApiAuthError(400, "กรุณาเพิ่มรายการที่ต้องการขอซื้อ");
@@ -80,10 +80,10 @@ export async function POST(request: Request) {
         if (action === "cancel") {
           if (!["PENDING_APPROVAL", "APPROVED", "REJECTED"].includes(status)) throw new ApiAuthError(409, "ใบขอซื้อนี้ยกเลิกไม่ได้แล้ว");
           const isOwner = pr.requesterUid === apiUser.uid || pr.createdBy === apiUser.uid;
-          if (!isOwner && !APPROVE.some((p) => can(apiUser.role, p))) throw new ApiAuthError(403, "ยกเลิกได้เฉพาะผู้ขอซื้อหรือผู้อนุมัติ");
+          if (!isOwner && !APPROVE.some((p) => can(apiUser.roles, p))) throw new ApiAuthError(403, "ยกเลิกได้เฉพาะผู้ขอซื้อหรือผู้อนุมัติ");
         } else {
           if (status !== "PENDING_APPROVAL") throw new ApiAuthError(409, "ใบขอซื้อนี้พิจารณาไปแล้ว");
-          if (!APPROVE.some((p) => can(apiUser.role, p))) throw new ApiAuthError(403, "สิทธิ์การอนุมัติไม่เพียงพอ");
+          if (!APPROVE.some((p) => can(apiUser.roles, p))) throw new ApiAuthError(403, "สิทธิ์การอนุมัติไม่เพียงพอ");
           if ((pr.requesterUid === apiUser.uid || pr.createdBy === apiUser.uid) && role !== "SUPERADMIN") throw new ApiAuthError(403, "ผู้ขอซื้ออนุมัติใบของตัวเองไม่ได้");
         }
         tx.update(ref, {

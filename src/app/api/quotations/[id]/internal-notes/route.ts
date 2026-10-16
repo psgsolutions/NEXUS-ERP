@@ -17,7 +17,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const companyId = String(body.companyId || "").trim();
     if (!companyId || !id) throw new ApiAuthError(400, "ข้อมูลไม่ครบ");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "sales:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+    if (!can(apiUser.roles, "sales:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
     const internalNotes = String(body.internalNotes ?? "").slice(0, 4000);
 
     const ref = adminDb.doc(`companies/${companyId}/quotations/${id}`);

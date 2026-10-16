@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     if (prefix) {
       const perms = PREFIX_PERMISSIONS[prefix as SequencePrefix];
       if (!perms) throw new ApiAuthError(400, `เลขเอกสาร ${String(prefix).slice(0, 10)} ออกผ่านช่องนี้ไม่ได้`);
-      if (!perms.some((p) => can(apiUser.role, p))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอสำหรับออกเลขเอกสารนี้");
+      if (!perms.some((p) => can(apiUser.roles, p))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอสำหรับออกเลขเอกสารนี้");
       const number = await nexusSequenceServer(prefix as SequencePrefix, companyId);
       return NextResponse.json({ number });
     }

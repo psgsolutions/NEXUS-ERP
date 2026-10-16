@@ -26,7 +26,7 @@ const cleanGps = (g: any) => {
   return { lat, lng, accuracy: Math.max(0, Math.round(Number(g?.accuracy) || 0)) };
 };
 
-async function fieldAction(companyId: string, action: "checkin" | "complete", body: any, apiUser: { uid: string; role: string }) {
+async function fieldAction(companyId: string, action: "checkin" | "complete", body: any, apiUser: { uid: string; roles: string[] }) {
   const woId = str(body.woId, 120);
   if (!woId || woId.includes("/")) throw new ApiAuthError(400, "ไม่พบใบสั่งงาน");
   const ref = adminDb.doc(`companies/${companyId}/work_orders/${woId}`);
@@ -36,7 +36,7 @@ async function fieldAction(companyId: string, action: "checkin" | "complete", bo
     const snap = await tx.get(ref);
     if (!snap.exists) throw new ApiAuthError(404, "ไม่พบใบสั่งงาน");
     const w = snap.data()!;
-    if (w.technicianUid !== apiUser.uid && !EDIT_PERMS.some((p) => can(apiUser.role, p as any))) throw new ApiAuthError(403, "ใบสั่งงานนี้ไม่ได้มอบหมายให้คุณ");
+    if (w.technicianUid !== apiUser.uid && !EDIT_PERMS.some((p) => can(apiUser.roles, p as any))) throw new ApiAuthError(403, "ใบสั่งงานนี้ไม่ได้มอบหมายให้คุณ");
     const st = String(w.status || "").toUpperCase();
     if (action === "checkin") {
       if (st !== "ASSIGNED") throw new ApiAuthError(409, "ใบสั่งงานนี้เริ่มงานไปแล้ว");
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       await auditServer.logUpdate(apiUser.uid, companyId, "WORK_ORDER", str(body.woId, 120), null, { action: body.action, status });
       return NextResponse.json({ success: true, status });
     }
-    if (!EDIT_PERMS.some((p) => can(apiUser.role, p as any))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+    if (!EDIT_PERMS.some((p) => can(apiUser.roles, p as any))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
 
     const items = sanitizeLines(body.items);
     if (!items.length) throw new ApiAuthError(400, "ต้องมีรายการอย่างน้อย 1 รายการ");

@@ -21,7 +21,7 @@ export default function SettlementDocument({ kind }: { kind: "receipt" | "paymen
   const router = useRouter();
   const params = useParams();
   const docNo = decodeURIComponent(String(params?.id || ""));
-  const { companyId, role } = useAuth();
+  const { companyId, role, roles } = useAuth();
   const { showConfirm } = useSystemDialog();
   const isReceipt = kind === "receipt";
   const title = isReceipt ? "ใบเสร็จรับเงิน" : "ใบสำคัญจ่าย";
@@ -34,7 +34,7 @@ export default function SettlementDocument({ kind }: { kind: "receipt" | "paymen
 
   const cancelled = String(d?.status || "").toLowerCase() === "cancelled";
   const lines: any[] = Array.isArray(d?.lines) ? d.lines : [];
-  const canCancel = !!d && !cancelled && !d.isSample && lines.length > 0 && can(role, "finance:edit");
+  const canCancel = !!d && !cancelled && !d.isSample && lines.length > 0 && can(roles, "finance:edit");
 
   const cancel = async () => {
     if (!reason.trim()) return setMessage({ text: "กรุณาระบุเหตุผลการยกเลิก", error: true });

@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     if (!companyId) throw new ApiAuthError(400, "ไม่พบรหัสบริษัท");
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) throw new ApiAuthError(400, "งวดไม่ถูกต้อง (YYYY-MM)");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "finance:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+    if (!can(apiUser.roles, "finance:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
 
     const date = periodEndDate(period);
     const todayBkk = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 7);

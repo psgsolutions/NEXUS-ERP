@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "./firebase-admin";
 import { inactiveReason, isSuperAdminAccount } from "./user-status";
+import { primaryRole, resolveRoles } from "./permissions";
 
 /**
  * [API-AUTH] Server-side authentication for Next.js API routes.
@@ -10,7 +11,10 @@ import { inactiveReason, isSuperAdminAccount } from "./user-status";
 export interface ApiUser {
   uid: string;
   email: string | null;
+  /** ตำแหน่งหลัก (แสดงผล/เทียบกับ "SUPERADMIN") — ตรวจสิทธิ์ให้ใช้ can(roles, ...) */
   role: string;
+  /** ทุกตำแหน่งของผู้ใช้ */
+  roles: string[];
   companyId: string | null;
 }
 
@@ -41,10 +45,11 @@ export async function requireApiUser(request: Request, companyId?: string | null
 
   const profile = (await adminDb.collection("users").doc(decoded.uid).get()).data() || {};
   const userCompanyId: string | null = (decoded.companyId as string) || profile.companyId || null;
-  let role = String(decoded.role || profile.role || "").toUpperCase();
-  if (isSuperAdminAccount(decoded.uid, decoded.email)) {
-    role = "SUPERADMIN";
+  let roles: string[] = resolveRoles({ role: decoded.role || profile.role, roles: profile.roles });
+  if (isSuperAdminAccount(decoded.uid, decoded.email) || roles.includes("SUPERADMIN")) {
+    roles = ["SUPERADMIN"];
   }
+  const role = primaryRole(roles);
 
   if (role !== "SUPERADMIN") {
     // บัญชีรออนุมัติ/ถูกระงับ หรือยังไม่ผูกบริษัท เรียก API ไม่ได้
@@ -57,7 +62,7 @@ export async function requireApiUser(request: Request, companyId?: string | null
     throw new ApiAuthError(403, "[Tenant Isolation Violation] ไม่มีสิทธิ์เข้าถึงข้อมูลของบริษัทนี้");
   }
 
-  return { uid: decoded.uid, email: decoded.email || null, role, companyId: userCompanyId };
+  return { uid: decoded.uid, email: decoded.email || null, role, roles, companyId: userCompanyId };
 }
 
 /** Converts an ApiAuthError into a JSON response; returns null for any other error. */

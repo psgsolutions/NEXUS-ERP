@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const companyId = str(body.companyId, 80);
     if (!companyId) throw new ApiAuthError(400, "ไม่พบรหัสบริษัท");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "hr:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอสำหรับเงินเดือน");
+    if (!can(apiUser.roles, "hr:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอสำหรับเงินเดือน");
     const period = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(body.period || "")) ? body.period : "";
     if (!period) throw new ApiAuthError(400, "งวดเงินเดือนไม่ถูกต้อง");
     const action = String(body.action || "");
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     }
 
     // ขั้นตอนบัญชีต้องมีสิทธิ์การเงินด้วย
-    if (!can(apiUser.role, "finance:edit")) throw new ApiAuthError(403, "การอนุมัติและจ่ายเงินเดือนต้องมีสิทธิ์ฝ่ายบัญชี");
+    if (!can(apiUser.roles, "finance:edit")) throw new ApiAuthError(403, "การอนุมัติและจ่ายเงินเดือนต้องมีสิทธิ์ฝ่ายบัญชี");
 
     if (action === "approve") {
       const date = periodEnd(period);

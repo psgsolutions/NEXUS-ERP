@@ -1,3 +1,4 @@
+import { can } from "@/lib/permissions";
 /**
  * [STRATEGIC-LOGIC-V3.0]
  * Central Intelligence for Financial Calculations & ERP Logic
@@ -196,11 +197,10 @@ export function validateQuotationDates(docDate: string, expectedCloseDate: strin
  * ตรวจสอบสิทธิ์การเขียนข้อมูลสเปก/datasheet กลับไปยังฐานข้อมูลสินค้า
  * สอดคล้องกับ Firestore Rules (SUPERADMIN, ADMIN, MANAGER, ENGINEER)
  */
-export function canWriteBackToProductMaster(role: string | null | undefined, saveToProductRequested: boolean): boolean {
+export function canWriteBackToProductMaster(roles: string | string[] | null | undefined, saveToProductRequested: boolean): boolean {
   if (!saveToProductRequested) return false;
-  if (!role) return false;
-  const upperRole = role.toUpperCase();
-  return upperRole === "SUPERADMIN" || upperRole === "ADMIN" || upperRole === "MANAGER" || upperRole === "ENGINEER";
+  // แก้ข้อมูลสินค้าหลักได้: ผู้มีสิทธิ์แก้คลังสินค้า (วิศวกร จัดซื้อ คลัง) และ SUPERADMIN
+  return can(roles, "inventory:edit");
 }
 
 /**

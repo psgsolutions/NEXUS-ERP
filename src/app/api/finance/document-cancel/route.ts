@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     const companyId = str(body.companyId, 80);
     if (!companyId) throw new ApiAuthError(400, "ไม่พบรหัสบริษัท");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "finance:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอสำหรับการยกเลิกเอกสาร");
+    if (!can(apiUser.roles, "finance:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอสำหรับการยกเลิกเอกสาร");
 
     const kind = body.kind === "payment" ? "payment" : body.kind === "receipt" ? "receipt" : "";
     const docNo = str(body.docNo, 120);

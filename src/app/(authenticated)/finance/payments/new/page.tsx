@@ -51,8 +51,8 @@ interface LineState { selected: boolean; amount: string; whtRate: number }
 function PaymentForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { companyId, role } = useAuth();
-  const canSave = can(role, "finance:edit");
+  const { companyId, role, roles } = useAuth();
+  const canSave = can(roles, "finance:edit");
 
   const { data: expenses, loading } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/expenses` : "");
 

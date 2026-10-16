@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     if (!companyId) throw new ApiAuthError(400, "ไม่พบรหัสบริษัท");
     const apiUser = await requireApiUser(request, companyId);
     // ข้อมูลสรุปมีตัวเลขการเงิน: เฉพาะผู้ที่ดูการเงินได้
-    if (!can(apiUser.role, "finance:view")) throw new ApiAuthError(403, "การวิเคราะห์ด้วย AI ใช้ได้เฉพาะผู้มีสิทธิ์ดูข้อมูลการเงิน");
+    if (!can(apiUser.roles, "finance:view")) throw new ApiAuthError(403, "การวิเคราะห์ด้วย AI ใช้ได้เฉพาะผู้มีสิทธิ์ดูข้อมูลการเงิน");
     const question = String(body.question || "").trim().slice(0, 1000);
     if (!question) throw new ApiAuthError(400, "กรุณาพิมพ์คำถาม");
     if (!genAI) throw new ApiAuthError(503, "ยังไม่ได้ตั้งค่า GEMINI_API_KEY บนเซิร์ฟเวอร์");

@@ -4,15 +4,14 @@ import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth"
 import { adminDb } from "@/lib/firebase-admin";
 import { auditServer } from "@/services/audit.server";
 import { notifyInTx } from "@/lib/notifications.server";
+import { can } from "@/lib/permissions";
 
 /**
  * [API-SERVER] อนุมัติ / ตีกลับใบเสนอราคาที่รออนุมัติ
  * Endpoint: POST /api/quotations/{id}/approval  { companyId, decision: "approve" | "reject", comment? }
- * - เฉพาะ ADMIN / MANAGER / SUPERADMIN และเฉพาะใบที่สถานะรออนุมัติ
+ * - เฉพาะผู้มีสิทธิ์อนุมัติงานขาย (ผู้บริหาร) และเฉพาะใบที่สถานะรออนุมัติ
  * - อนุมัติ -> ส่งลูกค้าแล้ว (SENT), ตีกลับ -> REJECTED (ผู้ขายแก้แล้วส่งใหม่)
  */
-
-const APPROVER_ROLES = ["ADMIN", "MANAGER", "SUPERADMIN"];
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -21,7 +20,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const companyId = String(body.companyId || "").trim();
     if (!companyId || !id) throw new ApiAuthError(400, "ข้อมูลไม่ครบ");
     const apiUser = await requireApiUser(request, companyId);
-    if (!APPROVER_ROLES.includes(String(apiUser.role || "").toUpperCase())) throw new ApiAuthError(403, "เฉพาะผู้จัดการหรือผู้ดูแลระบบที่อนุมัติใบเสนอราคาได้");
+    if (!can(apiUser.roles, "sales:approve")) throw new ApiAuthError(403, "เฉพาะผู้บริหารที่อนุมัติใบเสนอราคาได้");
     const decision = body.decision === "approve" ? "approve" : body.decision === "reject" ? "reject" : "";
     if (!decision) throw new ApiAuthError(400, "คำสั่งไม่ถูกต้อง");
     const comment = String(body.comment || "").trim().slice(0, 500);

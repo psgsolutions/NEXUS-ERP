@@ -47,8 +47,12 @@ service cloud.firestore {
       return isSuperAdmin() || (hasProfile() && myCompany() == companyId);
     }
 
+    // ผู้ดูแลระบบของบริษัท: ตำแหน่ง ADMIN (roles[] ใหม่ หรือ role เดียวแบบเก่า)
     function isCompanyAdmin() {
-      return hasProfile() && profile().role in ['ADMIN', 'admin', 'Admin'];
+      return hasProfile() && (
+        profile().get('role', '') in ['ADMIN', 'admin', 'Admin'] ||
+        'ADMIN' in profile().get('roles', [])
+      );
     }
 
     // เอกสารที่จะเขียน: ถ้ามี companyId ต้องเป็นบริษัทของผู้ใช้
@@ -92,12 +96,13 @@ service cloud.firestore {
         isSuperAdmin() ||
         (hasProfile() && resource.data.companyId == myCompany())
       );
-      // SUPERADMIN จัดการได้ทั้งหมด; ADMIN จัดการได้เฉพาะผู้ใช้บริษัทตัวเองและตั้ง SUPERADMIN ไม่ได้
-      allow create, update: if isSuperAdmin() || (
+      // สร้างบัญชี/อนุมัติ/กำหนดตำแหน่ง ผ่าน /api/admin/users เท่านั้น (กำหนดตำแหน่งได้เฉพาะ SUPERADMIN)
+      // ADMIN แก้ข้อมูลทั่วไปของผู้ใช้บริษัทตัวเองได้ แต่แตะตำแหน่ง บริษัท และสถานะไม่ได้
+      allow create: if isSuperAdmin();
+      allow update: if isSuperAdmin() || (
         isCompanyAdmin() &&
-        request.resource.data.companyId == myCompany() &&
-        !(request.resource.data.get('role', '') in ['SUPERADMIN', 'superadmin']) &&
-        (resource == null || resource.data.companyId == myCompany())
+        resource.data.companyId == myCompany() &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'roles', 'companyId', 'status'])
       );
       allow delete: if isSuperAdmin() || (isCompanyAdmin() && resource.data.companyId == myCompany());
     }

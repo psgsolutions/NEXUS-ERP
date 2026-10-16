@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     const companyId = String(url.searchParams.get("companyId") || "");
     if (!companyId) throw new ApiAuthError(400, "ไม่พบรหัสบริษัท");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.role, "logs:view")) throw new ApiAuthError(403, "ไม่มีสิทธิ์ดูบันทึกการใช้งาน");
+    if (!can(apiUser.roles, "logs:view")) throw new ApiAuthError(403, "ไม่มีสิทธิ์ดูบันทึกการใช้งาน");
 
     const id = url.searchParams.get("id");
     if (id) {

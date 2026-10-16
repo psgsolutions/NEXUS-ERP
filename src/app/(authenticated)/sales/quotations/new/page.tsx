@@ -33,7 +33,7 @@ import { apiFetch } from "@/lib/api-client";
 
 export default function QuotationCreationPage() {
   const router = useRouter();
-  const { user, companyId, role } = useAuth();
+  const { user, companyId, role, roles } = useAuth();
 
   // Data Fetching from both root collection and company subcollection
   const effectiveCompanyId = companyId || "";
@@ -97,7 +97,7 @@ export default function QuotationCreationPage() {
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [isSendMenuOpen, setIsSendMenuOpen] = useState(false);
-  const canSeeCost = canViewCost(role);
+  const canSeeCost = canViewCost(roles);
 
   const [addrLine1, setAddrLine1] = useState("");
   const [addrLine2, setAddrLine2] = useState("");

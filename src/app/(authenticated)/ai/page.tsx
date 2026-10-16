@@ -18,8 +18,8 @@ const SUGGESTIONS = [
 ];
 
 export default function AIHubPage() {
-  const { companyId, role } = useAuth();
-  const allowed = can(role, "finance:view");
+  const { companyId, role, roles } = useAuth();
+  const allowed = can(roles, "finance:view");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);

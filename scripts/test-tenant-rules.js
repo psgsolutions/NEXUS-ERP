@@ -25,6 +25,9 @@ async function main() {
     await setDoc(doc(db, 'users/adminA'), { companyId: 'A', role: 'ADMIN' });
     await setDoc(doc(db, 'users/userA'), { companyId: 'A', role: 'SALES' });
     await setDoc(doc(db, 'users/adminR'), { companyId: 'A', role: 'ADMIN', roles: ['ADMIN', 'HR'] });
+    await setDoc(doc(db, 'users/acctA'), { companyId: 'A', role: 'ACCOUNTANT', roles: ['ACCOUNTANT'] });
+    await setDoc(doc(db, 'users/buyerA'), { companyId: 'A', role: 'PURCHASING', roles: ['PURCHASING'] });
+    await setDoc(doc(db, 'users/legacyAcct'), { companyId: 'A', role: 'accountant' });
     await setDoc(doc(db, 'users/userB'), { companyId: 'B', role: 'ADMIN' });
     await setDoc(doc(db, 'companies/A'), { name: 'Company A' });
     await setDoc(doc(db, 'companies/B'), { name: 'Company B' });
@@ -48,6 +51,8 @@ async function main() {
     await setDoc(doc(db, 'companies/A/counters/RE'), { lastSeq: 5 });
     await setDoc(doc(db, 'companies/A/journal_entries/J1'), { companyId: 'A', status: 'draft' });
     await setDoc(doc(db, 'taxFilings/T1'), { companyId: 'A' });
+    await setDoc(doc(db, 'companies/A/payrolls/P1'), { companyId: 'A' });
+    await setDoc(doc(db, 'companies/A/payments/PV1'), { companyId: 'A' });
     for (const c of ['purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders']) {
       await setDoc(doc(db, `companies/A/${c}/D1`), { companyId: 'A', status: 'PENDING_APPROVAL' });
     }
@@ -59,6 +64,9 @@ async function main() {
   const userA = testEnv.authenticatedContext('userA', { email: 'a@a.com' }).firestore();
   const adminA = testEnv.authenticatedContext('adminA', { email: 'admin@a.com' }).firestore();
   const adminR = testEnv.authenticatedContext('adminR', { email: 'adminr@a.com' }).firestore();
+  const acctA = testEnv.authenticatedContext('acctA', { email: 'acct@a.com' }).firestore();
+  const buyerA = testEnv.authenticatedContext('buyerA', { email: 'buyer@a.com' }).firestore();
+  const legacyAcct = testEnv.authenticatedContext('legacyAcct', { email: 'legacy@a.com' }).firestore();
   const userB = testEnv.authenticatedContext('userB', { email: 'b@b.com' }).firestore();
   const superUid = testEnv.authenticatedContext(SUPERADMIN_UID, {}).firestore();
   const superEmail = testEnv.authenticatedContext('other-uid', { email: 'sadmin@admin.com' }).firestore();
@@ -147,23 +155,41 @@ async function main() {
     ['member cannot edit receipt', () => assertFails(updateDoc(doc(userA, 'companies/A/receipts/RE-1'), { status: 'cancelled' }))],
     ['member cannot create payment', () => assertFails(setDoc(doc(userA, 'companies/A/payments/PV-1'), { companyId: 'A' }))],
     ['member cannot write payroll', () => assertFails(setDoc(doc(userA, 'companies/A/payrolls/2026-10'), { companyId: 'A' }))],
-    ['member reads own-company employee', () => assertSucceeds(getDoc(doc(userA, 'employees/eA')))],
-    ['member cannot read other-company employee', () => assertFails(getDoc(doc(userA, 'employees/eB')))],
+    // ข้อมูลพนักงาน (เงินเดือน/บัญชีธนาคาร) อ่านได้เฉพาะ HR/บัญชี/ผู้บริหาร
+    ['HR reads own-company employee', () => assertSucceeds(getDoc(doc(adminR, 'employees/eA')))],
+    ['accountant reads own-company employee', () => assertSucceeds(getDoc(doc(acctA, 'employees/eA')))],
+    ['sales cannot read employee record', () => assertFails(getDoc(doc(userA, 'employees/eA')))],
+    ['accountant cannot read other-company employee', () => assertFails(getDoc(doc(acctA, 'employees/eB')))],
     ['member cannot edit employee (salary) directly', () => assertFails(updateDoc(doc(adminA, 'employees/eA'), { salary: 999999 }))],
     ['member cannot write attendance directly', () => assertFails(addDoc(collection(userA, 'attendance'), { companyId: 'A', type: 'IN' }))],
 
     // Journals & tax filings: API only (posting needs role, period and separation-of-duties checks)
-    ['member reads own journal', () => assertSucceeds(getDoc(doc(userA, 'companies/A/journal_entries/J1')))],
+    // ข้อมูลการเงินอ่านตามตำแหน่ง
+    ['accountant reads journal', () => assertSucceeds(getDoc(doc(acctA, 'companies/A/journal_entries/J1')))],
+    ['legacy lowercase accountant reads journal', () => assertSucceeds(getDoc(doc(legacyAcct, 'companies/A/journal_entries/J1')))],
+    ['legacy admin reads journal', () => assertSucceeds(getDoc(doc(adminA, 'companies/A/journal_entries/J1')))],
+    ['sales cannot read journal', () => assertFails(getDoc(doc(userA, 'companies/A/journal_entries/J1')))],
+    ['system admin (roles) cannot read journal', () => assertFails(getDoc(doc(adminR, 'companies/A/journal_entries/J1')))],
+    ['sales cannot read payment voucher', () => assertFails(getDoc(doc(userA, 'companies/A/payments/PV1')))],
+    ['accountant reads payment voucher', () => assertSucceeds(getDoc(doc(acctA, 'companies/A/payments/PV1')))],
+    ['HR reads payroll', () => assertSucceeds(getDoc(doc(adminR, 'companies/A/payrolls/P1')))],
+    ['sales cannot read payroll', () => assertFails(getDoc(doc(userA, 'companies/A/payrolls/P1')))],
+    ['purchasing cannot read payroll', () => assertFails(getDoc(doc(buyerA, 'companies/A/payrolls/P1')))],
+    ['purchasing reads expenses', () => assertSucceeds(getDoc(doc(buyerA, 'companies/A/expenses/D1')))],
+    ['sales cannot read expenses', () => assertFails(getDoc(doc(userA, 'companies/A/expenses/D1')))],
+    ['sales cannot list journal subcollection', () => assertFails(getDoc(doc(userA, 'companies/A/journal_entries/J1/notes/n1')))],
+    ['sales cannot read legacy root journal', () => assertFails(getDoc(doc(userA, 'journal_entries/x')))],
     ['member cannot create journal directly', () => assertFails(setDoc(doc(userA, 'companies/A/journal_entries/J2'), { companyId: 'A', status: 'posted' }))],
     ['admin cannot post journal directly', () => assertFails(updateDoc(doc(adminA, 'companies/A/journal_entries/J1'), { status: 'posted' }))],
     ['admin cannot delete journal', () => assertFails(deleteDoc(doc(adminA, 'companies/A/journal_entries/J1')))],
     ['member cannot write legacy root journal', () => assertFails(setDoc(doc(userA, 'journal_entries/x'), { companyId: 'A' }))],
-    ['member reads own tax filing', () => assertSucceeds(getDoc(doc(userA, 'taxFilings/T1')))],
+    ['accountant reads own tax filing', () => assertSucceeds(getDoc(doc(acctA, 'taxFilings/T1')))],
+    ['sales cannot read tax filing', () => assertFails(getDoc(doc(userA, 'taxFilings/T1')))],
     ['member cannot create tax filing', () => assertFails(setDoc(doc(userA, 'taxFilings/T2'), { companyId: 'A' }))],
     ['member cannot fake tax filing lock', () => assertFails(setDoc(doc(userA, 'companies/A/tax_filing_locks/L1'), { isLocked: true }))],
     // จัดซื้อ / ค่าใช้จ่าย / ขาย / งานบริการ: อ่านได้ เขียนผ่าน API เท่านั้น
     ...['purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders'].flatMap((c) => [
-      [`member reads ${c}`, () => assertSucceeds(getDoc(doc(userA, `companies/A/${c}/D1`)))],
+      [`member reads ${c}`, () => assertSucceeds(getDoc(doc(['expenses', 'withholding_taxes'].includes(c) ? acctA : userA, `companies/A/${c}/D1`)))],
       [`member cannot create ${c}`, () => assertFails(setDoc(doc(userA, `companies/A/${c}/D2`), { companyId: 'A' }))],
       [`admin cannot approve ${c} directly`, () => assertFails(updateDoc(doc(adminA, `companies/A/${c}/D1`), { status: 'APPROVED' }))],
       [`admin cannot delete ${c} directly`, () => assertFails(deleteDoc(doc(adminA, `companies/A/${c}/D1`)))],
@@ -179,7 +205,8 @@ async function main() {
     ["admin cannot reset company counter", () => assertFails(updateDoc(doc(adminA, "companies/A/counters/RE"), { lastSeq: 0 }))],
 
     // Customer refunds: API only
-    ['member reads customer refund', () => assertSucceeds(getDoc(doc(userA, 'companies/A/customer_refunds/RF-1')))],
+    ['accountant reads customer refund', () => assertSucceeds(getDoc(doc(acctA, 'companies/A/customer_refunds/RF-1')))],
+    ['sales cannot read customer refund', () => assertFails(getDoc(doc(userA, 'companies/A/customer_refunds/RF-1')))],
     ['member cannot create customer refund directly', () => assertFails(setDoc(doc(userA, 'companies/A/customer_refunds/RF-2'), { amount: 1 }))],
     ['admin cannot edit customer refund', () => assertFails(updateDoc(doc(adminA, 'companies/A/customer_refunds/RF-1'), { amount: 999 }))],
 

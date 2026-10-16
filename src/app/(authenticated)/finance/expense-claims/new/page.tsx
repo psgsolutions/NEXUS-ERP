@@ -24,7 +24,6 @@ import { formatCurrency } from "@/lib/erp-logic";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
-import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { apiFetch } from "@/lib/api-client";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
@@ -42,7 +41,15 @@ export default function NewExpenseClaimPage() {
     subtotal: 0,
   });
   const { user, companyId } = useAuth();
-  const { data: employees } = useRealtimeCollection<any>("employees");
+  // รายชื่อพนักงานแบบย่อจาก server (ไม่ดึงข้อมูลเงินเดือน/บัญชีธนาคาร)
+  const [employees, setEmployees] = useState<any[]>([]);
+  useEffect(() => {
+    if (!companyId) return;
+    apiFetch("/api/hr/directory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId }) })
+      .then((r) => r.json())
+      .then((d) => setEmployees(d.success ? d.employees : []))
+      .catch(() => setEmployees([]));
+  }, [companyId]);
   const [saving, setSaving] = useState(false);
   const employeeName = (e: any) => e ? (e.name || [e.firstName, e.lastName].filter(Boolean).join(" ") || e.employeeCode || e.id) : "";
 

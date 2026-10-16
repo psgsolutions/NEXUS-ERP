@@ -39,6 +39,25 @@ service cloud.firestore {
       return isSuperAdmin() || hasProfile();
     }
 
+    // ตำแหน่งของผู้ใช้: roles[] (กำหนดโดย SUPERADMIN) หรือ role เดียวแบบเก่า — ตรงกับ src/lib/permissions.ts
+    function myRoles() {
+      return profile().get('roles', [string(profile().get('role', '')).upper()]);
+    }
+
+    // บัญชีรุ่นเก่า ADMIN/MANAGER ที่ยังไม่มี roles[] ได้สิทธิ์ครบเหมือนเดิม
+    function legacyFullAccess() {
+      return !('roles' in profile()) && string(profile().get('role', '')).upper() in ['ADMIN', 'MANAGER'];
+    }
+
+    function hasRole(list) {
+      return isSuperAdmin() || (hasProfile() && (legacyFullAccess() || myRoles().hasAny(list)));
+    }
+
+    // อ่านข้อมูลบัญชี/การเงินได้: ฝ่ายบัญชีและผู้บริหาร
+    function financeReader() {
+      return hasRole(['ACCOUNTANT', 'EXECUTIVE']);
+    }
+
     function myCompany() {
       return profile().companyId;
     }
@@ -120,31 +139,32 @@ service cloud.firestore {
 
     // รายการบัญชีรุ่นเก่า / ประวัติการยื่นภาษี / การประมวลผลค่าเสื่อม: อ่านได้ เขียนผ่าน API เท่านั้น
     match /journal_entries/{entryId} {
-      allow get: if isMember() && canGet();
-      allow list: if isMember() && canList();
+      allow get: if financeReader() && canGet();
+      allow list: if financeReader() && canList();
       allow write: if false;
     }
     match /taxFilings/{filingId} {
-      allow get: if isMember() && canGet();
-      allow list: if isMember() && canList();
+      allow get: if financeReader() && canGet();
+      allow list: if financeReader() && canList();
       allow write: if false; // /api/finance/tax-filings
     }
     match /assetDepreciations/{runId} {
-      allow get: if isMember() && canGet();
-      allow list: if isMember() && canList();
+      allow get: if financeReader() && canGet();
+      allow list: if financeReader() && canList();
       allow write: if false; // /api/finance/depreciation
     }
 
     // พนักงานและการลงเวลา: อ่านได้ภายในบริษัท เขียนผ่าน /api/hr/* เท่านั้น
+    // ข้อมูลพนักงาน (มีเงินเดือน/บัญชีธนาคาร): บุคคล บัญชี ผู้บริหาร — ตำแหน่งอื่นใช้ /api/hr/directory
     match /employees/{employeeId} {
-      allow get: if isMember() && canGet();
-      allow list: if isMember() && canList();
+      allow get: if hasRole(['HR', 'ACCOUNTANT', 'EXECUTIVE']) && canGet();
+      allow list: if hasRole(['HR', 'ACCOUNTANT', 'EXECUTIVE']) && canList();
       allow write: if false;
     }
 
     match /attendance/{recordId} {
-      allow get: if isMember() && canGet();
-      allow list: if isMember() && canList();
+      allow get: if hasRole(['HR', 'ACCOUNTANT', 'EXECUTIVE']) && canGet();
+      allow list: if hasRole(['HR', 'ACCOUNTANT', 'EXECUTIVE']) && canList();
       allow write: if false;
     }
 
@@ -174,12 +194,23 @@ service cloud.firestore {
           // จัดซื้อ / ค่าใช้จ่าย / ขาย / งานบริการ: ออกเลข ตรวจสถานะ และอนุมัติที่ server
           'purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders'];
       }
+      // ข้อมูลการเงินอ่านได้เฉพาะตำแหน่งที่เกี่ยวข้อง (ส่วนอื่นอ่านได้ทุกคนในบริษัท)
+      function restrictedRead(collection) {
+        return collection in ['journal_entries', 'payments', 'financialLedgers', 'tax_filing_locks', 'customer_refunds', 'payrolls', 'expenses', 'withholding_taxes'];
+      }
+      function canReadCollection(collection) {
+        return !restrictedRead(collection) || (
+          collection == 'payrolls' ? hasRole(['ACCOUNTANT', 'EXECUTIVE', 'HR'])
+          : collection in ['expenses', 'withholding_taxes'] ? hasRole(['ACCOUNTANT', 'EXECUTIVE', 'PURCHASING', 'WAREHOUSE', 'HR'])
+          : financeReader()
+        );
+      }
       match /{collection}/{docId} {
-        allow read: if inCompany(companyId);
+        allow read: if inCompany(companyId) && canReadCollection(collection);
         allow write: if inCompany(companyId) && !apiOnlyCollection(collection);
       }
       match /{collection}/{docId}/{sub}/{rest=**} {
-        allow read: if inCompany(companyId);
+        allow read: if inCompany(companyId) && canReadCollection(collection);
         // คำขอเปลี่ยนแปลงโครงการ: ยื่น/อนุมัติผ่าน /api/projects/change-orders เท่านั้น
         allow write: if (inCompany(companyId) && !apiOnlyCollection(collection)
           && !(collection == 'projects' && sub == 'change_orders'))

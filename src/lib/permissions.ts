@@ -159,8 +159,9 @@ export const ROUTE_PERMISSIONS: { prefix: string; any: Permission[] }[] = [
   { prefix: "/sales", any: ["sales:view"] },
   { prefix: "/pos", any: ["sales:edit"] },
   { prefix: "/projects", any: ["projects:view"] },
-  { prefix: "/service", any: ["projects:edit", "sales:edit", "inventory:edit"] },
-  { prefix: "/mobile/technician", any: ["service:field", "projects:edit"] },
+  { prefix: "/service", any: ["projects:edit", "sales:edit", "inventory:edit", "procurement:edit", "projects:approve"] },
+  // งานของฉัน: ทุกตำแหน่งที่อาจได้รับมอบหมายงาน (ช่าง คลัง จัดซื้อ ขาย โครงการ บุคคล)
+  { prefix: "/mobile/technician", any: ["service:field", "projects:view", "inventory:view", "procurement:view", "sales:view", "hr:view"] },
   { prefix: "/support", any: ["sales:view", "projects:view", "service:field"] },
   { prefix: "/hr", any: ["hr:view"] },
   { prefix: "/ai", any: ["finance:view"] },

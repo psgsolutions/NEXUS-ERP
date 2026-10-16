@@ -1,578 +1,289 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { MapPin, Camera, CheckCircle, Navigation, X, Upload, ChevronLeft, ClipboardList, Loader2 } from 'lucide-react';
-import { cn } from '@/components/ui/Base';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { CalendarClock, Check, ChevronLeft, ChevronRight, ClipboardList, Hammer, Loader2, MapPin, Package, Phone, PlayCircle, RefreshCw, Wrench, X } from "lucide-react";
+import { PillButton, StatusBadge, cn } from "@/components/ui/Base";
+import { useAuth } from "@/context/AuthContext";
+import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
-import { useAuth } from '@/context/AuthContext';
-import { useRealtimeCollection } from '@/hooks/useRealtimeCollection';
-import { db } from '@/lib/firebase-client';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { canAny } from "@/lib/permissions";
+import { JOB_PRIORITY, JOB_STATUS, jobTypeLabel, toolsOut, type Job } from "@/lib/jobs";
 
-// เช็คอิน/ปิดงานผ่าน server (ตรวจช่างที่รับผิดชอบ ลำดับสถานะ และหลักฐานก่อนปิดงาน)
-async function workOrderAction(companyId: string, woId: string, action: 'checkin' | 'complete', extra: Record<string, any>) {
-  const res = await apiFetch('/api/service/work-orders', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ companyId, action, woId, ...extra }),
-  });
-  const data = await res.json();
-  if (!res.ok || !data.success) throw new Error(data.error || 'บันทึกไม่สำเร็จ');
-}
+/**
+ * งานของฉัน — ช่าง/พนักงานหลังร้านรับงานที่ถูกมอบหมาย (ข้อมูลจาก /api/jobs ใช้ร่วมกับแอปภายนอกได้)
+ * ขั้นตอน: งานใหม่ → กดรับงาน (ยืนยันรับอุปกรณ์) → เริ่มงาน → ติ๊กเช็กลิสต์ → ปิดงาน (คืนเครื่องมือ)
+ */
+type Tab = "new" | "doing" | "done";
+const thDate = (d?: string) => { if (!d) return ""; const [y, m, dd] = d.split("-").map(Number); return `${dd}/${m}/${y + 543}`; };
+const PRIORITY_CLS: Record<string, string> = { URGENT: "bg-danger/15 text-danger border-danger/30", HIGH: "bg-warning/15 text-warning border-warning/30", NORMAL: "bg-white/5 text-white/60 border-white/10", LOW: "bg-white/5 text-white/40 border-white/10" };
 
-type Gps = { lat: number; lng: number; accuracy: number } | null;
-type PhotoType = 'before' | 'after' | 'signature';
+export default function MyJobsPage() {
+  const { companyId, user } = useAuth();
+  const { showAlert } = useSystemDialog();
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [workOrders, setWorkOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<Tab>("new");
+  const [openNo, setOpenNo] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [sheet, setSheet] = useState<null | "accept" | "reject" | "complete">(null);
 
-const OPEN_STATUSES = ['ASSIGNED', 'IN_PROGRESS'];
-const STATUS_LABEL: Record<string, string> = { ASSIGNED: 'รอเริ่มงาน', IN_PROGRESS: 'กำลังทำงาน', COMPLETED: 'ปิดงานแล้ว' };
+  const call = useCallback(async (body: any) => {
+    const res = await apiFetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, ...body }) });
+    const d = await res.json();
+    if (!res.ok || !d.success) throw new Error(d.error || "ดำเนินการไม่สำเร็จ");
+    return d;
+  }, [companyId]);
+  const load = useCallback(async () => {
+    if (!companyId) return;
+    setLoading(true);
+    try { const d = await call({ action: "mine", includeDone: true }); setJobs(d.jobs); setWorkOrders(d.workOrders); }
+    catch (e: any) { showAlert(e.message); } finally { setLoading(false); }
+  }, [companyId, call, showAlert]);
+  useEffect(() => { load(); }, [load]);
 
-// พิกัดจริงจากอุปกรณ์ (ต้องเปิดผ่าน https หรือ localhost เบราว์เซอร์จึงจะยอมให้ใช้ GPS)
-function getGps(timeout = 15000): Promise<Gps> {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) return reject(new Error('อุปกรณ์นี้ไม่รองรับ GPS'));
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: Math.round(pos.coords.accuracy) }),
-      (err) => reject(new Error(err.code === err.PERMISSION_DENIED ? 'ไม่ได้รับอนุญาตให้ใช้ตำแหน่ง' : 'จับพิกัดไม่สำเร็จ')),
-      { enableHighAccuracy: true, timeout, maximumAge: 0 }
-    );
-  });
-}
+  const groups = useMemo(() => ({
+    new: jobs.filter((j) => j.status === "ASSIGNED"),
+    doing: jobs.filter((j) => j.status === "ACCEPTED" || j.status === "IN_PROGRESS"),
+    done: jobs.filter((j) => j.status === "DONE").slice(-30).reverse(),
+  }), [jobs]);
+  const job = jobs.find((j) => j.jobNo === openNo) || null;
+  const openWo = workOrders.filter((w) => ["ASSIGNED", "IN_PROGRESS"].includes(String(w.status).toUpperCase())).length;
 
-// ย่อรูปเป็น JPEG ขนาดพอเหมาะก่อนบันทึก (เก็บใน Firestore ได้ไม่เกิน ~1MB ต่อเอกสาร)
-async function compressImage(file: File, maxSize = 1280): Promise<string> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const i = new Image();
-      i.onload = () => resolve(i);
-      i.onerror = () => reject(new Error('อ่านไฟล์รูปไม่ได้'));
-      i.src = url;
-    });
-    const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(img.width * scale);
-    canvas.height = Math.round(img.height * scale);
-    canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
-    let quality = 0.7;
-    let data = canvas.toDataURL('image/jpeg', quality);
-    while (data.length > 700_000 && quality > 0.3) {
-      quality -= 0.1;
-      data = canvas.toDataURL('image/jpeg', quality);
-    }
-    return data;
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-// Simple HTML5 Canvas Signature Pad
-function SignaturePad({ onClear, onSave }: { onClear: () => void, onSave: (dataUrl: string) => void }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [hasInk, setHasInk] = useState(false);
-
-  useEffect(() => {
-    const ctx = canvasRef.current?.getContext('2d');
-    if (ctx) {
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-    }
-  }, []);
-
-  const getCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const point = 'touches' in e ? e.touches[0] : (e as React.MouseEvent);
-    // แปลงพิกัดจอเป็นพิกัด canvas (canvas ถูกยืดเต็มความกว้าง)
-    return {
-      x: ((point.clientX - rect.left) * canvas.width) / rect.width,
-      y: ((point.clientY - rect.top) * canvas.height) / rect.height,
-    };
-  };
-
-  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    const { x, y } = getCoordinates(e);
-    const ctx = canvasRef.current?.getContext('2d');
-    if (ctx) {
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      setIsDrawing(true);
-    }
-  };
-
-  const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    if (!isDrawing) return;
-    const { x, y } = getCoordinates(e);
-    const ctx = canvasRef.current?.getContext('2d');
-    if (ctx) {
-      ctx.lineTo(x, y);
-      ctx.stroke();
-      setHasInk(true);
-    }
-  };
-
-  const stopDrawing = () => {
-    canvasRef.current?.getContext('2d')?.closePath();
-    setIsDrawing(false);
-  };
-
-  const handleClear = () => {
-    const canvas = canvasRef.current;
-    canvas?.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
-    setHasInk(false);
-    onClear();
+  const act = async (body: any, after?: () => void) => {
+    setBusy(true);
+    try { await call(body); setSheet(null); await load(); after?.(); }
+    catch (e: any) { showAlert(e.message); } finally { setBusy(false); }
   };
 
   return (
-    <div className="space-y-2 w-full flex flex-col">
-      <div className="bg-white/[0.05] border border-white/20 rounded-xl overflow-hidden relative">
-        <canvas
-          ref={canvasRef}
-          width={600}
-          height={300}
-          className="w-full h-[150px] touch-none"
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
-        />
-        <button
-          onClick={handleClear}
-          className="absolute top-2 right-2 p-1.5 bg-danger/20 text-danger rounded-full hover:bg-danger/40"
-        >
-          <X size={14} />
-        </button>
-      </div>
-      <button
-        disabled={!hasInk}
-        onClick={() => canvasRef.current && onSave(canvasRef.current.toDataURL('image/png'))}
-        className="w-full h-12 bg-nexus-teal/20 text-nexus-teal font-bold rounded-xl border border-nexus-teal/30 active:bg-nexus-teal/40 disabled:opacity-40"
-      >
-        ยืนยันลายเซ็น
-      </button>
-    </div>
-  );
-}
-
-export default function FieldTechnicianApp() {
-  const { user, roles, companyId } = useAuth();
-  // ช่างเห็นเฉพาะงานที่ได้รับมอบหมาย ผู้มีสิทธิ์จัดการงานเห็นทุกใบ
-  const isTechnician = !canAny(roles, ['projects:edit', 'sales:edit', 'inventory:edit']);
-
-  const { data: workOrders, loading: woLoading } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/work_orders` : '');
-  const myOrders = useMemo(
-    () => workOrders
-      .filter((w: any) => OPEN_STATUSES.includes(String(w.status || '').toUpperCase()))
-      .filter((w: any) => !isTechnician || w.technicianUid === user?.uid)
-      .sort((a: any, b: any) => String(a.scheduleDate || '').localeCompare(String(b.scheduleDate || ''))),
-    [workOrders, isTechnician, user?.uid]
-  );
-
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const wo = useMemo(() => workOrders.find((w: any) => w.id === selectedId) || null, [workOrders, selectedId]);
-  const woPath = companyId && wo ? `companies/${companyId}/work_orders/${wo.id}` : '';
-
-  // รูปถ่าย/ลายเซ็นเก็บแยกเป็นเอกสารย่อยของใบงาน (attachments/before|after|signature)
-  const { data: attachments } = useRealtimeCollection<any>(woPath ? `${woPath}/attachments` : '');
-  const photo = (type: PhotoType) => attachments.find((a: any) => a.id === type)?.dataUrl || null;
-
-  const [gpsLoading, setGpsLoading] = useState(false);
-  const [gpsError, setGpsError] = useState('');
-  const [uploading, setUploading] = useState<PhotoType | null>(null);
-  const [completing, setCompleting] = useState(false);
-  const [message, setMessage] = useState('');
-  const fileInputs = { before: useRef<HTMLInputElement>(null), after: useRef<HTMLInputElement>(null) };
-
-  // WIP Site Expense State
-  const [expenseAmount, setExpenseAmount] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<string>("cash");
-  const [expenseNote, setExpenseNote] = useState<string>("");
-  const [isPostingExpense, setIsPostingExpense] = useState<boolean>(false);
-  const [postedJournalId, setPostedJournalId] = useState<string | null>(null);
-
-  const isCheckedIn = !!wo?.checkIn;
-
-  const selectOrder = (id: string | null) => {
-    setSelectedId(id);
-    setGpsError('');
-    setMessage('');
-    setPostedJournalId(null);
-    setExpenseAmount('');
-    setExpenseNote('');
-  };
-
-  const handleCheckIn = async (withoutGps = false) => {
-    if (!woPath || !companyId || !wo) return;
-    setGpsLoading(true);
-    setGpsError('');
-    try {
-      const gps = withoutGps ? null : await getGps();
-      await workOrderAction(companyId, wo.id, 'checkin', { gps, withoutGps });
-    } catch (err: any) {
-      setGpsError(err.message || 'เช็คอินไม่สำเร็จ');
-    } finally {
-      setGpsLoading(false);
-    }
-  };
-
-  const saveAttachment = async (type: PhotoType, dataUrl: string) => {
-    if (!woPath || !companyId) return;
-    setUploading(type);
-    try {
-      await setDoc(doc(db, `${woPath}/attachments`, type), {
-        companyId,
-        type,
-        dataUrl,
-        createdAt: serverTimestamp(),
-        createdBy: user?.uid || null,
-      });
-    } catch (err: any) {
-      setMessage(`บันทึกไม่สำเร็จ: ${err.message}`);
-    } finally {
-      setUploading(null);
-    }
-  };
-
-  const handlePhotoSelected = async (type: 'before' | 'after', e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    try {
-      await saveAttachment(type, await compressImage(file));
-    } catch (err: any) {
-      setMessage(err.message);
-    }
-  };
-
-  const handlePostWipExpense = async () => {
-    const amt = parseFloat(expenseAmount);
-    if (!wo?.projectId || !companyId || isNaN(amt) || amt <= 0) return;
-
-    setIsPostingExpense(true);
-    try {
-      const res = await apiFetch("/api/projects/wip-expense", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companyId,
-          projectId: wo.projectId,
-          workOrderId: wo.id,
-          amount: amt,
-          paymentMethod,
-          note: [wo.woCode, expenseNote].filter(Boolean).join(' '),
-        })
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setPostedJournalId(data.journalId);
-      } else {
-        setMessage(`บันทึกค่าใช้จ่ายไม่สำเร็จ: ${data.error}`);
-      }
-    } catch (err: any) {
-      setMessage(`เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: ${err.message}`);
-    } finally {
-      setIsPostingExpense(false);
-    }
-  };
-
-  const canComplete = isCheckedIn && !!photo('after') && !!photo('signature');
-  const handleComplete = async () => {
-    if (!woPath || !companyId || !canComplete) return;
-    setCompleting(true);
-    try {
-      // พิกัดตอนปิดงาน (ถ้าจับไม่ได้ก็ปิดงานต่อได้)
-      const gps = await getGps(8000).catch(() => null);
-      await workOrderAction(companyId, wo.id, 'complete', { gps });
-      setMessage(`ปิดงาน ${wo.woCode || wo.id} เรียบร้อย`);
-      setSelectedId(null);
-    } catch (err: any) {
-      setMessage(`ปิดงานไม่สำเร็จ: ${err.message}`);
-    } finally {
-      setCompleting(false);
-    }
-  };
-
-  // [Master Blueprint V3.1] Global Layout Lock
-  React.useEffect(() => {
-    const mainEl = document.querySelector("main");
-    if (mainEl) mainEl.style.overflowY = "hidden";
-    return () => {
-      if (mainEl) mainEl.style.overflowY = "auto";
-    };
-  }, []);
-
-  const photoTile = (type: 'before' | 'after', label: string) => {
-    const src = photo(type);
-    return (
-      <div
-        onClick={() => fileInputs[type].current?.click()}
-        className="aspect-square bg-white/[0.02] border border-dashed border-white/20 rounded-2xl flex flex-col items-center justify-center text-white/40 active:bg-white/15 relative overflow-hidden cursor-pointer"
-      >
-        <input ref={fileInputs[type]} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhotoSelected(type, e)} />
-        {uploading === type ? (
-          <Loader2 size={24} className="animate-spin" />
-        ) : src ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt={label} className="absolute inset-0 w-full h-full object-cover" />
-        ) : (
-          <>
-            <Camera size={24} className="mb-2" />
-            <span className="text-[10px] font-bold">{label}</span>
-          </>
-        )}
-      </div>
-    );
-  };
-
-  return (
-    // Fixed absolute overlay to cover sidebar on desktop and simulate Mobile App
-    <div className="fixed inset-0 z-50 bg-surface-0 flex flex-col md:items-center md:justify-center overflow-y-auto">
-
-      {/* Mobile Container wrapper for desktop preview */}
-      <div className="w-full md:w-[400px] md:h-[800px] md:border md:border-white/10 md:rounded-3xl md:shadow-2xl bg-surface-0 flex flex-col relative overflow-hidden">
-
-        {/* Header */}
-        <div className="h-16 bg-surface-1 border-b border-white/5 flex items-center justify-center relative shrink-0">
-          <button className="absolute left-4 text-nexus-teal" onClick={() => (wo ? selectOrder(null) : window.history.back())}>
-            {wo ? <ChevronLeft size={24} /> : <X size={24} />}
-          </button>
-          <h1 className="font-semibold text-lg text-white tracking-widest">{wo ? (wo.woCode || wo.id) : 'งานช่างของฉัน'}</h1>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24">
-          {message && (
-            <div className="p-3 rounded-xl bg-nexus-teal/10 border border-nexus-teal/20 text-nexus-teal text-xs font-bold text-center">{message}</div>
-          )}
-
-          {/* รายการใบงานที่เปิดอยู่ */}
-          {!wo && (
-            <div className="space-y-3">
-              {!isTechnician && (
-                <p className="text-[11px] text-white/40 text-center">มุมมองผู้ดูแล: แสดงใบงานที่เปิดอยู่ทั้งหมดของบริษัท</p>
-              )}
-              {woLoading && <p className="text-center text-white/40 text-sm py-10">กำลังโหลดใบงาน...</p>}
-              {!woLoading && myOrders.length === 0 && (
-                <div className="flex flex-col items-center text-center text-white/40 py-16 gap-3">
-                  <ClipboardList size={36} />
-                  <p className="text-sm">ยังไม่มีใบงานที่มอบหมายให้คุณ</p>
-                </div>
-              )}
-              {myOrders.map((w: any) => (
-                <button
-                  key={w.id}
-                  onClick={() => selectOrder(w.id)}
-                  className="w-full text-left bg-white/[0.03] border border-white/10 rounded-2xl p-4 active:bg-white/[0.06] transition-all"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className={cn(
-                      "text-[10px] font-semibold px-2 py-1 rounded-full",
-                      w.status === 'IN_PROGRESS' ? "bg-warning/20 text-warning" : "bg-nexus-teal/20 text-nexus-teal"
-                    )}>{STATUS_LABEL[w.status] || w.status}</span>
-                    <span className="font-mono text-xs text-white/40">{w.woCode || w.id}</span>
-                  </div>
-                  <p className="text-sm font-bold text-white">{w.customerName || '-'}</p>
-                  <p className="text-[11px] text-white/50 mt-1">
-                    {w.scheduleDate ? `นัดหมาย ${new Date(w.scheduleDate).toLocaleDateString('th-TH')}` : 'ยังไม่ระบุวันนัด'}
-                    {!isTechnician && w.technicianName ? ` · ${w.technicianName}` : ''}
-                  </p>
-                </button>
-              ))}
+    <div className="mx-auto w-full max-w-[640px] px-4 py-4 pb-24 space-y-4">
+      {!job ? (
+        <>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[13px] text-white/50">สวัสดี {user?.email?.split("@")[0] || ""}</p>
+              <h1 className="text-2xl font-bold text-white leading-normal">งานของฉัน</h1>
             </div>
-          )}
-
-          {wo && (
-            <>
-              {/* WO Info Card */}
-              <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 shadow-xl">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="bg-nexus-teal/20 text-nexus-teal text-[10px] font-semibold px-2 py-1 rounded-full">{STATUS_LABEL[wo.status] || wo.status}</span>
-                  <span className="font-mono text-xs text-white/40">{wo.soCode}</span>
-                </div>
-                <h2 className="text-base font-black text-white leading-tight mb-1">{wo.customerName || '-'}</h2>
-                <p className="text-xs text-white/60 flex items-center gap-1 mb-3">
-                  <MapPin size={12} className="text-danger" /> {wo.scheduleDate ? `นัดหมาย ${new Date(wo.scheduleDate).toLocaleDateString('th-TH')}` : 'ยังไม่ระบุวันนัด'}
-                </p>
-                {Array.isArray(wo.items) && wo.items.length > 0 && (
-                  <ul className="text-[12px] text-white/70 space-y-1 mb-3 border-t border-white/5 pt-3">
-                    {wo.items.map((it: any, i: number) => (
-                      <li key={it.id || i} className="flex justify-between gap-2">
-                        <span className="truncate">{it.name || it.description || '-'}</span>
-                        <span className="font-mono text-white/50 shrink-0">x{it.quantity ?? it.qty ?? 1}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {wo.remarks && <p className="text-[11px] text-warning mb-3">หมายเหตุ: {wo.remarks}</p>}
-
-                {/* Check-in Button */}
-                {!isCheckedIn ? (
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => handleCheckIn(false)}
-                      disabled={gpsLoading}
-                      className={cn(
-                        "w-full h-12 rounded-xl font-black text-sm tracking-widest flex items-center justify-center gap-2 transition-all",
-                        gpsLoading ? "bg-nexus-blue/50 text-white/80" : "bg-nexus-blue text-white active:scale-95"
-                      )}
-                    >
-                      <Navigation size={18} className={gpsLoading ? "animate-spin" : ""} />
-                      {gpsLoading ? 'กำลังจับพิกัด GPS...' : 'เช็คอินเริ่มงาน'}
-                    </button>
-                    {gpsError && (
-                      <div className="text-center space-y-1">
-                        <p className="text-[11px] text-danger">{gpsError}</p>
-                        <button onClick={() => handleCheckIn(true)} className="text-[11px] font-bold text-white/60 underline">
-                          เช็คอินโดยไม่บันทึกพิกัด
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="w-full h-12 rounded-xl bg-transparent border border-nexus-teal/20 text-nexus-teal font-semibold text-sm tracking-widest flex items-center justify-center gap-2">
-                    <CheckCircle size={18} /> เช็คอินแล้ว
-                    {wo.checkIn?.gps && (
-                      <a
-                        href={`https://maps.google.com/?q=${wo.checkIn.gps.lat},${wo.checkIn.gps.lng}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[10px] font-mono text-white/50 underline"
-                      >
-                        ±{wo.checkIn.gps.accuracy}ม.
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {isCheckedIn && (
-                <>
-                  {/* Photo Evidence */}
-                  <div className="space-y-3">
-                    <h3 className="text-xs font-semibold text-white/60 tracking-widest pl-1">รูปถ่ายหน้างาน</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {photoTile('before', 'ถ่ายรูปก่อนทำ')}
-                      {photoTile('after', 'ถ่ายรูปหลังทำ *')}
-                    </div>
-                  </div>
-
-                  {/* Signature */}
-                  <div className="space-y-3">
-                    <h3 className="text-xs font-semibold text-white/60 tracking-widest pl-1">ลายเซ็นลูกค้า *</h3>
-                    {!photo('signature') ? (
-                      <SignaturePad onClear={() => undefined} onSave={(data) => saveAttachment('signature', data)} />
-                    ) : (
-                      <div className="bg-white/[0.05] border border-white/10 rounded-xl p-2 relative">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={photo('signature')} alt="ลายเซ็นลูกค้า" className="w-full bg-white/15 rounded-lg" />
-                        <p className="text-center text-[10px] text-nexus-teal mt-2">บันทึกลายเซ็นแล้ว</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Site Expense & WIP Asset Posting */}
-                  <div className="space-y-3 pt-4 border-t border-white/10">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-xs font-semibold text-white/60 tracking-widest pl-1">เบิกค่าใช้จ่ายหน้างาน</h3>
-                      <span className="text-[10px] font-mono text-nexus-teal font-bold bg-nexus-teal/10 px-2 py-0.5 rounded-full">บัญชีงานระหว่างทำ</span>
-                    </div>
-
-                    {!wo.projectId ? (
-                      <p className="text-[11px] text-white/40 bg-white/[0.03] border border-white/10 rounded-2xl p-4">
-                        ใบงานนี้ไม่ได้ผูกกับโครงการ จึงบันทึกค่าใช้จ่ายเข้างานระหว่างทำไม่ได้ (ใช้เมนูเบิกค่าใช้จ่ายแทน)
-                      </p>
-                    ) : (
-                      <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 space-y-4">
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-white/70">จำนวนเงินตามใบเสร็จ (บาท)</label>
-                          <input
-                            type="number"
-                            placeholder="0.00"
-                            value={expenseAmount}
-                            onChange={(e) => setExpenseAmount(e.target.value)}
-                            className="w-full h-10 px-4 rounded-xl bg-black/40 border border-white/15 text-nexus-teal font-mono font-bold text-sm focus:outline-none focus:border-nexus-teal/50"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-white/70">วิธีชำระเงิน</label>
-                          <select
-                            value={paymentMethod}
-                            onChange={(e) => setPaymentMethod(e.target.value)}
-                            className="w-full h-10 px-4 rounded-xl bg-black/40 border border-white/15 text-white text-xs font-bold focus:outline-none focus:border-nexus-teal/50"
-                          >
-                            <option value="cash">เงินสด (1111-00)</option>
-                            <option value="ap">สำรองจ่าย / เจ้าหนี้ (2111-00)</option>
-                            <option value="bank">เงินฝากธนาคาร (1112-00)</option>
-                          </select>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-white/70">รายละเอียดค่าใช้จ่าย</label>
-                          <input
-                            type="text"
-                            placeholder="เช่น ค่าพัสดุฉุกเฉินหน้างาน / ค่าเดินทาง"
-                            value={expenseNote}
-                            onChange={(e) => setExpenseNote(e.target.value)}
-                            className="w-full h-10 px-4 rounded-xl bg-black/40 border border-white/15 text-white text-xs focus:outline-none focus:border-nexus-teal/50"
-                          />
-                        </div>
-
-                        <button
-                          onClick={handlePostWipExpense}
-                          disabled={isPostingExpense || !expenseAmount || !!postedJournalId}
-                          className={cn(
-                            "w-full h-10 rounded-xl font-bold text-xs tracking-wider flex items-center justify-center gap-2 transition-all",
-                            postedJournalId
-                              ? "bg-nexus-teal/10 text-nexus-teal border border-nexus-teal/30"
-                              : "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 hover:bg-nexus-teal/30"
-                          )}
-                        >
-                          {isPostingExpense
-                            ? "กำลังบันทึก..."
-                            : postedJournalId
-                              ? `✓ ส่งบันทึกบัญชีแล้ว (รออนุมัติ)`
-                              : "บันทึกค่าใช้จ่ายเข้าโครงการ"}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Bottom Action Bar */}
-        {wo && isCheckedIn && (
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-surface-0 via-surface-0 to-transparent shrink-0">
-            <button
-              onClick={handleComplete}
-              disabled={!canComplete || completing}
-              className={cn(
-                "w-full h-12 rounded-xl font-black text-sm tracking-widest flex items-center justify-center gap-2 transition-all",
-                canComplete
-                  ? "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md shadow-neon-teal active:scale-95"
-                  : "bg-white/15 text-white/20"
-              )}
-            >
-              {completing ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
-              {canComplete ? 'ปิดงานและส่งข้อมูล' : 'ต้องมีรูปหลังทำและลายเซ็นก่อนปิดงาน'}
+            <button type="button" onClick={load} className="w-10 h-10 rounded-full border border-white/10 text-white/60 hover:text-white flex items-center justify-center" aria-label="รีเฟรช">
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
             </button>
           </div>
-        )}
+
+          <div className="grid grid-cols-3 gap-2">
+            {([["new", "งานใหม่", groups.new.length], ["doing", "กำลังทำ", groups.doing.length], ["done", "เสร็จแล้ว", groups.done.length]] as [Tab, string, number][]).map(([id, label, n]) => (
+              <button key={id} type="button" onClick={() => setTab(id)}
+                className={cn("rounded-2xl border px-3 py-3 text-left transition-colors", tab === id ? "bg-nexus-teal/15 border-nexus-teal/40" : "bg-white/[0.02] border-white/10")}>
+                <p className={cn("text-[22px] font-bold font-mono leading-none", tab === id ? "text-nexus-teal" : "text-white")}>{n}</p>
+                <p className="text-[13px] text-white/60 mt-1">{label}</p>
+              </button>
+            ))}
+          </div>
+
+          {openWo > 0 && (
+            <Link href="/mobile/technician/work-orders" className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+              <span className="flex items-center gap-2 text-[14px] text-white"><ClipboardList size={18} className="text-nexus-blue" /> ใบสั่งงานบริการจากใบสั่งขาย</span>
+              <span className="flex items-center gap-1 text-[13px] text-white/60">{openWo} ใบ <ChevronRight size={16} /></span>
+            </Link>
+          )}
+
+          <div className="space-y-3">
+            {groups[tab].length === 0 && (
+              <div className="rounded-2xl border border-dashed border-white/10 py-12 text-center text-[14px] text-white/40">
+                {loading ? "กำลังโหลด…" : tab === "new" ? "ยังไม่มีงานใหม่" : tab === "doing" ? "ไม่มีงานที่กำลังทำ" : "ยังไม่มีงานที่ปิดแล้ว"}
+              </div>
+            )}
+            {groups[tab].map((j) => <JobCard key={j.jobNo} job={j} onOpen={() => setOpenNo(j.jobNo)} />)}
+          </div>
+        </>
+      ) : (
+        <JobDetail job={job} busy={busy} onBack={() => setOpenNo(null)}
+          onAccept={() => setSheet("accept")} onReject={() => setSheet("reject")} onComplete={() => setSheet("complete")}
+          onStart={() => act({ action: "start", jobNo: job.jobNo })}
+          onCheck={(index, done) => act({ action: "check", jobNo: job.jobNo, index, done })} />
+      )}
+
+      {job && sheet === "accept" && (
+        <Sheet title="รับงานและรับอุปกรณ์" onClose={() => setSheet(null)}>
+          <AcceptSheet job={job} busy={busy} onConfirm={() => act({ action: "accept", jobNo: job.jobNo }, () => setTab("doing"))} />
+        </Sheet>
+      )}
+      {job && sheet === "reject" && (
+        <Sheet title="ปฏิเสธงาน" onClose={() => setSheet(null)}>
+          <TextSheet label="เหตุผลที่รับงานไม่ได้" placeholder="เช่น ติดงานอื่น ไม่มีเครื่องมือ" confirm="ปฏิเสธงาน" danger busy={busy} min={3}
+            onConfirm={(reason) => act({ action: "reject", jobNo: job.jobNo, reason }, () => setOpenNo(null))} />
+        </Sheet>
+      )}
+      {job && sheet === "complete" && (
+        <Sheet title="ปิดงาน" onClose={() => setSheet(null)}>
+          <CompleteSheet job={job} busy={busy} onConfirm={(note, returnTools) => act({ action: "complete", jobNo: job.jobNo, note, returnTools }, () => { setOpenNo(null); setTab("done"); })} />
+        </Sheet>
+      )}
+    </div>
+  );
+}
+
+function JobCard({ job, onOpen }: { job: Job; onOpen: () => void }) {
+  const done = job.checklist.filter((c) => c.done).length;
+  return (
+    <button type="button" onClick={onOpen} className="w-full text-left rounded-2xl border border-white/10 bg-white/[0.03] hover:border-nexus-teal/40 p-4 space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[12px] font-mono text-white/50">{job.jobNo}</span>
+        <span className="text-[12px] px-2 py-0.5 rounded-full bg-nexus-blue/15 text-nexus-blue">{jobTypeLabel(job.type)}</span>
+        {job.priority !== "NORMAL" && <span className={cn("text-[12px] px-2 py-0.5 rounded-full border", PRIORITY_CLS[job.priority])}>{JOB_PRIORITY[job.priority]}</span>}
+        <span className="ml-auto"><StatusBadge status={JOB_STATUS[job.status].badge} label={JOB_STATUS[job.status].label} /></span>
+      </div>
+      <p className="text-[16px] font-semibold text-white leading-normal">{job.title}</p>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-white/60">
+        {(job.scheduledDate || job.scheduledTime) && <span className="flex items-center gap-1"><CalendarClock size={14} /> {thDate(job.scheduledDate)} {job.scheduledTime}</span>}
+        {job.site?.name && <span className="flex items-center gap-1 min-w-0"><MapPin size={14} className="flex-shrink-0" /> <span className="truncate">{job.site.name}</span></span>}
+        {job.equipment.length > 0 && <span className="flex items-center gap-1"><Package size={14} /> อุปกรณ์ {job.equipment.length} รายการ</span>}
+        {job.checklist.length > 0 && job.status !== "ASSIGNED" && <span className="flex items-center gap-1"><Check size={14} /> {done}/{job.checklist.length}</span>}
+      </div>
+    </button>
+  );
+}
+
+function JobDetail({ job, busy, onBack, onAccept, onReject, onStart, onComplete, onCheck }: { job: Job; busy: boolean; onBack: () => void; onAccept: () => void; onReject: () => void; onStart: () => void; onComplete: () => void; onCheck: (i: number, done: boolean) => void }) {
+  const canCheck = job.status === "ACCEPTED" || job.status === "IN_PROGRESS";
+  const out = toolsOut(job);
+  return (
+    <div className="space-y-4">
+      <button type="button" onClick={onBack} className="flex items-center gap-1 text-[14px] text-nexus-teal"><ChevronLeft size={18} /> งานของฉัน</button>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[13px] font-mono text-white/50">{job.jobNo}</span>
+          <span className="text-[12px] px-2 py-0.5 rounded-full bg-nexus-blue/15 text-nexus-blue">{jobTypeLabel(job.type)}</span>
+          {job.priority !== "NORMAL" && <span className={cn("text-[12px] px-2 py-0.5 rounded-full border", PRIORITY_CLS[job.priority])}>{JOB_PRIORITY[job.priority]}</span>}
+          <span className="ml-auto"><StatusBadge status={JOB_STATUS[job.status].badge} label={JOB_STATUS[job.status].label} /></span>
+        </div>
+        <h2 className="text-[19px] font-bold text-white leading-normal">{job.title}</h2>
+        {job.description && <p className="text-[14px] text-white/70 whitespace-pre-line leading-relaxed">{job.description}</p>}
+        <div className="grid grid-cols-1 gap-2 text-[14px]">
+          {(job.scheduledDate || job.scheduledTime) && <p className="flex items-center gap-2 text-white/80"><CalendarClock size={16} className="text-white/40" /> นัดหมาย {thDate(job.scheduledDate)} {job.scheduledTime}{job.estimatedHours ? ` · ประมาณ ${job.estimatedHours} ชม.` : ""}</p>}
+          {(job.site?.name || job.site?.address) && <p className="flex items-start gap-2 text-white/80"><MapPin size={16} className="text-white/40 mt-0.5 flex-shrink-0" /> <span>{job.site?.name}{job.site?.address ? <><br /><span className="text-white/50 text-[13px]">{job.site.address}</span></> : null}</span></p>}
+          {job.customerName && <p className="text-white/60 text-[13px]">ลูกค้า: {job.customerName}</p>}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {job.site?.phone && <a href={`tel:${job.site.phone}`} className="h-10 px-4 rounded-full border border-white/10 text-[14px] text-white flex items-center gap-2"><Phone size={16} /> โทร {job.site.contact || ""}</a>}
+          {(job.site?.mapUrl || job.site?.address) && (
+            <a href={job.site?.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.site?.address || "")}`} target="_blank" rel="noreferrer" className="h-10 px-4 rounded-full border border-white/10 text-[14px] text-white flex items-center gap-2"><MapPin size={16} /> นำทาง</a>
+          )}
+        </div>
       </div>
 
+      {job.equipment.length > 0 && (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
+          <h3 className="text-[15px] font-semibold text-white flex items-center gap-2"><Hammer size={16} className="text-warning" /> อุปกรณ์สำหรับงานนี้</h3>
+          {job.equipment.map((e, i) => (
+            <div key={i} className="flex items-center justify-between gap-3 py-1.5 border-b border-white/5 last:border-0">
+              <div className="min-w-0">
+                <p className="text-[14px] text-white truncate">{e.name}</p>
+                <p className="text-[12px] text-white/50">{e.kind === "TOOL" ? "เครื่องมือ (ยืม-คืน)" : e.productId ? "วัสดุ (ตัดสต็อก)" : "วัสดุ"}{e.sku ? ` · ${e.sku}` : ""}</p>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="text-[14px] font-mono text-white">{e.qty} {e.unit || ""}</p>
+                {e.kind === "TOOL" && (Number(e.issuedQty) || 0) > 0 && <p className={cn("text-[12px]", (Number(e.returnedQty) || 0) >= (Number(e.issuedQty) || 0) ? "text-nexus-teal" : "text-warning")}>{(Number(e.returnedQty) || 0) >= (Number(e.issuedQty) || 0) ? "คืนแล้ว" : "ยังไม่คืน"}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {job.checklist.length > 0 && (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-1">
+          <h3 className="text-[15px] font-semibold text-white mb-1">ขั้นตอนงาน {job.checklist.filter((c) => c.done).length}/{job.checklist.length}</h3>
+          {job.checklist.map((c, i) => (
+            <button key={i} type="button" disabled={!canCheck || busy} onClick={() => onCheck(i, !c.done)}
+              className={cn("w-full flex items-center gap-3 py-2.5 text-left", !canCheck && "opacity-60")}>
+              <span className={cn("w-6 h-6 rounded-md border flex items-center justify-center flex-shrink-0", c.done ? "bg-nexus-teal border-nexus-teal text-surface-0" : "border-white/30")}>{c.done && <Check size={15} strokeWidth={3} />}</span>
+              <span className={cn("text-[15px]", c.done ? "text-white/50 line-through" : "text-white")}>{c.text}</span>
+            </button>
+          ))}
+          {!canCheck && job.status === "ASSIGNED" && <p className="text-[12px] text-white/40">กดรับงานก่อนจึงติ๊กขั้นตอนได้</p>}
+        </div>
+      )}
+
+      {job.status === "DONE" && job.resultNote && <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-[14px] text-white/80"><p className="text-[12px] text-white/40 mb-1">บันทึกการปิดงาน</p>{job.resultNote}</div>}
+      {job.status === "DONE" && out.length > 0 && <p className="text-[13px] text-warning">ยังมีเครื่องมือค้างคืน {out.length} รายการ กรุณาคืนหัวหน้างาน</p>}
+
+      {/* ปุ่มหลักตามสถานะ (ตรึงด้านล่างบนมือถือ) */}
+      <div className="sticky bottom-0 z-10 flex gap-2 pt-6 pb-3 -mx-4 px-4 bg-gradient-to-t from-surface-0 via-surface-0/95 to-transparent">
+        {job.status === "ASSIGNED" && <>
+          <PillButton variant="ghost" className="h-12 px-5 text-[15px] text-danger" onClick={onReject} disabled={busy}>ปฏิเสธ</PillButton>
+          <PillButton variant="confirm" className="h-12 flex-1 text-[16px] font-bold" onClick={onAccept} disabled={busy}><Check size={18} className="mr-1.5" /> รับงาน</PillButton>
+        </>}
+        {job.status === "ACCEPTED" && <PillButton variant="confirm" className="h-12 flex-1 text-[16px] font-bold" onClick={onStart} disabled={busy}>{busy ? <Loader2 size={18} className="animate-spin mr-1.5" /> : <PlayCircle size={18} className="mr-1.5" />} เริ่มงาน</PillButton>}
+        {job.status === "IN_PROGRESS" && <PillButton variant="confirm" className="h-12 flex-1 text-[16px] font-bold" onClick={onComplete} disabled={busy}><Wrench size={18} className="mr-1.5" /> ปิดงาน</PillButton>}
+      </div>
     </div>
+  );
+}
+
+function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-[100000] flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className="relative w-full sm:max-w-[520px] max-h-[85vh] overflow-y-auto bg-surface-0 border border-white/10 rounded-t-3xl sm:rounded-3xl p-5 space-y-4">
+        <div className="flex items-center justify-between"><h3 className="text-[18px] font-bold text-white">{title}</h3><button type="button" onClick={onClose} className="text-white/50" aria-label="ปิด"><X size={20} /></button></div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function AcceptSheet({ job, busy, onConfirm }: { job: Job; busy: boolean; onConfirm: () => void }) {
+  const [got, setGot] = useState<boolean[]>(() => job.equipment.map(() => false));
+  const all = got.every(Boolean);
+  return (
+    <>
+      {job.equipment.length === 0 ? <p className="text-[14px] text-white/70">งานนี้ไม่มีอุปกรณ์ที่ต้องรับ กดรับงานได้เลย</p> : (
+        <>
+          <p className="text-[13px] text-white/60">ตรวจรับอุปกรณ์ให้ครบแล้วติ๊กทีละรายการ วัสดุที่มีรหัสสินค้าจะถูกตัดสต็อกเมื่อกดรับงาน</p>
+          <div className="space-y-1">
+            {job.equipment.map((e, i) => (
+              <button key={i} type="button" onClick={() => setGot((g) => g.map((x, k) => (k === i ? !x : x)))} className="w-full flex items-center gap-3 py-2.5 text-left">
+                <span className={cn("w-6 h-6 rounded-md border flex items-center justify-center flex-shrink-0", got[i] ? "bg-nexus-teal border-nexus-teal text-surface-0" : "border-white/30")}>{got[i] && <Check size={15} strokeWidth={3} />}</span>
+                <span className="flex-1 min-w-0"><span className="block text-[15px] text-white truncate">{e.name}</span><span className="block text-[12px] text-white/50">{e.kind === "TOOL" ? "เครื่องมือ ต้องคืนเมื่อปิดงาน" : "วัสดุ"}</span></span>
+                <span className="text-[14px] font-mono text-white">{e.qty} {e.unit || ""}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      <PillButton variant="confirm" className="h-12 w-full text-[16px] font-bold" disabled={busy || !all} onClick={onConfirm}>{busy ? <Loader2 size={18} className="animate-spin mr-1.5" /> : <Check size={18} className="mr-1.5" />} {all ? "ยืนยันรับงาน" : "ติ๊กอุปกรณ์ให้ครบก่อน"}</PillButton>
+    </>
+  );
+}
+
+function TextSheet({ label, placeholder, confirm, danger, busy, min = 0, onConfirm }: { label: string; placeholder?: string; confirm: string; danger?: boolean; busy: boolean; min?: number; onConfirm: (text: string) => void }) {
+  const [text, setText] = useState("");
+  return (
+    <>
+      <label className="block text-[13px] text-white/70">{label}</label>
+      <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder} rows={3} className="w-full rounded-2xl bg-white/[0.03] border border-white/10 p-3 text-[15px] text-white leading-relaxed outline-none focus:border-nexus-teal/50" />
+      <PillButton variant={danger ? "ghost" : "confirm"} className={cn("h-12 w-full text-[16px] font-bold", danger && "text-danger border border-danger/30")} disabled={busy || text.trim().length < min} onClick={() => onConfirm(text.trim())}>{confirm}</PillButton>
+    </>
+  );
+}
+
+function CompleteSheet({ job, busy, onConfirm }: { job: Job; busy: boolean; onConfirm: (note: string, returnTools: boolean) => void }) {
+  const [note, setNote] = useState("");
+  const tools = toolsOut(job);
+  const [returned, setReturned] = useState(true);
+  const remaining = job.checklist.filter((c) => !c.done).length;
+  return (
+    <>
+      {remaining > 0 && <p className="text-[13px] text-warning">ยังมีขั้นตอนที่ไม่ได้ติ๊ก {remaining} รายการ</p>}
+      <label className="block text-[13px] text-white/70">สรุปผลงาน</label>
+      <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="เช่น เปลี่ยนสายไฟ 2 เมตร ทดสอบแล้วใช้งานได้" className="w-full rounded-2xl bg-white/[0.03] border border-white/10 p-3 text-[15px] text-white leading-relaxed outline-none focus:border-nexus-teal/50" />
+      {tools.length > 0 && (
+        <button type="button" onClick={() => setReturned(!returned)} className="w-full flex items-center gap-3 py-2 text-left">
+          <span className={cn("w-6 h-6 rounded-md border flex items-center justify-center", returned ? "bg-nexus-teal border-nexus-teal text-surface-0" : "border-white/30")}>{returned && <Check size={15} strokeWidth={3} />}</span>
+          <span className="text-[15px] text-white">คืนเครื่องมือครบแล้ว ({tools.map((t) => t.name).join(", ")})</span>
+        </button>
+      )}
+      <PillButton variant="confirm" className="h-12 w-full text-[16px] font-bold" disabled={busy} onClick={() => onConfirm(note.trim(), returned)}>{busy ? <Loader2 size={18} className="animate-spin mr-1.5" /> : <Check size={18} className="mr-1.5" />} ยืนยันปิดงาน</PillButton>
+    </>
   );
 }

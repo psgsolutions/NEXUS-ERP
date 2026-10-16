@@ -194,7 +194,9 @@ service cloud.firestore {
           // จัดซื้อ / ค่าใช้จ่าย / ขาย / งานบริการ: ออกเลข ตรวจสถานะ และอนุมัติที่ server
           'purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders',
           // ทะเบียนบัญชีธนาคาร เช็ค และการกระทบยอด: บันทึกผ่าน /api/finance/* เท่านั้น
-          'bank_accounts', 'cheques', 'bank_reconciliations'];
+          'bank_accounts', 'cheques', 'bank_reconciliations',
+          // งานมอบหมาย: จ่ายงาน/รับงาน/ปิดงานผ่าน /api/jobs เท่านั้น
+          'jobs'];
       }
       // ข้อมูลการเงินอ่านได้เฉพาะตำแหน่งที่เกี่ยวข้อง (ส่วนอื่นอ่านได้ทุกคนในบริษัท)
       function restrictedRead(collection) {

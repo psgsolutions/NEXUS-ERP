@@ -100,7 +100,8 @@ export default function AuthenticatedLayout({
             <NavGroup title="บริการ">
               {show("/pos") && <SideLink href="/pos" icon={<Store size={20} />} label="ขายหน้าร้าน" active={pathname === "/pos"} title="POS" />}
               {show("/support") && <SideLink href="/support" icon={<Wrench size={20} />} label="งานบริการ" active={pathname === "/support"} title="Service" />}
-              {show("/mobile/technician") && <SideLink href="/mobile/technician" icon={<HardHat size={20} />} label="งานช่างหน้างาน" active={pathname === "/mobile/technician"} title="Field" />}
+              {show("/service/dispatch") && <SideLink href="/service/dispatch" icon={<Layers size={20} />} label="ศูนย์จ่ายงาน" active={pathname === "/service/dispatch"} title="Dispatch" />}
+              {show("/mobile/technician") && <SideLink href="/mobile/technician" icon={<HardHat size={20} />} label="งานของฉัน" active={pathname === "/mobile/technician"} title="Field" />}
             </NavGroup>
 
             {/* OPERATIONS TIER */}

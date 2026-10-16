@@ -53,6 +53,7 @@ async function main() {
     await setDoc(doc(db, 'taxFilings/T1'), { companyId: 'A' });
     await setDoc(doc(db, 'companies/A/payrolls/P1'), { companyId: 'A' });
     await setDoc(doc(db, 'companies/A/payments/PV1'), { companyId: 'A' });
+    await setDoc(doc(db, 'companies/A/jobs/JOB-1'), { companyId: 'A', status: 'ASSIGNED' });
     await setDoc(doc(db, 'companies/A/bank_accounts/BA1'), { companyId: 'A', name: 'K-Bank' });
     await setDoc(doc(db, 'companies/A/cheques/RE1'), { companyId: 'A', status: 'PENDING' });
     for (const c of ['purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders']) {
@@ -173,6 +174,10 @@ async function main() {
     ['sales cannot read journal', () => assertFails(getDoc(doc(userA, 'companies/A/journal_entries/J1')))],
     ['system admin (roles) cannot read journal', () => assertFails(getDoc(doc(adminR, 'companies/A/journal_entries/J1')))],
     ['sales cannot read payment voucher', () => assertFails(getDoc(doc(userA, 'companies/A/payments/PV1')))],
+    // งานมอบหมาย: อ่านได้ในบริษัท เขียนผ่าน /api/jobs เท่านั้น
+    ['member reads job', () => assertSucceeds(getDoc(doc(userA, 'companies/A/jobs/JOB-1')))],
+    ['member cannot accept job directly', () => assertFails(updateDoc(doc(userA, 'companies/A/jobs/JOB-1'), { status: 'ACCEPTED' }))],
+    ['admin cannot create job directly', () => assertFails(setDoc(doc(adminA, 'companies/A/jobs/JOB-2'), { companyId: 'A' }))],
     // ทะเบียนธนาคาร/เช็ค
     ['sales reads bank account list (receipt form)', () => assertSucceeds(getDoc(doc(userA, 'companies/A/bank_accounts/BA1')))],
     ['accountant cannot write bank account directly', () => assertFails(setDoc(doc(acctA, 'companies/A/bank_accounts/BA2'), { companyId: 'A' }))],

@@ -1,601 +1,303 @@
-// @ts-nocheck
 "use client";
 
-import React, { useState } from "react";
-import { 
-  LifeBuoy, 
-  Settings, 
-  Calendar, 
-  Clock, 
-  MessageSquare, 
-  User, 
-  CheckCircle2, 
-  AlertCircle,
-  BarChart3,
-  MapPin,
-  FileText,
-  Zap,
-  Kanban,
-  Plus,
-  Search,
-  Activity,
-  ShieldCheck,
-  Filter
-} from "lucide-react";
-import { GlassCard, PillButton, PillInput, MasterMetricCard, cn, Modal, PillSelect, Toast, PillTabs, NexusTable, NexusTableRow, NexusTableCell, StatusBadge, NexusSearchInput } from "@/components/ui/Base";
-import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import Link from "next/link";
+import { AlertTriangle, Check, Clock, Headset, Inbox, Loader2, Phone, Plus, RefreshCw, Search, ShieldCheck, Wrench, X } from "lucide-react";
+import { GlassCard, NexusSearchInput, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillInput, PillSelect, StatusBadge, cn } from "@/components/ui/Base";
+import { useAuth } from "@/context/AuthContext";
+import { useSystemDialog } from "@/context/DialogContext";
+import { apiFetch } from "@/lib/api-client";
+import { canAny } from "@/lib/permissions";
+import { JOB_STATUS } from "@/lib/jobs";
+import { OPEN_TICKET_STATUSES, SLA_HOURS, TICKET_CATEGORIES, TICKET_CHANNELS, TICKET_PRIORITY, TICKET_STATUS, slaRemainingHours, ticketCategoryLabel, ticketChannelLabel, type TicketPriority } from "@/lib/service-tickets";
 
-type SupportView = "tickets" | "pm" | "sla";
+/**
+ * งานบริการและแจ้งซ่อม: รับเรื่อง → ส่งให้ช่าง (สร้างงานในศูนย์จ่ายงาน) → ช่างปิดงาน = แก้ไขแล้ว → ปิดเรื่อง
+ * ติดตาม SLA ตามความเร่งด่วน และรับคำขอที่ลูกค้าแจ้งผ่านพอร์ทัล
+ */
+type Filter = "open" | "overdue" | "resolved" | "all";
+const fmt = (iso?: string | null) => (iso ? new Date(iso).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "-");
+const today = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
 
-export default function SupportPage() {
-  const [activeView, setActiveView] = useState<SupportView>("tickets");
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [modalActiveTab, setModalActiveTab] = useState("basic");
-  const [toast, setToast] = useState({ message: "", isVisible: false });
+function Sla({ t }: { t: any }) {
+  if (!OPEN_TICKET_STATUSES.includes(t.status)) return <span className="text-white/30">-</span>;
+  const h = slaRemainingHours(t.slaDueAt);
+  if (h === null) return <span className="text-white/30">-</span>;
+  if (h < 0) return <span className="text-danger font-bold">เกิน {Math.abs(Math.round(h))} ชม.</span>;
+  return <span className={cn(h <= 4 ? "text-warning" : "text-white/70")}>เหลือ {h < 1 ? "<1" : Math.round(h)} ชม.</span>;
+}
 
-  const showToast = (message: string) => {
-    setToast({ message, isVisible: true });
+export default function ServicePage() {
+  const { companyId, roles } = useAuth();
+  const { showAlert } = useSystemDialog();
+  const canEdit = canAny(roles, ["sales:edit", "projects:edit", "inventory:edit", "projects:approve"]);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [portal, setPortal] = useState<any[]>([]);
+  const [people, setPeople] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<Filter>("open");
+  const [q, setQ] = useState("");
+  const [form, setForm] = useState<any>(null);
+  const [openNo, setOpenNo] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const call = useCallback(async (url: string, body: any) => {
+    const res = await apiFetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, ...body }) });
+    const d = await res.json();
+    if (!res.ok || !d.success) throw new Error(d.error || "ดำเนินการไม่สำเร็จ");
+    return d;
+  }, [companyId]);
+  const load = useCallback(async () => {
+    if (!companyId) return;
+    setLoading(true);
+    try {
+      const d = await call("/api/service/tickets", { action: "list" });
+      setTickets(d.tickets); setPortal(d.portal);
+      if (canEdit && !people.length) { try { const a = await call("/api/jobs", { action: "assignees" }); setPeople(a.assignees); } catch { /* ผู้ใช้ที่จ่ายงานไม่ได้ */ } }
+    } catch (e: any) { showAlert(e.message); } finally { setLoading(false); }
+  }, [companyId, call, canEdit, people.length, showAlert]);
+  useEffect(() => { load(); }, [companyId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const open = tickets.filter((t) => OPEN_TICKET_STATUSES.includes(t.status));
+  const overdue = open.filter((t) => (slaRemainingHours(t.slaDueAt) ?? 1) < 0);
+  const resolvedMonth = tickets.filter((t) => ["RESOLVED", "CLOSED"].includes(t.status) && String(t.createdAt || "").slice(0, 7) === today().slice(0, 7));
+  const shown = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    const base = filter === "open" ? open : filter === "overdue" ? overdue : filter === "resolved" ? tickets.filter((t) => t.status === "RESOLVED") : tickets;
+    return base.filter((t) => !s || [t.ticketNo, t.customerName, t.phone, t.symptom, t.serialNumber, t.productName].some((v) => String(v || "").toLowerCase().includes(s)));
+  }, [tickets, open, overdue, filter, q]);
+  const ticket = tickets.find((t) => t.ticketNo === openNo) || null;
+
+  const run = async (url: string, body: any, msg?: string) => {
+    setBusy(true);
+    try { const d = await call(url, body); await load(); if (msg) showAlert(msg); return d; }
+    catch (e: any) { showAlert(e.message); return null; } finally { setBusy(false); }
   };
 
-  const { data: tickets } = useRealtimeCollection('tickets');
-  const { data: pmPlans } = useRealtimeCollection('pm_plans');
-  const activeTicketsCount = tickets ? tickets.filter((t: any) => t.status !== 'completed').length : 0;
-
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
-      
-      {/* Compact Module Header — icon + title + inline metric chips on same plane */}
-      <header className="px-6 py-2.5 min-h-[60px] border-b border-white/5 flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-black/20 shrink-0">
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="w-9 h-9 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal shadow-lg border border-nexus-teal/10">
-            <LifeBuoy size={20} />
-          </div>
+    <div className="px-6 py-4 space-y-4 max-w-[1800px] mx-auto">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 bg-nexus-teal/20 border border-nexus-teal/20 rounded-xl flex items-center justify-center"><Headset size={22} className="text-nexus-teal" /></div>
           <div>
-            <h1 className="text-lg font-bold text-white tracking-tight leading-none">งานบริการและแจ้งซ่อม</h1>
-            <p className="text-[11px] font-medium text-white/30 uppercase mt-1 tracking-widest leading-none">SUPPORT HUB</p>
+            <h1 className="text-2xl font-bold text-white leading-normal">งานบริการและแจ้งซ่อม</h1>
+            <p className="text-[13px] text-white/50">รับเรื่อง → ส่งให้ช่าง → ช่างปิดงาน → ปิดเรื่อง · ติดตามเวลาแก้ไขตามความเร่งด่วน</p>
           </div>
         </div>
-
-        {/* Compact Metrics Row */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Card 1: Ticket Active */}
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
-            <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
-              <Zap size={16} />
-            </div>
-            <div className="flex flex-col justify-center">
-              <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">Ticket Active</span>
-              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">{activeTicketsCount}</span>
-            </div>
-          </div>
-          {/* Card 2: Response Time */}
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
-            <div className="w-8 h-8 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
-              <Clock size={16} />
-            </div>
-            <div className="flex flex-col justify-center">
-              <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">Response Time</span>
-              <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none">0m</span>
-            </div>
-          </div>
-          {/* Card 3: SLA Risk */}
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-danger/30 hover:bg-white/[0.03]">
-            <div className="w-8 h-8 rounded-lg bg-danger/10 flex items-center justify-center text-danger border border-danger/20 shrink-0">
-              <AlertCircle size={16} />
-            </div>
-            <div className="flex flex-col justify-center">
-              <span className="text-[11px] font-medium text-white/30 uppercase tracking-widest leading-none">SLA Risk</span>
-              <span className="text-[17px] font-bold text-danger mt-0.5 mono-numbers leading-none">0</span>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Tab Navigation */}
-      <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
-        <PillTabs className="flex-1 min-w-[min(100%,520px)]" 
-          tabs={[
-             { id: "tickets", label: "รายการแจ้งซ่อม", icon: <MessageSquare size={14} /> },
-             { id: "pm", label: "การซ่อมบำรุงเชิงป้องกัน", icon: <Calendar size={14} /> },
-             { id: "sla", label: "ประสิทธิภาพตาม SLA", icon: <Clock size={14} /> }
-          ]} 
-          activeTab={activeView} 
-          onTabChange={(id: any) => setActiveView(id)} 
-        />
-      </section>
-
-      {/* Main Content Scroll Area */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className="p-5 space-y-3 max-w-[1800px] mx-auto animate-in fade-in duration-700">
-          
-          <div className="flex flex-col xl:flex-row items-start gap-4">
-        <div className="flex-1 w-full space-y-10">
-          
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                 <Kanban className="text-nexus-teal" size={24} />
-                 <div className="space-y-0.5">
-                    <p className="text-[11px] font-medium text-white/20 uppercase tracking-widest">การบริหารจัดการ Ticket และงานซ่อมบำรุง</p>
-                    <h2 className="text-xl font-bold text-white uppercase">ทะเบียนข้อมูล</h2>
-                 </div>
-              </div>
-              <div className="flex gap-3">
-                 {activeView === "tickets" && (
-                   <PillButton variant="primary" onClick={() => setIsCreateOpen(true)} className="px-8 shadow-neon-teal">
-                     <Plus size={18} />
-                     เปิด Ticket ใหม่
-                   </PillButton>
-                 )}
-                 {activeView === "pm" && (
-                   <PillButton variant="primary" onClick={() => setIsCreateOpen(true)} className="px-8 shadow-neon-teal">
-                     <Plus size={18} />
-                     สร้างแผน PM
-                   </PillButton>
-                 )}
-              </div>
-            </div>
-
-            {/* Tactical Command Bar */}
-            <div className="flex flex-col md:flex-row items-center gap-4 bg-white/[0.01] p-1.5 rounded-full border border-white/5 backdrop-blur-md">
-               <NexusSearchInput 
-                 placeholder="พิมพ์เพื่อค้นหา..." 
-                 className="flex-1"
-                 kbd="F"
-               />
-               <div className="flex items-center gap-2 pr-1.5">
-                  <PillButton variant="glass" className="h-11 w-11 p-0 rounded-full border-white/5 hover:border-nexus-teal/30 hover:bg-nexus-teal/5">
-                    <Filter size={18} className="text-white/40" />
-                  </PillButton>
-               </div>
-            </div>
-
-            {/* View Content */}
-              {activeView === "tickets" && (
-               <div className="animate-in fade-in duration-500">
-                 <TicketKanban tickets={tickets || []} />
-               </div>
-             )}
-             
-             {activeView === "pm" && (
-               <div className="animate-in fade-in duration-500">
-                 <PMSchedulingView pmPlans={pmPlans || []} />
-               </div>
-             )}
-
-             {activeView === "sla" && (
-               <div className="animate-in fade-in duration-500">
-                 <NexusTable headers={["ประเภทบริการ", "เป้าหมาย SLA", "ผลงานจริง", "แนวโน้ม", "สถานะ"]}>
-                   <NexusTableRow>
-                     <NexusTableCell colSpan={5} className="text-center text-white/50 py-8">ไม่มีข้อมูล SLA</NexusTableCell>
-                   </NexusTableRow>
-                 </NexusTable>
-               </div>
-             )}
-          </div>
-
-        </div>
-
-        <div className="space-y-3">
-           <GlassCard className="p-4 border-white/5 bg-nexus-teal/5">
-              <h4 className="text-[12px] font-medium text-nexus-teal uppercase tracking-widest mb-4 text-center">ความสมบูรณ์ของ SLA</h4>
-              <div className="space-y-3">
-                 <p className="text-center text-white/50 text-xs py-4">ไม่มีข้อมูลความสมบูรณ์</p>
-              </div>
-           </GlassCard>
-
-           <GlassCard className="p-4 border-white/10">
-              <h4 className="text-[12px] font-medium text-white/20 uppercase tracking-widest mb-6">ภารกิจที่มอบหมาย</h4>
-              <div className="space-y-3">
-                 <div className="text-[10px] text-white/20 italic">ไม่มีภารกิจค้างในขณะนี้</div>
-              </div>
-           </GlassCard>
+        <div className="flex items-center gap-2">
+          <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={load} disabled={loading}>{loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}</PillButton>
+          <Link href="/service/dispatch"><PillButton variant="glass" className="h-9 px-4 text-xs font-bold">ศูนย์จ่ายงาน</PillButton></Link>
+          {canEdit && <PillButton variant="primary" className="h-9 px-5 text-xs font-bold" onClick={() => setForm({ priority: "NORMAL", category: "REPAIR", channel: "PHONE" })}><Plus size={14} className="mr-1" /> รับแจ้งซ่อม</PillButton>}
         </div>
       </div>
 
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {([["open", "เรื่องที่เปิดอยู่", open.length, Inbox], ["overdue", "เกินเวลาที่กำหนด", overdue.length, AlertTriangle], ["resolved", "แก้ไขแล้ว รอปิดเรื่อง", tickets.filter((t) => t.status === "RESOLVED").length, Check], ["all", "แก้ไขเสร็จเดือนนี้", resolvedMonth.length, ShieldCheck]] as [Filter, string, number, any][]).map(([id, label, n, Icon]) => (
+          <button key={id} type="button" onClick={() => setFilter(id)} className={cn("rounded-xl border px-4 py-3 text-left", filter === id ? "bg-nexus-teal/10 border-nexus-teal/40" : "border-white/10 bg-white/[0.02]")}>
+            <p className="text-[12px] text-white/50 flex items-center gap-1.5"><Icon size={13} className={id === "overdue" && n > 0 ? "text-danger" : ""} /> {label}</p>
+            <p className={cn("text-[20px] font-bold font-mono", id === "overdue" && n > 0 ? "text-danger" : "text-white")}>{n}</p>
+          </button>
+        ))}
+      </div>
+
+      {portal.length > 0 && canEdit && (
+        <GlassCard className="p-4 space-y-2 border-warning/30">
+          <p className="text-[14px] font-semibold text-white flex items-center gap-2"><Inbox size={16} className="text-warning" /> ลูกค้าแจ้งผ่านพอร์ทัล รอรับเรื่อง ({portal.length})</p>
+          {portal.slice(0, 5).map((p) => (
+            <div key={p.id} className="flex items-center justify-between gap-3 text-[13px] border-t border-white/5 pt-2">
+              <span className="text-white/80 min-w-0 truncate">{fmt(p.createdAt)} · {p.phoneNumber} · {p.symptom}</span>
+              <PillButton variant="glass" className="h-8 px-3 text-xs flex-shrink-0" onClick={() => setForm({ priority: "NORMAL", category: "REPAIR", channel: "PORTAL", phone: p.phoneNumber, symptom: p.symptom, serialNumber: p.serialNumber, portalId: p.id })}>รับเรื่อง</PillButton>
+            </div>
+          ))}
+        </GlassCard>
+      )}
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <NexusSearchInput placeholder="ค้นหาเลขที่ ลูกค้า เบอร์โทร อาการ หมายเลขเครื่อง…" value={q} onChange={(e) => setQ(e.target.value)} className="w-full md:w-[380px]" />
+      </div>
+
+      <GlassCard accentColor="teal" className="p-0 overflow-hidden">
+        <NexusTable headers={["เลขที่", "วันที่แจ้ง", "ลูกค้า", "อาการ/เรื่อง", "ประเภท", "ความเร่งด่วน", "เวลาที่เหลือ", "ช่างผู้รับผิดชอบ", "สถานะ"]} itemCount={shown.length}>
+          {shown.length === 0 && <NexusTableRow className="cursor-default"><NexusTableCell colSpan={9} className="text-center text-[13px] text-white/40 py-10">{loading ? "กำลังโหลด…" : "ไม่มีใบแจ้งในรายการนี้"}</NexusTableCell></NexusTableRow>}
+          {shown.map((t) => (
+            <NexusTableRow key={t.ticketNo} onClick={() => setOpenNo(t.ticketNo)}>
+              <NexusTableCell mono>{t.ticketNo}</NexusTableCell>
+              <NexusTableCell mono>{fmt(t.createdAt)}</NexusTableCell>
+              <NexusTableCell title={`${t.customerName} ${t.phone}`}>{t.customerName || t.phone || "-"}</NexusTableCell>
+              <NexusTableCell title={t.symptom}>{t.symptom}</NexusTableCell>
+              <NexusTableCell>{ticketCategoryLabel(t.category)}</NexusTableCell>
+              <NexusTableCell>{TICKET_PRIORITY[t.priority as TicketPriority]?.split(" ")[0] || t.priority}</NexusTableCell>
+              <NexusTableCell><Sla t={t} /></NexusTableCell>
+              <NexusTableCell title={t.jobs?.[0]?.assigneeNames?.join(", ")}>{t.jobs?.length ? t.jobs[t.jobs.length - 1].assigneeNames?.join(", ") || "รอจ่ายงาน" : "-"}</NexusTableCell>
+              <NexusTableCell><StatusBadge status={TICKET_STATUS[t.status as keyof typeof TICKET_STATUS]?.badge || "pending"} label={TICKET_STATUS[t.status as keyof typeof TICKET_STATUS]?.label || t.status} /></NexusTableCell>
+            </NexusTableRow>
+          ))}
+        </NexusTable>
+      </GlassCard>
+
+      {form && <TicketForm initial={form} busy={busy} call={call} onClose={() => setForm(null)}
+        onSave={async (ticket, portalId) => { const d = await run("/api/service/tickets", { action: "create", ticket, portalId }); if (d) { setForm(null); setOpenNo(d.ticketNo); } }} />}
+      {ticket && !form && <TicketDrawer ticket={ticket} people={people} canEdit={canEdit} busy={busy} onClose={() => setOpenNo(null)}
+        onAction={(action, extra = {}) => run(extra.url || "/api/service/tickets", { action, ticketNo: ticket.ticketNo, ...extra }, extra.msg)} />}
+    </div>
+  );
+}
+
+function Drawer({ title, onClose, children, footer }: { title: string; onClose: () => void; children: React.ReactNode; footer?: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[100000] flex justify-end">
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className="relative w-full max-w-[640px] h-full bg-surface-0 border-l border-white/10 flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10"><h3 className="text-[17px] font-semibold text-white">{title}</h3><button type="button" onClick={onClose} className="text-white/50 hover:text-white" aria-label="ปิด"><X size={20} /></button></div>
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">{children}</div>
+        {footer && <div className="px-6 py-4 border-t border-white/10 flex justify-end gap-2 flex-wrap">{footer}</div>}
+      </div>
+    </div>,
+    document.body
+  );
+}
+const Field = ({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) => (
+  <div className={cn("space-y-1", className)}><label className="block text-[12px] font-bold text-white/70 ml-1">{label}</label>{children}</div>
+);
+const Chips = ({ options, value, onChange }: { options: readonly { value: string; label: string }[]; value: string; onChange: (v: string) => void }) => (
+  <div className="flex gap-1.5 flex-wrap">{options.map((o) => <button key={o.value} type="button" onClick={() => onChange(o.value)} className={cn("h-9 px-3 rounded-full border text-[13px]", value === o.value ? "bg-nexus-teal/15 border-nexus-teal/40 text-nexus-teal" : "border-white/10 text-white/60 hover:text-white")}>{o.label}</button>)}</div>
+);
+
+function TicketForm({ initial, busy, call, onClose, onSave }: { initial: any; busy: boolean; call: (url: string, body: any) => Promise<any>; onClose: () => void; onSave: (t: any, portalId?: string) => void }) {
+  const [f, setF] = useState<any>(initial);
+  const [serial, setSerial] = useState<any>(null);
+  const [checking, setChecking] = useState(false);
+  const set = (p: any) => setF((x: any) => ({ ...x, ...p }));
+  const check = async () => {
+    if (!f.serialNumber?.trim()) return;
+    setChecking(true);
+    try { const d = await call("/api/service/tickets", { action: "lookupSerial", serial: f.serialNumber.trim() }); setSerial(d.found ? d.serial : { notFound: true }); if (d.found) set({ productName: f.productName || d.serial.productName, customerName: f.customerName || d.serial.customerName, inWarranty: d.serial.inWarranty }); }
+    catch { setSerial(null); } finally { setChecking(false); }
+  };
+  const valid = f.symptom?.trim() && (f.customerName?.trim() || f.phone?.trim());
+  return (
+    <Drawer title={f.portalId ? "รับเรื่องจากพอร์ทัลลูกค้า" : "รับแจ้งซ่อม/งานบริการ"} onClose={onClose}
+      footer={<><PillButton variant="ghost" className="h-10 px-5 text-xs" onClick={onClose}>ยกเลิก</PillButton><PillButton variant="confirm" className="h-10 px-6 text-xs font-bold" disabled={busy || !valid} onClick={() => onSave(f, f.portalId)}>{busy ? <Loader2 size={14} className="animate-spin mr-1" /> : <Check size={14} className="mr-1" />} บันทึกใบแจ้ง</PillButton></>}>
+      <Field label="ประเภทเรื่อง"><Chips options={TICKET_CATEGORIES} value={f.category} onChange={(v) => set({ category: v })} /></Field>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Field label="ชื่อลูกค้า"><PillInput value={f.customerName || ""} onChange={(e) => set({ customerName: e.target.value })} className="w-full h-10 text-sm" /></Field>
+        <Field label="เบอร์โทร"><PillInput value={f.phone || ""} onChange={(e) => set({ phone: e.target.value })} className="w-full h-10 text-sm font-mono" /></Field>
+        <Field label="ที่อยู่/สถานที่ซ่อม" className="sm:col-span-2"><PillInput value={f.address || ""} onChange={(e) => set({ address: e.target.value })} className="w-full h-10 text-sm" /></Field>
+      </div>
+      <Field label="อาการ/เรื่องที่แจ้ง *"><textarea value={f.symptom || ""} onChange={(e) => set({ symptom: e.target.value })} rows={3} placeholder="เช่น กล้องตัวที่ 3 ภาพไม่ขึ้นตั้งแต่เมื่อวาน" className="w-full rounded-2xl bg-white/[0.03] border border-white/10 p-3 text-sm text-white leading-relaxed outline-none focus:border-nexus-teal/50" /></Field>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Field label="หมายเลขเครื่อง (Serial)">
+          <div className="flex gap-2">
+            <PillInput value={f.serialNumber || ""} onChange={(e) => { set({ serialNumber: e.target.value }); setSerial(null); }} className="flex-1 h-10 text-sm font-mono" />
+            <PillButton variant="glass" className="h-10 px-3 text-xs" onClick={check} disabled={checking || !f.serialNumber?.trim()}>{checking ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />} ตรวจประกัน</PillButton>
+          </div>
+          {serial && (serial.notFound ? <p className="text-[12px] text-white/50 ml-1">ไม่พบหมายเลขนี้ในระบบ</p>
+            : <p className={cn("text-[12px] ml-1", serial.inWarranty ? "text-nexus-teal" : "text-warning")}>{serial.productName} · {serial.inWarranty ? `อยู่ในประกันถึง ${serial.warrantyEndDate}` : serial.warrantyEndDate ? `หมดประกัน ${serial.warrantyEndDate}` : "ไม่มีข้อมูลประกัน"}</p>)}
+        </Field>
+        <Field label="สินค้า/อุปกรณ์"><PillInput value={f.productName || ""} onChange={(e) => set({ productName: e.target.value })} className="w-full h-10 text-sm" /></Field>
+      </div>
+      <Field label="ความเร่งด่วน (กำหนดเวลาแก้ไข)">
+        <Chips options={(Object.keys(SLA_HOURS) as TicketPriority[]).reverse().map((k) => ({ value: k, label: TICKET_PRIORITY[k] }))} value={f.priority} onChange={(v) => set({ priority: v })} />
+      </Field>
+      <Field label="ช่องทางที่แจ้ง"><PillSelect value={f.channel} onChange={(e) => set({ channel: e.target.value })} className="w-full sm:w-[240px] h-10 text-sm">{TICKET_CHANNELS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}</PillSelect></Field>
+    </Drawer>
+  );
+}
+
+function TicketDrawer({ ticket: t, people, canEdit, busy, onClose, onAction }: { ticket: any; people: any[]; canEdit: boolean; busy: boolean; onClose: () => void; onAction: (action: string, extra?: any) => Promise<any> }) {
+  const [assignees, setAssignees] = useState<string[]>([]);
+  const [date, setDate] = useState(today());
+  const [time, setTime] = useState("");
+  const [note, setNote] = useState("");
+  const [mode, setMode] = useState<"" | "dispatch" | "cancel">("");
+  const isOpen = OPEN_TICKET_STATUSES.includes(t.status);
+  const st = TICKET_STATUS[t.status as keyof typeof TICKET_STATUS];
+  return (
+    <Drawer title={`${t.ticketNo} · ${ticketCategoryLabel(t.category)}`} onClose={onClose}
+      footer={canEdit && <>
+        {isOpen && mode !== "cancel" && <PillButton variant="ghost" className="h-10 px-4 text-xs text-danger" onClick={() => setMode("cancel")}>ยกเลิกเรื่อง</PillButton>}
+        {isOpen && <PillButton variant="glass" className="h-10 px-4 text-xs" disabled={busy} onClick={() => onAction("resolve", { note: "แก้ไขแล้ว (ไม่ต้องส่งช่าง)" })}><Check size={14} className="mr-1" /> แก้ไขแล้ว</PillButton>}
+        {t.status === "RESOLVED" && <PillButton variant="confirm" className="h-10 px-4 text-xs font-bold" disabled={busy} onClick={() => onAction("close")}>ปิดเรื่อง</PillButton>}
+        {["RESOLVED", "CLOSED"].includes(t.status) && <PillButton variant="glass" className="h-10 px-4 text-xs" disabled={busy} onClick={() => onAction("reopen")}>เปิดเรื่องอีกครั้ง</PillButton>}
+        {isOpen && mode !== "dispatch" && <PillButton variant="primary" className="h-10 px-5 text-xs font-bold" onClick={() => setMode("dispatch")}><Wrench size={14} className="mr-1" /> ส่งให้ช่าง</PillButton>}
+      </>}>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 flex-wrap"><StatusBadge status={st?.badge || "pending"} label={st?.label || t.status} /><span className="text-[13px]"><Sla t={t} /></span></div>
+        <p className="text-[16px] text-white leading-relaxed whitespace-pre-line">{t.symptom}</p>
+        <div className="text-[13px] text-white/60 space-y-1">
+          <p>{t.customerName || "-"}{t.phone ? <> · <a href={`tel:${t.phone}`} className="text-nexus-teal inline-flex items-center gap-1"><Phone size={12} /> {t.phone}</a></> : null}</p>
+          {t.address && <p>{t.address}</p>}
+          {(t.serialNumber || t.productName) && <p>{t.productName} {t.serialNumber ? `· S/N ${t.serialNumber}` : ""} {t.inWarranty ? <span className="text-nexus-teal">· อยู่ในประกัน</span> : null}</p>}
+          <p className="flex items-center gap-1"><Clock size={12} /> แจ้งเมื่อ {fmt(t.createdAt)} ทาง{ticketChannelLabel(t.channel)} · ต้องแก้ไขภายใน {fmt(t.slaDueAt)}</p>
         </div>
       </div>
 
-      <Modal 
-        isOpen={isCreateOpen} 
-        onClose={() => setIsCreateOpen(false)} 
-        title={activeView === "tickets" ? "เปิดบันทึกแจ้งซ่อม" : "กำหนดแผนซ่อมบำรุง"}
-        maxWidth="max-w-7xl"
-      >
-        <div className="flex h-full divide-x divide-white/5 bg-surface-0">
-           <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
-              <div className="max-w-4xl mx-auto space-y-12">
-                 <PillTabs 
-                    tabs={activeView === "tickets" ? [
-                       { id: "basic", label: "ข้อมูลแจ้งซ่อม" },
-                       { id: "assign", label: "การมอบหมายและลูกค้า" },
-                       { id: "sla", label: "SLA และไฟล์แนบ" }
-                    ] : [
-                       { id: "basic", label: "รายละเอียดแผน PM" },
-                       { id: "checklist", label: "รายการตรวจสอบ" },
-                       { id: "automation", label: "การตั้งค่าอัตโนมัติ" }
-                    ]}
-                    activeTab={modalActiveTab}
-                    onTabChange={setModalActiveTab}
-                 />
-                 <div className="space-y-10 animate-in fade-in slide-in-from-left-4 duration-500">
-                    {activeView === "tickets" ? (
-                       <>
-                          {modalActiveTab === "basic" && (
-                             <div className="space-y-10">
-                                <div className="space-y-3">
-                                   <div className="flex items-center gap-3 text-nexus-teal"><Zap size={18} /><h4 className="text-[13px] font-bold uppercase tracking-widest">1. รายละเอียดปัญหา</h4></div>
-                                   <div className="space-y-3">
-                                      <div className="space-y-2">
-                                         <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">หัวข้อปัญหา / อาการที่พบ *</label>
-                                         <PillInput placeholder="ระบุอาการเสียเบื้องต้น..." className="w-full" />
-                                      </div>
-                                      <div className="grid grid-cols-2 gap-5">
-                                         <div className="space-y-2">
-                                            <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">ประเภทบริการ</label>
-                                            <PillSelect className="w-full px-6">
-                                               <option>Incident (แจ้งซ่อม/เสีย)</option>
-                                               <option>Request (ขอรับบริการใหม่)</option>
-                                               <option>Question (สอบถามข้อมูล)</option>
-                                               <option>Bug (แจ้งบัคระบบ)</option>
-                                            </PillSelect>
-                                         </div>
-                                         <div className="space-y-2">
-                                            <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">ความเร่งด่วน</label>
-                                            <PillSelect className="w-full px-6 text-danger font-bold">
-                                               <option>LOW (ทั่วไป)</option>
-                                               <option>MEDIUM (ปกติ)</option>
-                                               <option>HIGH (ด่วน)</option>
-                                               <option>URGENT (ด่วนที่สุด)</option>
-                                            </PillSelect>
-                                         </div>
-                                      </div>
-                                      <div className="space-y-2">
-                                         <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">คำอธิบายรายละเอียดเพิ่มเติม</label>
-                                         <textarea 
-                                            className="w-full h-32 rounded-lg bg-white/[0.03] border border-white/10 text-white text-[14px] font-bold p-5 focus:outline-none focus:border-nexus-teal/40 transition-all placeholder:text-white/5"
-                                            placeholder="ระบุรายละเอียดเพิ่มเติมเพื่อช่วยในการคัดกรองงาน..."
-                                         />
-                                      </div>
-                                   </div>
-                                </div>
-                             </div>
-                          )}
+      {mode === "dispatch" && (
+        <GlassCard className="p-4 space-y-3 border-nexus-teal/30">
+          <p className="text-[14px] font-semibold text-white">ส่งให้ช่าง (สร้างงานในศูนย์จ่ายงาน)</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="วันที่นัด"><PillInput type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full h-10 text-sm" /></Field>
+            <Field label="เวลา"><PillInput type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full h-10 text-sm" /></Field>
+          </div>
+          <Field label="ผู้รับงาน (ไม่เลือก = ไปจ่ายในศูนย์จ่ายงาน)">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[220px] overflow-y-auto">
+              {people.map((p) => {
+                const on = assignees.includes(p.uid);
+                return (
+                  <button key={p.uid} type="button" onClick={() => setAssignees((a) => (on ? a.filter((x) => x !== p.uid) : [...a, p.uid]))} className={cn("flex items-center gap-2 px-3 py-2 rounded-xl border text-left", on ? "bg-nexus-teal/10 border-nexus-teal/40" : "border-white/10 hover:bg-white/5")}>
+                    <span className={cn("w-5 h-5 rounded-md border flex items-center justify-center", on ? "bg-nexus-teal border-nexus-teal text-surface-0" : "border-white/30")}>{on && <Check size={13} strokeWidth={3} />}</span>
+                    <span className="min-w-0"><span className="block text-[13px] text-white truncate">{p.name}</span><span className="block text-[11px] text-white/40">งานค้าง {p.openJobs}</span></span>
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+          <Field label="หมายเหตุถึงช่าง"><PillInput value={note} onChange={(e) => setNote(e.target.value)} className="w-full h-10 text-sm" /></Field>
+          <div className="flex justify-end gap-2">
+            <PillButton variant="ghost" className="h-9 px-4 text-xs" onClick={() => setMode("")}>ยกเลิก</PillButton>
+            <PillButton variant="confirm" className="h-9 px-5 text-xs font-bold" disabled={busy} onClick={async () => { const d = await onAction("toJob", { assignees, scheduledDate: date, scheduledTime: time, note, msg: "" }); if (d) { setMode(""); setNote(""); } }}>สร้างงาน{assignees.length ? "และจ่ายงาน" : ""}</PillButton>
+          </div>
+        </GlassCard>
+      )}
+      {mode === "cancel" && (
+        <GlassCard className="p-4 space-y-2 border-danger/30">
+          <Field label="เหตุผลที่ยกเลิก"><PillInput value={note} onChange={(e) => setNote(e.target.value)} className="w-full h-10 text-sm" /></Field>
+          <div className="flex justify-end gap-2">
+            <PillButton variant="ghost" className="h-9 px-4 text-xs" onClick={() => setMode("")}>ไม่ยกเลิก</PillButton>
+            <PillButton variant="ghost" className="h-9 px-4 text-xs text-danger border border-danger/30" disabled={busy || note.trim().length < 3} onClick={async () => { if (await onAction("cancel", { note })) { setMode(""); setNote(""); } }}>ยืนยันยกเลิก</PillButton>
+          </div>
+        </GlassCard>
+      )}
 
-                          {modalActiveTab === "assign" && (
-                             <div className="space-y-10">
-                                <div className="space-y-3">
-                                   <div className="flex items-center gap-3 text-nexus-blue"><User size={18} /><h4 className="text-[13px] font-bold uppercase tracking-widest">2. ข้อมูลผู้ขอรับบริการและการมอบหมาย</h4></div>
-                                   <div className="space-y-3">
-                                      <div className="grid grid-cols-2 gap-5">
-                                         <div className="space-y-2">
-                                            <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">ลูกค้า / นิติบุคคล</label>
-                                            <PillSelect className="w-full px-6">
-                                               <option>เลือกรายชื่อลูกค้า...</option>
-                                               <option>Hospital A</option>
-                                               <option>Site X (Condo)</option>
-                                            </PillSelect>
-                                         </div>
-                                         <div className="space-y-2">
-                                            <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">โครงการที่เกี่ยวข้อง</label>
-                                            <PillSelect className="w-full px-6">
-                                               <option>ไม่ระบุโครงการ...</option>
-                                               <option>PRJ-26-001: LED Wall</option>
-                                            </PillSelect>
-                                         </div>
-                                      </div>
-                                      <div className="space-y-2">
-                                         <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">วิศวกรผู้รับผิดชอบ</label>
-                                         <PillSelect className="w-full px-6">
-                                            <option>เลือกวิศวกร...</option>
-                                            <option>Kriangkrai M.</option>
-                                            <option>Somchai J.</option>
-                                         </PillSelect>
-                                      </div>
-                                   </div>
-                                </div>
-                             </div>
-                          )}
+      {t.jobs?.length > 0 && (
+        <GlassCard className="p-4 space-y-2">
+          <p className="text-[14px] font-semibold text-white">งานช่างที่ผูกกับเรื่องนี้</p>
+          {t.jobs.map((j: any) => (
+            <div key={j.jobNo} className="flex items-center justify-between text-[13px]">
+              <span className="text-white/80 font-mono">{j.jobNo}</span>
+              <span className="text-white/60">{j.assigneeNames?.join(", ") || "รอจ่ายงาน"} {j.scheduledDate ? `· ${j.scheduledDate}` : ""}</span>
+              <StatusBadge status={JOB_STATUS[j.status as keyof typeof JOB_STATUS]?.badge || "pending"} label={JOB_STATUS[j.status as keyof typeof JOB_STATUS]?.label || j.status} />
+            </div>
+          ))}
+        </GlassCard>
+      )}
 
-                          {modalActiveTab === "sla" && (
-                             <div className="space-y-10">
-                                <div className="space-y-3">
-                                   <div className="flex items-center gap-3 text-white"><ShieldCheck size={18} /><h4 className="text-[13px] font-bold uppercase tracking-widest">3. การควบคุมคุณภาพและไฟล์แนบ</h4></div>
-                                   <div className="space-y-3">
-                                      <div className="grid grid-cols-2 gap-5">
-                                         <div className="space-y-2">
-                                            <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">เส้นตายตามสัญญา</label>
-                                            <PillInput type="datetime-local" className="w-full" />
-                                         </div>
-                                         <div className="space-y-2">
-                                            <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">แท็ก</label>
-                                            <PillInput placeholder="เช่น #Internet, #CCTV..." className="w-full" />
-                                         </div>
-                                      </div>
-                                      <div className="space-y-2">
-                                         <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">ไฟล์แนบ / ภาพถ่ายอาการเสีย</label>
-                                         <div className="p-5 rounded-xl bg-white/[0.02] border border-dashed border-white/10 flex flex-col items-center justify-center text-center space-y-3 hover:bg-white/[0.04] transition-all cursor-pointer">
-                                            <Plus size={32} className="text-white/10" />
-                                            <div className="space-y-1">
-                                               <p className="text-[12px] font-bold text-white/40 uppercase tracking-widest">ลากไฟล์มาวางที่นี่ หรือคลิกเพื่ออัปโหลด</p>
-                                               <p className="text-[12px] text-white/10 font-medium uppercase tracking-widest">รองรับ JPG, PNG, PDF (สูงสุด 10MB)</p>
-                                            </div>
-                                         </div>
-                                      </div>
-                                   </div>
-                                </div>
-                             </div>
-                          )}
-                       </>
-                    ) : (
-                       <>
-                          {modalActiveTab === "basic" && (
-                             <div className="space-y-10 animate-in slide-in-from-left-4 duration-500">
-                                <div className="space-y-3">
-                                   <div className="flex items-center gap-3 text-nexus-teal"><Calendar size={18} /><h4 className="text-[13px] font-bold uppercase tracking-widest">1. รายละเอียดแผนบำรุงรักษา</h4></div>
-                                   <div className="space-y-3">
-                                      <div className="space-y-2">
-                                         <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">ชื่อแผนงาน / รายละเอียดหลัก *</label>
-                                         <PillInput placeholder="เช่น แผนตรวจเช็คระบบเครือข่ายรายเดือน..." className="w-full" />
-                                      </div>
-                                      <div className="grid grid-cols-2 gap-5">
-                                         <div className="space-y-2">
-                                            <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">ความถี่ในการเข้าบริการ</label>
-                                            <PillSelect className="w-full px-6">
-                                               <option>Monthly (รายเดือน)</option>
-                                               <option>Quarterly (ราย 3 เดือน)</option>
-                                               <option>Semi-Annually (ราย 6 เดือน)</option>
-                                               <option>Annually (รายปี)</option>
-                                            </PillSelect>
-                                         </div>
-                                         <div className="space-y-2">
-                                            <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">วันที่เริ่มแผนงาน</label>
-                                            <PillInput type="date" className="w-full" />
-                                         </div>
-                                      </div>
-                                      <div className="grid grid-cols-2 gap-5">
-                                         <div className="space-y-2">
-                                            <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">ลูกค้าที่รับบริการ</label>
-                                            <PillSelect className="w-full px-6">
-                                               <option>เลือกรายชื่อลูกค้า...</option>
-                                               <option>Hospital A</option>
-                                               <option>Site X (Condo)</option>
-                                            </PillSelect>
-                                         </div>
-                                         <div className="space-y-2">
-                                            <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">โครงการที่เกี่ยวข้อง</label>
-                                            <PillSelect className="w-full px-6">
-                                               <option>ระบุโครงการ...</option>
-                                               <option>PRJ-26-001: LED Wall</option>
-                                            </PillSelect>
-                                         </div>
-                                      </div>
-                                      <div className="space-y-2">
-                                         <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">อุปกรณ์ที่ต้องตรวจสอบ *</label>
-                                         <PillSelect className="w-full px-6 text-nexus-blue">
-                                            <option>เลือกอุปกรณ์ในโครงการ...</option>
-                                            <option>Cisco Catalyst 9200 (SN-2600412)</option>
-                                            <option>Core Server R740 (SN-SRV-99)</option>
-                                         </PillSelect>
-                                      </div>
-                                   </div>
-                                </div>
-                             </div>
-                          )}
-
-                          {modalActiveTab === "checklist" && (
-                             <div className="space-y-3 animate-in slide-in-from-right-4 duration-500">
-                                <div className="flex justify-between items-center">
-                                   <div className="flex items-center gap-3 text-nexus-blue">
-                                      <ClipboardList size={18} />
-                                      <h4 className="text-[14px] font-medium text-white uppercase tracking-widest">รายการตรวจสอบมาตรฐาน</h4>
-                                   </div>
-                                   <PillButton variant="glass"><Plus size={14} /> เพิ่มรายการ</PillButton>
-                                </div>
-                                <div className="space-y-3">
-                                   {[
-                                      "ตรวจสอบความร้อนของอุปกรณ์",
-                                      "ทำความสะอาดตัวเครื่องและช่องระบายอากาศ",
-                                      "สำรองข้อมูลระบบ",
-                                      "อัปเดต Firmware ล่าสุด",
-                                      "ตรวจสอบสถานะไฟสำรอง"
-                                   ].map((task, idx) => (
-                                      <div key={idx} className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-nexus-teal/30 transition-all group">
-                                         <div className="w-6 h-6 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal text-[11px] font-medium">{idx + 1}</div>
-                                         <p className="flex-1 text-[14px] font-medium text-white/60">{task}</p>
-                                         <PillButton variant="ghost" className="w-8 p-0 opacity-0 group-hover:opacity-100 transition-all hover:text-danger"><X size={14} /></PillButton>
-                                      </div>
-                                   ))}
-                                </div>
-                             </div>
-                          )}
-
-                          {modalActiveTab === "automation" && (
-                             <div className="space-y-10 animate-in fade-in duration-500">
-                                <div className="space-y-3">
-                                   <div className="flex items-center gap-3 text-nexus-blue"><Activity size={18} /><h4 className="text-[13px] font-bold uppercase tracking-widest">3. การตั้งค่าอัตโนมัติและคุณภาพ</h4></div>
-                                   <div className="space-y-3">
-                                      <div className="grid grid-cols-2 gap-5">
-                                         <div className="flex items-center justify-between p-5 rounded-xl bg-white/[0.02] border border-white/5">
-                                            <div>
-                                               <p className="text-[13px] font-bold text-white uppercase tracking-widest">เปิด Ticket อัตโนมัติ</p>
-                                               <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest">สร้างงานล่วงหน้า 7 วัน</p>
-                                            </div>
-                                            <div className="w-12 h-6 bg-nexus-teal/20 rounded-full p-1 cursor-pointer">
-                                               <div className="w-4 h-4 bg-nexus-teal rounded-full translate-x-6" />
-                                            </div>
-                                         </div>
-                                         <div className="flex items-center justify-between p-5 rounded-xl bg-white/[0.02] border border-white/5">
-                                            <div>
-                                               <p className="text-[13px] font-bold text-white uppercase tracking-widest">บังคับถ่ายภาพหลักฐาน</p>
-                                               <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest">ต้องแนบรูปก่อนปิด Ticket</p>
-                                            </div>
-                                            <div className="w-12 h-6 bg-white/10 rounded-full p-1 cursor-pointer">
-                                               <div className="w-4 h-4 bg-white/20 rounded-full" />
-                                            </div>
-                                         </div>
-                                      </div>
-                                      <div className="grid grid-cols-2 gap-5">
-                                         <div className="space-y-2">
-                                            <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">วิศวกรผู้ดูแลหลัก</label>
-                                            <PillSelect className="w-full px-6">
-                                               <option>เลือกรายชื่อวิศวกร...</option>
-                                               <option>Kriangkrai M.</option>
-                                               <option>Somchai J.</option>
-                                            </PillSelect>
-                                         </div>
-                                         <div className="space-y-2">
-                                            <label className="text-[12px] font-medium text-white/30 uppercase tracking-widest ml-1">SLA Completion (Days)</label>
-                                            <PillInput type="number" placeholder="เช่น 3 วันหลังวันนัด" className="w-full" />
-                                         </div>
-                                      </div>
-                                   </div>
-                                </div>
-                             </div>
-                          )}
-                       </>
-                    )}
-                 </div>
-              </div>
-           </div>
-           <div className="w-[420px] flex flex-col bg-surface-1 p-12 flex-shrink-0">
-              <div className="flex-1 space-y-3">
-                 <div className="p-5 rounded-xl bg-white/[0.03] border border-white/10 space-y-3">
-                    <div className="flex items-center gap-3"><div className="w-2 h-2 rounded-full bg-nexus-teal animate-ping" /><h5 className="text-[14px] font-medium text-white/60 uppercase tracking-widest">Ticket Intelligence</h5></div>
-                    <div className="flex justify-between items-center py-2 border-b border-white/5"><span className="text-[13px] text-white/30">ID อ้างอิง</span><span className="text-sm font-bold text-nexus-teal">AUTO_SYSTEM</span></div>
-                 </div>
-              </div>
-              <div className="space-y-3 pt-10 border-t border-white/5">
-                 <PillButton className="w-full shadow-neon-teal" onClick={() => { setIsCreateOpen(false); showToast("เปิด Ticket แจ้งซ่อมสำเร็จ"); }}>
-                    <LifeBuoy size={22} />ยืนยันเปิด Ticket
-                 </PillButton>
-                 <PillButton variant="ghost" className="w-full" onClick={() => setIsCreateOpen(false)}>ยกเลิกรายการ</PillButton>
-              </div>
-           </div>
+      {canEdit && mode === "" && (
+        <div className="flex gap-2">
+          <PillInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="บันทึกการติดตาม เช่น โทรแจ้งลูกค้าแล้ว" className="flex-1 h-10 text-sm" />
+          <PillButton variant="glass" className="h-10 px-4 text-xs" disabled={busy || !note.trim()} onClick={async () => { if (await onAction("note", { note })) setNote(""); }}>บันทึก</PillButton>
         </div>
-      </Modal>
-
-      <Toast message={toast.message} isVisible={toast.isVisible} onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} />
-    </div>
-  );
-}
-
-function TicketKanban({ tickets }: { tickets: any[] }) {
-  const newTickets = tickets.filter(t => t.status === 'new' || t.status === 'pending');
-  const inProgressTickets = tickets.filter(t => t.status === 'in-progress');
-  const atRiskTickets = tickets.filter(t => t.status === 'at-risk');
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[500px] animate-in slide-in-from-bottom duration-500">
-       <KanbanColumn title="รายการใหม่ / คัดกรอง" count={newTickets.length}>
-         {newTickets.map(t => <TicketCard key={t.id} id={t.id} title={t.title} user={t.user} urgency={t.urgency} />)}
-       </KanbanColumn>
-       <KanbanColumn title="กำลังดำเนินการ" count={inProgressTickets.length} color="border-nexus-blue/20">
-         {inProgressTickets.map(t => <TicketCard key={t.id} id={t.id} title={t.title} user={t.user} urgency={t.urgency} />)}
-       </KanbanColumn>
-       <KanbanColumn title="รอ / เสี่ยงผิด SLA" count={atRiskTickets.length} color="border-danger/20">
-         {atRiskTickets.map(t => <TicketCard key={t.id} id={t.id} title={t.title} user={t.user} urgency={t.urgency} />)}
-       </KanbanColumn>
-    </div>
-  );
-}
-
-function KanbanColumn({ title, count, children, color = "border-white/5" }: { title: string, count: number, children: any, color?: string }) {
-  return (
-    <div className={cn("flex flex-col gap-4 p-4 rounded-3xl bg-white/[0.02] border", color)}>
-       <div className="flex items-center justify-between px-2">
-          <span className="tactical-label">{title}</span>
-          <span className="text-[14px] font-medium text-white/20">{count}</span>
-       </div>
-       <div className="flex-1 space-y-3">
-          {children}
-       </div>
-    </div>
-  );
-}
-
-function TicketCard({ id, title, user, urgency }: { id: string, title: string, user: string, urgency: string }) {
-  return (
-    <div className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-nexus-teal/30 transition-all cursor-grab active:cursor-grabbing">
-       <div className="flex justify-between items-start mb-2">
-          <span className="text-[14px] font-medium text-nexus-blue uppercase">{id}</span>
-          <span className={cn(
-             "text-[14px] font-medium uppercase px-1.5 py-0.5 rounded",
-             urgency === "Urgent" ? "bg-danger/20 text-danger" : "bg-white/5 text-white/40"
-          )}>{urgency}</span>
-       </div>
-       <p className="text-xs font-bold text-white mb-2 line-clamp-2">{title}</p>
-       <div className="flex items-center gap-2 text-[14px] font-medium text-white/30 uppercase">
-          <User size={10} /> {user}
-       </div>
-    </div>
-  );
-}
-
-function PMSchedulingView({ pmPlans }: { pmPlans: any[] }) {
-  if (!pmPlans || pmPlans.length === 0) {
-    return (
-      <div className="h-[400px] flex items-center justify-center tactical-label opacity-20 italic">
-         ระบบสร้างปฏิทินแผนซ่อมบำรุงอัตโนมัติ (ล่วงหน้า 15 วัน)
+      )}
+      <div className="space-y-1.5">
+        <p className="text-[13px] font-semibold text-white/70">ประวัติ</p>
+        {[...(t.history || [])].reverse().map((h: any, i: number) => (
+          <p key={i} className="text-[12px] text-white/50"><span className="font-mono text-white/40">{fmt(h.at)}</span> · {h.action}{h.note ? `: ${h.note}` : ""} · {h.byName}</p>
+        ))}
       </div>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-1 gap-4 h-[500px] animate-in slide-in-from-bottom duration-500 overflow-y-auto pr-2 custom-scrollbar">
-       {pmPlans.map(plan => (
-         <div key={plan.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-nexus-teal/30 transition-all flex items-center justify-between">
-           <div>
-             <h4 className="text-sm font-bold text-white">{plan.name}</h4>
-             <p className="text-xs text-white/50">{plan.customer} - {plan.frequency}</p>
-           </div>
-           <StatusBadge status={plan.status || 'pending'} label={plan.status || 'รอดำเนินการ'} />
-         </div>
-       ))}
-    </div>
+    </Drawer>
   );
 }
-
-function SLABar({ label, value, color = "bg-nexus-teal" }: { label: string, value: number, color?: string }) {
-  return (
-    <div className="space-y-1.5">
-       <div className="flex justify-between text-[14px] font-medium uppercase">
-          <span className="text-white/30">{label}</span>
-          <span className="text-white/80">{value}%</span>
-       </div>
-       <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-          <div className={cn("h-full", color)} style={{ width: value + "%" }} />
-       </div>
-    </div>
-  );
-}
-
-function HealthItem({ name, issue, project }: { name: string, issue: string, project: string }) {
-  return (
-    <div className="flex gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-       <div className="w-8 h-8 rounded-lg bg-danger/10 flex items-center justify-center text-danger">
-          <AlertCircle size={14} />
-       </div>
-       <div>
-          <p className="text-xs font-bold text-white">{name}</p>
-          <p className="text-[10px] text-danger/60 font-normal uppercase tracking-widest">{issue}</p>
-          <p className="text-xs text-white/20 uppercase font-medium">{project}</p>
-       </div>
-    </div>
-  );
-}
-
-function SLARow({ type, target, actual, trend, status }: { type: string, target: string, actual: string, trend: string, status: any }) {
-  return (
-    <NexusTableRow>
-      <NexusTableCell className="font-bold text-white">{type}</NexusTableCell>
-      <NexusTableCell className="w-[150px] text-[12px] font-medium text-white/40 uppercase tracking-widest">{target}</NexusTableCell>
-      <NexusTableCell className="w-[120px] text-[12px] font-medium text-nexus-teal mono-numbers">{actual}</NexusTableCell>
-      <NexusTableCell className="w-[120px] text-[12px] font-medium text-white/20 uppercase tracking-widest">{trend}</NexusTableCell>
-      <NexusTableCell className="text-center w-[180px]">
-        <StatusBadge status={status} label="สมบูรณ์" />
-      </NexusTableCell>
-    </NexusTableRow>
-  );
-}
-

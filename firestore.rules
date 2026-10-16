@@ -196,7 +196,7 @@ service cloud.firestore {
           // ทะเบียนบัญชีธนาคาร เช็ค และการกระทบยอด: บันทึกผ่าน /api/finance/* เท่านั้น
           'bank_accounts', 'cheques', 'bank_reconciliations',
           // งานมอบหมาย: จ่ายงาน/รับงาน/ปิดงานผ่าน /api/jobs เท่านั้น
-          'jobs'];
+          'jobs', 'service_tickets'];
       }
       // ข้อมูลการเงินอ่านได้เฉพาะตำแหน่งที่เกี่ยวข้อง (ส่วนอื่นอ่านได้ทุกคนในบริษัท)
       function restrictedRead(collection) {

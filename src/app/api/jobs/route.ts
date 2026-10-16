@@ -81,6 +81,20 @@ async function resolveAssignees(companyId: string, raw: any) {
   return { assignees: ok.map((s) => s.id), assigneeNames: ok.map((s) => String(s.data()!.name || s.data()!.displayName || s.data()!.email || s.id)) };
 }
 
+/** ใบแจ้งซ่อมที่ผูกกับงาน: อ่านในช่วง read ของทรานแซกชัน แล้วอัปเดตสถานะตามงาน */
+async function readTicket(tx: FirebaseFirestore.Transaction, companyId: string, j: any) {
+  const id = String(j?.links?.ticketId || "");
+  if (!id || id.includes("/")) return null;
+  const ref = adminDb.doc(`companies/${companyId}/service_tickets/${id}`);
+  const snap = await tx.get(ref);
+  return snap.exists ? { ref, status: String(snap.data()!.status) } : null;
+}
+function syncTicket(tx: FirebaseFirestore.Transaction, t: { ref: FirebaseFirestore.DocumentReference; status: string } | null, next: "IN_PROGRESS" | "RESOLVED", u: ApiUser, jobNo: string) {
+  if (!t || !["NEW", "SCHEDULED", "IN_PROGRESS"].includes(t.status) || t.status === next) return;
+  tx.update(t.ref, { status: next, ...(next === "RESOLVED" ? { resolvedAt: admin.firestore.FieldValue.serverTimestamp() } : {}), updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    history: admin.firestore.FieldValue.arrayUnion({ at: new Date().toISOString(), by: u.uid, byName: u.email || u.uid, action: next === "RESOLVED" ? "ช่างปิดงานแล้ว" : "ช่างรับงานแล้ว", note: jobNo }) });
+}
+
 const hist = (u: ApiUser, action: string, note = "") => ({ at: nowIso(), by: u.uid, byName: u.email || u.uid, action, ...(note ? { note } : {}) });
 const serialize = (id: string, d: any) => ({ ...d, jobNo: d.jobNo || id, createdAt: d.createdAt?.toDate?.()?.toISOString?.() || null, updatedAt: d.updatedAt?.toDate?.()?.toISOString?.() || null });
 
@@ -214,15 +228,18 @@ export async function POST(request: Request) {
         // ผู้รับงานยืนยันรับอุปกรณ์ครบตามรายการ (วัสดุที่มีรหัสสินค้าถูกตัดสต็อกแล้ว)
         const equipment = (j.equipment || []).map((e) => ({ ...e, issuedQty: e.qty }));
         tx.update(ref, { status: "ACCEPTED", equipment, acceptedBy: apiUser.uid, acceptedAt: now, updatedAt: now, history: admin.firestore.FieldValue.arrayUnion(hist(apiUser, "รับงานและรับอุปกรณ์")) });
+        syncTicket(tx, ticket, "IN_PROGRESS", apiUser, jobNo);
         accepted = true;
       };
       let current: Job | null = null;
+      let ticket: Awaited<ReturnType<typeof readTicket>> = null;
       const validate = async (tx: FirebaseFirestore.Transaction) => {
         const snap = await tx.get(ref);
         const j = snap.data() as Job;
         mustAssignee(j);
         if (j.status !== "ASSIGNED") throw new ApiAuthError(409, j.status === "ACCEPTED" || j.status === "IN_PROGRESS" ? "รับงานนี้ไปแล้ว" : "งานนี้ไม่ได้อยู่ในสถานะรอรับงาน");
         current = j;
+        ticket = await readTicket(tx, companyId, j);
       };
       if (materials.length) {
         // วัสดุตัดสต็อกในทรานแซกชันเดียวกับการรับงาน (สต็อกไม่พอ = รับงานไม่ได้ แจ้งผู้จ่ายงานปรับรายการ)
@@ -246,6 +263,7 @@ export async function POST(request: Request) {
         if (!snap.exists) throw new ApiAuthError(404, "ไม่พบงาน");
         const j = snap.data() as Job;
         if (action === "returnTools") { if (!dispatcher) mustAssignee(j); } else mustAssignee(j);
+        const ticket = action === "complete" ? await readTicket(tx, companyId, j) : null;
         if (action === "reject") {
           if (j.status !== "ASSIGNED") throw new ApiAuthError(409, "ปฏิเสธได้เฉพาะงานที่ยังไม่รับ");
           const reason = str(body.reason, 300);
@@ -282,6 +300,7 @@ export async function POST(request: Request) {
           ...(body.returnTools ? { equipment } : {}),
           history: admin.firestore.FieldValue.arrayUnion(hist(apiUser, "ปิดงาน", note)),
         });
+        syncTicket(tx, ticket, "RESOLVED", apiUser, jobNo);
         if ((j as any).createdBy && (j as any).createdBy !== apiUser.uid) notifyInTx(tx, companyId, { type: "JOB_DONE", title: `${jobNo} เสร็จแล้ว`, message: j.title, link: "/service/dispatch", targetUserId: (j as any).createdBy, documentNo: jobNo }, apiUser.uid);
         return "DONE";
       });

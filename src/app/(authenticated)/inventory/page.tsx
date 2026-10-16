@@ -557,6 +557,13 @@ export default function InventoryPage() {
             <PillButton
               variant="glass"
               className="gap-1.5"
+              onClick={() => router.push("/inventory/locations")}
+            >
+              <Layout size={14} /> ผังคลังและชั้นวาง
+            </PillButton>
+            <PillButton
+              variant="glass"
+              className="gap-1.5"
               onClick={() => router.push("/inventory/stock-card")}
             >
               <History size={14} /> บัญชีคุมสินค้า

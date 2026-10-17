@@ -97,7 +97,7 @@ service cloud.firestore {
     // ---------- Root collections (generic) ----------
     // collection ที่มีกฎเฉพาะด้านล่างถูกตัดออกจาก wildcard เพื่อไม่ให้ wildcard อนุญาตทับ
     function isSpecialRoot(collectionName) {
-      return collectionName in ['users', 'companies', 'counters', 'periodClosings', 'logs', 'activity_logs', 'employees', 'attendance', 'journal_entries', 'taxFilings', 'assetDepreciations'];
+      return collectionName in ['users', 'companies', 'counters', 'periodClosings', 'logs', 'activity_logs', 'employees', 'attendance', 'journal_entries', 'taxFilings', 'assetDepreciations', 'service_tickets', 'rate_limits'];
     }
 
     match /{collectionName}/{documentId} {
@@ -168,6 +168,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // คำขอแจ้งซ่อมจากพอร์ทัลรุ่นเก่า: อ่านได้ในบริษัท (รอรับเรื่อง) — คำขอใหม่เข้า /api/portal/repair
+    // rate_limits: ตัวนับของ endpoint สาธารณะ อยู่ใน isSpecialRoot และไม่มีกฎ = client เข้าไม่ได้
+    match /service_tickets/{ticketId} {
+      allow get: if isMember() && canGet();
+      allow list: if isMember() && canList();
+      allow write: if false;
+    }
+
     // ---------- Append-only audit logs ----------
     match /logs/{logId} {
       allow get: if isMember() && canGet();
@@ -196,7 +204,9 @@ service cloud.firestore {
           // ทะเบียนบัญชีธนาคาร เช็ค และการกระทบยอด: บันทึกผ่าน /api/finance/* เท่านั้น
           'bank_accounts', 'cheques', 'bank_reconciliations',
           // งานมอบหมาย: จ่ายงาน/รับงาน/ปิดงานผ่าน /api/jobs เท่านั้น
-          'jobs', 'service_tickets'];
+          'jobs', 'service_tickets',
+          // คำขอแจ้งซ่อมจากลูกค้า: รับผ่าน /api/portal/repair และรับเรื่องผ่าน /api/service/tickets
+          'portal_requests'];
       }
       // ข้อมูลการเงินอ่านได้เฉพาะตำแหน่งที่เกี่ยวข้อง (ส่วนอื่นอ่านได้ทุกคนในบริษัท)
       function restrictedRead(collection) {

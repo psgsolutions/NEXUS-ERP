@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { AlertTriangle, Check, Clock, Headset, Inbox, Loader2, Phone, Plus, RefreshCw, Search, ShieldCheck, Wrench, X } from "lucide-react";
+import { AlertTriangle, Check, Clock, Headset, Image as ImageIcon, Inbox, Link as LinkIcon, Loader2, Phone, Plus, RefreshCw, Search, ShieldCheck, Wrench, X } from "lucide-react";
 import { GlassCard, NexusSearchInput, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillInput, PillSelect, StatusBadge, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
@@ -30,7 +30,7 @@ function Sla({ t }: { t: any }) {
 
 export default function ServicePage() {
   const { companyId, roles } = useAuth();
-  const { showAlert } = useSystemDialog();
+  const { showAlert, showConfirm } = useSystemDialog();
   const canEdit = canAny(roles, ["sales:edit", "projects:edit", "inventory:edit", "projects:approve"]);
   const [tickets, setTickets] = useState<any[]>([]);
   const [portal, setPortal] = useState<any[]>([]);
@@ -41,6 +41,8 @@ export default function ServicePage() {
   const [form, setForm] = useState<any>(null);
   const [openNo, setOpenNo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [showAllPortal, setShowAllPortal] = useState(false);
 
   const call = useCallback(async (url: string, body: any) => {
     const res = await apiFetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, ...body }) });
@@ -87,6 +89,8 @@ export default function ServicePage() {
         </div>
         <div className="flex items-center gap-2">
           <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={load} disabled={loading}>{loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}</PillButton>
+          <PillButton variant="glass" className="h-9 px-4 text-xs" title="ลิงก์ให้ลูกค้าแจ้งซ่อมเอง (ส่งทาง LINE/อีเมล หรือทำเป็น QR)" onClick={async () => { const url = `${window.location.origin}/portal/repair?company=${encodeURIComponent(companyId || "")}`; try { await navigator.clipboard.writeText(url); showAlert(`คัดลอกลิงก์แจ้งซ่อมสำหรับลูกค้าแล้ว
+${url}`); } catch { showAlert(url, "ลิงก์แจ้งซ่อมสำหรับลูกค้า"); } }}><LinkIcon size={14} /> ลิงก์แจ้งซ่อม</PillButton>
           <Link href="/service/dispatch"><PillButton variant="glass" className="h-9 px-4 text-xs font-bold">ศูนย์จ่ายงาน</PillButton></Link>
           {canEdit && <PillButton variant="primary" className="h-9 px-5 text-xs font-bold" onClick={() => setForm({ priority: "NORMAL", category: "REPAIR", channel: "PHONE" })}><Plus size={14} className="mr-1" /> รับแจ้งซ่อม</PillButton>}
         </div>
@@ -104,12 +108,17 @@ export default function ServicePage() {
       {portal.length > 0 && canEdit && (
         <GlassCard className="p-4 space-y-2 border-warning/30">
           <p className="text-[14px] font-semibold text-white flex items-center gap-2"><Inbox size={16} className="text-warning" /> ลูกค้าแจ้งผ่านพอร์ทัล รอรับเรื่อง ({portal.length})</p>
-          {portal.slice(0, 5).map((p) => (
+          {(showAllPortal ? portal : portal.slice(0, 5)).map((p) => (
             <div key={p.id} className="flex items-center justify-between gap-3 text-[13px] border-t border-white/5 pt-2">
-              <span className="text-white/80 min-w-0 truncate">{fmt(p.createdAt)} · {p.phoneNumber} · {p.symptom}</span>
-              <PillButton variant="glass" className="h-8 px-3 text-xs flex-shrink-0" onClick={() => setForm({ priority: "NORMAL", category: "REPAIR", channel: "PORTAL", phone: p.phoneNumber, symptom: p.symptom, serialNumber: p.serialNumber, portalId: p.id })}>รับเรื่อง</PillButton>
+              <span className="text-white/80 min-w-0 truncate">{fmt(p.createdAt)} · {p.customerName ? `${p.customerName} ` : ""}{p.phoneNumber}{p.serialNumber ? ` · S/N ${p.serialNumber}` : ""} · {p.symptom}</span>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {p.hasPhoto && <PillButton variant="ghost" className="h-8 px-3 text-xs" disabled={busy} onClick={async () => { const d = await run("/api/service/tickets", { action: "portalPhoto", portalId: p.id }); if (d?.photo) setPhoto(d.photo); }}><ImageIcon size={13} /> รูป</PillButton>}
+                <PillButton variant="ghost" className="h-8 px-3 text-xs text-white/50" disabled={busy} onClick={async () => { if (await showConfirm(`ไม่รับเรื่องจากเบอร์ ${p.phoneNumber}? (เช่น แจ้งซ้ำหรือข้อความรบกวน)`)) run("/api/service/tickets", { action: "dismissPortal", portalId: p.id }); }}>ไม่รับ</PillButton>
+                <PillButton variant="glass" className="h-8 px-3 text-xs" onClick={() => setForm({ priority: "NORMAL", category: "REPAIR", channel: "PORTAL", customerName: p.customerName || "", phone: p.phoneNumber, symptom: p.symptom, serialNumber: p.serialNumber, portalId: p.id })}>รับเรื่อง</PillButton>
+              </div>
             </div>
           ))}
+          {portal.length > 5 && <button type="button" onClick={() => setShowAllPortal((v) => !v)} className="text-[13px] text-nexus-teal hover:underline">{showAllPortal ? "ย่อ" : `ดูทั้งหมด ${portal.length} รายการ`}</button>}
         </GlassCard>
       )}
 
@@ -136,11 +145,23 @@ export default function ServicePage() {
         </NexusTable>
       </GlassCard>
 
+      {photo && <PhotoViewer src={photo} onClose={() => setPhoto(null)} />}
       {form && <TicketForm initial={form} busy={busy} call={call} onClose={() => setForm(null)}
         onSave={async (ticket, portalId) => { const d = await run("/api/service/tickets", { action: "create", ticket, portalId }); if (d) { setForm(null); setOpenNo(d.ticketNo); } }} />}
       {ticket && !form && <TicketDrawer ticket={ticket} people={people} canEdit={canEdit} busy={busy} onClose={() => setOpenNo(null)}
         onAction={(action, extra = {}) => run(extra.url || "/api/service/tickets", { action, ticketNo: ticket.ticketNo, ...extra }, extra.msg)} />}
     </div>
+  );
+}
+
+function PhotoViewer({ src, onClose }: { src: string; onClose: () => void }) {
+  return createPortal(
+    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/85" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt="รูปที่ลูกค้าแนบ" className="relative max-w-full max-h-[90vh] rounded-2xl" />
+    </div>,
+    document.body
   );
 }
 

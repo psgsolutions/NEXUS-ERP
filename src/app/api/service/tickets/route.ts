@@ -15,6 +15,10 @@ import { SLA_HOURS, TICKET_CATEGORIES, TICKET_CHANNELS, jobTypeForCategory, type
  *  - { action: "list" }                                   ใบแจ้งทั้งหมด + คำขอจากพอร์ทัลลูกค้าที่ยังไม่รับเรื่อง
  *  - { action: "lookupSerial", serial }                   ตรวจข้อมูลรับประกันจากหมายเลขเครื่อง
  *  - { action: "create", ticket, portalId? }              รับแจ้ง (portalId = รับเรื่องจากพอร์ทัล)
+ *  - { action: "portalPhoto", portalId }                  รูปที่ลูกค้าแนบมากับคำขอจากพอร์ทัล
+ *  - { action: "dismissPortal", portalId, note? }         ไม่รับเรื่อง (สแปม/ซ้ำ)
+ * คำขอจากพอร์ทัลอยู่ที่ companies/{id}/portal_requests (ผ่าน /api/portal/repair)
+ * คำขอรุ่นเก่าอยู่ที่ root service_tickets — portalId ขึ้นต้น "legacy:"
  *  - { action: "toJob", ticketNo, assignees?, scheduledDate?, scheduledTime?, note? }  ส่งให้ช่าง (สร้างงานในศูนย์จ่ายงาน)
  *  - { action: "note", ticketNo, note }                   บันทึกการติดตาม
  *  - { action: "resolve" | "close" | "reopen" | "cancel", ticketNo, note? }
@@ -26,6 +30,14 @@ const isDate = (v: any) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ""));
 const PRIORITIES = ["LOW", "NORMAL", "HIGH", "URGENT"];
 const hist = (u: ApiUser, action: string, note = "") => ({ at: new Date().toISOString(), by: u.uid, byName: u.email || u.uid, action, ...(note ? { note } : {}) });
 const iso = (v: any) => v?.toDate?.()?.toISOString?.() || (typeof v === "string" ? v : null);
+const LEGACY = "legacy:";
+/** เอกสารคำขอจากพอร์ทัล: กล่องของบริษัท หรือ root service_tickets รุ่นเก่า */
+const portalRefOf = (companyId: string, portalId: string) => {
+  if (!portalId || portalId.includes("/")) return null;
+  return portalId.startsWith(LEGACY)
+    ? adminDb.doc(`service_tickets/${portalId.slice(LEGACY.length)}`)
+    : adminDb.doc(`companies/${companyId}/portal_requests/${portalId}`);
+};
 
 export async function POST(request: Request) {
   try {
@@ -40,8 +52,9 @@ export async function POST(request: Request) {
     const now = admin.firestore.FieldValue.serverTimestamp();
 
     if (action === "list") {
-      const [tickets, portal, jobs] = await Promise.all([
+      const [tickets, inbox, legacy, jobs] = await Promise.all([
         col.orderBy("createdAt", "desc").limit(500).get(),
+        adminDb.collection(`companies/${companyId}/portal_requests`).where("status", "==", "NEW").limit(200).get(),
         adminDb.collection("service_tickets").where("companyId", "==", companyId).get(),
         adminDb.collection(`companies/${companyId}/jobs`).where("links.ticketId", ">", "").get(),
       ]);
@@ -50,8 +63,21 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         tickets: tickets.docs.map((d) => ({ ...d.data(), ticketNo: d.id, createdAt: iso(d.data().createdAt), jobs: jobByTicket.get(d.id) || [] })),
-        portal: portal.docs.map((d) => ({ id: d.id, ...d.data(), createdAt: iso(d.data().createdAt) })).filter((p: any) => !p.ticketNo && String(p.status || "NEW").toUpperCase() === "NEW"),
+        portal: [
+          ...inbox.docs.map((d) => ({ id: d.id, ...d.data() })),
+          ...legacy.docs.map((d) => ({ id: LEGACY + d.id, ...d.data(), hasPhoto: !!d.data().photoUrl })),
+        ]
+          .filter((p: any) => !p.ticketNo && String(p.status || "NEW").toUpperCase() === "NEW")
+          .map(({ photo, photoUrl, ipHash, userAgent, ...p }: any) => ({ ...p, createdAt: iso(p.createdAt) }))
+          .sort((a: any, b: any) => String(b.createdAt || "").localeCompare(String(a.createdAt || ""))),
       });
+    }
+
+    if (action === "portalPhoto") {
+      const ref = portalRefOf(companyId, str(body.portalId, 160));
+      const snap = ref ? await ref.get() : null;
+      if (!snap?.exists || snap.data()!.companyId !== companyId) throw new ApiAuthError(404, "ไม่พบคำขอจากพอร์ทัล");
+      return NextResponse.json({ success: true, photo: snap.data()!.photo || snap.data()!.photoUrl || "" });
     }
 
     if (action === "lookupSerial") {
@@ -76,8 +102,9 @@ export async function POST(request: Request) {
       if (!symptom) throw new ApiAuthError(400, "กรุณาระบุอาการ/เรื่องที่แจ้ง");
       if (!customerName && !phone) throw new ApiAuthError(400, "กรุณาระบุชื่อลูกค้าหรือเบอร์โทร");
       const priority = (PRIORITIES.includes(String(t.priority)) ? String(t.priority) : "NORMAL") as TicketPriority;
-      const portalId = str(body.portalId, 120);
-      const portalRef = portalId ? adminDb.doc(`service_tickets/${portalId}`) : null;
+      const portalId = str(body.portalId, 160);
+      const portalRef = portalId ? portalRefOf(companyId, portalId) : null;
+      if (portalId && !portalRef) throw new ApiAuthError(400, "รหัสคำขอจากพอร์ทัลไม่ถูกต้อง");
       const take = await prepareSequence("TK", companyId);
       const ticketNo = await adminDb.runTransaction(async (tx) => {
         if (portalRef) {
@@ -103,6 +130,18 @@ export async function POST(request: Request) {
       });
       await auditServer.logCreate(apiUser.uid, companyId, "SERVICE_TICKET", ticketNo, { priority });
       return NextResponse.json({ success: true, ticketNo });
+    }
+
+    if (action === "dismissPortal") {
+      const ref = portalRefOf(companyId, str(body.portalId, 160));
+      if (!ref) throw new ApiAuthError(400, "รหัสคำขอจากพอร์ทัลไม่ถูกต้อง");
+      await adminDb.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists || snap.data()!.companyId !== companyId) throw new ApiAuthError(404, "ไม่พบคำขอจากพอร์ทัล");
+        if (snap.data()!.ticketNo) throw new ApiAuthError(409, `รับเรื่องนี้แล้ว (${snap.data()!.ticketNo})`);
+        tx.update(ref, { status: "DISMISSED", dismissedBy: apiUser.uid, dismissedAt: now, dismissNote: str(body.note, 300) });
+      });
+      return NextResponse.json({ success: true });
     }
 
     const ticketNo = str(body.ticketNo, 60);

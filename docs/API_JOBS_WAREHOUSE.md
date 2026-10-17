@@ -96,10 +96,26 @@ Content-Type: application/json
 
 แอปที่สแกน QR ส่งรหัสนี้ไปที่ `/api/inventory/putaway` (จัดเก็บ) หรือ `/api/inventory/pick` (เบิก) ได้ทันที
 
+## พอร์ทัลแจ้งซ่อมของลูกค้า — `/api/portal/repair` (ไม่ต้องล็อกอิน)
+
+ลิงก์สำหรับลูกค้า: `/portal/repair?company={companyId}` (กดปุ่ม "ลิงก์แจ้งซ่อม" ที่หน้างานบริการเพื่อคัดลอก)
+
+| เรียก | ใช้ทำอะไร |
+|---|---|
+| `GET ?company={id}` | ตรวจลิงก์ คืน `{ company: { name, phone } }` หรือ 404 |
+| `POST { company, phoneNumber, symptom, customerName?, serialNumber?, photo? }` | ส่งคำขอ คืน `{ requestId }` |
+
+- `photo` เป็น data URL ของรูป JPEG/PNG/WebP ไม่เกินประมาณ 500 KB (ควรย่อรูปก่อนส่ง)
+- จำกัดต่อ IP 5 ครั้ง/ชั่วโมง และ 20 ครั้ง/วัน, ต่อบริษัท 200 ครั้ง/วัน — เกินจะได้ 429 พร้อม `Retry-After`
+- ปิดพอร์ทัลของบริษัทได้โดยตั้ง `companies/{id}.portalEnabled = false`
+- คำขอเข้ากล่อง `companies/{id}/portal_requests` เจ้าหน้าที่ "รับเรื่อง" (ออกเลขใบแจ้งซ่อม TK) หรือ "ไม่รับ" ผ่าน `/api/service/tickets` (`create` + `portalId`, `dismissPortal`, `portalPhoto`)
+
 ## การเก็บข้อมูล (Firestore)
 
 | ข้อมูล | ตำแหน่ง | การเขียน |
 |---|---|---|
 | งาน | `companies/{companyId}/jobs/{jobNo}` | ผ่าน API เท่านั้น |
+| คำขอแจ้งซ่อมจากลูกค้า | `companies/{companyId}/portal_requests/{id}` | ผ่าน API เท่านั้น |
+| ตัวนับจำกัดจำนวนครั้ง | `rate_limits/{scope}_{hash}_{ช่วงเวลา}` | server เท่านั้น (ตั้ง TTL ที่ฟิลด์ `expiresAt` ได้) |
 | คลัง | `warehouses/{companyId}_{code}` | ผ่าน API |
 | ยอดคงเหลือตามตำแหน่ง | `companies/{companyId}/inventory_balance/{location}_{productId}` | ผ่าน API |

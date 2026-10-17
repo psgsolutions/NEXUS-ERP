@@ -54,6 +54,9 @@ async function main() {
     await setDoc(doc(db, 'companies/A/payrolls/P1'), { companyId: 'A' });
     await setDoc(doc(db, 'companies/A/payments/PV1'), { companyId: 'A' });
     await setDoc(doc(db, 'companies/A/jobs/JOB-1'), { companyId: 'A', status: 'ASSIGNED' });
+    await setDoc(doc(db, 'companies/A/portal_requests/PR1'), { companyId: 'A', status: 'NEW', phoneNumber: '0812345678' });
+    await setDoc(doc(db, 'service_tickets/ST1'), { companyId: 'A', status: 'NEW', phoneNumber: '0812345678' });
+    await setDoc(doc(db, 'rate_limits/portal_ip_h_x_1'), { count: 1 });
     await setDoc(doc(db, 'companies/A/bank_accounts/BA1'), { companyId: 'A', name: 'K-Bank' });
     await setDoc(doc(db, 'companies/A/cheques/RE1'), { companyId: 'A', status: 'PENDING' });
     for (const c of ['purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders']) {
@@ -178,6 +181,19 @@ async function main() {
     ['member reads job', () => assertSucceeds(getDoc(doc(userA, 'companies/A/jobs/JOB-1')))],
     ['member cannot accept job directly', () => assertFails(updateDoc(doc(userA, 'companies/A/jobs/JOB-1'), { status: 'ACCEPTED' }))],
     ['admin cannot create job directly', () => assertFails(setDoc(doc(adminA, 'companies/A/jobs/JOB-2'), { companyId: 'A' }))],
+    // พอร์ทัลแจ้งซ่อม: ลูกค้าส่งผ่าน /api/portal/repair เท่านั้น
+    ['anonymous cannot write portal ticket directly', () => assertFails(setDoc(doc(anon, 'service_tickets/X1'), { companyId: 'A', status: 'NEW' }))],
+    ['member cannot create legacy portal ticket', () => assertFails(setDoc(doc(userA, 'service_tickets/X2'), { companyId: 'A', status: 'NEW' }))],
+    ['member reads legacy portal ticket', () => assertSucceeds(getDoc(doc(userA, 'service_tickets/ST1')))],
+    ['member lists own legacy portal tickets', () => assertSucceeds(byCompany(userA, 'service_tickets', 'A'))],
+    ['other company cannot read legacy portal ticket', () => assertFails(getDoc(doc(userB, 'service_tickets/ST1')))],
+    ['member cannot accept legacy portal ticket directly', () => assertFails(updateDoc(doc(userA, 'service_tickets/ST1'), { status: 'ACCEPTED' }))],
+    ['member reads portal inbox', () => assertSucceeds(getDoc(doc(userA, 'companies/A/portal_requests/PR1')))],
+    ['anonymous cannot read portal inbox', () => assertFails(getDoc(doc(anon, 'companies/A/portal_requests/PR1')))],
+    ['anonymous cannot write portal inbox', () => assertFails(setDoc(doc(anon, 'companies/A/portal_requests/PR2'), { companyId: 'A' }))],
+    ['admin cannot write portal inbox directly', () => assertFails(updateDoc(doc(adminA, 'companies/A/portal_requests/PR1'), { status: 'DISMISSED' }))],
+    ['member cannot read rate limits', () => assertFails(getDoc(doc(userA, 'rate_limits/portal_ip_h_x_1')))],
+    ['member cannot reset rate limits', () => assertFails(setDoc(doc(userA, 'rate_limits/portal_ip_h_x_1'), { count: 0 }))],
     // ทะเบียนธนาคาร/เช็ค
     ['sales reads bank account list (receipt form)', () => assertSucceeds(getDoc(doc(userA, 'companies/A/bank_accounts/BA1')))],
     ['accountant cannot write bank account directly', () => assertFails(setDoc(doc(acctA, 'companies/A/bank_accounts/BA2'), { companyId: 'A' }))],

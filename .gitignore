@@ -48,3 +48,6 @@ firestore-debug.log
 temp_log.txt
 recovered_page.tsx
 /NEXUS-ERP/
+
+# build ทดสอบในเครื่อง (NEXT_DIST_DIR)
+/.next-buildcheck/

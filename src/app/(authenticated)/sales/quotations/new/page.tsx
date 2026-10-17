@@ -7,7 +7,9 @@ import { ArrowLeft, Save, Send, Building2, Calendar, Plus, Info, AlertTriangle, 
 import { PillButton, cn, NexusDatePicker, GlassCard, Modal } from "@/components/ui/Base";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { DocumentAttachmentsCard } from "@/components/commerce/DocumentAttachmentsCard";
-import { DocumentViewerModal } from "@/components/commerce/DocumentViewerModal";
+import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
+import { quotationLines, quotationModel } from "@/lib/documents/build";
+import { documentProfileOf } from "@/lib/documents/profile";
 import {
   calculateERPDocument,
   VatTypeV3,
@@ -429,35 +431,25 @@ export default function QuotationCreationPage() {
   }, [summary.grandTotal, selectedCustomer, status]);
 
   // PDF Document Preview Data
-  const previewDocumentData = useMemo(() => ({
-    title: "ใบเสนอราคา (QUOTATION)",
-    docNo: quotationNumber || "(ร่าง ยังไม่ออกเลข)",
-    date: docDate,
-    companyName: companyDocs.find((c: any) => c.id === effectiveCompanyId)?.name || "NEXUS TECHNOLOGY CO., LTD.",
-    companyAddress: companyDocs.find((c: any) => c.id === effectiveCompanyId)?.address || "123 อาคารเน็กซัสทาวเวอร์ ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110",
-    companyTaxId: companyDocs.find((c: any) => c.id === effectiveCompanyId)?.taxId || "0105559012345",
-    customerName: selectedCustomer ? getCustomerName(selectedCustomer) : (customerSearchTerm || "ลูกค้าทั่วไป"),
-    customerAddress: [addrLine1, addrLine2, subDistrict, district, province, postalCode].filter(Boolean).join(" ") || "-",
-    customerTaxId: customerTaxId || "-",
-    items: items.map((item, idx) => {
-      const lineSubtotal = (Number(item.qty) || 0) * (Number(item.price) || 0);
-      const lineDiscAmt = item.discountType === 'PERCENT' ? lineSubtotal * ((Number(item.discountValue) || 0) / 100) : (Number(item.discountValue) || 0);
-      return {
-        id: String(idx + 1),
-        description: item.name + (item.details ? `\n${item.details}` : ''),
-        qty: Number(item.qty) || 0,
-        unitPrice: Number(item.price) || 0,
-        discount: lineDiscAmt,
-        total: Math.max(0, lineSubtotal - lineDiscAmt)
-      };
-    }),
-    summary: {
-      subtotal: summary.subTotal,
-      discount: summary.docDiscountAmount,
-      tax: summary.vatAmount,
-      total: summary.grandTotal
-    }
-  }), [quotationNumber, docDate, companyDocs, effectiveCompanyId, selectedCustomer, customerSearchTerm, addrLine1, addrLine2, subDistrict, district, province, postalCode, customerTaxId, items, summary]);
+  const previewDocumentData = useMemo(() => {
+    // ตัวอย่างเอกสารจากข้อมูลที่กำลังแก้ไข (ใช้เทมเพลตมาตรฐานเดียวกับ PDF ที่บันทึกแล้ว) — ไม่เติมข้อมูลบริษัท/ลูกค้าปลอม
+    const company = companyDocs.find((c: any) => c.id === effectiveCompanyId || c.companyId === effectiveCompanyId);
+    const branchText = String(customerBranch || "");
+    return quotationModel({
+      number: quotationNumber || "", date: docDate, validUntil, status: "DRAFT",
+      seller: documentProfileOf(company),
+      customer: {
+        name: selectedCustomer ? getCustomerName(selectedCustomer) : customerSearchTerm,
+        taxId: customerTaxId, branchCode: (branchText.match(/\d{5}/) || [""])[0], branchName: branchText,
+        address: [addrLine1, addrLine2, subDistrict, district, province, postalCode].filter(Boolean).join(" "),
+        contact: contactPerson, phone: contactPhone, email: contactEmail,
+      },
+      lines: quotationLines(items.map((it: any) => ({ ...it, itemType: it.itemType, productName: it.name, unitPrice: it.price, uom: it.unit }))),
+      lineTotal: summary.subTotal + summary.docDiscountAmount, billDiscount: summary.docDiscountAmount, net: summary.subTotal,
+      vat: summary.vatAmount, grand: summary.grandTotal, taxType, wht: summary.whtAmount, payable: summary.netPayable,
+      paymentTerms, deliveryDays: expectedDeliveryDays, terms: termsAndConditions, remark, projectName,
+    });
+  }, [quotationNumber, docDate, validUntil, companyDocs, effectiveCompanyId, selectedCustomer, customerSearchTerm, customerBranch, customerTaxId, addrLine1, addrLine2, subDistrict, district, province, postalCode, contactPerson, contactPhone, contactEmail, items, summary, taxType, paymentTerms, expectedDeliveryDays, termsAndConditions, remark, projectName]);
 
   // Handle Save with Multi-channel Audit Trail (Patch 11 & 12)
   const handleSave = async (isSubmit: boolean = false, sendChannel?: 'EMAIL' | 'LINE' | 'DOWNLOAD' | 'SYSTEM') => {
@@ -1693,11 +1685,11 @@ export default function QuotationCreationPage() {
         rightSidebar={rightSidebar}
       />
       {/* Live Document PDF Preview Modal (Patch 12) */}
-      <DocumentViewerModal
-        isOpen={showPreviewModal}
+      <DocumentPdfModal
+        open={showPreviewModal}
         onClose={() => setShowPreviewModal(false)}
-        documentData={previewDocumentData}
-        documentType="ใบเสนอราคา (Quotation)"
+        model={previewDocumentData}
+        title={`ตัวอย่างใบเสนอราคา${quotationNumber ? ` ${quotationNumber}` : ""}`}
       />
       {showSuccessModal && (
         <Modal isOpen={true} onClose={() => { }} title="บันทึกสำเร็จ">

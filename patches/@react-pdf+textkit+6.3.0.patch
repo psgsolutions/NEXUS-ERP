@@ -1,0 +1,15 @@
+diff --git a/node_modules/@react-pdf/textkit/lib/textkit.js b/node_modules/@react-pdf/textkit/lib/textkit.js
+index 0b8b6fa..deffa93 100644
+--- a/node_modules/@react-pdf/textkit/lib/textkit.js
++++ b/node_modules/@react-pdf/textkit/lib/textkit.js
+@@ -2600,7 +2600,9 @@ const breakLines = (attributedString, nodes, breaks) => {
+             // @ts-expect-error penalty node will always preceed box or glue node
+             end = prevNode.end;
+             line = slice(start, end, attributedString);
+-            line = insertGlyph(line.string.length, HYPHEN, line);
++            // NEXUS: ภาษาไทยตัดบรรทัดระหว่างคำได้โดยไม่ต้องใส่ยัติภังค์
++            if (!/[฀-๿]/.test(attributedString.string[end - 1] || ""))
++                line = insertGlyph(line.string.length, HYPHEN, line);
+         }
+         else {
+             end = node.end;

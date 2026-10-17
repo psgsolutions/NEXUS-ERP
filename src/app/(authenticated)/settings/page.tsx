@@ -1,5 +1,6 @@
 "use client";
 
+import { DocumentProfileSettings } from "@/components/settings/DocumentProfileSettings";
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { 
@@ -374,51 +375,7 @@ export default function SettingsPage() {
       <div className="flex flex-col xl:flex-row items-start gap-4">
         <div className="flex-1 w-full space-y-10">
           
-          {activeTab === "company" && (
-            <GlassCard accentColor="teal" className="p-4 space-y-3 animate-in slide-in-from-bottom duration-500">
-               <div className="flex items-center gap-5">
-                  <div className="w-20 h-20 rounded-xl bg-white/[0.02] border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 text-white/20 hover:border-nexus-teal hover:text-nexus-teal hover:bg-nexus-teal/5 transition-all cursor-pointer">
-                     <Building2 size={24} />
-                     <span className="text-[11px] font-medium uppercase tracking-widest">Logo</span>
-                  </div>
-                  <div className="space-y-1">
-                     <h2 className="text-2xl font-bold text-white uppercase">โปรไฟล์นิติบุคคล</h2>
-                     <p className="text-sm text-white/40 font-bold">ข้อมูลสำหรับออกใบกำกับภาษีและเอกสารทางราชการ</p>
-                  </div>
-               </div>
-
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4">
-                  <div className="space-y-3">
-                     <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-4">ชื่อบริษัท (ภาษาไทย) *</label>
-                     <PillInput defaultValue="บริษัท พีเอสจี โซลูชั่น จำกัด" className="bg-white/[0.02] border-white/10" />
-                  </div>
-                  <div className="space-y-3">
-                     <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-4">ชื่อบริษัท *</label>
-                     <PillInput defaultValue="PSG SOLUTIONS CO., LTD." className="bg-white/[0.02] border-white/10 uppercase" />
-                  </div>
-                  <div className="space-y-3">
-                     <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-4">เลขประจำตัวผู้เสียภาษี *</label>
-                     <PillInput defaultValue="0105564000000" className="bg-white/[0.02] border-white/10 font-mono" />
-                  </div>
-                  <div className="space-y-3">
-                     <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-4">เว็บไซต์ / ช่องทางออนไลน์</label>
-                     <div className="relative">
-                        <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-white/10" size={18} />
-                        <PillInput defaultValue="www.psgsolutions.com" className="pl-12 bg-white/[0.02] border-white/10" />
-                     </div>
-                  </div>
-                  <div className="md:col-span-2 space-y-3">
-                     <label className="text-[11px] font-medium text-white/20 uppercase tracking-widest ml-4">ที่อยู่สำนักงานใหญ่</label>
-                     <div className="p-5 bg-white/[0.02] border border-white/10 rounded-2xl">
-                       <AddressFormGroup 
-                         value={parseAddress(companyAddress)}
-                         onChange={(addr) => setCompanyAddress(addr.line1 || "")}
-                       />
-                     </div>
-                  </div>
-               </div>
-            </GlassCard>
-          )}
+          {activeTab === "company" && <DocumentProfileSettings />}
 
           {activeTab === "sequence" && (
             <div className="space-y-3 animate-in slide-in-from-bottom duration-500">

@@ -58,12 +58,12 @@ export function SecureDeleteAction({
 
   const handleDelete = async () => {
     if (confirmText !== "DELETE") {
-      await showAlert(`คำยืนยันไม่ถูกต้อง (ต้องพิมพ์: DELETE)`, "System Notification", "warning");
+      await showAlert(`คำยืนยันไม่ถูกต้อง (ต้องพิมพ์: DELETE)`, "แจ้งเตือน", "warning");
       return;
     }
 
     if (!companyId || !user) {
-      await showAlert("ข้อมูลเซสชันไม่สมบูรณ์ ไม่สามารถทำรายการได้", "System Notification", "error");
+      await showAlert("ข้อมูลเซสชันไม่สมบูรณ์ ไม่สามารถทำรายการได้", "แจ้งเตือน", "error");
       return;
     }
 
@@ -89,10 +89,10 @@ export function SecureDeleteAction({
       setConfirmText("");
       if (onSuccess) onSuccess();
       
-      await showAlert(`ลบข้อมูล ${displayName} ออกจากระบบแล้ว`, "System Notification", "info");
+      await showAlert(`ลบข้อมูล ${displayName} ออกจากระบบแล้ว`, "แจ้งเตือน", "info");
     } catch (err: any) {
       console.error("Delete Error:", err);
-      await showAlert(`ไม่สามารถลบข้อมูลได้: ${err.message}`, "System Notification", "error");
+      await showAlert(`ไม่สามารถลบข้อมูลได้: ${err.message}`, "แจ้งเตือน", "error");
     } finally {
       setIsDeleting(false);
     }

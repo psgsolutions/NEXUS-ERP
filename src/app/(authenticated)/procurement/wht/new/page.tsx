@@ -69,11 +69,11 @@ export default function NewWHTPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
-      showAlert("บันทึกหนังสือรับรองการหักภาษี ณ ที่จ่ายเรียบร้อยแล้ว", "System Notification", "info");
+      showAlert("บันทึกหนังสือรับรองการหักภาษี ณ ที่จ่ายเรียบร้อยแล้ว", "แจ้งเตือน", "info");
       router.push("/procurement?tab=wht");
     } catch (err: any) {
       console.error(err);
-      showAlert(`เกิดข้อผิดพลาดในการบันทึก: ${err.message}`, "System Notification", "error");
+      showAlert(`เกิดข้อผิดพลาดในการบันทึก: ${err.message}`, "แจ้งเตือน", "error");
     } finally {
       setIsSubmitting(false);
     }

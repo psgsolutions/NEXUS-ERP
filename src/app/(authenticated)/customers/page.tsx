@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useCustomers } from "@/hooks/useCustomers";
 import { PillButton, NexusTable, NexusTableRow, NexusTableCell, NexusSearchInput, StatusBadge, GlassCard, PillTabs } from "@/components/ui/Base";
 import { Building2, Plus, Users, Phone, Mail, MapPin, Crown, ShieldCheck, UserCheck } from "lucide-react";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
@@ -12,14 +13,14 @@ export default function CustomerDashboardPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   
-  const { data: customers, loading } = useRealtimeCollection("customers");
+  const { data: customers, loading } = useCustomers();
 
   // Filter logic
   const filteredCustomers = customers.filter(c => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (
-      c.customerName?.toLowerCase().includes(term) ||
+      String(c.customerName || c.name || "").toLowerCase().includes(term) ||
       c.taxId?.toLowerCase().includes(term) ||
       c.phone?.toLowerCase().includes(term)
     );
@@ -119,14 +120,14 @@ export default function CustomerDashboardPage() {
               filteredCustomers.map((customer, idx) => (
                 <NexusTableRow key={customer.id || idx}>
                   <NexusTableCell align="center" className="w-[1%] whitespace-nowrap font-mono text-nexus-teal text-[11px] uppercase tracking-wider">
-                    {customer.customerCode || '-'}
+                    {customer.customerCode || customer.customer_code || customer.customerId || "-"}
                   </NexusTableCell>
 
                   <NexusTableCell className="w-full">
-                    <div className="font-bold text-white text-[13px]">{customer.customerName}</div>
-                    {customer.customerBranch && (
+                    <div className="font-bold text-white text-[13px]">{customer.customerName || customer.name || customer.companyName || "-"}</div>
+                    {(customer.customerBranch || customer.branch) && (
                       <div className="text-[10px] text-white/40 mt-1 flex items-center gap-1 font-semibold uppercase tracking-wider">
-                        <Building2 size={10} /> {customer.customerBranch}
+                        <Building2 size={10} /> {customer.customerBranch || customer.branch}
                       </div>
                     )}
                   </NexusTableCell>
@@ -163,7 +164,7 @@ export default function CustomerDashboardPage() {
                   </NexusTableCell>
                   
                   <NexusTableCell align="right" className="w-[1%] whitespace-nowrap font-mono pr-6">
-                    <div className="text-[11px] font-black text-white/80 uppercase tracking-widest">{customer.creditTerm || 0} วัน</div>
+                    <div className="text-[11px] font-black text-white/80 uppercase tracking-widest">{customer.creditTerm ?? customer.credit_term_days ?? 0} วัน</div>
                   </NexusTableCell>
                   
                   <NexusTableCell align="center" className="w-[1%] whitespace-nowrap">

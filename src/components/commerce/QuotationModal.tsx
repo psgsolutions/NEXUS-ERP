@@ -14,6 +14,7 @@ import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { SmartScanner } from "@/components/shared/SmartScanner";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useCustomers } from "@/hooks/useCustomers";
 import { where } from "firebase/firestore";
 
 interface QuotationModalProps {
@@ -45,7 +46,7 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
   const { showAlert, showConfirm } = useSystemDialog();
   const { companyId } = useAuth();
   
-  const { data: customers = [] } = useRealtimeCollection("customers");
+  const { data: customers = [] } = useCustomers();
 
   const [isLocked, setIsLocked] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);

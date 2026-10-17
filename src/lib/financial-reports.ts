@@ -10,7 +10,8 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 const linesOf = (j: any): any[] => (Array.isArray(j.items) ? j.items : Array.isArray(j.lines) ? j.lines : []);
 
 // รหัสรุ่นเก่า 6 หลัก -> XXXX-XX (ภาษีขาย/ภาษีซื้อรุ่นเก่าใช้รหัสพิเศษ)
-const LEGACY_CODES: Record<string, string> = { "213100": "2121-00", "115100": "1151-00" };
+// รหัส 5 หลักรุ่นแรก (พบในบันทึกบัญชีเก่า) แมปตามชื่อบัญชีในผังบัญชีปัจจุบัน
+const LEGACY_CODES: Record<string, string> = { "213100": "2121-00", "115100": "1151-00", "11300": "1131-00", "41100": "4111-00" };
 export function normalizeAccountCode(raw: any): string {
   const c = String(raw ?? "").trim();
   if (LEGACY_CODES[c]) return LEGACY_CODES[c];

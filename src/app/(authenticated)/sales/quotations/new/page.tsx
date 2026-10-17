@@ -24,6 +24,7 @@ import { canViewCost } from "@/lib/permissions";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useCustomers } from "@/hooks/useCustomers";
 import { useCompanyProjects } from "@/hooks/useCompanyProjects";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { useAuth } from "@/context/AuthContext";
@@ -39,15 +40,14 @@ export default function QuotationCreationPage() {
 
   // Data Fetching from both root collection and company subcollection
   const effectiveCompanyId = companyId || "";
-  const { data: rootCustomers, loading: rootCustomersLoading } = useRealtimeCollection('customers');
-  const { data: companyCustomers, loading: companyCustomersLoading } = useRealtimeCollection(`companies/${effectiveCompanyId}/customers`, [], false);
+  const { data: companyCustomers, loading: companyCustomersLoading } = useCustomers();
   const { data: users, loading: usersLoading } = useRealtimeCollection('users');
 
-  const customersLoading = rootCustomersLoading && companyCustomersLoading;
+  const customersLoading = companyCustomersLoading;
 
   // Combine & deduplicate customer data from all Firestore stores
   const customers = useMemo(() => {
-    const allItems = [...(companyCustomers || []), ...(rootCustomers || [])];
+    const allItems = [...(companyCustomers || [])];
     const mapById = new Map<string, any>();
     const seenKeys = new Set<string>();
     const result: any[] = [];
@@ -67,7 +67,7 @@ export default function QuotationCreationPage() {
     });
 
     return result;
-  }, [rootCustomers, companyCustomers]);
+  }, [companyCustomers]);
 
   // Auto-generated fields
   // เลขที่เอกสารออกโดยเซิร์ฟเวอร์ตอนบันทึกครั้งแรก (เลขจริงตามลำดับ ไม่ซ้ำ)

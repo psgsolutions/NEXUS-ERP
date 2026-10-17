@@ -48,6 +48,7 @@ import {
   DocSectionsEditor, ExpensesEditor, FIELD_W, Field, NumCell, SpecChoiceEditor, TimelineEditor, type DocSource, type SpecRow,
 } from "@/components/projects/ProjectPlanEditors";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useCustomers } from "@/hooks/useCustomers";
 import { ProjectTypeCode, PROJECT_TYPE_CONFIGS } from "@/types/database";
 import { apiFetch } from "@/lib/api-client";
 import { computeProjectBudget, linesToForm, normalizeItemLine, normalizeLaborLine } from "@/lib/project-budget";
@@ -101,13 +102,8 @@ export default function NewProjectPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const showToast = (message: string, isError = false) => setToast({ message, isVisible: true, isError });
 
-  // ลูกค้าของบริษัท (ที่เก็บหลัก + รุ่นเก่าที่ root ไม่นับซ้ำ)
-  const { data: ownCustomers } = useRealtimeCollection<any>(currentCompanyId ? `companies/${currentCompanyId}/customers` : "");
-  const { data: legacyCustomers } = useRealtimeCollection<any>("customers");
-  const rawCustomers = useMemo(() => {
-    const ids = new Set(ownCustomers.map((c: any) => c.id));
-    return [...ownCustomers, ...legacyCustomers.filter((c: any) => !ids.has(c.id))];
-  }, [ownCustomers, legacyCustomers]);
+  // ลูกค้าของบริษัท (companies/{id}/customers)
+  const { data: rawCustomers } = useCustomers<any>();
 
   // ผู้ใช้ของบริษัทที่ใช้งานอยู่ (เลือกเป็นผู้จัดการโครงการ/ทีมงาน)
   const { data: companyUsers } = useRealtimeCollection<any>("users");

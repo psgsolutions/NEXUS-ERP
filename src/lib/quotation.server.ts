@@ -84,7 +84,7 @@ export function submitStatus(gp: number, threshold: number, requiresApproval: bo
 
 /** ลูกค้าใหม่ที่พิมพ์ชื่อเข้ามา (ยังไม่มีในฐานข้อมูล) — สร้างในทรานแซกชันเดียวกัน คืน customerId */
 export function createCustomerInTx(tx: admin.firestore.Transaction, companyId: string, c: any): string {
-  const ref = adminDb.collection("customers").doc();
+  const ref = adminDb.collection(`companies/${companyId}/customers`).doc();
   const now = admin.firestore.FieldValue.serverTimestamp();
   tx.set(ref, {
     customerName: str(c.name, 200), name: str(c.name, 200),

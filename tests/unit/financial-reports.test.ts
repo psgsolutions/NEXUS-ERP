@@ -22,6 +22,8 @@ describe("รายงานการเงิน", () => {
     expect(normalizeAccountCode("411100")).toBe("4111-00");
     expect(normalizeAccountCode("213100")).toBe("2121-00");
     expect(normalizeAccountCode(" 1112-00 ")).toBe("1112-00");
+    expect(normalizeAccountCode("11300")).toBe("1131-00");
+    expect(normalizeAccountCode("41100")).toBe("4111-00");
   });
 
   it("นับเฉพาะรายการที่ลงบัญชีแล้ว", () => {

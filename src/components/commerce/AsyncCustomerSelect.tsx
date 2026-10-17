@@ -3,9 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { cn } from "@/components/ui/Base";
 import { ChevronDown, Check } from "lucide-react";
-import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { useAuth } from "@/context/AuthContext";
-import { where } from "firebase/firestore";
+import { useCustomers } from "@/hooks/useCustomers";
 
 interface CustomerOption {
   id: string;
@@ -37,14 +35,7 @@ export function AsyncCustomerSelect({
   displayValue,
   isActive = false
 }: AsyncCustomerSelectProps) {
-  const { companyId } = useAuth();
-  const currentCompanyId = companyId || "";
-  
-  const customerConditions = React.useMemo(() => [
-    where('companyId', '==', currentCompanyId)
-  ], [currentCompanyId]);
-  
-  const { data: customers } = useRealtimeCollection('customers', customerConditions, false);
+  const { data: customers } = useCustomers();
 
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");

@@ -25,6 +25,7 @@ import { canViewCost } from "@/lib/permissions";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useCustomers } from "@/hooks/useCustomers";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { useAuth } from "@/context/AuthContext";
 import { SmartSelect, StepperInput, SciFiDropdownPortal } from "@/components/ui/SmartComponents";
@@ -42,15 +43,14 @@ export default function QuotationEditPage() {
 
   // Data Fetching from both root collection and company subcollection
   const effectiveCompanyId = companyId || "";
-  const { data: rootCustomers, loading: rootCustomersLoading } = useRealtimeCollection('customers');
-  const { data: companyCustomers, loading: companyCustomersLoading } = useRealtimeCollection(`companies/${effectiveCompanyId}/customers`, [], false);
+  const { data: companyCustomers, loading: companyCustomersLoading } = useCustomers();
   const { data: users, loading: usersLoading } = useRealtimeCollection('users');
 
-  const customersLoading = rootCustomersLoading && companyCustomersLoading;
+  const customersLoading = companyCustomersLoading;
 
   // Combine & deduplicate customer data from all Firestore stores
   const customers = useMemo(() => {
-    const allItems = [...(companyCustomers || []), ...(rootCustomers || [])];
+    const allItems = [...(companyCustomers || [])];
     const mapById = new Map<string, any>();
     const seenKeys = new Set<string>();
     const result: any[] = [];
@@ -70,7 +70,7 @@ export default function QuotationEditPage() {
     });
 
     return result;
-  }, [rootCustomers, companyCustomers]);
+  }, [companyCustomers]);
 
   const [isLoading, setIsLoading] = useState(true);
 

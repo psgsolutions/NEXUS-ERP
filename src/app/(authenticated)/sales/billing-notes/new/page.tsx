@@ -7,6 +7,7 @@ import { PillButton, PillInput, NexusDatePicker, GlassCard, PillSelect } from "@
 import { useSystemDialog } from "@/context/DialogContext";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useCustomers } from "@/hooks/useCustomers";
 import { where } from "firebase/firestore";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
@@ -17,9 +18,7 @@ export default function NewBillingNotePage() {
   const { companyId } = useAuth();
   
   // Tenant Isolation
-  const { data: customers = [] } = useRealtimeCollection("customers", [
-    where("companyId", "==", companyId || "")
-  ]);
+  const { data: customers = [] } = useCustomers();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<any>({

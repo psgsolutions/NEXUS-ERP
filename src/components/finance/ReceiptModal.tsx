@@ -83,7 +83,7 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
   };
 
   const handleSave = async () => {
-    if (invoices.length === 0) return void showAlert("กรุณาเลือกอินวอยซ์ที่ต้องการรับชำระ", "System Notification", "warning");
+    if (invoices.length === 0) return void showAlert("กรุณาเลือกอินวอยซ์ที่ต้องการรับชำระ", "แจ้งเตือน", "warning");
     setIsSaving(true);
     try {
       await onSave({ header, invoices, summary });

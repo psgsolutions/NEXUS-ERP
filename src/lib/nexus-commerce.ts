@@ -21,7 +21,7 @@ export const createCustomer = async (data: any) => {
   const { companyId, ...customerData } = data;
   if (!companyId) throw new Error("Company ID is required");
   const id = `CUS-${Date.now()}`;
-  const ref = doc(db, "customers", id);
+  const ref = doc(db, "companies", companyId, "customers", id);
   await setDoc(ref, {
     ...customerData,
     companyId,

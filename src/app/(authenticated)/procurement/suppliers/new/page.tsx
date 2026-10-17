@@ -190,11 +190,11 @@ export default function NewSupplierPage() {
 
       await auditService.logCreate(user.uid, currentCompanyId, "TECHNICIAN_CONTRACTOR", "NEW", payload);
       
-      showAlert("บันทึกข้อมูลช่างและอัตราค่าแรงเรียบร้อยแล้ว", "System Notification", "info");
+      showAlert("บันทึกข้อมูลช่างและอัตราค่าแรงเรียบร้อยแล้ว", "แจ้งเตือน", "info");
       router.back();
     } catch (err: any) {
       console.error(err);
-      showAlert(`เกิดข้อผิดพลาดในการบันทึก: ${err.message}`, "System Notification", "error");
+      showAlert(`เกิดข้อผิดพลาดในการบันทึก: ${err.message}`, "แจ้งเตือน", "error");
     } finally {
       setIsSubmitting(false);
     }

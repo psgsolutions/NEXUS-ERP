@@ -77,10 +77,10 @@ export default function NewExpenseClaimPage() {
 
   // ใบเบิกบันทึกเป็นใบสำคัญจ่าย (expenses) ผู้รับเงินคือพนักงาน: แสดงในแท็บค่าใช้จ่ายของจัดซื้อและเจ้าหนี้ของการเงิน
   const handleSave = async () => {
-    if (!formData.employeeId) return void showAlert("กรุณาเลือกพนักงานผู้เบิก", "System Notification", "warning");
-    if (formData.subtotal <= 0) return void showAlert("กรุณาระบุยอดเงินเบิก", "System Notification", "warning");
-    if (!formData.description) return void showAlert("กรุณาระบุรายละเอียดการเบิก", "System Notification", "warning");
-    if (!companyId || !user) return void showAlert("ไม่พบข้อมูลผู้ใช้หรือรหัสบริษัท", "System Notification", "error");
+    if (!formData.employeeId) return void showAlert("กรุณาเลือกพนักงานผู้เบิก", "แจ้งเตือน", "warning");
+    if (formData.subtotal <= 0) return void showAlert("กรุณาระบุยอดเงินเบิก", "แจ้งเตือน", "warning");
+    if (!formData.description) return void showAlert("กรุณาระบุรายละเอียดการเบิก", "แจ้งเตือน", "warning");
+    if (!companyId || !user) return void showAlert("ไม่พบข้อมูลผู้ใช้หรือรหัสบริษัท", "แจ้งเตือน", "error");
 
     setSaving(true);
     try {
@@ -95,7 +95,7 @@ export default function NewExpenseClaimPage() {
       showAlert(`ส่งคำขอเบิกเงินเรียบร้อยแล้ว (${expId})`);
       router.push("/finance");
     } catch (err: any) {
-      showAlert(`บันทึกไม่สำเร็จ: ${err.message}`, "System Notification", "error");
+      showAlert(`บันทึกไม่สำเร็จ: ${err.message}`, "แจ้งเตือน", "error");
     } finally {
       setSaving(false);
     }

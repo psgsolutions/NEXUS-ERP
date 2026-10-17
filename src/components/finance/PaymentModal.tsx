@@ -82,7 +82,7 @@ export function PaymentModal({ isOpen, onClose, onSave }: PaymentModalProps) {
   };
 
   const handleSave = async () => {
-    if (orders.length === 0) return void showAlert("กรุณาเลือกรายการที่ต้องการชำระเงิน", "System Notification", "warning");
+    if (orders.length === 0) return void showAlert("กรุณาเลือกรายการที่ต้องการชำระเงิน", "แจ้งเตือน", "warning");
     setIsSaving(true);
     try {
       await onSave({ header, orders, summary });

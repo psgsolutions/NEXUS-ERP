@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { PillButton, PillInput, PillSelect, Modal, PillTabs, NexusDataField, CreatableCombobox, cn, NexusDatePicker } from "@/components/ui/Base";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useCustomers } from "@/hooks/useCustomers";
 
 interface SalesOrderModalProps {
   isOpen: boolean;
@@ -26,7 +27,7 @@ interface SalesOrderModalProps {
 
 export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProps) {
   const { showAlert, showConfirm } = useSystemDialog();
-  const { data: customers } = useRealtimeCollection("customers");
+  const { data: customers } = useCustomers();
 
   const [activeTab, setActiveTab] = useState("header");
   const [items, setItems] = useState<any[]>([]);

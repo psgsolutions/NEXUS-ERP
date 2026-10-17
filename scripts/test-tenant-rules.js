@@ -30,7 +30,7 @@ async function main() {
     await setDoc(doc(db, 'users/legacyAcct'), { companyId: 'A', role: 'accountant' });
     await setDoc(doc(db, 'users/userB'), { companyId: 'B', role: 'ADMIN' });
     await setDoc(doc(db, 'companies/A'), { name: 'Company A' });
-    await setDoc(doc(db, 'companies/B'), { name: 'Company B' });
+    await setDoc(doc(db, 'companies/B'), { name: 'Company B', groupId: 'G1' });
     await setDoc(doc(db, 'companies/A/quotations/q1'), { companyId: 'A' });
     await setDoc(doc(db, 'companies/B/quotations/q2'), { companyId: 'B' });
     await setDoc(doc(db, 'companies/A/auditLogs/l1'), { companyId: 'A' });
@@ -57,6 +57,11 @@ async function main() {
     await setDoc(doc(db, 'companies/A/portal_requests/PR1'), { companyId: 'A', status: 'NEW', phoneNumber: '0812345678' });
     await setDoc(doc(db, 'service_tickets/ST1'), { companyId: 'A', status: 'NEW', phoneNumber: '0812345678' });
     await setDoc(doc(db, 'rate_limits/portal_ip_h_x_1'), { count: 1 });
+    // เครือ: A ไม่มี groupId (= เครือ A), B อยู่เครือ G1 ร่วมกับ C
+    await setDoc(doc(db, 'groups/A/products/P1'), { sku: 'SKU-1', name: 'กลาง' });
+    await setDoc(doc(db, 'groups/G1'), { name: 'เครือ G1', adminUids: [] });
+    await setDoc(doc(db, 'groups/G1/products/P9'), { sku: 'SKU-9', name: 'กลาง G1' });
+    await setDoc(doc(db, 'groups/G1/products/P9/history/h1'), { action: 'create' });
     await setDoc(doc(db, 'companies/A/bank_accounts/BA1'), { companyId: 'A', name: 'K-Bank' });
     await setDoc(doc(db, 'companies/A/cheques/RE1'), { companyId: 'A', status: 'PENDING' });
     for (const c of ['purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders']) {
@@ -194,6 +199,20 @@ async function main() {
     ['admin cannot write portal inbox directly', () => assertFails(updateDoc(doc(adminA, 'companies/A/portal_requests/PR1'), { status: 'DISMISSED' }))],
     ['member cannot read rate limits', () => assertFails(getDoc(doc(userA, 'rate_limits/portal_ip_h_x_1')))],
     ['member cannot reset rate limits', () => assertFails(setDoc(doc(userA, 'rate_limits/portal_ip_h_x_1'), { count: 0 }))],
+    // ข้อมูลกลางของเครือ
+    ['member reads own implicit group master', () => assertSucceeds(getDoc(doc(userA, 'groups/A/products/P1')))],
+    ['member lists own group master', () => assertSucceeds(getDocs(collection(userA, 'groups/A/products')))],
+    ['member cannot write group master directly', () => assertFails(setDoc(doc(adminA, 'groups/A/products/P2'), { sku: 'X' }))],
+    ['member cannot edit group master directly', () => assertFails(updateDoc(doc(adminA, 'groups/A/products/P1'), { name: 'แก้' }))],
+    ['member cannot forge unique key', () => assertFails(setDoc(doc(adminA, 'groups/A/unique_keys/k1'), { id: 'P1' }))],
+    ['other group cannot read master', () => assertFails(getDoc(doc(userA, 'groups/G1/products/P9')))],
+    ['group member reads shared master', () => assertSucceeds(getDoc(doc(userB, 'groups/G1/products/P9')))],
+    ['group member reads master history', () => assertSucceeds(getDoc(doc(userB, 'groups/G1/products/P9/history/h1')))],
+    ['other group cannot read history', () => assertFails(getDoc(doc(userA, 'groups/G1/products/P9/history/h1')))],
+    ['company in group B cannot read implicit group A', () => assertFails(getDoc(doc(userB, 'groups/A/products/P1')))],
+    ['anonymous cannot read master', () => assertFails(getDoc(doc(anon, 'groups/A/products/P1')))],
+    ['member cannot create group', () => assertFails(setDoc(doc(adminA, 'groups/NEW'), { name: 'x' }))],
+    ['superadmin creates group', () => assertSucceeds(setDoc(doc(superUid, 'groups/NEW'), { name: 'x' }))],
     // ทะเบียนธนาคาร/เช็ค
     ['sales reads bank account list (receipt form)', () => assertSucceeds(getDoc(doc(userA, 'companies/A/bank_accounts/BA1')))],
     ['accountant cannot write bank account directly', () => assertFails(setDoc(doc(acctA, 'companies/A/bank_accounts/BA2'), { companyId: 'A' }))],

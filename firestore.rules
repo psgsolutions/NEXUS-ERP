@@ -97,7 +97,7 @@ service cloud.firestore {
     // ---------- Root collections (generic) ----------
     // collection ที่มีกฎเฉพาะด้านล่างถูกตัดออกจาก wildcard เพื่อไม่ให้ wildcard อนุญาตทับ
     function isSpecialRoot(collectionName) {
-      return collectionName in ['users', 'companies', 'counters', 'periodClosings', 'logs', 'activity_logs', 'employees', 'attendance', 'journal_entries', 'taxFilings', 'assetDepreciations', 'service_tickets', 'rate_limits'];
+      return collectionName in ['users', 'companies', 'counters', 'periodClosings', 'logs', 'activity_logs', 'employees', 'attendance', 'journal_entries', 'taxFilings', 'assetDepreciations', 'service_tickets', 'rate_limits', 'groups'];
     }
 
     match /{collectionName}/{documentId} {
@@ -174,6 +174,28 @@ service cloud.firestore {
       allow get: if isMember() && canGet();
       allow list: if isMember() && canList();
       allow write: if false;
+    }
+
+    // ---------- เครือบริษัท: ข้อมูลกลาง (สินค้า ลูกค้า ผู้ขาย ผู้รับเหมา) ----------
+    // เครือของผู้ใช้ = companies/{บริษัทของผู้ใช้}.groupId (ไม่มี = รหัสบริษัทเอง)
+    function myGroup() {
+      return get(/databases/$(database)/documents/companies/$(myCompany())).data.get('groupId', myCompany());
+    }
+    function inGroup(groupId) {
+      return isSuperAdmin() || (hasProfile() && myGroup() == groupId);
+    }
+    match /groups/{groupId} {
+      allow read: if inGroup(groupId);
+      allow write: if isSuperAdmin();
+      // ข้อมูลกลางและดัชนีห้ามซ้ำ: อ่านได้ทั้งเครือ เขียนผ่าน /api/master-data เท่านั้น
+      match /{collection}/{docId} {
+        allow read: if inGroup(groupId);
+        allow write: if false;
+      }
+      match /{collection}/{docId}/{sub}/{rest=**} {
+        allow read: if inGroup(groupId);
+        allow write: if false;
+      }
     }
 
     // ---------- Append-only audit logs ----------

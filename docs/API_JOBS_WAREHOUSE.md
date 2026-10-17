@@ -110,6 +110,21 @@ Content-Type: application/json
 - ปิดพอร์ทัลของบริษัทได้โดยตั้ง `companies/{id}.portalEnabled = false`
 - คำขอเข้ากล่อง `companies/{id}/portal_requests` เจ้าหน้าที่ "รับเรื่อง" (ออกเลขใบแจ้งซ่อม TK) หรือ "ไม่รับ" ผ่าน `/api/service/tickets` (`create` + `portalId`, `dismissPortal`, `portalPhoto`)
 
+## ข้อมูลหลักแบบเครือบริษัท — `POST /api/master-data`
+
+สินค้า ลูกค้า ผู้ขาย ผู้รับเหมา แบ่งเป็น 3 ชั้น (นิยามฟิลด์อยู่ที่ `src/lib/master-data.ts`)
+
+| ชั้น | ตัวอย่าง (สินค้า) | เก็บที่ | ใครแก้ |
+|---|---|---|---|
+| ตัวตน | sku, barcode, brand, model, unit | `groups/{groupId}/{entity}/{id}` | ผู้ดูแลเครือ (เครือบริษัทเดียว = บริษัทแก้เอง) |
+| ค่ากลางที่ตั้งทับได้ | name, description, specs, category | กลาง + ทับได้ที่ `companies/{companyId}/{entity}/{id}` | กลาง: ผู้ดูแลเครือ / ของบริษัท: ผู้มีสิทธิ์ในโมดูล |
+| เฉพาะบริษัท | price, minStock, creditLimit | `companies/{companyId}/{entity}/{id}` | ผู้มีสิทธิ์ในโมดูล (สต็อก/ต้นทุน/ยอดหนี้ระบบคำนวณเอง) |
+
+- เครือ: `companies/{id}.groupId` (ไม่มี = เครือของตัวเอง), `groups/{groupId}.adminUids` = ผู้ดูแลเครือ
+- action: `context`, `get`, `checkDuplicate`, `create`, `adopt` (ใช้รายการกลางที่บริษัทอื่นสร้าง), `update` (`scope: "group" | "company"`), `resetLocal`
+- ห้ามซ้ำในเครือ: สินค้า sku / barcode, คู่ค้า taxId + branchCode (สาขาว่าง = 00000)
+- หน้าจอใช้ `useMasterData(entity)` ได้ข้อมูลรวมพร้อม `_localFields` (ฟิลด์ที่บริษัทตั้งทับ)
+
 ## การเก็บข้อมูล (Firestore)
 
 | ข้อมูล | ตำแหน่ง | การเขียน |

@@ -5,6 +5,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { auditServer } from "@/services/audit.server";
 import { buildWhtRecords, computePP30 } from "@/lib/tax-calc";
+import { getRecords } from "@/lib/master-store.server";
 
 /**
  * [API-SERVER] บันทึกการยื่นแบบภาษี (ภ.พ.30 / ภ.ง.ด.3 / ภ.ง.ด.53) และล็อกงวด
@@ -43,8 +44,7 @@ export async function POST(request: Request) {
     } else {
       const wht = await adminDb.collection(`companies/${companyId}/withholding_taxes`).where("companyId", "==", companyId).get();
       const supplierIds = Array.from(new Set(wht.docs.map((d) => d.data().supplierId).filter(Boolean)));
-      const sups = supplierIds.length ? await adminDb.getAll(...supplierIds.map((id) => adminDb.doc(`suppliers/${id}`))) : [];
-      const taxIds = new Map(sups.filter((s) => s.exists).map((s) => [s.id, String(s.data()!.taxId || "")]));
+      const taxIds = new Map(Array.from((await getRecords("suppliers", companyId, supplierIds.map(String))).entries()).map(([id, d]) => [id, String(d.taxId || d.tax_id || "")]));
       const rows = buildWhtRecords(wht.docs.map((d) => ({ id: d.id, data: d.data() })), taxIds, period, taxType);
       base = rows.reduce((s, r) => s + r.baseAmount, 0); tax = rows.reduce((s, r) => s + r.whtAmount, 0); recordCount = rows.length;
     }

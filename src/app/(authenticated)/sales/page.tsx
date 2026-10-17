@@ -59,6 +59,7 @@ import { CNDNModal } from "@/components/commerce/CNDNModal";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { SecureDeleteAction } from "@/components/ui/SecureDeleteAction";
 import { useAuth } from "@/context/AuthContext";
+import { useCustomers } from "@/hooks/useCustomers";
 import { auditService } from "@/services/audit.service";
 import { db } from "@/lib/firebase-client";
 import { collection, query, where, onSnapshot, doc, setDoc } from "firebase/firestore";
@@ -169,7 +170,8 @@ export default function SalesPage() {
     { id: "receipts", label: "ใบเสร็จรับเงิน", icon: <Landmark size={14} /> },
   ];
 
-  const [customersList, setCustomersList] = useState<any[]>([]);
+  // ลูกค้าของบริษัท (ข้อมูลกลางของเครือ + ของบริษัท)
+  const { data: customersList } = useCustomers<any>();
   const [quotationsList, setQuotationsList] = useState<any[]>([]);
   const [ordersList, setOrdersList] = useState<any[]>([]);
   const [invoicesList, setInvoicesList] = useState<any[]>([]);
@@ -205,18 +207,6 @@ export default function SalesPage() {
 
   useEffect(() => {
     if (!companyId) return;
-
-    // Real-time listener for Customers
-    const qCust = query(
-      collection(db, `companies/${companyId}/customers`)
-    );
-    const unsubCust = onSnapshot(qCust, (snap) => {
-      const list: any[] = [];
-      snap.forEach(doc => {
-        list.push({ id: doc.id, ...doc.data() });
-      });
-      setCustomersList(list);
-    });
 
     const listen = (path: string, display: (d: any) => Record<string, any>, setter: (rows: any[]) => void) =>
       onSnapshot(query(collection(db, `companies/${companyId}/${path}`)), (snap) => {
@@ -311,7 +301,6 @@ export default function SalesPage() {
     });
 
     return () => {
-      unsubCust();
       unsubQuote();
       unsubOrder();
       unsubInv();

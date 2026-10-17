@@ -25,8 +25,13 @@ export interface MasterSchema {
   editPermission: "inventory:edit" | "sales:edit" | "procurement:edit";
 }
 
-const PARTY_IDENTITY = ["taxId", "branchCode", "legalName", "entityType"];
-const PARTY_SHARED = ["name", "address", "phone", "email", "website", "contactName", "contacts", "addresses", "industry", "bankName", "bankAccount", "bankAccountName"];
+const PARTY_IDENTITY = ["taxId", "tax_id", "branchCode", "branch_code", "legalName", "entityType"];
+// รวมชื่อฟิลด์แบบเดิมของฟอร์ม (snake_case / ที่อยู่แยกช่อง) เพื่อให้ข้อมูลทั่วไปอยู่ที่ข้อมูลกลาง
+const PARTY_SHARED = [
+  "name", "customerName", "supplierName", "address", "phone", "phoneNumber", "email", "website", "contactName", "contact_name", "contacts", "addresses", "industry",
+  "addressNo", "building", "soi", "road", "subDistrict", "district", "province", "zipCode",
+  "bankName", "bankAccount", "bankAccountName", "bank_name", "account_number", "account_name",
+];
 
 export const MASTER_SCHEMAS: Record<MasterEntity, MasterSchema> = {
   products: {

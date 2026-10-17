@@ -23,6 +23,7 @@ import { formatCurrency } from "@/lib/erp-logic";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useSuppliers } from "@/hooks/useCustomers";
 import { apiFetch } from "@/lib/api-client";
 import { listLocations } from "@/lib/warehouse-location";
 
@@ -35,7 +36,7 @@ function NewInventoryInScreen() {
   const { user, companyId } = useAuth();
 
   // ข้อมูลจริงของบริษัท
-  const { data: suppliers } = useRealtimeCollection<any>("suppliers");
+  const { data: suppliers } = useSuppliers<any>();
   const { data: warehouses } = useRealtimeCollection<any>("warehouses");
   const { data: rootPOs } = useRealtimeCollection<any>("purchase_orders");
   const { data: companyPOs } = useRealtimeCollection<any>(`companies/${companyId}/purchase_orders`);

@@ -97,7 +97,7 @@ service cloud.firestore {
     // ---------- Root collections (generic) ----------
     // collection ที่มีกฎเฉพาะด้านล่างถูกตัดออกจาก wildcard เพื่อไม่ให้ wildcard อนุญาตทับ
     function isSpecialRoot(collectionName) {
-      return collectionName in ['users', 'companies', 'counters', 'periodClosings', 'logs', 'activity_logs', 'employees', 'attendance', 'journal_entries', 'taxFilings', 'assetDepreciations', 'service_tickets', 'rate_limits', 'groups'];
+      return collectionName in ['users', 'companies', 'counters', 'periodClosings', 'logs', 'activity_logs', 'employees', 'attendance', 'journal_entries', 'taxFilings', 'assetDepreciations', 'service_tickets', 'rate_limits', 'groups', 'products', 'suppliers', 'contractors', 'customers'];
     }
 
     match /{collectionName}/{documentId} {
@@ -168,6 +168,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ข้อมูลหลักรุ่นเก่าที่ root (ก่อนย้ายเข้าข้อมูลกลางของเครือ): อ่านได้ในบริษัท เขียนผ่าน /api/master-data เท่านั้น
+    match /{masterCol}/{docId} {
+      allow get: if masterCol in ['products', 'suppliers', 'contractors', 'customers'] && isMember() && canGet();
+      allow list: if masterCol in ['products', 'suppliers', 'contractors', 'customers'] && isMember() && canList();
+      allow write: if false;
+    }
+
     // คำขอแจ้งซ่อมจากพอร์ทัลรุ่นเก่า: อ่านได้ในบริษัท (รอรับเรื่อง) — คำขอใหม่เข้า /api/portal/repair
     // rate_limits: ตัวนับของ endpoint สาธารณะ อยู่ใน isSpecialRoot และไม่มีกฎ = client เข้าไม่ได้
     match /service_tickets/{ticketId} {
@@ -228,7 +235,9 @@ service cloud.firestore {
           // งานมอบหมาย: จ่ายงาน/รับงาน/ปิดงานผ่าน /api/jobs เท่านั้น
           'jobs', 'service_tickets',
           // คำขอแจ้งซ่อมจากลูกค้า: รับผ่าน /api/portal/repair และรับเรื่องผ่าน /api/service/tickets
-          'portal_requests'];
+          'portal_requests',
+          // ข้อมูลหลักส่วนของบริษัท (ราคา สต็อก วงเงิน ชื่อเฉพาะบริษัท): /api/master-data และ stock engine
+          'products', 'customers', 'suppliers', 'contractors'];
       }
       // ข้อมูลการเงินอ่านได้เฉพาะตำแหน่งที่เกี่ยวข้อง (ส่วนอื่นอ่านได้ทุกคนในบริษัท)
       function restrictedRead(collection) {

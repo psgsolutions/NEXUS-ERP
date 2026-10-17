@@ -5,6 +5,7 @@ import { can } from "@/lib/permissions";
 import { balanceSheet, generalLedger, monthEnd, postingLines, profitAndLoss, trialBalance } from "@/lib/financial-reports";
 import { inputVatRows, outputVatRows, vatTotals } from "@/lib/vat-reports";
 import { buildWhtRecords, computePP30 } from "@/lib/tax-calc";
+import { getRecords } from "@/lib/master-store.server";
 
 /**
  * [API-SERVER] รายงานบัญชีและภาษี (คำนวณที่ server จากข้อมูลจริง)
@@ -64,8 +65,7 @@ export async function POST(request: Request) {
       } else {
         const [expenses, payments] = await Promise.all([col("expenses"), col("payments")]);
         const supplierIds = Array.from(new Set([...expenses.map((e) => e.supplierId), ...payments.map((p) => p.supplierId)].filter(Boolean).map(String)));
-        const sups = supplierIds.length ? await adminDb.getAll(...supplierIds.map((id) => adminDb.doc(`suppliers/${id}`))) : [];
-        const taxIds = new Map(sups.filter((d) => d.exists && d.data()!.companyId === companyId).map((d) => [d.id, String(d.data()!.taxId || "")]));
+        const taxIds = new Map(Array.from((await getRecords("suppliers", companyId, supplierIds)).entries()).map(([id, d]) => [id, String(d.taxId || d.tax_id || "")]));
         rows = inputVatRows(expenses, payments, taxIds, month);
       }
       const totals = vatTotals(rows);
@@ -77,8 +77,7 @@ export async function POST(request: Request) {
     const whtType = report === "pnd3" ? "PND3" : "PND53";
     const wht = await col("withholding_taxes");
     const supplierIds = Array.from(new Set(wht.map((w) => w.supplierId).filter(Boolean).map(String)));
-    const sups = supplierIds.length ? await adminDb.getAll(...supplierIds.map((id) => adminDb.doc(`suppliers/${id}`))) : [];
-    const taxIds = new Map(sups.filter((d) => d.exists && d.data()!.companyId === companyId).map((d) => [d.id, String(d.data()!.taxId || "")]));
+    const taxIds = new Map(Array.from((await getRecords("suppliers", companyId, supplierIds)).entries()).map(([id, d]) => [id, String(d.taxId || d.tax_id || "")]));
     const rows = buildWhtRecords(wht.map((w) => ({ id: w.id, data: w })), taxIds, month, whtType).sort((a, b) => a.date.localeCompare(b.date));
     const totals = {
       count: rows.length,

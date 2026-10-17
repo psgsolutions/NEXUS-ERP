@@ -49,6 +49,7 @@ import { doc, setDoc, query, collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase-client";
 import { createExpenseFromPO, createWHTFromExpense } from "@/lib/procurement-service";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useSuppliers } from "@/hooks/useCustomers";
 import { normalizePoStatus } from "@/lib/procurement-status";
 import { SecureDeleteAction } from "@/components/ui/SecureDeleteAction";
 
@@ -75,7 +76,7 @@ export default function ProcurementPage() {
   const [isExpenseOpen, setIsExpenseOpen] = useState(false);
   const [isWHTOpen, setIsWHTOpen] = useState(false);
 
-  const { data: initialSuppliers } = useRealtimeCollection<any>('suppliers');
+  const { data: initialSuppliers } = useSuppliers<any>();
   // ใบขอซื้ออยู่ใต้บริษัท (บันทึกจาก /procurement/requests/new)
   const { data: rawPRs } = useRealtimeCollection<any>(`companies/${companyId}/purchase_requests`);
   const initialPRs = rawPRs.map((pr: any) => {

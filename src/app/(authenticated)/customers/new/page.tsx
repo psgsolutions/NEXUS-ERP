@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { PillInput, PillButton, cn } from '@/components/ui/Base';
 import { Save, Scan, Building2, MapPin, Phone, Cpu, UploadCloud, ArrowLeft } from 'lucide-react';
 import { db } from '@/lib/firebase-client';
+import { apiFetch } from "@/lib/api-client";
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -128,20 +129,19 @@ export default function CustomerDataEntryPage() {
 
     try {
       setIsSaving(true);
-      await addDoc(collection(db, `companies/${currentCompanyId}/customers`), {
-        ...formData,
-        name: formData.customerName, // alias for standard listing
-        companyId: currentCompanyId,
-        createdAt: serverTimestamp(),
-        createdBy: user?.uid || 'SYSTEM',
-        status: 'ACTIVE'
+      // บันทึกผ่าน API: ตรวจเลขผู้เสียภาษี+สาขาซ้ำในเครือ แยกข้อมูลกลาง/ของบริษัท
+      const res = await apiFetch('/api/master-data', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyId: currentCompanyId, action: 'create', entity: 'customers', data: { ...formData, name: formData.customerName, status: 'ACTIVE' } }),
       });
+      const d = await res.json();
+      if (!res.ok || !d.success) throw new Error(d.error || 'ไม่สามารถบันทึกข้อมูลได้');
       
       showAlert('เพิ่มลูกค้าเข้าสู่ระบบเรียบร้อย', 'บันทึกข้อมูลสำเร็จ', 'info');
       router.push('/customers');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      showAlert('ไม่สามารถบันทึกข้อมูลได้', 'เกิดข้อผิดพลาด', 'error');
+      showAlert(error?.message || 'ไม่สามารถบันทึกข้อมูลได้', 'เกิดข้อผิดพลาด', 'error');
     } finally {
       setIsSaving(false);
     }

@@ -10,6 +10,7 @@ import { db } from "@/lib/firebase-client";
 import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
 import { can, type Permission } from "@/lib/permissions";
+import { isMasterEntity, type MasterEntity } from "@/lib/master-data";
 
 /** เอกสารที่ต้องลบผ่าน server (ตรวจเอกสารอ้างอิงและคืนสถานะเอกสารต้นทางในทรานแซกชันเดียว) */
 export type ServerDeleteKind = "purchase_order" | "expense" | "wht" | "sales_order";
@@ -21,8 +22,15 @@ function deletePermission(kind?: ServerDeleteKind, collectionName?: string): Per
   if (["customers", "quotations", "sales_orders"].includes(col)) return "sales:delete";
   if (["invoices", "expenses", "withholding_taxes", "purchase_orders"].includes(col)) return "finance:delete";
   if (["products", "warehouses"].includes(col)) return "inventory:delete";
+  if (["suppliers", "contractors"].includes(col)) return "procurement:edit";
   if (col === "projects") return "projects:delete";
   return "settings:manage";
+}
+
+/** collection ของข้อมูลหลัก (root รุ่นเก่า หรือ companies/{c}/...) -> ประเภทสำหรับ /api/master-data */
+function masterEntityOf(collectionName?: string): MasterEntity | null {
+  const col = String(collectionName || "").split("/").pop() || "";
+  return isMasterEntity(col) ? col : null;
 }
 
 interface SecureDeleteActionProps {
@@ -74,6 +82,15 @@ export function SecureDeleteAction({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ companyId, kind: serverKind, id: documentId }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || "ลบไม่สำเร็จ");
+      } else if (masterEntityOf(collectionName)) {
+        // ข้อมูลหลัก (สินค้า ลูกค้า ผู้ขาย ผู้รับเหมา): ซ่อนรายการของบริษัทผ่าน API (ข้อมูลกลางของเครือยังอยู่)
+        const res = await apiFetch("/api/master-data", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ companyId, action: "remove", entity: masterEntityOf(collectionName), id: documentId }),
         });
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.error || "ลบไม่สำเร็จ");

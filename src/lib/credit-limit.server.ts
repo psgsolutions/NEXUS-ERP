@@ -1,14 +1,14 @@
 import { adminDb } from "@/lib/firebase-admin";
 import { ApiAuthError } from "@/lib/api-auth";
+import { getRecord } from "@/lib/master-store.server";
 
-/** ลูกค้าของบริษัท (ที่เก็บหลัก หรือ root รุ่นเก่าของบริษัทเดียวกัน) */
+/** ลูกค้าของบริษัท (ข้อมูลกลางของเครือ + ของบริษัท, หรือ root รุ่นเก่าของบริษัทเดียวกัน) — คืนรูปแบบเดียวกับ snapshot */
 export async function getCompanyCustomer(companyId: string, customerId: string) {
-  let cust = await adminDb.doc(`companies/${companyId}/customers/${customerId}`).get();
-  if (!cust.exists) {
-    const legacy = await adminDb.doc(`customers/${customerId}`).get();
-    if (legacy.exists && legacy.data()!.companyId === companyId) cust = legacy;
-  }
-  return cust.exists ? cust : null;
+  const rec = await getRecord("customers", companyId, customerId);
+  if (rec) return { id: rec.id, ref: rec.ref, exists: true as const, data: () => rec.data };
+  const legacy = await adminDb.doc(`customers/${customerId}`).get();
+  if (legacy.exists && legacy.data()!.companyId === companyId) return { id: legacy.id, ref: legacy.ref, exists: true as const, data: () => legacy.data()! };
+  return null;
 }
 
 /**

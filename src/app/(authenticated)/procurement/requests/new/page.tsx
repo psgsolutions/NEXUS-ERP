@@ -28,6 +28,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useSuppliers } from "@/hooks/useCustomers";
 import { apiFetch } from "@/lib/api-client";
 
 function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
@@ -47,7 +48,7 @@ export default function NewPurchaseRequestPage() {
   const { user, companyId } = useAuth();
 
   // ข้อมูลจริงของบริษัท
-  const { data: suppliers } = useRealtimeCollection<any>("suppliers");
+  const { data: suppliers } = useSuppliers<any>();
   const { data: projects } = useRealtimeCollection<any>(`companies/${companyId}/projects`);
   const vendorOptions = suppliers.map((sp: any) => ({
     value: sp.id,

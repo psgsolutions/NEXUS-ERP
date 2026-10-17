@@ -38,6 +38,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useSuppliers } from "@/hooks/useCustomers";
 import { apiFetch } from "@/lib/api-client";
 import { db } from "@/lib/firebase-client";
 import { doc, getDoc } from "firebase/firestore";
@@ -75,7 +76,7 @@ function NewPurchaseOrderScreen() {
   const { user, companyId } = useAuth();
 
   // ข้อมูลจริงของบริษัท
-  const { data: suppliers } = useRealtimeCollection<any>("suppliers");
+  const { data: suppliers } = useSuppliers<any>();
   const { data: projects } = useRealtimeCollection<any>(`companies/${companyId}/projects`);
   const { data: warehouses } = useRealtimeCollection<any>("warehouses");
 

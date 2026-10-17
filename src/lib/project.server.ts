@@ -1,4 +1,5 @@
 import { adminDb } from "./firebase-admin";
+import { getRecord } from "@/lib/master-store.server";
 import type { ApiUser } from "./api-auth";
 import { PROJECT_TYPE_CONFIGS, ProjectTypeCode } from "@/types/database";
 import { computeProjectBudget, normalizeItemLine, normalizeLaborLine } from "./project-budget";
@@ -29,8 +30,8 @@ export function stripUndefined<T>(value: T): T {
 }
 
 async function findCustomer(companyId: string, customerId: string) {
-  const own = await adminDb.doc(`companies/${companyId}/customers/${customerId}`).get();
-  if (own.exists) return own.data()!;
+  const own = await getRecord("customers", companyId, customerId);
+  if (own) return own.data;
   const legacy = await adminDb.doc(`customers/${customerId}`).get();
   if (legacy.exists && legacy.data()?.companyId === companyId) return legacy.data()!;
   return null;

@@ -10,6 +10,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useCustomers } from "@/hooks/useCustomers";
 import { apiFetch } from "@/lib/api-client";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
@@ -35,7 +36,7 @@ export default function SalesOrderPage() {
   const { user, companyId } = useAuth();
 
   // ข้อมูลจริงของบริษัท
-  const { data: customers, loading: customersLoading } = useRealtimeCollection<any>(`companies/${companyId}/customers`);
+  const { data: customers, loading: customersLoading } = useCustomers<any>();
   const { data: projects } = useRealtimeCollection<any>(`companies/${companyId}/projects`);
   const { data: invoices } = useRealtimeCollection<any>(`companies/${companyId}/invoices`);
 

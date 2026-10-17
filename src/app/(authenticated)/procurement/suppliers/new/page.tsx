@@ -124,22 +124,29 @@ export default function NewSupplierPage() {
 
     setIsSubmitting(true);
     try {
-      const supplierRef = doc(collection(db, "suppliers"));
-      const contractorRef = doc(collection(db, "contractors"));
 
       const categoryLabel = form.entity_category === "TEAM" ? "ทีมช่าง" : form.entity_category === "COMPANY" ? "บริษัท" : "ห้าง/ร้าน";
       const payload = {
         ...form,
         category: categoryLabel,
         contractor_type: form.entity_category,
-        companyId: currentCompanyId,
-        createdAt: serverTimestamp(),
+        taxId: form.tax_id,
         status: "active",
         isActive: true
       };
 
-      await setDoc(supplierRef, payload);
-      await setDoc(contractorRef, payload);
+      // บันทึกผ่าน API: ผู้ขายและผู้รับเหมาใช้รหัสเดียวกัน (ตรวจเลขผู้เสียภาษีซ้ำในเครือ)
+      const createParty = async (entity: "suppliers" | "contractors", id?: string) => {
+        const res = await apiFetch("/api/master-data", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ companyId: currentCompanyId, action: "create", entity, ...(id ? { id } : {}), data: payload }),
+        });
+        const d = await res.json();
+        if (!res.ok || !d.success) throw new Error(d.error || "บันทึกข้อมูลไม่สำเร็จ");
+        return d.id as string;
+      };
+      const supplierRef = { id: await createParty("suppliers") };
+      await createParty("contractors", supplierRef.id);
 
       // Save labor wage rates to subcontractor_rates AND products collections for seamless integration with Quotation & BOQ
       if (form.labor_rates && form.labor_rates.length > 0) {

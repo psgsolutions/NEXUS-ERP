@@ -6,6 +6,7 @@ import { can, purchaseApprovalLimit } from "@/lib/permissions";
 import { prepareSequence } from "@/lib/sequence-server";
 import { auditServer } from "@/services/audit.server";
 import { computeDocTotals, normalizeVatMode, sanitizeLines } from "@/lib/doc-totals";
+import { getRecord } from "@/lib/master-store.server";
 
 /**
  * [API-SERVER] ใบสั่งซื้อ (PO)
@@ -46,12 +47,10 @@ export async function POST(request: Request) {
       const vatType = normalizeVatMode(h.vatType);
       const t = computeDocTotals(items, vatType);
       const prId = str(body.prId, 120);
-      const supRef = adminDb.doc(`suppliers/${str(h.supplierId, 120)}`);
+      const sup = (await getRecord("suppliers", companyId, str(h.supplierId, 120)))?.data || null;
       const take = await prepareSequence("PO", companyId);
 
       const poCode = await adminDb.runTransaction(async (tx) => {
-        const supSnap = await tx.get(supRef);
-        const sup = supSnap.exists && supSnap.data()!.companyId === companyId ? supSnap.data()! : null;
         let prRef: admin.firestore.DocumentReference | null = null;
         if (prId) {
           prRef = adminDb.doc(`companies/${companyId}/purchase_requests/${prId}`);
@@ -66,7 +65,7 @@ export async function POST(request: Request) {
         seq.commit();
         tx.create(adminDb.doc(`companies/${companyId}/purchase_orders/${code}`), {
           poCode: code, documentNo: code, companyId,
-          orderType, supplierId: supRef.id, supplierName: str(sup?.name || sup?.supplierName || h.supplierName, 200),
+          orderType, supplierId: str(h.supplierId, 120), supplierName: str(sup?.name || sup?.supplierName || h.supplierName, 200),
           reference: str(h.reference, 120), prRef: prId,
           projectId: str(h.projectId, 120), projectName: str(h.projectName, 200),
           department: str(h.department, 120), warehouseCode: orderType === "STOCK" ? str(h.warehouseCode, 40) : "",

@@ -11,6 +11,7 @@ import { GanttChart, type GanttItem } from "@/components/projects/GanttChart";
 import { useAuth } from "@/context/AuthContext";
 import { useCompanyProjects } from "@/hooks/useCompanyProjects";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useContractors } from "@/hooks/useCustomers";
 import { OPEN_STATUSES, PROJECT_STATUS_BADGE, PROJECT_STATUS_TH, normalizeProjectStatus, type ProjectStatus } from "@/lib/project-status";
 import { milestoneStatus } from "@/lib/project-milestones";
 import { compactBaht } from "@/lib/dashboard-metrics";
@@ -35,7 +36,7 @@ export default function ProjectsPage() {
 
   const { data: dbProjects } = useCompanyProjects();
   const { data: workOrders } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/work_orders` : "");
-  const { data: allContractors } = useRealtimeCollection<any>("contractors");
+  const { data: allContractors } = useContractors<any>();
 
   const projects = useMemo(() => dbProjects
     .filter((p: any) => p.isDeleted !== true)

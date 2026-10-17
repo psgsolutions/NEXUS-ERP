@@ -1,4 +1,5 @@
 import { db } from "./firebase-client";
+import { groupIdOf } from "./master-data";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { buildWhtRecords, computePP30, type PP30TaxData, type WHTTaxRecord } from "./tax-calc";
 
@@ -42,9 +43,12 @@ export async function fetchWHTTaxRecords(companyId: string, yearMonth: string, w
   const snapWht = await getDocs(query(collection(db, `companies/${companyId}/withholding_taxes`), where("companyId", "==", companyId)));
   const supplierTaxIds = new Map<string, string>();
   const supplierIds = Array.from(new Set(snapWht.docs.map((d) => d.data().supplierId).filter(Boolean)));
+  // เลขผู้เสียภาษีอยู่ที่ข้อมูลกลางของเครือ (ย้ายแล้ว) หรือ root suppliers (รุ่นเก่า)
+  const groupId = groupIdOf((await getDoc(doc(db, "companies", companyId))).data() as any, companyId);
   for (const id of supplierIds) {
-    const sup = await getDoc(doc(db, "suppliers", id));
-    if (sup.exists()) supplierTaxIds.set(id, String(sup.data().taxId || ""));
+    const master = await getDoc(doc(db, "groups", groupId, "suppliers", id)).catch(() => null);
+    const sup = master?.exists() ? master : await getDoc(doc(db, "suppliers", id));
+    if (sup.exists()) supplierTaxIds.set(id, String(sup.data().taxId || sup.data().tax_id || ""));
   }
   return buildWhtRecords(snapWht.docs.map((d) => ({ id: d.id, data: d.data() })), supplierTaxIds, yearMonth, whtType);
 }

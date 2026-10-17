@@ -5,6 +5,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { canEditMaster, companiesInGroup, groupIdOfCompany } from "@/lib/company-group.server";
 import { processStockMovements } from "@/lib/stock-service";
+import { LEGACY_ROOT } from "@/lib/master-store.server";
 import { MASTER_SCHEMAS, isMasterEntity, mergeRecord, splitChanges, uniqueKeyDocId, uniqueKeyValue, type EditScope, type MasterEntity } from "@/lib/master-data";
 
 /**
@@ -18,6 +19,7 @@ import { MASTER_SCHEMAS, isMasterEntity, mergeRecord, splitChanges, uniqueKeyDoc
  *  - { action: "adopt", entity, id, data? }                ใช้รายการกลางที่มีอยู่แล้วในบริษัทนี้ (ตั้งค่าของบริษัทได้)
  *  - { action: "update", entity, id, changes, scope }      scope "group" = แก้ค่ากลาง / "company" = ตั้งค่าของบริษัท
  *  - { action: "resetLocal", entity, id, fields }          ล้างค่าของบริษัท กลับไปใช้ค่ากลาง
+ *  - { action: "remove", entity, id }                      ซ่อนรายการของบริษัท (isDeleted) — ข้อมูลกลางของเครือยังอยู่ ใช้ "adopt" นำกลับได้
  * entity: products | customers | suppliers | contractors
  */
 
@@ -43,6 +45,16 @@ function clean(obj: Record<string, any>): Record<string, any> {
 }
 
 /** ตัดฟิลด์ที่ระบบคำนวณเอง (สต็อก ต้นทุนเฉลี่ย ยอดหนี้) ออก — แก้ได้ผ่านเอกสารคลัง/บัญชีเท่านั้น */
+/** คู่ค้า: ใช้ taxId / branchCode เป็นหลัก (ฟอร์มเก่าใช้ tax_id / branch_code) เพื่อให้ตรวจซ้ำได้ */
+function normalizeParty(entity: MasterEntity, data: Record<string, any>) {
+  if (entity === "products") return data;
+  const out = { ...data };
+  const tax = String(out.taxId ?? out.tax_id ?? "").replace(/D/g, "");
+  if (tax) out.taxId = tax;
+  if (!out.branchCode && out.branch_code) out.branchCode = String(out.branch_code);
+  return out;
+}
+
 function protectLocal(entity: MasterEntity, local: Record<string, any>): string[] {
   const dropped = Object.keys(local).filter((k) => PROTECTED[entity].includes(k));
   dropped.forEach((k) => delete local[k]);
@@ -79,24 +91,38 @@ function writeUniqueKeys(tx: admin.firestore.Transaction, groupId: string, entit
   }
 }
 
-/** สินค้า root รุ่นเก่า (ยังไม่มีดัชนีห้ามซ้ำ) ที่ SKU/บาร์โค้ดชนกัน */
+/** รายการรุ่นเก่า (ยังไม่มีดัชนีห้ามซ้ำ) ที่ SKU/บาร์โค้ด หรือเลขผู้เสียภาษี+สาขา ชนกัน */
 async function legacyDuplicates(entity: MasterEntity, companyId: string, data: Record<string, any>, exceptId = "") {
-  if (entity !== "products") return [];
   const hits: { fields: string[]; value: string; id: string }[] = [];
-  for (const f of ["sku", "barcode"]) {
-    const v = String(data?.[f] ?? "").trim();
-    if (!v) continue;
-    const q = await adminDb.collection("products").where("companyId", "==", companyId).where(f, "==", v).limit(3).get();
-    q.docs.filter((d) => d.id !== exceptId && d.data().isDeleted !== true).forEach((d) => hits.push({ fields: [f], value: v.toUpperCase(), id: d.id }));
+  const live = (d: admin.firestore.QueryDocumentSnapshot) => d.id !== exceptId && d.data().isDeleted !== true;
+  if (entity === "products") {
+    for (const f of ["sku", "barcode"]) {
+      const v = String(data?.[f] ?? "").trim();
+      if (!v) continue;
+      const q = await adminDb.collection("products").where("companyId", "==", companyId).where(f, "==", v).limit(3).get();
+      q.docs.filter(live).forEach((d) => hits.push({ fields: [f], value: v.toUpperCase(), id: d.id }));
+    }
+    return hits;
   }
+  const taxId = String(data?.taxId ?? data?.tax_id ?? "").replace(/D/g, "");
+  if (!taxId) return hits;
+  const branchOf = (x: any) => String(x?.branchCode ?? x?.branch_code ?? "").trim() || "00000";
+  const branch = branchOf(data);
+  const col = LEGACY_ROOT[entity] ? adminDb.collection(LEGACY_ROOT[entity]!).where("companyId", "==", companyId) : adminDb.collection(`companies/${companyId}/${entity}`);
+  const [a, b] = await Promise.all([col.where("taxId", "==", taxId).limit(5).get(), col.where("tax_id", "==", taxId).limit(5).get()]);
+  const seen = new Set<string>();
+  [...a.docs, ...b.docs].filter(live).filter((d) => branchOf(d.data()) === branch).forEach((d) => {
+    if (!seen.has(d.id)) { seen.add(d.id); hits.push({ fields: ["taxId", "branchCode"], value: `${taxId}|${branch}`, id: d.id }); }
+  });
   return hits;
 }
 
-/** เอกสาร root รุ่นเก่า (สินค้าก่อนย้ายข้อมูล) ของบริษัทนี้ */
+/** เอกสารรุ่นเก่าของบริษัทนี้ที่ยังไม่ย้ายเข้าข้อมูลกลาง: root (สินค้า ผู้ขาย ผู้รับเหมา) หรือเอกสารลูกค้าใต้บริษัท */
 async function legacyDoc(entity: MasterEntity, id: string, companyId: string) {
-  if (entity !== "products") return null;
-  const snap = await adminDb.doc(`products/${id}`).get();
-  return snap.exists && snap.data()!.companyId === companyId ? snap : null;
+  const root = LEGACY_ROOT[entity];
+  const snap = await adminDb.doc(root ? `${root}/${id}` : `companies/${companyId}/${entity}/${id}`).get();
+  if (!snap.exists || (root && snap.data()!.companyId !== companyId)) return null;
+  return snap;
 }
 
 const historyEntry = (u: ApiUser, companyId: string, action: string, changes: Record<string, any>) => ({
@@ -145,7 +171,7 @@ export async function POST(request: Request) {
     if (!can(apiUser.roles, schema.editPermission)) throw new ApiAuthError(403, `ไม่มีสิทธิ์แก้ไขข้อมูล${schema.label}`);
 
     if (action === "create") {
-      const data = clean(body.data || {});
+      const data = normalizeParty(entity, clean(body.data || {}));
       if (!str(data.name)) throw new ApiAuthError(400, `กรุณาระบุชื่อ${schema.label}`);
       const id = str(body.id, 120) || masterCol.doc().id;
       if (!ID.test(id)) throw new ApiAuthError(400, "รหัสไม่ถูกต้อง");
@@ -159,7 +185,7 @@ export async function POST(request: Request) {
       if (legacyHits.length) throw new ApiAuthError(409, dupMessage(entity, legacyHits));
       await adminDb.runTransaction(async (tx) => {
         const [m, l] = await Promise.all([tx.get(masterCol.doc(id)), tx.get(localCol.doc(id))]);
-        const legacy = entity === "products" ? await tx.get(adminDb.doc(`products/${id}`)) : null;
+        const legacy = LEGACY_ROOT[entity] ? await tx.get(adminDb.doc(`${LEGACY_ROOT[entity]}/${id}`)) : null;
         if (m.exists || l.exists || legacy?.exists) throw new ApiAuthError(409, `รหัส ${id} มีอยู่แล้ว`);
         const hits = await findDuplicates(tx, groupId, entity, master);
         if (hits.length) throw new ApiAuthError(409, dupMessage(entity, hits));
@@ -204,7 +230,7 @@ export async function POST(request: Request) {
 
     if (action === "update") {
       const scope: EditScope = body.scope === "group" ? "group" : "company";
-      const { master, local } = splitChanges(entity, clean(body.changes || {}), scope);
+      const { master, local } = splitChanges(entity, normalizeParty(entity, clean(body.changes || {})), scope);
       const ignored = protectLocal(entity, local);
       const legacy = await legacyDoc(entity, id, companyId);
       if (legacy && !(await masterCol.doc(id).get()).exists) {
@@ -244,6 +270,20 @@ export async function POST(request: Request) {
       if (!(await ref.get()).exists) throw new ApiAuthError(404, `ไม่พบ${schema.label}ของบริษัท`);
       await ref.update({ ...Object.fromEntries(fields.map((f: string) => [f, admin.firestore.FieldValue.delete()])), updatedAt: now, updatedBy: apiUser.uid });
       return NextResponse.json({ success: true, id, reset: fields });
+    }
+
+    if (action === "remove") {
+      const perm = entity === "products" ? "inventory:delete" : entity === "customers" ? "sales:delete" : "procurement:edit";
+      if (!can(apiUser.roles, perm as any)) throw new ApiAuthError(403, `ไม่มีสิทธิ์ลบ${schema.label}`);
+      const [m, l, legacy] = await Promise.all([masterCol.doc(id).get(), localCol.doc(id).get(), legacyDoc(entity, id, companyId)]);
+      const target = m.exists ? (l.exists ? l.ref : null) : legacy?.ref || null;
+      if (!target) throw new ApiAuthError(404, `ไม่พบ${schema.label}`);
+      if (entity === "products") {
+        const st = (m.exists ? l.data() : legacy?.data())?.stockStatus || {};
+        if ((Number(st.onHand) || 0) > 0 || (Number(st.reserved) || 0) > 0) throw new ApiAuthError(409, "ยังมีสต็อกหรือยอดจองอยู่ ลบไม่ได้ — ตัดจำหน่าย/เบิกออกก่อน");
+      }
+      await target.set({ isDeleted: true, deletedAt: now, deletedBy: apiUser.uid, updatedAt: now }, { merge: true });
+      return NextResponse.json({ success: true, id });
     }
 
     throw new ApiAuthError(400, "ไม่รู้จักคำสั่ง");

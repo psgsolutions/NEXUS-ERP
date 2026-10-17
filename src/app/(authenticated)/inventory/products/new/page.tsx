@@ -32,6 +32,7 @@ import { SmartSelect, StepperInput } from "@/components/ui/SmartComponents";
 import { useInventory } from "@/hooks/useInventory";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useSuppliers } from "@/hooks/useCustomers";
 import { apiFetch } from "@/lib/api-client";
 import { saveToFirestore } from "@/lib/firebaseUtils";
 import { Warehouse3D } from "@/components/inventory/Warehouse3D";
@@ -149,7 +150,7 @@ export default function NewProductPage() {
 
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
-  const { data: suppliers } = useRealtimeCollection("suppliers");
+  const { data: suppliers } = useSuppliers();
   const { data: warehouses } = useRealtimeCollection("warehouses");
 
   const INITIAL_CATEGORIES = [

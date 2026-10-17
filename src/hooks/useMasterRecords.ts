@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useRealtimeCollection } from "./useRealtimeCollection";
 import { useMasterData } from "./useMasterData";
-import type { MasterEntity } from "@/lib/master-data";
+import { deepMerge, type MasterEntity } from "@/lib/master-data";
 
 /** collection รุ่นเก่าที่ root (ลูกค้าอยู่ใต้บริษัทอยู่แล้ว) — ตรงกับ LEGACY_ROOT ใน master-store.server */
 const LEGACY_ROOT: Partial<Record<MasterEntity, string>> = { products: "products", suppliers: "suppliers", contractors: "contractors" };
@@ -25,7 +25,7 @@ export function useMasterRecords<T = any>(entity: MasterEntity, opts: { includeG
       else if (byId.has(r.id)) {
         // ค่าที่บริษัทตั้งทับบนรายการรุ่นเก่า (เช่น ราคาจากใบเสนอราคา)
         const extra = Object.fromEntries(Object.entries(r).filter(([k, v]) => !k.startsWith("_") && v !== "" && v !== null && v !== undefined));
-        byId.set(r.id, { ...byId.get(r.id), ...extra });
+        byId.set(r.id, deepMerge(byId.get(r.id), extra));
       }
     }
     return Array.from(byId.values()).filter((r) => r.isDeleted !== true) as (T & { id: string; _legacy?: boolean; _inCompany: boolean })[];

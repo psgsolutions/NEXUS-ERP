@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupIdOf, mergeRecord, splitChanges, uniqueKeyDocId, uniqueKeyValue } from "@/lib/master-data";
+import { deepMerge, groupIdOf, mergeRecord, splitChanges, uniqueKeyDocId, uniqueKeyValue } from "@/lib/master-data";
 
 describe("ข้อมูลหลักแบบเครือ", () => {
   it("บริษัทที่ไม่มี groupId เป็นเครือของตัวเอง", () => {
@@ -39,5 +39,10 @@ describe("ข้อมูลหลักแบบเครือ", () => {
     expect(uniqueKeyValue(["taxId", "branchCode"], { taxId: "0105555555555", branchCode: "00001" })).toBe("0105555555555|00001");
     expect(uniqueKeyValue(["barcode"], { barcode: "" })).toBe("");
     expect(uniqueKeyDocId("products", ["sku"], "A/B")).toBe("products__sku__A_B");
+  });
+
+  it("รวมแบบลงลึก: ตั้งราคาโครงการทับแล้วราคาหน้าร้าน/ต้นทุนไม่หาย", () => {
+    const r = deepMerge({ pricing: { pricePOS: 100, costWAC: 60 }, tags: ["a"] }, { pricing: { priceProject: 150 }, tags: ["b"] });
+    expect(r).toEqual({ pricing: { pricePOS: 100, costWAC: 60, priceProject: 150 }, tags: ["b"] });
   });
 });

@@ -30,6 +30,7 @@ const PARTY_IDENTITY = ["taxId", "tax_id", "branchCode", "branch_code", "legalNa
 const PARTY_SHARED = [
   "name", "customerName", "supplierName", "address", "phone", "phoneNumber", "email", "website", "contactName", "contact_name", "contacts", "addresses", "industry",
   "addressNo", "building", "soi", "road", "subDistrict", "district", "province", "zipCode",
+  "address_detail", "contact_person", "business_type", "branch",
   "bankName", "bankAccount", "bankAccountName", "bank_name", "account_number", "account_name",
 ];
 
@@ -51,6 +52,14 @@ export const isMasterEntity = (v: any): v is MasterEntity => MASTER_ENTITIES.inc
 /** เครือของบริษัท (บริษัทเดี่ยว = เครือของตัวเอง) */
 export const groupIdOf = (company: { groupId?: string } | null | undefined, companyId: string) =>
   String(company?.groupId || "").trim() || companyId;
+
+const isPlainObject = (v: any) => !!v && typeof v === "object" && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype;
+/** รวมแบบลงลึกในก้อนย่อย (เช่น pricing) — ค่าที่ทับไม่ลบฟิลด์อื่นในก้อนเดียวกัน */
+export function deepMerge<T extends Record<string, any>>(base: T, over: Record<string, any> | null | undefined): T {
+  const out: Record<string, any> = { ...base };
+  for (const [k, v] of Object.entries(over || {})) out[k] = isPlainObject(v) && isPlainObject(out[k]) ? deepMerge(out[k], v) : v;
+  return out as T;
+}
 
 const isEmpty = (v: any) => v === undefined || v === null || (typeof v === "string" && v.trim() === "") || (Array.isArray(v) && v.length === 0);
 

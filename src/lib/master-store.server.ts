@@ -1,6 +1,6 @@
 import * as admin from "firebase-admin";
 import { adminDb } from "@/lib/firebase-admin";
-import { mergeRecord, type MasterEntity } from "@/lib/master-data";
+import { deepMerge, mergeRecord, type MasterEntity } from "@/lib/master-data";
 import { groupIdOfCompany } from "@/lib/company-group.server";
 
 /**
@@ -38,7 +38,7 @@ function resolve(entity: MasterEntity, companyId: string, id: string, refs: Retu
     return { id, data: { ...mergeRecord(entity, master.data(), local.data()), id, companyId }, ref: refs.local, migrated: true };
   }
   if (legacy?.exists && legacy.data()!.companyId === companyId) {
-    return { id, data: { ...legacy.data(), ...nonEmpty(local.data()), id, companyId }, ref: refs.legacy!, migrated: false };
+    return { id, data: { ...deepMerge(legacy.data()!, nonEmpty(local.data())), id, companyId }, ref: refs.legacy!, migrated: false };
   }
   if (!LEGACY_ROOT[entity] && local.exists) return { id, data: { ...local.data(), id, companyId }, ref: refs.local, migrated: false };
   return null;
@@ -82,7 +82,7 @@ export async function listRecords(entity: MasterEntity, companyId: string, group
   const masterById = new Map(masters.docs.map((d) => [d.id, d.data()]));
   const localById = new Map(locals.docs.map((d) => [d.id, d.data()]));
   const out = new Map<string, Record<string, any>>();
-  for (const d of legacy?.docs || []) if (!masterById.has(d.id)) out.set(d.id, { ...d.data(), ...nonEmpty(localById.get(d.id)), id: d.id });
+  for (const d of legacy?.docs || []) if (!masterById.has(d.id)) out.set(d.id, { ...deepMerge(d.data(), nonEmpty(localById.get(d.id))), id: d.id });
   for (const [id, l] of Array.from(localById.entries())) {
     const m = masterById.get(id);
     if (m) out.set(id, { ...mergeRecord(entity, m, l), id, companyId });

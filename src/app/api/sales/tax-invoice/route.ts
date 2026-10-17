@@ -3,7 +3,8 @@ import * as admin from "firebase-admin";
 import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
-import { prepareCounter } from "@/lib/sequence-server";
+import { prepareSequence } from "@/lib/sequence-server";
+import { sellerSnapshot } from "@/lib/documents/seller.server";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { auditServer } from "@/services/audit.server";
 
@@ -12,7 +13,9 @@ import { auditServer } from "@/services/audit.server";
  * Endpoint: POST /api/sales/tax-invoice  { companyId, salesOrderId }
  *
  * ทำในทรานแซกชันเดียว:
- *  - เลขใบกำกับภาษี (INV) และใบวางบิล (BN) ออกพร้อมการบันทึก -> เลขเรียงต่อเนื่อง ไม่ข้าม (ข้อกำหนดสรรพากร)
+ *  - เลขใบกำกับภาษี (IV) และใบวางบิล (BL) ออกพร้อมการบันทึก -> เลขเรียงต่อเนื่อง ไม่ข้าม (ข้อกำหนดสรรพากร)
+ *    รูปแบบเลขตั้งได้ที่ ตั้งค่า > รูปแบบเลขที่ (companies/{id}/settings/sequence_formats)
+ *  - เก็บข้อมูลผู้ขาย ณ วันที่ออก (sellerSnapshot) สำหรับพิมพ์ซ้ำตาม ม.86/4
  *  - ใบสั่งขายออกใบกำกับได้ครั้งเดียว (กดซ้ำ/สองคนพร้อมกันไม่ได้ใบซ้ำ)
  *  - บันทึกบัญชี (รออนุมัติ) ลงวันที่ออกใบ: Dr ลูกหนี้ 1131-00 / Cr รายได้ 4111-00, Cr ภาษีขาย 2121-00
  *  - ใบแจ้งหนี้มียอดค้าง (balance) ให้รับชำระผ่าน /api/finance/receipts
@@ -57,8 +60,7 @@ export async function POST(request: Request) {
     const invRef = adminDb.collection(`companies/${companyId}/invoices`).doc();
     const bnRef = adminDb.collection(`companies/${companyId}/billing_notes`).doc();
     const journalRef = adminDb.collection(`companies/${companyId}/journal_entries`).doc();
-    const takeInv = prepareCounter("INV", companyId);
-    const takeBn = prepareCounter("BN", companyId);
+    const [takeInv, takeBn, seller] = await Promise.all([prepareSequence("IV", companyId), prepareSequence("BL", companyId), sellerSnapshot(companyId)]);
     const now = admin.firestore.FieldValue.serverTimestamp();
 
     const result = await adminDb.runTransaction(async (tx) => {
@@ -90,6 +92,7 @@ export async function POST(request: Request) {
         invoiceId: inv.number, invoiceNo: inv.number, documentNo: inv.number, docNumber: inv.number,
         orderRefNo: soNo, salesOrderId: soId, ...ref,
         customerSnapshot: so.customerSnapshot || null, customerId: so.customerId || "", customerName,
+        sellerSnapshot: seller,
         issueDate, dueDate,
         items: so.items || [],
         isVatRegistered, vatType,
@@ -104,11 +107,12 @@ export async function POST(request: Request) {
         billingNoteNo: bn.number, documentNo: bn.number, docNumber: bn.number,
         invoiceRefNo: inv.number, invoiceDocId: invRef.id, salesOrderRefNo: soNo, ...ref,
         customerSnapshot: so.customerSnapshot || null, customerId: so.customerId || "", customerName,
+        sellerSnapshot: seller,
         issueDate, dueDate, totalAmount: grandTotal,
         status: "issued",
         createdBy: apiUser.uid, updatedBy: apiUser.uid, createdAt: now, updatedAt: now, isDeleted: false,
       });
-      tx.update(soRef, { status: "COMPLETED", invoiceNo: inv.number, invoiceDocId: invRef.id, billingNoteNo: bn.number, updatedAt: now, updatedBy: apiUser.uid });
+      tx.update(soRef, { status: "COMPLETED", statusBeforeInvoice: so.status || "Confirmed", invoiceNo: inv.number, invoiceDocId: invRef.id, billingNoteNo: bn.number, updatedAt: now, updatedBy: apiUser.uid });
       const items = [
         { accountCode: "1131-00", accountName: "ลูกหนี้การค้า", debit: grandTotal, credit: 0 },
         { accountCode: "4111-00", accountName: "รายได้จากการขาย", debit: 0, credit: subTotal },

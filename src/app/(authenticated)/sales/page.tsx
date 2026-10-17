@@ -1,5 +1,6 @@
 "use client";
 
+import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { useSystemDialog } from "@/context/DialogContext";
 import React, { useState, useEffect } from "react";
 import {
@@ -127,6 +128,28 @@ export default function SalesPage() {
 
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [cndnCancel, setCndnCancel] = useState<{ docId: string; no: string; reason: string } | null>(null);
+  // พิมพ์/ดูเอกสาร (เทมเพลตมาตรฐาน)
+  const [printDoc, setPrintDoc] = useState<{ type: string; id: string; title: string } | null>(null);
+  // ยกเลิกใบกำกับภาษี / ยกเลิกและออกใบแทน (แก้ข้อมูลผู้ซื้อ)
+  const [invCancel, setInvCancel] = useState<{ docId: string; no: string; reason: string; replace: boolean; customer: { name: string; taxId: string; branch: string; address: string } } | null>(null);
+  const [invBusy, setInvBusy] = useState(false);
+  const canCancelInvoice = can(roles, "finance:edit") || can(roles, "sales:approve");
+  const openInvoiceCancel = (inv: any) => {
+    const c = inv.customerSnapshot || {};
+    setInvCancel({ docId: inv.docId, no: inv.id, reason: "", replace: true, customer: { name: c.name || c.customerName || inv.customerName || "", taxId: c.taxId || c.customerTaxId || "", branch: c.branch || c.customerBranch || "", address: c.address || c.customerAddress || "" } });
+  };
+  const cancelInvoice = async () => {
+    if (!invCancel || !companyId) return;
+    setInvBusy(true);
+    try {
+      const res = await apiFetch("/api/sales/tax-invoice/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, invoiceDocId: invCancel.docId, reason: invCancel.reason, replace: invCancel.replace, ...(invCancel.replace ? { customer: invCancel.customer } : {}) }) });
+      const d = await res.json();
+      if (!res.ok || !d.success) throw new Error(d.error || "ยกเลิกไม่สำเร็จ");
+      setInvCancel(null);
+      showToast(d.mode === "replaced" ? `ยกเลิก ${d.invoiceNo} และออกใบแทนเลขที่ ${d.newInvoiceNo} แล้ว` : `ยกเลิก ${d.invoiceNo} แล้ว ใบสั่งขายกลับไปออกใบกำกับใหม่ได้`);
+      if (d.mode === "replaced") setPrintDoc({ type: "invoice", id: d.newInvoiceDocId, title: `ใบกำกับภาษี ${d.newInvoiceNo}` });
+    } catch (e: any) { showToast(e.message); } finally { setInvBusy(false); }
+  };
   const [cndnBusy, setCndnBusy] = useState(false);
   const cancelCndn = async () => {
     if (!cndnCancel || !companyId) return;
@@ -243,9 +266,10 @@ export default function SalesPage() {
       date: toDateStr(firstOf(d, ["issueDate", "issuedAt", "createdAt"])),
       dueDate: toDateStr(d.dueDate),
       total: toMoney(firstOf(d, ["grandTotal", "totalRevenue", "totalAmount"])),
-      status: d.paymentStatus === "paid" || d.status === "Paid" ? "paid" : d.paymentStatus === "partial" ? "partial" : "pending",
+      status: String(d.status || "").toLowerCase() === "cancelled" ? "cancelled" : d.paymentStatus === "paid" || d.status === "Paid" ? "paid" : d.paymentStatus === "partial" ? "partial" : "pending",
       isSample: !!d.isSample,
       refundDue: Number(d.refundDue) || 0,
+      replacedByNo: d.replacedByNo || "",
     }), setInvoicesList);
 
     // Receipts
@@ -669,11 +693,37 @@ export default function SalesPage() {
 
                 {activeTab === "invoices" && (
                   <div className="animate-in fade-in duration-500">
+                    {invCancel && (
+                      <div className="mb-3 px-4 py-3 rounded-2xl border border-danger/25 bg-danger/[0.04] space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[13px] font-semibold text-white">ยกเลิกใบกำกับภาษี {invCancel.no}</span>
+                          <label className="flex items-center gap-1.5 text-[13px] text-white/70"><input type="radio" checked={invCancel.replace} onChange={() => setInvCancel({ ...invCancel, replace: true })} /> ยกเลิกและออกใบแทน (แก้ข้อมูลผู้ซื้อ ยอดเงินเท่าเดิม)</label>
+                          <label className="flex items-center gap-1.5 text-[13px] text-white/70"><input type="radio" checked={!invCancel.replace} onChange={() => setInvCancel({ ...invCancel, replace: false })} /> ยกเลิกอย่างเดียว (กลับรายการบัญชี)</label>
+                        </div>
+                        <input autoFocus value={invCancel.reason} onChange={(e) => setInvCancel({ ...invCancel, reason: e.target.value })} placeholder="เหตุผลการยกเลิก (จำเป็น) เช่น ชื่อ/ที่อยู่ผู้ซื้อไม่ถูกต้อง" className="h-9 w-full px-3 rounded-full bg-white/[0.03] border border-white/10 text-[13px] leading-[1.9] text-white focus:outline-none" />
+                        {invCancel.replace && (
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                            <input value={invCancel.customer.name} onChange={(e) => setInvCancel({ ...invCancel, customer: { ...invCancel.customer, name: e.target.value } })} placeholder="ชื่อผู้ซื้อ" className="h-9 px-3 rounded-full bg-white/[0.03] border border-white/10 text-[13px] leading-[1.9] text-white md:col-span-2 focus:outline-none" />
+                            <input value={invCancel.customer.taxId} onChange={(e) => setInvCancel({ ...invCancel, customer: { ...invCancel.customer, taxId: e.target.value.replace(/\D/g, "").slice(0, 13) } })} placeholder="เลขผู้เสียภาษี 13 หลัก" className="h-9 px-3 rounded-full bg-white/[0.03] border border-white/10 text-[13px] leading-[1.9] text-white font-mono focus:outline-none" />
+                            <input value={invCancel.customer.branch} onChange={(e) => setInvCancel({ ...invCancel, customer: { ...invCancel.customer, branch: e.target.value } })} placeholder="สาขา (00000 = สำนักงานใหญ่)" className="h-9 px-3 rounded-full bg-white/[0.03] border border-white/10 text-[13px] leading-[1.9] text-white focus:outline-none" />
+                            <input value={invCancel.customer.address} onChange={(e) => setInvCancel({ ...invCancel, customer: { ...invCancel.customer, address: e.target.value } })} placeholder="ที่อยู่ผู้ซื้อ" className="h-9 px-3 rounded-full bg-white/[0.03] border border-white/10 text-[13px] leading-[1.9] text-white md:col-span-4 focus:outline-none" />
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <button type="button" disabled={invBusy || invCancel.reason.trim().length < 3} onClick={cancelInvoice} className="h-8 px-4 rounded-full border border-danger/40 text-danger text-[12px] font-bold disabled:opacity-40">{invBusy ? "กำลังดำเนินการ..." : invCancel.replace ? "ยืนยันยกเลิกและออกใบแทน" : "ยืนยันยกเลิก"}</button>
+                          <button type="button" onClick={() => setInvCancel(null)} className="h-8 px-3 rounded-full border border-white/10 text-white/60 text-[12px] font-bold">ปิด</button>
+                          <span className="text-[12px] text-white/40">เรียกใบเดิมคืนจากลูกค้าเพื่อยกเลิก · ต้องแก้ยอดเงิน ให้ออกใบลดหนี้/เพิ่มหนี้แทน</span>
+                        </div>
+                      </div>
+                    )}
                     <NexusTable
                       headers={["เลขที่ใบแจ้งหนี้", "อ้างอิง SO", "ลูกค้า", "วันที่ออก", "ครบกำหนด", "ยอดรวม", "สถานะ", "จัดการ"]}
                     >
                       {filteredInvoices.map(inv => (
                         <InvoiceRow
+                          onPrint={() => setPrintDoc({ type: "invoice", id: inv.docId, title: `ใบกำกับภาษี ${inv.id}` })}
+                          onCancel={canCancelInvoice ? () => openInvoiceCancel(inv) : undefined}
+                          replacedByNo={inv.replacedByNo}
                           key={inv.docId}
                           docId={inv.docId}
                           id={inv.id}
@@ -700,6 +750,7 @@ export default function SalesPage() {
                     >
                       {filteredBilling.map(bill => (
                         <BillingNoteRow
+                          onPrint={() => setPrintDoc({ type: "billing_note", id: bill.docId, title: `ใบวางบิล ${bill.id}` })}
                           key={bill.docId}
                           docId={bill.docId}
                           id={bill.id}
@@ -731,6 +782,7 @@ export default function SalesPage() {
                     >
                       {filteredCndn.map(cndn => (
                         <CndnRow
+                          onPrint={() => setPrintDoc({ type: "cndn", id: cndn.docId, title: `${cndn.type === "DN" ? "ใบเพิ่มหนี้" : "ใบลดหนี้"} ${cndn.id}` })}
                           key={cndn.docId}
                           docId={cndn.docId}
                           id={cndn.id}
@@ -757,6 +809,7 @@ export default function SalesPage() {
                     >
                       {filteredReceipts.map(rec => (
                         <ReceiptRow
+                          onPrint={() => setPrintDoc({ type: "receipt", id: rec.docId, title: `ใบเสร็จรับเงิน ${rec.id}` })}
                           key={rec.docId}
                           docId={rec.docId}
                           id={rec.id}
@@ -1010,6 +1063,7 @@ export default function SalesPage() {
         isVisible={toast.isVisible}
         onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
       />
+      <DocumentPdfModal open={!!printDoc} onClose={() => setPrintDoc(null)} source={printDoc ? { type: printDoc.type, id: printDoc.id } : undefined} title={printDoc?.title || ""} />
     </div>
   );
 }
@@ -1093,7 +1147,13 @@ function SalesOrderRow({ id, docId, customer, date, total, status, companyId, on
   );
 }
 
-function InvoiceRow({ id, docId, soRef, customer, date, dueDate, total, status, companyId, isSample, refundDue = 0, onClick }: { id: string, docId: string, soRef: string, customer: string, date: string, dueDate: string, total: string, status: string, companyId: string, isSample?: boolean, refundDue?: number, onClick?: () => void }) {
+function PrintButton({ onPrint, label }: { onPrint?: () => void; label: string }) {
+  if (!onPrint) return null;
+  return <button type="button" onClick={(e) => { e.stopPropagation(); onPrint(); }} className="w-8 h-8 rounded-full border border-white/15 text-white/60 hover:text-white hover:bg-white/[0.05] inline-flex items-center justify-center" title={`พิมพ์ ${label}`} aria-label={`พิมพ์ ${label}`}><Printer size={14} /></button>;
+}
+
+function InvoiceRow({ id, docId, soRef, customer, date, dueDate, total, status, companyId, isSample, refundDue = 0, replacedByNo, onClick, onPrint, onCancel }: { id: string, docId: string, soRef: string, customer: string, date: string, dueDate: string, total: string, status: string, companyId: string, isSample?: boolean, refundDue?: number, replacedByNo?: string, onClick?: () => void, onPrint?: () => void, onCancel?: () => void }) {
+  const cancelled = status === "cancelled";
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
@@ -1103,7 +1163,9 @@ function InvoiceRow({ id, docId, soRef, customer, date, dueDate, total, status, 
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-warning">{dueDate}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white" mono>{total}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        {refundDue > 0 ? (
+        {cancelled ? (
+          <span title={replacedByNo ? `ออกใบแทนเลขที่ ${replacedByNo}` : undefined}><StatusBadge status="danger" label={replacedByNo ? "ยกเลิก (มีใบแทน)" : "ยกเลิกแล้ว"} /></span>
+        ) : refundDue > 0 ? (
           <StatusBadge status="warning" label="ค้างคืนเงิน" />
         ) : (
           <StatusBadge
@@ -1114,6 +1176,8 @@ function InvoiceRow({ id, docId, soRef, customer, date, dueDate, total, status, 
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1.5">
+          <PrintButton onPrint={onPrint} label={id} />
+          {!cancelled && <>
           {refundDue > 0 && !isSample && (
             <Link href={`/finance/refunds/new?invoice=${encodeURIComponent(docId)}`} className="h-8 px-3 rounded-full border border-warning/40 text-warning text-[12px] font-bold flex items-center hover:bg-warning/10" title={`คืนเงินลูกค้า ฿${refundDue.toLocaleString("th-TH", { minimumFractionDigits: 2 })}`}>
               คืนเงิน
@@ -1132,13 +1196,17 @@ function InvoiceRow({ id, docId, soRef, customer, date, dueDate, total, status, 
               ลดหนี้
             </Link>
           )}
+          {onCancel && !isSample && status === "pending" && (
+            <button type="button" onClick={onCancel} className="w-8 h-8 rounded-full border border-white/15 text-white/50 hover:text-danger hover:border-danger/40 inline-flex items-center justify-center" title={`ยกเลิก / ออกใบแทน ${id}`} aria-label={`ยกเลิก ${id}`}><Ban size={14} /></button>
+          )}
+          </>}
         </div>
       </NexusTableCell>
     </NexusTableRow>
   );
 }
 
-function BillingNoteRow({ id, docId, customer, date, dueDate, total, status, companyId, onClick }: any) {
+function BillingNoteRow({ id, docId, customer, date, dueDate, total, status, companyId, onClick, onPrint }: any) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-warning font-medium tracking-tighter">{id}</NexusTableCell>
@@ -1151,13 +1219,13 @@ function BillingNoteRow({ id, docId, customer, date, dueDate, total, status, com
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         {/* ใบวางบิลออกคู่กับใบกำกับภาษี จึงไม่ให้ลบแยก */}
-        <span className="text-white/30">-</span>
+        <PrintButton onPrint={onPrint} label={id} />
       </NexusTableCell>
     </NexusTableRow>
   );
 }
 
-function CndnRow({ id, customer, type, invoiceNo, reason, date, total, status, canCancel, onCancel, onClick }: any) {
+function CndnRow({ id, customer, type, invoiceNo, reason, date, total, status, canCancel, onCancel, onClick, onPrint }: any) {
   const cancelled = String(status || "").toLowerCase() === "cancelled";
   return (
     <NexusTableRow onClick={onClick}>
@@ -1169,15 +1237,18 @@ function CndnRow({ id, customer, type, invoiceNo, reason, date, total, status, c
       <NexusTableCell className="text-white" mono>{total}</NexusTableCell>
       <NexusTableCell>{cancelled ? <StatusBadge status="danger" label="ยกเลิกแล้ว" /> : <StatusBadge status="active" label="ออกแล้ว" />}</NexusTableCell>
       <NexusTableCell>
+        <span className="inline-flex items-center gap-1.5">
+        <PrintButton onPrint={onPrint} label={id} />
         {!cancelled && canCancel ? (
           <button type="button" onClick={(e) => { e.stopPropagation(); onCancel(); }} className="w-8 h-8 rounded-full border border-white/15 text-white/50 hover:text-danger hover:border-danger/40 inline-flex items-center justify-center" title={`ยกเลิก ${id}`} aria-label={`ยกเลิก ${id}`}><Ban size={14} /></button>
         ) : null}
+        </span>
       </NexusTableCell>
     </NexusTableRow>
   );
 }
 
-function ReceiptRow({ id, docId, invRef, customer, date, total, status, companyId, onClick }: any) {
+function ReceiptRow({ id, docId, invRef, customer, date, total, status, companyId, onClick, onPrint }: any) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-emerald-400 font-medium tracking-tighter">{id}</NexusTableCell>
@@ -1189,9 +1260,10 @@ function ReceiptRow({ id, docId, invRef, customer, date, total, status, companyI
         {status === "cancelled" ? <StatusBadge status="danger" label="ยกเลิกแล้ว" /> : <StatusBadge status="active" label="รับชำระแล้ว" />}
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
+        <span className="inline-flex items-center gap-1.5"><PrintButton onPrint={onPrint} label={id} />
         <Link href={`/finance/receipts/${encodeURIComponent(docId)}`} onClick={(e) => e.stopPropagation()} className="h-8 px-3 rounded-full border border-white/15 text-white/70 text-[12px] font-bold inline-flex items-center hover:bg-white/[0.05]">
           เปิดดู
-        </Link>
+        </Link></span>
       </NexusTableCell>
     </NexusTableRow>
   );

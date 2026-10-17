@@ -3,7 +3,8 @@ import * as admin from "firebase-admin";
 import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
-import { prepareCounter } from "@/lib/sequence-server";
+import { prepareSequence } from "@/lib/sequence-server";
+import { sellerSnapshot } from "@/lib/documents/seller.server";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { auditServer } from "@/services/audit.server";
 import { CNDN_REASONS, CNDN_TYPE_TH, applyArDelta, arPaymentStatus, cndnAmounts, type CnDnType } from "@/lib/cndn";
@@ -14,7 +15,7 @@ import { CNDN_REASONS, CNDN_TYPE_TH, applyArDelta, arPaymentStatus, cndnAmounts,
  * body: { companyId, type: "CN" | "DN", invoiceDocId, amount (ผลต่างก่อน VAT), reason, reasonDetail?, issueDate? }
  *
  * ทำในทรานแซกชันเดียว:
- *  - เลขที่ (CN-ปป-xxxx / DN-ปป-xxxx) ออกพร้อมการบันทึก เรียงต่อเนื่อง ไม่ข้าม
+ *  - เลขที่ (ชุด CN / DBN ตั้งรูปแบบได้ที่ ตั้งค่า > รูปแบบเลขที่) ออกพร้อมการบันทึก เรียงต่อเนื่อง ไม่ข้าม
  *  - ใบลดหนี้: ห้ามเกินมูลค่าคงเหลือของใบกำกับ (หลังหักใบลดหนี้ก่อนหน้า)
  *  - ปรับยอดค้างของใบกำกับ: ลดหนี้ -> balance ลด, เพิ่มหนี้ -> balance เพิ่ม
  *    ใบลดหนี้ที่เกินยอดค้าง (ลูกค้าชำระแล้ว) -> ส่วนเกินเป็นยอดค้างคืนลูกค้า (refundDue) คืนผ่าน /api/finance/customer-refunds
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
     const invRef = adminDb.doc(`companies/${companyId}/invoices/${invoiceDocId}`);
     const docRef = adminDb.collection(`companies/${companyId}/cndn`).doc();
     const journalRef = adminDb.collection(`companies/${companyId}/journal_entries`).doc();
-    const take = prepareCounter(type, companyId);
+    const [take, seller] = await Promise.all([prepareSequence(type === "CN" ? "CN" : "DBN", companyId), sellerSnapshot(companyId)]);
     const now = admin.firestore.FieldValue.serverTimestamp();
     const label = CNDN_TYPE_TH[type];
 
@@ -93,6 +94,7 @@ export async function POST(request: Request) {
         documentNo: docNo, cndnNo: docNo, docNumber: docNo,
         invoiceDocId, invoiceNo: invNo, invoiceDate: String(inv.issueDate || "").slice(0, 10),
         customerId: inv.customerId || "", customerName, customerSnapshot: inv.customerSnapshot || null,
+        sellerSnapshot: seller,
         issueDate, reason, reasonDetail,
         originalAmount: valueBefore, correctAmount: valueAfter, amount, vatRate, vatAmount, totalAmount,
         journalId: journalRef.id, status: "issued", refundCreated,

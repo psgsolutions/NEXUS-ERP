@@ -7,6 +7,7 @@ import { prepareSequence } from "@/lib/sequence-server";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { auditServer } from "@/services/audit.server";
 import { resolveBankTarget, writeCheque } from "@/lib/bank-cheque.server";
+import { sellerSnapshot } from "@/lib/documents/seller.server";
 
 /**
  * [API-SERVER] รับชำระเงินจากลูกค้า (ใบเสร็จรับเงิน)
@@ -62,6 +63,8 @@ export async function POST(request: Request) {
     const takeNumber = await prepareSequence("RE", companyId);
     const journalRef = adminDb.collection(`companies/${companyId}/journal_entries`).doc();
     const now = admin.firestore.FieldValue.serverTimestamp();
+
+    const seller = await sellerSnapshot(companyId);
 
     const result = await adminDb.runTransaction(async (tx) => {
       const seq = await takeNumber(tx);
@@ -130,6 +133,7 @@ export async function POST(request: Request) {
       seq.commit();
       tx.create(receiptRef, {
         companyId,
+        sellerSnapshot: seller,
         receiptNo,
         documentNo: receiptNo,
         customerId,

@@ -1,7 +1,8 @@
 import * as admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebase-admin';
 import { processStockMovements, StockMovement } from '@/lib/stock-service';
-import { nexusSequenceServer } from '@/lib/sequence-server';
+import { prepareSequence } from '@/lib/sequence-server';
+import { sellerSnapshot } from '@/lib/documents/seller.server';
 import { getProduct } from '@/lib/product-store.server';
 import { groupIdOfCompany } from '@/lib/company-group.server';
 
@@ -83,8 +84,9 @@ export async function processPOSBatchCheckout(payload: POSCheckoutPayload): Prom
   if (paymentMethod === 'CASH' && cashReceived < grandTotal) throw new Error('ยอดเงินที่รับไม่พอ');
   const change = round2(cashReceived - grandTotal);
 
-  const transactionNo = await nexusSequenceServer('POS', companyId);
-  const txRef = adminDb.collection(`companies/${companyId}/sales_transactions`).doc(transactionNo);
+  const [takeNo, seller] = await Promise.all([prepareSequence('POS', companyId), sellerSnapshot(companyId)]);
+  let transactionNo = '';
+  let seqCommit: (() => void) | null = null;
   const journalRef = adminDb.collection(`companies/${companyId}/journal_entries`).doc();
   const now = admin.firestore.FieldValue.serverTimestamp();
   const account = RECEIPT_ACCOUNT[paymentMethod];
@@ -94,14 +96,16 @@ export async function processPOSBatchCheckout(payload: POSCheckoutPayload): Prom
     productId: l.productId,
     type: 'OUT',
     quantity: l.qty,
-    referenceId: transactionNo,
+    referenceId: '',
     userId,
   }));
 
   await processStockMovements(movements, (tx) => {
-    tx.set(txRef, {
+    seqCommit?.();
+    tx.set(adminDb.collection(`companies/${companyId}/sales_transactions`).doc(transactionNo), {
       companyId,
       transactionNo,
+      sellerSnapshot: seller,
       items: lines,
       subTotal,
       discount,
@@ -135,6 +139,12 @@ export async function processPOSBatchCheckout(payload: POSCheckoutPayload): Prom
       updatedAt: now,
       isDeleted: false,
     });
+  }, async (tx) => {
+    // อ่านตัวนับก่อนการเขียน — ทุกครั้งที่ทรานแซกชันลองใหม่จะได้เลขใหม่ที่ถูกต้อง
+    const seq = await takeNo(tx);
+    transactionNo = seq.number;
+    seqCommit = seq.commit;
+    movements.forEach((m) => { m.referenceId = transactionNo; });
   });
 
   return {

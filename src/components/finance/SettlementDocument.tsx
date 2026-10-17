@@ -1,9 +1,10 @@
 "use client";
 
+import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import React, { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Ban, Loader2 } from "lucide-react";
+import { ArrowLeft, Ban, Loader2, Printer } from "lucide-react";
 import { GlassCard, PillButton, PillInput, cn } from "@/components/ui/Base";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
@@ -24,6 +25,7 @@ export default function SettlementDocument({ kind }: { kind: "receipt" | "paymen
   const { companyId, role, roles } = useAuth();
   const { showConfirm } = useSystemDialog();
   const isReceipt = kind === "receipt";
+  const [printOpen, setPrintOpen] = useState(false);
   const title = isReceipt ? "ใบเสร็จรับเงิน" : "ใบสำคัญจ่าย";
   const { data: d, loading } = useRealtimeDocument<any>(companyId && docNo ? `companies/${companyId}/${isReceipt ? "receipts" : "payments"}/${docNo}` : null);
 
@@ -70,6 +72,10 @@ export default function SettlementDocument({ kind }: { kind: "receipt" | "paymen
           <p className="text-sm text-white/60 mt-1">{isReceipt ? d?.customerName : d?.payeeName || ""}</p>
         </div>
       </div>
+      {isReceipt && d && (
+        <PillButton variant="glass" className="h-9 px-4 text-xs font-bold" onClick={() => setPrintOpen(true)}><Printer size={14} /> พิมพ์ใบเสร็จ</PillButton>
+      )}
+      {isReceipt && <DocumentPdfModal open={printOpen} onClose={() => setPrintOpen(false)} source={{ type: "receipt", id: docNo }} title={`ใบเสร็จรับเงิน ${docNo}`} />}
     </div>
   );
 

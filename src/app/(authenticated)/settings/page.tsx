@@ -408,6 +408,12 @@ export default function SettingsPage() {
                   <SequenceCard module="รายงานปฏิบัติงาน" prefix="SR" value={sequenceFormats["SR"] || "SR-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, SR: val})} />
                   <SequenceCard module="ใบรับ/ส่งของ" prefix="DN" value={sequenceFormats["DN"] || "DN-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, DN: val})} />
                   <SequenceCard module="การเงิน" prefix="FIN" value={sequenceFormats["FIN"] || "FIN-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, FIN: val})} />
+                  <SequenceCard module="ใบกำกับภาษี/ใบแจ้งหนี้" prefix="IV" value={sequenceFormats["IV"] || "IV-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, IV: val})} />
+                  <SequenceCard module="ใบวางบิล" prefix="BL" value={sequenceFormats["BL"] || "BL-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, BL: val})} />
+                  <SequenceCard module="ใบลดหนี้" prefix="CN" value={sequenceFormats["CN"] || "CN-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, CN: val})} />
+                  <SequenceCard module="ใบเพิ่มหนี้" prefix="DBN" value={sequenceFormats["DBN"] || "DBN-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, DBN: val})} />
+                  <SequenceCard module="ใบเสร็จรับเงิน" prefix="RE" value={sequenceFormats["RE"] || "RE-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, RE: val})} />
+                  <SequenceCard module="ขายหน้าร้าน (POS)" prefix="POS" value={sequenceFormats["POS"] || "POS-[YYMM]-[0000]"} onChange={(val) => setSequenceFormats({...sequenceFormats, POS: val})} />
                </div>
             </div>
           )}

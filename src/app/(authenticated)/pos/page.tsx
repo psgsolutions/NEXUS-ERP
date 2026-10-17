@@ -2,13 +2,16 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Banknote, BarChart3, Check, CreditCard, HelpCircle, Keyboard, Loader2, Minus, PauseCircle, PlayCircle, Plus, Printer, QrCode, ScanLine, Search, Settings, ShoppingCart, Trash2, User, X, ArrowRightLeft } from "lucide-react";
+import { Banknote, BarChart3, History, Check, CreditCard, HelpCircle, Keyboard, Loader2, Minus, PauseCircle, PlayCircle, Plus, Printer, QrCode, ScanLine, Search, Settings, ShoppingCart, Trash2, User, X, ArrowRightLeft } from "lucide-react";
 import { PillButton, PillInput, cn } from "@/components/ui/Base";
 import { QrCode as QrSvg } from "@/components/ui/QrCode";
 import { DailySummaryModal } from "@/components/pos/DailySummaryModal";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
+import { branchLabel, formatTaxId } from "@/lib/documents/format";
+import { limit, orderBy } from "firebase/firestore";
 import { useProducts } from "@/hooks/useProducts";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { usePOSHardware } from "@/hooks/usePOSHardware";
@@ -54,6 +57,9 @@ export default function POSPage() {
   const [showHeld, setShowHeld] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [reprint, setReprint] = useState<any>(null);
+  const [a4, setA4] = useState<string>("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [flash, setFlash] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -146,6 +152,7 @@ export default function POSPage() {
               onKeyDown={(e) => { if (e.key === "Enter" && search.trim()) { e.preventDefault(); e.stopPropagation(); const exact = findProductByScan(sellable, search); if (exact) onScan(search); else if (shown.length === 1) { add(shown[0]); setSearch(""); } } }}
               placeholder="สแกนบาร์โค้ด หรือพิมพ์ชื่อ/รหัสสินค้า แล้วกด Enter" className="w-full h-11 pl-11 text-[15px]" />
           </div>
+          <IconBtn label="บิลย้อนหลัง / พิมพ์ซ้ำ" onClick={() => setHistoryOpen(true)}><History size={17} /></IconBtn>
           <IconBtn label="สรุปยอดวันนี้" onClick={() => setSummaryOpen(true)}><BarChart3 size={17} /></IconBtn>
           <IconBtn label="วิธีใช้" onClick={() => setShowHelp(true)}><HelpCircle size={17} /></IconBtn>
           {can(roles, "settings:manage") && <IconBtn label="ตั้งค่าหน้าร้าน" onClick={() => setSettingsOpen(true)}><Settings size={17} /></IconBtn>}
@@ -243,6 +250,9 @@ export default function POSPage() {
 
       {payOpen && <PaymentModal total={totals.total} company={company} onClose={() => setPayOpen(false)} onPay={checkout} />}
       {receipt && <ReceiptModal receipt={receipt} company={company} onNext={() => { setReceipt(null); setTimeout(() => searchRef.current?.focus(), 50); }} />}
+      {reprint && <ReceiptModal receipt={reprint} company={company} reprint onNext={() => setReprint(null)} />}
+      {historyOpen && companyId && <SaleHistory companyId={companyId} onClose={() => setHistoryOpen(false)} onReprint={(t) => { setHistoryOpen(false); setReprint(t); }} onA4={(no) => { setHistoryOpen(false); setA4(no); }} />}
+      <DocumentPdfModal open={!!a4} onClose={() => setA4("")} source={a4 ? { type: "pos", id: a4 } : undefined} title={`บิลขายหน้าร้าน ${a4}`} />
       {showHeld && (
         <Modal title={`บิลที่พักไว้ (${held.length})`} onClose={() => setShowHeld(false)}>
           {held.length === 0 ? <p className="text-[14px] text-white/50">ไม่มีบิลที่พักไว้</p> : held.map((b, i) => (
@@ -365,7 +375,39 @@ function PaymentModal({ total, company, onClose, onPay }: { total: number; compa
   );
 }
 
-function ReceiptModal({ receipt: r, company, onNext }: { receipt: any; company: any; onNext: () => void }) {
+/** บิลขายหน้าร้านล่าสุด 50 รายการ — พิมพ์ใบเสร็จ 80 มม. ซ้ำ หรือเปิดเป็นเอกสาร A4 */
+function SaleHistory({ companyId, onClose, onReprint, onA4 }: { companyId: string; onClose: () => void; onReprint: (t: any) => void; onA4: (no: string) => void }) {
+  const constraints = useMemo(() => [orderBy("createdAt", "desc"), limit(50)], []);
+  const { data: sales, loading } = useRealtimeCollection<any>(`companies/${companyId}/sales_transactions`, constraints, false);
+  const [q, setQ] = useState("");
+  const shown = sales.filter((t: any) => !q.trim() || [t.transactionNo, t.customer?.name, t.paymentRef].some((v) => String(v || "").toLowerCase().includes(q.trim().toLowerCase())));
+  const when = (v: any) => { const ms = v?.toMillis?.() ?? (v?.seconds ? v.seconds * 1000 : Date.parse(v)); return Number.isFinite(ms) ? new Date(ms).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "-"; };
+  return (
+    <Modal title="บิลย้อนหลัง" onClose={onClose} wide>
+      <PillInput autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหาเลขที่บิล ชื่อลูกค้า เลขอ้างอิง" className="w-full h-10 text-sm" />
+      {loading ? <p className="text-[14px] text-white/50 py-6 text-center"><Loader2 size={16} className="inline animate-spin mr-2" />กำลังโหลด…</p> : shown.length === 0 ? <p className="text-[14px] text-white/50 py-6 text-center">ยังไม่มีบิล</p> : (
+        <div className="divide-y divide-white/[0.06]">
+          {shown.map((t: any) => (
+            <div key={t.id} className="flex items-center justify-between gap-3 py-2.5">
+              <div className="min-w-0">
+                <p className="text-[14px] text-white font-mono">{t.transactionNo || t.id}{t.customer ? <span className="ml-2 font-sans text-[12px] text-white/50">ใบกำกับเต็มรูป · {t.customer.name}</span> : null}</p>
+                <p className="text-[12px] text-white/45">{when(t.createdAt)} · {METHODS.find((m) => m.id === t.paymentMethod)?.label || t.paymentMethod}</p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-[15px] font-semibold font-mono text-white mr-2">{baht(t.grandTotal)}</span>
+                <PillButton variant="ghost" className="h-9 px-3 text-xs" onClick={() => onReprint({ ...t, transactionNo: t.transactionNo || t.id, cashier: t.createdBy, createdAt: t.createdAt?.toMillis?.() ?? Date.now() })}><Printer size={14} /> 80 มม.</PillButton>
+                <PillButton variant="ghost" className="h-9 px-3 text-xs" onClick={() => onA4(t.transactionNo || t.id)}>A4</PillButton>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function ReceiptModal({ receipt: r, company, onNext, reprint }: { receipt: any; company: any; onNext: () => void; reprint?: boolean }) {
+  const seller = r.sellerSnapshot || company || {};
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === "Enter") { e.preventDefault(); onNext(); } };
     window.addEventListener("keydown", k);
@@ -373,18 +415,19 @@ function ReceiptModal({ receipt: r, company, onNext }: { receipt: any; company: 
   }, [onNext]);
   const methodLabel = METHODS.find((m) => m.id === r.paymentMethod)?.label || r.paymentMethod;
   return (
-    <Modal title="ชำระเงินสำเร็จ" onClose={onNext}>
+    <Modal title={reprint ? `พิมพ์ใบเสร็จซ้ำ ${r.transactionNo}` : "ชำระเงินสำเร็จ"} onClose={onNext}>
       <style>{`@media print { @page { size: 80mm auto; margin: 3mm; } body * { visibility: hidden; } .pos-receipt, .pos-receipt * { visibility: visible; } .pos-receipt { position: absolute; left: 0; top: 0; width: 74mm; } }`}</style>
-      {r.paymentMethod === "CASH" && r.change > 0 && (
+      {!reprint && r.paymentMethod === "CASH" && r.change > 0 && (
         <div className="rounded-2xl border border-nexus-teal/40 bg-nexus-teal/10 px-4 py-3 flex items-end justify-between">
           <span className="text-[15px] text-white">เงินทอน</span><span className="text-[34px] font-bold font-mono text-nexus-teal leading-none">฿{baht(r.change)}</span>
         </div>
       )}
       <div className="flex justify-center">
         <div className="pos-receipt bg-white text-black w-[300px] px-4 py-4 font-mono text-[12px] leading-snug rounded-lg">
-          <p className="text-center font-bold text-[14px]">{company?.name || "ร้านค้า"}</p>
-          {company?.address && <p className="text-center text-[11px]">{company.address}</p>}
-          {company?.taxId && <p className="text-center text-[11px]">เลขประจำตัวผู้เสียภาษี {company.taxId} {company.branchCode && company.branchCode !== "00000" ? `สาขา ${company.branchCode}` : "(สำนักงานใหญ่)"}</p>}
+          <p className="text-center font-bold text-[14px]">{seller.name || "ร้านค้า"}</p>
+          {seller.address && <p className="text-center text-[11px]">{seller.address}</p>}
+          {seller.taxId && <p className="text-center text-[11px]">เลขประจำตัวผู้เสียภาษี {formatTaxId(seller.taxId)} {branchLabel(seller.branchCode, seller.branchName)}</p>}
+          {reprint && <p className="text-center font-bold mt-1">*** สำเนา (พิมพ์ซ้ำ) ***</p>}
           <p className="text-center font-bold mt-2">{r.customer ? "ใบกำกับภาษี/ใบเสร็จรับเงิน" : "ใบเสร็จรับเงิน/ใบกำกับภาษีอย่างย่อ"}</p>
           <p className="text-center">เลขที่ {r.transactionNo}</p>
           <p className="text-center">{new Date(r.createdAt).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}</p>
@@ -407,7 +450,7 @@ function ReceiptModal({ receipt: r, company, onNext }: { receipt: any; company: 
       </div>
       <div className="grid grid-cols-2 gap-2">
         <PillButton variant="glass" className="h-12 text-[15px]" onClick={() => window.print()}><Printer size={18} className="mr-1.5" /> พิมพ์ใบเสร็จ</PillButton>
-        <PillButton variant="confirm" className="h-12 text-[15px] font-bold" onClick={onNext}>ขายบิลถัดไป (Enter)</PillButton>
+        <PillButton variant="confirm" className="h-12 text-[15px] font-bold" onClick={onNext}>{reprint ? "ปิด" : "ขายบิลถัดไป (Enter)"}</PillButton>
       </div>
     </Modal>
   );

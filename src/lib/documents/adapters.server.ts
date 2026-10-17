@@ -1,5 +1,6 @@
 import { adminDb } from "@/lib/firebase-admin";
 import type { Permission } from "@/lib/permissions";
+import { loadBillingNote, loadCnDn, loadInvoice, loadPosSale, loadReceipt } from "./tax-adapters.server";
 import { ApiAuthError } from "@/lib/api-auth";
 import type { DocumentModel } from "./model";
 import { quotationLines, quotationModel, sampleModel } from "./build";
@@ -12,8 +13,8 @@ import { toDateStr } from "./format";
  */
 export interface DocumentTypeDef {
   label: string;
-  /** สิทธิ์ขั้นต่ำที่ต้องมีเพื่อเปิด/พิมพ์ */
-  permission: Permission;
+  /** สิทธิ์ที่ต้องมีเพื่อเปิด/พิมพ์ (มีข้อใดข้อหนึ่ง) */
+  permission: Permission | Permission[];
   load: (companyId: string, id: string) => Promise<DocumentModel>;
 }
 
@@ -61,4 +62,12 @@ const sample: DocumentTypeDef = {
   },
 };
 
-export const DOCUMENT_TYPES: Record<string, DocumentTypeDef> = { quotation, sample };
+export const DOCUMENT_TYPES: Record<string, DocumentTypeDef> = {
+  quotation,
+  invoice: { label: "ใบกำกับภาษี", permission: ["sales:view", "finance:view"], load: loadInvoice },
+  billing_note: { label: "ใบวางบิล", permission: ["sales:view", "finance:view"], load: loadBillingNote },
+  receipt: { label: "ใบเสร็จรับเงิน", permission: ["finance:view", "sales:edit"], load: loadReceipt },
+  cndn: { label: "ใบลดหนี้/ใบเพิ่มหนี้", permission: ["sales:view", "finance:view"], load: loadCnDn },
+  pos: { label: "บิลขายหน้าร้าน", permission: ["sales:edit", "finance:view"], load: loadPosSale },
+  sample,
+};

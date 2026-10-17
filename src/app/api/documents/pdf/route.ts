@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth";
-import { can } from "@/lib/permissions";
+import { canAny } from "@/lib/permissions";
 import { DOCUMENT_TYPES } from "@/lib/documents/adapters.server";
 import { renderDocumentPdf, pdfFileName } from "@/lib/documents/render.server";
 
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const apiUser = await requireApiUser(request, companyId);
     const def = DOCUMENT_TYPES[String(body.type || "")];
     if (!def) throw new ApiAuthError(400, "ไม่รู้จักประเภทเอกสาร");
-    if (!can(apiUser.roles, def.permission)) throw new ApiAuthError(403, `ไม่มีสิทธิ์เปิด${def.label}`);
+    if (!canAny(apiUser.roles, ([] as any[]).concat(def.permission))) throw new ApiAuthError(403, `ไม่มีสิทธิ์เปิด${def.label}`);
     const id = String(body.id || "").trim();
     if (body.type !== "sample" && (!id || id.includes("/"))) throw new ApiAuthError(400, "ไม่พบเลขที่เอกสาร");
     const doc = await def.load(companyId, id);

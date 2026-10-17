@@ -45,6 +45,7 @@ export default function POSPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [discount, setDiscount] = useState("");
+  const [showDiscount, setShowDiscount] = useState(false);
   const [customer, setCustomer] = useState<{ name: string; taxId: string; branch: string; address: string } | null>(null);
   const [payOpen, setPayOpen] = useState(false);
   const [receipt, setReceipt] = useState<any>(null);
@@ -95,7 +96,7 @@ export default function POSPage() {
   const hold = () => {
     if (!cart.length) return;
     saveHeld([...held, { at: new Date().toISOString(), cart, discount, customer, total: totals.total }]);
-    setCart([]); setDiscount(""); setCustomer(null); setFlash("พักบิลแล้ว");
+    setCart([]); setDiscount(""); setCustomer(null); setShowDiscount(false); setFlash("พักบิลแล้ว");
   };
   const resume = (i: number) => {
     if (cart.length) return void showAlert("มีบิลค้างอยู่ในตะกร้า พักบิลปัจจุบันก่อนเรียกบิลอื่น");
@@ -103,7 +104,7 @@ export default function POSPage() {
     setCart(b.cart); setDiscount(b.discount || ""); setCustomer(b.customer || null);
     saveHeld(held.filter((_, k) => k !== i)); setShowHeld(false);
   };
-  const clear = async () => { if (cart.length && (await showConfirm("ล้างสินค้าทั้งหมดในบิลนี้?"))) { setCart([]); setDiscount(""); setCustomer(null); } };
+  const clear = async () => { if (cart.length && (await showConfirm("ล้างสินค้าทั้งหมดในบิลนี้?"))) { setCart([]); setDiscount(""); setCustomer(null); setShowDiscount(false); } };
 
   usePOSHardware({
     onBarcodeScan: onScan,
@@ -128,45 +129,44 @@ export default function POSPage() {
     });
     const d = await res.json();
     if (!res.ok || !d.success) throw new Error(d.error || "ชำระเงินไม่สำเร็จ");
-    setPayOpen(false); setReceipt(d); setCart([]); setDiscount(""); setCustomer(null);
+    setPayOpen(false); setReceipt(d); setCart([]); setDiscount(""); setCustomer(null); setShowDiscount(false);
   };
 
   if (!canSell) return <div className="p-10 text-white/60 text-sm">ขายหน้าร้านได้เฉพาะตำแหน่งฝ่ายขาย</div>;
 
   return (
-    <div className="flex flex-col xl:flex-row gap-4 px-4 py-3 h-[calc(100vh-72px)] max-w-[1900px] mx-auto">
+    <div className="flex flex-col xl:flex-row gap-5 px-4 py-3 h-[calc(100vh-72px)] max-w-[1900px] mx-auto">
       {/* สินค้า */}
       <div className="flex-1 min-w-0 flex flex-col gap-3 min-h-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative flex-1 min-w-[260px]">
-            <ScanLine size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-nexus-teal" />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 min-w-[240px]">
+            <ScanLine size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
             <PillInput ref={searchRef} autoFocus value={search} onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && search.trim()) { e.preventDefault(); e.stopPropagation(); const exact = findProductByScan(sellable, search); if (exact) onScan(search); else if (shown.length === 1) { add(shown[0]); setSearch(""); } } }}
-              placeholder="สแกนบาร์โค้ด หรือพิมพ์ชื่อ/รหัสสินค้า แล้วกด Enter  (F1)" className="w-full h-12 pl-11 text-[15px]" />
+              placeholder="สแกนบาร์โค้ด หรือพิมพ์ชื่อ/รหัสสินค้า แล้วกด Enter" className="w-full h-11 pl-11 text-[15px]" />
           </div>
-          <PillButton variant="glass" className="h-12 px-4 text-xs" onClick={() => setSummaryOpen(true)}><BarChart3 size={16} className="mr-1" /> สรุปยอดวันนี้</PillButton>
-          <PillButton variant="glass" className="h-12 px-3 text-xs" onClick={() => setShowHelp(true)} aria-label="วิธีใช้"><HelpCircle size={16} /></PillButton>
-          {can(roles, "settings:manage") && <PillButton variant="glass" className="h-12 px-3 text-xs" onClick={() => setSettingsOpen(true)} aria-label="ตั้งค่าหน้าร้าน"><Settings size={16} /></PillButton>}
+          <IconBtn label="สรุปยอดวันนี้" onClick={() => setSummaryOpen(true)}><BarChart3 size={17} /></IconBtn>
+          <IconBtn label="วิธีใช้" onClick={() => setShowHelp(true)}><HelpCircle size={17} /></IconBtn>
+          {can(roles, "settings:manage") && <IconBtn label="ตั้งค่าหน้าร้าน" onClick={() => setSettingsOpen(true)}><Settings size={17} /></IconBtn>}
         </div>
-        <div className="flex gap-1.5 overflow-x-auto pb-1 flex-shrink-0">
+        <div className="flex gap-1 overflow-x-auto flex-shrink-0">
           {categories.map((c) => (
-            <button key={c} type="button" onClick={() => setCategory(c)} className={cn("h-9 px-4 rounded-full border text-[13px] whitespace-nowrap", category === c ? "bg-nexus-teal/15 border-nexus-teal/40 text-nexus-teal" : "border-white/10 text-white/60 hover:text-white")}>{c === "all" ? "ทั้งหมด" : c}</button>
+            <button key={c} type="button" onClick={() => setCategory(c)} className={cn("h-8 px-3.5 rounded-full text-[13px] whitespace-nowrap transition-colors", category === c ? "bg-white/10 text-white font-semibold" : "text-white/45 hover:text-white/80")}>{c === "all" ? "ทั้งหมด" : c}</button>
           ))}
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3 content-start pr-1">
+        <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-2 content-start pr-1">
           {shown.length === 0 && <p className="col-span-full text-center text-[14px] text-white/40 py-16">{sellable.length === 0 ? "ยังไม่มีสินค้าที่ตั้งราคาขายหน้าร้าน" : "ไม่พบสินค้า"}</p>}
           {shown.map((p: any) => {
             const st = stockOf(p);
             const inCart = cart.find((l) => l.id === p.id)?.qty || 0;
             return (
-              <button key={p.id} type="button" disabled={st <= 0} onClick={() => add(p)}
-                className={cn("relative text-left rounded-2xl border p-3 flex flex-col gap-1 min-h-[118px] transition-colors", st <= 0 ? "border-white/5 bg-white/[0.01] opacity-50" : "border-white/10 bg-white/[0.03] hover:border-nexus-teal/50 active:scale-[0.98]")}>
-                {inCart > 0 && <span className="absolute top-2 right-2 min-w-6 h-6 px-1.5 rounded-full bg-nexus-teal text-surface-0 text-[12px] font-bold flex items-center justify-center">{inCart}</span>}
-                <span className="text-[14px] font-semibold text-white leading-snug line-clamp-2 pr-6">{p.name}</span>
-                <span className="text-[11px] font-mono text-white/40 truncate">{p.sku}</span>
-                <span className="mt-auto flex items-end justify-between gap-2">
-                  <span className="text-[17px] font-bold font-mono text-nexus-teal">฿{baht(priceOf(p))}</span>
-                  <span className={cn("text-[11px] whitespace-nowrap", st <= 0 ? "text-danger" : st <= 5 ? "text-warning" : "text-white/40")}>{st <= 0 ? "หมด" : `เหลือ ${st}`}</span>
+              <button key={p.id} type="button" disabled={st <= 0} onClick={() => add(p)} title={p.sku}
+                className={cn("relative text-left rounded-xl p-3 flex flex-col gap-2 min-h-[92px] transition-colors", st <= 0 ? "bg-white/[0.015] opacity-40" : "bg-white/[0.04] hover:bg-white/[0.08] active:scale-[0.98]", inCart > 0 && "ring-1 ring-nexus-teal/50")}>
+                {inCart > 0 && <span className="absolute top-2 right-2 min-w-5 h-5 px-1 rounded-full bg-nexus-teal text-surface-0 text-[11px] font-bold flex items-center justify-center">{inCart}</span>}
+                <span className="text-[14px] text-white/90 leading-snug line-clamp-2 pr-5">{p.name}</span>
+                <span className="mt-auto flex items-baseline justify-between gap-2">
+                  <span className="text-[15px] font-semibold font-mono text-white">{baht(priceOf(p))}</span>
+                  <span className={cn("text-[11px] whitespace-nowrap", st <= 0 ? "text-danger" : st <= 5 ? "text-warning" : "text-white/30")}>{st <= 0 ? "หมด" : `เหลือ ${st}`}</span>
                 </span>
               </button>
             );
@@ -175,43 +175,47 @@ export default function POSPage() {
       </div>
 
       {/* บิล */}
-      <div className="w-full xl:w-[420px] flex-shrink-0 flex flex-col rounded-2xl border border-white/10 bg-white/[0.02] min-h-0">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-          <span className="text-[15px] font-semibold text-white flex items-center gap-2"><ShoppingCart size={17} /> บิลปัจจุบัน · {totals.items} ชิ้น</span>
-          <button type="button" onClick={() => setShowHeld(true)} className="text-[13px] text-nexus-teal hover:underline flex items-center gap-1"><PlayCircle size={14} /> บิลที่พัก ({held.length})</button>
+      <div className="w-full xl:w-[400px] flex-shrink-0 flex flex-col rounded-2xl bg-white/[0.03] min-h-0">
+        <div className="flex items-center justify-between px-4 h-12 border-b border-white/[0.06]">
+          <span className="text-[15px] font-semibold text-white">บิลปัจจุบัน{totals.items > 0 && <span className="text-white/40 font-normal"> · {totals.items} ชิ้น</span>}</span>
+          {held.length > 0 && <button type="button" onClick={() => setShowHeld(true)} className="text-[13px] text-white/60 hover:text-white flex items-center gap-1"><PlayCircle size={14} /> บิลที่พัก {held.length}</button>}
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-1.5">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4">
           {cart.length === 0 && (
-            <div className="text-center py-10 space-y-2 text-white/40">
-              <ScanLine size={30} className="mx-auto" />
-              <p className="text-[14px]">สแกนสินค้าหรือแตะที่สินค้าเพื่อเพิ่มลงบิล</p>
-              <p className="text-[12px]">F1 ค้นหา · F9 ชำระเงิน · F10 พักบิล</p>
+            <div className="text-center py-14 space-y-2 text-white/30">
+              <ShoppingCart size={28} className="mx-auto" />
+              <p className="text-[14px]">สแกนหรือแตะสินค้าเพื่อเพิ่มลงบิล</p>
             </div>
           )}
           {cart.map((l) => (
-            <div key={l.id} className="rounded-xl border border-white/10 bg-surface-0 px-3 py-2">
+            <div key={l.id} className="py-2.5 border-b border-white/[0.06] last:border-0">
               <div className="flex items-start justify-between gap-2">
-                <span className="text-[14px] text-white leading-snug min-w-0">{l.name}</span>
-                <button type="button" onClick={() => setQty(l.id, 0)} className="text-white/30 hover:text-danger flex-shrink-0" aria-label="ลบรายการ"><Trash2 size={15} /></button>
+                <span className="text-[14px] text-white/90 leading-snug min-w-0">{l.name}</span>
+                <span className="text-[14px] font-semibold font-mono text-white whitespace-nowrap">{baht(l.price * l.qty)}</span>
               </div>
               <div className="flex items-center justify-between mt-1.5">
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => setQty(l.id, l.qty - 1)} className="w-8 h-8 rounded-full border border-white/10 text-white/70 flex items-center justify-center" aria-label="ลด"><Minus size={14} /></button>
-                  <input value={l.qty} onChange={(e) => setQty(l.id, Math.floor(Number(e.target.value) || 0))} className="w-12 h-8 rounded-lg bg-white/5 text-center text-[14px] font-mono text-white outline-none" inputMode="numeric" aria-label="จำนวน" />
-                  <button type="button" onClick={() => setQty(l.id, l.qty + 1)} disabled={l.qty >= l.stock} className="w-8 h-8 rounded-full border border-white/10 text-white/70 flex items-center justify-center disabled:opacity-30" aria-label="เพิ่ม"><Plus size={14} /></button>
-                  <span className="text-[12px] text-white/40 ml-1">× ฿{baht(l.price)}</span>
+                  <button type="button" onClick={() => setQty(l.id, l.qty - 1)} className="w-7 h-7 rounded-full bg-white/5 text-white/70 hover:bg-white/10 flex items-center justify-center" aria-label="ลด"><Minus size={13} /></button>
+                  <input value={l.qty} onChange={(e) => setQty(l.id, Math.floor(Number(e.target.value) || 0))} className="w-10 h-7 bg-transparent text-center text-[14px] leading-[1.9] font-mono text-white outline-none" inputMode="numeric" aria-label="จำนวน" />
+                  <button type="button" onClick={() => setQty(l.id, l.qty + 1)} disabled={l.qty >= l.stock} className="w-7 h-7 rounded-full bg-white/5 text-white/70 hover:bg-white/10 flex items-center justify-center disabled:opacity-30" aria-label="เพิ่ม"><Plus size={13} /></button>
+                  <span className="text-[12px] text-white/35 ml-1.5">× {baht(l.price)}</span>
                 </div>
-                <span className="text-[15px] font-bold font-mono text-white">฿{baht(l.price * l.qty)}</span>
+                <button type="button" onClick={() => setQty(l.id, 0)} className="text-white/25 hover:text-danger" aria-label="ลบรายการ"><Trash2 size={14} /></button>
               </div>
             </div>
           ))}
         </div>
-        <div className="border-t border-white/10 px-4 py-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <label className="text-[13px] text-white/60 whitespace-nowrap">ส่วนลดท้ายบิล (บาท)</label>
-            <PillInput value={discount} onChange={(e) => setDiscount(e.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" className="h-9 flex-1 text-right font-mono text-sm" placeholder="0.00" />
+        <div className="border-t border-white/[0.06] px-4 py-3 space-y-2.5">
+          <div className="flex items-center gap-4 text-[13px]">
+            <button type="button" onClick={() => setShowDiscount((v) => !v)} className={cn("hover:text-white", showDiscount || totals.discount > 0 ? "text-white" : "text-white/50")}>+ ส่วนลด</button>
+            <button type="button" onClick={() => setCustomer(customer ? null : { name: "", taxId: "", branch: "สำนักงานใหญ่", address: "" })} className={cn("flex items-center gap-1 hover:text-white", customer ? "text-white" : "text-white/50")}><User size={13} /> {customer ? "ยกเลิกใบกำกับเต็มรูป" : "+ ใบกำกับภาษีเต็มรูป"}</button>
           </div>
-          <button type="button" onClick={() => setCustomer(customer ? null : { name: "", taxId: "", branch: "สำนักงานใหญ่", address: "" })} className="text-[13px] text-nexus-teal hover:underline flex items-center gap-1"><User size={14} /> {customer ? "ไม่ขอใบกำกับภาษีเต็มรูป" : "ลูกค้าขอใบกำกับภาษีเต็มรูป"}</button>
+          {(showDiscount || totals.discount > 0) && (
+            <div className="flex items-center gap-2">
+              <label className="text-[13px] text-white/50 whitespace-nowrap">ส่วนลดท้ายบิล (บาท)</label>
+              <PillInput value={discount} onChange={(e) => setDiscount(e.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" className="h-9 flex-1 text-right font-mono text-sm" placeholder="0.00" />
+            </div>
+          )}
           {customer && (
             <div className="grid grid-cols-2 gap-2">
               <PillInput value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} placeholder="ชื่อลูกค้า/บริษัท" className="h-9 text-sm col-span-2" />
@@ -220,16 +224,16 @@ export default function POSPage() {
               <PillInput value={customer.address} onChange={(e) => setCustomer({ ...customer, address: e.target.value })} placeholder="ที่อยู่" className="h-9 text-sm col-span-2" />
             </div>
           )}
-          <div className="space-y-1 text-[13px]">
-            <div className="flex justify-between text-white/60"><span>รวมเป็นเงิน</span><span className="font-mono">฿{baht(totals.subTotal)}</span></div>
-            {totals.discount > 0 && <div className="flex justify-between text-white/60"><span>ส่วนลด</span><span className="font-mono">−฿{baht(totals.discount)}</span></div>}
-            <div className="flex justify-between text-white/60"><span>ภาษีมูลค่าเพิ่ม 7%</span><span className="font-mono">฿{baht(totals.vat)}</span></div>
-            <div className="flex justify-between items-end pt-1"><span className="text-[15px] text-white">ยอดชำระ</span><span className="text-[30px] font-bold font-mono text-nexus-teal leading-none">฿{baht(totals.total)}</span></div>
+          <div className="space-y-1 text-[13px] text-white/50">
+            <div className="flex justify-between"><span>รวมเป็นเงิน</span><span className="font-mono">{baht(totals.subTotal)}</span></div>
+            {totals.discount > 0 && <div className="flex justify-between"><span>ส่วนลด</span><span className="font-mono">−{baht(totals.discount)}</span></div>}
+            <div className="flex justify-between"><span>VAT 7%</span><span className="font-mono">{baht(totals.vat)}</span></div>
           </div>
-          <div className="grid grid-cols-[auto_auto_1fr] gap-2 pt-1">
-            <PillButton variant="glass" className="h-12 px-3 text-xs" onClick={hold} disabled={!cart.length} title="พักบิล (F10)"><PauseCircle size={16} className="mr-1" /> พักบิล</PillButton>
-            <PillButton variant="ghost" className="h-12 px-3 text-xs text-danger" onClick={clear} disabled={!cart.length}>ล้าง</PillButton>
-            <PillButton variant="confirm" className="h-12 text-[16px] font-bold" onClick={() => setPayOpen(true)} disabled={!cart.length}>ชำระเงิน (F9)</PillButton>
+          <div className="flex justify-between items-baseline"><span className="text-[15px] text-white">ยอดชำระ</span><span className="text-[30px] font-bold font-mono text-white leading-none">฿{baht(totals.total)}</span></div>
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={hold} disabled={!cart.length} title="พักบิล (F10)" className="h-12 px-4 rounded-full bg-white/5 text-[13px] text-white/70 hover:bg-white/10 disabled:opacity-30 flex items-center gap-1.5"><PauseCircle size={15} /> พักบิล</button>
+            <button type="button" onClick={clear} disabled={!cart.length} className="h-12 px-3 rounded-full text-[13px] text-white/40 hover:text-danger disabled:opacity-30">ล้าง</button>
+            <button type="button" onClick={() => setPayOpen(true)} disabled={!cart.length} className="flex-1 h-12 rounded-full bg-nexus-teal text-surface-0 text-[16px] font-bold hover:brightness-110 active:scale-[0.98] disabled:bg-white/10 disabled:text-white/30 transition-colors">ชำระเงิน <span className="font-normal opacity-60 text-[13px]">F9</span></button>
           </div>
         </div>
       </div>
@@ -273,6 +277,10 @@ export default function POSPage() {
       <DailySummaryModal isOpen={summaryOpen} onClose={() => setSummaryOpen(false)} />
     </div>
   );
+}
+
+function IconBtn({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+  return <button type="button" onClick={onClick} title={label} aria-label={label} className="w-11 h-11 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/[0.06] flex-shrink-0 transition-colors">{children}</button>;
 }
 
 function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {

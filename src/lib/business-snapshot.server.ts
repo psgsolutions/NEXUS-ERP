@@ -1,3 +1,4 @@
+import { listProducts } from "@/lib/product-store.server";
 import { adminDb } from "@/lib/firebase-admin";
 import { lastMonthKeys, lowStockProducts, activeProjects, monthlyProfitAndLoss, overdueInvoices, toMillis } from "@/lib/dashboard-metrics";
 import { PROJECT_STATUS_TH } from "@/lib/project-status";
@@ -19,7 +20,7 @@ export async function buildBusinessSnapshot(companyId: string) {
     adminDb.collection(`${c}/invoices`).get(),
     adminDb.collection(`${c}/expenses`).get(),
     adminDb.collection(`${c}/journal_entries`).get(),
-    adminDb.collection("products").where("companyId", "==", companyId).get(),
+    listProducts(companyId),
     adminDb.collection(`${c}/projects`).get(),
     adminDb.collection(`${c}/receipts`).get(),
     adminDb.collection(`${c}/payments`).get(),
@@ -70,8 +71,8 @@ export async function buildBusinessSnapshot(companyId: string) {
       paymentsLast30Days: r2(posted(payments).filter((p) => (p.paymentDate || "") >= dateOf(Date.now() - 30 * 86400e3)).reduce((s, p) => s + (Number(p.netPaid ?? p.totalAmount) || 0), 0)),
     },
     inventory: {
-      productCount: rows(products).length,
-      lowStock: lowStockProducts(rows(products)).slice(0, 20).map((p) => ({ sku: p.sku, name: p.name, onHand: p.onHand, reorderPoint: p.min, unit: p.unit })),
+      productCount: products.filter(live).length,
+      lowStock: lowStockProducts(products.filter(live)).slice(0, 20).map((p) => ({ sku: p.sku, name: p.name, onHand: p.onHand, reorderPoint: p.min, unit: p.unit })),
     },
     projects: activeProjects(rows(projects)).slice(0, 25).map((p) => {
       const full = rows(projects).find((x) => x.id === p.id) || {};

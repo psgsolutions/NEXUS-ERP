@@ -9,6 +9,7 @@ import { DailySummaryModal } from "@/components/pos/DailySummaryModal";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useProducts } from "@/hooks/useProducts";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { usePOSHardware } from "@/hooks/usePOSHardware";
 import { apiFetch } from "@/lib/api-client";
@@ -39,7 +40,7 @@ const HOLD_KEY = "nexus_pos_held_bills";
 export default function POSPage() {
   const { companyId, roles } = useAuth();
   const { showAlert, showConfirm } = useSystemDialog();
-  const { data: products } = useRealtimeCollection<any>("products");
+  const { data: products } = useProducts<any>();
   const { data: company } = useRealtimeDocument<any>(companyId ? `companies/${companyId}` : null);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [search, setSearch] = useState("");

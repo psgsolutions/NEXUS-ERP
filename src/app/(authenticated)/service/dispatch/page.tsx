@@ -7,6 +7,7 @@ import { GlassCard, NexusSearchInput, PillButton, PillInput, PillSelect, StatusB
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useProducts } from "@/hooks/useProducts";
 import { apiFetch } from "@/lib/api-client";
 import { JOB_PRIORITY, JOB_STATUS, JOB_TYPES, jobTypeLabel, toolsOut, type Job, type JobItem, type JobPriority, type JobType } from "@/lib/jobs";
 
@@ -175,7 +176,7 @@ function PeoplePicker({ people, value, onChange }: { people: any[]; value: strin
 
 function JobForm({ initial, people, busy, onClose, onSave }: { initial: any; people: any[]; busy: boolean; onClose: () => void; onSave: (job: any) => void }) {
   const [f, setF] = useState<any>(() => ({ ...initial, site: { ...(initial.site || {}) }, equipment: [...(initial.equipment || [])], checklist: (initial.checklist || []).map((c: any) => (typeof c === "string" ? c : c.text)) }));
-  const { data: products } = useRealtimeCollection<any>("products");
+  const { data: products } = useProducts<any>();
   const [pq, setPq] = useState("");
   const [freeName, setFreeName] = useState("");
   const isEdit = !!f.jobNo;

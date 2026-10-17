@@ -2,13 +2,14 @@
 
 import React, { useState } from 'react';
 import { useRealtimeCollection } from '@/hooks/useRealtimeCollection';
+import { useProducts } from "@/hooks/useProducts";
 import { PillButton, NexusTable, NexusTableRow, NexusTableCell, NexusSearchInput, GlassCard, PillTabs } from '@/components/ui/Base';
 import { Plus, Package, Box, Wrench, ShieldAlert } from 'lucide-react';
 import NexusPageLayout from '@/components/layout/NexusPageLayout';
 import { useRouter } from 'next/navigation';
 
 export default function ProductsPage() {
-  const { data: products, loading } = useRealtimeCollection('products');
+  const { data: products, loading } = useProducts();
   const router = useRouter();
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");

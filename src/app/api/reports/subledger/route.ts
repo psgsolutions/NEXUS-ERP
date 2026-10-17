@@ -5,6 +5,7 @@ import { can, canAny } from "@/lib/permissions";
 import { agingSummary, payableRows, receivableRows } from "@/lib/executive-metrics";
 import { assetRegister, bankBook, bookOf, customerStatement, inventoryValuation, payeeKeyOf, stockCard, supplierStatement, type BankAccount } from "@/lib/subledgers";
 import { monthEnd } from "@/lib/financial-reports";
+import { listProducts } from "@/lib/product-store.server";
 
 /**
  * [API-SERVER] บัญชีย่อยและทะเบียน
@@ -93,13 +94,13 @@ export async function POST(request: Request) {
 
     if (report === "valuation") {
       if (!finance && !can(apiUser.roles, "sales:cost")) throw new ApiAuthError(403, "มูลค่าสินค้าคงเหลือเปิดได้เฉพาะฝ่ายบัญชีและผู้บริหาร");
-      return NextResponse.json({ ...base, ...inventoryValuation(await root("products")) });
+      return NextResponse.json({ ...base, ...inventoryValuation(await listProducts(companyId)) });
     }
 
     if (report === "stock-card") {
       if (!can(apiUser.roles, "inventory:view")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
       const showCost = finance || can(apiUser.roles, "sales:cost") || canAny(apiUser.roles, ["procurement:edit"]);
-      const products = (await root("products")).filter((p) => p.isDeleted !== true && (p.itemType || "PRODUCT") === "PRODUCT")
+      const products = (await listProducts(companyId)).filter((p) => p.isDeleted !== true && (p.itemType || "PRODUCT") === "PRODUCT")
         .map((p) => ({ id: p.id, sku: p.sku || "", name: p.name || p.productName || p.id, unit: p.unit || "ชิ้น" }))
         .sort((a, b) => String(a.sku || a.name).localeCompare(String(b.sku || b.name)));
       const productId = str(body.productId, 120) || products[0]?.id || "";

@@ -6,6 +6,7 @@ import { Barcode } from "lucide-react";
 import { GlassCard, NexusSearchInput, NexusTable, NexusTableCell, NexusTableRow, PillSelect, StatusBadge } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useProducts } from "@/hooks/useProducts";
 import { SERIAL_STATUS, toMs, warrantyState } from "@/lib/serials";
 
 const thDate = (v: any) => { const t = toMs(v); return t ? new Date(t).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" }) : "-"; };
@@ -14,7 +15,7 @@ export default function SerialListPage() {
   const router = useRouter();
   const { companyId } = useAuth();
   const { data: serials, loading } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/serial_numbers` : "", [], false);
-  const { data: products } = useRealtimeCollection<any>("products");
+  const { data: products } = useProducts<any>();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("ALL");
 

@@ -25,6 +25,7 @@ import { SystemHealthIndicator } from "@/components/shared/SystemHealthIndicator
 import { RevenueExpenseChart } from "@/components/dashboard/RevenueExpenseChart";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useProducts } from "@/hooks/useProducts";
 import { useCompanyProjects } from "@/hooks/useCompanyProjects";
 import { normalizePoStatus } from "@/lib/procurement-status";
 import {
@@ -60,7 +61,7 @@ export default function DashboardPage() {
   // ข้อมูลจริงของบริษัท (useRealtimeCollection กรองตาม companyId ให้อัตโนมัติ)
   const { data: companyJournals, loading: journalsLoading } = useRealtimeCollection<any>(co("journal_entries", seeMoney));
   const { data: legacyJournals } = useRealtimeCollection<any>(seeMoney ? "journal_entries" : "");
-  const { data: products, loading: productsLoading } = useRealtimeCollection<any>("products");
+  const { data: products, loading: productsLoading } = useProducts<any>();
   const { data: allProjects } = useCompanyProjects();
   const { data: invoices } = useRealtimeCollection<any>(co("invoices", seeMoney));
   const { data: purchaseOrders } = useRealtimeCollection<any>(co("purchase_orders"));

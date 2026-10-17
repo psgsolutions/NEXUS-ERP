@@ -5,6 +5,7 @@ import { Plus, Trash2, Search, ChevronUp, ChevronDown, CornerDownRight, AlignLef
 import { PillButton, Modal, cn } from "@/components/ui/Base";
 import { formatCurrency, calculateLineGP } from "@/lib/erp-logic";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useProducts } from "@/hooks/useProducts";
 import { useAuth } from "@/context/AuthContext";
 import { can, canViewCost } from "@/lib/permissions";
 import { SupplierPriceSelector } from "@/components/inventory/SupplierPriceSelector";
@@ -701,7 +702,7 @@ export function DocumentItemsTable({
   }, []);
 
   // สินค้าจริงของบริษัท (ไม่มีรายการจำลอง: ถ้ายังไม่มีสินค้า ให้ค้นแล้วไม่พบ)
-  const { data: companyProducts = [] } = useRealtimeCollection('products');
+  const { data: companyProducts = [] } = useProducts();
 
   const availableProducts = useMemo(() => {
     const map = new Map<string, any>();

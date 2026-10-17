@@ -3,6 +3,7 @@ import { requireApiUser, authErrorResponse } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
 import { processStockMovements, StockMovement } from "@/lib/stock-service";
 import { listLocations, UNASSIGNED, WarehouseDoc } from "@/lib/warehouse-location";
+import { getProduct } from "@/lib/product-store.server";
 
 /**
  * [API-SERVER] Put-away: ย้ายสินค้าจากพื้นที่รับสินค้า (หรือสต็อกที่ยังไม่มีตำแหน่ง) เข้าชั้นวาง
@@ -48,8 +49,8 @@ export async function POST(request: Request) {
     // สต็อกที่ยังไม่มีตำแหน่ง: ย้ายได้ไม่เกิน onHand - ผลรวมยอดทุกตำแหน่ง
     if (fromLocation === UNASSIGNED) {
       for (const [productId, qty] of Array.from(qtyByProduct.entries())) {
-        const product = (await adminDb.collection("products").doc(productId).get()).data();
-        if (!product || product.companyId !== companyId) {
+        const product = (await getProduct(companyId, productId))?.data;
+        if (!product) {
           return NextResponse.json({ success: false, error: `ไม่พบสินค้า ${productId}` }, { status: 400 });
         }
         const located = (await adminDb.collection(`companies/${companyId}/inventory_balance`).where("productId", "==", productId).get())

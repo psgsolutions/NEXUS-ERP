@@ -6,6 +6,8 @@ import { can } from "@/lib/permissions";
 import { auditServer } from "@/services/audit.server";
 import { soPickRemaining } from "@/lib/picking";
 import { getCompanyCustomer, assertCreditAvailable } from "@/lib/credit-limit.server";
+import { getProductTx } from "@/lib/product-store.server";
+import { groupIdOfCompany } from "@/lib/company-group.server";
 
 /**
  * [API-SERVER] เปลี่ยนสถานะใบสั่งขาย
@@ -42,6 +44,7 @@ export async function POST(request: Request) {
       if (cust) await assertCreditAvailable(companyId, String(so.customerId), cust.data(), Number(so.grandTotal ?? so.totalAmount) || 0);
     }
 
+    const groupId = await groupIdOfCompany(companyId);
     const next = await adminDb.runTransaction(async (tx) => {
       const snap = await tx.get(soRef);
       if (!snap.exists) throw new ApiAuthError(404, "ไม่พบใบสั่งขาย");
@@ -70,10 +73,10 @@ export async function POST(request: Request) {
       if (Object.values(picked).some((q: any) => (Number(q) || 0) > 0)) throw new ApiAuthError(409, `${docNo} เบิกสินค้าออกจากคลังแล้ว ยกเลิกไม่ได้`);
       const fromReserved = st !== "DRAFT" && (so.stockReserved ?? Boolean(so.quoteId));
       const release = fromReserved ? Array.from(soPickRemaining(so).entries()) : [];
-      const products = await Promise.all(release.map(([pid]) => tx.get(adminDb.doc(`products/${pid}`))));
+      const products = await Promise.all(release.map(([pid]) => getProductTx(tx, companyId, groupId, pid)));
       products.forEach((p, i) => {
-        if (!p.exists || p.data()!.companyId !== companyId) return;
-        const reserved = Number(p.data()!.stockStatus?.reserved) || 0;
+        if (!p) return;
+        const reserved = Number(p.data.stockStatus?.reserved) || 0;
         const back = Math.min(release[i][1], reserved);
         if (back <= 0) return;
         tx.update(p.ref, {

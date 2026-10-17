@@ -4,6 +4,7 @@ import { requireApiUser, authErrorResponse, ApiAuthError, type ApiUser } from "@
 import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { canEditMaster, companiesInGroup, groupIdOfCompany } from "@/lib/company-group.server";
+import { processStockMovements } from "@/lib/stock-service";
 import { MASTER_SCHEMAS, isMasterEntity, mergeRecord, splitChanges, uniqueKeyDocId, uniqueKeyValue, type EditScope, type MasterEntity } from "@/lib/master-data";
 
 /**
@@ -11,7 +12,9 @@ import { MASTER_SCHEMAS, isMasterEntity, mergeRecord, splitChanges, uniqueKeyDoc
  *  - { action: "get", entity, id }                         ข้อมูลรวม (กลาง + ของบริษัท)
  *  - { action: "context" }                                 เครือของบริษัท จำนวนบริษัท และสิทธิ์แก้ข้อมูลกลาง
  *  - { action: "checkDuplicate", entity, data }            มีรายการที่ SKU/บาร์โค้ด/เลขผู้เสียภาษี ซ้ำในเครือหรือไม่
- *  - { action: "create", entity, id?, data }               สร้างใหม่ (ข้อมูลกลาง + ของบริษัท)
+ *  - { action: "create", entity, id?, data, openingStock? } สร้างใหม่ (ข้อมูลกลาง + ของบริษัท)
+ *      openingStock (สินค้า): { qty, unitCost } รับเข้าเป็นยอดยกมา ผ่าน stock engine + บันทึกบัญชีร่าง Dr สินค้าคงเหลือ / Cr กำไรสะสม
+ * สินค้าที่ยังอยู่ root products (ก่อนย้ายข้อมูล): get/update ทำงานกับเอกสารเดิม
  *  - { action: "adopt", entity, id, data? }                ใช้รายการกลางที่มีอยู่แล้วในบริษัทนี้ (ตั้งค่าของบริษัทได้)
  *  - { action: "update", entity, id, changes, scope }      scope "group" = แก้ค่ากลาง / "company" = ตั้งค่าของบริษัท
  *  - { action: "resetLocal", entity, id, fields }          ล้างค่าของบริษัท กลับไปใช้ค่ากลาง
@@ -39,9 +42,16 @@ function clean(obj: Record<string, any>): Record<string, any> {
   return out;
 }
 
-function protectLocal(entity: MasterEntity, local: Record<string, any>) {
-  const bad = Object.keys(local).filter((k) => PROTECTED[entity].includes(k));
-  if (bad.length) throw new ApiAuthError(400, `แก้ฟิลด์ ${bad.join(", ")} ผ่านเอกสารคลัง/บัญชีเท่านั้น`);
+/** ตัดฟิลด์ที่ระบบคำนวณเอง (สต็อก ต้นทุนเฉลี่ย ยอดหนี้) ออก — แก้ได้ผ่านเอกสารคลัง/บัญชีเท่านั้น */
+function protectLocal(entity: MasterEntity, local: Record<string, any>): string[] {
+  const dropped = Object.keys(local).filter((k) => PROTECTED[entity].includes(k));
+  dropped.forEach((k) => delete local[k]);
+  if (entity === "products" && local.pricing && typeof local.pricing === "object" && "costWAC" in local.pricing) {
+    const { costWAC: _ignored, ...rest } = local.pricing; void _ignored;
+    local.pricing = rest;
+    dropped.push("pricing.costWAC");
+  }
+  return dropped;
 }
 
 async function findDuplicates(tx: admin.firestore.Transaction | null, groupId: string, entity: MasterEntity, data: Record<string, any>, exceptId = "") {
@@ -67,6 +77,26 @@ function writeUniqueKeys(tx: admin.firestore.Transaction, groupId: string, entit
     if (oldV) tx.delete(adminDb.doc(`groups/${groupId}/unique_keys/${uniqueKeyDocId(entity, fields, oldV)}`));
     if (newV) tx.set(adminDb.doc(`groups/${groupId}/unique_keys/${uniqueKeyDocId(entity, fields, newV)}`), { entity, fields, value: newV, id });
   }
+}
+
+/** สินค้า root รุ่นเก่า (ยังไม่มีดัชนีห้ามซ้ำ) ที่ SKU/บาร์โค้ดชนกัน */
+async function legacyDuplicates(entity: MasterEntity, companyId: string, data: Record<string, any>, exceptId = "") {
+  if (entity !== "products") return [];
+  const hits: { fields: string[]; value: string; id: string }[] = [];
+  for (const f of ["sku", "barcode"]) {
+    const v = String(data?.[f] ?? "").trim();
+    if (!v) continue;
+    const q = await adminDb.collection("products").where("companyId", "==", companyId).where(f, "==", v).limit(3).get();
+    q.docs.filter((d) => d.id !== exceptId && d.data().isDeleted !== true).forEach((d) => hits.push({ fields: [f], value: v.toUpperCase(), id: d.id }));
+  }
+  return hits;
+}
+
+/** เอกสาร root รุ่นเก่า (สินค้าก่อนย้ายข้อมูล) ของบริษัทนี้ */
+async function legacyDoc(entity: MasterEntity, id: string, companyId: string) {
+  if (entity !== "products") return null;
+  const snap = await adminDb.doc(`products/${id}`).get();
+  return snap.exists && snap.data()!.companyId === companyId ? snap : null;
 }
 
 const historyEntry = (u: ApiUser, companyId: string, action: string, changes: Record<string, any>) => ({
@@ -100,13 +130,15 @@ export async function POST(request: Request) {
     if (action === "get") {
       const id = str(body.id, 120);
       if (!ID.test(id)) throw new ApiAuthError(400, "รหัสไม่ถูกต้อง");
-      const [m, l] = await Promise.all([masterCol.doc(id).get(), localCol.doc(id).get()]);
-      if (!m.exists && !l.exists) throw new ApiAuthError(404, `ไม่พบ${schema.label}`);
-      return NextResponse.json({ success: true, groupId, record: { id, ...mergeRecord(entity, m.data(), l.data()) } });
+      const [m, l, legacy] = await Promise.all([masterCol.doc(id).get(), localCol.doc(id).get(), legacyDoc(entity, id, companyId)]);
+      if (!m.exists && !l.exists && !legacy) throw new ApiAuthError(404, `ไม่พบ${schema.label}`);
+      const record = m.exists || !legacy ? mergeRecord(entity, m.data(), l.data()) : { ...legacy.data(), ...mergeRecord(entity, null, l.data()), _legacy: true };
+      return NextResponse.json({ success: true, groupId, record: { id, ...record } });
     }
 
     if (action === "checkDuplicate") {
-      const hits = await findDuplicates(null, groupId, entity, body.data || {}, str(body.exceptId, 120));
+      const exceptId = str(body.exceptId, 120);
+      const hits = [...(await findDuplicates(null, groupId, entity, body.data || {}, exceptId)), ...(await legacyDuplicates(entity, companyId, body.data || {}, exceptId))];
       return NextResponse.json({ success: true, duplicates: hits });
     }
 
@@ -120,9 +152,15 @@ export async function POST(request: Request) {
       // สร้างรายการใหม่ = ค่าที่กรอกเป็นค่ากลาง (identity + shared) ส่วนที่เหลือเป็นของบริษัท
       const { master, local } = splitChanges(entity, data, "group");
       protectLocal(entity, local);
+      const opening = entity === "products" ? { qty: Math.floor(Number(body.openingStock?.qty) || 0), unitCost: Math.max(0, Number(body.openingStock?.unitCost) || 0) } : { qty: 0, unitCost: 0 };
+      if (opening.qty < 0 || opening.qty > 10_000_000) throw new ApiAuthError(400, "จำนวนยกมาไม่ถูกต้อง");
+      if (entity === "products") local.stockStatus = { onHand: 0, reserved: 0, available: 0 };
+      const legacyHits = await legacyDuplicates(entity, companyId, master);
+      if (legacyHits.length) throw new ApiAuthError(409, dupMessage(entity, legacyHits));
       await adminDb.runTransaction(async (tx) => {
         const [m, l] = await Promise.all([tx.get(masterCol.doc(id)), tx.get(localCol.doc(id))]);
-        if (m.exists || l.exists) throw new ApiAuthError(409, `รหัส ${id} มีอยู่แล้ว`);
+        const legacy = entity === "products" ? await tx.get(adminDb.doc(`products/${id}`)) : null;
+        if (m.exists || l.exists || legacy?.exists) throw new ApiAuthError(409, `รหัส ${id} มีอยู่แล้ว`);
         const hits = await findDuplicates(tx, groupId, entity, master);
         if (hits.length) throw new ApiAuthError(409, dupMessage(entity, hits));
         writeUniqueKeys(tx, groupId, entity, id, null, master);
@@ -130,7 +168,23 @@ export async function POST(request: Request) {
         tx.create(localCol.doc(id), { ...local, companyId, groupId, createdBy: apiUser.uid, createdAt: now, updatedAt: now, isDeleted: false });
         tx.create(masterCol.doc(id).collection("history").doc(), historyEntry(apiUser, companyId, "create", master));
       });
-      return NextResponse.json({ success: true, id, groupId });
+      if (opening.qty > 0) {
+        const amount = Math.round(opening.qty * opening.unitCost * 100) / 100;
+        await processStockMovements([{ companyId, productId: id, type: "IN", quantity: opening.qty, unitCost: opening.unitCost, referenceId: `OPEN-${id}`, userId: apiUser.email || apiUser.uid }], (tx) => {
+          if (amount <= 0) return;
+          tx.set(adminDb.collection(`companies/${companyId}/journal_entries`).doc(), {
+            companyId, date: now, bookType: "JV", status: "draft",
+            description: `[AUTO] ยอดยกมาสินค้า ${master.sku || id} ${opening.qty} หน่วย`,
+            reference: `OPEN-${id}`, totalDebit: amount, totalCredit: amount, isOfficialTax: false,
+            items: [
+              { accountCode: "1141-00", accountName: "สินค้าคงเหลือ", debit: amount, credit: 0 },
+              { accountCode: "3211-00", accountName: "กำไร (ขาดทุน) สะสม", debit: 0, credit: amount },
+            ],
+            createdBy: apiUser.uid, createdAt: now, updatedAt: now,
+          });
+        });
+      }
+      return NextResponse.json({ success: true, id, groupId, openingStock: opening.qty });
     }
 
     const id = str(body.id, 120);
@@ -151,7 +205,16 @@ export async function POST(request: Request) {
     if (action === "update") {
       const scope: EditScope = body.scope === "group" ? "group" : "company";
       const { master, local } = splitChanges(entity, clean(body.changes || {}), scope);
-      protectLocal(entity, local);
+      const ignored = protectLocal(entity, local);
+      const legacy = await legacyDoc(entity, id, companyId);
+      if (legacy && !(await masterCol.doc(id).get()).exists) {
+        // ยังไม่ย้ายเข้าข้อมูลกลาง: เครือมีบริษัทเดียวเท่านั้นที่มีรายการแบบนี้ -> แก้ที่เอกสารเดิมทั้งหมด
+        const all = { ...master, ...local };
+        const hits = [...(await findDuplicates(null, groupId, entity, { ...legacy.data(), ...all }, id)), ...(await legacyDuplicates(entity, companyId, all, id))];
+        if (hits.length) throw new ApiAuthError(409, dupMessage(entity, hits));
+        await legacy.ref.set({ ...all, updatedAt: now, updatedBy: apiUser.uid }, { merge: true });
+        return NextResponse.json({ success: true, id, legacy: true, updated: Object.keys(all), ignored });
+      }
       if (Object.keys(master).length && !(await canEditMaster(apiUser, companyId, entity, groupId))) {
         throw new ApiAuthError(403, `ข้อมูลกลางของ${schema.label} (${Object.keys(master).join(", ")}) แก้ได้เฉพาะผู้ดูแลเครือ — ตั้งชื่อ/รายละเอียดเฉพาะบริษัทแทนได้`);
       }
@@ -171,7 +234,7 @@ export async function POST(request: Request) {
           tx.set(localCol.doc(id), { ...local, companyId, groupId, updatedAt: now, updatedBy: apiUser.uid }, { merge: true });
         }
       });
-      return NextResponse.json({ success: true, id, updatedMaster: Object.keys(master), updatedLocal: Object.keys(local) });
+      return NextResponse.json({ success: true, id, updatedMaster: Object.keys(master), updatedLocal: Object.keys(local), ignored });
     }
 
     if (action === "resetLocal") {

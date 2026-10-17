@@ -7,6 +7,7 @@ import { PillButton, PillInput, GlassCard, cn } from "@/components/ui/Base";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useProducts } from "@/hooks/useProducts";
 import { apiFetch } from "@/lib/api-client";
 import { listLocations, findLocation, findProductByScan, UNASSIGNED } from "@/lib/warehouse-location";
 import { soPickRemaining } from "@/lib/picking";
@@ -23,7 +24,7 @@ function PickingScreen() {
   const { companyId } = useAuth();
 
   const { data: orders } = useRealtimeCollection<any>(`companies/${companyId}/sales_orders`);
-  const { data: products } = useRealtimeCollection<any>("products");
+  const { data: products } = useProducts<any>();
   const { data: balances } = useRealtimeCollection<any>(`companies/${companyId}/inventory_balance`);
   const { data: warehouses } = useRealtimeCollection<any>("warehouses");
   const locations = useMemo(() => listLocations(warehouses), [warehouses]);

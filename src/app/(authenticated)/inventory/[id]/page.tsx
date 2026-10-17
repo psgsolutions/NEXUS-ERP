@@ -56,8 +56,9 @@ import {
   orderBy,
   limit
 } from "firebase/firestore";
-import { inventoryService } from "@/services/inventory.service";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useProducts } from "@/hooks/useProducts";
+import { apiFetch } from "@/lib/api-client";
 import { findBarcodeConflict } from "@/lib/product-validation";
 import { Product } from "@/types/database";
 
@@ -111,40 +112,40 @@ export default function ProductDetailPage() {
     type: "success" as "success" | "error" | "warning"
   });
 
-  // Real-time product listener
+  // สินค้าของบริษัท (ข้อมูลกลางของเครือ + ค่าของบริษัท หรือข้อมูลรุ่นเก่า) แบบเรียลไทม์
+  const { data: companyProducts, loading: productsLoading } = useProducts<any>();
+  const [masterCtx, setMasterCtx] = useState<{ companyCount: number; canEditMaster: boolean } | null>(null);
+  const [saveToGroup, setSaveToGroup] = useState(false);
+  useEffect(() => {
+    if (!companyId) return;
+    apiFetch("/api/master-data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "context" }) })
+      .then((r) => r.json()).then((d) => d.success && setMasterCtx({ companyCount: d.companyCount, canEditMaster: !!d.canEditMaster?.products }))
+      .catch(() => setMasterCtx(null));
+  }, [companyId]);
   useEffect(() => {
     if (!productId) return;
-    const unsubscribe = onSnapshot(
-      doc(db, "products", productId),
-      (snap) => {
-        if (snap.exists()) {
-          const data = { id: snap.id, ...snap.data() } as Product;
-          setProduct(data);
-          setForm({
-            sku: data.sku || "",
-            barcode: (data as any).barcode || "",
-            name: data.name || "",
-            description: data.description || "",
-            category: data.category || "",
-            brand: data.brand || "",
-            unit: data.unit || "EA",
-            minStock: (data as any).minStock || 0,
-            costWAC: data.pricing?.costWAC || 0,
-            pricePOS: data.pricing?.pricePOS || 0,
-            priceProject: data.pricing?.priceProject || 0,
-            onHand: data.stockStatus?.onHand || 0,
-            reserved: data.stockStatus?.reserved || 0
-          });
-        }
-        setLoading(false);
-      },
-      (err) => {
-        console.error("Product snapshot error:", err);
-        setLoading(false);
-      }
-    );
-    return () => unsubscribe();
-  }, [productId]);
+    const found = companyProducts.find((x: any) => x.id === productId);
+    if (found && !isEditMode) {
+      const data = found as Product;
+      setProduct(data);
+      setForm({
+        sku: data.sku || "",
+        barcode: (data as any).barcode || "",
+        name: data.name || "",
+        description: data.description || "",
+        category: data.category || "",
+        brand: data.brand || "",
+        unit: data.unit || "EA",
+        minStock: (data as any).minStock || 0,
+        costWAC: data.pricing?.costWAC || 0,
+        pricePOS: data.pricing?.pricePOS || 0,
+        priceProject: data.pricing?.priceProject || 0,
+        onHand: data.stockStatus?.onHand || 0,
+        reserved: data.stockStatus?.reserved || 0
+      });
+    }
+    if (!productsLoading) setLoading(false);
+  }, [productId, companyProducts, productsLoading, isEditMode]);
 
   // Real-time stock movements
   useEffect(() => {
@@ -169,7 +170,6 @@ export default function ProductDetailPage() {
   }, [companyId, productId]);
 
   // ตรวจบาร์โค้ดซ้ำกับสินค้าอื่นในบริษัท (เทียบทั้งบาร์โค้ดและ SKU)
-  const { data: companyProducts } = useRealtimeCollection<any>("products");
   const barcodeConflict = useMemo(
     () => findBarcodeConflict(form.barcode, companyProducts, companyId || "", productId as string),
     [form.barcode, companyProducts, companyId, productId]
@@ -198,24 +198,27 @@ export default function ProductDetailPage() {
     }
     setIsSaving(true);
     try {
-      await inventoryService.updateItem(user.uid, companyId, productId, {
-        sku: form.sku.trim(),
-        name: form.name.trim(),
-        description: form.description,
-        category: form.category,
-        brand: form.brand,
-        unit: form.unit,
-        barcode: form.barcode.trim(),
-        barcodes: form.barcode.trim() ? [form.barcode.trim()] : [],
-        // ไม่บันทึก costWAC / stockStatus จากหน้านี้: เปลี่ยนผ่าน stock engine เท่านั้น
-        "pricing.pricePOS": form.pricePOS,
-        "pricing.priceProject": form.priceProject
-      } as any);
+      // เครือบริษัทเดียว: แก้ค่ากลางได้เลย / หลายบริษัท: ชื่อ รายละเอียด หมวด เป็นค่าของบริษัท เว้นแต่ผู้ดูแลเครือเลือกบันทึกเป็นค่ากลาง
+      // ไม่บันทึก costWAC / stockStatus จากหน้านี้: เปลี่ยนผ่าน stock engine เท่านั้น
+      const scope = masterCtx && (masterCtx.companyCount <= 1 || saveToGroup) && masterCtx.canEditMaster ? "group" : "company";
+      const res = await apiFetch("/api/master-data", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId, action: "update", entity: "products", id: productId, scope,
+          changes: {
+            sku: form.sku.trim(), name: form.name.trim(), description: form.description, category: form.category,
+            brand: form.brand, unit: form.unit, barcode: form.barcode.trim(), barcodes: form.barcode.trim() ? [form.barcode.trim()] : [],
+            pricing: { pricePOS: form.pricePOS, priceProject: form.priceProject },
+          },
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok || !d.success) throw new Error(d.error || "บันทึกไม่สำเร็จ");
       setToast({ message: "บันทึกข้อมูลพัสดุเรียบร้อยแล้ว", isVisible: true, type: "success" });
       setIsEditMode(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setToast({ message: "เกิดข้อผิดพลาดในการบันทึกข้อมูล", isVisible: true, type: "error" });
+      setToast({ message: err?.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล", isVisible: true, type: "error" });
     } finally {
       setIsSaving(false);
     }
@@ -304,6 +307,16 @@ export default function ProductDetailPage() {
       <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
         {isEditMode ? (
           <>
+            {masterCtx && masterCtx.companyCount > 1 && (
+              masterCtx.canEditMaster ? (
+                <label className="flex items-center gap-2 text-[12px] text-white/60 cursor-pointer" title="ชื่อ รายละเอียด หมวด จะเปลี่ยนให้ทุกบริษัทในเครือที่ไม่ได้ตั้งชื่อของตัวเอง">
+                  <input type="checkbox" checked={saveToGroup} onChange={(e) => setSaveToGroup(e.target.checked)} className="accent-nexus-teal" />
+                  บันทึกเป็นค่ากลางของเครือ
+                </label>
+              ) : (
+                <span className="text-[12px] text-white/40" title="SKU บาร์โค้ด ยี่ห้อ หน่วย แก้ได้เฉพาะผู้ดูแลเครือ">ชื่อ/รายละเอียดที่แก้จะใช้เฉพาะบริษัทนี้</span>
+              )
+            )}
             <PillButton
               variant="glass"
               className="h-8 px-4 text-xs font-bold text-white/50"

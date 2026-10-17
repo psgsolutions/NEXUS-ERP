@@ -6,6 +6,7 @@ import JsBarcode from "jsbarcode";
 import { ArrowLeft, Printer, Search } from "lucide-react";
 import { PillButton, PillInput } from "@/components/ui/Base";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useProducts } from "@/hooks/useProducts";
 
 /** รหัสบนฉลาก: ใช้บาร์โค้ดจากโรงงานถ้ามี ไม่มีใช้ SKU (ระบบยิงจับคู่ได้ทั้งคู่) */
 const labelCode = (p: any) => String(p.barcode || p.sku || p.id);
@@ -28,7 +29,7 @@ function ProductLabel({ product }: { product: any }) {
 
 export default function ProductLabelsPage() {
   const router = useRouter();
-  const { data: products, loading } = useRealtimeCollection<any>("products");
+  const { data: products, loading } = useProducts<any>();
   const [search, setSearch] = useState("");
   const [copies, setCopies] = useState<Record<string, number>>({});
 

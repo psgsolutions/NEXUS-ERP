@@ -5,6 +5,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { processStockMovements, StockMovement } from "@/lib/stock-service";
 import { listLocations, UNASSIGNED, WarehouseDoc } from "@/lib/warehouse-location";
 import { soPickRemaining } from "@/lib/picking";
+import { getProduct } from "@/lib/product-store.server";
 
 /**
  * [API-SERVER] Picking: เบิกสินค้าออกจากตำแหน่งจัดเก็บตามใบสั่งขาย
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
     // สต็อกที่ยังไม่ระบุตำแหน่ง: เบิกได้ไม่เกิน onHand - ผลรวมยอดทุกตำแหน่ง
     for (const { productId, location, qty } of Array.from(byKey.values())) {
       if (location !== UNASSIGNED) continue;
-      const product = (await adminDb.collection("products").doc(productId).get()).data();
+      const product = (await getProduct(companyId, productId))?.data;
       const located = (await adminDb.collection(`companies/${companyId}/inventory_balance`).where("productId", "==", productId).get())
         .docs.reduce((sum, d) => sum + (Number(d.data().quantity) || 0), 0);
       const free = Math.max(0, (Number(product?.stockStatus?.onHand) || 0) - located);

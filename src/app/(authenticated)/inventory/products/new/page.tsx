@@ -32,8 +32,7 @@ import { SmartSelect, StepperInput } from "@/components/ui/SmartComponents";
 import { useInventory } from "@/hooks/useInventory";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
-import { db } from "@/lib/firebase-client";
-import { doc, setDoc, collection } from "firebase/firestore";
+import { apiFetch } from "@/lib/api-client";
 import { saveToFirestore } from "@/lib/firebaseUtils";
 import { Warehouse3D } from "@/components/inventory/Warehouse3D";
 import { useSystemDialog } from "@/context/DialogContext";
@@ -528,10 +527,7 @@ export default function NewProductPage() {
         const savedSku = formData.sku;
 
         const saveOp = async () => {
-          const productRef = doc(db, "products", prodId);
-          
-          await setDoc(productRef, {
-            companyId,
+          const productData = {
             sku: formData.sku,
             productCode: formData.productCode || formData.sku,
             barcode: formData.barcode,
@@ -615,25 +611,15 @@ export default function NewProductPage() {
             technicalSpecs: formData.technicalSpecs,
             aliases: formData.aliases ? [{ type: "CUSTOMER", name: formData.aliases }] : [],
             accessories: formData.accessories ? formData.accessories.split(",").map(a => a.trim()) : [],
-            updatedAt: new Date(),
-            createdAt: new Date(),
-            isDeleted: false
-          }, { merge: true });
-
-          if (totalQty > 0) {
-            const logRef = doc(collection(db, "stockMovements"));
-            await setDoc(logRef, {
-              companyId,
-              transactionId: `TX-GRN-${Date.now().toString().slice(-4)}`,
-              type: "IN",
-              productId: prodId,
-              quantity: totalQty,
-              fromLocation: "EXTERNAL",
-              toLocation: formData.rackLocation || formData.warehouseId || "WH-01",
-              userId: user.displayName || "system",
-              createdAt: new Date()
-            });
-          }
+          };
+          // สต็อกและต้นทุนเริ่มต้นไม่เขียนตรง: ส่งเป็นยอดยกมาให้ server รับเข้าผ่าน stock engine
+          const { stockStatus: _s, ...withoutStock } = productData as any; void _s;
+          const res = await apiFetch("/api/master-data", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ companyId, action: "create", entity: "products", id: prodId, data: withoutStock, openingStock: { qty: totalQty, unitCost: formData.cost || 0 } }),
+          });
+          const d = await res.json();
+          if (!res.ok || !d.success) throw new Error(d.error || "บันทึกสินค้าไม่สำเร็จ");
         };
         await saveToFirestore(saveOp());
         showAlert("เพิ่มสินค้าใหม่เข้าสู่ระบบเรียบร้อยแล้ว");
@@ -650,85 +636,17 @@ export default function NewProductPage() {
         }
 
       } else {
-        if (poItems.length === 0) {
-          setSubmitting(false);
-          isSubmittingRef.current = false;
-          return void showAlert("กรุณาดึงข้อมูลใบสั่งซื้อและตรวจสอบรายการก่อนยืนยัน");
-        }
-
-        const saveOp = async () => {
-          for (const item of poItems) {
-            if (item.qtyReceived <= 0) continue; 
-            
-            let existingProd = products.find(p => p.sku === item.sku || p.name.toLowerCase() === item.name.toLowerCase());
-            const prodId = existingProd?.id || `PROD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-            const productRef = doc(db, "products", prodId);
-            
-            let currentOnHand = existingProd?.stockStatus?.onHand || 0;
-            let currentCostWAC = existingProd?.pricing?.costWAC || 0;
-            
-            const newQty = currentOnHand + item.qtyReceived;
-            const newCostWAC = (currentOnHand + item.qtyReceived > 0)
-              ? ((currentOnHand * currentCostWAC) + (item.qtyReceived * (item.cost || 0))) / newQty
-              : (item.cost || 0);
-
-            await setDoc(productRef, {
-              companyId,
-              sku: item.sku || existingProd?.sku || `SKU-${Date.now().toString().slice(-4)}`,
-              name: item.name || existingProd?.name || "สินค้าไม่ระบุชื่อจากใบสั่งซื้อ",
-              category: existingProd?.category || "general",
-              brand: existingProd?.brand || "NEXUS",
-              unit: existingProd?.unit || "ชิ้น",
-              stockStatus: {
-                onHand: newQty,
-                reserved: existingProd?.stockStatus?.reserved || 0,
-                available: newQty - (existingProd?.stockStatus?.reserved || 0)
-              },
-              pricing: {
-                costWAC: newCostWAC,
-                pricePOS: existingProd?.pricing?.pricePOS || Number(((item.cost || 0) / 0.8).toFixed(2)),
-                priceProject: existingProd?.pricing?.priceProject || Number(((item.cost || 0) / 0.8).toFixed(2)) * 1.2
-              },
-              warehouseId: formData.warehouseId || (existingProd as any)?.warehouseId || "WH-01",
-              rackLocation: formData.rackLocation || (existingProd as any)?.rackLocation || "",
-              supplierId: formData.supplierId,
-              updatedAt: new Date(),
-              isDeleted: false
-            }, { merge: true });
-
-            const logRef = doc(collection(db, "stockMovements"));
-            await setDoc(logRef, {
-              companyId,
-              transactionId: `TX-GRN-${Date.now().toString().slice(-4)}`,
-              type: "IN",
-              productId: prodId,
-              quantity: item.qtyReceived,
-              fromLocation: "EXTERNAL",
-              toLocation: formData.rackLocation || formData.warehouseId || "WH-01",
-              userId: user.displayName || "system",
-              createdAt: new Date()
-            });
-          }
-        };
-        await saveToFirestore(saveOp());
-        showAlert("เพิ่มสินค้าและรับเข้าคลังเรียบร้อยแล้ว");
-
-        if (saveAndContinue) {
-          const nextSku = computeNextSku(products);
-          setFormData({
-            ...INITIAL_FORM_DATA,
-            sku: nextSku
-          });
-          setErrors({});
-          setPoItems([]);
-          return;
-        }
+        // รับสินค้าจากใบสั่งซื้อทำที่หน้ารับสินค้าเข้าคลัง (ตัดสต็อก ต้นทุนเฉลี่ย และลงบัญชีที่ server)
+        setSubmitting(false);
+        isSubmittingRef.current = false;
+        router.push("/inventory/in/new");
+        return;
       }
 
       router.push("/inventory");
-    } catch (error) {
+    } catch (error: any) {
       console.error("APO Product Save Alert:", error);
-      showAlert("ล้มเหลวในการบันทึกข้อมูลสินค้า");
+      showAlert(error?.message || "ล้มเหลวในการบันทึกข้อมูลสินค้า", "บันทึกไม่สำเร็จ", "error");
     } finally {
       isSubmittingRef.current = false;
       setSubmitting(false);

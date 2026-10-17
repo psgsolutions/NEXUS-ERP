@@ -2,6 +2,8 @@ import * as admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebase-admin';
 import { processStockMovements, StockMovement } from '@/lib/stock-service';
 import { nexusSequenceServer } from '@/lib/sequence-server';
+import { getProduct } from '@/lib/product-store.server';
+import { groupIdOfCompany } from '@/lib/company-group.server';
 
 /**
  * [SERVER-ONLY: Admin SDK] ใช้ผ่าน POST /api/pos/checkout เท่านั้น
@@ -61,10 +63,10 @@ export async function processPOSBatchCheckout(payload: POSCheckoutPayload): Prom
 
   // ราคาและชื่อจากฐานข้อมูล
   const lines: Array<{ productId: string; sku: string; name: string; qty: number; price: number; amount: number }> = [];
+  const groupId = await groupIdOfCompany(companyId);
   for (const [productId, qty] of Array.from(qtyById.entries())) {
-    const snap = await adminDb.collection('products').doc(productId).get();
-    const p = snap.data();
-    if (!p || p.companyId !== companyId) throw new Error(`ไม่พบสินค้า ${productId}`);
+    const p = (await getProduct(companyId, productId, groupId))?.data;
+    if (!p) throw new Error(`ไม่พบสินค้า ${productId}`);
     const price = Number(p.pricing?.pricePOS ?? p.price ?? p.unitPrice ?? 0);
     lines.push({ productId, sku: p.sku || productId, name: p.name || productId, qty, price, amount: round2(price * qty) });
   }

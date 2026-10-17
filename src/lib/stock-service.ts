@@ -4,6 +4,8 @@ import { nexusSequenceServer } from "./sequence-server";
 import { Product } from "@/types";
 import { auditServer } from "@/services/audit.server";
 import { assertPeriodOpen } from "./period-close-service";
+import { getProductTx } from "./product-store.server";
+import { groupIdOfCompany } from "./company-group.server";
 
 type DocumentReference = admin.firestore.DocumentReference;
 type Transaction = admin.firestore.Transaction;
@@ -89,6 +91,7 @@ export async function processStockMovements(
   }
 
   await assertPeriodOpen(companyId);
+  const groupId = await groupIdOfCompany(companyId);
 
   // 1. Generate Transaction IDs (NXI-YYMM-XXXX)
   const transactionIds: string[] = [];
@@ -114,10 +117,11 @@ export async function processStockMovements(
       wacChanged: boolean;
     }>();
     for (const productId of Array.from(new Set(movements.map(m => m.productId)))) {
-      const ref = adminDb.collection("products").doc(productId);
-      const snap = await transaction.get(ref);
-      if (!snap.exists) throw new Error(`Product not found (ID: ${productId})`);
-      const data = snap.data() as Product;
+      // สินค้าของบริษัท (ข้อมูลกลาง+ของบริษัท หรือ root รุ่นเก่า) — ref = เอกสารที่เก็บสต็อก
+      const handle = await getProductTx(transaction, companyId, groupId, productId);
+      if (!handle) throw new Error(`Product not found (ID: ${productId})`);
+      const ref = handle.ref;
+      const data = handle.data as Product;
       products.set(productId, {
         ref,
         data,

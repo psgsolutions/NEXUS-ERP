@@ -7,6 +7,7 @@ import { PillButton, PillInput, PillSelect, GlassCard, cn } from "@/components/u
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useProducts } from "@/hooks/useProducts";
 import { apiFetch } from "@/lib/api-client";
 import {
   listLocations, findLocation, findProductByScan, receivingLocation, warehouseCode, UNASSIGNED, LocationOption,
@@ -20,7 +21,7 @@ export default function PutawayPage() {
   const { companyId } = useAuth();
 
   const { data: warehouses, loading: whLoading } = useRealtimeCollection<any>("warehouses");
-  const { data: products } = useRealtimeCollection<any>("products");
+  const { data: products } = useProducts<any>();
   const { data: balances } = useRealtimeCollection<any>(`companies/${companyId}/inventory_balance`);
 
   const locations = useMemo(() => listLocations(warehouses), [warehouses]);

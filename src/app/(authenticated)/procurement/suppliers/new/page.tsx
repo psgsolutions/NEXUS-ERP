@@ -23,6 +23,7 @@ import { formatCurrency } from "@/lib/erp-logic";
 import { useSystemDialog } from "@/context/DialogContext";
 import { auditService } from "@/services/audit.service";
 import { db } from "@/lib/firebase-client";
+import { apiFetch } from "@/lib/api-client";
 import { doc, collection, setDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
@@ -165,7 +166,6 @@ export default function NewSupplierPage() {
 
             // 2. Service Item Catalog record in products (searchable in Quotation & Project BOQ)
             const productData = {
-              companyId: currentCompanyId,
               sku: itemCode,
               name: `[ค่าแรง] ${rate.serviceType} (${form.name})`,
               category: "SERVICES",
@@ -177,13 +177,16 @@ export default function NewSupplierPage() {
               subcontractorId: supplierRef.id,
               subcontractorName: form.name,
               whtRate: 3,                       // หัก ณ ที่จ่าย 3% สำหรับบริการ
-              isDeleted: false,
               isActive: true,
-              createdAt: serverTimestamp()
+              itemType: "SERVICE",
             };
 
-            await addDoc(collection(db, `companies/${currentCompanyId}/products`), productData);
-            await addDoc(collection(db, "products"), productData);
+            const res = await apiFetch("/api/master-data", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ companyId: currentCompanyId, action: "create", entity: "products", data: productData }),
+            });
+            const created = await res.json();
+            if (!res.ok || !created.success) throw new Error(created.error || `สร้างรายการค่าแรง ${itemCode} ไม่สำเร็จ`);
           }
         }
       }

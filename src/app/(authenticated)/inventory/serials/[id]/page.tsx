@@ -8,6 +8,7 @@ import { GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillButton, Statu
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useProducts } from "@/hooks/useProducts";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { SERIAL_STATUS, toMs, warrantyState } from "@/lib/serials";
 
@@ -26,7 +27,8 @@ export default function SerialDetailPage() {
   const sn = decodeURIComponent(String(useParams()?.id || ""));
   const { companyId } = useAuth();
   const { data: s, loading } = useRealtimeDocument<any>(companyId && sn ? `companies/${companyId}/serial_numbers/${sn}` : null);
-  const { data: product } = useRealtimeDocument<any>(s?.productId ? `products/${s.productId}` : null);
+  const { data: companyProducts } = useProducts<any>();
+  const product = companyProducts.find((p: any) => p.id === s?.productId) || null;
   const filter = useMemo(() => [where("snList", "array-contains", sn)], [sn]);
   const { data: moves } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/stock_movements` : "", filter, false);
   const history = [...moves].sort((a: any, b: any) => toMs(b.createdAt) - toMs(a.createdAt));

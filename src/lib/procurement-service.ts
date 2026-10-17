@@ -138,8 +138,11 @@ export async function fetchSupplierPriceHistory(productId: string, companyId: st
     // Fallback to Product.supplierConfig if purchase order history < 3
     if (results.length < 3) {
       try {
-        const prodRef = doc(db, "products", productId);
-        const prodSnap = await getDoc(prodRef);
+        // ผู้ขายของสินค้าเป็นข้อมูลของบริษัท: ที่ใหม่ companies/{c}/products ก่อน แล้วค่อย root รุ่นเก่า
+        const companySnap = await getDoc(doc(db, "companies", companyId, "products", productId));
+        const prodSnap = companySnap.exists() && Array.isArray(companySnap.data().supplierConfig)
+          ? companySnap
+          : await getDoc(doc(db, "products", productId));
         if (prodSnap.exists()) {
           const prodData = prodSnap.data();
           if (prodData.companyId === companyId && prodData.isDeleted !== true && Array.isArray(prodData.supplierConfig)) {

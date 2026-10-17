@@ -2,6 +2,8 @@ import * as admin from "firebase-admin";
 import { adminDb } from "./firebase-admin";
 import { nexusSequenceServer } from "./sequence-server";
 import { assertPeriodOpen } from "./period-close-service";
+import { getProductTx } from "@/lib/product-store.server";
+import { groupIdOfCompany } from "@/lib/company-group.server";
 
 /** ข้อมูลใบเสนอราคาที่ใช้ตอนแปลงเป็นใบสั่งขาย */
 interface Quotation {
@@ -26,6 +28,7 @@ export async function convertToSalesOrder(quoteId: string, companyId: string) {
   await assertPeriodOpen(companyId);
   const quoteRef = adminDb.doc(`companies/${companyId}/quotations/${quoteId}`);
   const soId = await nexusSequenceServer("SO", companyId);
+  const groupId = await groupIdOfCompany(companyId);
   const now = () => admin.firestore.FieldValue.serverTimestamp();
 
   await adminDb.runTransaction(async (transaction) => {
@@ -51,17 +54,14 @@ export async function convertToSalesOrder(quoteId: string, companyId: string) {
 
     const productUpdates: Array<{ ref: admin.firestore.DocumentReference; reserved: number; available: number }> = [];
     for (const [productId, qty] of Array.from(reservedByProduct.entries())) {
-      const productRef = adminDb.collection("products").doc(productId);
-      const productSnap = await transaction.get(productRef);
-      if (!productSnap.exists) {
+      const handle = await getProductTx(transaction, companyId, groupId, productId);
+      const productRef = handle?.ref as admin.firestore.DocumentReference;
+      if (!handle) {
         console.warn(`PRODUCT_NOT_FOUND: ข้ามการตัดสต็อกสำหรับพัสดุรหัส ${productId} เนื่องจากไม่มีในฐานข้อมูลหลัก`);
         continue; // Skip items that were deleted from master data
       }
 
-      const productData = productSnap.data() || {};
-      if (productData.companyId !== companyId) {
-        throw new Error("SECURITY_BREACH: Product mapping is scoped to a different tenant.");
-      }
+      const productData: Record<string, any> = handle.data;
 
       const currentReserved = productData.stockStatus?.reserved || 0;
       const currentOnHand = productData.stockStatus?.onHand || 0;

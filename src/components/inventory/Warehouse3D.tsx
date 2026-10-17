@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useProducts } from "@/hooks/useProducts";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { cn, PillButton, PillInput, PillSelect } from "@/components/ui/Base";
@@ -69,7 +70,7 @@ export function Warehouse3D({
   // ข้อมูลจริง: ผังคลัง (warehouses) + ยอดคงเหลือตามตำแหน่ง (inventory_balance) + ชื่อสินค้า
   const { data: dbWarehouses, loading: warehousesLoading } = useRealtimeCollection<any>("warehouses");
   const { data: balances } = useRealtimeCollection<any>(`companies/${companyId}/inventory_balance`);
-  const { data: products } = useRealtimeCollection<any>("products");
+  const { data: products } = useProducts<any>();
 
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [activeWhId, setActiveWhId] = useState<string>(initialWarehouseId || "");

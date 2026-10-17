@@ -9,13 +9,14 @@ import { Product } from "@/types/database";
  * Fetches products scoped to the current companyId.
  */
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useProducts } from "./useProducts";
 
 /**
  * [DAT-01] Real-time Inventory Data Hook
  * Fetches products scoped to the current companyId.
  */
 export function useInventory() {
-  const { data: products, loading } = useRealtimeCollection<any>("products");
+  const { data: products, loading } = useProducts<any>();
   
   // Optionally sort in memory to avoid Firebase Index errors
   const sortedProducts = useMemo(() => {

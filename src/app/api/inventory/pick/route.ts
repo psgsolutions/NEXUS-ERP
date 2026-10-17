@@ -3,7 +3,8 @@ import * as admin from "firebase-admin";
 import { requireApiUser, authErrorResponse } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
 import { processStockMovements, StockMovement } from "@/lib/stock-service";
-import { listLocations, UNASSIGNED, WarehouseDoc } from "@/lib/warehouse-location";
+import { UNASSIGNED } from "@/lib/warehouse-location";
+import { companyLocations } from "@/lib/warehouse.server";
 import { soPickRemaining } from "@/lib/picking";
 import { getProduct } from "@/lib/product-store.server";
 
@@ -59,9 +60,7 @@ export async function POST(request: Request) {
     }
 
     // ตำแหน่งต้องมีในผังคลัง (ยกเว้นสต็อกเดิมที่ยังไม่ระบุตำแหน่ง)
-    const warehouses = (await adminDb.collection("warehouses").where("companyId", "==", companyId).get())
-      .docs.map((d) => ({ id: d.id, ...d.data() } as WarehouseDoc));
-    const validCodes = new Set(listLocations(warehouses).map((l) => l.code));
+    const validCodes = new Set((await companyLocations(companyId)).mine.map((l) => l.code));
     for (const { location } of Array.from(byKey.values())) {
       if (location !== UNASSIGNED && !validCodes.has(location)) {
         return NextResponse.json({ success: false, error: `ไม่พบตำแหน่ง ${location} ในผังคลัง` }, { status: 400 });

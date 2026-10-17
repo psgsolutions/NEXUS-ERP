@@ -23,9 +23,9 @@ import { formatCurrency } from "@/lib/erp-logic";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useWarehouses } from "@/hooks/useWarehouses";
 import { useSuppliers } from "@/hooks/useCustomers";
 import { apiFetch } from "@/lib/api-client";
-import { listLocations } from "@/lib/warehouse-location";
 
 const DEFAULT_WAREHOUSE = "Main Warehouse";
 
@@ -37,7 +37,7 @@ function NewInventoryInScreen() {
 
   // ข้อมูลจริงของบริษัท
   const { data: suppliers } = useSuppliers<any>();
-  const { data: warehouses } = useRealtimeCollection<any>("warehouses");
+  const { warehouses, myLocations } = useWarehouses();
   const { data: rootPOs } = useRealtimeCollection<any>("purchase_orders");
   const { data: companyPOs } = useRealtimeCollection<any>(`companies/${companyId}/purchase_orders`);
 
@@ -57,7 +57,7 @@ function NewInventoryInScreen() {
   // ตำแหน่งรับเข้า:
   //  - ยังไม่มีผังชั้นวาง → เลือกได้แค่คลัง และรับเข้าแบบไม่ระบุตำแหน่ง (ค่า "@WH-01" = ไม่สร้างยอดตามตำแหน่ง)
   //  - มีชั้นวางแล้ว → พื้นที่รับสินค้า (WH-xx-RECV) แล้วจัดเก็บเข้าชั้นภายหลัง หรือเลือกชั้นวางตรง
-  const hasRacks = warehouses.some((w: any) => (w.racks || []).length > 0);
+  const hasRacks = warehouses.some((w: any) => (w.racks || []).length > 0 || (w.zones || []).length > 0);
   const warehouseOptions = warehouses.length === 0
     ? [{ value: `@${DEFAULT_WAREHOUSE}`, label: "คลังหลัก (ยังไม่ได้ตั้งค่าคลังสินค้า)" }]
     : !hasRacks
@@ -65,7 +65,7 @@ function NewInventoryInScreen() {
           const code = w.code || w.warehouseCode || w.id;
           return { value: `@${code}`, label: `${code} : ${w.name || w.warehouseName || code} (ไม่ระบุตำแหน่ง)` };
         })
-      : listLocations(warehouses).map((l) => ({ value: l.code, label: l.isReceiving ? `${l.label} (แนะนำ: จัดเก็บเข้าชั้นภายหลัง)` : `${l.code} • ${l.label}` }));
+      : myLocations.map((l) => ({ value: l.code, label: l.isReceiving ? `${l.label} (แนะนำ: จัดเก็บเข้าชั้นภายหลัง)` : `${l.code} • ${l.label}` }));
   const warehouseId = header.warehouseId || warehouseOptions[0].value;
   const receiveLocation = warehouseId.startsWith("@") ? "" : warehouseId;           // ส่งเป็นตำแหน่งสต็อก
   const receiveWarehouse = warehouseId.startsWith("@") ? warehouseId.slice(1) : warehouseId.split("-").slice(0, 2).join("-"); // รหัสคลังในเอกสาร

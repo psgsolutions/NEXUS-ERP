@@ -94,6 +94,13 @@ Content-Type: application/json
 | `WH-01-A-R01-L2` | ชั้นวางที่ไม่แบ่งช่อง |
 | `WH-01-RECV` | พื้นที่รับสินค้า |
 
+### คลังที่ใช้ร่วมกันในเครือ
+
+- คลังใหม่อยู่ที่ `groups/{groupId}/warehouses/{code}` (id ใน API = `group:{code}`) รหัสคลังห้ามซ้ำในเครือ
+- แต่ละช่องมีเจ้าของบริษัทเดียว: `rack.binOwners["L2-B03"]` → `binOwners["L2"]` → `rack.owner` → `zone.owner` → `ownerCompanyId` ของคลัง
+- `list` คืน `locations[].owner`, `companies`, `multiCompany` — จัดเก็บ/เบิก/รับเข้าได้เฉพาะช่องของบริษัทตัวเอง (พื้นที่รับสินค้าใช้ร่วมกัน)
+- เปลี่ยนเจ้าของช่องหรือลบช่องที่ยังมีสินค้าของบริษัทใดไม่ได้
+
 แอปที่สแกน QR ส่งรหัสนี้ไปที่ `/api/inventory/putaway` (จัดเก็บ) หรือ `/api/inventory/pick` (เบิก) ได้ทันที
 
 ## พอร์ทัลแจ้งซ่อมของลูกค้า — `/api/portal/repair` (ไม่ต้องล็อกอิน)
@@ -132,5 +139,5 @@ Content-Type: application/json
 | งาน | `companies/{companyId}/jobs/{jobNo}` | ผ่าน API เท่านั้น |
 | คำขอแจ้งซ่อมจากลูกค้า | `companies/{companyId}/portal_requests/{id}` | ผ่าน API เท่านั้น |
 | ตัวนับจำกัดจำนวนครั้ง | `rate_limits/{scope}_{hash}_{ช่วงเวลา}` | server เท่านั้น (ตั้ง TTL ที่ฟิลด์ `expiresAt` ได้) |
-| คลัง | `warehouses/{companyId}_{code}` | ผ่าน API |
+| คลัง | `groups/{groupId}/warehouses/{code}` (รุ่นเก่า `warehouses/{companyId}_{code}`) | ผ่าน API |
 | ยอดคงเหลือตามตำแหน่ง | `companies/{companyId}/inventory_balance/{location}_{productId}` | ผ่าน API |

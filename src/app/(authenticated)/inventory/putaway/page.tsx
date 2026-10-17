@@ -7,10 +7,11 @@ import { PillButton, PillInput, PillSelect, GlassCard, cn } from "@/components/u
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useWarehouses } from "@/hooks/useWarehouses";
 import { useProducts } from "@/hooks/useProducts";
 import { apiFetch } from "@/lib/api-client";
 import {
-  listLocations, findLocation, findProductByScan, receivingLocation, warehouseCode, UNASSIGNED, LocationOption,
+  findLocation, findProductByScan, receivingLocation, warehouseCode, UNASSIGNED, LocationOption,
 } from "@/lib/warehouse-location";
 
 type Line = { productId: string; name: string; sku: string; qty: number };
@@ -20,11 +21,12 @@ export default function PutawayPage() {
   const router = useRouter();
   const { companyId } = useAuth();
 
-  const { data: warehouses, loading: whLoading } = useRealtimeCollection<any>("warehouses");
+  // จัดเก็บได้เฉพาะช่องของบริษัทนี้ (คลังที่ใช้ร่วมในเครือ)
+  const { warehouses, myLocations, loading: whLoading } = useWarehouses();
   const { data: products } = useProducts<any>();
   const { data: balances } = useRealtimeCollection<any>(`companies/${companyId}/inventory_balance`);
 
-  const locations = useMemo(() => listLocations(warehouses), [warehouses]);
+  const locations = myLocations;
   const rackLocations = locations.filter((l) => !l.isReceiving);
 
   const [source, setSource] = useState<string>("");

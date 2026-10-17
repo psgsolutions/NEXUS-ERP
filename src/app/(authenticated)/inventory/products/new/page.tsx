@@ -32,6 +32,7 @@ import { SmartSelect, StepperInput } from "@/components/ui/SmartComponents";
 import { useInventory } from "@/hooks/useInventory";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useWarehouses } from "@/hooks/useWarehouses";
 import { useSuppliers } from "@/hooks/useCustomers";
 import { apiFetch } from "@/lib/api-client";
 import { saveToFirestore } from "@/lib/firebaseUtils";
@@ -151,7 +152,7 @@ export default function NewProductPage() {
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
   const { data: suppliers } = useSuppliers();
-  const { data: warehouses } = useRealtimeCollection("warehouses");
+  const { warehouses } = useWarehouses();
 
   const INITIAL_CATEGORIES = [
     { value: "general", label: "ทั่วไป" },

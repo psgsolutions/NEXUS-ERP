@@ -6,6 +6,7 @@ import { assertPeriodOpen } from "@/lib/period-close-service";
 import { processStockMovements, StockMovement } from "@/lib/stock-service";
 import { auditServer } from "@/services/audit.server";
 import { normalizePoStatus } from "@/lib/procurement-status";
+import { companyLocations } from "@/lib/warehouse.server";
 
 /**
  * [API-SERVER] Goods Receipt & Real-time WAC / GL Posting API
@@ -49,6 +50,15 @@ export async function POST(request: Request) {
 
     // 2. Period Lock Check
     await assertPeriodOpen(companyId, postingDate);
+
+    // ตำแหน่งรับเข้าในคลังที่ใช้ร่วมกันในเครือ ต้องเป็นช่องของบริษัทนี้ (หรือพื้นที่รับสินค้า)
+    if (warehouse) {
+      const { all } = await companyLocations(companyId);
+      const loc = all.find((l) => l.code === warehouse);
+      if (loc && loc.owner && loc.owner !== companyId) {
+        return NextResponse.json({ success: false, error: `ช่อง ${warehouse} เป็นของบริษัทอื่นในเครือ รับเข้าไม่ได้` }, { status: 400 });
+      }
+    }
 
     // 3. Collect Stock Movements for all received items
     let totalReceiptAmount = 0;

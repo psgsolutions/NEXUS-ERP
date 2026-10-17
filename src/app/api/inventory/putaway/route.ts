@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { requireApiUser, authErrorResponse } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
 import { processStockMovements, StockMovement } from "@/lib/stock-service";
-import { listLocations, UNASSIGNED, WarehouseDoc } from "@/lib/warehouse-location";
+import { UNASSIGNED } from "@/lib/warehouse-location";
+import { companyLocations } from "@/lib/warehouse.server";
 import { getProduct } from "@/lib/product-store.server";
 
 /**
@@ -35,12 +36,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "ไม่มีรายการสินค้าที่จะจัดเก็บ" }, { status: 400 });
     }
 
-    // ตำแหน่งต้องมีอยู่จริงในผังคลังของบริษัท
-    const warehouses = (await adminDb.collection("warehouses").where("companyId", "==", companyId).get())
-      .docs.map((d) => ({ id: d.id, ...d.data() } as WarehouseDoc));
-    const validCodes = new Set(listLocations(warehouses).map((l) => l.code));
+    // ตำแหน่งต้องมีอยู่จริงในผังคลัง และปลายทางต้องเป็นช่องของบริษัทนี้ (คลังที่ใช้ร่วมในเครือ)
+    const { all, mine } = await companyLocations(companyId);
+    const validCodes = new Set(mine.map((l) => l.code));
     if (!validCodes.has(toLocation)) {
-      return NextResponse.json({ success: false, error: `ไม่พบตำแหน่ง ${toLocation} ในผังคลัง` }, { status: 400 });
+      const other = all.find((l) => l.code === toLocation);
+      return NextResponse.json({ success: false, error: other ? `ช่อง ${toLocation} เป็นของบริษัทอื่นในเครือ จัดเก็บไม่ได้` : `ไม่พบตำแหน่ง ${toLocation} ในผังคลัง` }, { status: 400 });
     }
     if (fromLocation !== UNASSIGNED && !validCodes.has(fromLocation)) {
       return NextResponse.json({ success: false, error: `ไม่พบตำแหน่งต้นทาง ${fromLocation} ในผังคลัง` }, { status: 400 });

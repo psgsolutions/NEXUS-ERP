@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useWarehouses } from "@/hooks/useWarehouses";
+import { apiFetch } from "@/lib/api-client";
 import { useProducts } from "@/hooks/useProducts";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
@@ -45,6 +47,7 @@ interface Rack {
 interface Warehouse {
   id: string;     // รหัสคลัง (เช่น WH-01) ใช้เป็นตำแหน่ง WH-01-A1
   docId: string;  // ID เอกสารใน collection warehouses
+  shared?: boolean; // คลังของเครือ (แก้ผังที่หน้าผังคลัง)
   name: string;
   gridCols: number;
   gridRows: number;
@@ -68,7 +71,7 @@ export function Warehouse3D({
   const { showAlert } = useSystemDialog();
 
   // ข้อมูลจริง: ผังคลัง (warehouses) + ยอดคงเหลือตามตำแหน่ง (inventory_balance) + ชื่อสินค้า
-  const { data: dbWarehouses, loading: warehousesLoading } = useRealtimeCollection<any>("warehouses");
+  const { warehouses: dbWarehouses, loading: warehousesLoading } = useWarehouses();
   const { data: balances } = useRealtimeCollection<any>(`companies/${companyId}/inventory_balance`);
   const { data: products } = useProducts<any>();
 
@@ -82,6 +85,7 @@ export function Warehouse3D({
       return {
         id: code,
         docId: w.id,
+        shared: w.source === "group",
         name: w.name || w.warehouseName || code,
         gridCols: Number(w.gridCols) || 12,
         gridRows: Number(w.gridRows) || 8,
@@ -102,6 +106,8 @@ export function Warehouse3D({
 
   // บันทึกผังคลัง (เก็บเฉพาะโครงสร้าง ไม่เก็บรายการสินค้า/ความจุที่คำนวณจากสต็อก)
   const persistWarehouse = async (wh: Warehouse) => {
+    // คลังของเครือ (ใช้ร่วมกัน) แก้ผังได้ที่หน้า "ผังคลังและชั้นวาง" เท่านั้น
+    if (wh.shared) return void showAlert("คลังนี้เป็นคลังของเครือ แก้ผังได้ที่หน้า ผังคลังและชั้นวาง");
     try {
       await setDoc(doc(db, "warehouses", wh.docId), {
         companyId,
@@ -154,11 +160,10 @@ export function Warehouse3D({
     // รหัสคลังถัดไป WH-01, WH-02, ...
     const nextNo = warehouses.reduce((max, w) => Math.max(max, Number(String(w.id).match(/(\d+)$/)?.[1] || 0)), 0) + 1;
     const code = `WH-${String(nextNo).padStart(2, "0")}`;
-    const newWh: Warehouse = { id: code, docId: `${companyId}_${code}`, name: newWhName.trim(), gridCols: 10, gridRows: 8, racks: [] };
-    await setDoc(doc(db, "warehouses", newWh.docId), {
-      companyId, code, name: newWh.name, gridCols: newWh.gridCols, gridRows: newWh.gridRows, racks: [],
-      isActive: true, isDeleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-    });
+    // สร้างผ่าน API (รหัสคลังห้ามซ้ำในเครือ)
+    const res = await apiFetch("/api/inventory/warehouses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "create", code, name: newWhName.trim() }) });
+    const created = await res.json();
+    if (!res.ok || !created.success) return void showAlert(created.error || "เพิ่มคลังไม่สำเร็จ");
     setActiveWhId(code);
     setShowNewWhForm(false);
     setNewWhName("");

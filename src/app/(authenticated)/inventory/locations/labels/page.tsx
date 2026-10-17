@@ -22,7 +22,7 @@ const SIZES = {
 } as const;
 type SizeKey = keyof typeof SIZES;
 
-function Label({ loc, size }: { loc: LocationOption; size: (typeof SIZES)[SizeKey] }) {
+function Label({ loc, size, ownerName }: { loc: LocationOption; size: (typeof SIZES)[SizeKey]; ownerName?: string }) {
   const parts = [loc.zoneCode && `โซน ${loc.zoneCode}`, loc.rackId && `ชั้นวาง ${loc.rackId}`, loc.level && `ชั้น ${loc.level}`, loc.bin && `ช่อง ${loc.bin}`].filter(Boolean).join(" · ");
   const big = size.h >= 40;
   return (
@@ -31,6 +31,7 @@ function Label({ loc, size }: { loc: LocationOption; size: (typeof SIZES)[SizeKe
       <div className="min-w-0 flex-1 flex flex-col justify-center gap-[1mm]">
         <p className="font-mono font-black leading-none break-all" style={{ fontSize: big ? "13pt" : "9pt" }}>{loc.code}</p>
         <p className="leading-tight" style={{ fontSize: big ? "8pt" : "6.5pt" }}>{loc.isReceiving ? "พื้นที่รับสินค้า" : parts}</p>
+        {ownerName && <p className="leading-tight font-bold truncate" style={{ fontSize: big ? "8pt" : "6.5pt" }}>{ownerName}</p>}
         {big && <p className="leading-tight text-black/60" style={{ fontSize: "7pt" }}>สแกนเพื่อรับเข้า/เบิกจากตำแหน่งนี้</p>}
       </div>
     </div>
@@ -47,6 +48,8 @@ function LabelsPage() {
   const [rack, setRack] = useState(search?.get("rack") || "ALL");
   const [size, setSize] = useState<SizeKey>("a4-24");
   const [withRecv, setWithRecv] = useState(false);
+  // คลังที่ใช้ร่วมในเครือ: ค่าเริ่มต้นพิมพ์เฉพาะช่องของบริษัทนี้ และพิมพ์ชื่อบริษัทเจ้าของบนฉลาก
+  const [onlyMine, setOnlyMine] = useState(true);
 
   useEffect(() => {
     if (!companyId) return;
@@ -60,7 +63,9 @@ function LabelsPage() {
   const racks: any[] = zone === "ALL" ? [] : zones.find((z) => z.code === zone)?.racks || [];
   const shown: LocationOption[] = useMemo(() => (data?.locations || []).filter((l: LocationOption) =>
     l.warehouseCode === whCode && (l.isReceiving ? withRecv || zone === "RECV" : zone === "ALL" || (l.zoneCode === zone && (rack === "ALL" || l.rackId === rack)))
-  ), [data, whCode, zone, rack, withRecv]);
+    && (!data?.multiCompany || !onlyMine || !l.owner || l.owner === companyId)
+  ), [data, whCode, zone, rack, withRecv, onlyMine, companyId]);
+  const ownerName = (id: string) => (data?.multiCompany && id ? data.companies.find((c: any) => c.id === id)?.shortName || id : "");
   const s = SIZES[size];
 
   return (
@@ -103,6 +108,9 @@ function LabelsPage() {
           {zone === "ALL" && (
             <label className="flex items-center gap-1.5 text-[13px] text-white/70"><input type="checkbox" checked={withRecv} onChange={(e) => setWithRecv(e.target.checked)} /> รวมพื้นที่รับสินค้า</label>
           )}
+          {data?.multiCompany && (
+            <label className="flex items-center gap-1.5 text-[13px] text-white/70"><input type="checkbox" checked={onlyMine} onChange={(e) => setOnlyMine(e.target.checked)} /> เฉพาะช่องของบริษัทนี้</label>
+          )}
           <PillButton variant="primary" className="h-9 px-5 text-xs font-bold" onClick={() => window.print()} disabled={shown.length === 0}><Printer size={14} className="mr-1.5" /> พิมพ์ {shown.length} ดวง</PillButton>
         </div>
       </div>
@@ -114,7 +122,7 @@ function LabelsPage() {
           <div className={cn(s.sheet ? "grid gap-0" : "flex flex-wrap gap-3 print:block")} style={s.sheet ? { gridTemplateColumns: `repeat(${(s as any).cols}, ${s.w}mm)` } : undefined}>
             {shown.map((l) => (
               <div key={l.code} className={cn(!s.sheet && "print:m-0", s.sheet && "outline outline-1 outline-black/10 print:outline-0")}>
-                <Label loc={l} size={s} />
+                <Label loc={l} size={s} ownerName={ownerName(l.owner)} />
               </div>
             ))}
           </div>

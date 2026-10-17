@@ -7,9 +7,10 @@ import { PillButton, PillInput, GlassCard, cn } from "@/components/ui/Base";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useWarehouses } from "@/hooks/useWarehouses";
 import { useProducts } from "@/hooks/useProducts";
 import { apiFetch } from "@/lib/api-client";
-import { listLocations, findLocation, findProductByScan, UNASSIGNED } from "@/lib/warehouse-location";
+import { findLocation, findProductByScan, UNASSIGNED } from "@/lib/warehouse-location";
 import { soPickRemaining } from "@/lib/picking";
 
 type Line = { productId: string; location: string; qty: number };
@@ -26,8 +27,8 @@ function PickingScreen() {
   const { data: orders } = useRealtimeCollection<any>(`companies/${companyId}/sales_orders`);
   const { data: products } = useProducts<any>();
   const { data: balances } = useRealtimeCollection<any>(`companies/${companyId}/inventory_balance`);
-  const { data: warehouses } = useRealtimeCollection<any>("warehouses");
-  const locations = useMemo(() => listLocations(warehouses), [warehouses]);
+  // เบิกได้เฉพาะช่องของบริษัทนี้ (คลังที่ใช้ร่วมในเครือ)
+  const { myLocations: locations } = useWarehouses();
   const productById = useMemo(() => new Map(products.map((p: any) => [p.id, p])), [products]);
 
   const pickable = orders.filter((so: any) => !BLOCKED.includes(String(so.status || "").toUpperCase()) && soPickRemaining(so).size > 0);

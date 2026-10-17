@@ -9,11 +9,19 @@ import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
-import { binLocation, isValidPartCode, MAX_BINS, MAX_LEVELS, rackPrefix, receivingLocation, type RackDef, type ZoneDef } from "@/lib/warehouse-location";
+import { binKey, binLocation, isValidPartCode, MAX_BINS, MAX_LEVELS, ownerOfBin, rackPrefix, receivingLocation, type RackDef, type ZoneDef } from "@/lib/warehouse-location";
 
 // สีประจำโซน (ใช้เป็นแถบระบุโซน ไม่ใช่สื่อความหมายสถานะ)
 const ZONE_COLORS = ["#199e70", "#3b82f6", "#d97706", "#a855f7", "#e11d48", "#0891b2"];
 const nextCode = (used: string[], prefix: string, width = 2) => { for (let i = 1; i < 1000; i++) { const c = `${prefix}${String(i).padStart(width, "0")}`; if (!used.includes(c)) return c; } return prefix; };
+// สีประจำบริษัทในคลังที่ใช้ร่วมกัน (ระบุเจ้าของช่อง)
+const OWNER_COLORS = ["#38bdf8", "#f59e0b", "#a78bfa", "#f472b6", "#34d399", "#fb7185"];
+// ค่าแทน "ไม่ระบุ" ใน PillSelect (ค่าว่างจะแสดงเป็นยังไม่ได้เลือก)
+const INHERIT = "__inherit";
+const PAINT_OFF = "__off";
+type OwnerCtx = { multi: boolean; companies: { id: string; name: string; shortName: string }[]; whOwner: string; me: string };
+const ownerColor = (ctx: OwnerCtx, id: string) => OWNER_COLORS[Math.max(0, ctx.companies.findIndex((c) => c.id === id)) % OWNER_COLORS.length];
+const ownerName = (ctx: OwnerCtx, id: string) => ctx.companies.find((c) => c.id === id)?.shortName || id || "-";
 const nextLetter = (used: string[]) => "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").find((c) => !used.includes(c)) || nextCode(used, "Z");
 
 type Sel = { zone: number; rack: number | null } | null;
@@ -90,6 +98,7 @@ export default function WarehouseLayoutPage() {
   };
   const printHref = (zone?: string, rack?: string) => `/inventory/locations/labels?wh=${encodeURIComponent(whId)}${zone ? `&zone=${encodeURIComponent(zone)}` : ""}${rack ? `&rack=${encodeURIComponent(rack)}` : ""}`;
 
+  const ownerCtx: OwnerCtx = { multi: !!list?.multiCompany, companies: list?.companies || [], whOwner: wh?.ownerCompanyId || companyId || "", me: companyId || "" };
   const zone = sel ? zones[sel.zone] : null;
   const rack = zone && sel?.rack !== null && sel?.rack !== undefined ? zone.racks[sel.rack] : null;
 
@@ -181,14 +190,14 @@ export default function WarehouseLayoutPage() {
               <p className="text-[12px] text-white/40">ขั้นตอน: เพิ่มโซน → เพิ่มชั้นวาง → กำหนดจำนวนชั้นและช่อง → บันทึกผัง → พิมพ์ฉลาก QR ติดแต่ละช่อง</p>
             </GlassCard>
           ) : !rack ? (
-            <ZoneEditor zone={zone} canEdit={canEdit} whCode={whCode} stock={stock}
+            <ZoneEditor zone={zone} canEdit={canEdit} whCode={whCode} stock={stock} ownerCtx={ownerCtx}
               onChange={(patch) => update((z) => { Object.assign(z[sel!.zone], patch); })}
               onRemove={() => removeZone(sel!.zone)}
               onOpenRack={(ri) => setSel({ zone: sel!.zone, rack: ri })}
               onAddRack={() => addRack(sel!.zone)}
               printHref={dirty ? "" : printHref(zone.code)} />
           ) : (
-            <RackEditor zone={zone} rack={rack} whCode={whCode} stock={stock} canEdit={canEdit}
+            <RackEditor zone={zone} rack={rack} whCode={whCode} stock={stock} canEdit={canEdit} ownerCtx={ownerCtx}
               onChange={(patch) => update((z) => { Object.assign(z[sel!.zone].racks[sel!.rack!], patch); })}
               onRemove={() => removeRack(sel!.zone, sel!.rack!)}
               onDuplicate={() => addRack(sel!.zone, rack)}
@@ -217,7 +226,7 @@ function Stepper({ value, min, max, onChange, disabled }: { value: number; min: 
   );
 }
 
-function ZoneEditor({ zone, canEdit, whCode, stock, onChange, onRemove, onOpenRack, onAddRack, printHref }: { zone: ZoneDef; canEdit: boolean; whCode: string; stock: Record<string, any>; onChange: (p: Partial<ZoneDef>) => void; onRemove: () => void; onOpenRack: (i: number) => void; onAddRack: () => void; printHref: string }) {
+function ZoneEditor({ zone, canEdit, whCode, stock, ownerCtx, onChange, onRemove, onOpenRack, onAddRack, printHref }: { zone: ZoneDef; canEdit: boolean; whCode: string; stock: Record<string, any>; ownerCtx: OwnerCtx; onChange: (p: Partial<ZoneDef>) => void; onRemove: () => void; onOpenRack: (i: number) => void; onAddRack: () => void; printHref: string }) {
   const router = useRouter();
   const codeOk = isValidPartCode(zone.code);
   return (
@@ -232,6 +241,14 @@ function ZoneEditor({ zone, canEdit, whCode, stock, onChange, onRemove, onOpenRa
             {ZONE_COLORS.map((c) => <button key={c} type="button" disabled={!canEdit} onClick={() => onChange({ color: c })} className={cn("w-6 h-6 rounded-full border-2", zone.color === c ? "border-white" : "border-transparent")} style={{ background: c }} aria-label="เลือกสี" />)}
           </div>
         </Field>
+        {ownerCtx.multi && (
+          <Field label="บริษัทเจ้าของโซน">
+            <PillSelect value={zone.owner || INHERIT} disabled={!canEdit} onChange={(e) => onChange({ owner: e.target.value === INHERIT ? undefined : e.target.value })} className="h-9 px-4 w-[220px] text-sm">
+              <option value={INHERIT}>ตามคลัง ({ownerName(ownerCtx, ownerCtx.whOwner)})</option>
+              {ownerCtx.companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </PillSelect>
+          </Field>
+        )}
         <div className="ml-auto flex gap-2">
           <PillButton variant="glass" className="h-9 px-4 text-xs font-bold" disabled={!printHref} onClick={() => router.push(printHref)}><QrCode size={14} className="mr-1" /> พิมพ์ฉลากทั้งโซน</PillButton>
           {canEdit && <PillButton variant="ghost" className="h-9 px-4 text-xs text-danger" onClick={onRemove}><Trash2 size={14} className="mr-1" /> ลบโซน</PillButton>}
@@ -274,11 +291,24 @@ function MiniRack({ rack }: { rack: RackDef }) {
   );
 }
 
-function RackEditor({ zone, rack, whCode, stock, canEdit, onChange, onRemove, onDuplicate, printHref }: { zone: ZoneDef; rack: RackDef; whCode: string; stock: Record<string, { qty: number; items: number }>; canEdit: boolean; onChange: (p: Partial<RackDef>) => void; onRemove: () => void; onDuplicate: () => void; printHref: string }) {
+function RackEditor({ zone, rack, whCode, stock, canEdit, ownerCtx, onChange, onRemove, onDuplicate, printHref }: { zone: ZoneDef; rack: RackDef; whCode: string; stock: Record<string, { qty: number; items: number }>; canEdit: boolean; ownerCtx: OwnerCtx; onChange: (p: Partial<RackDef>) => void; onRemove: () => void; onDuplicate: () => void; printHref: string }) {
   const router = useRouter();
   const levels = Array.from({ length: rack.levels }, (_, i) => rack.levels - i); // ชั้นบนสุดอยู่ด้านบน
   const codeOk = isValidPartCode(rack.code);
   const [picked, setPicked] = useState<string>("");
+  // โหมดกำหนดเจ้าของรายช่อง: เลือกบริษัทแล้วคลิกช่อง ("" = ปิดโหมด, "*" = กลับไปใช้เจ้าของของชั้นวาง)
+  const [paint, setPaint] = useState("");
+  const whStub = { id: "", ownerCompanyId: ownerCtx.whOwner };
+  const binOwner = (l: number, b: number) => ownerOfBin(whStub, zone, rack, l, b);
+  const paintBin = (l: number, b: number) => {
+    const key = binKey(l, b, rack.bins);
+    const next = { ...(rack.binOwners || {}) };
+    if (paint === "*") delete next[key]; else next[key] = paint;
+    // ถ้าตรงกับเจ้าของชั้นวางอยู่แล้ว ไม่ต้องเก็บแยก
+    const inherited = ownerOfBin(whStub, zone, { ...rack, binOwners: {} }, l, b);
+    if (next[key] === inherited) delete next[key];
+    onChange({ binOwners: next });
+  };
   return (
     <GlassCard className="p-5 space-y-5">
       <div className="flex flex-wrap items-end gap-4">
@@ -286,6 +316,14 @@ function RackEditor({ zone, rack, whCode, stock, canEdit, onChange, onRemove, on
         <Field label="ชื่อ/คำอธิบาย"><PillInput value={rack.name || ""} disabled={!canEdit} onChange={(e) => onChange({ name: e.target.value })} placeholder="เช่น สายไฟ" className="h-9 w-[200px] text-sm" /></Field>
         <Field label="จำนวนชั้น"><Stepper value={rack.levels} min={1} max={MAX_LEVELS} disabled={!canEdit} onChange={(n) => onChange({ levels: n })} /></Field>
         <Field label="ช่องต่อชั้น"><Stepper value={rack.bins} min={1} max={MAX_BINS} disabled={!canEdit} onChange={(n) => onChange({ bins: n })} /></Field>
+        {ownerCtx.multi && (
+          <Field label="บริษัทเจ้าของชั้นวาง">
+            <PillSelect value={rack.owner || INHERIT} disabled={!canEdit} onChange={(e) => onChange({ owner: e.target.value === INHERIT ? undefined : e.target.value })} className="h-9 px-4 w-[200px] text-sm">
+              <option value={INHERIT}>ตามโซน ({ownerName(ownerCtx, zone.owner || ownerCtx.whOwner)})</option>
+              {ownerCtx.companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </PillSelect>
+          </Field>
+        )}
         <div className="ml-auto flex gap-2 flex-wrap">
           <PillButton variant="glass" className="h-9 px-4 text-xs font-bold" disabled={!printHref} onClick={() => router.push(printHref)} title={!printHref ? "บันทึกผังก่อนพิมพ์" : undefined}><QrCode size={14} className="mr-1" /> พิมพ์ฉลากชั้นวางนี้</PillButton>
           {canEdit && <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={onDuplicate}><Copy size={14} className="mr-1" /> ทำซ้ำ</PillButton>}
@@ -297,8 +335,22 @@ function RackEditor({ zone, rack, whCode, stock, canEdit, onChange, onRemove, on
       <div className="rounded-2xl border border-white/10 bg-black/20 p-4 overflow-hidden">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[13px] text-white/70">มุมมองด้านหน้า · โซน {zone.code} · ชั้นวาง {rack.code}</span>
-          <span className="text-[12px] text-white/40">คลิกช่องเพื่อดูรหัสตำแหน่ง</span>
+          {ownerCtx.multi && canEdit ? (
+            <span className="flex items-center gap-2 text-[12px] text-white/60">
+              กำหนดเจ้าของรายช่อง:
+              <PillSelect value={paint || PAINT_OFF} onChange={(e) => setPaint(e.target.value === PAINT_OFF ? "" : e.target.value)} className="h-8 px-3 w-[190px] text-[12px]">
+                <option value={PAINT_OFF}>ปิด (คลิกเพื่อดูรหัส)</option>
+                {ownerCtx.companies.map((c) => <option key={c.id} value={c.id}>คลิกช่อง = {c.shortName}</option>)}
+                <option value="*">คลิกช่อง = ตามชั้นวาง</option>
+              </PillSelect>
+            </span>
+          ) : <span className="text-[12px] text-white/40">คลิกช่องเพื่อดูรหัสตำแหน่ง</span>}
         </div>
+        {ownerCtx.multi && (
+          <div className="flex flex-wrap gap-3 mb-3 text-[12px] text-white/60">
+            {ownerCtx.companies.map((c) => <span key={c.id} className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm" style={{ background: ownerColor(ownerCtx, c.id) }} />{c.shortName}{c.id === ownerCtx.me ? " (บริษัทนี้)" : ""}</span>)}
+          </div>
+        )}
         <div className="space-y-1.5">
           {levels.map((l) => (
             <div key={l} className="flex items-stretch gap-1.5">
@@ -308,7 +360,8 @@ function RackEditor({ zone, rack, whCode, stock, canEdit, onChange, onRemove, on
                   const code = binLocation(whCode, zone.code, rack.code, l, b + 1, rack.bins);
                   const s = stock[code];
                   return (
-                    <button key={b} type="button" onClick={() => setPicked(code)} title={code}
+                    <button key={b} type="button" onClick={() => (paint && ownerCtx.multi ? paintBin(l, b + 1) : setPicked(code))} title={ownerCtx.multi ? `${code} · ${ownerName(ownerCtx, binOwner(l, b + 1))}` : code}
+                      style={ownerCtx.multi ? { boxShadow: `inset 0 -4px 0 ${ownerColor(ownerCtx, binOwner(l, b + 1))}` } : undefined}
                       className={cn("h-12 rounded-lg border text-[11px] font-mono flex flex-col items-center justify-center min-w-0 px-1",
                         picked === code ? "border-nexus-teal bg-nexus-teal/15 text-nexus-teal" : s ? "border-white/20 bg-white/[0.08] text-white" : "border-white/10 bg-white/[0.02] text-white/40 hover:border-white/25")}>
                       <span className="truncate max-w-full">{rack.bins > 1 ? `B${String(b + 1).padStart(2, "0")}` : `L${l}`}</span>
@@ -324,7 +377,7 @@ function RackEditor({ zone, rack, whCode, stock, canEdit, onChange, onRemove, on
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 text-[12px]">
         <span className="text-white/50">รวม {rack.levels * rack.bins} ตำแหน่ง · รหัสแบบ <span className="font-mono text-white/70">{binLocation(whCode, zone.code, rack.code, 1, 1, rack.bins)}</span></span>
-        {picked && <span className="text-white/80">ตำแหน่งที่เลือก: <span className="font-mono font-bold text-nexus-teal">{picked}</span>{stock[picked] ? ` · ${stock[picked].items} รายการ ${stock[picked].qty.toLocaleString("th-TH")} หน่วย` : " · ว่าง"}</span>}
+        {picked && <span className="text-white/80">ตำแหน่งที่เลือก: <span className="font-mono font-bold text-nexus-teal">{picked}</span>{ownerCtx.multi ? ` · ของ ${ownerName(ownerCtx, (() => { const m = picked.match(/-L(\d+)(?:-B(\d+))?$/); return m ? binOwner(Number(m[1]), Number(m[2] || 1)) : ""; })())}` : ""}{stock[picked] ? ` · ${stock[picked].items} รายการ ${stock[picked].qty.toLocaleString("th-TH")} หน่วย` : " · ว่าง"}</span>}
       </div>
     </GlassCard>
   );

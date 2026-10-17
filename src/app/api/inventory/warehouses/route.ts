@@ -4,28 +4,45 @@ import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth"
 import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { auditServer } from "@/services/audit.server";
+import { companiesInGroup, groupIdOfCompany } from "@/lib/company-group.server";
+import { GROUP_PREFIX, loadWarehouses, warehouseRef } from "@/lib/warehouse.server";
 import { isValidPartCode, listLocations, MAX_BINS, MAX_LEVELS, type WarehouseDoc, type ZoneDef } from "@/lib/warehouse-location";
 
 /**
- * [API-SERVER] คลังสินค้าและผังชั้นวาง (root: warehouses/{companyId}_{code})
+ * [API-SERVER] คลังสินค้าและผังชั้นวาง
  * Endpoint: POST /api/inventory/warehouses
- *  - { companyId, action: "list" }                                  -> คลังทั้งหมด + ตำแหน่ง + ยอดคงเหลือตามตำแหน่ง (ใช้กับแอปอื่นได้)
- *  - { companyId, action: "create", code, name }                    -> เพิ่มคลัง
- *  - { companyId, action: "saveLayout", warehouseId, name?, zones } -> บันทึกผัง โซน › ชั้นวาง (ชั้น × ช่อง)
- * - บันทึกผังไม่ได้ถ้าตำแหน่งที่ถูกลบออกยังมีสินค้าคงเหลืออยู่
+ *  - { companyId, action: "list" }                                  -> คลัง + ตำแหน่ง (พร้อมเจ้าของช่อง) + ยอดคงเหลือตามตำแหน่งของบริษัท + บริษัทในเครือ
+ *  - { companyId, action: "create", code, name }                    -> เพิ่มคลังของเครือ groups/{g}/warehouses/{code} (เจ้าของเริ่มต้น = บริษัทที่สร้าง)
+ *  - { companyId, action: "saveLayout", warehouseId, name?, zones } -> บันทึกผัง โซน › ชั้นวาง (ชั้น × ช่อง) และเจ้าของช่อง
+ * - คลังของเครือใช้ร่วมกันได้ แต่ละช่องมีเจ้าของได้บริษัทเดียว (zone.owner / rack.owner / rack.binOwners)
+ * - บันทึกผังไม่ได้ถ้าตำแหน่งที่ถูกลบ หรือช่องที่เปลี่ยนเจ้าของ ยังมีสินค้าคงเหลืออยู่ (ของบริษัทใดก็ตามในเครือ)
+ * - คลังรุ่นเก่า root warehouses/{companyId}_{code} ยังใช้ได้จนกว่าจะย้ายข้อมูล
  */
 
 const str = (v: any, max = 80) => String(v ?? "").trim().slice(0, max);
 const up = (v: any) => str(v, 12).toUpperCase().replace(/\s+/g, "");
+const BIN_KEY = /^L\d{1,2}(-B\d{2})?$/;
 
-function cleanZones(raw: any): ZoneDef[] {
+function cleanZones(raw: any, members: Set<string>): ZoneDef[] {
+  const owner = (v: any) => {
+    const o = str(v, 80);
+    if (o && !members.has(o)) throw new ApiAuthError(400, `บริษัท ${o} ไม่ได้อยู่ในเครือเดียวกัน`);
+    return o;
+  };
   const zones: ZoneDef[] = (Array.isArray(raw) ? raw : []).slice(0, 50).map((z: any) => ({
     code: up(z?.code), name: str(z?.name, 60), color: /^#[0-9a-fA-F]{6}$/.test(String(z?.color || "")) ? String(z.color) : "",
-    racks: (Array.isArray(z?.racks) ? z.racks : []).slice(0, 200).map((r: any) => ({
-      code: up(r?.code), name: str(r?.name, 60), note: str(r?.note, 120),
-      levels: Math.min(MAX_LEVELS, Math.max(1, Math.round(Number(r?.levels) || 1))),
-      bins: Math.min(MAX_BINS, Math.max(1, Math.round(Number(r?.bins) || 1))),
-    })),
+    ...(owner(z?.owner) ? { owner: owner(z?.owner) } : {}),
+    racks: (Array.isArray(z?.racks) ? z.racks : []).slice(0, 200).map((r: any) => {
+      const binOwners = Object.fromEntries(Object.entries(r?.binOwners && typeof r.binOwners === "object" ? r.binOwners : {})
+        .filter(([k, v]) => BIN_KEY.test(k) && str(v)).slice(0, 2000).map(([k, v]) => [k, owner(v)]));
+      return {
+        code: up(r?.code), name: str(r?.name, 60), note: str(r?.note, 120),
+        levels: Math.min(MAX_LEVELS, Math.max(1, Math.round(Number(r?.levels) || 1))),
+        bins: Math.min(MAX_BINS, Math.max(1, Math.round(Number(r?.bins) || 1))),
+        ...(owner(r?.owner) ? { owner: owner(r?.owner) } : {}),
+        ...(Object.keys(binOwners).length ? { binOwners } : {}),
+      };
+    }),
   }));
   const zoneCodes = new Set<string>();
   for (const z of zones) {
@@ -43,6 +60,21 @@ function cleanZones(raw: any): ZoneDef[] {
   return zones;
 }
 
+/** ยอดคงเหลือ > 0 ตามตำแหน่ง ของทุกบริษัทในเครือ: location -> Set(companyId) */
+async function stockedLocations(companyIds: string[]) {
+  const out = new Map<string, Set<string>>();
+  const snaps = await Promise.all(companyIds.map((c) => adminDb.collection(`companies/${c}/inventory_balance`).get().then((s) => [c, s] as const)));
+  for (const [c, s] of snaps) {
+    for (const d of s.docs) {
+      const b = d.data() as any;
+      if (!b.location || (Number(b.quantity) || 0) <= 0) continue;
+      if (!out.has(b.location)) out.set(b.location, new Set());
+      out.get(b.location)!.add(c);
+    }
+  }
+  return out;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -51,14 +83,15 @@ export async function POST(request: Request) {
     const apiUser = await requireApiUser(request, companyId);
     const action = str(body.action, 20);
     const now = admin.firestore.FieldValue.serverTimestamp();
+    const groupId = await groupIdOfCompany(companyId);
 
     if (action === "list") {
       if (!can(apiUser.roles, "inventory:view")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
-      const [whs, bals] = await Promise.all([
-        adminDb.collection("warehouses").where("companyId", "==", companyId).get(),
+      const [warehouses, bals, memberIds] = await Promise.all([
+        loadWarehouses(companyId, groupId),
         adminDb.collection(`companies/${companyId}/inventory_balance`).get(),
+        companiesInGroup(groupId),
       ]);
-      const warehouses = whs.docs.filter((d) => d.data().isDeleted !== true).map((d) => ({ id: d.id, ...(d.data() as any) }));
       const stock: Record<string, { qty: number; items: number }> = {};
       bals.docs.forEach((d) => {
         const b = d.data() as any;
@@ -67,51 +100,62 @@ export async function POST(request: Request) {
         const s = (stock[b.location] ||= { qty: 0, items: 0 });
         s.qty += qty; s.items += 1;
       });
+      const companySnaps = memberIds.length ? await adminDb.getAll(...memberIds.map((id) => adminDb.doc(`companies/${id}`))) : [];
+      const companies = companySnaps.map((s) => ({ id: s.id, name: String(s.data()?.name || s.id), shortName: String(s.data()?.shortName || s.data()?.name || s.id).slice(0, 24) }));
       return NextResponse.json({
         success: true,
-        warehouses: warehouses.map((w) => ({ id: w.id, code: w.code || w.id, name: w.name || w.code, zones: w.zones || [], racks: w.racks || [] })),
+        groupId,
+        companies,
+        multiCompany: companies.length > 1,
+        warehouses: warehouses.map((w) => ({ id: w.id, code: w.code || w.id, name: w.name || w.code, zones: w.zones || [], racks: w.racks || [], source: w.source, ownerCompanyId: w.ownerCompanyId || w.companyId || companyId })),
         locations: listLocations(warehouses as WarehouseDoc[]),
         stock,
       });
     }
 
     if (!can(apiUser.roles, "inventory:edit")) throw new ApiAuthError(403, "แก้ไขผังคลังได้เฉพาะฝ่ายคลังสินค้า");
+    const members = await companiesInGroup(groupId);
 
     if (action === "create") {
       const code = up(body.code).replace(/[^A-Z0-9-]/g, "");
       const name = str(body.name, 80);
       if (!/^[A-Z0-9][A-Z0-9-]{1,11}$/.test(code)) throw new ApiAuthError(400, "รหัสคลังไม่ถูกต้อง (เช่น WH-02)");
       if (!name) throw new ApiAuthError(400, "กรุณาระบุชื่อคลัง");
-      const ref = adminDb.doc(`warehouses/${companyId}_${code}`);
+      const ref = adminDb.doc(`groups/${groupId}/warehouses/${code}`);
       await adminDb.runTransaction(async (tx) => {
-        if ((await tx.get(ref)).exists) throw new ApiAuthError(409, `มีคลังรหัส ${code} อยู่แล้ว`);
-        tx.create(ref, { companyId, code, name, zones: [], racks: [], isActive: true, isDeleted: false, createdBy: apiUser.uid, createdAt: now, updatedAt: now });
+        // รหัสคลังห้ามซ้ำทั้งคลังของเครือและคลังรุ่นเก่าของทุกบริษัทในเครือ (รหัสอยู่ในบาร์โค้ด/QR)
+        const legacy = await Promise.all(members.map((c) => tx.get(adminDb.doc(`warehouses/${c}_${code}`))));
+        if ((await tx.get(ref)).exists || legacy.some((s) => s.exists && s.data()!.isDeleted !== true)) throw new ApiAuthError(409, `มีคลังรหัส ${code} อยู่แล้วในเครือ`);
+        tx.create(ref, { code, name, groupId, ownerCompanyId: companyId, zones: [], isActive: true, isDeleted: false, createdBy: apiUser.uid, createdByCompany: companyId, createdAt: now, updatedAt: now });
       });
-      await auditServer.logCreate(apiUser.uid, companyId, "WAREHOUSE", ref.id, { code, name });
-      return NextResponse.json({ success: true, id: ref.id });
+      await auditServer.logCreate(apiUser.uid, companyId, "WAREHOUSE", ref.path, { code, name, groupId });
+      return NextResponse.json({ success: true, id: GROUP_PREFIX + code });
     }
 
     if (action === "saveLayout") {
       const warehouseId = str(body.warehouseId, 120);
-      if (!warehouseId || warehouseId.includes("/")) throw new ApiAuthError(400, "ไม่พบคลัง");
-      const ref = adminDb.doc(`warehouses/${warehouseId}`);
-      const zones = cleanZones(body.zones);
+      const ref = await warehouseRef(companyId, groupId, warehouseId);
+      if (!ref) throw new ApiAuthError(404, "ไม่พบคลัง");
       const snap = await ref.get();
+      if (!snap.exists || snap.data()!.isDeleted === true) throw new ApiAuthError(404, "ไม่พบคลัง");
       const w = snap.data() as any;
-      if (!snap.exists || w.companyId !== companyId) throw new ApiAuthError(404, "ไม่พบคลัง");
-      // ตำแหน่งที่หายไปต้องไม่มีสินค้าคงเหลือ
-      const before = new Set(listLocations([{ id: snap.id, ...w }]).map((l) => l.code));
-      const after = new Set(listLocations([{ id: snap.id, ...w, zones }]).map((l) => l.code));
-      const removed = Array.from(before).filter((c) => !after.has(c));
-      if (removed.length) {
-        const bals = await adminDb.collection(`companies/${companyId}/inventory_balance`).get();
-        const busy = Array.from(new Set(bals.docs.map((d) => d.data() as any).filter((b) => removed.includes(b.location) && (Number(b.quantity) || 0) > 0).map((b) => b.location)));
+      const zones = cleanZones(body.zones, new Set(members));
+      const beforeLocs = listLocations([{ id: snap.id, ...w }]);
+      const afterLocs = listLocations([{ id: snap.id, ...w, zones }]);
+      const afterByCode = new Map(afterLocs.map((l) => [l.code, l]));
+      const removed = beforeLocs.filter((l) => !afterByCode.has(l.code)).map((l) => l.code);
+      const reowned = beforeLocs.filter((l) => afterByCode.has(l.code) && afterByCode.get(l.code)!.owner !== l.owner);
+      if (removed.length || reowned.length) {
+        const stocked = await stockedLocations(ref.path.startsWith("groups/") ? members : [companyId]);
+        const busy = removed.filter((c) => stocked.has(c));
         if (busy.length) throw new ApiAuthError(409, `ลบตำแหน่งที่ยังมีสินค้าไม่ได้: ${busy.slice(0, 5).join(", ")}${busy.length > 5 ? ` และอีก ${busy.length - 5} ตำแหน่ง` : ""} (ย้ายสินค้าออกก่อน)`);
+        const ownedBusy = reowned.filter((l) => Array.from(stocked.get(l.code) || []).some((c) => c !== afterByCode.get(l.code)!.owner)).map((l) => l.code);
+        if (ownedBusy.length) throw new ApiAuthError(409, `เปลี่ยนเจ้าของช่องที่ยังมีสินค้าของบริษัทเดิมไม่ได้: ${ownedBusy.slice(0, 5).join(", ")}${ownedBusy.length > 5 ? ` และอีก ${ownedBusy.length - 5} ช่อง` : ""}`);
       }
       const name = str(body.name, 80) || w.name;
-      await ref.update({ zones, name, updatedBy: apiUser.uid, updatedAt: now });
-      await auditServer.logUpdate(apiUser.uid, companyId, "WAREHOUSE_LAYOUT", warehouseId, { locations: before.size }, { locations: after.size, zones: zones.length });
-      return NextResponse.json({ success: true, locations: after.size, removed: removed.length });
+      await ref.update({ zones, name, updatedBy: apiUser.uid, updatedByCompany: companyId, updatedAt: now });
+      await auditServer.logUpdate(apiUser.uid, companyId, "WAREHOUSE_LAYOUT", ref.path, { locations: beforeLocs.length }, { locations: afterLocs.length, zones: zones.length, reowned: reowned.length });
+      return NextResponse.json({ success: true, locations: afterLocs.length, removed: removed.length, reowned: reowned.length });
     }
 
     throw new ApiAuthError(400, "คำสั่งไม่ถูกต้อง");

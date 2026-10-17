@@ -38,6 +38,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { useWarehouses } from "@/hooks/useWarehouses";
 import { useSuppliers } from "@/hooks/useCustomers";
 import { apiFetch } from "@/lib/api-client";
 import { db } from "@/lib/firebase-client";
@@ -78,7 +79,7 @@ function NewPurchaseOrderScreen() {
   // ข้อมูลจริงของบริษัท
   const { data: suppliers } = useSuppliers<any>();
   const { data: projects } = useRealtimeCollection<any>(`companies/${companyId}/projects`);
-  const { data: warehouses } = useRealtimeCollection<any>("warehouses");
+  const { warehouses } = useWarehouses();
 
   const [activeTab, setActiveTab] = useState("general");
   const [form, setForm] = useState({ ...INITIAL_FORM, id: "ออกเลขเมื่อบันทึก" });

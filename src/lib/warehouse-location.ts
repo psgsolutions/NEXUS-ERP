@@ -7,6 +7,10 @@
  *   WH-01-RECV         = พื้นที่รับสินค้า (สินค้ารับเข้าแล้ว รอจัดเก็บ)
  *
  * ยอดคงเหลือตามตำแหน่งอยู่ที่ companies/{companyId}/inventory_balance/{location}_{productId}
+ *
+ * คลังที่ใช้ร่วมกันในเครือ (groups/{groupId}/warehouses/{code}): ทุกช่องมีเจ้าของได้บริษัทเดียว
+ *   เจ้าของช่อง = binOwners["L2-B03"] → binOwners["L2"] → rack.owner → zone.owner → คลัง (ownerCompanyId / companyId)
+ *   พื้นที่รับสินค้าใช้ร่วมกันได้ (ยอดคงเหลือแยกตามบริษัทอยู่แล้ว)
  * สต็อกที่ยังไม่มีตำแหน่ง = stockStatus.onHand ของสินค้า - ผลรวมยอดคงเหลือทุกตำแหน่งของสินค้านั้น
  */
 
@@ -14,8 +18,14 @@ export const RECEIVING_SUFFIX = "RECV";
 export const UNASSIGNED = "UNASSIGNED";
 
 /** ชั้นวางในผังแบบใหม่: จำนวนชั้น × จำนวนช่องต่อชั้น */
-export interface RackDef { code: string; name?: string; levels: number; bins: number; note?: string }
-export interface ZoneDef { code: string; name?: string; color?: string; racks: RackDef[] }
+export interface RackDef {
+  code: string; name?: string; levels: number; bins: number; note?: string;
+  /** บริษัทเจ้าของทั้งชั้นวาง (ว่าง = ตามโซน/คลัง) */
+  owner?: string;
+  /** เจ้าของรายชั้น/รายช่อง: คีย์ "L2" (ทั้งชั้น) หรือ "L2-B03" */
+  binOwners?: Record<string, string>;
+}
+export interface ZoneDef { code: string; name?: string; color?: string; racks: RackDef[]; owner?: string }
 
 export interface WarehouseDoc {
   id: string;
@@ -23,6 +33,10 @@ export interface WarehouseDoc {
   name?: string;
   racks?: Array<{ id: string; level?: number }>;
   zones?: ZoneDef[];
+  /** คลังรุ่นเก่า (root) ของบริษัทเดียว */
+  companyId?: string;
+  /** คลังของเครือ: บริษัทเจ้าของเริ่มต้น */
+  ownerCompanyId?: string;
 }
 
 export interface LocationOption {
@@ -34,6 +48,8 @@ export interface LocationOption {
   isReceiving?: boolean;
   zoneCode?: string;
   bin?: number;
+  /** บริษัทเจ้าของช่อง ("" = ใช้ร่วมกัน เช่น พื้นที่รับสินค้า) */
+  owner: string;
 }
 
 export const warehouseCode = (w: WarehouseDoc) => w.code || w.id;
@@ -49,13 +65,26 @@ export const MAX_BINS = 50;
 /** รหัสโซน/ชั้นวาง: ตัวพิมพ์ใหญ่และตัวเลข 1-6 ตัว (ใช้เป็นส่วนหนึ่งของบาร์โค้ด) */
 export const isValidPartCode = (c: string) => /^[A-Z0-9]{1,6}$/.test(c);
 
+/** คีย์ของช่องใน binOwners */
+export const binKey = (level: number, bin: number, bins: number) => (bins > 1 ? `L${level}-B${pad2(bin)}` : `L${level}`);
+
+/** เจ้าของช่อง (ตามลำดับ ช่อง → ชั้น → ชั้นวาง → โซน → คลัง) */
+export function ownerOfBin(w: WarehouseDoc, zone: ZoneDef, rack: RackDef, level: number, bin: number): string {
+  const bins = Math.max(1, Number(rack.bins) || 1);
+  return rack.binOwners?.[binKey(level, bin, bins)] || rack.binOwners?.[`L${level}`] || rack.owner || zone.owner || w.ownerCompanyId || w.companyId || "";
+}
+
+/** ตำแหน่งที่บริษัทนี้ใช้ได้: ช่องของตัวเอง + พื้นที่ใช้ร่วม */
+export const locationsForCompany = (locations: LocationOption[], companyId: string) =>
+  locations.filter((l) => !l.owner || l.owner === companyId);
+
 /** ตำแหน่งทั้งหมดของคลัง: พื้นที่รับสินค้า + ทุกชั้นย่อยของทุกชั้นวาง */
 export function listLocations(warehouses: WarehouseDoc[]): LocationOption[] {
   const out: LocationOption[] = [];
   for (const w of warehouses) {
     const code = warehouseCode(w);
     const name = w.name || code;
-    out.push({ code: receivingLocation(code), label: `${name} • พื้นที่รับสินค้า`, warehouseCode: code, isReceiving: true });
+    out.push({ code: receivingLocation(code), label: `${name} • พื้นที่รับสินค้า`, warehouseCode: code, isReceiving: true, owner: "" });
     for (const zone of w.zones || []) {
       for (const rack of zone.racks || []) {
         const levels = Math.min(MAX_LEVELS, Math.max(1, Number(rack.levels) || 1));
@@ -66,6 +95,7 @@ export function listLocations(warehouses: WarehouseDoc[]): LocationOption[] {
               code: binLocation(code, zone.code, rack.code, level, bin, bins),
               label: `${name} • โซน ${zone.name || zone.code} • ${rack.name || rack.code} ชั้น ${level}${bins > 1 ? ` ช่อง ${bin}` : ""}`,
               warehouseCode: code, zoneCode: zone.code, rackId: rack.code, level, bin: bins > 1 ? bin : undefined,
+              owner: ownerOfBin(w, zone, rack, level, bin),
             });
           }
         }
@@ -80,6 +110,7 @@ export function listLocations(warehouses: WarehouseDoc[]): LocationOption[] {
           warehouseCode: code,
           rackId: rack.id,
           level,
+          owner: w.ownerCompanyId || w.companyId || "",
         });
       }
     }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useSystemDialog } from "@/context/DialogContext";
 import React, { useState, useEffect } from 'react';
 import { useRealtimeCollection } from '@/hooks/useRealtimeCollection';
 import { PillInput, PillButton, GlassCard } from '@/components/ui/Base';
@@ -12,6 +13,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 
 export default function CreatePayoutPage() {
+  const { showAlert } = useSystemDialog();
   const { user, companyId } = useAuth();
   const currentCompanyId = companyId || "";
 
@@ -59,7 +61,7 @@ export default function CreatePayoutPage() {
 
   const handleSave = async () => {
     if (!formData.soId || !formData.subcontractorName || laborItems.length === 0) {
-      alert("กรุณาเลือกอ้างอิง SO, ระบุชื่อซับคอนแทรคเตอร์ และต้องมีรายการค่าแรงอย่างน้อย 1 รายการ");
+      showAlert("กรุณาเลือกอ้างอิง SO, ระบุชื่อซับคอนแทรคเตอร์ และต้องมีรายการค่าแรงอย่างน้อย 1 รายการ", "ข้อมูลไม่ครบ", "warning");
       return;
     }
     
@@ -73,13 +75,13 @@ export default function CreatePayoutPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
-      alert(`ตั้งเบิกค่าแรงช่างสำเร็จ: ${data.expenseId} — จ่ายเงินได้ที่ การเงิน › จ่ายชำระ`);
+      showAlert(`ตั้งเบิกค่าแรงช่างสำเร็จ: ${data.expenseId} — จ่ายเงินได้ที่ การเงิน › จ่ายชำระ`);
       // Reset form
       setLaborItems([]);
       setFormData({ soId: '', soCode: '', subcontractorName: '', subcontractorTaxId: '', remarks: '' });
     } catch (err) {
       console.error(err);
-      alert("เกิดข้อผิดพลาดในการบันทึก");
+      showAlert("เกิดข้อผิดพลาดในการบันทึก", "เกิดข้อผิดพลาด", "error");
     } finally {
       setLoading(false);
     }
@@ -176,7 +178,7 @@ export default function CreatePayoutPage() {
         <h3 className="text-[12px] font-semibold text-cyan-400 uppercase tracking-widest flex items-center gap-2">
           รายการค่าแรงที่ดึงมา (Extracted Labor Items)
         </h3>
-        <p className="text-[11px] font-bold text-white/40 not-italic">ระบบจะดึงเฉพาะรายการสินค้าที่ตั้งค่าเป็น "ค่าแรง" จากใบสั่งขายเท่านั้น</p>
+        <p className="text-[11px] font-bold text-white/40 not-italic">ระบบจะดึงเฉพาะรายการสินค้าที่ตั้งค่าเป็น &ldquo;ค่าแรง&rdquo; จากใบสั่งขายเท่านั้น</p>
         
         <div className="border border-white/10 rounded-3xl overflow-hidden bg-white/[0.02] flex flex-col">
           <div className="flex gap-2 px-4 py-3 bg-white/[0.05] border-b border-white/10 text-[11px] font-semibold text-white/60 uppercase tracking-widest">

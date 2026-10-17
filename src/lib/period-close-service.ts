@@ -52,7 +52,6 @@ export async function assertPeriodOpen(companyId: string, postingDate?: string |
   // 1. If executing in Node.js server environment, attempt querying via adminDb
   if (typeof window === "undefined") {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { adminDb } = require("./firebase-admin");
       if (adminDb) {
         const snap = await adminDb.collection("periodClosings")

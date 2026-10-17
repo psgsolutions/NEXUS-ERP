@@ -92,7 +92,7 @@ export const normalizeScan = (raw: string) => String(raw || "").trim().toUpperCa
 
 /** หา location จากข้อความที่ยิง/QR (รองรับ QR แบบ URL "...?loc=CODE" และยิงชั้นวางไม่ระบุชั้น → ชั้น 1 ช่อง 1) */
 export function findLocation(options: LocationOption[], raw: string): LocationOption | undefined {
-  const fromUrl = String(raw || "").match(/[?&]loc=([^&#s]+)/i);
+  const fromUrl = String(raw || "").match(/[?&]loc=([^&#\s]+)/i);
   const code = normalizeScan(fromUrl ? decodeURIComponent(fromUrl[1]) : raw);
   return options.find((o) => o.code === code) || options.find((o) => o.code === `${code}-L1`) || options.find((o) => o.code === `${code}-L1-B01`);
 }

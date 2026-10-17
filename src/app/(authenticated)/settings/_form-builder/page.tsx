@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 
 import React, { useState } from "react";
@@ -251,21 +250,21 @@ export default function DocumentFormBuilderPage() {
           <div className="flex items-center gap-1.5 border-r border-white/5 pr-4 shrink-0">
             <button 
               disabled={!selectedBlockId}
-              onClick={() => activeBlock && updateBlock(selectedBlockId, { alignment: "left" })}
+              onClick={() => activeBlock && selectedBlockId && updateBlock(selectedBlockId, { alignment: "left" })}
               className={cn("w-9 h-9 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-all", activeBlock?.alignment === "left" && "bg-transparent text-nexus-teal border border-nexus-teal/20")}
             >
               <AlignLeft size={14} />
             </button>
             <button 
               disabled={!selectedBlockId}
-              onClick={() => activeBlock && updateBlock(selectedBlockId, { alignment: "center" })}
+              onClick={() => activeBlock && selectedBlockId && updateBlock(selectedBlockId, { alignment: "center" })}
               className={cn("w-9 h-9 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-all", activeBlock?.alignment === "center" && "bg-transparent text-nexus-teal border border-nexus-teal/20")}
             >
               <AlignCenter size={14} />
             </button>
             <button 
               disabled={!selectedBlockId}
-              onClick={() => activeBlock && updateBlock(selectedBlockId, { alignment: "right" })}
+              onClick={() => activeBlock && selectedBlockId && updateBlock(selectedBlockId, { alignment: "right" })}
               className={cn("w-9 h-9 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-all", activeBlock?.alignment === "right" && "bg-transparent text-nexus-teal border border-nexus-teal/20")}
             >
               <AlignRight size={14} />
@@ -420,14 +419,6 @@ export default function DocumentFormBuilderPage() {
                 resolvedContent = resolvedContent.replace("{{warranty.info}}", "รับประกันอุปกรณ์ระบบโครงสร้างเครือข่าย 1 ปีเต็ม");
 
               
-  // [Master Blueprint V3.1] Global Layout Lock
-  React.useEffect(() => {
-    const mainEl = document.querySelector("main");
-    if (mainEl) mainEl.style.overflowY = "hidden";
-    return () => {
-      if (mainEl) mainEl.style.overflowY = "auto";
-    };
-  }, []);
   return (
                   <div 
                     key={block.id}

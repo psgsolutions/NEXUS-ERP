@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -188,7 +187,7 @@ export default function ReportsPage() {
     }
 
     // Check required fields
-    const missingFields = selectedTemplate.fields.filter(f => f.required && !newSubValues[f.id]);
+    const missingFields = (selectedTemplate.fields || []).filter(f => f.required && !newSubValues[f.id]);
     if (missingFields.length > 0) {
       showToast(`กรุณากรอกฟิลด์ข้อมูลที่จำเป็น: ${missingFields.map(f => f.label).join(", ")}`);
       return;
@@ -223,7 +222,7 @@ export default function ReportsPage() {
   const calculateAggregateStats = () => {
     let grandTotal = 0;
     filteredSubmissions.forEach((sub) => {
-      selectedTemplate?.fields.forEach((field) => {
+      selectedTemplate?.fields?.forEach((field) => {
         if (field.type === "table") {
           const tableRows = Array.isArray(sub.values?.[field.id]) ? sub.values[field.id] : [];
           grandTotal += tableRows.reduce((sum: number, r: any) => sum + (r.amount || 0), 0);
@@ -399,8 +398,8 @@ export default function ReportsPage() {
           headers={[
             "รหัสธุรกรรม",
             "วันที่จัดทำ",
-            selectedTemplate?.fields[0]?.label || "ฟิลด์ข้อมูลที่ 1",
-            selectedTemplate?.fields[1]?.label || "ฟิลด์ข้อมูลที่ 2",
+            selectedTemplate?.fields?.[0]?.label || "ฟิลด์ข้อมูลที่ 1",
+            selectedTemplate?.fields?.[1]?.label || "ฟิลด์ข้อมูลที่ 2",
             "จำนวนรายการย่อย",
             "ยอดรวมสุทธิ",
             "เครื่องมือ"
@@ -418,14 +417,14 @@ export default function ReportsPage() {
             </NexusTableRow>
           ) : (
             filteredSubmissions.map((sub, idx) => {
-              const val1 = sub.values?.[selectedTemplate?.fields[0]?.id || ""] || "-";
-              const val2 = sub.values?.[selectedTemplate?.fields[1]?.id || ""] || "-";
+              const val1 = sub.values?.[selectedTemplate?.fields?.[0]?.id || ""] || "-";
+              const val2 = sub.values?.[selectedTemplate?.fields?.[1]?.id || ""] || "-";
               const displayVal1 = typeof val1 === "object" ? "[ตารางรายละเอียด]" : String(val1);
               const displayVal2 = typeof val2 === "object" ? "[ตารางรายละเอียด]" : String(val2);
 
               let totalAmount = 0;
               let itemRows = 0;
-              selectedTemplate?.fields.forEach((field) => {
+              selectedTemplate?.fields?.forEach((field) => {
                 if (field.type === "table") {
                   const tableRows = Array.isArray(sub.values?.[field.id]) ? sub.values[field.id] : [];
                   itemRows += tableRows.length;

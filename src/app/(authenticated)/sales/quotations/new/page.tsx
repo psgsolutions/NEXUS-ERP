@@ -1,5 +1,6 @@
 "use client";
 
+import { useSystemDialog } from "@/context/DialogContext";
 import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, Send, Building2, Calendar, Plus, Info, AlertTriangle, Search, Trash2, FileText, Mail, MessageSquare, Download, Edit3, ChevronDown, CheckCircle2, Lock, Share2 } from 'lucide-react';
@@ -32,6 +33,7 @@ import { db } from "@/lib/firebase-client";
 import { apiFetch } from "@/lib/api-client";
 
 export default function QuotationCreationPage() {
+  const { showAlert } = useSystemDialog();
   const router = useRouter();
   const { user, companyId, role, roles } = useAuth();
 
@@ -460,57 +462,57 @@ export default function QuotationCreationPage() {
   // Handle Save with Multi-channel Audit Trail (Patch 11 & 12)
   const handleSave = async (isSubmit: boolean = false, sendChannel?: 'EMAIL' | 'LINE' | 'DOWNLOAD' | 'SYSTEM') => {
     if (!selectedCustomerId && !customerSearchTerm.trim()) {
-      alert("กรุณาระบุชื่อลูกค้า");
+      showAlert("กรุณาระบุชื่อลูกค้า", "ข้อมูลไม่ครบ", "warning");
       return;
     }
     if (!contactPerson || !contactPerson.trim()) {
-      alert("กรุณาระบุชื่อผู้ติดต่อ (บังคับกรอก)");
+      showAlert("กรุณาระบุชื่อผู้ติดต่อ (บังคับกรอก)", "ข้อมูลไม่ครบ", "warning");
       return;
     }
     if (!customerTaxId || !/^\d{13}$/.test(customerTaxId.trim())) {
-      alert("กรุณาระบุเลขประจำตัวผู้เสียภาษีให้ถูกต้องครบ 13 หลัก");
+      showAlert("กรุณาระบุเลขประจำตัวผู้เสียภาษีให้ถูกต้องครบ 13 หลัก", "ข้อมูลไม่ครบ", "warning");
       return;
     }
     if (!addrLine1.trim() && !selectedCustomer?.address) {
-      alert("กรุณาระบุที่อยู่สำหรับเปิดบิล");
+      showAlert("กรุณาระบุที่อยู่สำหรับเปิดบิล", "ข้อมูลไม่ครบ", "warning");
       return;
     }
     if (!quotationType) {
-      alert("กรุณาระบุประเภทงานเสนอราคา");
+      showAlert("กรุณาระบุประเภทงานเสนอราคา", "ข้อมูลไม่ครบ", "warning");
       return;
     }
     if (!docDate) {
-      alert("กรุณาระบุวันที่ออกเอกสาร");
+      showAlert("กรุณาระบุวันที่ออกเอกสาร", "ข้อมูลไม่ครบ", "warning");
       return;
     }
     const dateValidation = validateQuotationDates(docDate, expectedCloseDate);
     if (!dateValidation.isValid) {
-      alert(dateValidation.error);
+      showAlert(dateValidation.error || "วันที่ไม่ถูกต้อง");
       return;
     }
     if (items.length === 0) {
-      alert("กรุณาเพิ่มรายการสินค้าหรือบริการอย่างน้อย 1 รายการ");
+      showAlert("กรุณาเพิ่มรายการสินค้าหรือบริการอย่างน้อย 1 รายการ", "ข้อมูลไม่ครบ", "warning");
       return;
     }
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       if (item.itemType === 'GROUP_HEADER') continue;
       if (!item.qty || Number(item.qty) <= 0) {
-        alert(`กรุณาระบุจำนวนสินค้าในรายการที่ ${i + 1}`);
+        showAlert(`กรุณาระบุจำนวนสินค้าในรายการที่ ${i + 1}`, "ข้อมูลไม่ครบ", "warning");
         return;
       }
       if (!item.price || Number(item.price) < 0) {
-        alert(`กรุณาระบุราคาต่อหน่วยในรายการที่ ${i + 1}`);
+        showAlert(`กรุณาระบุราคาต่อหน่วยในรายการที่ ${i + 1}`, "ข้อมูลไม่ครบ", "warning");
         return;
       }
     }
     const totalPaymentPercent = paymentSchedules.reduce((sum, p) => sum + (Number(p.percent) || 0), 0);
     if (paymentSchedules.length > 0 && Math.abs(totalPaymentPercent - 100) > 0.01) {
-      alert("ผลรวมสัดส่วนงวดชำระต้องเท่ากับ 100%");
+      showAlert("ผลรวมสัดส่วนงวดชำระต้องเท่ากับ 100%", "ข้อมูลไม่ครบ", "warning");
       return;
     }
     if (!companyId) {
-      alert("ไม่พบรหัสบริษัท กรุณาเข้าสู่ระบบใหม่");
+      showAlert("ไม่พบรหัสบริษัท กรุณาเข้าสู่ระบบใหม่", "ข้อมูลไม่ครบ", "warning");
       return;
     }
 
@@ -657,15 +659,15 @@ export default function QuotationCreationPage() {
       if (sendChannel === 'DOWNLOAD') {
         setShowPreviewModal(true);
       } else if (sendChannel === 'EMAIL') {
-        alert(`บันทึกและส่งใบเสนอราคาไปยังอีเมล ${contactEmail || 'ลูกค้า'} สำเร็จ`);
+        showAlert(`บันทึกและส่งใบเสนอราคาไปยังอีเมล ${contactEmail || 'ลูกค้า'} สำเร็จ`);
       } else if (sendChannel === 'LINE') {
-        alert(`บันทึกและสร้างลิงก์สำหรับส่งผ่าน LINE สำเร็จ`);
+        showAlert(`บันทึกและสร้างลิงก์สำหรับส่งผ่าน LINE สำเร็จ`);
       }
 
       setShowSuccessModal(true);
     } catch (error: any) {
       console.error("Save error:", error);
-      alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล: " + error.message);
+      showAlert("เกิดข้อผิดพลาดในการบันทึกข้อมูล: " + error.message, "เกิดข้อผิดพลาด", "error");
     }
   };
 

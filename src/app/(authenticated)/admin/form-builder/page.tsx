@@ -1,5 +1,6 @@
 'use client';
 
+import { useSystemDialog } from "@/context/DialogContext";
 import React, { useState } from 'react';
 import { PillButton, PillInput, cn } from '@/components/ui/Base';
 import { Save, Plus, Settings2, GripVertical, Trash2, LayoutTemplate, Type, FileImage, Table2, Calculator, PenTool, Eye } from 'lucide-react';
@@ -27,6 +28,7 @@ const TOOLBOX_ITEMS = [
 ];
 
 export default function FormBuilderPage() {
+  const { showAlert } = useSystemDialog();
   const { user, companyId } = useAuth();
   const currentCompanyId = companyId || "";
 
@@ -69,7 +71,7 @@ export default function FormBuilderPage() {
 
   const handleSave = async () => {
     if (!templateName) {
-      alert("กรุณาระบุชื่อแม่แบบเอกสาร (Template Name)");
+      showAlert("กรุณาระบุชื่อแม่แบบเอกสาร (Template Name)", "ข้อมูลไม่ครบ", "warning");
       return;
     }
     
@@ -84,10 +86,10 @@ export default function FormBuilderPage() {
         createdBy: user?.uid || 'SYSTEM',
         isDeleted: false
       });
-      alert("บันทึกแม่แบบเอกสารสำเร็จ!");
+      showAlert("บันทึกแม่แบบเอกสารสำเร็จ!");
     } catch (err) {
       console.error(err);
-      alert("เกิดข้อผิดพลาดในการบันทึก");
+      showAlert("เกิดข้อผิดพลาดในการบันทึก", "เกิดข้อผิดพลาด", "error");
     } finally {
       setLoading(false);
     }
@@ -463,15 +465,6 @@ function PropertiesPanel({ block, onChange }: { block: FormBlock, onChange: (pro
   }
 
   if (block.type === 'TEXT') {
-  
-  // [Master Blueprint V3.1] Global Layout Lock
-  React.useEffect(() => {
-    const mainEl = document.querySelector("main");
-    if (mainEl) mainEl.style.overflowY = "hidden";
-    return () => {
-      if (mainEl) mainEl.style.overflowY = "auto";
-    };
-  }, []);
   return (
       <div className="space-y-4">
         <div>

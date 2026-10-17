@@ -1,5 +1,6 @@
 'use client';
 
+import { useSystemDialog } from "@/context/DialogContext";
 import React, { useMemo, useState } from 'react';
 import { useRealtimeCollection } from '@/hooks/useRealtimeCollection';
 import { PillInput, PillButton, PillSelect } from '@/components/ui/Base';
@@ -15,6 +16,7 @@ import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useRouter } from "next/navigation";
 
 export default function CreateWorkOrderPage() {
+  const { showAlert } = useSystemDialog();
   const router = useRouter();
   const { user, companyId } = useAuth();
 
@@ -91,7 +93,7 @@ export default function CreateWorkOrderPage() {
   const handleSave = async () => {
     if (!companyId) return;
     if (!formData.soId || !formData.technicianUid || items.length === 0) {
-      alert("กรุณาเลือกอ้างอิง SO, เลือกช่างผู้รับผิดชอบ และต้องมีรายการอย่างน้อย 1 รายการ");
+      showAlert("กรุณาเลือกอ้างอิง SO, เลือกช่างผู้รับผิดชอบ และต้องมีรายการอย่างน้อย 1 รายการ", "ข้อมูลไม่ครบ", "warning");
       return;
     }
 
@@ -105,12 +107,12 @@ export default function CreateWorkOrderPage() {
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
       const woCode = data.woCode;
-      alert(`สร้างใบสั่งงานสำเร็จ: ${woCode}`);
+      showAlert(`สร้างใบสั่งงานสำเร็จ: ${woCode}`);
       setItems([]);
       setFormData({ soId: '', soCode: '', customerId: '', customerName: '', projectId: '', technicianUid: '', technicianName: '', scheduleDate: '', remarks: '' });
     } catch (err) {
       console.error(err);
-      alert("เกิดข้อผิดพลาดในการบันทึกใบสั่งงาน");
+      showAlert("เกิดข้อผิดพลาดในการบันทึกใบสั่งงาน", "เกิดข้อผิดพลาด", "error");
     } finally {
       setLoading(false);
     }

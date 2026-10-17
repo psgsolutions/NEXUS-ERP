@@ -1,18 +1,18 @@
-// @ts-nocheck
-import { db } from "./firebase-client";
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  Timestamp 
-} from "firebase/firestore";
-import { JournalEntry, LedgerItem } from "@/types";
 import { assertPeriodOpen } from "./period-close-service";
 import { apiFetch } from "@/lib/api-client";
 
+export interface LedgerItem {
+  accountCode: string;
+  accountName?: string;
+  debit: number;
+  credit: number;
+  description?: string;
+}
+
 /**
  * [LOG-02] Double-Entry GL Engine
- * Automatically posts journal entries to the General Ledger.
+ * ส่งรายการบันทึกบัญชีไปที่ /api/accounting/post-journal เท่านั้น
+ * (journal_entries เขียนได้จากเซิร์ฟเวอร์อย่างเดียว ไม่มีทางลัดเขียนตรงจาก client)
  */
 export const postToGL = async (
   companyId: string,
@@ -22,51 +22,32 @@ export const postToGL = async (
     items: LedgerItem[];
     date?: string;
   }
-) => {
+): Promise<string> => {
   await assertPeriodOpen(companyId, data.date);
 
-  // 1. Validation: Debit must equal Credit
+  // Debit ต้องเท่ากับ Credit
   const totalDebit = data.items.reduce((sum, item) => sum + item.debit, 0);
   const totalCredit = data.items.reduce((sum, item) => sum + item.credit, 0);
-
   if (Math.abs(totalDebit - totalCredit) > 0.001) {
     throw new Error("Accounting Violation: Debit and Credit are not balanced.");
   }
 
-  if (typeof window !== "undefined") {
-    const res = await apiFetch("/api/accounting/post-journal", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        companyId,
-        description: data.description,
-        reference: data.reference,
-        items: data.items,
-        date: data.date
-      })
-    });
-    const json = await res.json();
-    if (!res.ok || !json.success) {
-      throw new Error(json.error || "Failed to post GL entry via server API");
-    }
-    return json.journalId;
+  const res = await apiFetch("/api/accounting/post-journal", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      companyId,
+      description: data.description,
+      reference: data.reference,
+      items: data.items,
+      date: data.date
+    })
+  });
+  const json = await res.json();
+  if (!res.ok || !json.success) {
+    throw new Error(json.error || "Failed to post GL entry via server API");
   }
-
-  // 2. Create Journal Entry Document (Server Fallback)
-  const entry: Omit<JournalEntry, "entryId"> = {
-    companyId: companyId,
-    date: data.date || Timestamp.now().toDate().toISOString(),
-    description: data.description,
-    referenceId: data.reference,
-    items: data.items,
-    totalAmount: totalDebit,
-    isAdjustment: false
-  } as Omit<JournalEntry, "entryId">;
-
-  const entriesRef = collection(db, "journal_entries");
-  const docRef = await addDoc(entriesRef, entry);
-  return docRef.id; // คืนค่าเป็น journal ID เหมือนเส้นทาง API ฝั่ง client
-
+  return json.journalId;
 };
 
 /**
@@ -80,4 +61,3 @@ export const ACCOUNTS = {
   SALES_INCOME: { code: "411100", name: "รายได้จากการขาย" },
   COST_OF_GOODS_SOLD: { code: "511100", name: "ต้นทุนขาย" },
 };
-

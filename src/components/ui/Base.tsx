@@ -719,7 +719,8 @@ export function NexusTableCell({
   align,
   variant,
   title,
-  maxWidth
+  maxWidth,
+  onClick
 }: {
   children: React.ReactNode,
   className?: string,
@@ -729,13 +730,15 @@ export function NexusTableCell({
   align?: "left" | "center" | "right",
   variant?: "text" | "code" | "numeric",
   title?: string,
-  maxWidth?: string
+  maxWidth?: string,
+  onClick?: React.MouseEventHandler<HTMLTableCellElement>
 }) {
   // ตำแหน่งซ้าย/กลาง/ขวา กำหนดจากหัวคอลัมน์ใน NexusTable (align/className ของช่องใช้เฉพาะแถวที่ colSpan)
 
   return (
     <td
       colSpan={colSpan}
+      onClick={onClick}
       className={cn(
         "px-2.5 2xl:px-4 py-2 first:pl-4 last:pr-4 text-[13px] 2xl:text-[14px] font-normal text-white/80 transition-colors duration-300 align-middle",
         // ทุกช่องบรรทัดเดียว (ยกเว้นแถวข้อความที่ต้องการตัดบรรทัด เช่น ข้อความว่าง/คำอธิบาย ที่ระบุ wrap)

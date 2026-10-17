@@ -28,7 +28,6 @@ NEXUS-ERP/
 │   │   │   ├── ai/               # AI Endpoints (/api/ai/vision, /api/ai/scan-po)
 │   │   │   ├── documents/        # /api/documents (สรุปข้อมูลเอกสาร multi-tenant)
 │   │   │   ├── health/           # System status endpoint
-│   │   │   └── setup-mock-data/  # API สำหรับตั้งค่าข้อมูลทดสอบ
 │   │   ├── login/                # หน้าเข้าสู่ระบบ
 │   │   ├── register/             # หน้าลงทะเบียนบริษัทใหม่
 │   │   ├── globals.css           # Global Design System Tokens, CSS Variables & Rules

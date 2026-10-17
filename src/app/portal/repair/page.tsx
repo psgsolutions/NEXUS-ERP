@@ -1,5 +1,6 @@
 'use client';
 
+import { useSystemDialog } from "@/context/DialogContext";
 import React, { useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Camera, Send, CheckCircle2, ShieldAlert } from 'lucide-react';
@@ -9,6 +10,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Suspense } from 'react';
 
 function RepairPortalContent() {
+  const { showAlert } = useSystemDialog();
   const searchParams = useSearchParams();
   const companyId = searchParams.get('company') || 'UNKNOWN';
 
@@ -38,7 +40,7 @@ function RepairPortalContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.phoneNumber || !formData.symptom) {
-      alert("กรุณากรอกเบอร์โทรศัพท์และอาการที่พบ");
+      showAlert("กรุณากรอกเบอร์โทรศัพท์และอาการที่พบ", "ข้อมูลไม่ครบ", "warning");
       return;
     }
 
@@ -57,7 +59,7 @@ function RepairPortalContent() {
       setIsSuccess(true);
     } catch (err) {
       console.error(err);
-      alert("เกิดข้อผิดพลาดในการส่งข้อมูล");
+      showAlert("เกิดข้อผิดพลาดในการส่งข้อมูล", "เกิดข้อผิดพลาด", "error");
     } finally {
       setLoading(false);
     }

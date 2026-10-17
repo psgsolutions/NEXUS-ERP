@@ -151,8 +151,8 @@ export function activityFeed(logs: any[], max = 8): ActivityItem[] {
     .filter((l) => l.isDeleted !== true)
     .map((l) => {
       const action = String(l.action || "").toUpperCase();
-      const module = String(l.module || "").toUpperCase();
-      const label = MODULE_LABELS.find(([re]) => re.test(module))?.[1] || (module ? module.toLowerCase().replace(/_/g, " ") : "รายการ");
+      const moduleName = String(l.module || "").toUpperCase();
+      const label = MODULE_LABELS.find(([re]) => re.test(moduleName))?.[1] || (moduleName ? moduleName.toLowerCase().replace(/_/g, " ") : "รายการ");
       const verb = ACTION_LABELS[action] || (action ? action.toLowerCase() : "บันทึก");
       const kind: ActivityKind = action === "DELETE" ? "warning" : action === "CREATE" || action === "APPROVE" || action === "POST" ? "success" : "info";
       return {

@@ -1,6 +1,6 @@
-// @ts-nocheck
 "use client";
 
+import { useSystemDialog } from "@/context/DialogContext";
 import React, { useState, useEffect } from "react";
 import {
   Users,
@@ -109,6 +109,7 @@ const toRow = (snap: any, display: (d: any) => Record<string, any>) => {
 type SalesSubModule = "crm" | "opportunities" | "quotations" | "orders" | "invoices" | "billing" | "receipts" | "cndn";
 
 export default function SalesPage() {
+  const { showConfirm } = useSystemDialog();
   const router = useRouter();
 
   const { user, companyId, role: userRole, roles } = useAuth();
@@ -371,7 +372,7 @@ export default function SalesPage() {
   const winRate = decided.length ? Math.round((decided.filter(q => q.stage === "won").length / decided.length) * 100) : null;
   const unpaidInvoices = invoicesList.filter((inv: any) => !inv.isSample && inv.status !== "paid").length;
   const duplicateQuotation = async (docId: string) => {
-    if (!companyId || !window.confirm("คัดลอกใบเสนอราคานี้เป็นใบใหม่ (ฉบับร่าง)?")) return;
+    if (!companyId || !await showConfirm("คัดลอกใบเสนอราคานี้เป็นใบใหม่ (ฉบับร่าง)?")) return;
     try {
       const res = await apiFetch(`/api/quotations/${encodeURIComponent(docId)}/duplicate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId }) });
       const data = await res.json();
@@ -593,7 +594,6 @@ export default function SalesPage() {
                   <div className="animate-in fade-in duration-500">
                     <NexusTable
                       headers={["รหัสลูกค้า", "ชื่อนิติบุคคล / ลูกค้า (ชื่อทางการ)", "ประเภทธุรกิจ", "เลขผู้เสียภาษี", "สถานะ", "จัดการ"]}
-                      columnWidths={["w-[120px]", "w-auto", "w-[160px]", "w-[160px]", "w-[100px]", "w-[80px]"]}
                     >
                       {filteredCustomers.map(cus => (
                         <CustomerRow
@@ -660,7 +660,6 @@ export default function SalesPage() {
                   <div className="animate-in fade-in duration-500">
                     <NexusTable
                       headers={["เลขที่ใบสั่งขาย", "ลูกค้า", "สืบหน้าจากงาน", "ยอดรวม", "สถานะ", "จัดการ"]}
-                      columnWidths={["w-[140px]", "w-auto", "w-[180px]", "w-[150px]", "w-[140px]", "w-[100px]"]}
                     >
                       {filteredOrders.map(so => (
                         <SalesOrderRow
@@ -683,7 +682,6 @@ export default function SalesPage() {
                   <div className="animate-in fade-in duration-500">
                     <NexusTable
                       headers={["เลขที่ใบแจ้งหนี้", "อ้างอิง SO", "ลูกค้า", "วันที่ออก", "ครบกำหนด", "ยอดรวม", "สถานะ", "จัดการ"]}
-                      columnWidths={["w-[140px]", "w-[140px]", "w-auto", "w-[120px]", "w-[120px]", "w-[150px]", "w-[120px]", "w-[100px]"]}
                     >
                       {filteredInvoices.map(inv => (
                         <InvoiceRow
@@ -710,7 +708,6 @@ export default function SalesPage() {
                   <div className="animate-in fade-in duration-500">
                     <NexusTable
                       headers={["เลขที่ใบวางบิล", "ลูกค้า", "วันที่ออก", "นัดรับชำระ", "ยอดรวม", "สถานะ", "จัดการ"]}
-                      columnWidths={["w-[140px]", "w-auto", "w-[120px]", "w-[120px]", "w-[150px]", "w-[120px]", "w-[100px]"]}
                     >
                       {filteredBilling.map(bill => (
                         <BillingNoteRow
@@ -768,7 +765,6 @@ export default function SalesPage() {
                   <div className="animate-in fade-in duration-500">
                     <NexusTable
                       headers={["เลขที่ใบเสร็จ", "อ้างอิง INV", "ลูกค้า", "วันที่รับชำระ", "ยอดรวม", "สถานะ", "จัดการ"]}
-                      columnWidths={["w-[140px]", "w-[140px]", "w-auto", "w-[120px]", "w-[150px]", "w-[120px]", "w-[100px]"]}
                     >
                       {filteredReceipts.map(rec => (
                         <ReceiptRow
@@ -962,11 +958,11 @@ export default function SalesPage() {
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-white/5 flex flex-col gap-3">
-                   <PillButton size="sm" variant="glass" onClick={() => router.push("/sales/orders/new")} className="w-full border-white/20 hover:border-nexus-blue shadow-none">
+                   <PillButton size="sm" variant="glass" onClick={() => router.push(`/sales/orders/${encodeURIComponent(selectedItem.docId)}`)} className="w-full border-white/20 hover:border-nexus-blue shadow-none">
                      <Receipt size={14} className="mr-2" />
                      ดู / แก้ไขใบสั่งขาย
                    </PillButton>
-                   <PillButton size="sm" variant="glass" onClick={() => setActiveModal("print")} className="w-full border-white/20 hover:border-nexus-teal shadow-none">
+                   <PillButton size="sm" variant="glass" onClick={() => window.print()} className="w-full border-white/20 hover:border-nexus-teal shadow-none">
                      <Printer size={14} className="mr-2" />
                      พิมพ์ / ดูภาพก่อนพิมพ์
                    </PillButton>
@@ -1056,7 +1052,7 @@ function CustomerRow({ id, docId, name, industry, taxId, status, canDelete, comp
 }
 
 
-function salesOrderStatusBadge(status: string) {
+function salesOrderStatusBadge(status: string): { status: "active" | "warning" | "danger" | "pending"; label: string } {
   switch (String(status || "").toUpperCase()) {
     case "COMPLETED": return { status: "active", label: "ออกใบกำกับแล้ว" };
     case "CONFIRMED": return { status: "active", label: "ยืนยันแล้ว" };

@@ -957,8 +957,8 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
   
   const [toast, setToast] = useState({ message: "", isVisible: false, type: "success" as "success" | "error" });
 
-  if (isLoading) {
-    return (
+  // หน้าโหลด: สร้างไว้ก่อน แล้ว return หลัง hook ทั้งหมด (ลำดับ hook ต้องเท่ากันทุกรอบ render)
+  const loadingView = isLoading ? (
       <div className="flex-1 bg-surface-0 flex flex-col items-center justify-center p-12 relative overflow-hidden h-full select-none">
         <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: "radial-gradient(#fff 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
         <div className="w-16 h-16 rounded-2xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shadow-[0_0_30px_rgba(0,255,209,0.2)] animate-pulse mb-6">
@@ -967,9 +967,8 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
         <h3 className="text-sm font-semibold text-white uppercase tracking-widest leading-none">กำลังโหลดแม่แบบเอกสาร...</h3>
         <p className="text-[10px] text-white/30 uppercase mt-2.5 tracking-widest font-bold leading-none animate-pulse">Syncing layout with secure multi-tenant cloud storage</p>
       </div>
-    );
-  }
-  
+  ) : null;
+
   // Dragging states and refs to avoid listener churn
   const canvasRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -1660,6 +1659,8 @@ export function UltimateDocumentBuilder({ templateName, onClose }: UltimateDocum
   };
 
   const selectedBlock = template.blocks.find(b => b.id === selectedBlockId) || null;
+
+  if (loadingView) return loadingView;
 
   return (
     <div className="flex flex-col h-full bg-surface-0 text-white overflow-hidden relative">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSystemDialog } from "@/context/DialogContext";
 import React, { useState, useRef } from "react";
 import { Camera, Upload, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
 import { PillButton, cn } from "@/components/ui/Base";
@@ -12,6 +13,7 @@ interface SmartScannerProps {
 }
 
 export function SmartScanner({ type, onDataExtracted, buttonLabel = "AI สแกนข้อมูล" }: SmartScannerProps) {
+  const { showAlert } = useSystemDialog();
   const [isScanning, setIsScanning] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,20 +55,20 @@ export function SmartScanner({ type, onDataExtracted, buttonLabel = "AI สแ�
           }, 3000);
         } else {
           console.error("Vision API Error:", result.error);
-          alert("เกิดข้อผิดพลาดในการวิเคราะห์ภาพ: " + (result.error || "Unknown error"));
+          showAlert("เกิดข้อผิดพลาดในการวิเคราะห์ภาพ: " + (result.error || "Unknown error"), "เกิดข้อผิดพลาด", "error");
         }
         setIsScanning(false);
       };
       reader.onerror = (error) => {
         console.error('Error reading file:', error);
         setIsScanning(false);
-        alert("เกิดข้อผิดพลาดในการอ่านไฟล์");
+        showAlert("เกิดข้อผิดพลาดในการอ่านไฟล์", "เกิดข้อผิดพลาด", "error");
       };
 
     } catch (err) {
       console.error(err);
       setIsScanning(false);
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อระบบ AI");
+      showAlert("เกิดข้อผิดพลาดในการเชื่อมต่อระบบ AI", "เกิดข้อผิดพลาด", "error");
     }
   };
 

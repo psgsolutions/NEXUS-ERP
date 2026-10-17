@@ -1,5 +1,6 @@
 "use client";
 
+import { useSystemDialog } from "@/context/DialogContext";
 import React, { useState, useMemo, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Save, Send, Building2, Calendar, Plus, Info, AlertTriangle, Search, Trash2, FileText, Mail, MessageSquare, Download, Edit3, ChevronDown, CheckCircle2, Lock, GitBranch, Copy, History, XCircle, FileSpreadsheet } from "lucide-react";
@@ -32,6 +33,7 @@ import { doc, collection, getDoc, getDocs } from "firebase/firestore";
 import { apiFetch } from "@/lib/api-client";
 
 export default function QuotationEditPage() {
+  const { showAlert, showConfirm, showPrompt } = useSystemDialog();
   const router = useRouter();
   // Next 16: params ของ page เป็น Promise จึงอ่านผ่าน useParams แทน
   const routeParams = useParams();
@@ -329,14 +331,14 @@ export default function QuotationEditPage() {
       });
       const result = await res.json();
       if (result.success && result.newQuotationId) {
-        alert(`สร้างฉบับแก้ไข ${result.newDocumentNo} สำเร็จ`);
+        showAlert(`สร้างฉบับแก้ไข ${result.newDocumentNo} สำเร็จ`);
         setShowRevisionModal(false);
         router.push(`/sales/quotations/${result.newQuotationId}`);
       } else {
-        alert(`เกิดข้อผิดพลาด: ${result.error || "ไม่สามารถสร้างฉบับแก้ไขได้"}`);
+        showAlert(`เกิดข้อผิดพลาด: ${result.error || "ไม่สามารถสร้างฉบับแก้ไขได้"}`, "เกิดข้อผิดพลาด", "error");
       }
     } catch (err: any) {
-      alert(`เกิดข้อผิดพลาดในการเชื่อมต่อ: ${err.message}`);
+      showAlert(`เกิดข้อผิดพลาดในการเชื่อมต่อ: ${err.message}`, "เกิดข้อผิดพลาด", "error");
     } finally {
       setIsCreatingRevision(false);
     }
@@ -344,7 +346,7 @@ export default function QuotationEditPage() {
 
   const handleDuplicateSubmit = async () => {
     if (!params.id) return;
-    if (!confirm("คุณต้องการคัดลอกใบเสนอราคานี้เป็นใบใหม่หรือไม่?")) return;
+    if (!await showConfirm("คุณต้องการคัดลอกใบเสนอราคานี้เป็นใบใหม่หรือไม่?")) return;
     setIsDuplicating(true);
     try {
       const res = await apiFetch(`/api/quotations/${params.id}/duplicate`, {
@@ -357,13 +359,13 @@ export default function QuotationEditPage() {
       });
       const result = await res.json();
       if (result.success && result.newQuotationId) {
-        alert(`คัดลอกเอกสารสำเร็จ (${result.newDocumentNo})`);
+        showAlert(`คัดลอกเอกสารสำเร็จ (${result.newDocumentNo})`);
         router.push(`/sales/quotations/${result.newQuotationId}`);
       } else {
-        alert(`เกิดข้อผิดพลาด: ${result.error || "ไม่สามารถคัดลอกได้"}`);
+        showAlert(`เกิดข้อผิดพลาด: ${result.error || "ไม่สามารถคัดลอกได้"}`, "เกิดข้อผิดพลาด", "error");
       }
     } catch (err: any) {
-      alert(`เกิดข้อผิดพลาดในการเชื่อมต่อ: ${err.message}`);
+      showAlert(`เกิดข้อผิดพลาดในการเชื่อมต่อ: ${err.message}`, "เกิดข้อผิดพลาด", "error");
     } finally {
       setIsDuplicating(false);
     }
@@ -373,8 +375,8 @@ export default function QuotationEditPage() {
     if (!companyId || !params.id) return;
     const isApprove = targetStatus === "SENT";
     const actionLabel = isApprove ? "อนุมัติ" : "ไม่อนุมัติ";
-    if (!confirm(`คุณต้องการ${actionLabel}ใบเสนอราคา ${quotationNumber} หรือไม่?`)) return;
-    const comment = isApprove ? "" : (window.prompt("เหตุผลที่ตีกลับให้แก้ไข (แสดงให้ผู้ขายเห็น)") || "");
+    if (!await showConfirm(`คุณต้องการ${actionLabel}ใบเสนอราคา ${quotationNumber} หรือไม่?`)) return;
+    const comment = isApprove ? "" : (await showPrompt("เหตุผลที่ตีกลับให้แก้ไข (แสดงให้ผู้ขายเห็น)") || "");
 
     setIsApproving(true);
     try {
@@ -386,10 +388,10 @@ export default function QuotationEditPage() {
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || "ทำรายการไม่สำเร็จ");
       setStatus(json.status);
-      alert(`ทำรายการ${actionLabel}ใบเสนอราคาเรียบร้อยแล้ว`);
+      showAlert(`ทำรายการ${actionLabel}ใบเสนอราคาเรียบร้อยแล้ว`);
     } catch (err: any) {
       console.error("Error approving/rejecting quotation:", err);
-      alert(`เกิดข้อผิดพลาดในการทำรายการ: ${err.message}`);
+      showAlert(`เกิดข้อผิดพลาดในการทำรายการ: ${err.message}`, "เกิดข้อผิดพลาด", "error");
     } finally {
       setIsApproving(false);
     }
@@ -647,7 +649,7 @@ export default function QuotationEditPage() {
       if (!res.ok || !json.success) throw new Error(json.error || "บันทึกไม่สำเร็จ");
       setNotesDirty(false);
     } catch (err: any) {
-      alert(err.message);
+      showAlert(err.message);
     } finally {
       setSavingNotes(false);
     }
@@ -656,19 +658,19 @@ export default function QuotationEditPage() {
   // Handle Save with Multi-channel Audit Trail (Patch 11 & 12)
   const handleSave = async (isSubmit: boolean = false, sendChannel?: 'EMAIL' | 'LINE' | 'DOWNLOAD' | 'SYSTEM') => {
     if (isLocked) {
-      alert(canRevise ? "ใบเสนอราคานี้ส่งลูกค้าแล้ว แก้ไขได้โดยสร้างฉบับแก้ไข (Revision)" : "ใบเสนอราคานี้แก้ไขไม่ได้แล้ว");
+      showAlert(canRevise ? "ใบเสนอราคานี้ส่งลูกค้าแล้ว แก้ไขได้โดยสร้างฉบับแก้ไข (Revision)" : "ใบเสนอราคานี้แก้ไขไม่ได้แล้ว");
       return;
     }
     if (!selectedCustomerId && !customerSearchTerm.trim()) {
-      alert("กรุณาระบุชื่อลูกค้า");
+      showAlert("กรุณาระบุชื่อลูกค้า", "ข้อมูลไม่ครบ", "warning");
       return;
     }
     if (!customerTaxId || !/^\d{13}$/.test(customerTaxId.trim())) {
-      alert("กรุณาระบุเลขประจำตัวผู้เสียภาษีให้ถูกต้องครบ 13 หลัก");
+      showAlert("กรุณาระบุเลขประจำตัวผู้เสียภาษีให้ถูกต้องครบ 13 หลัก", "ข้อมูลไม่ครบ", "warning");
       return;
     }
     if (!companyId) {
-      alert("ไม่พบรหัสบริษัท กรุณาเข้าสู่ระบบใหม่");
+      showAlert("ไม่พบรหัสบริษัท กรุณาเข้าสู่ระบบใหม่", "ข้อมูลไม่ครบ", "warning");
       return;
     }
 
@@ -811,14 +813,14 @@ export default function QuotationEditPage() {
         setShowPreviewModal(true);
       }
 
-      alert(`บันทึกใบเสนอราคา ${quotationNumber} สำเร็จ\nสถานะ: ${QUOTATION_STATUS_LABELS[saved.status as keyof typeof QUOTATION_STATUS_LABELS] || saved.status}`);
+      showAlert(`บันทึกใบเสนอราคา ${quotationNumber} สำเร็จ\nสถานะ: ${QUOTATION_STATUS_LABELS[saved.status as keyof typeof QUOTATION_STATUS_LABELS] || saved.status}`);
 
       if (saved.status === "SENT") {
         router.push("/sales?tab=quotations");
       }
     } catch (error: any) {
       console.error("Error saving quotation:", error);
-      alert(error?.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+      showAlert(error?.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล", "เกิดข้อผิดพลาด", "error");
     }
   };
 
@@ -1727,7 +1729,7 @@ export default function QuotationEditPage() {
         <Modal isOpen={showRevisionModal} onClose={() => setShowRevisionModal(false)} title="สร้างฉบับแก้ไข (New Revision)">
           <div className="space-y-4 p-2">
             <p className="text-[13px] text-white/70">
-              ระบบจะสร้างใบเสนอราคาฉบับแก้ไข (เลขที่ต่อท้าย -R{revisionNumber + 1}) เป็นฉบับร่างให้แก้ไขต่อ และเปลี่ยนฉบับปัจจุบันเป็น "ถูกแทนที่" (อ่านอย่างเดียว)
+              ระบบจะสร้างใบเสนอราคาฉบับแก้ไข (เลขที่ต่อท้าย -R{revisionNumber + 1}) เป็นฉบับร่างให้แก้ไขต่อ และเปลี่ยนฉบับปัจจุบันเป็น &ldquo;ถูกแทนที่&rdquo; (อ่านอย่างเดียว)
             </p>
             <div className="space-y-1">
               <label className="text-[12px] font-semibold text-white/60">สรุปการเปลี่ยนแปลง (บันทึกในประวัติฉบับแก้ไข) *</label>

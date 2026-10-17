@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -402,7 +401,7 @@ export default function NumberingSettingsPage() {
                   <div className="space-y-1.5">
                     <label className="text-[12px] font-bold text-white/60 flex items-center justify-between">
                       <span>จังหวะการออกเลข (Reserve Trigger)</span>
-                      {isTaxCompliant && <Lock size={12} className="text-emerald-400" title="ล็อกโดยมาตรฐานสรรพากร" />}
+                      {isTaxCompliant && <span title="ล็อกโดยมาตรฐานสรรพากร"><Lock size={12} className="text-emerald-400" /></span>}
                     </label>
                     <SmartSelect 
                       value={scheme.reserveOn || (isTaxCompliant ? "approve" : "draft")}

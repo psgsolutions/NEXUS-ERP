@@ -165,10 +165,8 @@ export const ROUTE_PERMISSIONS: { prefix: string; any: Permission[] }[] = [
   { prefix: "/support", any: ["sales:view", "projects:view", "service:field"] },
   { prefix: "/hr", any: ["hr:view"] },
   { prefix: "/ai", any: ["finance:view"] },
-  { prefix: "/reports", any: ["finance:view", "settings:manage"] },
   { prefix: "/settings/users", any: ["users:manage"] },
   { prefix: "/settings", any: ["settings:manage", "users:manage"] },
-  { prefix: "/admin", any: ["settings:manage"] },
 ];
 
 /** เปิดหน้านี้ได้หรือไม่ (หน้าที่ไม่อยู่ในรายการ เช่น ภาพรวม เปิดได้ทุกคน) */

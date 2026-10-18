@@ -57,6 +57,8 @@ async function main() {
     await setDoc(doc(db, 'companies/A/portal_requests/PR1'), { companyId: 'A', status: 'NEW', phoneNumber: '0812345678' });
     await setDoc(doc(db, 'service_tickets/ST1'), { companyId: 'A', status: 'NEW', phoneNumber: '0812345678' });
     await setDoc(doc(db, 'rate_limits/portal_ip_h_x_1'), { count: 1 });
+    await setDoc(doc(db, 'document_shares/tok1'), { companyId: 'A', type: 'invoice', id: 'I1' });
+    await setDoc(doc(db, 'companies/A/document_sends/S1'), { companyId: 'A', channel: 'email' });
     // เครือ: A ไม่มี groupId (= เครือ A), B อยู่เครือ G1 ร่วมกับ C
     await setDoc(doc(db, 'groups/A/products/P1'), { sku: 'SKU-1', name: 'กลาง' });
     await setDoc(doc(db, 'groups/G1'), { name: 'เครือ G1', adminUids: [] });
@@ -207,6 +209,11 @@ async function main() {
     ['anonymous cannot write portal inbox', () => assertFails(setDoc(doc(anon, 'companies/A/portal_requests/PR2'), { companyId: 'A' }))],
     ['admin cannot write portal inbox directly', () => assertFails(updateDoc(doc(adminA, 'companies/A/portal_requests/PR1'), { status: 'DISMISSED' }))],
     ['member cannot read rate limits', () => assertFails(getDoc(doc(userA, 'rate_limits/portal_ip_h_x_1')))],
+    ['member cannot read share links', () => assertFails(getDoc(doc(userA, 'document_shares/tok1')))],
+    ['member cannot create share link directly', () => assertFails(setDoc(doc(userA, 'document_shares/tok2'), { companyId: 'A' }))],
+    ['anonymous cannot read share links', () => assertFails(getDoc(doc(anon, 'document_shares/tok1')))],
+    ['member reads send log', () => assertSucceeds(getDoc(doc(userA, 'companies/A/document_sends/S1')))],
+    ['member cannot fake send log', () => assertFails(setDoc(doc(userA, 'companies/A/document_sends/S2'), { companyId: 'A' }))],
     ['member cannot reset rate limits', () => assertFails(setDoc(doc(userA, 'rate_limits/portal_ip_h_x_1'), { count: 0 }))],
     // ข้อมูลกลางของเครือ
     ['member reads own implicit group master', () => assertSucceeds(getDoc(doc(userA, 'groups/A/products/P1')))],

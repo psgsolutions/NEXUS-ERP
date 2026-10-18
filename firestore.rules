@@ -97,7 +97,7 @@ service cloud.firestore {
     // ---------- Root collections (generic) ----------
     // collection ที่มีกฎเฉพาะด้านล่างถูกตัดออกจาก wildcard เพื่อไม่ให้ wildcard อนุญาตทับ
     function isSpecialRoot(collectionName) {
-      return collectionName in ['users', 'companies', 'counters', 'periodClosings', 'logs', 'activity_logs', 'employees', 'attendance', 'journal_entries', 'taxFilings', 'assetDepreciations', 'service_tickets', 'rate_limits', 'groups', 'products', 'suppliers', 'contractors', 'customers'];
+      return collectionName in ['users', 'companies', 'counters', 'periodClosings', 'logs', 'activity_logs', 'employees', 'attendance', 'journal_entries', 'taxFilings', 'assetDepreciations', 'service_tickets', 'rate_limits', 'document_shares', 'groups', 'products', 'suppliers', 'contractors', 'customers'];
     }
 
     match /{collectionName}/{documentId} {
@@ -230,6 +230,8 @@ service cloud.firestore {
         return collection in ['auditLogs', 'financialLedgers', 'quotations', 'receipts', 'payments', 'payrolls', 'serial_numbers', 'invoices', 'billing_notes', 'cndn', 'customer_refunds', 'counters', 'journal_entries', 'tax_filing_locks',
           // จัดซื้อ / ค่าใช้จ่าย / ขาย / งานบริการ: ออกเลข ตรวจสถานะ และอนุมัติที่ server
           'purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders', 'delivery_notes',
+          // ลิงก์เอกสารและประวัติการส่ง: สร้าง/ส่งผ่าน /api/documents/share และ /api/documents/send
+          'document_sends',
           // ทะเบียนบัญชีธนาคาร เช็ค และการกระทบยอด: บันทึกผ่าน /api/finance/* เท่านั้น
           'bank_accounts', 'cheques', 'bank_reconciliations',
           // งานมอบหมาย: จ่ายงาน/รับงาน/ปิดงานผ่าน /api/jobs เท่านั้น

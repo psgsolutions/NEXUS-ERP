@@ -18,6 +18,8 @@ export interface DocumentTypeDef {
   /** สิทธิ์ที่ต้องมีเพื่อเปิด/พิมพ์ (มีข้อใดข้อหนึ่ง) */
   permission: Permission | Permission[];
   load: (companyId: string, id: string) => Promise<DocumentModel>;
+  /** เอกสารภายใน (ไม่ส่งลิงก์/อีเมลให้บุคคลภายนอก) */
+  internal?: boolean;
 }
 
 const num = (v: any) => Number(v) || 0;
@@ -58,6 +60,7 @@ const quotation: DocumentTypeDef = {
 /** ตัวอย่างสำหรับหน้าตั้งค่าหัวเอกสาร (ข้อมูลบริษัทจริง + รายการตัวอย่าง) */
 const sample: DocumentTypeDef = {
   label: "ตัวอย่างเอกสาร",
+  internal: true,
   permission: "settings:manage",
   async load(companyId) {
     return sampleModel(await sellerOf(companyId), toDateStr(new Date()));
@@ -75,12 +78,12 @@ export const DOCUMENT_TYPES: Record<string, DocumentTypeDef> = {
   delivery_note: { label: "ใบส่งของ", permission: ["sales:view", "inventory:view", "finance:view"], load: loadDeliveryNote },
   // ช่างเปิดใบงานได้ (ทุกคนในบริษัทอ่านใบสั่งงานได้อยู่แล้วตามกฎฐานข้อมูล)
   work_order: { label: "ใบสั่งงานบริการ", permission: ["projects:view", "sales:view", "inventory:view", "service:field"], load: loadWorkOrder },
-  purchase_request: { label: "ใบขอซื้อ", permission: ["procurement:view", "finance:view"], load: loadPurchaseRequest },
+  purchase_request: { label: "ใบขอซื้อ", permission: ["procurement:view", "finance:view"], load: loadPurchaseRequest, internal: true },
   purchase_order: { label: "ใบสั่งซื้อ", permission: ["procurement:view", "finance:view"], load: loadPurchaseOrder },
-  goods_receipt: { label: "ใบรับสินค้า", permission: ["procurement:view", "inventory:view", "finance:view"], load: loadGoodsReceipt },
+  goods_receipt: { label: "ใบรับสินค้า", permission: ["procurement:view", "inventory:view", "finance:view"], load: loadGoodsReceipt, internal: true },
   payment: { label: "ใบสำคัญจ่าย", permission: "finance:view", load: loadPayment },
   wht: { label: "หนังสือรับรองการหักภาษี ณ ที่จ่าย", permission: "finance:view", load: loadWht },
-  journal: { label: "ใบสำคัญบัญชี", permission: "finance:view", load: loadJournal },
+  journal: { label: "ใบสำคัญบัญชี", permission: "finance:view", load: loadJournal, internal: true },
   payslip: { label: "สลิปเงินเดือน", permission: ["hr:edit", "finance:edit"], load: loadPayslip },
   sample,
 };

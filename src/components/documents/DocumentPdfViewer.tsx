@@ -2,7 +2,8 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Download, Loader2, Printer, X } from "lucide-react";
+import { Download, Loader2, Printer, Send, X } from "lucide-react";
+import { DocumentSharePanel } from "./DocumentSharePanel";
 import { PillButton, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api-client";
@@ -21,7 +22,8 @@ async function renderClientPdf(model: DocumentModel, copy: CopyMode): Promise<Bl
   return pdf(<DocumentPdf doc={model} copy={copy} />).toBlob();
 }
 
-export function DocumentPdfViewer({ source, model, className }: { source?: DocumentPdfSource; model?: DocumentModel; className?: string }) {
+export function DocumentPdfViewer({ source, model, className, title = "" }: { source?: DocumentPdfSource; model?: DocumentModel; className?: string; title?: string }) {
+  const [shareOpen, setShareOpen] = useState(false);
   const { companyId } = useAuth();
   const [copy, setCopy] = useState<CopyMode>("original");
   const [url, setUrl] = useState("");
@@ -71,16 +73,27 @@ export function DocumentPdfViewer({ source, model, className }: { source?: Docum
           ))}
         </div>
         <div className="flex items-center gap-2">
+          {/* ส่งได้เฉพาะเอกสารที่บันทึกแล้ว (มีเลขที่) */}
+          {source && !model && (
+            <PillButton variant={shareOpen ? "confirm" : "glass"} className="h-9 px-4 text-xs" onClick={() => setShareOpen((v) => !v)}><Send size={14} /> ส่ง / แชร์</PillButton>
+          )}
           <PillButton variant="glass" className="h-9 px-4 text-xs" disabled={!url || loading} onClick={print}><Printer size={14} /> พิมพ์</PillButton>
           <a href={url || undefined} download={fileName} className={cn("h-9 px-4 rounded-full text-xs font-bold flex items-center gap-2 bg-white/10 text-white border border-white/20 hover:bg-white/20", (!url || loading) && "pointer-events-none opacity-40")}>
             <Download size={14} /> ดาวน์โหลด PDF
           </a>
         </div>
       </div>
-      <div className="flex-1 min-h-0 relative bg-black/30">
-        {loading && <div className="absolute inset-0 flex items-center justify-center gap-2 text-white/50 text-sm"><Loader2 size={16} className="animate-spin" /> กำลังสร้างเอกสาร…</div>}
-        {error && !loading && <div className="absolute inset-0 flex items-center justify-center text-danger text-sm px-6 text-center">{error}</div>}
-        {url && <iframe ref={frame} src={url} title={fileName} className={cn("w-full h-full border-0", loading && "opacity-0")} />}
+      <div className="flex-1 min-h-0 flex">
+        <div className="flex-1 min-w-0 relative bg-black/30">
+          {loading && <div className="absolute inset-0 flex items-center justify-center gap-2 text-white/50 text-sm"><Loader2 size={16} className="animate-spin" /> กำลังสร้างเอกสาร…</div>}
+          {error && !loading && <div className="absolute inset-0 flex items-center justify-center text-danger text-sm px-6 text-center">{error}</div>}
+          {url && <iframe ref={frame} src={url} title={fileName} className={cn("w-full h-full border-0", loading && "opacity-0")} />}
+        </div>
+        {shareOpen && source && (
+          <aside className="w-[340px] max-w-[85vw] shrink-0 border-l border-white/10 overflow-y-auto bg-surface-0">
+            <DocumentSharePanel type={source.type} id={source.id} title={title || fileName.replace(/.pdf$/, "")} />
+          </aside>
+        )}
       </div>
     </div>
   );
@@ -105,7 +118,7 @@ export function DocumentPdfModal({ open, onClose, title, source, model }: { open
           <h3 className="text-[16px] font-semibold text-white">{title}</h3>
           <button type="button" onClick={onClose} className="text-white/50 hover:text-white" aria-label="ปิด"><X size={20} /></button>
         </div>
-        <DocumentPdfViewer source={source} model={model} className="flex-1" />
+        <DocumentPdfViewer source={source} model={model} title={title} className="flex-1 min-h-0" />
       </div>
     </div>,
     document.body

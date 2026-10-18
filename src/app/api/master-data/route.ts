@@ -232,6 +232,10 @@ export async function POST(request: Request) {
       const scope: EditScope = body.scope === "group" ? "group" : "company";
       const { master, local } = splitChanges(entity, normalizeParty(entity, clean(body.changes || {})), scope);
       const ignored = protectLocal(entity, local);
+      // ส่งมาเฉพาะฟิลด์ที่ระบบคำนวณเอง (สต็อก ต้นทุน) = ไม่มีอะไรให้บันทึก แจ้งชัดเจนแทนการตอบสำเร็จเงียบ ๆ
+      if (ignored.length && !Object.keys(master).length && !Object.keys(local).length) {
+        throw new ApiAuthError(400, `แก้ ${ignored.join(", ")} ผ่านหน้านี้ไม่ได้ (สต็อกและต้นทุนเปลี่ยนผ่านการรับ/เบิก/ปรับปรุงสต็อกเท่านั้น)`);
+      }
       const legacy = await legacyDoc(entity, id, companyId);
       if (legacy && !(await masterCol.doc(id).get()).exists) {
         // ยังไม่ย้ายเข้าข้อมูลกลาง: เครือมีบริษัทเดียวเท่านั้นที่มีรายการแบบนี้ -> แก้ที่เอกสารเดิมทั้งหมด

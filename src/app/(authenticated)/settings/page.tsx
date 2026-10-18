@@ -9,7 +9,8 @@ import { SpecLibraryManager } from "@/components/projects/SpecLibraryManager";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase-client";
 import { resolveSequenceFormat } from "@/lib/sequence-engine";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
+import { apiFetch } from "@/lib/api-client";
 import UsersPage from "./users/page";
 
 /**
@@ -37,7 +38,7 @@ export default function SettingsPage() {
   const requested = searchParams.get("tab") as SettingsTab;
   const [activeTab, setActiveTab] = useState<SettingsTab>(TABS.some((t) => t.id === requested) ? requested : "company");
   const [toast, setToast] = useState({ message: "", isVisible: false });
-  const { user, companyId } = useAuth();
+  const { companyId } = useAuth();
   const [formats, setFormats] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
@@ -55,11 +56,13 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       const clean = Object.fromEntries(Object.entries(formats).filter(([k, v]) => typeof v === "string" && /^[A-Z]+$/.test(k)).map(([k, v]) => [k, v.trim()]));
-      await setDoc(doc(db, `companies/${companyId}/settings`, "sequence_formats"), { ...clean, updatedAt: serverTimestamp(), updatedBy: user?.uid || "" }, { merge: true });
+      const res = await apiFetch("/api/settings/company", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "sequenceFormats", formats: clean }) });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.success) throw new Error(d.error || "บันทึกรูปแบบเลขที่ไม่สำเร็จ");
       showToast("บันทึกรูปแบบเลขที่เอกสารแล้ว (มีผลกับเอกสารที่ออกหลังจากนี้)");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to save sequence formats:", err);
-      showToast("บันทึกรูปแบบเลขที่ไม่สำเร็จ");
+      showToast(err.message || "บันทึกรูปแบบเลขที่ไม่สำเร็จ");
     } finally {
       setSaving(false);
     }

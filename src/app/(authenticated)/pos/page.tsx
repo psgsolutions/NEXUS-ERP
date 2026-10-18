@@ -19,8 +19,6 @@ import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
 import { findProductByScan } from "@/lib/warehouse-location";
 import { normalizePromptPayId, promptPayPayload } from "@/lib/promptpay";
-import { db } from "@/lib/firebase-client";
-import { doc, updateDoc } from "firebase/firestore";
 
 /**
  * ขายหน้าร้าน: สแกน/ค้นหาสินค้า → ตะกร้า → ชำระเงิน (เงินสด/พร้อมเพย์/โอน/บัตร) → พิมพ์ใบเสร็จ 80 มม.
@@ -460,10 +458,16 @@ function ReceiptModal({ receipt: r, company, onNext, reprint }: { receipt: any; 
 function PosSettings({ company, companyId, onClose, onSaved }: { company: any; companyId: string; onClose: () => void; onSaved: () => void }) {
   const [pp, setPp] = useState(company?.promptPayId || "");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const valid = !pp || !!normalizePromptPayId(pp);
   const save = async () => {
     setBusy(true);
-    try { await updateDoc(doc(db, "companies", companyId), { promptPayId: pp.replace(/\D/g, "") }); onSaved(); }
+    try {
+      const res = await apiFetch("/api/settings/company", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "promptPay", promptPayId: pp }) });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.success) throw new Error(d.error || "บันทึกไม่สำเร็จ");
+      onSaved();
+    } catch (e: any) { setError(e.message); }
     finally { setBusy(false); }
   };
   return (
@@ -471,6 +475,7 @@ function PosSettings({ company, companyId, onClose, onSaved }: { company: any; c
       <label className="block text-[13px] text-white/70">รหัสพร้อมเพย์ของร้าน (เบอร์มือถือ 10 หลัก หรือเลขประจำตัวผู้เสียภาษี 13 หลัก)</label>
       <PillInput value={pp} onChange={(e) => setPp(e.target.value)} placeholder={company?.taxId ? `เว้นว่าง = ใช้เลขผู้เสียภาษี ${company.taxId}` : "0812345678"} className={cn("w-full h-11 text-sm font-mono", !valid && "border-danger")} />
       {!valid && <p className="text-[12px] text-danger">รูปแบบไม่ถูกต้อง</p>}
+      {error && <p className="text-[12px] text-danger">{error}</p>}
       <div className="flex justify-end gap-2"><PillButton variant="ghost" className="h-10 px-5 text-xs" onClick={onClose}>ยกเลิก</PillButton><PillButton variant="confirm" className="h-10 px-5 text-xs font-bold" disabled={busy || !valid} onClick={save}>บันทึก</PillButton></div>
     </Modal>
   );

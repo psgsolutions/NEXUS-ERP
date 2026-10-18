@@ -117,6 +117,10 @@ async function main() {
 
     // Company tree
     ['member reads own company doc', () => assertSucceeds(getDoc(doc(userA, 'companies/A')))],
+    ['member cannot edit company doc (tax id is printed on tax invoices)', () => assertFails(updateDoc(doc(userA, 'companies/A'), { taxId: '0000000000000' }))],
+    ['admin cannot edit company doc directly', () => assertFails(updateDoc(doc(adminA, 'companies/A'), { name: 'X' }))],
+    ['member reads sequence formats', () => assertSucceeds(getDoc(doc(userA, 'companies/A/settings/sequence_formats')))],
+    ['admin cannot write sequence formats directly', () => assertFails(setDoc(doc(adminA, 'companies/A/settings/sequence_formats'), { QT: 'X-[0000]' }))],
     ['member cannot read other company doc', () => assertFails(getDoc(doc(userA, 'companies/B')))],
     ['member cannot list all companies', () => assertFails(getDocs(collection(userA, 'companies')))],
     ['member reads own company subcollection', () => assertSucceeds(getDoc(doc(userA, 'companies/A/quotations/q1')))],

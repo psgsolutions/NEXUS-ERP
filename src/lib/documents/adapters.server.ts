@@ -1,6 +1,7 @@
 import { adminDb } from "@/lib/firebase-admin";
 import type { Permission } from "@/lib/permissions";
 import { loadBillingNote, loadCnDn, loadInvoice, loadPosSale, loadReceipt } from "./tax-adapters.server";
+import { loadGoodsReceipt, loadJournal, loadPayment, loadPayslip, loadPurchaseOrder, loadPurchaseRequest, loadWht } from "./finance-adapters.server";
 import { ApiAuthError } from "@/lib/api-auth";
 import type { DocumentModel } from "./model";
 import { quotationLines, quotationModel, sampleModel } from "./build";
@@ -69,5 +70,12 @@ export const DOCUMENT_TYPES: Record<string, DocumentTypeDef> = {
   receipt: { label: "ใบเสร็จรับเงิน", permission: ["finance:view", "sales:edit"], load: loadReceipt },
   cndn: { label: "ใบลดหนี้/ใบเพิ่มหนี้", permission: ["sales:view", "finance:view"], load: loadCnDn },
   pos: { label: "บิลขายหน้าร้าน", permission: ["sales:edit", "finance:view"], load: loadPosSale },
+  purchase_request: { label: "ใบขอซื้อ", permission: ["procurement:view", "finance:view"], load: loadPurchaseRequest },
+  purchase_order: { label: "ใบสั่งซื้อ", permission: ["procurement:view", "finance:view"], load: loadPurchaseOrder },
+  goods_receipt: { label: "ใบรับสินค้า", permission: ["procurement:view", "inventory:view", "finance:view"], load: loadGoodsReceipt },
+  payment: { label: "ใบสำคัญจ่าย", permission: "finance:view", load: loadPayment },
+  wht: { label: "หนังสือรับรองการหักภาษี ณ ที่จ่าย", permission: "finance:view", load: loadWht },
+  journal: { label: "ใบสำคัญบัญชี", permission: "finance:view", load: loadJournal },
+  payslip: { label: "สลิปเงินเดือน", permission: ["hr:edit", "finance:edit"], load: loadPayslip },
   sample,
 };

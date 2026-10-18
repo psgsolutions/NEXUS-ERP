@@ -32,11 +32,13 @@ export interface DocumentParty {
   branchName?: string;
   address?: string;
   contact?: string;
+  /** หัวข้อช่องผู้ติดต่อ (ค่าเริ่มต้น "ผู้ติดต่อ") */
+  contactLabel?: string;
   phone?: string;
   email?: string;
 }
 
-export type ColumnKey = "no" | "code" | "description" | "qty" | "unit" | "price" | "discount" | "amount";
+export type ColumnKey = "no" | "code" | "description" | "qty" | "unit" | "price" | "discount" | "amount" | "debit" | "credit";
 
 export interface DocumentLine {
   /** บรรทัดหัวข้อกลุ่ม (ไม่มีจำนวน/ราคา) */
@@ -50,6 +52,9 @@ export interface DocumentLine {
   price?: number;
   discount?: number;
   amount?: number;
+  /** ใบสำคัญบัญชี */
+  debit?: number;
+  credit?: number;
 }
 
 export interface DocumentTotalRow {
@@ -81,6 +86,38 @@ export interface DocumentModel {
   signatures: string[];
   /** ลายน้ำ เช่น "ยกเลิก" / "ฉบับร่าง" */
   watermark?: string;
+  /** แบบฟอร์มทางราชการที่ต้องพิมพ์ตามแบบ (แทนเทมเพลตมาตรฐาน) */
+  wht50?: Wht50Form;
+}
+
+/** ผู้จ่าย/ผู้รับเงินบนหนังสือรับรองการหักภาษี ณ ที่จ่าย */
+export interface Wht50Party {
+  name: string;
+  taxId: string;
+  branchCode?: string;
+  address: string;
+}
+
+/**
+ * หนังสือรับรองการหักภาษี ณ ที่จ่าย ตามมาตรา 50 ทวิ แห่งประมวลรัษฎากร
+ * rows: แถวประเภทเงินได้ตามแบบ (1–6) ที่มียอด
+ */
+export interface Wht50Form {
+  bookNo?: string;
+  payer: Wht50Party;
+  payee: Wht50Party;
+  /** ภ.ง.ด. ที่ยื่น */
+  form: "PND1A" | "PND1A_SPECIAL" | "PND2" | "PND3" | "PND2A" | "PND3A" | "PND53";
+  /** ลำดับที่ในแบบ (ถ้ามี) */
+  sequenceInForm?: string;
+  rows: { row: 1 | 2 | 3 | 4 | 5 | 6; label: string; date: string; amount: number; tax: number }[];
+  /** เงินสมทบกองทุน (เงินเดือน) */
+  sso?: number;
+  providentFund?: number;
+  /** 1 หัก ณ ที่จ่าย, 2 ออกให้ตลอดไป, 3 ออกให้ครั้งเดียว, 4 อื่น ๆ */
+  payCondition: 1 | 2 | 3 | 4;
+  issueDate: string;
+  references?: string;
 }
 
 export type CopyMode = "original" | "copy";

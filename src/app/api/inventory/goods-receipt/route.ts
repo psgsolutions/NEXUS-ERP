@@ -7,6 +7,7 @@ import { processStockMovements, StockMovement } from "@/lib/stock-service";
 import { auditServer } from "@/services/audit.server";
 import { normalizePoStatus } from "@/lib/procurement-status";
 import { companyLocations } from "@/lib/warehouse.server";
+import { prepareSequence } from "@/lib/sequence-server";
 
 /**
  * [API-SERVER] Goods Receipt & Real-time WAC / GL Posting API
@@ -99,8 +100,15 @@ export async function POST(request: Request) {
       poDocRef = adminDb.doc(p);
     }
     let poUpdate: Record<string, any> | null = null;
+    // เลขที่ใบรับสินค้า (GR) ออกในทรานแซกชันเดียวกับสต็อก: บันทึกไม่สำเร็จ = ไม่เสียเลข
+    const takeNo = await prepareSequence("GR", companyId);
+    let grNo = "";
+    let seqCommit: (() => void) | null = null;
     const readPO = async (transaction: FirebaseFirestore.Transaction) => {
       poUpdate = null;
+      const seq = await takeNo(transaction);
+      grNo = seq.number;
+      seqCommit = seq.commit;
       if (!poDocRef) return;
       const snap = await transaction.get(poDocRef);
       const po: any = snap.data();
@@ -119,9 +127,9 @@ export async function POST(request: Request) {
     };
 
     // 4. Goods Receipt Document
-    const grRef = adminDb.collection(`companies/${companyId}/goods_receipts`).doc();
-    const grData = {
-      grId: grRef.id,
+    const grDataOf = (no: string) => ({
+      grId: no,
+      grNo: no,
       companyId,
       poRef: poRef || "",
       supplier: supplier || "",
@@ -137,12 +145,15 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       isDeleted: false
-    };
+    });
 
     // 5. Stock/WAC updates, GR document and its GL entry commit in one transaction (all-or-nothing)
     //    Journal: Dr สินค้าคงเหลือ / Cr เจ้าหนี้การค้า (โครงสร้างเดียวกับ AccountingEngine.postGoodsReceipt แบบ Non-VAT)
+    let grData: ReturnType<typeof grDataOf> | null = null;
     await processStockMovements(movements, (transaction) => {
-      transaction.set(grRef, grData);
+      seqCommit?.();
+      grData = grDataOf(grNo);
+      transaction.set(adminDb.doc(`companies/${companyId}/goods_receipts/${grNo}`), grData);
       if (poDocRef && poUpdate) transaction.update(poDocRef, poUpdate);
       if (totalReceiptAmount > 0) {
         const now = admin.firestore.FieldValue.serverTimestamp();
@@ -150,7 +161,8 @@ export async function POST(request: Request) {
           companyId,
           date: now,
           bookType: "PV_INTERNAL",
-          description: `[AUTO] Goods Receipt ${grRef.id} (Non-VAT Purchase) from ${supplier || "Vendor"} to ${warehouse || "คลังสินค้า (ไม่ระบุตำแหน่ง)"}`,
+          reference: grNo,
+          description: `[AUTO] รับสินค้า ${grNo}${poRef ? ` ตามใบสั่งซื้อ ${poRef}` : ""} จาก ${supplier || "ผู้ขาย"} เข้า ${warehouse || "คลังสินค้า (ไม่ระบุตำแหน่ง)"}`,
           totalDebit: totalReceiptAmount,
           totalCredit: totalReceiptAmount,
           isOfficialTax: false,
@@ -170,14 +182,15 @@ export async function POST(request: Request) {
       userId,
       companyId,
       "PROCURE_GR",
-      grRef.id,
+      grNo,
       grData
     );
 
     return NextResponse.json({
       success: true,
-      message: `บันทึกการรับสินค้าเรียบร้อยแล้ว (เลขที่: ${grRef.id})`,
-      grId: grRef.id,
+      message: `บันทึกการรับสินค้าเรียบร้อยแล้ว (เลขที่: ${grNo})`,
+      grId: grNo,
+      grNo,
       totalAmount: totalReceiptAmount
     });
   } catch (err: any) {

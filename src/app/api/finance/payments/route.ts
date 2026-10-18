@@ -8,6 +8,10 @@ import { assertPeriodOpen } from "@/lib/period-close-service";
 import { auditServer } from "@/services/audit.server";
 import { resolveBankTarget, writeCheque } from "@/lib/bank-cheque.server";
 import { expenseAccountOf, payeeKeyOf } from "@/lib/payables";
+import { groupIdOfCompany } from "@/lib/company-group.server";
+import { getRecordTx } from "@/lib/master-store.server";
+import { sellerSnapshot } from "@/lib/documents/seller.server";
+import { partySnapshot } from "@/lib/documents/party";
 
 /**
  * [API-SERVER] จ่ายชำระเจ้าหนี้ / ค่าใช้จ่าย (ใบสำคัญจ่าย)
@@ -54,6 +58,7 @@ export async function POST(request: Request) {
 
     await assertPeriodOpen(companyId, paymentDate);
 
+    const [groupId, payer] = await Promise.all([groupIdOfCompany(companyId), sellerSnapshot(companyId)]);
     const takePv = await prepareSequence("PV", companyId);
     const takeWht = await prepareSequence("WHT", companyId);
     const journalRef = adminDb.collection(`companies/${companyId}/journal_entries`).doc();
@@ -131,6 +136,9 @@ export async function POST(request: Request) {
       // เลขหนังสือรับรองหัก ณ ที่จ่าย (อ่านตัวนับก่อนเขียน) — ใช้เฉพาะเมื่อมีรายการที่ต้องออกใหม่
       const needCert = lines.filter((l) => !l.hasCert && l.line.whtAmount > 0);
       const whtSeq = needCert.length ? await takeWht(tx) : null;
+      // ผู้รับเงิน ณ วันที่จ่าย (ใช้บนใบสำคัญจ่ายและ 50 ทวิ)
+      const sup = supplierId ? await getRecordTx(tx, "suppliers", companyId, groupId, supplierId) : null;
+      const payee = partySnapshot(sup?.data, { name: payeeName, taxId: lines[0]?.e?.taxId || "" });
 
       const totalAmount = round2(lines.reduce((s, l) => s + l.line.amount, 0));
       const totalWht = round2(lines.reduce((s, l) => s + l.line.whtAmount, 0));
@@ -181,6 +189,10 @@ export async function POST(request: Request) {
             paymentRef: pv.number,
             vendor: payeeName,
             supplierId: l.e.supplierId || "",
+            taxId: payee.taxId,
+            vendorType: payee.corporate ? "CORPORATE" : "INDIVIDUAL",
+            payee,
+            payerSnapshot: payer,
             baseAmount: l.line.preVat,
             whtRate: l.line.whtRate,
             taxAmount: l.line.whtAmount,
@@ -208,6 +220,7 @@ export async function POST(request: Request) {
         documentNo: pv.number,
         payeeKey,
         payeeName,
+        payeeSnapshot: payee,
         supplierId,
         paymentDate,
         paymentMethod: method,

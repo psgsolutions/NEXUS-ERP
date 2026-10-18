@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, AlertTriangle, BookOpen, Scale } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertTriangle, BookOpen, Scale, Printer } from "lucide-react";
+import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { PillButton, GlassCard, StatusBadge, NexusTable, NexusTableRow, NexusTableCell } from "@/components/ui/Base";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { formatCurrency } from "@/lib/erp-logic";
@@ -32,6 +33,7 @@ export default function JournalDetailPage() {
   const { data: jv, loading } = useRealtimeDocument<any>(allowedPath);
 
   const [busy, setBusy] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
   if (loading) return <div className="p-10 text-white/40 text-sm">กำลังโหลดรายการบัญชี...</div>;
@@ -91,6 +93,12 @@ export default function JournalDetailPage() {
         </div>
       </div>
       <div className="flex items-center gap-2.5 flex-wrap justify-end">
+        {!!allowedPath?.startsWith("companies/") && (
+          <>
+            <PillButton variant="glass" className="h-8 px-4 text-xs font-bold" onClick={() => setPrintOpen(true)}><Printer size={14} className="mr-1.5" /> พิมพ์</PillButton>
+            <DocumentPdfModal open={printOpen} onClose={() => setPrintOpen(false)} source={{ type: "journal", id: String(jv.id) }} title={`ใบสำคัญบัญชี ${jv.jvId || jv.journalNo || jv.id}`} />
+          </>
+        )}
         {canPost && (
           <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={post}>
             <CheckCircle2 size={14} className="mr-1.5" /> อนุมัติลงบัญชี

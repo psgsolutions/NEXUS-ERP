@@ -5,6 +5,10 @@ import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { prepareSequence } from "@/lib/sequence-server";
 import { auditServer } from "@/services/audit.server";
+import { groupIdOfCompany } from "@/lib/company-group.server";
+import { getRecordTx } from "@/lib/master-store.server";
+import { sellerSnapshot } from "@/lib/documents/seller.server";
+import { partySnapshot } from "@/lib/documents/party";
 
 /**
  * [API-SERVER] ออกหนังสือรับรองการหักภาษี ณ ที่จ่าย (50 ทวิ) ล่วงหน้าสำหรับรายการค่าใช้จ่าย
@@ -29,7 +33,7 @@ export async function POST(request: Request) {
     if (!RATES.includes(whtRate)) throw new ApiAuthError(400, "อัตราภาษีหัก ณ ที่จ่ายไม่ถูกต้อง");
     const expRef = adminDb.doc(`companies/${companyId}/expenses/${str(body.expenseId, 120)}`);
     const filingDate = /^\d{4}-\d{2}-\d{2}$/.test(String(body.filingDate || "")) ? body.filingDate : new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
-    const take = await prepareSequence("WHT", companyId);
+    const [take, groupId, payer] = await Promise.all([prepareSequence("WHT", companyId), groupIdOfCompany(companyId), sellerSnapshot(companyId)]);
     const now = admin.firestore.FieldValue.serverTimestamp();
 
     const result = await adminDb.runTransaction(async (tx) => {
@@ -44,10 +48,14 @@ export async function POST(request: Request) {
       if (!(baseAmount > 0)) throw new ApiAuthError(400, "ฐานภาษีต้องมากกว่า 0");
       if (baseAmount > maxBase + 0.009) throw new ApiAuthError(400, `ฐานภาษีเกินยอดก่อน VAT (${maxBase.toLocaleString("th-TH")} บาท)`);
       const whtAmount = r2(baseAmount * whtRate / 100);
+      // ผู้ถูกหักภาษี ณ วันที่ออก (ชื่อ เลขผู้เสียภาษี ที่อยู่) สำหรับพิมพ์ 50 ทวิ ซ้ำภายหลัง
+      const sup = e.supplierId ? await getRecordTx(tx, "suppliers", companyId, groupId, String(e.supplierId)) : null;
+      const payee = partySnapshot(sup?.data, { name: e.supplierName || e.vendor || "", taxId: e.taxId || "" });
       const seq = await take(tx); const whtId = seq.number; seq.commit();
       tx.create(adminDb.doc(`companies/${companyId}/withholding_taxes/${whtId}`), {
         id: whtId, whtId, companyId, expenseId: snap.id, expRef: snap.id,
-        vendor: e.supplierName || e.vendor || "", supplierId: e.supplierId || "", taxId: e.taxId || "", vendorType: e.vendorType || "",
+        vendor: e.supplierName || e.vendor || payee.name, supplierId: e.supplierId || "", taxId: payee.taxId || e.taxId || "",
+        vendorType: payee.corporate ? "CORPORATE" : "INDIVIDUAL", payee, payerSnapshot: payer,
         documentType: "Withholding Tax (50 Tawi)", baseAmount, whtRate, whtAmount, taxAmount: whtAmount,
         filingDate, issuedAt: now, status: "Issued",
         createdBy: apiUser.uid, createdAt: now, updatedAt: now, isDeleted: false,

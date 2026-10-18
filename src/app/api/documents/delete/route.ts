@@ -14,7 +14,7 @@ import { can, type Permission } from "@/lib/permissions";
  *
  * - ใบสั่งซื้อ: ยังไม่รับสินค้า ยังไม่ตั้งเบิก -> ลบ และคืนสถานะใบขอซื้อเป็นอนุมัติแล้ว
  * - รายการค่าใช้จ่าย: ยังไม่จ่าย ยังไม่บันทึกภาษีซื้อ/ตั้งหนี้ ยังไม่ออกหนังสือรับรอง -> ลบ และปลดล็อกใบสั่งซื้อ
- * - หนังสือรับรองหัก ณ ที่จ่าย: รายการยังไม่จ่าย และงวดภาษียังไม่ยื่น -> ลบ และปลดจากรายการค่าใช้จ่าย
+ * - หนังสือรับรองหัก ณ ที่จ่าย: รายการยังไม่จ่าย และงวดภาษียังไม่ยื่น -> ยกเลิก (เก็บเอกสารไว้ เลขที่ไม่หาย) และปลดจากรายการค่าใช้จ่าย
  * - ใบสั่งขาย: ร่าง/ยกเลิก ยังไม่ออกใบกำกับ ไม่มีใบสั่งงานหรือค่าใช้จ่ายอ้างอิง -> ลบ
  * ตรวจและลบในทรานแซกชันเดียว เลขที่เอกสารไม่ถูกนำกลับมาใช้
  */
@@ -96,7 +96,9 @@ export async function POST(request: Request) {
         const [locks, exp] = await Promise.all([Promise.all(lockRefs.map((r) => tx.get(r))), expRef ? tx.get(expRef) : Promise.resolve(null)]);
         if (period && locks.some((l) => l.exists)) throw new ApiAuthError(409, `ยื่นภาษีหัก ณ ที่จ่ายงวด ${period} แล้ว ลบ ${docNo} ไม่ได้`);
         if (exp?.exists && (Number(exp.data()!.paidAmount) || 0) > 0) throw new ApiAuthError(409, `รายการค่าใช้จ่าย ${exp.id} จ่ายเงินแล้ว ลบ ${docNo} ไม่ได้`);
-        tx.delete(ref);
+        if (String(d.status || "").toLowerCase() === "cancelled") throw new ApiAuthError(409, `${docNo} ยกเลิกไปแล้ว`);
+        // หนังสือรับรองมีเลขที่ต่อเนื่อง: ยกเลิกแทนการลบ (ไม่ส่งยื่น ภ.ง.ด. แต่ยังตรวจสอบย้อนหลังได้)
+        tx.update(ref, { status: "Cancelled", isDeleted: true, cancelReason: str(body.reason, 300) || "ยกเลิกโดยผู้ใช้", cancelledBy: apiUser.uid, cancelledAt: now, updatedAt: now });
         if (expRef && exp?.exists && exp.data()!.whtId === docNo) {
           const del = admin.firestore.FieldValue.delete();
           tx.update(expRef, { whtId: del, whtRate: del, whtAmount: del, updatedAt: now, updatedBy: apiUser.uid });

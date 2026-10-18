@@ -33,7 +33,7 @@ export function registerDocumentFonts(base: string) {
 export const fixThaiText = (v: any) => (typeof v === "string" ? v.replace(/([่-๋]?)ำ/g, "ํ$1า") : v);
 
 /** Text ที่แก้สระอำให้อัตโนมัติ (ใช้แทน Text ทุกที่ที่เป็นข้อความ) */
-function T({ children, ...rest }: { children?: React.ReactNode; style?: any; fixed?: boolean; wrap?: boolean }) {
+export function T({ children, ...rest }: { children?: React.ReactNode; style?: any; fixed?: boolean; wrap?: boolean }) {
   return <Text {...rest}>{React.Children.map(children, fixThaiText)}</Text>;
 }
 
@@ -46,6 +46,8 @@ const COL: Record<ColumnKey, { label: string; width: string; align: "left" | "ri
   price: { label: "ราคา/หน่วย", width: "13%", align: "right" },
   discount: { label: "ส่วนลด", width: "10%", align: "right" },
   amount: { label: "จำนวนเงิน", width: "14%", align: "right" },
+  debit: { label: "เดบิต", width: "15%", align: "right" },
+  credit: { label: "เครดิต", width: "15%", align: "right" },
 };
 
 const ink = "#1a1a1a", muted = "#666666", line = "#d9d9d9";
@@ -131,7 +133,7 @@ export function StandardDocument({ doc, copy = "original" }: { doc: DocumentMode
             </View>
             {p.contact || p.phone || p.email ? (
               <View style={{ width: "34%" }}>
-                <T style={s.partyLabel}>ผู้ติดต่อ</T>
+                <T style={s.partyLabel}>{p.contactLabel || "ผู้ติดต่อ"}</T>
                 {p.contact ? <T>{p.contact}</T> : null}
                 {p.phone ? <T>โทร {p.phone}</T> : null}
                 {p.email ? <T>{p.email}</T> : null}
@@ -155,6 +157,7 @@ export function StandardDocument({ doc, copy = "original" }: { doc: DocumentMode
                   const v = k === "no" ? String(n) : k === "code" ? l.code || "" : k === "description" ? l.description
                     : k === "qty" ? (l.qty !== undefined ? qtyText(l.qty) : "") : k === "unit" ? l.unit || ""
                     : k === "price" ? (l.price !== undefined ? money(l.price) : "") : k === "discount" ? (l.discount ? money(l.discount) : "")
+                    : k === "debit" ? (l.debit ? money(l.debit) : "") : k === "credit" ? (l.credit ? money(l.credit) : "")
                     : l.amount !== undefined ? money(l.amount) : "";
                   return (
                     <View key={k} style={[s.td, cell(k)]}>

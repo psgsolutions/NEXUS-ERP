@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, XCircle, AlertTriangle, ShoppingCart, User, Calendar } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, AlertTriangle, ShoppingCart, User, Calendar, Printer } from "lucide-react";
+import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { PillButton, GlassCard, StatusBadge, NexusTable, NexusTableRow, NexusTableCell } from "@/components/ui/Base";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { formatCurrency } from "@/lib/erp-logic";
@@ -30,6 +31,7 @@ export default function PurchaseRequestDetailPage() {
   const path = companyId && prDocId ? `companies/${companyId}/purchase_requests/${prDocId}` : null;
   const { data: pr, loading } = useRealtimeDocument<any>(path);
   const [busy, setBusy] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
   if (loading) return <div className="p-10 text-white/40 text-sm">กำลังโหลดใบขอซื้อ...</div>;
@@ -85,6 +87,12 @@ export default function PurchaseRequestDetailPage() {
         </div>
       </div>
       <div className="flex items-center gap-2.5 flex-wrap justify-end">
+        {true && (
+          <>
+            <PillButton variant="glass" className="h-8 px-4 text-xs font-bold" onClick={() => setPrintOpen(true)}><Printer size={14} className="mr-1.5" /> พิมพ์</PillButton>
+            <DocumentPdfModal open={printOpen} onClose={() => setPrintOpen(false)} source={{ type: "purchase_request", id: prDocId }} title={`ใบขอซื้อ ${pr.prCode || prDocId}`} />
+          </>
+        )}
         {canApprove && (
           <>
             <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={() => setStatus("APPROVED")}>

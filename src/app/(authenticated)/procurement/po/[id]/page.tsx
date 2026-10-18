@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Building2, Calendar, CheckCircle2, Truck, XCircle, AlertTriangle, FileText } from "lucide-react";
+import { ArrowLeft, Building2, Calendar, CheckCircle2, Truck, XCircle, AlertTriangle, FileText, Printer } from "lucide-react";
+import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { PillButton, GlassCard, StatusBadge, NexusTable, NexusTableRow, NexusTableCell } from "@/components/ui/Base";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
@@ -33,6 +34,7 @@ export default function PODetailPage() {
   const { data: po, loading } = useRealtimeDocument<any>(path);
 
   const [busy, setBusy] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
   if (loading) return <div className="p-10 text-white/40 text-sm">กำลังโหลดใบสั่งซื้อ...</div>;
@@ -92,6 +94,12 @@ export default function PODetailPage() {
         </div>
       </div>
       <div className="flex items-center gap-2.5 flex-wrap justify-end">
+        {true && (
+          <>
+            <PillButton variant="glass" className="h-8 px-4 text-xs font-bold" onClick={() => setPrintOpen(true)}><Printer size={14} className="mr-1.5" /> พิมพ์</PillButton>
+            <DocumentPdfModal open={printOpen} onClose={() => setPrintOpen(false)} source={{ type: "purchase_order", id: poDocId }} title={`ใบสั่งซื้อ ${po.poCode || poDocId}`} />
+          </>
+        )}
         {status !== "CANCELLED" && <DocumentStepper steps={STEPS} currentStep={view.step} />}
         {status === "PENDING_APPROVAL" && (
           <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={approve}>

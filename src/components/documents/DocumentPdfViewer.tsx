@@ -16,9 +16,9 @@ import type { CopyMode, DocumentModel } from "@/lib/documents/model";
 export interface DocumentPdfSource { type: string; id: string }
 
 async function renderClientPdf(model: DocumentModel, copy: CopyMode): Promise<Blob> {
-  const [{ pdf }, { StandardDocument, registerDocumentFonts }] = await Promise.all([import("@react-pdf/renderer"), import("@/lib/pdf/StandardDocument")]);
+  const [{ pdf }, { DocumentPdf, registerDocumentFonts }] = await Promise.all([import("@react-pdf/renderer"), import("@/lib/pdf/DocumentPdf")]);
   registerDocumentFonts(window.location.origin);
-  return pdf(<StandardDocument doc={model} copy={copy} />).toBlob();
+  return pdf(<DocumentPdf doc={model} copy={copy} />).toBlob();
 }
 
 export function DocumentPdfViewer({ source, model, className }: { source?: DocumentPdfSource; model?: DocumentModel; className?: string }) {
@@ -57,6 +57,8 @@ export function DocumentPdfViewer({ source, model, className }: { source?: Docum
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
 
   const print = () => frame.current?.contentWindow?.print();
+  // 50 ทวิ: ฉบับที่ 1 แนบแบบยื่น / ฉบับที่ 2 ผู้ถูกหักเก็บไว้
+  const formCopies = source?.type === "wht" || !!model?.wht50;
 
   return (
     <div className={cn("flex flex-col min-h-0", className)}>
@@ -64,7 +66,7 @@ export function DocumentPdfViewer({ source, model, className }: { source?: Docum
         <div className="flex rounded-full bg-white/5 p-1">
           {(["original", "copy"] as CopyMode[]).map((c) => (
             <button key={c} type="button" onClick={() => setCopy(c)} className={cn("h-8 px-4 rounded-full text-[13px]", copy === c ? "bg-white/15 text-white font-semibold" : "text-white/50 hover:text-white")}>
-              {c === "original" ? "ต้นฉบับ" : "สำเนา"}
+              {formCopies ? (c === "original" ? "ฉบับที่ 1" : "ฉบับที่ 2") : c === "original" ? "ต้นฉบับ" : "สำเนา"}
             </button>
           ))}
         </div>
@@ -107,5 +109,16 @@ export function DocumentPdfModal({ open, onClose, title, source, model }: { open
       </div>
     </div>,
     document.body
+  );
+}
+
+/** ปุ่มพิมพ์เล็กในแถวตาราง (ไม่เปิดแถว) */
+export function DocumentPrintButton({ onPrint, label }: { onPrint?: () => void; label: string }) {
+  if (!onPrint) return null;
+  return (
+    <button type="button" onClick={(e) => { e.stopPropagation(); onPrint(); }} title={`พิมพ์ ${label}`} aria-label={`พิมพ์ ${label}`}
+      className="w-8 h-8 rounded-full border border-white/15 text-white/60 hover:text-white hover:bg-white/[0.05] inline-flex items-center justify-center flex-shrink-0">
+      <Printer size={14} />
+    </button>
   );
 }

@@ -26,6 +26,7 @@ export default function SettlementDocument({ kind }: { kind: "receipt" | "paymen
   const { showConfirm } = useSystemDialog();
   const isReceipt = kind === "receipt";
   const [printOpen, setPrintOpen] = useState(false);
+  const [whtPrint, setWhtPrint] = useState("");
   const title = isReceipt ? "ใบเสร็จรับเงิน" : "ใบสำคัญจ่าย";
   const { data: d, loading } = useRealtimeDocument<any>(companyId && docNo ? `companies/${companyId}/${isReceipt ? "receipts" : "payments"}/${docNo}` : null);
 
@@ -72,10 +73,16 @@ export default function SettlementDocument({ kind }: { kind: "receipt" | "paymen
           <p className="text-sm text-white/60 mt-1">{isReceipt ? d?.customerName : d?.payeeName || ""}</p>
         </div>
       </div>
-      {isReceipt && d && (
-        <PillButton variant="glass" className="h-9 px-4 text-xs font-bold" onClick={() => setPrintOpen(true)}><Printer size={14} /> พิมพ์ใบเสร็จ</PillButton>
+      {d && (
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+        {!isReceipt && (Array.isArray(d.whtCertificates) ? d.whtCertificates : []).map((no: string) => (
+          <PillButton key={no} variant="glass" className="h-9 px-4 text-xs font-bold" onClick={() => setWhtPrint(no)}><Printer size={14} /> 50 ทวิ {no}</PillButton>
+        ))}
+        <PillButton variant="glass" className="h-9 px-4 text-xs font-bold" onClick={() => setPrintOpen(true)}><Printer size={14} /> {isReceipt ? "พิมพ์ใบเสร็จ" : "พิมพ์ใบสำคัญจ่าย"}</PillButton>
+        </div>
       )}
-      {isReceipt && <DocumentPdfModal open={printOpen} onClose={() => setPrintOpen(false)} source={{ type: "receipt", id: docNo }} title={`ใบเสร็จรับเงิน ${docNo}`} />}
+      <DocumentPdfModal open={!!whtPrint} onClose={() => setWhtPrint("")} source={whtPrint ? { type: "wht", id: whtPrint } : undefined} title={`หนังสือรับรองหัก ณ ที่จ่าย ${whtPrint}`} />
+      <DocumentPdfModal open={printOpen} onClose={() => setPrintOpen(false)} source={{ type: isReceipt ? "receipt" : "payment", id: docNo }} title={`${isReceipt ? "ใบเสร็จรับเงิน" : "ใบสำคัญจ่าย"} ${docNo}`} />
     </div>
   );
 

@@ -52,6 +52,10 @@ import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { useSuppliers } from "@/hooks/useCustomers";
 import { normalizePoStatus } from "@/lib/procurement-status";
 import { SecureDeleteAction } from "@/components/ui/SecureDeleteAction";
+import { DocumentPdfModal, DocumentPrintButton } from "@/components/documents/DocumentPdfViewer";
+import { useSystemDialog } from "@/context/DialogContext";
+import { apiFetch } from "@/lib/api-client";
+import { can } from "@/lib/permissions";
 
 import { SupplierModal } from "@/components/commerce/SupplierModal";
 import { PurchaseRequestModal } from "@/components/commerce/PurchaseRequestModal";
@@ -62,8 +66,20 @@ import { WHTModal } from "@/components/commerce/WHTModal";
 type ProcSubModule = "suppliers" | "pr" | "po" | "receipt" | "expense" | "wht";
 
 export default function ProcurementPage() {
-  const { user, companyId } = useAuth();
+  const { user, companyId, roles } = useAuth();
   const router = useRouter();
+  const { showPrompt, showAlert } = useSystemDialog();
+  const [printDoc, setPrintDoc] = useState<{ type: string; id: string; title: string } | null>(null);
+  const print = (type: string, id: string, title: string) => setPrintDoc({ type, id, title });
+  // 50 ทวิ มีเลขที่ต่อเนื่อง: ยกเลิก (เก็บเอกสารไว้) แทนการลบ
+  const cancelWht = async (w: any) => {
+    const reason = await showPrompt(`ระบุเหตุผลที่ยกเลิกหนังสือรับรอง ${w.id}`, "ยกเลิกหนังสือรับรองหัก ณ ที่จ่าย", "เช่น ออกผิดรายการ");
+    if (!reason?.trim()) return;
+    const res = await apiFetch("/api/documents/delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, kind: "wht", id: w._docId || w.id, reason: reason.trim() }) });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok || !d.success) return void showAlert(d.error || "ยกเลิกไม่สำเร็จ", "แจ้งเตือน", "error");
+    showToast(`ยกเลิก ${w.id} แล้ว`);
+  };
   const [activeTab, setActiveTab] = useState<ProcSubModule>("pr");
   const [modalActiveTab, setModalActiveTab] = useState("header");
   const [searchQuery, setSearchQuery] = useState("");
@@ -350,13 +366,13 @@ export default function ProcurementPage() {
                  ) : activeTab === "pr" ? (
                     <NexusTable headers={["เลขที่ PR", "ผู้ขอซื้อ", "แผนก", "โครงการอ้างอิง", "ยอดโดยประมาณ", "สถานะ"]}>
                        {filteredPRs.map(pr => (
-                         <PRRow key={pr.docId} {...pr} onClick={() => router.push(`/procurement/requests/${encodeURIComponent(pr.docId)}`)} />
+                         <PRRow key={pr.docId} {...pr} onPrint={() => print("purchase_request", pr.docId, `ใบขอซื้อ ${pr.id}`)} onClick={() => router.push(`/procurement/requests/${encodeURIComponent(pr.docId)}`)} />
                        ))}
                     </NexusTable>
                  ) : activeTab === "receipt" ? (
                     <NexusTable headers={["เลขที่ GR", "อ้างอิง PO", "ชื่อคู่ค้า", "วันที่รับ", "คลังสินค้า", "สถานะ"]}>
                        {filteredGRs.map(gr => (
-                         <GRRow key={gr.docId} {...gr} />
+                         <GRRow key={gr.docId} {...gr} onPrint={() => print("goods_receipt", gr.docId, `ใบรับสินค้า ${gr.id}`)} />
                        ))}
                     </NexusTable>
                  ) : activeTab === "po" ? (
@@ -366,7 +382,7 @@ export default function ProcurementPage() {
                            <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">ไม่มีข้อมูลใบสั่งซื้อ</NexusTableCell>
                          </NexusTableRow>
                        ) : filteredPOs.map(po => (
-                         <PORow key={po.docId} {...po} companyId={companyId || ""} onExpenseCreate={async () => {
+                         <PORow key={po.docId} {...po} companyId={companyId || ""} onPrint={() => print("purchase_order", po.docId, `ใบสั่งซื้อ ${po.id}`)} onExpenseCreate={async () => {
                             try {
                               const expId = await createExpenseFromPO(po.docId, companyId || "");
                               showToast(`สร้างใบสำคัญจ่ายสำเร็จ (${expId})`);
@@ -405,6 +421,8 @@ export default function ProcurementPage() {
                          </NexusTableRow>
                        ) : filteredWHTs.map(wht => (
                          <WHTRow key={wht.id} {...wht} companyId={companyId || ""}
+                           onPrint={() => print("wht", wht._docId || wht.id, `หนังสือรับรองหัก ณ ที่จ่าย ${wht.id}`)}
+                           onCancel={can(roles, "finance:delete") && wht.status !== "Cancelled" && !wht.isSample ? () => cancelWht(wht) : undefined}
                            onClick={() => { setSelectedItem(wht); setIsWHTOpen(true); }}
                          />
                        ))}
@@ -463,6 +481,8 @@ export default function ProcurementPage() {
 
 
 
+      <DocumentPdfModal open={!!printDoc} onClose={() => setPrintDoc(null)} source={printDoc ? { type: printDoc.type, id: printDoc.id } : undefined} title={printDoc?.title || ""} />
+
       <Toast
         message={toast.message}
         isVisible={toast.isVisible}
@@ -488,7 +508,7 @@ function SupplierRow({ id, name, category, phone, status, onClick }: { id: strin
   );
 }
 
-function GRRow({ id, po, supplier, date, warehouse, status, onClick }: { id: string, po: string, supplier: string, date: string, warehouse: string, status: "active" | "pending" | "danger", onClick?: () => void }) {
+function GRRow({ id, po, supplier, date, warehouse, status, onClick, onPrint }: { id: string, po: string, supplier: string, date: string, warehouse: string, status: "active" | "pending" | "danger", onClick?: () => void, onPrint?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
@@ -499,13 +519,13 @@ function GRRow({ id, po, supplier, date, warehouse, status, onClick }: { id: str
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-white/60 font-bold">{date}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-sm font-medium text-white/40 uppercase">{warehouse}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status={status} label={status === "active" ? "รับครบ" : "รับบางส่วน"} />
+        <span className="inline-flex items-center gap-1.5"><StatusBadge status={status} label="รับเข้าแล้ว" /><DocumentPrintButton onPrint={onPrint} label={id} /></span>
       </NexusTableCell>
     </NexusTableRow>
   );
 }
 
-function PRRow({ id, requester, dept, project, amount, status, onClick }: { id: string, requester: string, dept: string, project: string, amount: string, status: "active" | "pending" | "danger", onClick?: () => void }) {
+function PRRow({ id, requester, dept, project, amount, status, onClick, onPrint }: { id: string, requester: string, dept: string, project: string, amount: string, status: "active" | "pending" | "danger", onClick?: () => void, onPrint?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
@@ -516,13 +536,13 @@ function PRRow({ id, requester, dept, project, amount, status, onClick }: { id: 
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-white/60 font-bold">{project}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white mono-numbers">{amount}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <StatusBadge status={status} label={status === "active" ? "อนุมัติแล้ว" : "รออนุมัติ"} />
+        <span className="inline-flex items-center gap-1.5"><StatusBadge status={status} label={status === "active" ? "อนุมัติแล้ว" : status === "danger" ? "ยกเลิก" : "รออนุมัติ"} /><DocumentPrintButton onPrint={onPrint} label={id} /></span>
       </NexusTableCell>
     </NexusTableRow>
   );
 }
 
-function PORow({ id, docId, vendor, totalAmount, amount, approval, normalizedStatus, isSample, companyId, onExpenseCreate, onClick }: any) {
+function PORow({ id, docId, vendor, totalAmount, amount, approval, normalizedStatus, isSample, companyId, onExpenseCreate, onClick, onPrint }: any) {
   const displayAmount = totalAmount ? `฿${Number(totalAmount).toLocaleString("th-TH", { minimumFractionDigits: 2 })}` : (amount ? `฿${amount}` : "฿0.00");
   const isApproved = ["APPROVED", "PARTIAL_RECEIVED", "RECEIVED"].includes(normalizedStatus);
 
@@ -553,6 +573,7 @@ function PORow({ id, docId, vendor, totalAmount, amount, approval, normalizedSta
           {normalizedStatus === "PENDING_APPROVAL" && (
             <SecureDeleteAction serverKind="purchase_order" documentId={docId} displayName={id} compact />
           )}
+          <DocumentPrintButton onPrint={onPrint} label={id} />
         </div>
       </NexusTableCell>
     </NexusTableRow>
@@ -608,7 +629,7 @@ function ExpenseRow({ id, _docId, poRef, vendor, supplier, totalAmount, amount, 
   );
 }
 
-function WHTRow({ id, _docId, expenseId, expRef, vendor, baseAmount, taxAmount, status, companyId, onClick }: any) {
+function WHTRow({ id, expenseId, expRef, vendor, baseAmount, taxAmount, status, onClick, onPrint, onCancel }: any) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
@@ -622,8 +643,9 @@ function WHTRow({ id, _docId, expenseId, expRef, vendor, baseAmount, taxAmount, 
         <StatusBadge status={status === "Cancelled" ? "danger" : "active"} label={status === "Cancelled" ? "ยกเลิกแล้ว" : status === 'filed' ? "ยื่นแบบแล้ว" : "ออกเอกสารแล้ว"} />
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <div onClick={(e) => e.stopPropagation()} className="inline-block">
-          <SecureDeleteAction serverKind="wht" documentId={_docId || id} displayName={id} compact />
+        <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-end gap-2">
+          {onCancel && <button type="button" onClick={onCancel} className="h-8 px-3 rounded-full border border-danger/30 text-danger text-[12px] font-bold hover:bg-danger/10">ยกเลิก</button>}
+          <DocumentPrintButton onPrint={onPrint} label={id} />
         </div>
       </NexusTableCell>
     </NexusTableRow>

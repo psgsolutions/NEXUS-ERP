@@ -4,7 +4,8 @@ import React, { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { where } from "firebase/firestore";
-import { ArrowLeft, Ban, CheckCircle2, Landmark, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Ban, CheckCircle2, Landmark, Loader2, Printer, Save } from "lucide-react";
+import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { GlassCard, PillButton, PillInput, StatusBadge, cn } from "@/components/ui/Base";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
@@ -54,6 +55,7 @@ function PayrollEditor() {
   const [payDate, setPayDate] = useState(() => nowBkk().slice(0, 10));
   const [bankAccount, setBankAccount] = useState("");
   const [reason, setReason] = useState("");
+  const [slip, setSlip] = useState<{ id: string; name: string } | null>(null);
 
   const end = periodEnd(period);
   const daysWorked = useMemo(() => {
@@ -219,7 +221,13 @@ function PayrollEditor() {
         <GlassCard className="p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-bold text-white">{sel.name} <span className="text-white/40 font-normal">· {sel.position || "-"} · {sel.employmentType === "daily" ? `ค่าจ้างวันละ ${baht(sel.rate)}` : `เงินเดือน ${baht(sel.rate)}`}</span></h3>
-            {sel.bankAccount && <span className="text-[12px] text-white/50">{sel.bankName} {sel.bankAccount}</span>}
+            <div className="flex items-center gap-3">
+              {sel.bankAccount && <span className="text-[12px] text-white/50">{sel.bankName} {sel.bankAccount}</span>}
+              {/* สลิปพิมพ์จากงวดที่บันทึกแล้ว (แก้แล้วยังไม่บันทึก = ยังพิมพ์ไม่ได้) */}
+              {status !== "new" && !dirty && (doc?.lines || []).some((l: any) => l.employeeDocId === sel.employeeDocId) && (
+                <PillButton variant="glass" className="h-8 px-4 text-xs font-bold" onClick={() => setSlip({ id: `${period}~${sel.employeeDocId}`, name: sel.name })}><Printer size={14} className="mr-1.5" /> พิมพ์สลิป</PillButton>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
             {([
@@ -238,6 +246,8 @@ function PayrollEditor() {
           </div>
         </GlassCard>
       )}
+
+      <DocumentPdfModal open={!!slip} onClose={() => setSlip(null)} source={slip ? { type: "payslip", id: slip.id } : undefined} title={`สลิปเงินเดือน ${slip?.name || ""} งวด ${periodLabel(period)}`} />
 
       {status === "approved" && canPost && (
         <GlassCard className="p-4 space-y-3">

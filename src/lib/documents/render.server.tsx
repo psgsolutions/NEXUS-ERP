@@ -2,7 +2,7 @@ import React from "react";
 import fs from "node:fs";
 import path from "node:path";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { StandardDocument, registerDocumentFonts } from "@/lib/pdf/StandardDocument";
+import { DocumentPdf, registerDocumentFonts } from "@/lib/pdf/DocumentPdf";
 import type { CopyMode, DocumentModel } from "./model";
 
 /**
@@ -16,7 +16,7 @@ function fontBase(origin: string) {
 
 export async function renderDocumentPdf(doc: DocumentModel, copy: CopyMode, origin: string): Promise<Buffer> {
   registerDocumentFonts(fontBase(origin));
-  return renderToBuffer(<StandardDocument doc={doc} copy={copy} />);
+  return renderToBuffer(<DocumentPdf doc={doc} copy={copy} />);
 }
 
 /** ชื่อไฟล์: QT-2610-0001.pdf (ตัดอักขระที่ใช้ในชื่อไฟล์ไม่ได้) */

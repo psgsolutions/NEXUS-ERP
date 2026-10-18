@@ -59,3 +59,14 @@ export async function sendDocumentEmail(args: {
     ...(args.pdf ? { attachments: [{ filename: args.pdf.filename, content: args.pdf.content, contentType: "application/pdf" }] } : {}),
   });
 }
+
+/** อีเมลแจ้งเตือนภายในบริษัท (สรุปรายการต้องติดตาม) — items แสดงเป็นรายการพร้อมลิงก์ */
+export async function sendDigestEmail(args: { to: string[]; subject: string; intro: string; senderName: string; items: { text: string; link?: string }[] }) {
+  const list = args.items.map((i) => `<li style="margin:4px 0">${i.link ? `<a href="${esc(i.link)}">${esc(i.text)}</a>` : esc(i.text)}</li>`).join("");
+  const html = `<div style="font-family:Tahoma,Arial,sans-serif;font-size:14px;color:#222;line-height:1.7"><p>${esc(args.intro)}</p><ul>${list}</ul><p style="color:#888;font-size:12px">อีเมลอัตโนมัติจากระบบ NEXUS ERP ของ ${esc(args.senderName)}</p></div>`;
+  const text = `${args.intro}\n\n${args.items.map((i) => `- ${i.text}${i.link ? ` ${i.link}` : ""}`).join("\n")}`;
+  return transporter().sendMail({
+    from: { name: safeName(args.senderName) || "NEXUS ERP", address: process.env.SMTP_USER! },
+    to: args.to, subject: args.subject.replace(/[\r\n]+/g, " ").slice(0, 200), text, html,
+  });
+}

@@ -5,7 +5,7 @@
       "schedule": "0 1 * * *"
     },
     {
-      "path": "/api/cron/quotation-expiry-check",
+      "path": "/api/cron/daily",
       "schedule": "0 1 * * *"
     }
   ]

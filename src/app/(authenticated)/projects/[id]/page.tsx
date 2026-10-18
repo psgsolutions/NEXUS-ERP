@@ -16,6 +16,7 @@ import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { ChangeOrdersPanel } from "@/components/projects/ChangeOrdersPanel";
 import { ProjectBillingPanel } from "@/components/projects/ProjectBillingPanel";
+import { ProjectCostPanel } from "@/components/projects/ProjectCostPanel";
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
@@ -80,6 +81,12 @@ export default function ProjectDetailPage() {
     if (p?.budgetSummary) return p.budgetSummary;
     return computeProjectBudget(lines.map((l: any) => ({ discountType: "PERCENT", discountValue: 0, whtRate: 0, isOptional: false, productId: null, details: "", ...l })), { startDate: p?.startDate, endDate: p?.endDate });
   }, [p, lines]);
+  // งบต้นทุนตามหมวด (เทียบต้นทุนจริงในแท็บงบประมาณ)
+  const costBudget = useMemo(() => ({
+    materials: Number(budget?.equipCost) || 0,
+    labor: Number(budget?.laborCost) || 0,
+    operating: Number(Array.isArray(budget?.expenseLines) ? budget.expensesTotal : budget?.contingencyBuffer) || 0,
+  }), [budget]);
   const step = Number(p?.currentApprovalStep) || 0;
   const approvals: any[] = Array.isArray(p?.approvals) && p.approvals.length ? p.approvals : APPROVAL_STEPS.map((s) => ({ stepOrder: s.stepOrder, status: "Pending" }));
   const relatedWorkOrders = useMemo(
@@ -275,7 +282,7 @@ export default function ProjectDetailPage() {
     </NexusTable>
   );
 
-  const financeRow = (label: string, value: string, emphasis?: string) => (
+  const financeRow = (label: string, value: React.ReactNode, emphasis?: string) => (
     <div className="flex items-center justify-between py-2.5 border-b border-white/5 last:border-0">
       <span className="text-[13px] text-white/60">{label}</span>
       <span className={cn("text-[14px] font-mono font-bold", emphasis || "text-white")}>{value}</span>
@@ -283,6 +290,7 @@ export default function ProjectDetailPage() {
   );
 
   const finance = (
+    <div className="space-y-4">
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
       <GlassCard className="p-5">
         <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><Wallet size={16} className="text-nexus-teal" /> งบประมาณที่อนุมัติ</h3>
@@ -298,13 +306,15 @@ export default function ProjectDetailPage() {
         {financeRow("มูลค่ารวมภาษี", baht(budget.grandTotalWithVat))}
       </GlassCard>
       <GlassCard className="p-5">
-        <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><ClipboardList size={16} className="text-warning" /> ต้นทุนจริงระหว่างดำเนินงาน</h3>
-        {financeRow("ต้นทุนที่ประมาณการ", baht(p.allocatedCost ?? budget.totalCost))}
-        {financeRow("ต้นทุนจริงสะสม", baht(p.actualCost), Number(p.actualCost) > Number(p.allocatedCost ?? budget.totalCost) ? "text-danger" : "text-white")}
-        {financeRow("งานระหว่างทำ (WIP)", baht(p.wipValue))}
-        {financeRow("คงเหลือตามงบ", baht((Number(p.allocatedCost ?? budget.totalCost) || 0) - (Number(p.actualCost) || 0)))}
-        <p className="text-[12px] text-white/40 mt-3">ต้นทุนจริงมาจากค่าใช้จ่ายหน้างานที่บันทึกเข้าโครงการ (หน้าช่างมือถือ)</p>
+        <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2"><ClipboardList size={16} className="text-warning" /> งบต้นทุนตามหมวด</h3>
+        {financeRow("วัสดุและอุปกรณ์", baht(budget.equipCost))}
+        {financeRow("ค่าแรงและผู้รับเหมา", baht(budget.laborCost))}
+        {financeRow("ค่าใช้จ่ายดำเนินงาน", baht(costBudget.operating))}
+        {financeRow("รวมงบต้นทุน", baht(costBudget.materials + costBudget.labor + costBudget.operating))}
+        <p className="text-[12px] text-white/40 mt-3">ต้นทุนจริงด้านล่างคำนวณจากใบสั่งซื้อโครงการ ผู้รับเหมา ใบเบิกค่าใช้จ่ายที่ระบุโครงการ ค่าใช้จ่ายหน้างาน และสินค้าที่เบิกจากคลังตามใบสั่งขายของโครงการ</p>
       </GlassCard>
+    </div>
+    {!isLegacy && <ProjectCostPanel companyId={companyId || ""} docId={docId} budget={costBudget} revenue={budget.totalRev} />}
     </div>
   );
 
@@ -410,7 +420,7 @@ export default function ProjectDetailPage() {
         {financeRow("มูลค่าโครงการ", baht(budget.totalRev), "text-nexus-teal")}
         {financeRow("ต้นทุนประมาณการ", baht(budget.totalCost))}
         {financeRow("กำไรขั้นต้น", `${budget.gpPercent}%`, budget.gpPercent < 15 ? "text-warning" : "text-white")}
-        {financeRow("ต้นทุนจริงสะสม", baht(p.actualCost))}
+        {financeRow("ต้นทุนจริง", <button type="button" className="text-nexus-teal hover:underline" onClick={() => setTab("finance")}>ดูเทียบงบ →</button>)}
         <div className="pt-3">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[13px] text-white/60">ความคืบหน้า</span>

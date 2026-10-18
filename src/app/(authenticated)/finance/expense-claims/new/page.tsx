@@ -25,6 +25,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api-client";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
@@ -39,8 +40,12 @@ export default function NewExpenseClaimPage() {
     description: "",
     hasVat: false,
     subtotal: 0,
+    projectId: "",
   });
   const { user, companyId } = useAuth();
+  // โครงการที่ยังเปิดอยู่ สำหรับเบิกค่าใช้จ่ายเข้าโครงการ
+  const { data: projects } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/projects` : "");
+  const openProjects = projects.filter((p: any) => p.isDeleted !== true && !["cancelled", "completed", "closed"].includes(String(p.status || "").toLowerCase()));
   // รายชื่อพนักงานแบบย่อจาก server (ไม่ดึงข้อมูลเงินเดือน/บัญชีธนาคาร)
   const [employees, setEmployees] = useState<any[]>([]);
   useEffect(() => {
@@ -87,7 +92,7 @@ export default function NewExpenseClaimPage() {
       const res = await apiFetch("/api/finance/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId, action: "claim", employeeId: formData.employeeId, expenseAccountCode: formData.expenseAccountCode, description: formData.description, hasVat: formData.hasVat, subtotal: formData.subtotal }),
+        body: JSON.stringify({ companyId, action: "claim", employeeId: formData.employeeId, expenseAccountCode: formData.expenseAccountCode, description: formData.description, hasVat: formData.hasVat, subtotal: formData.subtotal, projectId: formData.projectId }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
@@ -166,6 +171,15 @@ export default function NewExpenseClaimPage() {
           >
             {EXPENSE_ACCOUNTS.map((a) => (
               <option key={a.code} value={a.code}>{a.code} - {a.name}</option>
+            ))}
+          </PillSelect>
+        </Field>
+
+        <Field label="โครงการ (ถ้าเป็นค่าใช้จ่ายของโครงการ)">
+          <PillSelect value={formData.projectId} onChange={e => setFormData({ ...formData, projectId: e.target.value })} className="w-full">
+            <option value="">ไม่ระบุโครงการ</option>
+            {openProjects.map((p: any) => (
+              <option key={p.id} value={p.id}>{p.projectId || p.id} - {p.projectName || p.title || "-"}</option>
             ))}
           </PillSelect>
         </Field>

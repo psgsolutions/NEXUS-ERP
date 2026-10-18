@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { PillInput, PillButton, cn } from '@/components/ui/Base';
-import { Save, Scan, Building2, MapPin, Phone, Cpu, UploadCloud, ArrowLeft } from 'lucide-react';
+import { Save, Building2, MapPin, Phone, ArrowLeft } from 'lucide-react';
 import { db } from '@/lib/firebase-client';
 import { apiFetch } from "@/lib/api-client";
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -64,62 +64,7 @@ export default function CustomerDataEntryPage() {
     email: ''
   });
 
-  const [isScanning, setIsScanning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
-  // Mock AI OCR Function
-  const extractDataFromImage = async () => {
-    return new Promise<any>((resolve) => {
-      setTimeout(() => {
-        resolve({
-          customerName: "บริษัท เน็กซัส เอนเตอร์ไพรส์ จำกัด",
-          taxId: "๐๑๒๓๔๕๖๗๘๙๐๑๒", // Contains Thai Numerals
-          branchCode: "๐๐๐๐๐", // Contains Thai Numerals
-          addressNo: "๙๙/๙", // Contains Thai Numerals
-          building: "อาคาร ไซเบอร์เทค",
-          soi: "พัฒนาการ ๒", // Contains Thai Numerals
-          road: "เพชรบุรีตัดใหม่",
-          subDistrict: "บางกะปิ",
-          district: "ห้วยขวาง",
-          province: "กรุงเทพมหานคร",
-          zipCode: "๑๐๓๑๐", // Contains Thai Numerals
-          phoneNumber: "๐๒-๑๒๓-๔๕๖๗", // Contains Thai Numerals
-          email: "contact@nexus.co.th"
-        });
-      }, 2000);
-    });
-  };
-
-  const handleScanAI = async () => {
-    setIsScanning(true);
-    try {
-      const rawAiData = await extractDataFromImage();
-      
-      // Sanitization Middleware: Convert Thai Numerals
-      const sanitizedData = {
-        customerName: convertThaiNumeralsToArabic(rawAiData.customerName),
-        taxId: convertThaiNumeralsToArabic(rawAiData.taxId),
-        branchCode: convertThaiNumeralsToArabic(rawAiData.branchCode),
-        addressNo: convertThaiNumeralsToArabic(rawAiData.addressNo),
-        building: convertThaiNumeralsToArabic(rawAiData.building),
-        soi: convertThaiNumeralsToArabic(rawAiData.soi),
-        road: convertThaiNumeralsToArabic(rawAiData.road),
-        subDistrict: convertThaiNumeralsToArabic(rawAiData.subDistrict),
-        district: convertThaiNumeralsToArabic(rawAiData.district),
-        province: convertThaiNumeralsToArabic(rawAiData.province),
-        zipCode: convertThaiNumeralsToArabic(rawAiData.zipCode),
-        phoneNumber: convertThaiNumeralsToArabic(rawAiData.phoneNumber),
-        email: convertThaiNumeralsToArabic(rawAiData.email)
-      };
-
-      setFormData(sanitizedData);
-      showAlert('AI ดึงข้อมูลและแปลงเลขไทยเป็นอารบิกเรียบร้อยแล้ว', 'OCR สำเร็จ', 'info');
-    } catch (error) {
-      showAlert('ไม่สามารถอ่านภาพได้', 'ข้อผิดพลาด', 'error');
-    } finally {
-      setIsScanning(false);
-    }
-  };
 
   const handleSave = async () => {
     if (!formData.customerName || !formData.taxId) {
@@ -132,7 +77,7 @@ export default function CustomerDataEntryPage() {
       // บันทึกผ่าน API: ตรวจเลขผู้เสียภาษี+สาขาซ้ำในเครือ แยกข้อมูลกลาง/ของบริษัท
       const res = await apiFetch('/api/master-data', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companyId: currentCompanyId, action: 'create', entity: 'customers', data: { ...formData, name: formData.customerName, status: 'ACTIVE' } }),
+        body: JSON.stringify({ companyId: currentCompanyId, action: 'create', entity: 'customers', data: { ...Object.fromEntries(Object.entries(formData).map(([k, v]) => [k, typeof v === 'string' ? convertThaiNumeralsToArabic(v) : v])), name: convertThaiNumeralsToArabic(formData.customerName), status: 'ACTIVE' } }),
       });
       const d = await res.json();
       if (!res.ok || !d.success) throw new Error(d.error || 'ไม่สามารถบันทึกข้อมูลได้');
@@ -186,27 +131,6 @@ export default function CustomerDataEntryPage() {
 
   const leftContent = (
     <div className="space-y-6">
-      {/* AI Scanner Hero Area */}
-      <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/5 border border-cyan-500/20 rounded-3xl p-8 shadow-2xl flex flex-col items-center justify-center gap-4 relative overflow-hidden">
-          <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10 mix-blend-overlay"></div>
-          <Cpu className="text-cyan-400 w-12 h-12 mb-2 animate-pulse" />
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-white tracking-widest mb-1">Enterprise AI OCR</h2>
-            <p className="text-sm text-white/60 mb-4">อัปโหลดหนังสือรับรองบริษัท, ภ.พ.20 หรือนามบัตร เพื่อสกัดข้อมูลและแปลงเลขไทยอัตโนมัติ</p>
-          </div>
-          <button 
-            onClick={handleScanAI}
-            disabled={isScanning}
-            className="h-12 px-8 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-black uppercase tracking-widest flex items-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:bg-cyan-500/30 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isScanning ? (
-              <><UploadCloud size={20} className="animate-bounce" /> กำลังประมวลผล AI...</>
-            ) : (
-              <><Scan size={20} /> สแกนเอกสารด้วย AI (Auto-Fill)</>
-            )}
-          </button>
-        </div>
-
       <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl space-y-10">
         <div>
           <h3 className="text-[14px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4 mb-6">

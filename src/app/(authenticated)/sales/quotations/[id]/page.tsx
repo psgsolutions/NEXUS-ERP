@@ -1714,6 +1714,8 @@ export default function QuotationEditPage() {
         open={showPreviewModal}
         onClose={() => setShowPreviewModal(false)}
         model={previewDocumentData}
+        shareSource={params.id ? { type: "quotation", id: params.id } : undefined}
+        shareEmail={contactEmail}
         title={`ตัวอย่างใบเสนอราคา${quotationNumber ? ` ${quotationNumber}` : ""}`}
       />
 

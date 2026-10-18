@@ -22,8 +22,13 @@ async function renderClientPdf(model: DocumentModel, copy: CopyMode): Promise<Bl
   return pdf(<DocumentPdf doc={model} copy={copy} />).toBlob();
 }
 
-export function DocumentPdfViewer({ source, model, className, title = "" }: { source?: DocumentPdfSource; model?: DocumentModel; className?: string; title?: string }) {
-  const [shareOpen, setShareOpen] = useState(false);
+/**
+ * shareSource: เอกสารที่บันทึกแล้วสำหรับส่ง/แชร์ เมื่อแสดงตัวอย่างจากหน้าจอ (model) เช่น ใบเสนอราคาที่กำลังแก้
+ * startShare: เปิดแผงส่ง/แชร์ทันที
+ */
+export function DocumentPdfViewer({ source, model, className, title = "", shareSource, startShare = false, shareEmail }: { source?: DocumentPdfSource; model?: DocumentModel; className?: string; title?: string; shareSource?: DocumentPdfSource; startShare?: boolean; shareEmail?: string }) {
+  const shareDoc = shareSource || (model ? undefined : source);
+  const [shareOpen, setShareOpen] = useState(startShare && !!shareDoc);
   const { companyId } = useAuth();
   const [copy, setCopy] = useState<CopyMode>("original");
   const [url, setUrl] = useState("");
@@ -74,7 +79,7 @@ export function DocumentPdfViewer({ source, model, className, title = "" }: { so
         </div>
         <div className="flex items-center gap-2">
           {/* ส่งได้เฉพาะเอกสารที่บันทึกแล้ว (มีเลขที่) */}
-          {source && !model && (
+          {shareDoc && (
             <PillButton variant={shareOpen ? "confirm" : "glass"} className="h-9 px-4 text-xs" onClick={() => setShareOpen((v) => !v)}><Send size={14} /> ส่ง / แชร์</PillButton>
           )}
           <PillButton variant="glass" className="h-9 px-4 text-xs" disabled={!url || loading} onClick={print}><Printer size={14} /> พิมพ์</PillButton>
@@ -89,9 +94,9 @@ export function DocumentPdfViewer({ source, model, className, title = "" }: { so
           {error && !loading && <div className="absolute inset-0 flex items-center justify-center text-danger text-sm px-6 text-center">{error}</div>}
           {url && <iframe ref={frame} src={url} title={fileName} className={cn("w-full h-full border-0", loading && "opacity-0")} />}
         </div>
-        {shareOpen && source && (
+        {shareOpen && shareDoc && (
           <aside className="w-[340px] max-w-[85vw] shrink-0 border-l border-white/10 overflow-y-auto bg-surface-0">
-            <DocumentSharePanel type={source.type} id={source.id} title={title || fileName.replace(/.pdf$/, "")} />
+            <DocumentSharePanel type={shareDoc.type} id={shareDoc.id} defaultTo={shareEmail} title={title || fileName.replace(/.pdf$/, "")} />
           </aside>
         )}
       </div>
@@ -100,7 +105,7 @@ export function DocumentPdfViewer({ source, model, className, title = "" }: { so
 }
 
 /** หน้าต่างดูเอกสาร (ทับหน้าปัจจุบัน) */
-export function DocumentPdfModal({ open, onClose, title, source, model }: { open: boolean; onClose: () => void; title: string; source?: DocumentPdfSource; model?: DocumentModel }) {
+export function DocumentPdfModal({ open, onClose, title, source, model, shareSource, startShare, shareEmail }: { open: boolean; onClose: () => void; title: string; source?: DocumentPdfSource; model?: DocumentModel; shareSource?: DocumentPdfSource; startShare?: boolean; shareEmail?: string }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -118,7 +123,7 @@ export function DocumentPdfModal({ open, onClose, title, source, model }: { open
           <h3 className="text-[16px] font-semibold text-white">{title}</h3>
           <button type="button" onClick={onClose} className="text-white/50 hover:text-white" aria-label="ปิด"><X size={20} /></button>
         </div>
-        <DocumentPdfViewer source={source} model={model} title={title} className="flex-1 min-h-0" />
+        <DocumentPdfViewer source={source} model={model} title={title} shareSource={shareSource} startShare={startShare} shareEmail={shareEmail} className="flex-1 min-h-0" />
       </div>
     </div>,
     document.body

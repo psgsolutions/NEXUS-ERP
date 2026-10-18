@@ -100,6 +100,7 @@ export default function QuotationCreationPage() {
 
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [startShare, setStartShare] = useState(false);
   const [isSendMenuOpen, setIsSendMenuOpen] = useState(false);
   const canSeeCost = canViewCost(roles);
 
@@ -648,12 +649,10 @@ export default function QuotationCreationPage() {
       if (saved.docNo) setQuotationNumber(saved.docNo);
       if (saved.status) setStatus(saved.status);
 
-      if (sendChannel === 'DOWNLOAD') {
+      // ส่งอีเมล / LINE: เปิดเอกสารพร้อมแผงส่ง (ส่งจริงจากแผง ไม่แจ้งสำเร็จล่วงหน้า)
+      if (sendChannel === 'DOWNLOAD' || sendChannel === 'EMAIL' || sendChannel === 'LINE') {
+        setStartShare(sendChannel !== 'DOWNLOAD');
         setShowPreviewModal(true);
-      } else if (sendChannel === 'EMAIL') {
-        showAlert(`บันทึกและส่งใบเสนอราคาไปยังอีเมล ${contactEmail || 'ลูกค้า'} สำเร็จ`);
-      } else if (sendChannel === 'LINE') {
-        showAlert(`บันทึกและสร้างลิงก์สำหรับส่งผ่าน LINE สำเร็จ`);
       }
 
       setShowSuccessModal(true);
@@ -738,7 +737,7 @@ export default function QuotationCreationPage() {
                   }}
                   className="w-full px-3 py-2 text-left text-xs text-white/80 hover:bg-white/10 rounded-lg flex items-center gap-2"
                 >
-                  <Send size={12} className="text-nexus-teal" /> ส่งผ่านอีเมลลูกค้า
+                  <Send size={12} className="text-nexus-teal" /> บันทึกแล้วส่งอีเมล
                 </button>
                 <button
                   type="button"
@@ -748,7 +747,7 @@ export default function QuotationCreationPage() {
                   }}
                   className="w-full px-3 py-2 text-left text-xs text-white/80 hover:bg-white/10 rounded-lg flex items-center gap-2"
                 >
-                  <Share2 size={12} className="text-nexus-blue" /> ส่งผ่าน LINE OA
+                  <Share2 size={12} className="text-nexus-blue" /> บันทึกแล้วส่งผ่าน LINE
                 </button>
                 <button
                   type="button"
@@ -1687,8 +1686,11 @@ export default function QuotationCreationPage() {
       {/* Live Document PDF Preview Modal (Patch 12) */}
       <DocumentPdfModal
         open={showPreviewModal}
-        onClose={() => setShowPreviewModal(false)}
+        onClose={() => { setShowPreviewModal(false); setStartShare(false); }}
         model={previewDocumentData}
+        shareSource={savedQuotationId ? { type: "quotation", id: savedQuotationId } : undefined}
+        startShare={startShare}
+        shareEmail={contactEmail}
         title={`ตัวอย่างใบเสนอราคา${quotationNumber ? ` ${quotationNumber}` : ""}`}
       />
       {showSuccessModal && (

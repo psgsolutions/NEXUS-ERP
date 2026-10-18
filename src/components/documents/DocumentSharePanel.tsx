@@ -18,13 +18,13 @@ interface Status { internal: boolean; emailReady: boolean; shares: ShareInfo[]; 
 const CHANNEL: Record<string, string> = { link: "สร้างลิงก์", line: "LINE", email: "อีเมล" };
 const when = (ms: number | null) => (ms ? new Date(ms).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "-");
 
-export function DocumentSharePanel({ type, id, title }: { type: string; id: string; title: string }) {
+export function DocumentSharePanel({ type, id, title, defaultTo = "" }: { type: string; id: string; title: string; defaultTo?: string }) {
   const { companyId } = useAuth();
   const [status, setStatus] = useState<Status | null>(null);
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState<{ text: string; error?: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
-  const [to, setTo] = useState("");
+  const [to, setTo] = useState(defaultTo);
   const [cc, setCc] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");

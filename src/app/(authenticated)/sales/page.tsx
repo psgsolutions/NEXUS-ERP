@@ -54,7 +54,6 @@ import { OpportunityScorer } from "@/components/sales/OpportunityScorer";
 import { CustomerModal } from "@/components/commerce/CustomerModal";
 import { QuotationModal } from "@/components/commerce/QuotationModal";
 import { SalesOrderModal } from "@/components/commerce/SalesOrderModal";
-import { DocumentViewerModal } from "@/components/commerce/DocumentViewerModal";
 import { BillingNoteModal } from "@/components/commerce/BillingNoteModal";
 import { CNDNModal } from "@/components/commerce/CNDNModal";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
@@ -970,9 +969,9 @@ export default function SalesPage() {
                      <FileText size={14} className="mr-2" />
                      ดู / แก้ไขใบเสนอราคา
                    </PillButton>
-                   <PillButton size="sm" variant="glass" onClick={() => window.print()} className="w-full border-white/20 hover:border-nexus-blue shadow-none">
+                   <PillButton size="sm" variant="glass" onClick={() => setPrintDoc({ type: "quotation", id: selectedItem.docId, title: `ใบเสนอราคา ${selectedItem.id}` })} className="w-full border-white/20 hover:border-nexus-blue shadow-none">
                      <Printer size={14} className="mr-2" />
-                     พิมพ์ / ดูภาพก่อนพิมพ์
+                     พิมพ์ / ส่งใบเสนอราคา
                    </PillButton>
                    <PillButton size="sm" variant="glass" onClick={() => setSelectedItem(null)} className="w-full border-white/20 text-white/40 shadow-none">
                      ปิดหน้าต่าง

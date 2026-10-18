@@ -4,6 +4,9 @@ import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth"
 import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { auditServer } from "@/services/audit.server";
+import { normalizeLines } from "@/lib/quotation.server";
+import { projectItemsToQuotationLines, quotationTotals } from "@/lib/project-quotation";
+import { REVISABLE, quotationDocNo, writeQuotationRevision } from "@/lib/quotation-revision.server";
 import { normalizeProjectStatus } from "@/lib/project-status";
 import { notifyInTx } from "@/lib/notifications.server";
 import { CHANGEABLE_STATUSES, CHANGE_ORDER_TYPES, changeOrderPatch, normalizeChangeOrder } from "@/lib/change-orders";
@@ -14,6 +17,8 @@ import { CHANGEABLE_STATUSES, CHANGE_ORDER_TYPES, changeOrderPatch, normalizeCha
  * body:
  *  - { companyId, projectDocId, action: "create", type, reason, payload }
  *  - { companyId, projectDocId, action: "approve" | "reject", coId, note? }
+ *  - { companyId, projectDocId, action: "reviseQuotation", coId }   ปรับใบเสนอราคาของโครงการตามคำขอเปลี่ยนรายการที่อนุมัติแล้ว
+ *      ส่งลูกค้าแล้ว -> ออกฉบับแก้ไข (-R{n}) / ยังไม่ส่ง -> แทนรายการในใบเดิม / ได้งานแล้ว -> ปรับไม่ได้ (แก้ที่ใบสั่งขาย)
  *
  * - ยื่นได้เมื่อโครงการอนุมัติแล้ว/กำลังดำเนินการ (ผู้มีสิทธิ์แก้ไขโครงการ)
  * - อนุมัติ/ไม่อนุมัติ: ผู้ดูแลระบบ (คนเดียวกับผู้ยื่นได้ ตามนโยบายปัจจุบัน)
@@ -30,11 +35,73 @@ export async function POST(request: Request) {
     const docId = str(body.projectDocId);
     if (!companyId || !docId) throw new ApiAuthError(400, "ข้อมูลไม่ครบ");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.roles, "projects:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+    const action = String(body.action || "");
+    // ปรับใบเสนอราคาเป็นงานฝ่ายขาย ส่วนการยื่น/อนุมัติคำขอเป็นงานโครงการ
+    if (action === "reviseQuotation" ? !can(apiUser.roles, "sales:edit") : !can(apiUser.roles, "projects:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
 
     const projectRef = adminDb.doc(`companies/${companyId}/projects/${docId}`);
     const now = admin.firestore.FieldValue.serverTimestamp();
-    const action = String(body.action || "");
+
+    if (action === "reviseQuotation") {
+      const coRef = projectRef.collection("change_orders").doc(str(body.coId));
+      const quotations = adminDb.collection(`companies/${companyId}/quotations`);
+      const result = await adminDb.runTransaction(async (tx) => {
+        const [pSnap, cSnap] = await Promise.all([tx.get(projectRef), tx.get(coRef)]);
+        if (!pSnap.exists || !cSnap.exists) throw new ApiAuthError(404, "ไม่พบคำขอเปลี่ยนแปลง");
+        const p = pSnap.data()!;
+        const co = cSnap.data()!;
+        if (co.status !== "APPROVED") throw new ApiAuthError(409, `${co.coNo} ยังไม่อนุมัติ`);
+        if (co.type !== "EQUIPMENT") throw new ApiAuthError(400, "ปรับใบเสนอราคาได้เฉพาะคำขอเปลี่ยนรายการอุปกรณ์");
+        if (co.quotationUpdate) throw new ApiAuthError(409, `${co.coNo} ปรับใบเสนอราคาไปแล้ว (${co.quotationUpdate.docNo})`);
+        if (!p.quotationDocId) throw new ApiAuthError(400, "โครงการนี้ไม่ได้ผูกกับใบเสนอราคา");
+        // ใบล่าสุดของสายฉบับแก้ไข
+        let qRef = quotations.doc(String(p.quotationDocId));
+        let qSnap = await tx.get(qRef);
+        for (let i = 0; i < 20 && qSnap.exists && qSnap.data()!.supersededBy; i++) {
+          qRef = quotations.doc(String(qSnap.data()!.supersededBy));
+          qSnap = await tx.get(qRef);
+        }
+        if (!qSnap.exists) throw new ApiAuthError(404, "ไม่พบใบเสนอราคาของโครงการ");
+        const q = qSnap.data()!;
+        const docNo = quotationDocNo(q, qSnap.id);
+        const status = String(q.status || "DRAFT").toUpperCase();
+        if (q.linkedSo || ["APPROVED", "WON", "CONVERTED"].includes(status)) {
+          throw new ApiAuthError(409, `${docNo} แปลงเป็นใบสั่งขายแล้ว ให้ปรับที่ใบสั่งขายหรือออกใบลดหนี้/เพิ่มหนี้`);
+        }
+        const linesSnap = await tx.get(qRef.collection("lines"));
+        const lines = normalizeLines(projectItemsToQuotationLines(p.items));
+        if (!lines.some((l) => l.itemType !== "GROUP_HEADER")) throw new ApiAuthError(400, "โครงการไม่มีรายการ");
+        const totals = quotationTotals(lines, q.taxType, q.docDiscountAmount);
+        const changeSummary = `${co.coNo}: ${co.summary || ""} — ${co.reason || ""}`.slice(0, 500);
+
+        let out: { mode: "revision" | "updated"; quotationId: string; docNo: string };
+        if (REVISABLE.includes(status)) {
+          const newRef = quotations.doc();
+          const r = writeQuotationRevision(tx, {
+            companyId, origRef: qRef, orig: q, origId: qSnap.id, newRef, oldLines: [], lines, totals,
+            uid: apiUser.uid, changeSummary, extra: { changeOrderRef: { projectDocId: docId, coId: coRef.id, coNo: co.coNo } },
+          });
+          out = { mode: "revision", quotationId: newRef.id, docNo: r.newDocNo };
+        } else if (["DRAFT", "REJECTED", "PENDING_APPROVAL"].includes(status)) {
+          linesSnap.forEach((d) => tx.delete(d.ref));
+          lines.forEach((l) => tx.set(qRef.collection("lines").doc(), l));
+          // รออนุมัติอยู่: เนื้อหาเปลี่ยน ต้องส่งอนุมัติใหม่
+          tx.update(qRef, { ...totals, ...(status === "PENDING_APPROVAL" ? { status: "DRAFT" } : {}), lastChangeOrderNo: co.coNo, updatedAt: now, updatedBy: apiUser.uid });
+          out = { mode: "updated", quotationId: qSnap.id, docNo };
+        } else {
+          throw new ApiAuthError(409, `${docNo} อยู่ในสถานะที่ปรับไม่ได้`);
+        }
+        tx.update(coRef, { quotationUpdate: { ...out, at: now, by: apiUser.uid }, updatedAt: now });
+        tx.update(projectRef, {
+          quotationDocId: out.quotationId,
+          ...(p.clientReference && p.clientReference === docNo ? { clientReference: out.docNo } : {}),
+          updatedAt: now, updatedBy: apiUser.uid,
+        });
+        return { ...out, coNo: co.coNo, projectNo: p.projectId || docId, grandTotal: totals.grandTotal };
+      });
+      await auditServer.logUpdate(apiUser.uid, companyId, "PROJECT_CHANGE_ORDER", `${result.projectNo}/${result.coNo}`, null, { quotation: result.docNo, mode: result.mode });
+      return NextResponse.json({ success: true, ...result });
+    }
 
     if (action === "create") {
       const result = await adminDb.runTransaction(async (tx) => {

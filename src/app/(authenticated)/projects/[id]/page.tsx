@@ -384,6 +384,7 @@ export default function ProjectDetailPage() {
           status={status}
           canRequest={!isLegacy && canEditProject}
           canApprove={!isLegacy && isAdmin}
+          canQuote={!isLegacy && can(roles, "sales:edit")}
           onMessage={(text, error) => setMessage({ text, error })}
         />
       )}

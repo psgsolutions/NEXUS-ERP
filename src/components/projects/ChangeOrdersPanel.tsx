@@ -16,13 +16,15 @@ const tsText = (t: any) => (t?.toDate ? t.toDate().toLocaleDateString("th-TH", {
 const DAY = 86400e3;
 const textareaCls = "w-full bg-black/20 border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:outline-none resize-y leading-relaxed placeholder:text-white/30";
 
-export function ChangeOrdersPanel({ companyId, docId, project, status, canRequest, canApprove, onMessage }: {
+export function ChangeOrdersPanel({ companyId, docId, project, status, canRequest, canApprove, canQuote = false, onMessage }: {
   companyId: string;
   docId: string;
   project: any;
   status: string;
   canRequest: boolean;
   canApprove: boolean;
+  /** ฝ่ายขาย: ปรับใบเสนอราคาตามคำขอที่อนุมัติแล้ว */
+  canQuote?: boolean;
   onMessage: (text: string, error?: boolean) => void;
 }) {
   const { data: rows } = useRealtimeCollection<any>(companyId && docId ? `companies/${companyId}/projects/${docId}/change_orders` : "");
@@ -78,6 +80,18 @@ export function ChangeOrdersPanel({ companyId, docId, project, status, canReques
       const r = await post({ action: "create", type, reason, payload });
       onMessage(`ยื่นคำขอเปลี่ยนแปลง ${r.coNo} แล้ว รอผู้ดูแลระบบอนุมัติ`);
       setOpen(false);
+    } catch (e: any) {
+      onMessage(e.message, true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reviseQuotation = async (coId: string) => {
+    try {
+      setBusy(true);
+      const r = await post({ action: "reviseQuotation", coId });
+      onMessage(r.mode === "revision" ? `ออกใบเสนอราคาฉบับแก้ไข ${r.docNo} (ฉบับร่าง) ตาม ${r.coNo} แล้ว ตรวจและส่งลูกค้าได้ที่หน้าใบเสนอราคา` : `ปรับรายการในใบเสนอราคา ${r.docNo} ตาม ${r.coNo} แล้ว`);
     } catch (e: any) {
       onMessage(e.message, true);
     } finally {
@@ -216,6 +230,10 @@ export function ChangeOrdersPanel({ companyId, docId, project, status, canReques
                       <button type="button" disabled={busy} onClick={() => decide(co.id, "approve")} className="w-8 h-8 rounded-full border border-nexus-teal/40 text-nexus-teal flex items-center justify-center" title={`อนุมัติ ${co.coNo}`}><Check size={14} /></button>
                       <button type="button" disabled={busy} onClick={() => setRejecting({ id: co.id, note: "" })} className="w-8 h-8 rounded-full border border-white/10 text-white/60 hover:text-danger flex items-center justify-center" title={`ไม่อนุมัติ ${co.coNo}`}><X size={14} /></button>
                     </span>
+                  ) : co.quotationUpdate ? (
+                    <a href={`/sales/quotations/${encodeURIComponent(co.quotationUpdate.quotationId)}`} className="text-[12px] font-bold text-nexus-teal hover:underline whitespace-nowrap" title={co.quotationUpdate.mode === "revision" ? "ฉบับแก้ไขที่ออกตามคำขอนี้" : "ใบเสนอราคาที่ปรับรายการตามคำขอนี้"}>{co.quotationUpdate.docNo}</a>
+                  ) : co.status === "APPROVED" && co.type === "EQUIPMENT" && canQuote && project.quotationDocId ? (
+                    <button type="button" disabled={busy} onClick={() => reviseQuotation(co.id)} className="h-8 px-3 rounded-full border border-nexus-teal/30 text-nexus-teal text-[12px] font-bold hover:bg-nexus-teal/10 whitespace-nowrap" title="ออกใบเสนอราคาฉบับแก้ไขตามรายการโครงการล่าสุด">ปรับใบเสนอราคา</button>
                   ) : null}
                 </NexusTableCell>
               </NexusTableRow>

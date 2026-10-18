@@ -684,6 +684,7 @@ export default function SalesPage() {
                           total={so.total}
                           status={so.status}
                           companyId={companyId || ""}
+                          onPrint={() => setPrintDoc({ type: "sales_order", id: so.docId, title: `ใบสั่งขาย ${so.id}` })}
                           onClick={() => setSelectedItem(so)}
                         />
                       ))}
@@ -1004,10 +1005,16 @@ export default function SalesPage() {
                      <Receipt size={14} className="mr-2" />
                      ดู / แก้ไขใบสั่งขาย
                    </PillButton>
-                   <PillButton size="sm" variant="glass" onClick={() => window.print()} className="w-full border-white/20 hover:border-nexus-teal shadow-none">
+                   <PillButton size="sm" variant="glass" onClick={() => setPrintDoc({ type: "sales_order", id: selectedItem.docId, title: `ใบสั่งขาย ${selectedItem.id}` })} className="w-full border-white/20 hover:border-nexus-teal shadow-none">
                      <Printer size={14} className="mr-2" />
-                     พิมพ์ / ดูภาพก่อนพิมพ์
+                     พิมพ์ใบสั่งขาย
                    </PillButton>
+                   {(Array.isArray(selectedItem.deliveryNotes) ? selectedItem.deliveryNotes : []).map((dn: string) => (
+                     <PillButton key={dn} size="sm" variant="glass" onClick={() => setPrintDoc({ type: "delivery_note", id: dn, title: `ใบส่งของ ${dn}` })} className="w-full border-white/20 hover:border-nexus-teal shadow-none">
+                       <Printer size={14} className="mr-2" />
+                       ใบส่งของ {dn}
+                     </PillButton>
+                   ))}
                    <PillButton size="sm" variant="glass" onClick={() => setSelectedItem(null)} className="w-full border-white/20 text-white/40 shadow-none">
                      ปิดหน้าต่าง
                    </PillButton>
@@ -1128,7 +1135,7 @@ function QuotationRow({ id, docId, customer, title, value, stage, validUntil, ca
   );
 }
 
-function SalesOrderRow({ id, docId, customer, date, total, status, companyId, onClick }: { id: string, docId: string, customer: string, date: string, total: string, status: string, companyId: string, onClick?: () => void }) {
+function SalesOrderRow({ id, docId, customer, date, total, status, onClick, onPrint }: { id: string, docId: string, customer: string, date: string, total: string, status: string, companyId: string, onClick?: () => void, onPrint?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
       <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
@@ -1139,8 +1146,9 @@ function SalesOrderRow({ id, docId, customer, date, total, status, companyId, on
         <StatusBadge {...salesOrderStatusBadge(status)} />
       </NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
-        <div onClick={(e) => e.stopPropagation()} className="inline-block">
+        <div onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1.5">
           <SecureDeleteAction serverKind="sales_order" documentId={docId} displayName={customer} compact />
+          <PrintButton onPrint={onPrint} label={id} />
         </div>
       </NexusTableCell>
     </NexusTableRow>

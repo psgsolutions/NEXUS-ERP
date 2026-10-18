@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import { apiFetch } from "@/lib/api-client";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Building2, Calendar, CheckCircle2, FileText, MapPin, Truck, XCircle, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Building2, Calendar, CheckCircle2, FileText, MapPin, Truck, XCircle, AlertTriangle, Printer } from "lucide-react";
+import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { PillButton, GlassCard, StatusBadge, NexusTable, NexusTableRow, NexusTableCell } from "@/components/ui/Base";
 import { formatCurrency } from "@/lib/erp-logic";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
@@ -45,6 +46,7 @@ export default function SalesOrderDetailPage() {
   const { data: so, loading } = useRealtimeDocument<any>(companyId && soDocId ? `companies/${companyId}/sales_orders/${soDocId}` : null);
 
   const [busy, setBusy] = useState(false);
+  const [printDoc, setPrintDoc] = useState<{ type: string; id: string; title: string } | null>(null);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
   const status = normalizeStatus(so?.status);
@@ -124,6 +126,15 @@ export default function SalesOrderDetailPage() {
       </div>
       <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
         {status !== "CANCELLED" && <DocumentStepper steps={STEPS} currentStep={view.step} />}
+        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold" onClick={() => setPrintDoc({ type: "sales_order", id: soDocId, title: `ใบสั่งขาย ${docNo}` })}>
+          <Printer size={14} className="mr-1.5" /> พิมพ์
+        </PillButton>
+        {(Array.isArray(so.deliveryNotes) ? so.deliveryNotes : []).map((dn: string) => (
+          <PillButton key={dn} variant="glass" className="h-8 px-4 text-xs font-bold" onClick={() => setPrintDoc({ type: "delivery_note", id: dn, title: `ใบส่งของ ${dn}` })}>
+            <Printer size={14} className="mr-1.5" /> ใบส่งของ {dn}
+          </PillButton>
+        ))}
+        <DocumentPdfModal open={!!printDoc} onClose={() => setPrintDoc(null)} source={printDoc ? { type: printDoc.type, id: printDoc.id } : undefined} title={printDoc?.title || ""} />
         {status === "DRAFT" && (
           <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={() => setStatus("confirm")}>
             <CheckCircle2 size={14} className="mr-1.5" /> อนุมัติใบสั่งขาย

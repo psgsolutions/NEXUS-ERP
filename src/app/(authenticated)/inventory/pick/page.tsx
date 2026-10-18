@@ -2,7 +2,8 @@
 
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ScanLine, MapPin, PackageCheck, Trash2, CheckCircle2, AlertTriangle, ClipboardList } from "lucide-react";
+import { ArrowLeft, ScanLine, MapPin, PackageCheck, Trash2, CheckCircle2, AlertTriangle, ClipboardList, Printer } from "lucide-react";
+import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { PillButton, PillInput, GlassCard, cn } from "@/components/ui/Base";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
@@ -41,6 +42,9 @@ function PickingScreen() {
   const [scan, setScan] = useState("");
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [saving, setSaving] = useState(false);
+  // ใบส่งของที่ออกจากการเบิกครั้งล่าสุด
+  const [lastDn, setLastDn] = useState("");
+  const [dnOpen, setDnOpen] = useState(false);
   const scanRef = useRef<HTMLInputElement>(null);
   const focusScan = () => { setTimeout(() => scanRef.current?.focus(), 0); };
   useEffect(() => { setLines([]); setLocation(""); setFeedback(null); focusScan(); }, [soId]);
@@ -99,11 +103,12 @@ function PickingScreen() {
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "เบิกสินค้าไม่สำเร็จ");
       setLines([]);
+      if (data.deliveryNoteNo) setLastDn(data.deliveryNoteNo);
       if (data.allPicked) {
         setFeedback({ type: "ok", text: "เบิกครบทุกรายการแล้ว ใบสั่งขายเปลี่ยนเป็นส่งมอบแล้ว" });
         router.push(`/sales/orders/${so.id}`);
       } else {
-        setFeedback({ type: "ok", text: "บันทึกการเบิกแล้ว ยังมีรายการค้างเบิก" });
+        setFeedback({ type: "ok", text: `บันทึกการเบิกแล้ว ออกใบส่งของ ${data.deliveryNoteNo || ""} ยังมีรายการค้างเบิก` });
       }
     } catch (err: any) {
       setFeedback({ type: "error", text: err.message });
@@ -175,9 +180,13 @@ function PickingScreen() {
             feedback.type === "ok" && "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400",
             feedback.type === "error" && "bg-red-500/10 border border-red-500/30 text-red-400",
             feedback.type === "info" && "bg-cyan-500/10 border border-cyan-500/30 text-cyan-300")}>
-            {feedback.type === "error" ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />} {feedback.text}
+            {feedback.type === "error" ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />} <span className="flex-1">{feedback.text}</span>
+            {feedback.type === "ok" && lastDn && (
+              <PillButton variant="glass" className="h-8 px-3 text-xs font-bold" onClick={() => setDnOpen(true)}><Printer size={14} className="mr-1.5" /> พิมพ์ใบส่งของ</PillButton>
+            )}
           </div>
         )}
+        <DocumentPdfModal open={dnOpen && !!lastDn} onClose={() => setDnOpen(false)} source={lastDn ? { type: "delivery_note", id: lastDn } : undefined} title={`ใบส่งของ ${lastDn}`} />
       </GlassCard>
 
       <GlassCard className="p-5 space-y-3 border-white/10 rounded-3xl">

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { MapPin, Camera, CheckCircle, Navigation, X, Upload, ChevronLeft, ClipboardList, Loader2 } from 'lucide-react';
+import { MapPin, Camera, CheckCircle, Navigation, X, Upload, ChevronLeft, ClipboardList, Loader2, Printer } from 'lucide-react';
+import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { cn } from '@/components/ui/Base';
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from '@/context/AuthContext';
@@ -179,6 +180,7 @@ export default function FieldTechnicianApp() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const wo = useMemo(() => workOrders.find((w: any) => w.id === selectedId) || null, [workOrders, selectedId]);
+  const [printOpen, setPrintOpen] = useState(false);
   const woPath = companyId && wo ? `companies/${companyId}/work_orders/${wo.id}` : '';
 
   // รูปถ่าย/ลายเซ็นเก็บแยกเป็นเอกสารย่อยของใบงาน (attachments/before|after|signature)
@@ -347,7 +349,13 @@ export default function FieldTechnicianApp() {
             {wo ? <ChevronLeft size={24} /> : <X size={24} />}
           </button>
           <h1 className="font-semibold text-lg text-white tracking-widest">{wo ? (wo.woCode || wo.id) : 'งานช่างของฉัน'}</h1>
+          {wo && (
+            <button className="absolute right-4 text-white/60 hover:text-white" onClick={() => setPrintOpen(true)} aria-label={wo.status === 'COMPLETED' ? 'พิมพ์ใบรายงานการให้บริการ' : 'พิมพ์ใบสั่งงาน'} title={wo.status === 'COMPLETED' ? 'พิมพ์ใบรายงานการให้บริการ' : 'พิมพ์ใบสั่งงาน'}>
+              <Printer size={20} />
+            </button>
+          )}
         </div>
+        <DocumentPdfModal open={printOpen && !!wo} onClose={() => setPrintOpen(false)} source={wo ? { type: "work_order", id: wo.id } : undefined} title={`${wo?.status === 'COMPLETED' ? 'ใบรายงานการให้บริการ' : 'ใบสั่งงานบริการ'} ${wo?.woCode || wo?.id || ''}`} />
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24">

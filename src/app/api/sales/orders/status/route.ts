@@ -8,6 +8,9 @@ import { soPickRemaining } from "@/lib/picking";
 import { getCompanyCustomer, assertCreditAvailable } from "@/lib/credit-limit.server";
 import { getProductTx } from "@/lib/product-store.server";
 import { groupIdOfCompany } from "@/lib/company-group.server";
+import { prepareSequence } from "@/lib/sequence-server";
+import { sellerSnapshot } from "@/lib/documents/seller.server";
+import { soAllLines, writeDeliveryNote } from "@/lib/delivery-note.server";
 
 /**
  * [API-SERVER] เปลี่ยนสถานะใบสั่งขาย
@@ -45,6 +48,9 @@ export async function POST(request: Request) {
     }
 
     const groupId = await groupIdOfCompany(companyId);
+    // ส่งมอบงานที่ไม่ต้องเบิกสินค้า: ออกใบส่งของ (DN) ทุกรายการ
+    const [takeDn, seller] = action === "deliver" ? await Promise.all([prepareSequence("DN", companyId), sellerSnapshot(companyId)]) : [null, null];
+    let dnNo = "";
     const next = await adminDb.runTransaction(async (tx) => {
       const snap = await tx.get(soRef);
       if (!snap.exists) throw new ApiAuthError(404, "ไม่พบใบสั่งขาย");
@@ -64,7 +70,10 @@ export async function POST(request: Request) {
 
       if (action === "deliver") {
         if (soPickRemaining(so).size > 0) throw new ApiAuthError(409, `${docNo} มีสินค้าที่ต้องเบิกจากคลัง ส่งมอบผ่านหน้าเบิกสินค้า`);
-        tx.update(soRef, { status: "DELIVERED", deliveredAt: now, updatedBy: apiUser.uid, updatedAt: now });
+        const seq = await takeDn!(tx);
+        dnNo = seq.number; seq.commit();
+        const dnUpdate = writeDeliveryNote(tx, { companyId, dnNo, soId, so, lines: soAllLines(so), seller, uid: apiUser.uid, source: "deliver" });
+        tx.update(soRef, { ...dnUpdate, status: "DELIVERED", deliveredAt: now, updatedBy: apiUser.uid, updatedAt: now });
         return "DELIVERED";
       }
 
@@ -90,7 +99,7 @@ export async function POST(request: Request) {
     });
 
     await auditServer.logUpdate(apiUser.uid, companyId, "SALES_ORDER", soId, null, { action, status: next });
-    return NextResponse.json({ success: true, status: next });
+    return NextResponse.json({ success: true, status: next, ...(dnNo ? { deliveryNoteNo: dnNo } : {}) });
   } catch (error: any) {
     const authRes = authErrorResponse(error);
     if (authRes) return authRes;

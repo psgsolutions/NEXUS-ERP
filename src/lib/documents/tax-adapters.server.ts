@@ -24,7 +24,7 @@ async function companyAndDoc(companyId: string, path: string, notFound: string) 
 }
 
 /** ลูกค้าจาก snapshot (รองรับทั้งรูปแบบใบสั่งขายและใบเสนอราคา) */
-function partyOf(label: string, snap: any, fallbackName = ""): DocumentParty {
+export function partyOf(label: string, snap: any, fallbackName = ""): DocumentParty {
   const c = snap || {};
   const branch = str(c.branch ?? c.customerBranch ?? c.branchName);
   return {
@@ -40,7 +40,7 @@ function partyOf(label: string, snap: any, fallbackName = ""): DocumentParty {
 const cancelled = (d: any) => String(d.status || "").toLowerCase() === "cancelled";
 const cancelNote = (d: any) => (cancelled(d) ? [`ยกเลิกเมื่อ ${thaiDate(d.cancelDate || d.cancelledAt)}: ${str(d.cancelReason) || "-"}${d.replacedByNo ? ` (ออกฉบับใหม่แทน เลขที่ ${d.replacedByNo})` : ""}`] : []);
 
-function taxTypeOf(vatType: any) {
+export function taxTypeOf(vatType: any) {
   const v = String(vatType || "").toLowerCase();
   return v.includes("include") ? "INCLUSIVE" : v.includes("non") ? "NONE" : "EXCLUSIVE";
 }

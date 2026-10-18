@@ -15,6 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { ChangeOrdersPanel } from "@/components/projects/ChangeOrdersPanel";
+import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
 import { computeProjectBudget } from "@/lib/project-budget";
@@ -70,6 +71,7 @@ export default function ProjectDetailPage() {
   const [pending, setPending] = useState<ProjectAction | null>(null); // รอเหตุผล (ไม่อนุมัติ/ยกเลิก)
   const [comment, setComment] = useState("");
   const [progressInput, setProgressInput] = useState<number | null>(null);
+  const [woPrint, setWoPrint] = useState<{ id: string; title: string } | null>(null);
 
   const status = normalizeProjectStatus(p?.status);
   const lines: any[] = useMemo(() => (p ? (Array.isArray(p.items) && p.items.length ? p.items : legacyLines(p)) : []), [p]);
@@ -234,7 +236,14 @@ export default function ProjectDetailPage() {
             {p.followers.map((f: any, i: number) => <span key={i} className="block">{f.name}{f.role ? ` · ${f.role}` : ""}{f.phone ? ` · ${f.phone}` : ""}</span>)}
           </span>
         ))}
-        {infoRow("ใบงานช่างที่เกี่ยวข้อง", relatedWorkOrders.length ? relatedWorkOrders.map((w: any) => w.woCode || w.id).join(", ") : "-")}
+        {infoRow("ใบงานช่างที่เกี่ยวข้อง", relatedWorkOrders.length ? (
+          <span className="inline-flex flex-wrap justify-end gap-x-3 gap-y-1">
+            {relatedWorkOrders.map((w: any) => (
+              <button key={w.id} type="button" className="underline decoration-white/30 hover:text-nexus-teal" title="พิมพ์ใบสั่งงาน / ใบรายงานการให้บริการ" onClick={() => setWoPrint({ id: w.id, title: `${w.status === "COMPLETED" ? "ใบรายงานการให้บริการ" : "ใบสั่งงานบริการ"} ${w.woCode || w.id}` })}>{w.woCode || w.id}</button>
+            ))}
+          </span>
+        ) : "-")}
+        <DocumentPdfModal open={!!woPrint} onClose={() => setWoPrint(null)} source={woPrint ? { type: "work_order", id: woPrint.id } : undefined} title={woPrint?.title || ""} />
       </GlassCard>
     </div>
   );

@@ -77,6 +77,10 @@ const s = StyleSheet.create({
   signRow: { flexDirection: "row", marginTop: 26, gap: 16 },
   signBox: { flex: 1, alignItems: "center" },
   signLine: { width: "85%", borderBottomWidth: 0.8, borderColor: "#888888", height: 28 },
+  signImage: { width: "85%", height: 40, objectFit: "contain", borderBottomWidth: 0.8, borderColor: "#888888" },
+  photos: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 },
+  photoBox: { width: "48%", borderWidth: 1, borderColor: line, borderRadius: 4, padding: 4 },
+  photo: { width: "100%", height: 170, objectFit: "contain" },
   footer: { position: "absolute", bottom: 18, left: 32, right: 32, flexDirection: "row", justifyContent: "space-between", fontSize: 7.5, color: muted },
   watermark: { position: "absolute", top: 330, left: 0, right: 0, textAlign: "center", fontSize: 90, fontWeight: "bold", color: "#d32f2f", opacity: 0.12, transform: "rotate(-30deg)" },
 });
@@ -188,16 +192,32 @@ export function StandardDocument({ doc, copy = "original" }: { doc: DocumentMode
           </View>
         </View>
 
+        {/* รูปประกอบ */}
+        {doc.photos?.length ? (
+          <View style={s.photos}>
+            {doc.photos.map((ph, i) => (
+              <View key={i} style={s.photoBox} wrap={false}>
+                <Image src={ph.src} style={s.photo} />
+                <T style={[s.small, { textAlign: "center", marginTop: 2 }]}>{ph.label}</T>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         {/* ลงนาม */}
         {doc.signatures.length ? (
           <View style={s.signRow} wrap={false}>
-            {doc.signatures.map((label) => (
-              <View key={label} style={s.signBox}>
-                <View style={s.signLine} />
-                <T style={{ marginTop: 3 }}>{label}</T>
-                <T style={s.small}>วันที่ ........../........../..........</T>
-              </View>
-            ))}
+            {doc.signatures.map((label) => {
+              const sg = doc.signed?.[label];
+              return (
+                <View key={label} style={s.signBox}>
+                  {sg?.image ? <Image src={sg.image} style={s.signImage} /> : <View style={s.signLine} />}
+                  {sg?.name ? <T style={{ marginTop: 3 }}>({sg.name})</T> : null}
+                  <T style={{ marginTop: sg?.name ? 0 : 3 }}>{label}</T>
+                  <T style={s.small}>{sg?.date ? `วันที่ ${thaiDate(sg.date)}` : "วันที่ ........../........../.........."}</T>
+                </View>
+              );
+            })}
           </View>
         ) : null}
 

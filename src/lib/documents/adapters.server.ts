@@ -1,6 +1,7 @@
 import { adminDb } from "@/lib/firebase-admin";
 import type { Permission } from "@/lib/permissions";
 import { loadBillingNote, loadCnDn, loadInvoice, loadPosSale, loadReceipt } from "./tax-adapters.server";
+import { loadDeliveryNote, loadSalesOrder, loadWorkOrder } from "./sales-adapters.server";
 import { loadGoodsReceipt, loadJournal, loadPayment, loadPayslip, loadPurchaseOrder, loadPurchaseRequest, loadWht } from "./finance-adapters.server";
 import { ApiAuthError } from "@/lib/api-auth";
 import type { DocumentModel } from "./model";
@@ -70,6 +71,10 @@ export const DOCUMENT_TYPES: Record<string, DocumentTypeDef> = {
   receipt: { label: "ใบเสร็จรับเงิน", permission: ["finance:view", "sales:edit"], load: loadReceipt },
   cndn: { label: "ใบลดหนี้/ใบเพิ่มหนี้", permission: ["sales:view", "finance:view"], load: loadCnDn },
   pos: { label: "บิลขายหน้าร้าน", permission: ["sales:edit", "finance:view"], load: loadPosSale },
+  sales_order: { label: "ใบสั่งขาย", permission: ["sales:view", "finance:view"], load: loadSalesOrder },
+  delivery_note: { label: "ใบส่งของ", permission: ["sales:view", "inventory:view", "finance:view"], load: loadDeliveryNote },
+  // ช่างเปิดใบงานได้ (ทุกคนในบริษัทอ่านใบสั่งงานได้อยู่แล้วตามกฎฐานข้อมูล)
+  work_order: { label: "ใบสั่งงานบริการ", permission: ["projects:view", "sales:view", "inventory:view", "service:field"], load: loadWorkOrder },
   purchase_request: { label: "ใบขอซื้อ", permission: ["procurement:view", "finance:view"], load: loadPurchaseRequest },
   purchase_order: { label: "ใบสั่งซื้อ", permission: ["procurement:view", "finance:view"], load: loadPurchaseOrder },
   goods_receipt: { label: "ใบรับสินค้า", permission: ["procurement:view", "inventory:view", "finance:view"], load: loadGoodsReceipt },

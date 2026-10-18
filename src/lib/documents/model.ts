@@ -84,6 +84,10 @@ export interface DocumentModel {
   notes?: string[];
   /** ช่องลงนามด้านล่าง เช่น ["ผู้รับเงิน", "ผู้มีอำนาจลงนาม"] */
   signatures: string[];
+  /** ลายเซ็นที่เก็บไว้แล้ว (data URL) และชื่อผู้ลงนาม ตามหัวข้อช่องลงนาม */
+  signed?: Record<string, { image?: string; name?: string; date?: string }>;
+  /** รูปประกอบ เช่น ก่อน/หลังทำงาน (data URL) */
+  photos?: { label: string; src: string }[];
   /** ลายน้ำ เช่น "ยกเลิก" / "ฉบับร่าง" */
   watermark?: string;
   /** แบบฟอร์มทางราชการที่ต้องพิมพ์ตามแบบ (แทนเทมเพลตมาตรฐาน) */

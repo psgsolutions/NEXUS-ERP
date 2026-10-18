@@ -7,6 +7,9 @@ import { UNASSIGNED } from "@/lib/warehouse-location";
 import { companyLocations } from "@/lib/warehouse.server";
 import { soPickRemaining } from "@/lib/picking";
 import { getProduct } from "@/lib/product-store.server";
+import { prepareSequence } from "@/lib/sequence-server";
+import { sellerSnapshot } from "@/lib/documents/seller.server";
+import { soItemOf, writeDeliveryNote } from "@/lib/delivery-note.server";
 
 /**
  * [API-SERVER] Picking: เบิกสินค้าออกจากตำแหน่งจัดเก็บตามใบสั่งขาย
@@ -16,6 +19,7 @@ import { getProduct } from "@/lib/product-store.server";
  * - ตัดสต็อกจากตำแหน่ง (OUT) + ลงต้นทุนขาย (Dr 5111-00 / Cr 1141-00) ใน transaction เดียวกับการอัปเดตใบสั่งขาย
  * - ใบสั่งขายที่จองสต็อกไว้แล้ว (แปลงจากใบเสนอราคา) จะลดยอดจองแทนยอดพร้อมใช้
  * - เบิกครบทุกรายการ → สถานะ DELIVERED (พร้อมออกใบกำกับภาษี)
+ * - ทุกครั้งที่เบิกออกใบส่งของ (DN) ของรายการที่เบิก เลขที่ออกในทรานแซกชันเดียวกัน
  */
 const BLOCKED_STATUSES = ["DRAFT", "CANCELLED", "COMPLETED", "DELIVERED"];
 
@@ -96,8 +100,18 @@ export async function POST(request: Request) {
     byProduct.forEach((qty, productId) => { picked[productId] = (Number(picked[productId]) || 0) + qty; });
     const allPicked = soPickRemaining({ ...so, picked }).size === 0;
 
+    const [takeDn, seller] = await Promise.all([prepareSequence("DN", companyId), sellerSnapshot(companyId)]);
+    let dn: { number: string; commit: () => void } | null = null;
+    const dnLines = Array.from(byKey.values()).map(({ productId, location, qty }) => {
+      const it = soItemOf(so, productId);
+      return { productId, sku: String(it.sku || ""), name: String(it.name || it.productName || productId), unit: String(it.unit || it.uom || ""), qty, ...(location === UNASSIGNED ? {} : { location }) };
+    });
+
     const transactionIds = await processStockMovements(movements, (tx) => {
+      dn!.commit();
+      const dnUpdate = writeDeliveryNote(tx, { companyId, dnNo: dn!.number, soId, so, lines: dnLines, seller, uid: apiUser.uid, source: "pick" });
       tx.update(soRef, {
+        ...dnUpdate,
         picked,
         fulfillmentStatus: allPicked ? "fulfilled" : "partial",
         status: allPicked ? "DELIVERED" : "PROCESSING",
@@ -105,9 +119,9 @@ export async function POST(request: Request) {
         updatedBy: userId,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-    });
+    }, async (tx) => { dn = await takeDn(tx); });
 
-    return NextResponse.json({ success: true, transactionIds, allPicked });
+    return NextResponse.json({ success: true, transactionIds, allPicked, deliveryNoteNo: dn!.number });
   } catch (err: any) {
     const authRes = authErrorResponse(err);
     if (authRes) return authRes;

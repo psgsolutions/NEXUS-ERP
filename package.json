@@ -15,7 +15,10 @@
     "check:layout": "node scripts/run-layout-audit.js",
     "test:rules": "firebase emulators:exec --only firestore --project demo-nexus \"node scripts/test-tenant-rules.js\"",
     "check:static": "npm run -s check:company-id && npm run -s check:hex-tokens && npm run -s check:thai-labels",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "test:e2e": "node tests/e2e/run.cjs",
+    "check:data": "node tests/e2e/tools/checks.cjs",
+    "backup:firestore": "node scripts/backup-firestore.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

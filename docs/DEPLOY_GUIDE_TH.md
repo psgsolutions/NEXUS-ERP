@@ -26,6 +26,8 @@
 - **Rules**: กฎว่าใครอ่านหรือแก้ข้อมูลไหนได้
 - **Indexes**: ดัชนีที่ช่วยให้ค้นข้อมูลเร็ว
 
+> **ก่อน deploy ทุกครั้ง** สำรองข้อมูลด้วย `npm run backup:firestore` · ค่า Environment Variables ทั้งหมด การทดสอบ และการกู้คืนข้อมูล ดูที่ [OPERATIONS_TH.md](OPERATIONS_TH.md)
+
 ---
 
 ## ขั้นที่ 0: เตรียมเครื่อง

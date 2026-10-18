@@ -51,3 +51,9 @@ recovered_page.tsx
 
 # build ทดสอบในเครื่อง (NEXT_DIST_DIR)
 /.next-buildcheck/
+
+# E2E test output (PDFs, backups)
+/tests/e2e/.out/
+
+# Firestore backups (contain all company data) — never commit
+/backups/

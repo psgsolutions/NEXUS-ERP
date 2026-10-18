@@ -68,6 +68,13 @@ async function compressImage(file: File, maxSize = 1280): Promise<string> {
 }
 
 // Simple HTML5 Canvas Signature Pad
+/** วันนัดหมาย "YYYY-MM-DD" หรือ "YYYY-MM-DDTHH:mm" -> "18/10/2569 13:30 น." */
+const apptText = (v: string) => {
+  const d = new Date(`${String(v).slice(0, 10)}T00:00:00`).toLocaleDateString("th-TH");
+  const t = String(v).slice(11, 16);
+  return /^d{2}:d{2}$/.test(t) ? `${d} ${t} น.` : d;
+};
+
 function SignaturePad({ onClear, onSave }: { onClear: () => void, onSave: (dataUrl: string) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -391,7 +398,7 @@ export default function FieldTechnicianApp() {
                   </div>
                   <p className="text-sm font-bold text-white">{w.customerName || '-'}</p>
                   <p className="text-[11px] text-white/50 mt-1">
-                    {w.scheduleDate ? `นัดหมาย ${new Date(w.scheduleDate).toLocaleDateString('th-TH')}` : 'ยังไม่ระบุวันนัด'}
+                    {w.scheduleDate ? `นัดหมาย ${apptText(w.scheduleDate)}` : 'ยังไม่ระบุวันนัด'}
                     {!isTechnician && w.technicianName ? ` · ${w.technicianName}` : ''}
                   </p>
                 </button>
@@ -409,7 +416,7 @@ export default function FieldTechnicianApp() {
                 </div>
                 <h2 className="text-base font-black text-white leading-tight mb-1">{wo.customerName || '-'}</h2>
                 <p className="text-xs text-white/60 flex items-center gap-1 mb-3">
-                  <MapPin size={12} className="text-danger" /> {wo.scheduleDate ? `นัดหมาย ${new Date(wo.scheduleDate).toLocaleDateString('th-TH')}` : 'ยังไม่ระบุวันนัด'}
+                  <MapPin size={12} className="text-danger" /> {wo.scheduleDate ? `นัดหมาย ${apptText(wo.scheduleDate)}` : 'ยังไม่ระบุวันนัด'}
                 </p>
                 {Array.isArray(wo.items) && wo.items.length > 0 && (
                   <ul className="text-[12px] text-white/70 space-y-1 mb-3 border-t border-white/5 pt-3">

@@ -21,6 +21,9 @@ describe("รูปแบบข้อความบนเอกสาร", () =
     expect(branchLabel("00000")).toBe("สำนักงานใหญ่");
     expect(branchLabel("", "สำนักงานใหญ่")).toBe("สำนักงานใหญ่");
     expect(branchLabel("1", "บางนา")).toBe("สาขาที่ 00001 (บางนา)");
+    expect(branchLabel("00002", "สาขาที่ 00002 (บางนา)")).toBe("สาขาที่ 00002 (บางนา)");
+    expect(branchLabel("00002", "สาขาที่ 00002")).toBe("สาขาที่ 00002");
+    expect(branchLabel("00002", "00002")).toBe("สาขาที่ 00002");
     expect(formatTaxId("0105564000000")).toBe("0-1055-64000-00-0");
   });
 

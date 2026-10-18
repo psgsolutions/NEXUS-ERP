@@ -158,12 +158,13 @@ export default function AuthenticatedLayout({
       <div className="flex-1 flex flex-col overflow-hidden relative min-w-0">
         <header className="h-16 border-b border-white/5 bg-surface-0/80 backdrop-blur-xl flex items-center justify-between px-4 md:px-5">
           <div className="flex items-center gap-4 md:gap-6">
-            <div className="flex items-center gap-4 border-r border-white/10 pr-5">
+            <div className="flex items-center gap-4 md:border-r border-white/10 md:pr-5">
                <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:text-nexus-teal hover:bg-white/10 transition-all cursor-pointer">
                      <Link href="/dashboard"><PieChart size={16} /></Link>
                   </div>
-                  <nav className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest text-white/20">
+                  {/* จอมือถือ: ซ่อนเส้นทางหน้า (พื้นที่ไม่พอ) */}
+                  <nav className="hidden sm:flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest text-white/20 whitespace-nowrap">
                      <span className="hover:text-white cursor-pointer transition-colors">ภาพรวม</span>
                      <ChevronRight size={10} />
                      <span className="text-nexus-teal bg-nexus-teal/10 px-3 py-1 rounded-full border border-nexus-teal/20">ระบบปฏิบัติการ NEXUS</span>
@@ -181,14 +182,14 @@ export default function AuthenticatedLayout({
             <LanguageSwitcher />
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             <NotificationBell />
             <div className="flex items-center gap-4 relative" ref={profileRef}>
                {/* Redesigned Profile Capsule - Premium Static Glassmorphism */}
                <div 
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   className={cn(
-                     "h-10 pl-4 pr-1.5 rounded-full bg-white/[0.02] border border-white/5 hover:border-nexus-teal/30 hover:bg-white/[0.06] transition-all cursor-pointer flex items-center gap-3.5 group relative select-none",
+                     "h-10 pl-1.5 md:pl-4 pr-1.5 rounded-full bg-white/[0.02] border border-white/5 hover:border-nexus-teal/30 hover:bg-white/[0.06] transition-all cursor-pointer flex items-center gap-3.5 group relative select-none",
                      isProfileOpen && "bg-white/[0.06] border-nexus-teal/40"
                   )}
                >

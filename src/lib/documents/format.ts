@@ -45,7 +45,9 @@ export function branchLabel(code: any, name?: any): string {
   const c = String(code ?? "").replace(/\D/g, "");
   const n = String(name ?? "").trim();
   if (!c || /^0+$/.test(c)) return n && !/สำนักงานใหญ่/.test(n) ? n : "สำนักงานใหญ่";
-  return `สาขาที่ ${c.padStart(5, "0")}${n && n !== c ? ` (${n})` : ""}`;
+  // ชื่อสาขาที่มีเลขสาขาอยู่แล้ว เช่น "สาขาที่ 00002 (บางนา)" -> เหลือ "บางนา" (ไม่พิมพ์เลขสาขาซ้ำ)
+  const label = n.replace(/สาขา(?:ที่)?\s*\d{1,5}/, "").replace(/^[\s(]+|[\s)]+$/g, "").trim();
+  return `สาขาที่ ${c.padStart(5, "0")}${label && label !== c && !/^\d+$/.test(label) ? ` (${label})` : ""}`;
 }
 
 /** เลขประจำตัวผู้เสียภาษี 13 หลัก "0-1055-64000-00-0" */

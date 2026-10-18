@@ -146,11 +146,12 @@ export default function POSPage() {
       {/* สินค้า */}
       <div className="flex-1 min-w-0 flex flex-col gap-3 min-h-0">
         <div className="flex items-center gap-2">
-          <div className="relative flex-1 min-w-[240px]">
-            <ScanLine size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+          <div className="relative flex-1 min-w-0 sm:min-w-[240px]">
             <PillInput ref={searchRef} autoFocus value={search} onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && search.trim()) { e.preventDefault(); e.stopPropagation(); const exact = findProductByScan(sellable, search); if (exact) onScan(search); else if (shown.length === 1) { add(shown[0]); setSearch(""); } } }}
               placeholder="สแกนบาร์โค้ด หรือพิมพ์ชื่อ/รหัสสินค้า แล้วกด Enter" className="w-full h-11 pl-11 text-[15px]" />
+            {/* ไอคอนอยู่หลังช่องค้นหาใน DOM เพื่อไม่ให้ถูก backdrop-blur ของช่องทับจนเบลอ */}
+            <ScanLine size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
           </div>
           <IconBtn label="บิลย้อนหลัง / พิมพ์ซ้ำ" onClick={() => setHistoryOpen(true)}><History size={17} /></IconBtn>
           <IconBtn label="สรุปยอดวันนี้" onClick={() => setSummaryOpen(true)}><BarChart3 size={17} /></IconBtn>

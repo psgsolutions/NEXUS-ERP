@@ -59,6 +59,7 @@ export async function POST(request: Request) {
       const inv = snap.data()!;
       const invNo = str(inv.invoiceNo || inv.documentNo || invoiceDocId);
       if (inv.isSample) throw new ApiAuthError(400, `${invNo} เป็นเอกสารตัวอย่าง`);
+      if (inv.vatTiming === "receipt") throw new ApiAuthError(400, `${invNo} เป็นใบแจ้งหนี้งานโครงการ ยกเลิกที่หน้าโครงการ`);
       if (String(inv.status || "").toLowerCase() === "cancelled" || inv.isDeleted === true) throw new ApiAuthError(409, `${invNo} ถูกยกเลิกไปแล้ว`);
       if ((Number(inv.paidAmount) || 0) > 0.009) throw new ApiAuthError(409, `${invNo} มีการรับชำระแล้ว — ยกเลิกใบเสร็จก่อน หรือออกใบลดหนี้แทน`);
       if ((Number(inv.creditNoteTotal) || 0) > 0 || (Number(inv.debitNoteTotal) || 0) > 0) throw new ApiAuthError(409, `${invNo} มีใบลดหนี้/ใบเพิ่มหนี้อ้างอิงอยู่ — ยกเลิกเอกสารเหล่านั้นก่อน`);

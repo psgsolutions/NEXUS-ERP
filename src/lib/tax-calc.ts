@@ -69,6 +69,8 @@ export function computePP30(companyId: string, yearMonth: string, journals: any[
   if (salesBase === 0 && outputVat === 0) {
     for (const inv of invoices) {
       if (inv.isDeleted === true || inv.isSample === true || String(inv.status || "").toLowerCase() === "cancelled") continue;
+      // ใบแจ้งหนี้งานบริการ (VAT เกิดตอนรับเงิน) ไม่ใช่ใบกำกับภาษี
+      if (inv.vatTiming === "receipt") continue;
       if (toThaiDateStr(inv.issueDate || inv.date || "").startsWith(yearMonth)) {
         salesBase += Number(inv.subTotal || inv.amount || 0);
         outputVat += Number(inv.vatAmount || 0);

@@ -45,8 +45,50 @@ export function taxTypeOf(vatType: any) {
   return v.includes("include") ? "INCLUSIVE" : v.includes("non") ? "NONE" : "EXCLUSIVE";
 }
 
+/** ใบแจ้งหนี้งวดงาน / เบิกคืนเงินประกันผลงาน (งานบริการ VAT เกิดตอนรับเงิน — ไม่ใช่ใบกำกับภาษี) */
+function progressBillModel(d: any, seller: any, id: string): DocumentModel {
+  const isRetention = d.docKind === "retention";
+  const money = (n: number) => num(n).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const wht = num(d.expectedWhtRate);
+  const totals = isRetention ? [
+    { label: "เงินประกันผลงานที่เบิกคืน", amount: num(d.subTotal) },
+    ...(num(d.vatAmount) ? [{ label: "ภาษีมูลค่าเพิ่ม 7%", amount: num(d.vatAmount) }] : []),
+    { label: "จำนวนเงินรวมทั้งสิ้น", amount: num(d.grandTotal), strong: true },
+  ] : [
+    { label: "มูลค่างานงวดนี้ (ก่อนภาษี)", amount: num(d.workValue) },
+    ...(num(d.retentionAmount) ? [{ label: `หักเงินประกันผลงาน ${num(d.retentionPercent)}%`, amount: -num(d.retentionAmount) }, { label: "คงเหลือ", amount: num(d.subTotal) }] : []),
+    ...(num(d.vatAmount) ? [{ label: "ภาษีมูลค่าเพิ่ม 7%", amount: num(d.vatAmount) }] : []),
+    { label: "จำนวนเงินรวมทั้งสิ้น", amount: num(d.grandTotal), strong: true },
+  ];
+  return {
+    type: "invoice",
+    title: isRetention ? "ใบแจ้งหนี้ (เบิกคืนเงินประกันผลงาน)" : "ใบแจ้งหนี้ / ใบวางบิล (งวดงาน)", titleEn: "INVOICE",
+    number: str(d.invoiceNo || id), date: toDateStr(d.issueDate || d.createdAt),
+    meta: [
+      { label: "ครบกำหนด", value: d.dueDate ? thaiDate(d.dueDate) : "-" },
+      ...(d.projectName ? [{ label: "โครงการ", value: str(d.projectName) }] : []),
+      ...(d.milestoneName ? [{ label: "งวดงาน", value: str(d.milestoneName) }] : []),
+    ],
+    seller,
+    party: partyOf("ลูกค้า", d.customerSnapshot, str(d.customerName)),
+    columns: ["no", "description", "amount"],
+    lines: (Array.isArray(d.items) ? d.items : []).map((l: any) => ({ description: str(l.name), detail: str(l.details), amount: num(l.price) })),
+    totals,
+    amountInWords: num(d.grandTotal),
+    notes: [
+      "เอกสารนี้ไม่ใช่ใบกำกับภาษี — บริษัทจะออกใบเสร็จรับเงิน/ใบกำกับภาษีเมื่อได้รับชำระเงิน (งานบริการตามมาตรา 78/1)",
+      ...(wht ? [`หากหักภาษี ณ ที่จ่าย ${wht}% คิดจากยอดก่อนภาษี ${money(num(d.subTotal))} บาท = ${money(num(d.subTotal) * wht / 100)} บาท ยอดชำระสุทธิ ${money(num(d.grandTotal) - num(d.subTotal) * wht / 100)} บาท`] : []),
+      str(d.note),
+      ...cancelNote(d),
+    ].filter(Boolean),
+    signatures: ["ผู้วางบิล", "ผู้รับวางบิล"],
+    watermark: cancelled(d) ? "ยกเลิก" : undefined,
+  };
+}
+
 export async function loadInvoice(companyId: string, id: string): Promise<DocumentModel> {
   const { d, seller } = await companyAndDoc(companyId, `companies/${companyId}/invoices/${id}`, "ไม่พบใบกำกับภาษี");
+  if (d.vatTiming === "receipt") return progressBillModel(d, seller, id);
   const lines = quotationLines(Array.isArray(d.items) ? d.items : []);
   const lineSum = r2(lines.reduce((s, l) => s + num(l.amount), 0));
   const taxType = taxTypeOf(d.vatType);
@@ -110,8 +152,9 @@ export async function loadReceipt(companyId: string, id: string): Promise<Docume
   const firstInv = lines[0]?.invoiceDocId ? (await adminDb.doc(`companies/${companyId}/invoices/${lines[0].invoiceDocId}`).get()).data() : null;
   const applied = num(d.totalApplied ?? d.amount);
   const wht = num(d.totalWht);
+  const taxInv = d.isTaxInvoice === true;
   return {
-    type: "receipt", title: "ใบเสร็จรับเงิน", titleEn: "RECEIPT",
+    type: "receipt", title: taxInv ? "ใบเสร็จรับเงิน / ใบกำกับภาษี" : "ใบเสร็จรับเงิน", titleEn: taxInv ? "RECEIPT / TAX INVOICE" : "RECEIPT",
     number: str(d.receiptNo || d.documentNo || id), date: toDateStr(d.paymentDate || d.createdAt),
     meta: [
       { label: "ชำระโดย", value: str(d.paymentMethodLabel || d.paymentMethod) },
@@ -120,14 +163,17 @@ export async function loadReceipt(companyId: string, id: string): Promise<Docume
       ...(d.reference ? [{ label: "อ้างอิง", value: str(d.reference) }] : []),
     ],
     seller,
-    party: partyOf("ได้รับเงินจาก", firstInv?.customerSnapshot, str(d.customerName)),
+    party: partyOf("ได้รับเงินจาก", d.customerSnapshot || firstInv?.customerSnapshot, str(d.customerName)),
     columns: ["no", "description", "amount"],
     lines: lines.map((l) => ({
-      description: `ชำระค่าสินค้า/บริการ ตามใบกำกับภาษีเลขที่ ${str(l.invoiceNo)}`,
+      description: l.vatOnReceipt
+        ? `ค่าบริการตามใบแจ้งหนี้เลขที่ ${str(l.invoiceNo)}${l.milestoneName ? ` (${str(l.milestoneName)})` : ""}${l.projectName ? ` โครงการ ${str(l.projectName)}` : ""}`
+        : `ชำระค่าสินค้า/บริการ ตามใบกำกับภาษีเลขที่ ${str(l.invoiceNo)}`,
       detail: l.whtAmount ? `หัก ณ ที่จ่าย ${num(l.whtRate)}% = ${num(l.whtAmount).toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท` : "",
       amount: num(l.amount),
     })),
     totals: [
+      ...(taxInv ? [{ label: "มูลค่าก่อนภาษี (ส่วนที่เป็นใบกำกับภาษี)", amount: num(d.taxBase) }, { label: "ภาษีมูลค่าเพิ่ม 7%", amount: num(d.vatAmount) }] : []),
       { label: "รวมรับชำระ", amount: applied, strong: !wht },
       ...(wht ? [{ label: "หัก ณ ที่จ่าย", amount: -wht }, { label: "รับเงินสุทธิ", amount: num(d.cashReceived) || r2(applied - wht), strong: true }] : []),
     ],

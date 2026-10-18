@@ -7,6 +7,7 @@ import { prepareSequence } from "@/lib/sequence-server";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { auditServer } from "@/services/audit.server";
 import { resolveBankTarget, writeCheque } from "@/lib/bank-cheque.server";
+import { vatPortionOfPayment } from "@/lib/project-billing";
 import { sellerSnapshot } from "@/lib/documents/seller.server";
 
 /**
@@ -23,6 +24,8 @@ import { sellerSnapshot } from "@/lib/documents/seller.server";
  *      Dr เงินสด 1111-00 หรือ เงินฝากธนาคาร 1112-00  (เงินที่ได้รับจริง)
  *      Dr ภาษีเงินได้ถูกหัก ณ ที่จ่าย 1154-00         (ลูกค้าหักไว้)
  *      Cr ลูกหนี้การค้า 1131-00                       (ยอดที่ตัดหนี้)
+ *  - ใบแจ้งหนี้งานบริการที่ VAT เกิดตอนรับเงิน (vatTiming "receipt" เช่น งวดงานโครงการ, ม.78/1):
+ *      ใบเสร็จนี้เป็นใบกำกับภาษีด้วย และโอน Dr ภาษีขายยังไม่ถึงกำหนด 2123-00 / Cr ภาษีขาย 2121-00 ตามส่วนที่รับชำระ
  */
 
 const METHODS = {
@@ -103,14 +106,21 @@ export async function POST(request: Request) {
         const paidAfter = round2(paidBefore + amount);
         // ลดจากยอดค้างปัจจุบัน (รวมผลของใบลดหนี้/ใบเพิ่มหนี้แล้ว) ไม่คำนวณใหม่จากยอดรวมใบกำกับ
         const balanceAfter = round2(Math.max(0, balance - amount));
+        // VAT เกิดตอนรับเงิน: ส่วนของ VAT ในยอดที่รับครั้งนี้
+        const vatOnReceipt = inv.vatTiming === "receipt" ? vatPortionOfPayment(inv as any, amount, balanceAfter) : null;
         return {
           ref: refs[i],
-          line: { invoiceDocId: snap.id, invoiceNo: invNo, invoiceTotal: grandTotal, balanceBefore: balance, amount, whtRate, whtBase, whtAmount, netReceived: round2(amount - whtAmount) },
+          customerSnapshot: inv.customerSnapshot || null,
+          line: {
+            invoiceDocId: snap.id, invoiceNo: invNo, invoiceTotal: grandTotal, balanceBefore: balance, amount, whtRate, whtBase, whtAmount, netReceived: round2(amount - whtAmount),
+            ...(vatOnReceipt ? { vatOnReceipt: true, taxBase: vatOnReceipt.base, vat: vatOnReceipt.vat, ...(inv.projectName ? { projectName: inv.projectName } : {}), ...(inv.milestoneName ? { milestoneName: inv.milestoneName } : {}) } : {}),
+          },
           invUpdate: {
             paidAmount: paidAfter,
             balance: balanceAfter,
             paymentStatus: balanceAfter <= 0.009 ? "paid" : "partial",
             lastPaymentDate: paymentDate,
+            ...(vatOnReceipt ? { vatRealized: round2((Number(inv.vatRealized) || 0) + vatOnReceipt.vat) } : {}),
             receiptRefs: admin.firestore.FieldValue.arrayUnion(receiptNo),
             updatedAt: now,
             updatedBy: apiUser.uid,
@@ -122,11 +132,19 @@ export async function POST(request: Request) {
       const totalWht = round2(lines.reduce((s, l) => s + l.line.whtAmount, 0));
       const cashReceived = round2(totalApplied - totalWht);
       const account = METHODS[method].account;
+      const taxLines = lines.filter((l) => (l.line as any).vatOnReceipt);
+      const vatRealized = round2(taxLines.reduce((s, l) => s + ((l.line as any).vat || 0), 0));
+      const taxBase = round2(taxLines.reduce((s, l) => s + ((l.line as any).taxBase || 0), 0));
 
       const journalItems = [
         { accountCode: account.code, accountName: account.name, debit: cashReceived, credit: 0 },
         ...(totalWht > 0 ? [{ accountCode: "1154-00", accountName: "ภาษีเงินได้ถูกหัก ณ ที่จ่าย", debit: totalWht, credit: 0 }] : []),
         { accountCode: "1131-00", accountName: "ลูกหนี้การค้า", debit: 0, credit: totalApplied },
+        // ใบเสร็จ/ใบกำกับภาษี: ภาษีขายถึงกำหนดในเดือนที่รับเงิน
+        ...(vatRealized > 0 ? [
+          { accountCode: "2123-00", accountName: "ภาษีขายยังไม่ถึงกำหนด", debit: vatRealized, credit: 0 },
+          { accountCode: "2121-00", accountName: "ภาษีขาย", debit: 0, credit: vatRealized },
+        ] : []),
       ];
 
       // ---- เขียน ----
@@ -152,6 +170,8 @@ export async function POST(request: Request) {
         totalWht,
         cashReceived,
         amount: totalApplied,
+        // เป็นใบกำกับภาษีด้วย (งานบริการ VAT เกิดตอนรับเงิน) — ข้อมูลผู้ซื้อตาม ม.86/4
+        ...(taxLines.length ? { isTaxInvoice: true, taxBase, vatAmount: vatRealized, customerSnapshot: taxLines[0].customerSnapshot } : {}),
         journalId: journalRef.id,
         status: "posted",
         isSample: false,
@@ -169,8 +189,8 @@ export async function POST(request: Request) {
         description: `[AUTO] รับชำระเงิน ${receiptNo} จาก ${customerName}`,
         reference: receiptNo,
         items: journalItems,
-        totalDebit: totalApplied,
-        totalCredit: totalApplied,
+        totalDebit: round2(totalApplied + vatRealized),
+        totalCredit: round2(totalApplied + vatRealized),
         status: "draft",
         createdBy: apiUser.uid,
         createdAt: now,

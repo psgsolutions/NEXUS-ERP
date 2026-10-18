@@ -1,6 +1,7 @@
 /**
  * รายงานภาษีขาย / ภาษีซื้อ รายเดือน จากเอกสารต้นทาง (ฟังก์ชันล้วน)
  * - ภาษีขาย: ใบกำกับภาษี (+) ใบเพิ่มหนี้ (+) ใบลดหนี้ (−) ที่ไม่ถูกยกเลิก ตามวันที่ออกเอกสาร
+ *   งานบริการที่ VAT เกิดตอนรับเงิน (ม.78/1): ใบแจ้งหนี้ไม่นับ — นับจากใบเสร็จรับเงิน/ใบกำกับภาษี ตามวันที่รับเงิน
  * - ภาษีซื้อ: ใบกำกับภาษีซื้อที่บันทึกตั้งหนี้ (ตามวันที่ใบกำกับ) + ภาษีซื้อที่บันทึกตอนจ่ายเงิน (ตามวันที่จ่าย)
  */
 import { journalDateStr } from "./journal-posting";
@@ -26,10 +27,10 @@ const branchLabel = (b: any) => {
   return s;
 };
 
-export function outputVatRows(invoices: any[], cndns: any[], ym: string): VatRow[] {
+export function outputVatRows(invoices: any[], cndns: any[], ym: string, receipts: any[] = []): VatRow[] {
   const rows: VatRow[] = [];
   for (const inv of invoices) {
-    if (!live(inv)) continue;
+    if (!live(inv) || inv.vatTiming === "receipt") continue;
     const date = journalDateStr(inv.issueDate || inv.date || inv.createdAt);
     const vat = Number(inv.vatAmount) || 0;
     if (!date.startsWith(ym) || !(vat > 0)) continue;
@@ -38,6 +39,19 @@ export function outputVatRows(invoices: any[], cndns: any[], ym: string): VatRow
       date, docNo: String(inv.invoiceNo || inv.documentNo || inv.id), refNo: String(inv.orderRefNo || ""),
       name: String(c.name || inv.customerName || "-"), taxId: String(c.taxId || inv.customerTaxId || ""), branch: branchLabel(c.branch),
       base: r2(Number(inv.subTotal) || 0), vat: r2(vat), kind: "ใบกำกับภาษี",
+    });
+  }
+  for (const rc of receipts) {
+    if (!live(rc) || !rc.isTaxInvoice) continue;
+    const date = journalDateStr(rc.paymentDate || rc.createdAt);
+    const vat = Number(rc.vatAmount) || 0;
+    if (!date.startsWith(ym) || !(vat > 0)) continue;
+    const c = rc.customerSnapshot || {};
+    const taxLines = (Array.isArray(rc.lines) ? rc.lines : []).filter((l: any) => l.vatOnReceipt);
+    rows.push({
+      date, docNo: String(rc.receiptNo || rc.documentNo || rc.id), refNo: taxLines.map((l: any) => l.invoiceNo).join(", "),
+      name: String(c.name || rc.customerName || "-"), taxId: String(c.taxId || ""), branch: branchLabel(c.branch),
+      base: r2(Number(rc.taxBase) || 0), vat: r2(vat), kind: "ใบเสร็จรับเงิน/ใบกำกับภาษี",
     });
   }
   for (const d of cndns) {

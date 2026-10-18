@@ -40,6 +40,7 @@ interface Outstanding {
   balance: number;
   dueMs: number;
   issueMs: number;
+  defaultWht: number;
 }
 
 interface LineState { selected: boolean; amount: string; whtRate: number }
@@ -69,6 +70,8 @@ function ReceiptForm() {
           balance,
           dueMs: toMillis(inv.dueDate),
           issueMs: toMillis(inv.issueDate) || toMillis(inv.createdAt),
+          // ใบแจ้งหนี้งวดงาน: อัตราหัก ณ ที่จ่ายที่ตั้งไว้ในโครงการเป็นค่าเริ่มต้น
+          defaultWht: [1, 2, 3, 5].includes(Number(inv.expectedWhtRate)) ? Number(inv.expectedWhtRate) : 0,
         };
       })
       .filter((o) => o.balance > 0.009 && o.customerId),
@@ -107,7 +110,7 @@ function ReceiptForm() {
     const inv = outstanding.find((o) => o.docId === presetInvoice);
     if (inv) {
       setCustomerId(inv.customerId);
-      setLines({ [inv.docId]: { selected: true, amount: String(inv.balance), whtRate: 0 } });
+      setLines({ [inv.docId]: { selected: true, amount: String(inv.balance), whtRate: inv.defaultWht } });
     }
   }, [presetInvoice, outstanding, customerId]);
 
@@ -116,7 +119,7 @@ function ReceiptForm() {
     [outstanding, customerId]
   );
 
-  const lineOf = (o: Outstanding): LineState => lines[o.docId] || { selected: false, amount: String(o.balance), whtRate: 0 };
+  const lineOf = (o: Outstanding): LineState => lines[o.docId] || { selected: false, amount: String(o.balance), whtRate: o.defaultWht };
   const setLine = (o: Outstanding, patch: Partial<LineState>) => setLines((prev) => ({ ...prev, [o.docId]: { ...lineOf(o), ...patch } }));
 
   const computed = useMemo(() => customerInvoices.map((o) => {

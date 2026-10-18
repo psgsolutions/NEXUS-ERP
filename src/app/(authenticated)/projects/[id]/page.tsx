@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, Briefcase, Building2, CalendarDays, CheckCircle2, ClipboardList, FileText, History,
-  Loader2, MapPin, Package, Pencil, PlayCircle, Printer, GitPullRequest, ShieldCheck, Users, Wallet, Wrench, XCircle,
+  Loader2, MapPin, Package, Pencil, PlayCircle, Printer, GitPullRequest, Receipt, ShieldCheck, Users, Wallet, Wrench, XCircle,
 } from "lucide-react";
 import {
   GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillInput, PillTabs, StatusBadge, cn,
@@ -15,6 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { ChangeOrdersPanel } from "@/components/projects/ChangeOrdersPanel";
+import { ProjectBillingPanel } from "@/components/projects/ProjectBillingPanel";
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
@@ -352,6 +353,7 @@ export default function ProjectDetailPage() {
           { id: "overview", label: "ภาพรวม", icon: <Building2 size={14} /> },
           { id: "boq", label: `รายการ (${lines.filter((l: any) => l.kind !== "GROUP").length})`, icon: <Package size={14} /> },
           { id: "finance", label: "งบประมาณ", icon: <Wallet size={14} /> },
+          ...(!isLegacy ? [{ id: "billing", label: "เรียกเก็บเงิน", icon: <Receipt size={14} /> }] : []),
           { id: "docs", label: "เอกสารบังคับ", icon: <FileText size={14} /> },
           { id: "changes", label: `เปลี่ยนแปลง${Number(p.pendingChangeOrders) > 0 ? ` · รอ ${p.pendingChangeOrders}` : ""}`, icon: <GitPullRequest size={14} /> },
           { id: "history", label: "ประวัติ", icon: <History size={14} /> },
@@ -362,6 +364,7 @@ export default function ProjectDetailPage() {
       {tab === "overview" && overview}
       {tab === "boq" && boq}
       {tab === "finance" && finance}
+      {tab === "billing" && !isLegacy && <ProjectBillingPanel companyId={companyId || ""} docId={docId} customerId={p.customerId} />}
       {tab === "docs" && docs}
       {tab === "changes" && (
         <ChangeOrdersPanel

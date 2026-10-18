@@ -61,7 +61,8 @@ export async function POST(request: Request) {
       const pp30 = computePP30(companyId, month, allJournals, invoices);
       let rows;
       if (report === "vat-out") {
-        rows = outputVatRows(invoices, await col("cndn"), month);
+        const [cndns, receipts] = await Promise.all([col("cndn"), col("receipts")]);
+        rows = outputVatRows(invoices, cndns, month, receipts);
       } else {
         const [expenses, payments] = await Promise.all([col("expenses"), col("payments")]);
         const supplierIds = Array.from(new Set([...expenses.map((e) => e.supplierId), ...payments.map((p) => p.supplierId)].filter(Boolean).map(String)));

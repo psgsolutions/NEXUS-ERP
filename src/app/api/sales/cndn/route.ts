@@ -62,6 +62,8 @@ export async function POST(request: Request) {
       const inv = snap.data()!;
       const invNo = inv.invoiceNo || inv.documentNo || inv.invoiceId || invoiceDocId;
       if (inv.isSample) throw new ApiAuthError(400, `${invNo} เป็นเอกสารตัวอย่าง`);
+      // ใบแจ้งหนี้งวดงาน (VAT เกิดตอนรับเงิน) ไม่ใช่ใบกำกับภาษี: ออกใบลด/เพิ่มหนี้ไม่ได้ ให้ยกเลิกแล้วออกใหม่ที่หน้าโครงการ
+      if (inv.vatTiming === "receipt") throw new ApiAuthError(400, `${invNo} เป็นใบแจ้งหนี้งานโครงการ (ยังไม่ใช่ใบกำกับภาษี) ให้ยกเลิกและออกใหม่ที่หน้าโครงการ`);
       if (inv.isDeleted === true || String(inv.status || "").toLowerCase() === "cancelled") throw new ApiAuthError(409, `${invNo} ถูกยกเลิกแล้ว`);
       if (issueDate < String(inv.issueDate || "").slice(0, 10)) throw new ApiAuthError(400, `วันที่ออก${label}ต้องไม่ก่อนวันที่ใบกำกับภาษี`);
       const seq = await take(tx);

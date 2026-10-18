@@ -95,6 +95,8 @@ export async function POST(request: Request) {
         if (isReceipt) {
           update.receiptRefs = admin.firestore.FieldValue.arrayRemove(docNo);
           update.refundDue = ar.refundDue;
+          // ใบเสร็จ/ใบกำกับภาษี (VAT เกิดตอนรับเงิน): คืนยอด VAT ที่รับรู้แล้ว (รายการบัญชีกลับด้วยการยกเลิก/กลับรายการบัญชีด้านล่าง)
+          if (l.vatOnReceipt) update.vatRealized = round2(Math.max(0, (Number(x.vatRealized) || 0) - (Number(l.vat) || 0)));
         } else {
           update.paymentRefs = admin.firestore.FieldValue.arrayRemove(docNo);
           update.status = paid <= 0.009 ? "Awaiting Payment" : balance <= 0.009 ? "Paid" : "Partially Paid";

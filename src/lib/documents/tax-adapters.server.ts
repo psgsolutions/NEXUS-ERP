@@ -48,21 +48,24 @@ export function taxTypeOf(vatType: any) {
 /** ใบแจ้งหนี้งวดงาน / เบิกคืนเงินประกันผลงาน (งานบริการ VAT เกิดตอนรับเงิน — ไม่ใช่ใบกำกับภาษี) */
 function progressBillModel(d: any, seller: any, id: string): DocumentModel {
   const isRetention = d.docKind === "retention";
+  const isAdvance = d.docKind === "advance";
   const money = (n: number) => num(n).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const wht = num(d.expectedWhtRate);
-  const totals = isRetention ? [
-    { label: "เงินประกันผลงานที่เบิกคืน", amount: num(d.subTotal) },
+  const totals = isRetention || isAdvance ? [
+    { label: isAdvance ? `เงินล่วงหน้า ${num(d.advancePercent)}%` : "เงินประกันผลงานที่เบิกคืน", amount: num(d.subTotal) },
     ...(num(d.vatAmount) ? [{ label: "ภาษีมูลค่าเพิ่ม 7%", amount: num(d.vatAmount) }] : []),
     { label: "จำนวนเงินรวมทั้งสิ้น", amount: num(d.grandTotal), strong: true },
   ] : [
     { label: "มูลค่างานงวดนี้ (ก่อนภาษี)", amount: num(d.workValue) },
-    ...(num(d.retentionAmount) ? [{ label: `หักเงินประกันผลงาน ${num(d.retentionPercent)}%`, amount: -num(d.retentionAmount) }, { label: "คงเหลือ", amount: num(d.subTotal) }] : []),
+    ...(num(d.retentionAmount) ? [{ label: `หักเงินประกันผลงาน ${num(d.retentionPercent)}%`, amount: -num(d.retentionAmount) }] : []),
+    ...(num(d.advanceAmount) ? [{ label: "หักคืนเงินล่วงหน้า", amount: -num(d.advanceAmount) }] : []),
+    ...(num(d.retentionAmount) || num(d.advanceAmount) ? [{ label: "คงเหลือ", amount: num(d.subTotal) }] : []),
     ...(num(d.vatAmount) ? [{ label: "ภาษีมูลค่าเพิ่ม 7%", amount: num(d.vatAmount) }] : []),
     { label: "จำนวนเงินรวมทั้งสิ้น", amount: num(d.grandTotal), strong: true },
   ];
   return {
     type: "invoice",
-    title: isRetention ? "ใบแจ้งหนี้ (เบิกคืนเงินประกันผลงาน)" : "ใบแจ้งหนี้ / ใบวางบิล (งวดงาน)", titleEn: "INVOICE",
+    title: isRetention ? "ใบแจ้งหนี้ (เบิกคืนเงินประกันผลงาน)" : isAdvance ? "ใบแจ้งหนี้ (เงินล่วงหน้า)" : "ใบแจ้งหนี้ / ใบวางบิล (งวดงาน)", titleEn: "INVOICE",
     number: str(d.invoiceNo || id), date: toDateStr(d.issueDate || d.createdAt),
     meta: [
       { label: "ครบกำหนด", value: d.dueDate ? thaiDate(d.dueDate) : "-" },

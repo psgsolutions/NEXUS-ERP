@@ -9,7 +9,7 @@ import { voidOrReverseJournal } from "@/lib/journal-reversal.server";
 import { getCompanyCustomer } from "@/lib/credit-limit.server";
 import { sellerSnapshot } from "@/lib/documents/seller.server";
 import { addressText } from "@/lib/documents/party";
-import { billingSummary, progressBillAmounts, retentionReleaseAmounts, type BillRecord } from "@/lib/project-billing";
+import { advanceBillAmounts, advanceRecovery, billingSummary, progressBillAmounts, retentionReleaseAmounts, type BillRecord } from "@/lib/project-billing";
 import { auditServer } from "@/services/audit.server";
 import { normalizeProjectStatus, PROJECT_STATUS_TH } from "@/lib/project-status";
 
@@ -20,7 +20,8 @@ const BILLABLE = ["Approved", "In Progress", "Completed"];
  * [API-SERVER] เรียกเก็บเงินตามงวดงานของโครงการ
  * POST /api/projects/billing
  *  - { action: "status", projectDocId }                                   งวดงาน + ใบแจ้งหนี้ + สรุปยอด
- *  - { action: "settings", projectDocId, retentionPercent, whtRate? }      เงินประกันผลงาน % และอัตราหัก ณ ที่จ่ายที่คาดว่าลูกค้าหัก
+ *  - { action: "settings", projectDocId, retentionPercent, advancePercent?, whtRate? }  เงินประกันผลงาน % เงินล่วงหน้า % และอัตราหัก ณ ที่จ่ายที่คาดว่าลูกค้าหัก
+ *  - { action: "billAdvance", projectDocId, issueDate?, dueDays?, note? }   ใบแจ้งหนี้เงินล่วงหน้า (ก่อนเรียกเก็บงวดแรก) หักคืนในแต่ละงวดตาม %
  *  - { action: "bill", projectDocId, milestoneId, issueDate?, dueDays?, note? }   ออกใบแจ้งหนี้งวดงาน (PB)
  *  - { action: "releaseRetention", projectDocId, issueDate?, dueDays?, note? }  ใบแจ้งหนี้เบิกคืนเงินประกันผลงาน
  *  - { action: "cancel", projectDocId, invoiceDocId, reason }              ยกเลิกใบที่ยังไม่รับชำระ
@@ -28,6 +29,8 @@ const BILLABLE = ["Approved", "In Progress", "Completed"];
  * งานโครงการเป็นงานบริการ/จ้างทำของ (ม.78/1): ใบแจ้งหนี้ไม่ใช่ใบกำกับภาษี
  *   VAT บันทึกเป็น "ภาษีขายยังไม่ถึงกำหนด" (2123-00) แล้วโอนเป็นภาษีขายตอนรับชำระ (ใบเสร็จรับเงิน/ใบกำกับภาษี)
  * บัญชีตอนออกใบงวดงาน: Dr ลูกหนี้ 1131 (G) + Dr ลูกหนี้เงินประกันผลงาน 1133 (R) / Cr รายได้ค่าบริการ 4112 (W) + Cr ภาษีขายยังไม่ถึงกำหนด 2123 (V)
+ *   งวดที่หักคืนเงินล่วงหน้า (D): เพิ่ม Dr เงินรับล่วงหน้าจากลูกค้า 2151 (D) และ VAT คิดจากยอดหลังหัก
+ * บัญชีตอนออกใบเงินล่วงหน้า: Dr ลูกหนี้ 1131 (G) / Cr เงินรับล่วงหน้าจากลูกค้า 2151 (B) + Cr ภาษีขายยังไม่ถึงกำหนด 2123 (V)
  * บัญชีตอนเบิกคืนเงินประกัน:  Dr ลูกหนี้ 1131 (G) / Cr ลูกหนี้เงินประกันผลงาน 1133 (B) + Cr ภาษีขายยังไม่ถึงกำหนด 2123 (V)
  */
 
@@ -40,12 +43,13 @@ const WHT_RATES = [0, 1, 2, 3, 5];
 
 async function projectBills(companyId: string, projectDocId: string) {
   const q = await adminDb.collection(`companies/${companyId}/invoices`).where("projectDocId", "==", projectDocId).get();
-  return q.docs.map((d) => ({ docId: d.id, ...d.data() }) as any).filter((b) => b.docKind === "progress" || b.docKind === "retention");
+  return q.docs.map((d) => ({ docId: d.id, ...d.data() }) as any).filter((b) => ["progress", "retention", "advance"].includes(b.docKind));
 }
 
 const asRecord = (b: any): BillRecord => ({
   invoiceNo: b.invoiceNo, docKind: b.docKind, milestoneId: b.milestoneId, retentionAmount: Number(b.retentionAmount) || 0,
   workValue: Number(b.workValue) || 0, grandTotal: Number(b.grandTotal) || 0, paidAmount: Number(b.paidAmount) || 0, status: b.status,
+  advanceAmount: Number(b.advanceAmount) || 0, advancePercent: Number(b.advancePercent) || 0,
 });
 
 export async function POST(request: Request) {
@@ -67,7 +71,7 @@ export async function POST(request: Request) {
       if (!p.exists) throw new ApiAuthError(404, "ไม่พบโครงการ");
       const d = p.data()!;
       const milestones = (Array.isArray(d.milestones) ? d.milestones : []).map((m: any) => ({ id: str(m.id), name: str(m.name), endDate: str(m.endDate), progress: Number(m.progress) || 0, amount: Number(m.amount) || 0 }));
-      const billing = { retentionPercent: Number(d.billing?.retentionPercent) || 0, whtRate: Number(d.billing?.whtRate) || 0 };
+      const billing = { retentionPercent: Number(d.billing?.retentionPercent) || 0, advancePercent: Number(d.billing?.advancePercent) || 0, whtRate: Number(d.billing?.whtRate) || 0 };
       const s = billingSummary(milestones, bills.map(asRecord));
       const ps = normalizeProjectStatus(d.status);
       return NextResponse.json({
@@ -75,7 +79,7 @@ export async function POST(request: Request) {
         summary: { ...s, billedMilestones: Array.from(s.billedMilestones) },
         bills: bills.map((b) => ({
           docId: b.docId, invoiceNo: b.invoiceNo, docKind: b.docKind, milestoneId: b.milestoneId || "", milestoneName: b.milestoneName || "",
-          issueDate: b.issueDate, dueDate: b.dueDate, workValue: b.workValue || 0, retentionAmount: b.retentionAmount || 0, subTotal: b.subTotal, vatAmount: b.vatAmount,
+          issueDate: b.issueDate, dueDate: b.dueDate, workValue: b.workValue || 0, retentionAmount: b.retentionAmount || 0, advanceAmount: b.advanceAmount || 0, subTotal: b.subTotal, vatAmount: b.vatAmount,
           grandTotal: b.grandTotal, paidAmount: b.paidAmount || 0, balance: b.balance ?? b.grandTotal, paymentStatus: b.paymentStatus, status: b.status,
           receiptRefs: b.receiptRefs || [],
         })).sort((a, b) => String(a.issueDate).localeCompare(String(b.issueDate)) || String(a.invoiceNo).localeCompare(String(b.invoiceNo))),
@@ -87,17 +91,24 @@ export async function POST(request: Request) {
 
     if (action === "settings") {
       const retentionPercent = Number(body.retentionPercent);
+      const advancePercent = Number(body.advancePercent ?? 0);
       const whtRate = Number(body.whtRate ?? 0);
       if (!Number.isFinite(retentionPercent) || retentionPercent < 0 || retentionPercent > 20) throw new ApiAuthError(400, "เงินประกันผลงานต้องอยู่ระหว่าง 0–20%");
+      if (!Number.isFinite(advancePercent) || advancePercent < 0 || advancePercent > 50) throw new ApiAuthError(400, "เงินล่วงหน้าต้องอยู่ระหว่าง 0–50%");
       if (!WHT_RATES.includes(whtRate)) throw new ApiAuthError(400, "อัตราหัก ณ ที่จ่ายไม่ถูกต้อง");
       const p = await projectRef.get();
       if (!p.exists) throw new ApiAuthError(404, "ไม่พบโครงการ");
-      await projectRef.update({ "billing.retentionPercent": r2(retentionPercent), "billing.whtRate": whtRate, updatedAt: now, updatedBy: apiUser.uid });
-      await auditServer.logUpdate(apiUser.uid, companyId, "PROJECT_BILLING", projectDocId, p.data()!.billing || null, { retentionPercent, whtRate });
+      // ออกใบเงินล่วงหน้าแล้ว: เปลี่ยน % ไม่ได้ (การหักคืนใช้ % ตามใบเงินล่วงหน้า)
+      const prev = Number(p.data()!.billing?.advancePercent) || 0;
+      if (r2(advancePercent) !== prev && (await projectBills(companyId, projectDocId)).some((b) => b.docKind === "advance" && String(b.status).toLowerCase() !== "cancelled")) {
+        throw new ApiAuthError(409, "ออกใบแจ้งหนี้เงินล่วงหน้าแล้ว เปลี่ยน % เงินล่วงหน้าไม่ได้");
+      }
+      await projectRef.update({ "billing.retentionPercent": r2(retentionPercent), "billing.advancePercent": r2(advancePercent), "billing.whtRate": whtRate, updatedAt: now, updatedBy: apiUser.uid });
+      await auditServer.logUpdate(apiUser.uid, companyId, "PROJECT_BILLING", projectDocId, p.data()!.billing || null, { retentionPercent, advancePercent, whtRate });
       return NextResponse.json({ success: true });
     }
 
-    if (action === "bill" || action === "releaseRetention") {
+    if (action === "bill" || action === "releaseRetention" || action === "billAdvance") {
       const issueDate = isDate(body.issueDate) ? body.issueDate : todayBkk();
       const dueDays = Math.min(180, Math.max(0, Math.round(Number(body.dueDays ?? 30))));
       await assertPeriodOpen(companyId, issueDate);
@@ -123,18 +134,30 @@ export async function POST(request: Request) {
         const p = await tx.get(projectRef);
         const d = p.data()!;
         const bills = (await tx.get(adminDb.collection(`companies/${companyId}/invoices`).where("projectDocId", "==", projectDocId))).docs
-          .map((x) => x.data()).filter((b) => b.docKind === "progress" || b.docKind === "retention");
+          .map((x) => x.data()).filter((b) => ["progress", "retention", "advance"].includes(b.docKind));
         const milestones = (Array.isArray(d.milestones) ? d.milestones : []).map((m: any) => ({ ...m, id: str(m.id), amount: Number(m.amount) || 0 }));
         const summary = billingSummary(milestones, bills.map(asRecord));
         const retentionPercent = Number(d.billing?.retentionPercent) || 0;
-        let amounts, milestone: any = null, lineText = "";
+        let amounts, milestone: any = null, lineText = "", advancePercent = 0;
         if (action === "bill") {
           milestone = milestones.find((m: any) => m.id === str(body.milestoneId, 120));
           if (!milestone) throw new ApiAuthError(404, "ไม่พบงวดงาน");
           if (summary.billedMilestones.has(milestone.id)) throw new ApiAuthError(409, `งวด "${milestone.name}" ออกใบแจ้งหนี้แล้ว`);
           if (!(milestone.amount > 0)) throw new ApiAuthError(400, `งวด "${milestone.name}" ยังไม่ได้กำหนดจำนวนเงิน`);
-          amounts = progressBillAmounts(milestone.amount, retentionPercent, vatRegistered);
+          // หักคืนเงินล่วงหน้าตาม % ในใบเงินล่วงหน้า งวดสุดท้ายที่ยังไม่เรียกเก็บหักที่เหลือทั้งหมด
+          const unbilledOthers = milestones.filter((m: any) => m.id !== milestone.id && !summary.billedMilestones.has(m.id) && m.amount > 0).length;
+          const w = progressBillAmounts(milestone.amount, 0, vatRegistered).workValue;
+          const deduct = advanceRecovery(w, summary.advancePercent, summary.advanceOutstanding, unbilledOthers === 0);
+          amounts = progressBillAmounts(milestone.amount, retentionPercent, vatRegistered, deduct);
           lineText = `ค่างานตามสัญญา งวด: ${str(milestone.name, 200)}`;
+        } else if (action === "billAdvance") {
+          advancePercent = Number(d.billing?.advancePercent) || 0;
+          if (!(advancePercent > 0)) throw new ApiAuthError(400, "ยังไม่ได้กำหนด % เงินล่วงหน้า");
+          if (bills.some((b) => b.docKind === "advance" && String(b.status).toLowerCase() !== "cancelled")) throw new ApiAuthError(409, "ออกใบแจ้งหนี้เงินล่วงหน้าไปแล้ว");
+          if (bills.some((b) => b.docKind === "progress" && String(b.status).toLowerCase() !== "cancelled")) throw new ApiAuthError(409, "เรียกเก็บงวดงานไปแล้ว ออกใบเงินล่วงหน้าไม่ได้ (ต้องออกก่อนงวดแรก)");
+          if (!(summary.contract > 0)) throw new ApiAuthError(400, "ยังไม่ได้กำหนดยอดเงินของงวดงาน");
+          amounts = advanceBillAmounts(summary.contract, advancePercent, vatRegistered);
+          lineText = `เงินล่วงหน้าตามสัญญา ${advancePercent}% ของมูลค่างาน`;
         } else {
           if (!(summary.retentionOutstanding > 0.009)) throw new ApiAuthError(409, "ไม่มีเงินประกันผลงานคงค้างให้เบิกคืน");
           amounts = retentionReleaseAmounts(summary.retentionOutstanding, vatRegistered);
@@ -147,7 +170,7 @@ export async function POST(request: Request) {
         tx.create(adminDb.doc(`companies/${companyId}/invoices/${no}`), {
           id: no, companyId,
           invoiceId: no, invoiceNo: no, documentNo: no,
-          docKind: action === "bill" ? "progress" : "retention",
+          docKind: action === "bill" ? "progress" : action === "billAdvance" ? "advance" : "retention",
           // ใบแจ้งหนี้งานบริการ: ไม่ใช่ใบกำกับภาษี VAT เกิดตอนรับชำระ
           vatTiming: "receipt", isTaxInvoice: false, vatRealized: 0,
           projectDocId, projectId: str(d.projectId || projectDocId), projectName,
@@ -158,6 +181,9 @@ export async function POST(request: Request) {
           items: [{ name: lineText, details: projectName ? `โครงการ ${projectName}` : "", qty: 1, unit: "งาน", price: action === "bill" ? amounts.workValue : amounts.base, itemType: "SERVICE" }],
           isVatRegistered: vatRegistered, vatType: vatRegistered ? "Exclude VAT" : "Non-VAT",
           workValue: amounts.workValue, retentionPercent: action === "bill" ? retentionPercent : 0, retentionAmount: amounts.retention,
+          // ใบเงินล่วงหน้า: ยอดเงินล่วงหน้า / ใบงวดงาน: ยอดหักคืนเงินล่วงหน้า
+          advanceAmount: action === "billAdvance" ? amounts.base : amounts.advanceDeduct,
+          ...(action === "billAdvance" ? { advancePercent } : {}),
           subTotal: amounts.base, vatAmount: amounts.vat, grandTotal: amounts.total,
           expectedWhtRate: Number(d.billing?.whtRate) || 0,
           paidAmount: 0, balance: amounts.total, paymentStatus: "unpaid",
@@ -168,7 +194,12 @@ export async function POST(request: Request) {
         const items = action === "bill" ? [
           { accountCode: "1131-00", accountName: "ลูกหนี้การค้า", debit: amounts.total, credit: 0 },
           ...(amounts.retention > 0 ? [{ accountCode: "1133-00", accountName: "ลูกหนี้เงินประกันผลงาน", debit: amounts.retention, credit: 0 }] : []),
+          ...(amounts.advanceDeduct > 0 ? [{ accountCode: "2151-00", accountName: "เงินรับล่วงหน้าจากลูกค้า", debit: amounts.advanceDeduct, credit: 0 }] : []),
           { accountCode: "4112-00", accountName: "รายได้จากการให้บริการ", debit: 0, credit: amounts.workValue },
+          ...(amounts.vat > 0 ? [{ accountCode: "2123-00", accountName: "ภาษีขายยังไม่ถึงกำหนด", debit: 0, credit: amounts.vat }] : []),
+        ] : action === "billAdvance" ? [
+          { accountCode: "1131-00", accountName: "ลูกหนี้การค้า", debit: amounts.total, credit: 0 },
+          { accountCode: "2151-00", accountName: "เงินรับล่วงหน้าจากลูกค้า", debit: 0, credit: amounts.base },
           ...(amounts.vat > 0 ? [{ accountCode: "2123-00", accountName: "ภาษีขายยังไม่ถึงกำหนด", debit: 0, credit: amounts.vat }] : []),
         ] : [
           { accountCode: "1131-00", accountName: "ลูกหนี้การค้า", debit: amounts.total, credit: 0 },
@@ -178,7 +209,7 @@ export async function POST(request: Request) {
         const totalDebit = r2(items.reduce((s, i) => s + i.debit, 0));
         tx.set(journalRef, {
           companyId, date: issueDate, bookType: "SV",
-          description: `[AUTO] ใบแจ้งหนี้${action === "bill" ? "งวดงาน" : "เบิกคืนเงินประกันผลงาน"} ${no} โครงการ ${projectName} (${customerSnapshot.name})`,
+          description: `[AUTO] ใบแจ้งหนี้${action === "bill" ? "งวดงาน" : action === "billAdvance" ? "เงินล่วงหน้า" : "เบิกคืนเงินประกันผลงาน"} ${no} โครงการ ${projectName} (${customerSnapshot.name})`,
           reference: no, items, totalDebit, totalCredit: r2(items.reduce((s, i) => s + i.credit, 0)),
           status: "draft", createdBy: apiUser.uid, createdAt: now, updatedAt: now, isDeleted: false,
         });
@@ -198,14 +229,18 @@ export async function POST(request: Request) {
         const snap = await tx.get(invRef);
         if (!snap.exists) throw new ApiAuthError(404, "ไม่พบใบแจ้งหนี้");
         const inv = snap.data()!;
-        if (inv.projectDocId !== projectDocId || !["progress", "retention"].includes(inv.docKind)) throw new ApiAuthError(400, "ไม่ใช่ใบแจ้งหนี้ของโครงการนี้");
+        if (inv.projectDocId !== projectDocId || !["progress", "retention", "advance"].includes(inv.docKind)) throw new ApiAuthError(400, "ไม่ใช่ใบแจ้งหนี้ของโครงการนี้");
         if (String(inv.status).toLowerCase() === "cancelled") throw new ApiAuthError(409, "ยกเลิกไปแล้ว");
         if ((Number(inv.paidAmount) || 0) > 0) throw new ApiAuthError(409, `${inv.invoiceNo} รับชำระแล้ว ยกเลิกใบเสร็จก่อน`);
-        if (inv.docKind === "progress" && (Number(inv.retentionAmount) || 0) > 0) {
-          // เบิกคืนเงินประกันไปแล้ว: ยกเลิกงวดที่หักเงินประกันไม่ได้ (ยอดคืนจะเกินที่หักไว้)
-          const rel = (await tx.get(adminDb.collection(`companies/${companyId}/invoices`).where("projectDocId", "==", projectDocId))).docs
-            .some((x) => x.data().docKind === "retention" && String(x.data().status).toLowerCase() !== "cancelled");
-          if (rel) throw new ApiAuthError(409, "มีใบเบิกคืนเงินประกันผลงานแล้ว ยกเลิกใบเบิกคืนก่อน");
+        const others = (await tx.get(adminDb.collection(`companies/${companyId}/invoices`).where("projectDocId", "==", projectDocId))).docs
+          .map((x) => x.data()).filter((x) => x.invoiceNo !== inv.invoiceNo && String(x.status).toLowerCase() !== "cancelled");
+        // เบิกคืนเงินประกันไปแล้ว: ยกเลิกงวดที่หักเงินประกันไม่ได้ (ยอดคืนจะเกินที่หักไว้)
+        if (inv.docKind === "progress" && (Number(inv.retentionAmount) || 0) > 0 && others.some((x) => x.docKind === "retention")) {
+          throw new ApiAuthError(409, "มีใบเบิกคืนเงินประกันผลงานแล้ว ยกเลิกใบเบิกคืนก่อน");
+        }
+        // ใบเงินล่วงหน้าที่ถูกหักคืนในงวดงานแล้ว: ยกเลิกงวดเหล่านั้นก่อน
+        if (inv.docKind === "advance" && others.some((x) => x.docKind === "progress" && (Number(x.advanceAmount) || 0) > 0)) {
+          throw new ApiAuthError(409, "มีงวดงานที่หักคืนเงินล่วงหน้าแล้ว ยกเลิกงวดเหล่านั้นก่อน");
         }
         const j = inv.journalId ? await tx.get(adminDb.doc(`companies/${companyId}/journal_entries/${inv.journalId}`)) : null;
         const journal = voidOrReverseJournal(tx, companyId, j, { date: cancelDate, description: `[AUTO] ยกเลิกใบแจ้งหนี้ ${inv.invoiceNo}: ${reason}`, reference: inv.invoiceNo, uid: apiUser.uid, reason });

@@ -7,7 +7,7 @@ import { GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillI
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
-import { progressBillAmounts } from "@/lib/project-billing";
+import { advanceBillAmounts, advanceRecovery, progressBillAmounts } from "@/lib/project-billing";
 
 /**
  * เรียกเก็บเงินตามงวดงาน: ออกใบแจ้งหนี้ทีละงวด (หักเงินประกันผลงาน) ติดตามรับชำระ และเบิกคืนเงินประกัน
@@ -21,10 +21,10 @@ interface Status {
   canBill: boolean;
   billable: boolean;
   projectStatus: string;
-  billing: { retentionPercent: number; whtRate: number };
+  billing: { retentionPercent: number; advancePercent: number; whtRate: number };
   milestones: { id: string; name: string; endDate: string; progress: number; amount: number }[];
-  summary: { contract: number; billedTotal: number; received: number; unbilledAmount: number; retentionHeld: number; retentionReleased: number; retentionOutstanding: number; billedMilestones: string[] };
-  bills: { docId: string; invoiceNo: string; docKind: string; milestoneId: string; milestoneName: string; issueDate: string; dueDate: string; grandTotal: number; paidAmount: number; balance: number; paymentStatus: string; status: string; retentionAmount: number }[];
+  summary: { contract: number; billedTotal: number; received: number; unbilledAmount: number; retentionHeld: number; retentionReleased: number; retentionOutstanding: number; billedMilestones: string[]; advanceBilled: number; advanceRecovered: number; advanceOutstanding: number; advancePercent: number };
+  bills: { docId: string; invoiceNo: string; docKind: string; milestoneId: string; milestoneName: string; issueDate: string; dueDate: string; grandTotal: number; paidAmount: number; balance: number; paymentStatus: string; status: string; retentionAmount: number; advanceAmount: number }[];
 }
 
 export function ProjectBillingPanel({ companyId, docId, customerId }: { companyId: string; docId: string; customerId?: string }) {
@@ -32,6 +32,7 @@ export function ProjectBillingPanel({ companyId, docId, customerId }: { companyI
   const [st, setSt] = useState<Status | null>(null);
   const [busy, setBusy] = useState("");
   const [retention, setRetention] = useState("");
+  const [advance, setAdvance] = useState("");
   const [wht, setWht] = useState("0");
   const [print, setPrint] = useState<{ id: string; no: string } | null>(null);
 
@@ -47,6 +48,7 @@ export function ProjectBillingPanel({ companyId, docId, customerId }: { companyI
       const d = await call({ action: "status" });
       setSt(d);
       setRetention(String(d.billing.retentionPercent));
+      setAdvance(String(d.billing.advancePercent || 0));
       setWht(String(d.billing.whtRate));
     } catch (e: any) { showAlert(e.message, "แจ้งเตือน", "error"); }
   }, [call, showAlert]);
@@ -61,13 +63,26 @@ export function ProjectBillingPanel({ companyId, docId, customerId }: { companyI
   const s = st.summary;
   const billOf = (mid: string) => st.bills.find((b) => b.milestoneId === mid && b.status !== "cancelled");
   const pct = Number(st.billing.retentionPercent) || 0;
-  const retentionBills = st.bills.filter((b) => b.docKind === "retention");
+  const retentionBills = st.bills.filter((b) => b.docKind === "retention" || b.docKind === "advance");
+  const liveAdvance = st.bills.find((b) => b.docKind === "advance" && b.status !== "cancelled");
+  const anyProgress = st.bills.some((b) => b.docKind === "progress" && b.status !== "cancelled");
+  const advPct = Number(st.billing.advancePercent) || 0;
   const cancelledBills = st.bills.filter((b) => b.status === "cancelled");
 
   const issue = (m: Status["milestones"][number]) => run(`bill:${m.id}`, async () => {
-    const a = progressBillAmounts(m.amount, pct);
-    if (!(await showConfirm(`ออกใบแจ้งหนี้งวด "${m.name}"\nมูลค่างาน ${baht(a.workValue)}${a.retention ? ` หักเงินประกัน ${baht(a.retention)}` : ""} + VAT ${baht(a.vat)}\nยอดเรียกเก็บ ${baht(a.total)} บาท`))) return;
+    // ประมาณการเดียวกับ server (ยอดจริงคำนวณที่ server ตอนออกใบ)
+    const isLast = st.milestones.filter((x) => x.id !== m.id && x.amount > 0 && !billOf(x.id)).length === 0;
+    const deduct = advanceRecovery(progressBillAmounts(m.amount, 0).workValue, s.advancePercent, s.advanceOutstanding, isLast);
+    const a = progressBillAmounts(m.amount, pct, true, deduct);
+    if (!(await showConfirm(`ออกใบแจ้งหนี้งวด "${m.name}"\nมูลค่างาน ${baht(a.workValue)}${a.retention ? ` หักเงินประกัน ${baht(a.retention)}` : ""}${a.advanceDeduct ? ` หักคืนเงินล่วงหน้า ${baht(a.advanceDeduct)}` : ""} + VAT ${baht(a.vat)}\nยอดเรียกเก็บ ${baht(a.total)} บาท`))) return;
     const d = await call({ action: "bill", milestoneId: m.id });
+    setPrint({ id: d.invoiceNo, no: d.invoiceNo });
+  });
+
+  const billAdvance = () => run("advance", async () => {
+    const a = advanceBillAmounts(s.contract, advPct);
+    if (!(await showConfirm(`ออกใบแจ้งหนี้เงินล่วงหน้า ${advPct}%\n${baht(a.base)} + VAT ${baht(a.vat)} = ${baht(a.total)} บาท\nจะหักคืนในแต่ละงวดตามสัดส่วน`))) return;
+    const d = await call({ action: "billAdvance" });
     setPrint({ id: d.invoiceNo, no: d.invoiceNo });
   });
 
@@ -105,13 +120,17 @@ export function ProjectBillingPanel({ companyId, docId, customerId }: { companyI
           <PillInput inputMode="decimal" value={retention} onChange={(e) => setRetention(e.target.value.replace(/[^\d.]/g, ""))} disabled={!st.canBill} className="h-9 w-28 text-right font-mono" />
         </div>
         <div className="space-y-1">
+          <label className="text-[12px] font-bold text-white/60 ml-1">เงินล่วงหน้า (%)</label>
+          <PillInput inputMode="decimal" value={advance} onChange={(e) => setAdvance(e.target.value.replace(/[^\d.]/g, ""))} disabled={!st.canBill || !!liveAdvance} title={liveAdvance ? "ออกใบเงินล่วงหน้าแล้ว เปลี่ยนไม่ได้" : ""} className="h-9 w-28 text-right font-mono" />
+        </div>
+        <div className="space-y-1">
           <label className="text-[12px] font-bold text-white/60 ml-1">ลูกค้าหัก ณ ที่จ่าย</label>
           <select value={wht} onChange={(e) => setWht(e.target.value)} disabled={!st.canBill} className="h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] leading-[1.9]">
             {[0, 1, 2, 3, 5].map((r) => <option key={r} value={r} className="bg-surface-1">{r === 0 ? "ไม่หัก" : `${r}%`}</option>)}
           </select>
         </div>
         {st.canBill && (
-          <PillButton variant="glass" className="h-9 px-4 text-xs font-bold" disabled={!!busy} onClick={() => run("settings", async () => { await call({ action: "settings", retentionPercent: Number(retention) || 0, whtRate: Number(wht) || 0 }); })}>
+          <PillButton variant="glass" className="h-9 px-4 text-xs font-bold" disabled={!!busy} onClick={() => run("settings", async () => { await call({ action: "settings", retentionPercent: Number(retention) || 0, advancePercent: Number(advance) || 0, whtRate: Number(wht) || 0 }); })}>
             {busy === "settings" ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} บันทึก
           </PillButton>
         )}
@@ -158,25 +177,33 @@ export function ProjectBillingPanel({ companyId, docId, customerId }: { companyI
 
       <GlassCard className="p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm font-bold text-white flex items-center gap-2"><ShieldCheck size={16} className="text-nexus-teal" /> เงินประกันผลงาน</h3>
+          <h3 className="text-sm font-bold text-white flex items-center gap-2"><ShieldCheck size={16} className="text-nexus-teal" /> เงินล่วงหน้าและเงินประกันผลงาน</h3>
+          {st.canBill && st.billable && advPct > 0 && !liveAdvance && !anyProgress && s.contract > 0 && (
+            <PillButton variant="glass" className="h-8 px-4 text-xs font-bold" disabled={!!busy} onClick={billAdvance}>
+              {busy === "advance" ? <Loader2 size={14} className="animate-spin" /> : <Receipt size={14} />} เรียกเก็บเงินล่วงหน้า {advPct}%
+            </PillButton>
+          )}
           {st.canBill && st.billable && s.retentionOutstanding > 0.009 && (
             <PillButton variant="glass" className="h-8 px-4 text-xs font-bold" disabled={!!busy} onClick={release}>
               {busy === "release" ? <Loader2 size={14} className="animate-spin" /> : <Receipt size={14} />} เบิกคืนเงินประกัน {baht(s.retentionOutstanding)}
             </PillButton>
           )}
         </div>
-        <p className="text-[13px] text-white/60">ลูกค้าหักไว้ {baht(s.retentionHeld)} · เบิกคืนแล้ว {baht(s.retentionReleased)} · คงค้าง <span className="text-white font-bold">{baht(s.retentionOutstanding)}</span> บาท (ก่อน VAT)</p>
+        {(advPct > 0 || s.advanceBilled > 0) && (
+          <p className="text-[13px] text-white/60">เงินล่วงหน้า {s.advancePercent || advPct}%: เรียกเก็บ {baht(s.advanceBilled)} · หักคืนแล้ว {baht(s.advanceRecovered)} · คงเหลือ <span className="text-white font-bold">{baht(s.advanceOutstanding)}</span> บาท (ก่อน VAT){!liveAdvance && anyProgress ? " · ต้องออกใบเงินล่วงหน้าก่อนเรียกเก็บงวดแรก" : ""}</p>
+        )}
+        <p className="text-[13px] text-white/60">เงินประกันผลงาน: ลูกค้าหักไว้ {baht(s.retentionHeld)} · เบิกคืนแล้ว {baht(s.retentionReleased)} · คงค้าง <span className="text-white font-bold">{baht(s.retentionOutstanding)}</span> บาท (ก่อน VAT)</p>
         {[...retentionBills, ...cancelledBills.filter((b) => b.docKind === "progress")].map((b) => {
           const pl = payLabel(b);
           return (
             <div key={b.docId} className="flex items-center justify-between gap-3 text-[13px] border-t border-white/5 pt-2">
-              <span className="text-white/70 truncate">{b.invoiceNo} · {b.docKind === "retention" ? "เบิกคืนเงินประกัน" : b.milestoneName} · {thDate(b.issueDate)} · {baht(b.grandTotal)}</span>
+              <span className="text-white/70 truncate">{b.invoiceNo} · {b.docKind === "retention" ? "เบิกคืนเงินประกัน" : b.docKind === "advance" ? "เงินล่วงหน้า" : b.milestoneName} · {thDate(b.issueDate)} · {baht(b.grandTotal)}</span>
               <span className="flex items-center gap-2 shrink-0">
                 <StatusBadge status={pl.status} label={pl.label} />
-                {b.docKind === "retention" && b.status !== "cancelled" && b.paymentStatus !== "paid" && (
+                {b.docKind !== "progress" && b.status !== "cancelled" && b.paymentStatus !== "paid" && (
                   <Link href={`/finance/receipts/new?invoice=${encodeURIComponent(b.docId)}`} className="text-nexus-teal text-[12px] font-bold hover:underline">รับชำระ</Link>
                 )}
-                {b.docKind === "retention" && b.status !== "cancelled" && st.canBill && !(b.paidAmount > 0) && (
+                {b.docKind !== "progress" && b.status !== "cancelled" && st.canBill && !(b.paidAmount > 0) && (
                   <button type="button" className="text-danger/80 hover:text-danger" onClick={() => cancel(b)} title="ยกเลิก" aria-label="ยกเลิก"><XCircle size={15} /></button>
                 )}
                 <button type="button" onClick={() => setPrint({ id: b.docId, no: b.invoiceNo })} className="text-white/60 hover:text-white" title="พิมพ์" aria-label="พิมพ์"><Printer size={15} /></button>

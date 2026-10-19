@@ -5,7 +5,7 @@
  */
 
 export type ImportEntity = "customers" | "suppliers" | "products";
-type ColType = "text" | "number" | "int" | "taxId" | "branch" | "email" | "choice";
+type ColType = "text" | "number" | "int" | "taxId" | "branch" | "email" | "choice" | "date";
 
 export interface ImportColumn {
   key: string;
@@ -19,12 +19,14 @@ export interface ImportColumn {
 }
 
 export interface ImportTemplate {
-  entity: ImportEntity;
+  entity: string;
   label: string;
-  permission: "sales:edit" | "procurement:edit" | "inventory:edit";
+  permission: "sales:edit" | "procurement:edit" | "inventory:edit" | "finance:edit";
   columns: ImportColumn[];
   /** คีย์ที่ต้องไม่ซ้ำภายในไฟล์ (และในระบบ — server ตรวจซ้ำอีกชั้น) */
   uniqueKeys: string[][];
+  /** ตรวจเพิ่มเติมทั้งแถว (หลังแปลงค่าแต่ละช่องแล้ว) */
+  validate?: (values: Record<string, any>) => string[];
 }
 
 const ADDRESS: ImportColumn[] = [
@@ -122,6 +124,26 @@ export function mapHeaders(template: ImportTemplate, headers: any[]): { index: R
   return { index, missing, unknown };
 }
 
+/** วันที่จาก Excel: เลขลำดับวันของ Excel / 2026-09-30 / 30/09/2026 / 30/09/2569 (พ.ศ.) -> YYYY-MM-DD */
+export function parseDate(v: any): string | null {
+  if (v === null || v === undefined || v === "") return null;
+  let y: number, m: number, d: number;
+  if (typeof v === "number") {
+    if (!(v > 1 && v < 2958466)) return null;
+    const dt = new Date(Math.round((v - 25569) * 86400e3));
+    return dt.toISOString().slice(0, 10);
+  }
+  const s = String(v).trim().replace(/[๐-๙]/g, (x) => String("๐๑๒๓๔๕๖๗๘๙".indexOf(x)));
+  let mt = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (mt) [y, m, d] = [Number(mt[1]), Number(mt[2]), Number(mt[3])];
+  else if ((mt = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/))) [d, m, y] = [Number(mt[1]), Number(mt[2]), Number(mt[3])];
+  else return null;
+  if (y > 2400) y -= 543;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d || y < 1990 || y > 2100) return null;
+  return dt.toISOString().slice(0, 10);
+}
+
 /** ตรวจและแปลงค่าแต่ละแถว (แถวว่างทั้งแถวถูกข้าม) */
 export function parseRows(template: ImportTemplate, rows: any[][], index: Record<string, number>): ParsedRow[] {
   const out: ParsedRow[] = [];
@@ -159,6 +181,11 @@ export function parseRows(template: ImportTemplate, rows: any[][], index: Record
           if (!d || d.length > 5 || /สำนักงานใหญ่/.test(text)) values[c.key] = "00000"; else values[c.key] = d.padStart(5, "0");
           break;
         }
+        case "date": {
+          const d = parseDate(rawVal);
+          if (!d) errors.push(`${c.header} ไม่ใช่วันที่ (ใช้ 30/09/2026 หรือ 30/09/2569) ("${text}")`); else values[c.key] = d;
+          break;
+        }
         case "email":
           if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) errors.push(`${c.header} ไม่ถูกต้อง ("${text}")`); else values[c.key] = text.toLowerCase();
           break;
@@ -173,6 +200,7 @@ export function parseRows(template: ImportTemplate, rows: any[][], index: Record
     }
     if ((template.entity === "customers" || template.entity === "suppliers") && values.taxId && !values.branchCode) values.branchCode = "00000";
     if (template.entity === "products" && values.itemType === "SERVICE" && values.openingQty) errors.push("บริการไม่มีจำนวนคงเหลือยกมา");
+    if (template.validate && !errors.length) errors.push(...template.validate(values));
     // ซ้ำภายในไฟล์
     template.uniqueKeys.forEach((keys, k) => {
       if (!keys.every((key) => values[key])) return;

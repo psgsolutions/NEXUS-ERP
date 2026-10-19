@@ -91,6 +91,8 @@ function progressBillModel(d: any, seller: any, id: string): DocumentModel {
 
 export async function loadInvoice(companyId: string, id: string): Promise<DocumentModel> {
   const { d, seller } = await companyAndDoc(companyId, `companies/${companyId}/invoices/${id}`, "ไม่พบใบกำกับภาษี");
+  // ลูกหนี้ยกมา: เอกสารตัวจริงออกจากระบบเดิม ระบบนี้ไม่พิมพ์ซ้ำ
+  if (d.docKind === "opening") throw new ApiAuthError(400, `${str(d.invoiceNo || id)} เป็นยอดยกมาจากระบบเดิม — ไม่มีเอกสารให้พิมพ์ในระบบนี้`);
   if (d.vatTiming === "receipt") return progressBillModel(d, seller, id);
   const lines = quotationLines(Array.isArray(d.items) ? d.items : []);
   const lineSum = r2(lines.reduce((s, l) => s + num(l.amount), 0));

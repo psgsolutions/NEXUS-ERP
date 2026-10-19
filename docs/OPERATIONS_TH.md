@@ -1,6 +1,6 @@
 # คู่มือดูแลระบบ NEXUS ERP (ทดสอบ · สำรองข้อมูล · ตั้งค่า)
 
-สำหรับผู้ดูแลระบบและนักพัฒนา — ขั้นตอน deploy ดูที่ [DEPLOY_GUIDE_TH.md](DEPLOY_GUIDE_TH.md)
+สำหรับผู้ดูแลระบบและนักพัฒนา — ขั้นตอน deploy ดูที่ [DEPLOY_GUIDE_TH.md](DEPLOY_GUIDE_TH.md) · ตรวจรับระบบก่อนใช้งานจริง ดู [UAT_CHECKLIST_TH.md](UAT_CHECKLIST_TH.md)
 
 ## 1. การทดสอบ
 

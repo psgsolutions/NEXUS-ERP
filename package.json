@@ -46,7 +46,8 @@
     "react-rnd": "^10.5.3",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
-    "thailand-address": "^1.0.2"
+    "thailand-address": "^1.0.2",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.4",

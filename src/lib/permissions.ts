@@ -165,6 +165,7 @@ export const ROUTE_PERMISSIONS: { prefix: string; any: Permission[] }[] = [
   { prefix: "/support", any: ["sales:view", "projects:view", "service:field"] },
   { prefix: "/hr", any: ["hr:view"] },
   { prefix: "/ai", any: ["finance:view"] },
+  { prefix: "/data-import", any: ["sales:edit", "procurement:edit", "inventory:edit"] },
   { prefix: "/settings/users", any: ["users:manage"] },
   { prefix: "/settings", any: ["settings:manage", "users:manage"] },
 ];

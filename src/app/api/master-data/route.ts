@@ -14,7 +14,8 @@ import { MASTER_SCHEMAS, isMasterEntity, mergeRecord, splitChanges, uniqueKeyDoc
  *  - { action: "context" }                                 เครือของบริษัท จำนวนบริษัท และสิทธิ์แก้ข้อมูลกลาง
  *  - { action: "checkDuplicate", entity, data }            มีรายการที่ SKU/บาร์โค้ด/เลขผู้เสียภาษี ซ้ำในเครือหรือไม่
  *  - { action: "create", entity, id?, data, openingStock? } สร้างใหม่ (ข้อมูลกลาง + ของบริษัท)
- *      openingStock (สินค้า): { qty, unitCost } รับเข้าเป็นยอดยกมา ผ่าน stock engine + บันทึกบัญชีร่าง Dr สินค้าคงเหลือ / Cr กำไรสะสม
+ *      openingStock (สินค้า): { qty, unitCost, postJournal? } รับเข้าเป็นยอดยกมา ผ่าน stock engine + บันทึกบัญชีร่าง Dr สินค้าคงเหลือ / Cr กำไรสะสม
+ *      (postJournal: false = ไม่บันทึกบัญชี — ใช้เมื่อยอดสินค้าคงเหลือรวมอยู่ในงบทดลองยกมาแล้ว)
  * สินค้าที่ยังอยู่ root products (ก่อนย้ายข้อมูล): get/update ทำงานกับเอกสารเดิม
  *  - { action: "adopt", entity, id, data? }                ใช้รายการกลางที่มีอยู่แล้วในบริษัทนี้ (ตั้งค่าของบริษัทได้)
  *  - { action: "update", entity, id, changes, scope }      scope "group" = แก้ค่ากลาง / "company" = ตั้งค่าของบริษัท
@@ -49,7 +50,7 @@ function clean(obj: Record<string, any>): Record<string, any> {
 function normalizeParty(entity: MasterEntity, data: Record<string, any>) {
   if (entity === "products") return data;
   const out = { ...data };
-  const tax = String(out.taxId ?? out.tax_id ?? "").replace(/D/g, "");
+  const tax = String(out.taxId ?? out.tax_id ?? "").replace(/\D/g, "");
   if (tax) out.taxId = tax;
   if (!out.branchCode && out.branch_code) out.branchCode = String(out.branch_code);
   return out;
@@ -104,7 +105,7 @@ async function legacyDuplicates(entity: MasterEntity, companyId: string, data: R
     }
     return hits;
   }
-  const taxId = String(data?.taxId ?? data?.tax_id ?? "").replace(/D/g, "");
+  const taxId = String(data?.taxId ?? data?.tax_id ?? "").replace(/\D/g, "");
   if (!taxId) return hits;
   const branchOf = (x: any) => String(x?.branchCode ?? x?.branch_code ?? "").trim() || "00000";
   const branch = branchOf(data);
@@ -179,6 +180,7 @@ export async function POST(request: Request) {
       const { master, local } = splitChanges(entity, data, "group");
       protectLocal(entity, local);
       const opening = entity === "products" ? { qty: Math.floor(Number(body.openingStock?.qty) || 0), unitCost: Math.max(0, Number(body.openingStock?.unitCost) || 0) } : { qty: 0, unitCost: 0 };
+      const postOpeningJournal = body.openingStock?.postJournal !== false;
       if (opening.qty < 0 || opening.qty > 10_000_000) throw new ApiAuthError(400, "จำนวนยกมาไม่ถูกต้อง");
       if (entity === "products") local.stockStatus = { onHand: 0, reserved: 0, available: 0 };
       const legacyHits = await legacyDuplicates(entity, companyId, master);
@@ -197,7 +199,7 @@ export async function POST(request: Request) {
       if (opening.qty > 0) {
         const amount = Math.round(opening.qty * opening.unitCost * 100) / 100;
         await processStockMovements([{ companyId, productId: id, type: "IN", quantity: opening.qty, unitCost: opening.unitCost, referenceId: `OPEN-${id}`, userId: apiUser.email || apiUser.uid }], (tx) => {
-          if (amount <= 0) return;
+          if (amount <= 0 || !postOpeningJournal) return;
           tx.set(adminDb.collection(`companies/${companyId}/journal_entries`).doc(), {
             companyId, date: now, bookType: "JV", status: "draft",
             description: `[AUTO] ยอดยกมาสินค้า ${master.sku || id} ${opening.qty} หน่วย`,

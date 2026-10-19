@@ -34,7 +34,8 @@ import {
   Sparkles,
   Settings,
   Lock,
-  TrendingUp
+  TrendingUp,
+  FileSpreadsheet,
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import Link from "next/link";
@@ -125,6 +126,7 @@ export default function AuthenticatedLayout({
 
             {/* SYSTEM TIER */}
             <NavGroup title="ระบบงาน">
+              {show("/data-import") && <SideLink href="/data-import" icon={<FileSpreadsheet size={20} />} label="นำเข้าข้อมูล Excel" active={pathname === "/data-import"} title="Import" />}
               {show("/settings") && <SideLink href="/settings" icon={<Settings size={20} />} label="ตั้งค่า" active={pathname?.startsWith("/settings")} title="Settings" />}
             </NavGroup>
           </nav>

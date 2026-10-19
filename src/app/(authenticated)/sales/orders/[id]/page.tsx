@@ -9,6 +9,7 @@ import { PillButton, GlassCard, StatusBadge, NexusTable, NexusTableRow, NexusTab
 import { formatCurrency } from "@/lib/erp-logic";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
+import { InfoTip, WhatHappens } from "@/components/guide/Guidance";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { soPickRemaining } from "@/lib/picking";
@@ -231,7 +232,17 @@ export default function SalesOrderDetailPage() {
     </div>
   );
 
+  const nextSteps: Record<string, (string | false)[]> = {
+    DRAFT: ["กด \"อนุมัติใบสั่งขาย\" — ระบบตรวจวงเงินเครดิตของลูกค้าจากยอดค้างจริง", "แก้ไขรายการได้จนกว่าจะอนุมัติ"],
+    CONFIRMED: needsPicking
+      ? ["กด \"จัดของ / เบิกสินค้า\" — คลังเบิกสินค้า ตัดสต็อก และออกใบส่งของ", "เบิกครบแล้วสถานะเปลี่ยนเป็นส่งมอบ"]
+      : ["กด \"บันทึกส่งมอบแล้ว\" เมื่อส่งงาน/บริการให้ลูกค้าแล้ว"],
+    DELIVERED: ["กด \"ออกใบกำกับภาษี + ใบวางบิล\" — เลขที่เรียงต่อเนื่อง ออกได้ครั้งเดียว (ยกเลิกได้โดยออกฉบับใหม่แทน)", "ตั้งยอดลูกหนี้ และส่งรายการบัญชีรายได้ + ภาษีขายให้ฝ่ายบัญชีอนุมัติ", "จากนั้นรับเงินที่ การเงินและบัญชี › รับชำระเงิน"],
+    COMPLETED: ["ออกใบกำกับภาษีแล้ว — รับเงินที่ การเงินและบัญชี › รับชำระเงิน", "ถ้าราคาหรือจำนวนผิด ให้ออกใบลดหนี้/เพิ่มหนี้ (ไม่แก้ใบกำกับเดิม)"],
+  };
   const rightSidebar = (
+    <div className="space-y-4 w-full">
+    {nextSteps[status] && <WhatHappens title="ขั้นตอนถัดไป" items={nextSteps[status]} />}
     <GlassCard className="p-6 border-white/5 rounded-3xl bg-surface-1 shadow-2xl space-y-4 w-full h-fit">
       <Row label="ยอดก่อนภาษี" value={`${formatCurrency(so.subTotal ?? so.netTotal ?? so.totalRevenue ?? 0)} บาท`} />
       {Number(so.totalDiscount || 0) > 0 && <Row label="ส่วนลดรวม" value={`-${formatCurrency(so.totalDiscount)} บาท`} />}
@@ -243,6 +254,7 @@ export default function SalesOrderDetailPage() {
         </span>
       </div>
     </GlassCard>
+    </div>
   );
 
   return <NexusPageLayout header={headerContent} leftContent={leftContent} rightSidebar={rightSidebar} />;

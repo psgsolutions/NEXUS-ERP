@@ -18,7 +18,7 @@ const thDate = (d?: string) => { if (!d) return ""; const [y, m, dd] = d.split("
 const PRIORITY_CLS: Record<string, string> = { URGENT: "bg-danger/15 text-danger border-danger/30", HIGH: "bg-warning/15 text-warning border-warning/30", NORMAL: "bg-white/5 text-white/60 border-white/10", LOW: "bg-white/5 text-white/40 border-white/10" };
 
 export default function MyJobsPage() {
-  const { companyId, user } = useAuth();
+  const { companyId, user, displayName } = useAuth();
   const { showAlert } = useSystemDialog();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [workOrders, setWorkOrders] = useState<any[]>([]);
@@ -62,7 +62,7 @@ export default function MyJobsPage() {
         <>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[13px] text-white/50">สวัสดี {user?.email?.split("@")[0] || ""}</p>
+              <p className="text-[13px] text-white/50">สวัสดี {displayName}</p>
               <h1 className="text-2xl font-bold text-white leading-normal">งานของฉัน</h1>
             </div>
             <button type="button" onClick={load} className="w-10 h-10 rounded-full border border-white/10 text-white/60 hover:text-white flex items-center justify-center" aria-label="รีเฟรช">

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, AlertTriangle, ArrowLeft, CheckCircle2, Loader2, Lock, Unlock } from "lucide-react";
 import { GlassCard, PillButton, PillInput, PillSelect, cn } from "@/components/ui/Base";
+import { InfoTip, WhatHappens } from "@/components/guide/Guidance";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
@@ -234,7 +235,12 @@ export default function PeriodClosePage() {
           ) : <p className="text-[12px] text-white/50">เฉพาะผู้ดูแลระบบสูงสุดเท่านั้นที่เปิดงวดที่ปิดแล้วได้</p>}
         </GlassCard>
       )}
-      <p className="text-[11px] text-white/40 px-1">เมื่อปิดงวดแล้ว ระบบจะไม่รับเอกสารที่ลงบัญชีวันที่ในงวดนั้น เช่น ใบเสร็จ ใบสำคัญจ่าย ใบกำกับภาษีซื้อ และการบันทึกบัญชีด้วยมือ</p>
+      <WhatHappens title="เมื่อปิดงวด" items={[
+        "ล็อกงวดนี้ — เอกสารที่ลงวันที่ในงวด (ใบเสร็จ ใบสำคัญจ่าย ใบกำกับภาษีซื้อ บันทึกบัญชีด้วยมือ) บันทึกหรือแก้ไม่ได้",
+        "ต้องไม่มีรายการรออนุมัติค้างในงวด",
+        "ควรยื่น ภ.พ.30 และ ภ.ง.ด.3/53 ของงวดให้เรียบร้อยก่อนปิด",
+        "เปิดงวดอีกครั้งได้เฉพาะผู้ดูแลระบบสูงสุด พร้อมระบุเหตุผล (เก็บประวัติไว้)",
+      ]} />
     </div>
   );
 

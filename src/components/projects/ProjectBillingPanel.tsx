@@ -7,6 +7,7 @@ import { GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillI
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
+import { InfoTip } from "@/components/guide/Guidance";
 import { advanceBillAmounts, advanceRecovery, progressBillAmounts } from "@/lib/project-billing";
 
 /**
@@ -116,15 +117,15 @@ export function ProjectBillingPanel({ companyId, docId, customerId }: { companyI
 
       <GlassCard className="p-4 flex flex-wrap items-end gap-3">
         <div className="space-y-1">
-          <label className="text-[12px] font-bold text-white/60 ml-1">เงินประกันผลงาน (%)</label>
+          <label className="text-[12px] font-bold text-white/60 ml-1">เงินประกันผลงาน (%)<InfoTip text="ลูกค้ากันเงินไว้ส่วนหนึ่งของแต่ละงวด (มัก 5–10%) เป็นประกันงาน — ระบบหักออกจากยอดเรียกเก็บแต่ละงวด และเก็บเป็นลูกหนี้เงินประกัน เมื่อพ้นระยะประกันให้กด 'เบิกคืนเงินประกัน' เพื่อออกใบแจ้งหนี้เรียกคืน" /></label>
           <PillInput inputMode="decimal" value={retention} onChange={(e) => setRetention(e.target.value.replace(/[^\d.]/g, ""))} disabled={!st.canBill} className="h-9 w-28 text-right font-mono" />
         </div>
         <div className="space-y-1">
-          <label className="text-[12px] font-bold text-white/60 ml-1">เงินล่วงหน้า (%)</label>
+          <label className="text-[12px] font-bold text-white/60 ml-1">เงินล่วงหน้า (%)<InfoTip text="ลูกค้าจ่ายล่วงหน้าก่อนเริ่มงาน (ตามสัญญา) — ออกใบแจ้งหนี้เงินล่วงหน้าได้ครั้งเดียว แล้วระบบหักคืนในแต่ละงวดตามสัดส่วนเดียวกัน · ตั้งแล้วเปลี่ยนไม่ได้หลังออกใบ" /></label>
           <PillInput inputMode="decimal" value={advance} onChange={(e) => setAdvance(e.target.value.replace(/[^\d.]/g, ""))} disabled={!st.canBill || !!liveAdvance} title={liveAdvance ? "ออกใบเงินล่วงหน้าแล้ว เปลี่ยนไม่ได้" : ""} className="h-9 w-28 text-right font-mono" />
         </div>
         <div className="space-y-1">
-          <label className="text-[12px] font-bold text-white/60 ml-1">ลูกค้าหัก ณ ที่จ่าย</label>
+          <label className="text-[12px] font-bold text-white/60 ml-1">ลูกค้าหัก ณ ที่จ่าย<InfoTip text="งานรับเหมา/บริการ ลูกค้านิติบุคคลมักหัก 3% จากยอดก่อน VAT — ตั้งไว้ที่นี่เพื่อให้ใบแจ้งหนี้แสดงยอดสุทธิที่ลูกค้าจะโอน และเป็นค่าเริ่มต้นตอนรับชำระ" /></label>
           <select value={wht} onChange={(e) => setWht(e.target.value)} disabled={!st.canBill} className="h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] leading-[1.9]">
             {[0, 1, 2, 3, 5].map((r) => <option key={r} value={r} className="bg-surface-1">{r === 0 ? "ไม่หัก" : `${r}%`}</option>)}
           </select>

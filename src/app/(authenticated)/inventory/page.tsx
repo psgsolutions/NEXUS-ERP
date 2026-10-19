@@ -54,6 +54,8 @@ import { StockTransferModal } from "@/components/inventory/StockTransferModal";
 import { Warehouse3D } from "@/components/inventory/Warehouse3D";
 import { useInventory } from "@/hooks/useInventory";
 import { useRouter } from "next/navigation";
+import { EmptyGuide } from "@/components/guide/Guidance";
+import { useAdvancedTabs } from "@/components/guide/Onboarding";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase-client";
 import { collection, query, where, onSnapshot, orderBy, limit, doc, setDoc } from "firebase/firestore";
@@ -342,6 +344,14 @@ export default function InventoryPage() {
   const router = useRouter();
   
   const [activeTab, setActiveTab] = useState("items");
+  const inventoryTabs = useAdvancedTabs([
+    { id: "items", label: "รายการพัสดุ", icon: <Package size={14} /> },
+    { id: "assets", label: "ทะเบียนสินทรัพย์ถาวร", icon: <Box size={14} /> },
+    { id: "serials", label: "หมายเลขซีเรียล", icon: <ScanBarcode size={14} /> },
+    { id: "kits", label: "ชุดอุปกรณ์สำเร็จรูป", icon: <Cpu size={14} /> },
+    { id: "history", label: "ความเคลื่อนไหว", icon: <History size={14} /> },
+    { id: "layout", label: "แบบจำลองผังคลัง 3D (ทดลอง)", icon: <Layout size={14} /> },
+  ], ["serials", "kits", "layout"], activeTab);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
@@ -493,7 +503,7 @@ export default function InventoryPage() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight leading-none">คลังสินค้าและพัสดุ</h1>
-            <p className="text-sm font-medium text-white/30 uppercase mt-1 tracking-widest leading-none">Intelligence OS for Modern Business</p>
+            <p className="text-xs font-semibold text-white/60 mt-1 leading-none">รายการสินค้า สต็อก รับ-เบิก-โอนย้าย และผังคลัง</p>
           </div>
         </div>
 
@@ -532,16 +542,10 @@ export default function InventoryPage() {
       {/* Tab Navigation and Toolbars */}
       <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
         <PillTabs className="flex-1 min-w-[min(100%,520px)]" 
-          tabs={[
-            { id: "items", label: "รายการพัสดุ", icon: <Package size={14} /> },
-            { id: "assets", label: "ทะเบียนสินทรัพย์ถาวร", icon: <Box size={14} /> },
-            { id: "serials", label: "หมายเลขซีเรียล", icon: <ScanBarcode size={14} /> },
-            { id: "kits", label: "ชุดอุปกรณ์สำเร็จรูป", icon: <Cpu size={14} /> },
-            { id: "history", label: "ความเคลื่อนไหว", icon: <History size={14} /> },
-            { id: "layout", label: "แบบจำลอง 3D LAYOUT (BETA)", icon: <Layout size={14} /> }
-          ]} 
-          activeTab={activeTab} 
+          tabs={inventoryTabs.tabs}
+          activeTab={activeTab}
           onTabChange={(tab) => {
+            if (inventoryTabs.handleToggle(tab)) return;
             setActiveTab(tab);
             setSearchQuery("");
             setSelectedProductId(null);
@@ -691,11 +695,7 @@ export default function InventoryPage() {
                           </NexusTableCell>
                         </NexusTableRow>
                       ) : filteredProducts.length === 0 ? (
-                        <NexusTableRow className="bg-transparent hover:bg-transparent pointer-events-none">
-                          <NexusTableCell colSpan={6} className="p-20 text-center text-white/20">
-                            <span className="text-sm font-medium tracking-widest uppercase">ไม่พบรายการพัสดุในคลัง</span>
-                          </NexusTableCell>
-                        </NexusTableRow>
+                        <EmptyGuide cols={6} text="ไม่พบรายการสินค้า" hint="เพิ่มสินค้าที่ปุ่ม &quot;เพิ่มสินค้า&quot; หรือนำเข้าจาก Excel (เมนู นำเข้าข้อมูล Excel) · ถ้าค้นหาอยู่ ลองล้างคำค้น" />
                       ) : (
                         filteredProducts.map((item, idx) => {
                           const isLow = (item.stockStatus?.onHand || 0) <= ((item as any).minStock || 0);
@@ -921,10 +921,6 @@ export default function InventoryPage() {
                 </div>
                 
                 {/* Table Footer with details */}
-                <div className="p-4 border-t border-white/5 bg-black/10 flex items-center justify-between text-xs text-white/30 font-bold">
-                  <span>สตรีมข้อมูลคลาวด์สด • NEXUS Real-time Engine</span>
-                  <span>PSG Master UI Standard V3.1</span>
-                </div>
               </GlassCard>
             </div>
 
@@ -1002,13 +998,13 @@ export default function InventoryPage() {
                 ) : (
                   <GlassCard className="p-4 border-white/5 space-y-3">
                     <div>
-                      <h4 className="text-sm font-medium text-white/30 uppercase tracking-widest">คลังพัสดุอัจฉริยะ</h4>
-                      <p className="text-sm font-medium text-white/50 mt-1 leading-relaxed">คลิกเลือกรายการพัสดุในตารางเพื่อวิเคราะห์คลังพิกัด ดึงข้อมูล WAC และกระจายพิกัด 3D แบบเรียลไทม์</p>
+                      <h4 className="text-sm font-semibold text-white/60">สรุปคลังสินค้า</h4>
+                      <p className="text-sm font-medium text-white/50 mt-1 leading-relaxed">คลิกรายการในตารางเพื่อดูรายละเอียดสินค้า ต้นทุนเฉลี่ย และตำแหน่งจัดเก็บ</p>
                     </div>
 
                     <div className="p-4 rounded-xl  border border-nexus-blue/15 space-y-3">
                       <p className="text-xs font-medium text-nexus-blue uppercase tracking-widest flex items-center gap-1.5">
-                        <Cpu size={12} className="animate-spin" /> NEXUS Auto-Scan AI
+                        <Cpu size={12} /> สินค้าใกล้หมด
                       </p>
                       <p className="text-sm text-white/70 leading-relaxed font-medium">
                         พบสินค้าต่ำกว่าปริมาณสั่งซื้อขั้นต่ำ <span className="text-warning font-medium">{lowStockCount} SKU</span> แนะนำทำการเติมสินค้า เพื่อป้องกันความล่าช้าโครงการติดตั้ง

@@ -20,6 +20,10 @@ interface AuthContextType {
   role: string | null;
   /** ทุกตำแหน่งของผู้ใช้ */
   roles: string[];
+  /** ชื่อที่แสดง (ชื่อในโปรไฟล์ > ชื่อบัญชี > ส่วนหน้าอีเมล) */
+  displayName: string;
+  /** เอกสาร users/{uid} ล่าสุด (เช่น ความคืบหน้าการเริ่มใช้งาน) */
+  profile: Record<string, any>;
   checkPermission: (permission: Permission) => boolean;
   switchCompany: (newCompanyId: string) => void;
 }
@@ -30,6 +34,8 @@ const AuthContext = createContext<AuthContextType>({
   companyId: null,
   role: null,
   roles: [],
+  displayName: "",
+  profile: {},
   checkPermission: () => false,
   switchCompany: () => {},
 });
@@ -68,6 +74,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   });
   const role = roles.length ? primaryRole(roles) : null;
   const [loading, setLoading] = useState<boolean>(() => !readMockUser());
+  const [profile, setProfile] = useState<Record<string, any>>({});
+  const displayName = String(profile.name || profile.displayName || profile.fullName || user?.displayName || user?.email?.split("@")[0] || "");
 
   // สลับบริษัทได้เฉพาะ SUPERADMIN (ผู้ใช้ทั่วไปผูกกับบริษัทในโปรไฟล์)
   const switchCompany = (newCompanyId: string) => {
@@ -121,6 +129,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
           setCompanyId(finalCompanyId);
           setRoles(finalRoles);
+          setProfile(data);
           if (finalCompanyId) writeProfileCache(user.uid, finalRoles, finalCompanyId);
         } catch (error: any) {
           console.warn("Network timeout or error fetching user profile:", error?.message || error);
@@ -140,6 +149,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(null);
           setCompanyId(null);
           setRoles([]);
+          setProfile({});
           setLoading(false);
         }
       }
@@ -149,7 +159,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, companyId, role, roles, checkPermission, switchCompany }}>
+    <AuthContext.Provider value={{ user, loading, companyId, role, roles, displayName, profile, checkPermission, switchCompany }}>
       {children}
     </AuthContext.Provider>
   );

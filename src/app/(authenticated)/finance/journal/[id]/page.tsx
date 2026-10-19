@@ -6,6 +6,7 @@ import { ArrowLeft, CheckCircle2, AlertTriangle, BookOpen, Scale, Printer } from
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { PillButton, GlassCard, StatusBadge, NexusTable, NexusTableRow, NexusTableCell } from "@/components/ui/Base";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
+import { InfoTip, WhatHappens } from "@/components/guide/Guidance";
 import { formatCurrency } from "@/lib/erp-logic";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
@@ -140,6 +141,12 @@ export default function JournalDetailPage() {
   );
 
   const right = (
+    <div className="space-y-4 w-full">
+    {isDraft && <WhatHappens title="เมื่ออนุมัติลงบัญชี" items={[
+      "ยอดเข้างบทดลอง งบกำไรขาดทุน และงบแสดงฐานะการเงินทันที",
+      "หลังลงบัญชีแก้ไขไม่ได้ ถ้าผิดต้องทำรายการกลับ (ยกเลิกเอกสารต้นทาง หรือบันทึกปรับปรุง)",
+      "ผู้สร้างรายการอนุมัติเองไม่ได้ (ยกเว้นผู้ดูแลระบบสูงสุด)",
+    ]} />}
     <GlassCard className="p-6 border-white/5 rounded-3xl bg-surface-1 shadow-2xl space-y-3 w-full h-fit text-[12px]">
       <Row label="วันที่" value={toDate(jv.date || jv.createdAt)} />
       <Row label="สมุด" value={jv.bookType || "-"} />
@@ -153,6 +160,7 @@ export default function JournalDetailPage() {
         </div>
       </div>
     </GlassCard>
+    </div>
   );
 
   return <NexusPageLayout header={header} leftContent={left} rightSidebar={right} />;

@@ -242,7 +242,7 @@ export default function ProcurementPage() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight leading-none">ระบบบริหารงานจัดซื้อ</h1>
-            <p className="text-sm font-medium text-white/30 uppercase mt-1 tracking-widest leading-none">Purchasing &amp; Procurement System</p>
+            <p className="text-xs font-semibold text-white/60 mt-1 leading-none">ใบขอซื้อ ใบสั่งซื้อ รับสินค้า ตั้งเบิก และข้อมูลคู่ค้า</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
@@ -322,7 +322,7 @@ export default function ProcurementPage() {
               <div className="flex items-center gap-4 shrink-0">
                  <Activity className="text-nexus-teal" size={24} />
                   <div className="space-y-0.5">
-                    <p className="text-sm font-medium text-white/20 uppercase tracking-widest">ทะเบียนการจัดซื้อองค์กร (PRC-MASTER-V3)</p>
+                    <p className="text-sm font-medium text-white/20 uppercase tracking-widest">เอกสารจัดซื้อทั้งหมด</p>
                     <h2 className="text-xl font-bold text-white uppercase">ทะเบียนข้อมูลจัดซื้อ</h2>
                   </div>
               </div>
@@ -430,10 +430,6 @@ export default function ProcurementPage() {
                  )}
                </div>
 
-               <div className="p-4 border-t border-white/5 bg-black/10 flex items-center justify-between text-xs text-white/30 font-bold">
-                 <span>สตรีมข้อมูลคลาวด์สด • NEXUS Real-time Engine</span>
-                 <span>PSG Master UI Standard V3.1</span>
-               </div>
              </GlassCard>
           </div>
 

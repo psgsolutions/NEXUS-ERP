@@ -21,7 +21,6 @@ import {
   Zap,
 } from "lucide-react";
 import { PillButton, MasterMetricCard, cn, GlassCard } from "@/components/ui/Base";
-import { SystemHealthIndicator } from "@/components/shared/SystemHealthIndicator";
 import { RevenueExpenseChart } from "@/components/dashboard/RevenueExpenseChart";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
@@ -45,6 +44,7 @@ import Link from "next/link";
 import { quotationStage } from "@/lib/quotation-status";
 import { useRouter } from "next/navigation";
 import { can, type Permission } from "@/lib/permissions";
+import { OnboardingChecklist } from "@/components/guide/Onboarding";
 
 const upper = (s: any) => String(s || "").toUpperCase();
 
@@ -142,9 +142,6 @@ export default function DashboardPage() {
       {/* --- TOP COMMAND HEADER --- */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
         <div className="space-y-2">
-          <div className="flex flex-wrap gap-2">
-            <SystemHealthIndicator />
-          </div>
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 bg-nexus-teal/20 border border-nexus-teal/20 rounded-xl flex items-center justify-center shadow-neon-teal">
               <Zap size={22} className="text-nexus-teal drop-shadow-md" />
@@ -167,11 +164,11 @@ export default function DashboardPage() {
               <div className="absolute top-full right-0 mt-3 w-56 bg-surface-0/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[99999]">
                 <div className="p-2 space-y-1">
                   {[
-                    { href: "/projects/new", label: "โครงการใหม่", icon: <FolderKanban size={16} className="group-hover:text-nexus-blue" /> },
-                    { href: "/sales/quotations/new", label: "ใบเสนอราคา", icon: <BadgeDollarSign size={16} className="group-hover:text-nexus-teal" /> },
-                    { href: "/procurement/orders/new", label: "ใบสั่งซื้อ", icon: <ShoppingBasket size={16} className="group-hover:text-warning" /> },
-                    { href: "/customers/new", label: "เพิ่มลูกค้าใหม่", icon: <UsersRound size={16} className="group-hover:text-nexus-teal" /> },
-                  ].map((m) => (
+                    { href: "/projects/new", perm: "projects:edit" as Permission, label: "โครงการใหม่", icon: <FolderKanban size={16} className="group-hover:text-nexus-blue" /> },
+                    { href: "/sales/quotations/new", perm: "sales:edit" as Permission, label: "ใบเสนอราคา", icon: <BadgeDollarSign size={16} className="group-hover:text-nexus-teal" /> },
+                    { href: "/procurement/orders/new", perm: "procurement:edit" as Permission, label: "ใบสั่งซื้อ", icon: <ShoppingBasket size={16} className="group-hover:text-warning" /> },
+                    { href: "/customers/new", perm: "sales:edit" as Permission, label: "เพิ่มลูกค้าใหม่", icon: <UsersRound size={16} className="group-hover:text-nexus-teal" /> },
+                  ].filter((m) => has(m.perm)).map((m) => (
                     <div
                       key={m.href}
                       onClick={() => router.push(m.href)}
@@ -187,6 +184,8 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      <OnboardingChecklist />
 
       {/* --- TOP METRICS & QUICK ACTIONS --- */}
       <div className="flex flex-col 2xl:flex-row justify-between w-full gap-4 2xl:gap-5">

@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
 import { GlassCard, PillButton, PillInput, PillSelect, cn } from "@/components/ui/Base";
 import { SmartSelect } from "@/components/ui/SmartComponents";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
+import { InfoTip, WhatHappens } from "@/components/guide/Guidance";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
@@ -172,6 +173,13 @@ function CnDnForm() {
 
   const right = (
     <div className="p-4 space-y-4">
+      <WhatHappens items={[
+        `ออก${CNDN_TYPE_TH[type]} เลขที่เรียงต่อเนื่อง ใช้แทนใบกำกับภาษีส่วนที่ปรับ (ลูกค้าใช้ปรับภาษีซื้อของเขา)`,
+        inv && `ปรับยอดค้างของใบกำกับเดิมเป็น ฿${baht(balanceAfter)}`,
+        calc.vatAmount > 0 && `ภาษีขายของเดือนที่ออกเอกสาร${type === "CN" ? "ลดลง" : "เพิ่มขึ้น"} ฿${baht(calc.vatAmount)}`,
+        inv && arAfter.refundDue > 0 && `ลูกค้าชำระเกินแล้ว ต้องคืนเงิน ฿${baht(arAfter.refundDue)}`,
+        "ส่งรายการบัญชีให้ฝ่ายบัญชีอนุมัติ",
+      ]} />
       <GlassCard className="p-4">
         <h4 className="text-sm font-bold text-white mb-1">สรุป{CNDN_TYPE_TH[type]}</h4>
         {row("มูลค่าตามใบกำกับเดิม", baht(valueBefore))}

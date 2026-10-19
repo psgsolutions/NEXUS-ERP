@@ -8,6 +8,7 @@ import {
   GlassCard, NexusSearchInput, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillTabs, StatusBadge, cn,
 } from "@/components/ui/Base";
 import { GanttChart, type GanttItem } from "@/components/projects/GanttChart";
+import { EmptyGuide } from "@/components/guide/Guidance";
 import { useAuth } from "@/context/AuthContext";
 import { useCompanyProjects } from "@/hooks/useCompanyProjects";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
@@ -198,7 +199,7 @@ export default function ProjectsPage() {
               <GlassCard accentColor="teal" className="p-2 min-h-[560px]">
                 {activeTab === "list" && (
                   <NexusTable headers={["รหัสโครงการ", "ชื่อโครงการ", "ความคืบหน้า", "ทีมงาน", "กำหนดเสร็จ", "สถานะ"]}>
-                    {listRows.length === 0 && <EmptyRow cols={6} text="ยังไม่มีโครงการ" />}
+                    {listRows.length === 0 && <EmptyGuide cols={6} text="ยังไม่มีโครงการ" hint="สร้างโครงการจากใบเสนอราคาที่ลูกค้าตกลง แล้วแบ่งงวดงานเพื่อเรียกเก็บเงินตามงวด" />}
                     {listRows.map((p: any) => {
                       const href = `/projects/${encodeURIComponent(p.id)}`;
                       const progress = Math.max(0, Math.min(100, Number(p.progress) || 0));

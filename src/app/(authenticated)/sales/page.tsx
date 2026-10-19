@@ -58,6 +58,8 @@ import { BillingNoteModal } from "@/components/commerce/BillingNoteModal";
 import { CNDNModal } from "@/components/commerce/CNDNModal";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { SecureDeleteAction } from "@/components/ui/SecureDeleteAction";
+import { EmptyGuide } from "@/components/guide/Guidance";
+import { useAdvancedTabs } from "@/components/guide/Onboarding";
 import { useAuth } from "@/context/AuthContext";
 import { useCustomers } from "@/hooks/useCustomers";
 import { auditService } from "@/services/audit.service";
@@ -183,6 +185,7 @@ export default function SalesPage() {
     { id: "crm", label: "ข้อมูลลูกค้า", icon: <Users size={14} /> },
     { id: "opportunities", label: "ติดตามงานขาย (Sales Pipeline)", icon: <Target size={14} /> },
   ];
+  const salesTabs = useAdvancedTabs(tabs, ["opportunities"], activeTab);
 
   const salesFlowSteps = [
     { id: "quotations", label: "ใบเสนอราคา", icon: <FileText size={14} /> },
@@ -459,7 +462,7 @@ export default function SalesPage() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight leading-none">ระบบบริหารงานขายและลูกค้าสัมพันธ์</h1>
-            <p className="text-[11px] font-medium text-white/30 uppercase mt-1 tracking-widest leading-none">CRM &amp; Sales Management System</p>
+            <p className="text-xs font-semibold text-white/60 mt-1 leading-none">ใบเสนอราคา ใบสั่งขาย ใบแจ้งหนี้ รับชำระ และข้อมูลลูกค้า</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
@@ -496,9 +499,9 @@ export default function SalesPage() {
       {/* Tab Navigation (Stepper) & Actions */}
       <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
         <PillTabs className="flex-1 min-w-[min(100%,520px)]"
-          tabs={tabs}
+          tabs={salesTabs.tabs}
           activeTab={activeTab}
-          onTabChange={(id: any) => setActiveTab(id)}
+          onTabChange={(id: any) => { if (!salesTabs.handleToggle(id)) setActiveTab(id); }}
         />
         <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
           {activeTab === "crm" && (
@@ -646,7 +649,7 @@ export default function SalesPage() {
                       headers={["เลขที่ใบเสนอราคา", "ลูกค้า", "ชื่อโครงการ", "ยืนราคาถึง", "มูลค่าสุทธิ", "สถานะ", "จัดการ"]}
                     >
                       {filteredQuotations.length === 0 && (
-                        <NexusTableRow><NexusTableCell colSpan={7} className="text-center py-10 text-white/40">ไม่พบใบเสนอราคา</NexusTableCell></NexusTableRow>
+                        <EmptyGuide cols={7} text="ไม่พบใบเสนอราคา" hint="ยังไม่เคยสร้าง: กด &quot;สร้างใบเสนอราคา&quot; มุมขวาบน (ต้องมีข้อมูลลูกค้าก่อน) · ถ้าค้นหาอยู่ ลองล้างคำค้นหรือตัวกรอง" />
                       )}
                       {filteredQuotations.map(q => (
                         <QuotationRow
@@ -827,10 +830,6 @@ export default function SalesPage() {
                 )}
               </div>
 
-              <div className="p-4 border-t border-white/5 bg-black/10 flex items-center justify-between text-xs text-white/30 font-bold">
-                <span>สตรีมข้อมูลคลาวด์สด • NEXUS Real-time Engine</span>
-                <span>PSG Master UI Standard V3.1</span>
-              </div>
             </GlassCard>
           </div>
 

@@ -47,9 +47,11 @@ import { auth as firebaseAuth } from "@/lib/firebase-client";
 import { signOut } from "firebase/auth";
 import { EntitySelector } from "@/components/layout/EntitySelector";
 import { NotificationBell } from "@/components/layout/NotificationBell";
-import { TacticalQuickAction } from "@/components/shared/TacticalQuickAction";
+import { HelpButton } from "@/components/guide/HelpPanel";
+import { OnboardingHost } from "@/components/guide/Onboarding";
 import { FirebaseConnectionStatus } from "@/components/ui/FirebaseConnectionStatus";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { pageLabel } from "@/lib/page-labels";
 import { canAccessRoute, roleLabel } from "@/lib/permissions";
 
 export default function AuthenticatedLayout({
@@ -58,6 +60,7 @@ export default function AuthenticatedLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const currentPage = pageLabel(pathname);
   const { user, roles, loading } = useAuth();
   // เมนูและหน้าที่เปิดได้ตามตำแหน่ง (server ตรวจสิทธิ์ซ้ำทุกครั้งที่บันทึก)
   const show = (href: string) => canAccessRoute(roles, href);
@@ -76,6 +79,7 @@ export default function AuthenticatedLayout({
   };
 
   return (
+    <OnboardingHost>
     <div className="flex h-screen overflow-hidden bg-surface-0 text-white selection:bg-nexus-teal/30">
       <CommandPalette />
       
@@ -118,7 +122,7 @@ export default function AuthenticatedLayout({
             {/* MANAGEMENT TIER */}
             <NavGroup title="การบริหารจัดการ">
               {show("/executive") && <SideLink href="/executive" icon={<TrendingUp size={20} />} label="แดชบอร์ดผู้บริหาร" active={pathname === "/executive"} title="Executive" />}
-              {show("/finance") && <SideLink href="/finance" icon={<Landmark size={20} />} label="บัญชีแยกประเภท" active={pathname === "/finance"} title="GL" />}
+              {show("/finance") && <SideLink href="/finance" icon={<Landmark size={20} />} label="การเงินและบัญชี" active={pathname === "/finance"} title="GL" />}
               {show("/finance/subledgers") && <SideLink href="/finance/subledgers" icon={<Library size={20} />} label="บัญชีย่อยและทะเบียน" active={pathname === "/finance/subledgers"} title="Subledgers" />}
               {show("/finance/reports") && <SideLink href="/finance/reports" icon={<FileText size={20} />} label="รายงานบัญชีและภาษี" active={pathname === "/finance/reports"} title="Reports" />}
               {show("/ai") && <SideLink href="/ai" icon={<Bot size={20} />} label="วิเคราะห์ข้อมูล" active={pathname === "/ai"} title="AI Analytics" />}
@@ -166,10 +170,12 @@ export default function AuthenticatedLayout({
                      <Link href="/dashboard"><PieChart size={16} /></Link>
                   </div>
                   {/* จอมือถือ: ซ่อนเส้นทางหน้า (พื้นที่ไม่พอ) */}
-                  <nav className="hidden sm:flex items-center gap-2 text-[13px] font-bold uppercase tracking-widest text-white/20 whitespace-nowrap">
-                     <span className="hover:text-white cursor-pointer transition-colors">ภาพรวม</span>
-                     <ChevronRight size={10} />
-                     <span className="text-nexus-teal bg-nexus-teal/10 px-3 py-1 rounded-full border border-nexus-teal/20">ระบบปฏิบัติการ NEXUS</span>
+                  <nav className="hidden sm:flex items-center gap-2 text-[13px] font-bold text-white/50 whitespace-nowrap">
+                     <Link href="/dashboard" className="hover:text-white transition-colors">ภาพรวม</Link>
+                     {currentPage && currentPage !== "ภาพรวม" && <>
+                       <ChevronRight size={10} />
+                       <span className="text-nexus-teal bg-nexus-teal/10 px-3 py-1 rounded-full border border-nexus-teal/20">{currentPage}</span>
+                     </>}
                   </nav>
                </div>
             </div>
@@ -185,6 +191,7 @@ export default function AuthenticatedLayout({
           </div>
 
           <div className="flex items-center gap-2 md:gap-4">
+            <HelpButton />
             <NotificationBell />
             <div className="flex items-center gap-4 relative" ref={profileRef}>
                {/* Redesigned Profile Capsule - Premium Static Glassmorphism */}
@@ -218,11 +225,11 @@ export default function AuthenticatedLayout({
                     
                     {/* User Identity Info Card */}
                     <div className="p-4 border-b border-white/5 mb-2 mt-1 bg-white/[0.01] rounded-xl border border-white/[0.02]">
-                       <p className="text-[9px] font-semibold text-white/20 uppercase tracking-widest mb-1">USER ACCESS CREDENTIAL</p>
+                       <p className="text-[11px] font-semibold text-white/50 mb-1">บัญชีผู้ใช้</p>
                        <p className="text-[13px] font-black text-white truncate uppercase font-mono tracking-tight">{user?.email || 'admin@nexus.os'}</p>
                        
                        <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2 text-[10px]">
-                          <span className="font-bold text-white/30 uppercase tracking-wider">LEVEL:</span>
+                          <span className="font-bold text-white/50">ตำแหน่ง</span>
                           <span className="font-semibold text-nexus-teal uppercase tracking-widest bg-nexus-teal/10 px-2 py-0.5 rounded border border-nexus-teal/20">
                              {roleText}
                           </span>
@@ -268,11 +275,9 @@ export default function AuthenticatedLayout({
           </div>
         </main>
 
-
-        {/* Tactical Quick-Action FAB (Context-Aware) */}
-        <TacticalQuickAction />
       </div>
     </div>
+    </OnboardingHost>
   );
 }
 

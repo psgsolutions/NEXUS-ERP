@@ -40,7 +40,7 @@ function xlsxFile(name, aoa) {
   const s = Date.now(); const T = String(s).slice(-9); const M = `TEST-IMP-${s}`;
   const UID = `test-imp-${s}`;
   await admin.auth().createUser({ uid: UID, email: `${UID}@example.com` });
-  await db.doc(`users/${UID}`).set({ companyId: C, roles: ["SALES", "PURCHASING"], role: "SALES", status: "ACTIVE", email: `${UID}@example.com`, name: "TEST นำเข้า" });
+  await db.doc(`users/${UID}`).set({ companyId: C, roles: ["SALES", "PURCHASING"], role: "SALES", status: "ACTIVE", email: `${UID}@example.com`, name: "TEST นำเข้า", onboarding: { welcomed: true } });
   const browser = await chromium.launch();
   const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
   const status = async () => page.evaluate(() => document.body.innerText);

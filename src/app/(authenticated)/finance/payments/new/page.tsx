@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/Base";
 import { SmartSelect } from "@/components/ui/SmartComponents";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
+import { InfoTip, WhatHappens } from "@/components/guide/Guidance";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { apiFetch } from "@/lib/api-client";
@@ -297,7 +298,7 @@ function PaymentForm() {
     </div>
   );
 
-  const sideRow = (k: string, v: string, cls = "text-white") => (
+  const sideRow = (k: React.ReactNode, v: string, cls = "text-white") => (
     <div className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
       <span className="text-[13px] text-white/60">{k}</span>
       <span className={cn("text-[14px] font-mono font-bold", cls)}>{v}</span>
@@ -306,11 +307,18 @@ function PaymentForm() {
 
   const right = (
     <div className="p-4 space-y-4">
+      <WhatHappens items={[
+        "ออกใบสำคัญจ่าย เลขที่ออกอัตโนมัติ",
+        `ตัดยอดค้างจ่าย${chosen.length ? ` ${chosen.length} รายการ` : "ที่เลือก"} — จ่ายไม่ครบ ยอดที่เหลือยังค้างอยู่`,
+        totalWht > 0 && `ออกหนังสือรับรองหัก ณ ที่จ่าย (50 ทวิ) ให้ผู้รับเงินอัตโนมัติ ยอด ฿${baht(totalWht)} ต้องนำส่งสรรพากรเดือนถัดไป`,
+        method !== "CASH" && `บันทึกในสมุดบัญชีธนาคาร${method === "CHEQUE" ? " และทะเบียนเช็คจ่าย" : ""}`,
+        "ส่งรายการบัญชีให้ฝ่ายบัญชีอนุมัติ (ยอดเข้างบหลังอนุมัติ)",
+      ]} />
       <GlassCard className="p-4">
         <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2"><Wallet size={16} className="text-nexus-teal" /> สรุปการจ่าย</h4>
         {sideRow("จำนวนรายการ", `${chosen.length} รายการ`)}
         {sideRow("ยอดตัดหนี้", `฿${baht(totalAmount)}`)}
-        {sideRow("ภาษีหัก ณ ที่จ่าย", `฿${baht(totalWht)}`)}
+        {sideRow(<>ภาษีหัก ณ ที่จ่าย<InfoTip text="เมื่อจ่ายค่าบริการ/ค่าจ้าง ค่าขนส่ง ค่าเช่า ค่าโฆษณา ให้ผู้รับเงิน ต้องหักภาษีไว้ (3% / 1% / 5% / 2%) จากยอดก่อน VAT · ซื้อสินค้าอย่างเดียวไม่ต้องหัก · ยอดที่หักต้องนำส่งสรรพากร (ภ.ง.ด.3 บุคคล / ภ.ง.ด.53 นิติบุคคล) ภายในวันที่ 7 ของเดือนถัดไป หรือวันที่ 15 ถ้ายื่นออนไลน์" /></>, `฿${baht(totalWht)}`)}
         {sideRow("เงินที่จ่ายจริง", `฿${baht(netPaid)}`, "text-nexus-teal")}
       </GlassCard>
 

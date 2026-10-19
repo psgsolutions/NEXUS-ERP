@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/Base";
 import { SmartSelect } from "@/components/ui/SmartComponents";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
+import { InfoTip, WhatHappens } from "@/components/guide/Guidance";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { apiFetch } from "@/lib/api-client";
@@ -41,6 +42,8 @@ interface Outstanding {
   dueMs: number;
   issueMs: number;
   defaultWht: number;
+  /** งานบริการ VAT เกิดตอนรับเงิน (ม.78/1): ใบเสร็จนี้เป็นใบกำกับภาษีด้วย */
+  serviceVat: boolean;
 }
 
 interface LineState { selected: boolean; amount: string; whtRate: number }
@@ -72,6 +75,7 @@ function ReceiptForm() {
           issueMs: toMillis(inv.issueDate) || toMillis(inv.createdAt),
           // ใบแจ้งหนี้งวดงาน: อัตราหัก ณ ที่จ่ายที่ตั้งไว้ในโครงการเป็นค่าเริ่มต้น
           defaultWht: [1, 2, 3, 5].includes(Number(inv.expectedWhtRate)) ? Number(inv.expectedWhtRate) : 0,
+          serviceVat: inv.vatTiming === "receipt",
         };
       })
       .filter((o) => o.balance > 0.009 && o.customerId),
@@ -220,7 +224,7 @@ function ReceiptForm() {
         </div>
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5">
           <div className="space-y-1">
-            <label className="text-[12px] font-bold text-white/70 ml-1">วิธีรับชำระ</label>
+            <label className="text-[12px] font-bold text-white/70 ml-1">วิธีรับชำระ<InfoTip text="เงินสด = เข้าบัญชีเงินสด · โอน/เช็ค = เข้าบัญชีธนาคารที่เลือก และใช้กระทบยอดกับรายการเดินบัญชีธนาคารภายหลัง" /></label>
             <div className="flex gap-2 flex-wrap">
               {METHODS.map((m) => (
                 <button key={m.id} type="button" onClick={() => setMethod(m.id)}
@@ -281,7 +285,7 @@ function ReceiptForm() {
     </div>
   );
 
-  const sideRow = (k: string, v: string, cls = "text-white") => (
+  const sideRow = (k: React.ReactNode, v: string, cls = "text-white") => (
     <div className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
       <span className="text-[13px] text-white/60">{k}</span>
       <span className={cn("text-[14px] font-mono font-bold", cls)}>{v}</span>
@@ -290,11 +294,20 @@ function ReceiptForm() {
 
   const right = (
     <div className="p-4 space-y-4">
+      <WhatHappens items={[
+        chosen.some((c) => c.o.serviceVat)
+          ? "ออกใบเสร็จรับเงิน/ใบกำกับภาษี (งานบริการ ภาษีขายเกิดเมื่อรับเงิน) เลขที่ออกอัตโนมัติ พิมพ์หรือส่งลิงก์ให้ลูกค้าได้ทันที"
+          : "ออกใบเสร็จรับเงิน เลขที่ออกอัตโนมัติ พิมพ์หรือส่งลิงก์ให้ลูกค้าได้ทันที",
+        `ตัดยอดค้างของใบแจ้งหนี้${chosen.length ? ` ${chosen.length} ใบ` : "ที่เลือก"} — รับไม่ครบ ยอดที่เหลือยังค้างอยู่ในใบแจ้งหนี้`,
+        totalWht > 0 && `บันทึกภาษีที่ลูกค้าหักไว้ ฿${baht(totalWht)} — ขอหนังสือรับรอง (50 ทวิ) จากลูกค้า`,
+        method !== "CASH" && `บันทึกเข้าสมุดบัญชีธนาคาร${method === "CHEQUE" ? " และทะเบียนเช็ครับ" : ""}`,
+        "ส่งรายการบัญชีให้ฝ่ายบัญชีอนุมัติ (ยอดเข้างบหลังอนุมัติ)",
+      ]} />
       <GlassCard className="p-4">
         <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2"><Wallet size={16} className="text-nexus-teal" /> สรุปการรับชำระ</h4>
         {sideRow("จำนวนใบแจ้งหนี้", `${chosen.length} ใบ`)}
         {sideRow("ยอดตัดลูกหนี้", `฿${baht(totalApplied)}`)}
-        {sideRow("ภาษีถูกหัก ณ ที่จ่าย", `฿${baht(totalWht)}`)}
+        {sideRow(<>ภาษีถูกหัก ณ ที่จ่าย<InfoTip text="ลูกค้านิติบุคคลที่จ่ายค่าบริการจะหักภาษีไว้ตามประเภทเงินได้ เช่น ค่าบริการ/ค่าจ้าง 3% ค่าขนส่ง 1% ค่าโฆษณา 2% ค่าเช่า 5% — ขายสินค้าอย่างเดียวไม่ต้องหัก · คิดจากยอดก่อน VAT · ขอหนังสือรับรอง (50 ทวิ) จากลูกค้าเก็บไว้ใช้ยื่นภาษี" /></>, `฿${baht(totalWht)}`)}
         {sideRow("เงินที่ได้รับจริง", `฿${baht(cashReceived)}`, "text-nexus-teal")}
       </GlassCard>
 

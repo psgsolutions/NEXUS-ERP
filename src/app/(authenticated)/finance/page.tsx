@@ -48,6 +48,7 @@ import { DocumentFlowStepper } from "@/components/ui/DocumentFlowStepper";
 import { ReceiptModal } from "@/components/finance/ReceiptModal";
 import { CustomerRefundsPanel } from "@/components/finance/CustomerRefundsPanel";
 import { PaymentModal } from "@/components/finance/PaymentModal";
+import { EmptyGuide } from "@/components/guide/Guidance";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase-client";
 import { useSystemDialog } from "@/context/DialogContext";
@@ -271,7 +272,7 @@ export default function FinancePage() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight leading-none">ศูนย์บริหารการเงิน</h1>
-            <p className="text-sm font-medium text-white/30 uppercase mt-1 tracking-widest leading-none">Finance &amp; Accounting Hub</p>
+            <p className="text-xs font-semibold text-white/60 mt-1 leading-none">ลูกหนี้ เจ้าหนี้ สมุดรายวัน ภาษี ธนาคาร และสินทรัพย์</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
@@ -378,7 +379,7 @@ export default function FinancePage() {
                  <Activity className="text-nexus-blue" size={24} />
                  <div className="space-y-0.5">
                     <p className="text-sm font-medium text-white/20 uppercase tracking-widest">การดำเนินงานทางบัญชี (2026-ปัจจุบัน)</p>
-                    <h2 className="text-xl font-bold text-white uppercase">Operational Journal</h2>
+                    <h2 className="text-xl font-bold text-white">สมุดรายวันล่าสุด</h2>
                  </div>
               </div>
               {/* Document Sequence Visualizer */}
@@ -416,9 +417,7 @@ export default function FinancePage() {
                           <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
                         </NexusTableRow>
                       ) : filteredFinancials.length === 0 ? (
-                        <NexusTableRow>
-                          <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">ไม่พบข้อมูลในระบบ</NexusTableCell>
-                        </NexusTableRow>
+                        <EmptyGuide cols={6} text="ยังไม่มีรายการ" hint="รายการจะขึ้นเองเมื่อมีการขาย ซื้อ รับเงิน หรือจ่ายเงิน — ไม่ต้องบันทึกซ้ำที่นี่" />
                       ) : filteredFinancials.map((f, i) => (
                         <FinancialRow key={f.path || i} {...f} />
                       ))}
@@ -525,9 +524,7 @@ export default function FinancePage() {
                           <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">กำลังโหลดข้อมูลจากฐานข้อมูล...</NexusTableCell>
                         </NexusTableRow>
                       ) : filteredCheques.length === 0 ? (
-                        <NexusTableRow>
-                          <NexusTableCell colSpan={6} className="text-center text-white/50 py-8">ไม่พบข้อมูลในระบบ</NexusTableCell>
-                        </NexusTableRow>
+                        <EmptyGuide cols={6} text="ยังไม่มีรายการ" hint="รายการจะขึ้นเองเมื่อมีการขาย ซื้อ รับเงิน หรือจ่ายเงิน — ไม่ต้องบันทึกซ้ำที่นี่" />
                       ) : filteredCheques.map((cheq, i) => (
                         <ChequeRow key={i} {...cheq} />
                       ))}
@@ -536,10 +533,6 @@ export default function FinancePage() {
                 )}
               </div>
 
-              <div className="p-4 border-t border-white/5 bg-black/10 flex items-center justify-between text-xs text-white/30 font-bold">
-                <span>สตรีมข้อมูลคลาวด์สด • NEXUS Real-time Engine</span>
-                <span>PSG Master UI Standard V3.1</span>
-              </div>
             </GlassCard>
           </div>
 
@@ -565,7 +558,7 @@ export default function FinancePage() {
                     isRisk={riskStatus !== "safe"}
                  />
                  <div className="p-4 rounded-xl bg-black/40 border border-white/5 mt-4">
-                   <p className="text-xs font-bold text-white mb-2">คำแนะนำจาก AI:</p>
+                   <p className="text-xs font-bold text-white mb-2">ข้อสังเกต:</p>
                    <ul className="list-disc pl-4 space-y-1">
                      {recommendations.map((rec, idx) => (
                        <li key={idx} className={cn("text-[11px]", riskStatus === "danger" ? "text-danger" : riskStatus === "warning" ? "text-warning" : "text-white/70")}>{rec}</li>

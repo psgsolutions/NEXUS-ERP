@@ -707,10 +707,6 @@ export default function ProductDetailPage() {
                 ))
               )}
             </NexusTable>
-            <div className="p-3 border-t border-white/5 bg-black/10 flex items-center justify-between text-[10px] text-white/20 font-bold">
-              <span>NEXUS Real-time Stock Ledger</span>
-              <span>PSG Master UI Standard V3.2</span>
-            </div>
           </GlassCard>
         )}
       </div>

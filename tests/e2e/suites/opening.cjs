@@ -18,7 +18,7 @@ const signIn = async (uid) => (await (await fetch(`https://identitytoolkit.googl
   const s = Date.now(); const T = String(s).slice(-9); const M = `TEST-OB-${s}`;
   const UID = `test-ob-${s}`, VIEW = `test-ob-v-${s}`;
   await admin.auth().createUser({ uid: UID, email: `${UID}@example.com` });
-  await db.doc(`users/${UID}`).set({ companyId: C, roles: ["ACCOUNTANT", "SALES", "PURCHASING"], role: "ACCOUNTANT", status: "ACTIVE", email: `${UID}@example.com`, name: "TEST ยอดยกมา" });
+  await db.doc(`users/${UID}`).set({ companyId: C, roles: ["ACCOUNTANT", "SALES", "PURCHASING"], role: "ACCOUNTANT", status: "ACTIVE", email: `${UID}@example.com`, name: "TEST ยอดยกมา", onboarding: { welcomed: true } });
   await db.doc(`users/${VIEW}`).set({ companyId: C, roles: ["SALES"], role: "SALES", status: "ACTIVE" });
   const auth = await signIn(UID);
   const api = async (url, body, uid) => {

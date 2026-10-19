@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/Base";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { formatCurrency } from "@/lib/erp-logic";
+import { InfoTip, WhatHappens } from "@/components/guide/Guidance";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
@@ -340,9 +341,14 @@ function NewInventoryInScreen() {
   const rightSidebar = (
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
       <div className="space-y-1 border-b border-white/5 pb-4">
-        <p className="text-[12px] font-semibold text-white/20 uppercase tracking-[0.2em]">สรุปการรับเข้า</p>
-        <h5 className="text-[13px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2">Receipt Summary</h5>
+        <h5 className="text-[14px] font-bold text-white/80">สรุปการรับเข้า</h5>
       </div>
+      <WhatHappens items={[
+        "เพิ่มจำนวนคงเหลือในคลัง และคำนวณต้นทุนเฉลี่ย (WAC) ของสินค้าใหม่",
+        activeTab === "po" && header.poRef && "ปรับสถานะใบสั่งซื้อเป็นรับครบ / รับบางส่วน",
+        "ตั้งยอดเจ้าหนี้ผู้ขาย และส่งรายการบัญชี (สินค้าคงเหลือ / เจ้าหนี้) ให้ฝ่ายบัญชีอนุมัติ",
+        "จ่ายเงินผู้ขายภายหลังที่ จัดซื้อ › บันทึกรายจ่าย แล้วไปที่ การเงินและบัญชี › จ่ายชำระ",
+      ]} />
 
       <div className="relative z-10 space-y-4">
         <div className="flex justify-between items-center pb-4 border-b border-white/5">

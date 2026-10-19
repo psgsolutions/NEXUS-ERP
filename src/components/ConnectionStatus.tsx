@@ -33,17 +33,17 @@ export function ConnectionStatus({ className = '' }: { className?: string }) {
   // Theme styling based on status
   let bgColor = 'bg-cyan-400';
   let pulseColor = 'bg-cyan-400/50';
-  let message = `SYS-OK: ${latency}ms`;
+  let message = latency > 1500 ? "ออนไลน์ (ช้า)" : "ออนไลน์";
 
   if (!isOnline) {
     if (errorMsg === 'AUTH_REVOKED') {
       bgColor = 'bg-amber-500';
       pulseColor = 'bg-amber-500/50';
-      message = 'ERR-403: AUTH_REVOKED';
+      message = 'สิทธิ์หมดอายุ — เข้าสู่ระบบใหม่';
     } else {
       bgColor = 'bg-red-500';
       pulseColor = 'bg-red-500/50';
-      message = 'ERR-OFFLINE: CLIENT_DISCONNECTED';
+      message = 'ออฟไลน์ — ตรวจสอบอินเทอร์เน็ต';
     }
   }
 
@@ -53,7 +53,7 @@ export function ConnectionStatus({ className = '' }: { className?: string }) {
         <div className={`absolute inline-flex h-full w-full animate-ping rounded-full ${pulseColor} opacity-75`}></div>
         <div className={`relative inline-flex h-2 w-2 rounded-full ${bgColor}`}></div>
       </div>
-      <span className="font-mono text-xs tracking-wider text-gray-300">
+      <span className="text-xs text-gray-300">
         {message}
       </span>
     </div>

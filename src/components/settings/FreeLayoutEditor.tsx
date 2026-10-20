@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
-  AlignVerticalDistributeCenter, ArrowDown, ArrowUp, Copy, Eye, Grid3x3, ImagePlus, ListChecks, Loader2, Lock, Magnet, Plus, RotateCcw, SquareDashedMousePointer, Trash2,
+  AlignVerticalDistributeCenter, ArrowDown, ArrowUp, Copy, Eye, Grid3x3, ImagePlus, ListChecks, Loader2, Lock, Magnet, Minus, MousePointer2, Plus, RotateCcw, Square, SquareDashedMousePointer, Trash2,
 } from "lucide-react";
 import { GlassCard, PillButton, PillCheckbox, PillInput, PillSelect, cn } from "@/components/ui/Base";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
@@ -23,6 +23,7 @@ import { usePdfPageImage } from "./usePdfPageImage";
  *  - ช่วยจัดวาง: ตารางกริด ดูดติดกริด เส้นนำแนวขอบ/กึ่งกลางของกล่องอื่นและหน้ากระดาษ
  *    เลือกหลายกล่อง (Shift+คลิก) แล้วจัดชิด/กระจาย/ปรับขนาดเท่ากัน · ลูกศรขยับ 1pt (Shift 10pt) · Delete ลบ
  *  - แท็บ "ข้อมูลในเอกสาร": รายการข้อมูลทั้งหมดของเอกสารชนิดนี้ ติ๊กเลือกแสดง/ซ่อน หรือแยกเป็นกล่องวางเองได้
+ *  - เครื่องมือวาด: ลากบนกระดาษเพื่อวาดเส้น (แนวนอน/แนวตั้งตามทิศที่ลาก) หรือกรอบ · ปรับความหนา เส้นประ มุมโค้ง/เหลี่ยม
  *  - กล่องที่เอกสารภาษีต้องมี ย้าย/ปรับได้แต่ลบไม่ได้
  */
 const S = 1; // px ต่อ pt บนจอ
@@ -87,6 +88,9 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const [showGrid, setShowGrid] = useState(true);
   const [snapOn, setSnapOn] = useState(true);
   const [guides, setGuides] = useState<Guides>({ x: [], y: [] });
+  const [tool, setTool] = useState<"select" | "line" | "rect">("select");
+  const [draft, setDraft] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const paperRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ mode: "move" | "size" | "head"; px: number; py: number; orig: Map<string, FreeBlock>; h: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { image, busy, error } = usePdfPageImage(model, A4.w * S);
@@ -116,7 +120,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   }, [image, docType]);
 
   const clamp = (b: FreeBlock): FreeBlock => {
-    const w = Math.max(4, Math.min(A4.w, b.w)), h = Math.max(1, Math.min(A4.h, b.h));
+    const w = Math.max(0.25, Math.min(A4.w, b.w)), h = Math.max(0.25, Math.min(A4.h, b.h));
     return { ...b, w, h, x: Math.max(0, Math.min(A4.w - w, b.x)), y: Math.max(0, Math.min(A4.h - h, b.y)) };
   };
   /** แก้หลายกล่องพร้อมกัน (null = ลบ) และเพิ่มกล่องใหม่ */
@@ -141,6 +145,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
 
   useEffect(() => {
     const move = (e: PointerEvent) => {
+      if (draft) { const p = toPt(e); setDraft({ ...draft, x1: p.x, y1: p.y }); return; }
       const d = drag.current;
       if (!d) return;
       let dx = (e.clientX - d.px) / S, dy = (e.clientY - d.py) / S;
@@ -165,7 +170,10 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       }
       setGuides(g);
     };
-    const up = () => { if (drag.current) { drag.current = null; setGuides({ x: [], y: [] }); } };
+    const up = () => {
+      if (draft) { finishDraw(draft); return; }
+      if (drag.current) { drag.current = null; setGuides({ x: [], y: [] }); }
+    };
     const key = (e: KeyboardEvent) => {
       if (!selected.length || !canEdit) return;
       const t = e.target as HTMLElement;
@@ -182,7 +190,37 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("keydown", key); };
   });
 
+  // ---------- เครื่องมือวาด ----------
+  /** ตำแหน่งเมาส์เป็น pt บนกระดาษ (ดูดติดเส้นนำ/กริด) */
+  const toPt = (e: { clientX: number; clientY: number }) => {
+    const r = paperRef.current!.getBoundingClientRect();
+    const x = (e.clientX - r.left) / S, y = (e.clientY - r.top) / S;
+    const t = targets(new Set());
+    const sx = snapOn ? nearest([x], t.xs) : null, sy = snapOn ? nearest([y], t.ys) : null;
+    return { x: Math.max(0, Math.min(A4.w, sx ? sx.at : toGrid(x))), y: Math.max(0, Math.min(A4.h, sy ? sy.at : toGrid(y))) };
+  };
+  const startDraw = (e: React.PointerEvent) => {
+    if (tool === "select" || !canEdit || (!bodyOn && !letterhead)) return;
+    e.preventDefault(); e.stopPropagation();
+    const p = toPt(e);
+    setDraft({ x0: p.x, y0: p.y, x1: p.x, y1: p.y });
+  };
+  const finishDraw = (d: { x0: number; y0: number; x1: number; y1: number }) => {
+    setDraft(null);
+    const dx = d.x1 - d.x0, dy = d.y1 - d.y0;
+    if (Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+    const x = Math.min(d.x0, d.x1), y = Math.min(d.y0, d.y1);
+    const b = tool === "line"
+      ? (Math.abs(dx) >= Math.abs(dy) ? newBlock("line", { x, y: d.y0, w: Math.abs(dx), h: 1, color: theme.primary }) : newBlock("line", { x: d.x0, y, w: 1, h: Math.abs(dy), color: theme.primary }))
+      : newBlock("rect", { x, y, w: Math.max(4, Math.abs(dx)), h: Math.max(4, Math.abs(dy)), border: theme.primary, radius: 0 });
+    applyMany(new Map(), [{ zone: addZone, b }]);
+    setSel([`${addZone === "head" ? "h" : "d"}:${b.id}`]);
+    setTab("block");
+    setTool("select");
+  };
+
   const start = (e: React.PointerEvent, it: Item, mode: "move" | "size") => {
+    if (tool !== "select") return; // โหมดวาด: ให้กระดาษรับการลากแทน
     e.stopPropagation();
     let next = sel;
     if (e.shiftKey && mode === "move") next = sel.includes(it.key) ? sel.filter((k) => k !== it.key) : [...sel, it.key];
@@ -301,11 +339,11 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   };
   const totalRows = (model?.totals || []).filter((r) => !r.strong && !r.label.startsWith("ภาษีมูลค่าเพิ่ม") && r.label !== "จำนวนเงินรวมทั้งสิ้น");
 
-  const colorRow = (it: Item, label: string, key: "color" | "bg" | "border") => (
+  const colorRow = (it: Item, label: string, key: "color" | "bg" | "border" | "headBg" | "lineColor") => (
     <div className="flex items-center gap-2">
       <span className="text-[12px] text-white/60 w-[64px]">{label}</span>
       <input type="color" value={it.b[key] || "#ffffff"} onChange={(e) => update(it, { [key]: e.target.value } as any)} className="w-8 h-8 rounded bg-transparent border border-white/10" aria-label={label} />
-      {it.b[key] && <button type="button" className="text-[12px] text-white/50 hover:text-white" onClick={() => unset(it, key)}>{key === "color" ? "ตามธีม" : "ไม่มี"}</button>}
+      {it.b[key] && <button type="button" className="text-[12px] text-white/50 hover:text-white" onClick={() => unset(it, key)}>{key === "color" || key === "headBg" || key === "lineColor" ? "ตามธีม" : "ไม่มี"}</button>}
     </div>
   );
   const numInput = (it: Item, key: "x" | "y" | "w" | "h") => (
@@ -411,7 +449,31 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             </div>
             {b.cols && <button type="button" className="text-[11px] text-white/50 hover:text-white" onClick={() => unset(it, "cols")}>ใช้คอลัมน์ตั้งต้นของเอกสาร</button>}
             <PillCheckbox label="ยืดตารางเต็มกล่อง (เส้นคอลัมน์ถึงล่าง)" checked={!!b.fill} onChange={(e) => update(it, { fill: e.target.checked })} />
+            <Field label="รูปแบบตาราง">
+              <PillSelect value={b.table || ""} onChange={(e) => (e.target.value ? update(it, { table: e.target.value as any }) : unset(it, "table"))} className="h-8 w-full text-sm">
+                <option value="">ตามธีม</option><option value="tint">หัวตารางสีอ่อน</option><option value="solid">หัวตารางสีทึบ</option><option value="lines">เส้นบาง</option><option value="grid">เส้นครบ</option><option value="zebra">แถวสลับสี</option>
+              </PillSelect>
+            </Field>
+            {colorRow(it, "พื้นหัวตาราง", "headBg" as any)}
+            {colorRow(it, "สีเส้นตาราง", "lineColor" as any)}
+            <Field label="ความหนาเส้นกรอบตาราง (pt)">
+              <PillInput inputMode="decimal" value={b.borderWidth ?? 1} onChange={(e) => update(it, { borderWidth: Math.max(0.25, Math.min(8, Number(e.target.value.replace(/[^\d.]/g, "")) || 0.25)) })} className="h-8 w-full text-sm font-mono text-right" />
+            </Field>
           </div>
+        )}
+        {b.kind === "totals" && (
+          <Field label="รูปแบบยอดรวม">
+            <PillSelect value={b.totalsStyle || ""} onChange={(e) => (e.target.value ? update(it, { totalsStyle: e.target.value as any }) : unset(it, "totalsStyle"))} className="h-8 w-full text-sm">
+              <option value="">ตามธีม</option><option value="solid">พื้นสีเต็ม</option><option value="outline">กรอบสี</option><option value="plain">เส้นคั่น</option><option value="grid">ตารางป้าย/ยอด</option>
+            </PillSelect>
+          </Field>
+        )}
+        {b.kind === "party" && (
+          <Field label="กรอบข้อมูลลูกค้า">
+            <PillSelect value={b.partyStyle || ""} onChange={(e) => (e.target.value ? update(it, { partyStyle: e.target.value as any }) : unset(it, "partyStyle"))} className="h-8 w-full text-sm">
+              <option value="">ตามธีม</option><option value="accent-bar">แถบสีด้านซ้าย</option><option value="boxed">กรอบเต็ม</option><option value="plain">เส้นใต้</option><option value="none">ไม่มีกรอบ</option>
+            </PillSelect>
+          </Field>
         )}
 
         {b.kind === "signatures" && (
@@ -431,9 +493,53 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             <input ref={fileRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) update(it, { src: await shrinkImage(f) }); }} />
           </>
         )}
-        {b.kind === "line" && colorRow(it, "สีเส้น", "color")}
-        {b.kind !== "line" && colorRow(it, "พื้นหลัง", "bg")}
-        {b.kind !== "line" && colorRow(it, "กรอบ", "border")}
+        {b.kind === "line" && (() => {
+          const vertical = b.h > b.w, thick = vertical ? b.w : b.h;
+          return (
+            <div className="space-y-2 rounded-xl border border-white/10 p-2.5">
+              <p className="text-[11.5px] font-bold text-white/70">เส้น</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="ความหนา (pt)">
+                  <PillInput inputMode="decimal" value={thick} onChange={(e) => { const v = Math.max(0.25, Math.min(8, Number(e.target.value.replace(/[^\d.]/g, "")) || 0.25)); update(it, vertical ? { w: v } : { h: v }); }} className="h-8 w-full text-sm font-mono text-right" />
+                </Field>
+                <Field label="รูปแบบ">
+                  <PillSelect value={b.dash || "solid"} onChange={(e) => (e.target.value === "solid" ? unset(it, "dash") : update(it, { dash: e.target.value as any }))} className="h-8 w-full text-sm">
+                    <option value="solid">เส้นทึบ</option><option value="dashed">เส้นประ</option><option value="dotted">จุด</option>
+                  </PillSelect>
+                </Field>
+              </div>
+              <PillButton variant="ghost" className="h-8 px-3 text-xs" onClick={() => update(it, vertical ? { w: b.h, h: thick } : { w: thick, h: Math.max(20, b.w) })}>{vertical ? "เปลี่ยนเป็นแนวนอน" : "เปลี่ยนเป็นแนวตั้ง"}</PillButton>
+              {colorRow(it, "สีเส้น", "color")}
+            </div>
+          );
+        })()}
+        {b.kind !== "line" && (
+          <div className="space-y-2 rounded-xl border border-white/10 p-2.5">
+            <p className="text-[11.5px] font-bold text-white/70">กรอบ · พื้น · มุม</p>
+            {colorRow(it, "พื้นหลัง", "bg")}
+            {colorRow(it, "กรอบ", "border")}
+            {b.border && (
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="ความหนากรอบ (pt)">
+                  <PillInput inputMode="decimal" value={b.borderWidth ?? 1} onChange={(e) => update(it, { borderWidth: Math.max(0.25, Math.min(8, Number(e.target.value.replace(/[^\d.]/g, "")) || 0.25)) })} className="h-8 w-full text-sm font-mono text-right" />
+                </Field>
+                <Field label="รูปแบบเส้น">
+                  <PillSelect value={b.dash || "solid"} onChange={(e) => (e.target.value === "solid" ? unset(it, "dash") : update(it, { dash: e.target.value as any }))} className="h-8 w-full text-sm">
+                    <option value="solid">เส้นทึบ</option><option value="dashed">เส้นประ</option><option value="dotted">จุด</option>
+                  </PillSelect>
+                </Field>
+              </div>
+            )}
+            <Field label={`มุม ${b.radius === undefined ? "ตามธีม" : b.radius === 0 ? "เหลี่ยม" : `โค้ง ${b.radius} pt`}`}>
+              <div className="flex items-center gap-2">
+                <input type="range" min={0} max={30} step={1} value={b.radius ?? (theme.rounded ? 4 : 0)} onChange={(e) => update(it, { radius: Number(e.target.value) })} className="flex-1 accent-[#0d9488] h-8" />
+                <button type="button" className="text-[11px] text-white/50 hover:text-white" onClick={() => update(it, { radius: 0 })}>เหลี่ยม</button>
+                {b.radius !== undefined && <button type="button" className="text-[11px] text-white/50 hover:text-white" onClick={() => unset(it, "radius")}>ตามธีม</button>}
+              </div>
+            </Field>
+            {["items", "totals", "party", "words"].includes(b.kind) && <p className="text-[11px] text-white/40">มุมใช้กับกรอบตาราง/ยอดรวม/ลูกค้าภายในกล่องด้วย</p>}
+          </div>
+        )}
 
         {letterhead && !letterOnly && HEAD_KINDS.includes(b.kind) && (
           <PillCheckbox label="อยู่ในหัวกระดาษ (ใช้ร่วมกับเอกสารที่ใช้หัวนี้)" checked={it.zone === "head"} onChange={() => moveZone(it)} />
@@ -537,6 +643,10 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
 
       {/* เครื่องมือช่วยจัดวาง */}
       <div className="flex flex-wrap items-center gap-1.5">
+        <ToolBtn title="เลือก/ลากย้าย" on={tool === "select"} onClick={() => setTool("select")}><MousePointer2 size={15} /></ToolBtn>
+        <ToolBtn title="วาดเส้น (ลากบนกระดาษ แนวนอน/แนวตั้งตามทิศที่ลาก)" on={tool === "line"} disabled={!canEdit} onClick={() => setTool(tool === "line" ? "select" : "line")}><Minus size={15} /></ToolBtn>
+        <ToolBtn title="วาดกรอบ (ลากบนกระดาษ)" on={tool === "rect"} disabled={!canEdit} onClick={() => setTool(tool === "rect" ? "select" : "rect")}><Square size={15} /></ToolBtn>
+        <span className="w-px h-6 bg-white/10 mx-1" />
         <ToolBtn title="แสดงตารางกริด" on={showGrid} onClick={() => setShowGrid((v) => !v)}><Grid3x3 size={15} /></ToolBtn>
         <ToolBtn title="ดูดติดกริดและเส้นนำ" on={snapOn} onClick={() => setSnapOn((v) => !v)}><Magnet size={15} /></ToolBtn>
         <div className="w-[100px]">
@@ -555,22 +665,30 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         <ToolBtn title="กระจายแนวตั้งเท่ากัน (3 กล่องขึ้นไป)" disabled={selected.length < 3 || !canEdit} onClick={() => distribute("y")}><AlignVerticalDistributeCenter size={15} /></ToolBtn>
         <PillButton variant="ghost" className="h-8 px-2.5 text-[12px]" disabled={!multi || !canEdit} onClick={() => sameSize("w")}>กว้างเท่ากัน</PillButton>
         <PillButton variant="ghost" className="h-8 px-2.5 text-[12px]" disabled={!multi || !canEdit} onClick={() => sameSize("h")}>สูงเท่ากัน</PillButton>
-        <span className="text-[11.5px] text-white/45 flex items-center gap-1 ml-1"><SquareDashedMousePointer size={13} /> {selected.length ? `เลือก ${selected.length} กล่อง · Shift+คลิกเพื่อเลือกเพิ่ม` : "Shift+คลิกเพื่อเลือกหลายกล่อง"}</span>
+        <span className="text-[11.5px] text-white/45 flex items-center gap-1 ml-1"><SquareDashedMousePointer size={13} /> {tool !== "select" ? (tool === "line" ? "ลากบนกระดาษเพื่อวาดเส้น" : "ลากบนกระดาษเพื่อวาดกรอบ") : selected.length ? `เลือก ${selected.length} กล่อง · Shift+คลิกเพื่อเลือกเพิ่ม` : "Shift+คลิกเพื่อเลือกหลายกล่อง"}</span>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 items-start">
         {/* กระดาษ A4: ภาพหน้าจริง + กล่องที่ลากได้ */}
         <div className="overflow-x-auto max-w-full flex-shrink-0">
-          <div className="relative bg-white rounded-sm shadow-2xl overflow-hidden select-none" style={{ width: A4.w * S, height: A4.h * S }} onPointerDown={() => setSel([])}>
+          <div ref={paperRef} className={cn("relative bg-white rounded-sm shadow-2xl overflow-hidden select-none", tool !== "select" && "cursor-crosshair")} style={{ width: A4.w * S, height: A4.h * S }} onPointerDown={(e) => { if (tool !== "select") startDraw(e); else setSel([]); }}>
             {/* eslint-disable-next-line @next/next/no-img-element -- ภาพหน้าเอกสารที่วาดในเบราว์เซอร์ (data URL) */}
             {image && <img src={image.url} alt="" className="absolute inset-0 w-full h-full pointer-events-none" />}
             {showGrid && (
               <div className="absolute inset-0 pointer-events-none z-[5]" style={{
-                backgroundImage: "linear-gradient(to right, rgba(13,148,136,0.09) 1px, transparent 1px), linear-gradient(to bottom, rgba(13,148,136,0.09) 1px, transparent 1px), linear-gradient(to right, rgba(13,148,136,0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(13,148,136,0.2) 1px, transparent 1px)",
+                // เส้นกริดบางและจาง (เส้นรองจางมาก ทุก 5 ช่องเข้มขึ้นเล็กน้อย) ไม่บังเนื้อเอกสาร
+                backgroundImage: "linear-gradient(to right, rgba(100,116,139,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(100,116,139,0.06) 1px, transparent 1px), linear-gradient(to right, rgba(100,116,139,0.13) 1px, transparent 1px), linear-gradient(to bottom, rgba(100,116,139,0.13) 1px, transparent 1px)",
                 backgroundSize: `${gridPx}px ${gridPx}px, ${gridPx}px ${gridPx}px, ${gridPx * 5}px ${gridPx * 5}px, ${gridPx * 5}px ${gridPx * 5}px`,
               }} />
             )}
-            {showGrid && <div className="absolute pointer-events-none z-[5] border border-dashed border-sky-400/50" style={{ left: MARGIN * S, top: 30 * S, right: MARGIN * S, bottom: 30 * S }} />}
+            {showGrid && <div className="absolute pointer-events-none z-[5] border border-dashed border-sky-400/25" style={{ left: MARGIN * S, top: 30 * S, right: MARGIN * S, bottom: 30 * S }} />}
+            {/* ตัวอย่างขณะวาด */}
+            {draft && (tool === "line" ? (() => {
+              const horiz = Math.abs(draft.x1 - draft.x0) >= Math.abs(draft.y1 - draft.y0);
+              return <div className="absolute z-30 pointer-events-none bg-[#0d9488]" style={horiz
+                ? { left: Math.min(draft.x0, draft.x1) * S, top: draft.y0 * S - 1, width: Math.abs(draft.x1 - draft.x0) * S, height: 2 }
+                : { left: draft.x0 * S - 1, top: Math.min(draft.y0, draft.y1) * S, width: 2, height: Math.abs(draft.y1 - draft.y0) * S }} />;
+            })() : <div className="absolute z-30 pointer-events-none border-2 border-[#0d9488] bg-[#0d9488]/5" style={{ left: Math.min(draft.x0, draft.x1) * S, top: Math.min(draft.y0, draft.y1) * S, width: Math.abs(draft.x1 - draft.x0) * S, height: Math.abs(draft.y1 - draft.y0) * S }} />)}
             {/* กล่องที่ถูกย้าย: ปิดตำแหน่งเดิมในภาพ */}
             {image && items.map((it) => {
               const o = shot.get(it.key);
@@ -586,7 +704,10 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                     on ? "outline outline-2 outline-[#0d9488] z-20" : "outline outline-1 outline-dashed outline-transparent hover:outline-slate-400 z-10",
                     fresh && !on && "outline-slate-300")}
                   style={{
-                    left: b.x * S, top: b.y * S, width: b.w * S, height: Math.max(2, b.h * S),
+                    // เส้นบาง: ขยายพื้นที่คลิกเป็นอย่างน้อย 8px รอบเส้น
+                    ...(b.kind === "line"
+                      ? (b.h > b.w ? { left: b.x * S - Math.max(0, (8 - b.w * S) / 2), top: b.y * S, width: Math.max(8, b.w * S), height: b.h * S } : { left: b.x * S, top: b.y * S - Math.max(0, (8 - b.h * S) / 2), width: b.w * S, height: Math.max(8, b.h * S) })
+                      : { left: b.x * S, top: b.y * S, width: b.w * S, height: Math.max(2, b.h * S) }),
                     ...(moved ? { backgroundImage: `url(${image!.url})`, backgroundSize: `${A4.w * S}px ${A4.h * S}px`, backgroundPosition: `${-o!.x * S}px ${-o!.y * S}px`, backgroundRepeat: "no-repeat" } : {}),
                   }}>
                   <span className={cn("absolute -top-[17px] left-0 px-1.5 rounded-t text-[10px] leading-[17px] whitespace-nowrap pointer-events-none",

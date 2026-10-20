@@ -120,3 +120,31 @@ describe("document design — template layouts, field rows, legal fields", () =>
     expect(d2.perDoc.quotation.free!.blocks.find((b) => b.kind === "meta")!.hide).toEqual(["number"]);
   });
 });
+
+describe("document design — lines, frames, corners, table styling", () => {
+  it("keeps line/frame/table settings within limits", () => {
+    const f = normalizeFreeLayout({ enabled: true, blocks: [
+      { id: "v", kind: "line", x: 100, y: 100, w: 0.5, h: 200, dash: "dashed", color: "#ff0000" },
+      { id: "r", kind: "rect", x: 0, y: 0, w: 100, h: 50, border: "#00aa00", borderWidth: 99, radius: 99, dash: "wavy" },
+      { id: "i", kind: "items", x: 0, y: 300, w: 500, h: 200, table: "zebra", headBg: "#123456", lineColor: "red", totalsStyle: "x" },
+      { id: "t", kind: "totals", x: 0, y: 600, w: 200, h: 80, totalsStyle: "grid", radius: 0 },
+      { id: "p", kind: "party", x: 0, y: 150, w: 500, h: 60, partyStyle: "boxed" },
+    ] }, "quotation")!;
+    const by = (id: string) => f.blocks.find((b) => b.id === id)!;
+    expect(by("v")).toMatchObject({ w: 0.5, h: 200, dash: "dashed" });
+    expect(by("r")).toMatchObject({ borderWidth: 8, radius: 40 });
+    expect(by("r").dash).toBeUndefined();
+    expect(by("i")).toMatchObject({ table: "zebra", headBg: "#123456" });
+    expect(by("i").lineColor).toBeUndefined();
+    expect(by("t")).toMatchObject({ totalsStyle: "grid", radius: 0 });
+    expect(by("p").partyStyle).toBe("boxed");
+  });
+
+  it("standard layout fits the document's meta rows (2 shown, rest hidden)", () => {
+    const meta = DESIGNABLE_DOCS.find((d) => d.type === "quotation")!.meta;
+    const l = defaultFreeLayout("quotation", "Sarabun", meta);
+    const m = l.blocks.find((b) => b.kind === "meta")!, p = l.blocks.find((b) => b.kind === "party")!;
+    expect(m.hide).toEqual(meta.slice(2).map((x) => `m:${x}`));
+    expect(m.y + m.h).toBeLessThanOrEqual(p.y);
+  });
+});

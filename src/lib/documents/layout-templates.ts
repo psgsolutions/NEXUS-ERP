@@ -124,5 +124,5 @@ export const LAYOUT_TEMPLATES: Record<string, Gen> = { form, sidebar, centerBand
 /** ผังของแม่แบบสำหรับเอกสารชนิดนี้ (ไม่มีผังเฉพาะ = ผังมาตรฐาน) */
 export function templateLayout(layoutId: string | undefined, docType: string, theme: DocTheme): FreeLayout {
   const gen = layoutId ? LAYOUT_TEMPLATES[layoutId] : undefined;
-  return gen ? { enabled: true, blocks: gen(docType, theme) } : { ...defaultFreeLayout(docType, theme.font), enabled: true };
+  return gen ? { enabled: true, blocks: gen(docType, theme) } : { ...defaultFreeLayout(docType, theme.font, docDef(docType)?.meta), enabled: true };
 }

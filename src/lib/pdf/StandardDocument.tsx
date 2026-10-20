@@ -52,10 +52,10 @@ export const COL: Record<ColumnKey, { label: string; width: string; align: "left
 const line = "#d9d9d9";
 
 /** สไตล์ตามธีม (ขนาดตัวอักษรคูณสเกลของฟอนต์ ให้ TH Sarabun อ่านได้เท่ากัน) · lh = ระยะบรรทัดเนื้อหา */
-export function themeStyles(t: DocTheme, lh = 1.35) {
+export function themeStyles(t: DocTheme, lh = 1.35, radius?: number) {
   const k = FONT_SCALE[t.font] * (t.fontSize / 9.5);
   const fz = (n: number) => Math.round(n * k * 10) / 10;
-  const r = t.rounded ? 4 : 0;
+  const r = radius ?? (t.rounded ? 4 : 0);
   return StyleSheet.create({
     page: { paddingTop: t.margin - 2, paddingBottom: t.margin + 16, paddingHorizontal: t.margin, fontFamily: t.font, fontSize: fz(9.5), color: t.text, lineHeight: lh },
     row: { flexDirection: "row" },
@@ -92,7 +92,14 @@ export type Ctx = {
   fields?: string[]; gap?: number; fill?: boolean; box?: { w: number; h: number };
   /** ป้ายของข้อมูลที่วางแยกแล้ว (หมายเหตุไม่แสดงซ้ำ) */
   shown?: Set<string>;
+  /** การตั้งค่ากล่อง: รัศมีมุม · สีเส้น/ความหนาเส้นในตาราง/กรอบ · สีพื้นหัวตาราง */
+  radius?: number; lineColor?: string; lineWidth?: number; headBg?: string;
 };
+/** รัศมีมุม: ค่าของกล่องก่อน ไม่มีจึงตามธีม (มุมโค้ง/เหลี่ยม) */
+const rad = (c: Ctx, d = 4) => (c.radius !== undefined ? Math.min(c.radius, d * 6) : c.t.rounded ? d : 0);
+const lineOf = (c: Ctx) => c.lineColor || line;
+/** สีตัวอักษรที่อ่านได้บนพื้นสีนี้ */
+const onColor = (hex: string) => { const n = parseInt(hex.slice(1, 7), 16); const l = 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255); return l < 150 ? "#ffffff" : "#111111"; };
 
 const docTitle = (c: Ctx) => c.per.title || c.doc.title;
 const docTitleEn = (c: Ctx) => c.per.titleEn ?? c.doc.titleEn;
@@ -203,9 +210,9 @@ export function SectionParty({ c }: { c: Ctx }) {
   const p = c.doc.party;
   if (!p) return null;
   const t = c.t;
-  const box = t.party === "boxed" ? { borderWidth: 1, borderColor: line, borderRadius: t.rounded ? 4 : 0, padding: 8 }
-    : t.party === "accent-bar" ? { borderWidth: 1, borderColor: line, borderLeftWidth: 3, borderLeftColor: t.primary, borderRadius: t.rounded ? 4 : 0, padding: 8 }
-    : t.party === "none" ? {} : { borderBottomWidth: 0.8, borderColor: line, paddingVertical: 6 };
+  const box = t.party === "boxed" ? { borderWidth: 1, borderColor: lineOf(c), borderRadius: rad(c), padding: 8 }
+    : t.party === "accent-bar" ? { borderWidth: 1, borderColor: lineOf(c), borderLeftWidth: 3, borderLeftColor: t.primary, borderRadius: rad(c), padding: 8 }
+    : t.party === "none" ? {} : { borderBottomWidth: 0.8, borderColor: lineOf(c), paddingVertical: 6 };
   const showContact = !c.hide.has("contact") && !!p.contact, showPhone = !c.hide.has("phone") && !!p.phone, showEmail = !c.hide.has("email") && !!p.email;
   const taxLine = p.taxId ? `${formatTaxId(p.taxId)}  ${branchLabel(p.branchCode, p.branchName)}` : "";
   if (t.formStyle) {
@@ -255,9 +262,9 @@ export function SectionItems({ c }: { c: Ctx }) {
   // ยืดตารางเต็มกล่อง (แบบฟอร์ม): เส้นคอลัมน์ลากถึงล่างกล่อง ไม่มีเส้นคั่นแถว
   const fill = !!(c.fill && c.box);
   const grid = t.table === "grid" && !fill;
-  const head = t.table === "solid" ? { backgroundColor: t.primary } : t.table === "lines" ? { borderBottomWidth: 1.2, borderColor: t.primary } : { backgroundColor: `${t.primary}18` };
-  const headText = t.table === "solid" ? { color: "#ffffff" } : {};
-  const outer = t.table === "lines" && !fill ? {} : { borderWidth: 1, borderColor: fill ? t.primary : line, borderRadius: t.rounded ? 4 : 0 };
+  const head = c.headBg ? { backgroundColor: c.headBg } : t.table === "solid" ? { backgroundColor: t.primary } : t.table === "lines" ? { borderBottomWidth: 1.2, borderColor: t.primary } : { backgroundColor: `${t.primary}18` };
+  const headText = c.headBg ? { color: onColor(c.headBg) } : t.table === "solid" ? { color: "#ffffff" } : {};
+  const outer = t.table === "lines" && !fill ? {} : { borderWidth: c.lineWidth ?? 1, borderColor: fill ? c.lineColor || t.primary : lineOf(c), borderRadius: rad(c) };
   const xs: number[] = [];
   if (fill) {
     const W = c.box!.w;
@@ -270,9 +277,9 @@ export function SectionItems({ c }: { c: Ctx }) {
   return (
     <View style={[outer, fill ? { height: c.box!.h, position: "relative" } : {}]}>
       {fill ? xs.map((x, i) => <View key={`v${i}`} style={{ position: "absolute", left: x, top: 0, bottom: 0, borderLeftWidth: 0.6, borderColor: t.primary }} />) : null}
-      <View style={[{ flexDirection: "row", borderBottomWidth: 1, borderColor: fill ? t.primary : line, paddingVertical: 4 }, head]} fixed>
+      <View style={[{ flexDirection: "row", borderBottomWidth: 1, borderColor: fill ? t.primary : lineOf(c), paddingVertical: 4 }, head]} fixed>
         {cols.map((k, i) => (
-          <View key={k} style={[cell(k), grid && i ? { borderLeftWidth: 0.5, borderColor: line } : {}]}>
+          <View key={k} style={[cell(k), grid && i ? { borderLeftWidth: 0.5, borderColor: lineOf(c) } : {}]}>
             <Lbl c={c} th={COL[k].label} style={[s.thText, headText]} align={t.bilingual ? "center" : COL[k].align} />
           </View>
         ))}
@@ -280,7 +287,7 @@ export function SectionItems({ c }: { c: Ctx }) {
       {doc.lines.length === 0 ? <T style={[s.td, { paddingVertical: 8, color: t.muted, textAlign: "center" }]}>ไม่มีรายการ</T> : null}
       {doc.lines.map((l, i) => {
         const zebra = t.table === "zebra" && i % 2 === 1 ? { backgroundColor: `${t.accent}0d` } : {};
-        const rowStyle = [{ flexDirection: "row" as const, borderBottomWidth: fill ? 0 : 0.5, borderColor: grid ? line : "#eeeeee", paddingVertical: 3.5 }, zebra];
+        const rowStyle = [{ flexDirection: "row" as const, borderBottomWidth: fill ? 0 : 0.5, borderColor: grid ? lineOf(c) : c.lineColor || "#eeeeee", paddingVertical: 3.5 }, zebra];
         if (l.heading) {
           if (c.hide.has("heading")) return null;
           // ตารางยืดเต็มกล่อง: หัวข้อหมวดอยู่ในช่องรายการ ไม่ทับเส้นคอลัมน์
@@ -297,7 +304,7 @@ export function SectionItems({ c }: { c: Ctx }) {
                 : k === "debit" ? (l.debit ? money(l.debit) : "") : k === "credit" ? (l.credit ? money(l.credit) : "")
                 : l.amount !== undefined ? money(l.amount) : "";
               return (
-                <View key={k} style={[s.td, cell(k), grid && j ? { borderLeftWidth: 0.5, borderColor: line } : {}]}>
+                <View key={k} style={[s.td, cell(k), grid && j ? { borderLeftWidth: 0.5, borderColor: lineOf(c) } : {}]}>
                   <T>{v}</T>
                   {k === "description" && l.detail && !c.hide.has("detail") ? <T style={s.small}>{l.detail}</T> : null}
                 </View>
@@ -336,7 +343,7 @@ export function SectionTotals({ c }: { c: Ctx }) {
   const rows = doc.totals.filter((row) => lockedTotal(row) || !c.hide.has(`t:${row.label}`));
   if (t.totals === "grid") {
     return (
-      <View style={{ borderWidth: 1, borderColor: t.primary, borderRadius: t.rounded ? 4 : 0 }}>
+      <View style={{ borderWidth: 1, borderColor: t.primary, borderRadius: rad(c) }}>
         {rows.map((row, i) => (
           <View key={row.label} style={{ flexDirection: "row", borderTopWidth: i ? 0.6 : 0, borderColor: t.primary }}>
             <View style={{ flex: 1, backgroundColor: `${t.accent}${row.strong ? "cc" : "88"}`, paddingVertical: 2.5, paddingHorizontal: 6 }}>
@@ -354,8 +361,8 @@ export function SectionTotals({ c }: { c: Ctx }) {
     <View>
       {rows.map((row) => {
         const strong = row.strong;
-        const box = !strong ? {} : t.totals === "solid" ? { backgroundColor: t.primary, borderRadius: t.rounded ? 3 : 0, marginTop: 2 }
-          : t.totals === "outline" ? { borderWidth: 1, borderColor: t.primary, borderRadius: t.rounded ? 3 : 0, marginTop: 2 } : { borderTopWidth: 1, borderColor: t.primary, marginTop: 2 };
+        const box = !strong ? {} : t.totals === "solid" ? { backgroundColor: t.primary, borderRadius: rad(c, 3), marginTop: 2 }
+          : t.totals === "outline" ? { borderWidth: 1, borderColor: t.primary, borderRadius: rad(c, 3), marginTop: 2 } : { borderTopWidth: 1, borderColor: t.primary, marginTop: 2 };
         const text = strong && t.totals === "solid" ? { fontWeight: "bold" as const, color: "#ffffff" } : strong ? { fontWeight: "bold" as const, color: t.primary } : {};
         return (
           <View key={row.label} style={[s.totalRow, box]}>
@@ -377,7 +384,7 @@ export function SectionSignatures({ c }: { c: Ctx }) {
       {labels.map((label) => {
         const sg = c.doc.signed?.[label];
         return (
-          <View key={label} style={[c.s.signBox, boxed ? { borderWidth: 0.8, borderColor: c.t.formStyle ? c.t.primary : line, borderRadius: c.t.rounded ? 4 : 0, paddingVertical: 6 } : {}]}>
+          <View key={label} style={[c.s.signBox, boxed ? { borderWidth: 0.8, borderColor: c.t.formStyle ? c.t.primary : line, borderRadius: rad(c), paddingVertical: 6 } : {}]}>
             {/* eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt */}
             {sg?.image ? <Image src={sg.image} style={c.s.signImage} /> : <View style={c.s.signLine} />}
             {sg?.name ? <T style={{ marginTop: 3 }}>({sg.name})</T> : null}
@@ -426,9 +433,18 @@ export function documentContext(doc: DocumentModel, copy: CopyMode): Ctx {
 
 /** บริบทของกล่องหนึ่ง: ขนาดตัวอักษร ระยะบรรทัด สี ส่วนย่อยที่ซ่อน คอลัมน์ ช่องลงนาม ของกล่องนั้น */
 export function blockContext(c: Ctx, b: FreeBlock): Ctx {
-  const own = b.fontSize !== undefined || b.lineHeight !== undefined || !!b.color;
-  const t = own ? { ...c.t, ...(b.fontSize !== undefined ? { fontSize: Math.min(16, Math.max(6, b.fontSize)) } : {}), ...(b.color ? { text: b.color, primary: b.color, muted: b.color } : {}) } : c.t;
-  return { ...c, t, s: own ? themeStyles(t, b.lineHeight ?? 1.35) : c.s, hide: new Set(b.hide || []), cols: b.cols, labels: b.labels, fields: b.fields, gap: b.gap, fill: b.fill, box: { w: b.w, h: b.h } };
+  const own = b.fontSize !== undefined || b.lineHeight !== undefined || !!b.color || b.radius !== undefined || !!b.table || !!b.totalsStyle || !!b.partyStyle;
+  const t: DocTheme = own ? {
+    ...c.t,
+    ...(b.fontSize !== undefined ? { fontSize: Math.min(16, Math.max(6, b.fontSize)) } : {}),
+    ...(b.color ? { text: b.color, primary: b.color, muted: b.color } : {}),
+    ...(b.table ? { table: b.table } : {}), ...(b.totalsStyle ? { totals: b.totalsStyle } : {}), ...(b.partyStyle ? { party: b.partyStyle } : {}),
+    ...(b.radius !== undefined ? { rounded: b.radius > 0 } : {}),
+  } : c.t;
+  return {
+    ...c, t, s: own ? themeStyles(t, b.lineHeight ?? 1.35, b.radius) : c.s, hide: new Set(b.hide || []), cols: b.cols, labels: b.labels, fields: b.fields, gap: b.gap, fill: b.fill, box: { w: b.w, h: b.h },
+    radius: b.radius, lineColor: b.lineColor, lineWidth: b.borderWidth, headBg: b.headBg,
+  };
 }
 
 const fillVars = (text: string, doc: DocumentModel) => text
@@ -469,14 +485,21 @@ export function BlockView({ c, b, items, letter = false }: { c: Ctx; b: FreeBloc
   })();
   // กล่องที่มีกรอบ/พื้นหลัง: เว้นขอบในให้เนื้อหาไม่ชิดเส้น
   const pad = b.kind === "text" ? 2 : (b.border || b.bg) && b.kind !== "items" ? 4 : 0;
+  if (b.kind === "line") {
+    // เส้น: แนวนอนเมื่อกว้างกว่าสูง (ความหนา = สูง) · แนวตั้งเมื่อสูงกว่า (ความหนา = กว้าง) · เส้นประ/จุดวาดด้วยขอบ
+    const vertical = b.h > b.w, thick = Math.max(0.25, vertical ? b.w : b.h), color = b.color || c.t.primary;
+    const style = !b.dash || b.dash === "solid" ? { backgroundColor: color, width: vertical ? thick : b.w, height: vertical ? b.h : thick }
+      : vertical ? { width: 0, height: b.h, borderLeftWidth: thick, borderLeftColor: color, borderStyle: b.dash } : { height: 0, width: b.w, borderTopWidth: thick, borderTopColor: color, borderStyle: b.dash };
+    return <View style={{ position: "absolute", left: b.x, top: b.y, ...style }} />;
+  }
+  const radius = b.radius ?? (c.t.rounded ? 4 : 0);
   return (
     <View style={{
-      position: "absolute", left: b.x, top: b.y, width: b.w, height: b.kind === "line" ? Math.max(1, b.h) : b.h,
-      ...(b.kind === "line" ? { backgroundColor: b.color || c.t.primary } : {}),
-      ...(b.bg ? { backgroundColor: b.bg } : {}),
-      ...(b.border ? { borderWidth: 1, borderColor: b.border, borderRadius: c.t.rounded ? 4 : 0 } : {}),
+      position: "absolute", left: b.x, top: b.y, width: b.w, height: b.h,
+      ...(b.bg ? { backgroundColor: b.bg, borderRadius: radius } : {}),
+      ...(b.border ? { borderWidth: b.borderWidth ?? 1, borderColor: b.border, borderRadius: radius, ...(b.dash && b.dash !== "solid" ? { borderStyle: b.dash } : {}) } : {}),
     }}>
-      {b.kind === "line" || b.kind === "rect" ? null : b.kind === "image"
+      {b.kind === "rect" ? null : b.kind === "image"
         ? content
         : <View style={{ position: "absolute", top: pad, left: pad, right: pad, ...(own ? { fontSize: bc.s.page.fontSize, lineHeight: bc.s.page.lineHeight, color: bc.t.text } : {}) }}>{content}</View>}
     </View>

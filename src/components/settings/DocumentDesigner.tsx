@@ -279,7 +279,7 @@ export function DocumentDesigner() {
           theme={theme}
           docMeta={def.meta || []}
           docFields={def.fields || []}
-          layout={per.free || defaultFreeLayout(docType, theme.font)}
+          layout={per.free || defaultFreeLayout(docType, theme.font, def.meta)}
           onChange={(free) => setPer({ free })}
           letterhead={letterhead}
           onLetterheadChange={setLetterhead}

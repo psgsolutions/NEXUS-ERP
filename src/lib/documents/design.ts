@@ -92,6 +92,19 @@ export interface FreeBlock {
   hideLabel?: boolean;
   /** กล่องเลขที่/วันที่: ข้อมูลเพิ่มที่แสดงเป็นแถว (f:<คีย์>) */
   fields?: string[];
+  /** รัศมีมุม (pt) 0 = เหลี่ยม — กรอบ/พื้นของกล่อง และกรอบตาราง/ยอดรวม/ลูกค้าในกล่อง */
+  radius?: number;
+  /** ความหนาเส้นกรอบ (pt) · เส้น: ใช้ความสูง/ความกว้างเป็นความหนา */
+  borderWidth?: number;
+  /** รูปแบบเส้น */
+  dash?: "solid" | "dashed" | "dotted";
+  /** ตาราง/ยอดรวม/ลูกค้า: รูปแบบเฉพาะกล่อง (ไม่ตั้ง = ตามธีม) */
+  table?: TableStyle;
+  totalsStyle?: TotalsStyle;
+  partyStyle?: PartyStyle;
+  /** ตาราง: สีพื้นหัวตาราง · สีเส้นในตาราง/กรอบ */
+  headBg?: string;
+  lineColor?: string;
 }
 export interface FreeLayout { enabled: boolean; blocks: FreeBlock[] }
 
@@ -238,7 +251,8 @@ const COLUMN_KEYS = ITEM_COLUMNS.map((c) => c.key);
 
 function normalizeBlock(b: any, index: number): FreeBlock | null {
   if (!b || !KINDS.includes(b.kind)) return null;
-  const w = num(b.w, 4, A4.w, 100), h = num(b.h, 1, A4.h, 40);
+  // เส้นแนวตั้ง/แนวนอนบางได้ถึง 0.25pt
+  const w = num(b.w, 0.25, A4.w, 100), h = num(b.h, 0.25, A4.h, 40);
   const parts = (BLOCK_PARTS[b.kind as BlockKind] || []).map((p) => p.key);
   // แถวของกล่องเลขที่ (number/date/m:ป้าย) และแถวยอดรวม (t:ป้าย) เป็นคีย์ตามข้อมูลของเอกสาร
   const okHide = (k: string) => parts.includes(k) || (b.kind === "meta" && (k === "number" || k === "date" || /^m:[^\n]{1,40}$/.test(k))) || (b.kind === "totals" && /^t:[^\n]{1,60}$/.test(k));
@@ -266,6 +280,14 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(b.kind === "items" && b.fill ? { fill: true } : {}),
     ...(b.kind === "field" ? { field: FIELD_KEY.test(String(b.field || "")) ? String(b.field) : "number" } : {}),
     ...(b.kind === "field" && b.hideLabel ? { hideLabel: true } : {}),
+    ...(b.radius !== undefined && b.radius !== null ? { radius: num(b.radius, 0, 40, 4) } : {}),
+    ...(b.borderWidth !== undefined && b.borderWidth !== null ? { borderWidth: num(b.borderWidth, 0.25, 8, 1) } : {}),
+    ...(["dashed", "dotted"].includes(b.dash) ? { dash: b.dash } : {}),
+    ...(["tint", "solid", "lines", "grid", "zebra"].includes(b.table) ? { table: b.table } : {}),
+    ...(["solid", "outline", "plain", "grid"].includes(b.totalsStyle) ? { totalsStyle: b.totalsStyle } : {}),
+    ...(["accent-bar", "boxed", "plain", "none"].includes(b.partyStyle) ? { partyStyle: b.partyStyle } : {}),
+    ...(HEX.test(String(b.headBg || "")) ? { headBg: b.headBg } : {}),
+    ...(HEX.test(String(b.lineColor || "")) ? { lineColor: b.lineColor } : {}),
   };
 }
 
@@ -328,24 +350,28 @@ export function normalizeDesign(raw: any, brandColor?: string): DocumentDesign {
 }
 
 /** ตำแหน่งส่วนหัว/ลูกค้า/ตาราง ตามขนาดฟอนต์ (TH Sarabun ใหญ่กว่า 1.32 เท่า ต้องเว้นที่มากกว่า) */
-function topRows(font?: FontFamily) {
+function topRows(font?: FontFamily, metaRows = 3) {
   const k = FONT_SCALE[font || "Sarabun"];
   const r = (n: number) => Math.round(n);
-  const titleH = r(62 * (1 + (k - 1) * 0.7)), metaY = 30 + titleH + 4, metaH = r(46 * k);
+  const titleH = r(62 * (1 + (k - 1) * 0.7)), metaY = 30 + titleH + 4, metaH = Math.max(r(46 * k), r(metaRows * 15 * k) + 8);
   const partyY = metaY + metaH + 8, partyH = r(64 * k), itemsY = partyY + partyH + 10;
   return { titleH, metaY, metaH, partyY, partyH, itemsY, sellerH: r(78 * k) };
 }
 
-/** ผังมาตรฐาน (จุดเริ่มต้นของโหมดลากวาง) — ตำแหน่งเทียบเท่าเอกสารมาตรฐาน; เอกสารที่ไม่มียอดเงินไม่มีกล่องยอดรวม */
-export function defaultFreeLayout(docType?: string, font?: FontFamily): FreeLayout {
+/**
+ * ผังมาตรฐาน (จุดเริ่มต้นของโหมดลากวาง) — ตำแหน่งเทียบเท่าเอกสารมาตรฐาน; เอกสารที่ไม่มียอดเงินไม่มีกล่องยอดรวม
+ * metaLabels: แถวข้อมูลของเอกสาร — แสดง 2 แถวแรกในกล่องเลขที่ (ที่เหลือเปิดได้จาก "ข้อมูลในเอกสาร") และสูงพอดีจำนวนแถว
+ */
+export function defaultFreeLayout(docType?: string, font?: FontFamily, metaLabels: string[] = []): FreeLayout {
   const m = 32, W = A4.w - m * 2;
   const amounts = docHasAmounts(docType);
-  const t = topRows(font);
+  const t = topRows(font, 2 + Math.min(2, metaLabels.length));
+  const metaHide = metaLabels.slice(2).map((l) => `m:${l}`);
   const blocks: FreeBlock[] = [
     { id: "logo", kind: "logo", x: m, y: 30, w: 64, h: 64 },
     { id: "seller", kind: "seller", x: m + 74, y: 30, w: W * 0.58 - 74, h: t.sellerH },
     { id: "title", kind: "title", x: m + W * 0.58, y: 30, w: W * 0.42, h: t.titleH, align: "right" },
-    { id: "meta", kind: "meta", x: m + W * 0.58, y: t.metaY, w: W * 0.42, h: t.metaH },
+    { id: "meta", kind: "meta", x: m + W * 0.58, y: t.metaY, w: W * 0.42, h: t.metaH, ...(metaHide.length ? { hide: metaHide } : {}) },
     { id: "party", kind: "party", x: m, y: t.partyY, w: W, h: t.partyH },
     { id: "items", kind: "items", x: m, y: t.itemsY, w: W, h: (amounts ? 580 : 664) - t.itemsY },
     ...(amounts ? [

@@ -65,13 +65,13 @@ export default function CustomerDashboardPage() {
 
       {/* Tab Navigation */}
       {/* Tab Navigation */}
-      <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
-        <PillTabs className="flex-1 min-w-[min(100%,520px)]" 
+      <section className="module-toolbar">
+        <PillTabs className="module-tabs flex-1 min-w-[min(100%,520px)]" 
           tabs={tabs} 
           activeTab={activeTab} 
           onTabChange={(id: any) => setActiveTab(id)} 
         />
-        <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
+        <div className="module-toolbar-actions">
           <PillButton 
             variant="primary"
             onClick={() => router.push('/customers/new')}

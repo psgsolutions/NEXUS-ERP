@@ -54,3 +54,15 @@ describe("in-app help", () => {
     expect(visitTargets([{ check: { kind: "visit", path: "/hr" }, done: false }, { check: { kind: "visit", path: "/x" }, done: true }])).toEqual(["/hr"]);
   });
 });
+
+describe("navigation parent pages", () => {
+  it("every list page exists and parents resolve to the nearest list page", async () => {
+    const { LIST_PAGES, parentPage } = await import("@/lib/page-labels");
+    expect(LIST_PAGES.filter((h) => !exists(h))).toEqual([]);
+    expect(parentPage("/sales/quotations/QT-1")).toBe("/sales/quotations");
+    expect(parentPage("/finance/receipts/new")).toBe("/finance");
+    expect(parentPage("/customers/C1")).toBe("/customers");
+    expect(parentPage("/sales")).toBeNull();
+    expect(parentPage("/unknown/x")).toBeNull();
+  });
+});

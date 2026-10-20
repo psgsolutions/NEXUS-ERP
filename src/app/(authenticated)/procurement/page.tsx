@@ -246,7 +246,7 @@ export default function ProcurementPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
+          <div role="button" tabIndex={0} title="คลิกเพื่อดูใบสั่งซื้อ" onClick={() => setActiveTab("po")} onKeyDown={(e) => { if (e.key === "Enter") (() => setActiveTab("po"))(); }} className="cursor-pointer px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
             <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
               <ShoppingBag size={16} />
             </div>
@@ -255,7 +255,7 @@ export default function ProcurementPage() {
               <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none" title={`฿${poMonthTotal.toLocaleString("th-TH", { minimumFractionDigits: 2 })}`}>{compactTHB(poMonthTotal)}</span>
             </div>
           </div>
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
+          <div role="button" tabIndex={0} title="คลิกเพื่อไปรับสินค้า" onClick={() => setActiveTab("receipt")} onKeyDown={(e) => { if (e.key === "Enter") (() => setActiveTab("receipt"))(); }} className="cursor-pointer px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
             <div className="w-8 h-8 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
               <Clock size={16} />
             </div>
@@ -264,7 +264,7 @@ export default function ProcurementPage() {
               <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none">{poAwaitingReceipt} ใบ</span>
             </div>
           </div>
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-warning/30 hover:bg-white/[0.03]">
+          <div role="button" tabIndex={0} title="คลิกเพื่อดูใบขอซื้อที่รออนุมัติ" onClick={() => setActiveTab("pr")} onKeyDown={(e) => { if (e.key === "Enter") (() => setActiveTab("pr"))(); }} className="cursor-pointer px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-warning/30 hover:bg-white/[0.03]">
             <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center text-warning border border-warning/20 shrink-0">
               <AlertCircle size={16} />
             </div>
@@ -277,13 +277,13 @@ export default function ProcurementPage() {
       </header>
 
       {/* Tab Navigation & Actions */}
-      <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
-        <PillTabs className="flex-1 min-w-[min(100%,520px)]"
+      <section className="module-toolbar">
+        <PillTabs className="module-tabs flex-1 min-w-[min(100%,520px)]"
           tabs={tabs}
           activeTab={activeTab}
           onTabChange={(id: any) => setActiveTab(id)}
         />
-        <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
+        <div className="module-toolbar-actions">
            <PillButton
               variant="primary"
               className="h-8 px-5 shadow-neon-teal"

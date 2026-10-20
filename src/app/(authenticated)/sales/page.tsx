@@ -466,7 +466,7 @@ export default function SalesPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
+          <div role="button" tabIndex={0} title="คลิกเพื่อดูใบแจ้งหนี้" onClick={() => setActiveTab("invoices")} onKeyDown={(e) => { if (e.key === "Enter") (() => setActiveTab("invoices"))(); }} className="cursor-pointer px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
             <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
               <Target size={16} />
             </div>
@@ -475,7 +475,7 @@ export default function SalesPage() {
               <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none" title={toMoney(monthSales)}>{toCompactMoney(monthSales)}</span>
             </div>
           </div>
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
+          <div role="button" tabIndex={0} title="คลิกเพื่อดูใบเสนอราคาที่ได้งาน" onClick={() => { setActiveTab("quotations"); setQuoteFilter("won"); }} onKeyDown={(e) => { if (e.key === "Enter") (() => { setActiveTab("quotations"); setQuoteFilter("won"); })(); }} className="cursor-pointer px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
             <div className="w-8 h-8 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
               <TrendingUp size={16} />
             </div>
@@ -484,7 +484,7 @@ export default function SalesPage() {
               <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none" title="ใบเสนอราคาที่อนุมัติ ÷ ใบเสนอราคาที่ส่งแล้วทั้งหมด">{winRate === null ? "-" : `${winRate}%`}</span>
             </div>
           </div>
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-white/20 hover:bg-white/[0.03]">
+          <div role="button" tabIndex={0} title="คลิกเพื่อดูใบแจ้งหนี้ที่ค้างชำระ" onClick={() => setActiveTab("invoices")} onKeyDown={(e) => { if (e.key === "Enter") (() => setActiveTab("invoices"))(); }} className="cursor-pointer px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-white/20 hover:bg-white/[0.03]">
             <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white border border-white/10 shrink-0">
               <MessageSquare size={16} />
             </div>
@@ -497,13 +497,13 @@ export default function SalesPage() {
       </header>
 
       {/* Tab Navigation (Stepper) & Actions */}
-      <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
-        <PillTabs className="flex-1 min-w-[min(100%,520px)]"
+      <section className="module-toolbar">
+        <PillTabs className="module-tabs flex-1 min-w-[min(100%,520px)]"
           tabs={salesTabs.tabs}
           activeTab={activeTab}
           onTabChange={(id: any) => { if (!salesTabs.handleToggle(id)) setActiveTab(id); }}
         />
-        <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
+        <div className="module-toolbar-actions">
           {activeTab === "crm" && (
             <PillButton variant="primary" onClick={() => { setSelectedItem(null); setSelectedCustomer(null); router.push("/customers/new"); }} className="h-8 px-5 shadow-neon-teal">
               <Plus size={14} className="mr-1.5" />
@@ -1021,13 +1021,16 @@ export default function SalesPage() {
            ) : (
              <>
                <GlassCard className="p-4 border-white/5 ">
-                  <h4 className="text-[12px] font-medium text-nexus-blue uppercase tracking-widest mb-6">ขั้นตอนการปิดการขาย</h4>
-                  <div className="space-y-3">
-                     <PipelineStage label="ร่าง" count={pipeline.draft.count} value={toCompactMoney(pipeline.draft.value)} />
-                     <PipelineStage label="รออนุมัติ" count={pipeline.pending.count} value={toCompactMoney(pipeline.pending.value)} color="bg-warning" />
-                     <PipelineStage label="ส่งลูกค้าแล้ว" count={pipeline.sent.count} value={toCompactMoney(pipeline.sent.value)} color="bg-nexus-blue" />
-                     <PipelineStage label="ได้งาน" count={pipeline.won.count} value={toCompactMoney(pipeline.won.value)} color="bg-nexus-teal" />
-                     {pipeline.expired.count > 0 && <PipelineStage label="หมดอายุ" count={pipeline.expired.count} value={toCompactMoney(pipeline.expired.value)} color="bg-danger" />}
+                  <h4 className="text-[12px] font-medium text-nexus-blue uppercase tracking-widest mb-1">ขั้นตอนการปิดการขาย</h4>
+                  <p className="text-[12px] text-white/40 mb-4">คลิกขั้นตอนเพื่อกรองรายการ{quoteFilter !== "all" && <> · <button type="button" className="text-nexus-teal hover:underline" onClick={() => setQuoteFilter("all")}>แสดงทั้งหมด</button></>}</p>
+                  <div className="space-y-1.5">
+                     {(() => { const max = Math.max(1, ...["draft", "pending", "sent", "won", "expired"].map((k) => (pipeline as any)[k].count)); const go = (k: any) => { setActiveTab("quotations"); setQuoteFilter(quoteFilter === k ? "all" : k); }; return <>
+                     <PipelineStage label="ร่าง" count={pipeline.draft.count} max={max} value={toCompactMoney(pipeline.draft.value)} active={quoteFilter === "draft"} onClick={() => go("draft")} />
+                     <PipelineStage label="รออนุมัติ" count={pipeline.pending.count} max={max} value={toCompactMoney(pipeline.pending.value)} color="bg-warning" active={quoteFilter === "pending"} onClick={() => go("pending")} />
+                     <PipelineStage label="ส่งลูกค้าแล้ว" count={pipeline.sent.count} max={max} value={toCompactMoney(pipeline.sent.value)} color="bg-nexus-blue" active={quoteFilter === "sent"} onClick={() => go("sent")} />
+                     <PipelineStage label="ได้งาน" count={pipeline.won.count} max={max} value={toCompactMoney(pipeline.won.value)} color="bg-nexus-teal" active={quoteFilter === "won"} onClick={() => go("won")} />
+                     {pipeline.expired.count > 0 && <PipelineStage label="หมดอายุ" count={pipeline.expired.count} max={max} value={toCompactMoney(pipeline.expired.value)} color="bg-danger" active={quoteFilter === "expired"} onClick={() => go("expired")} />}
+                     </>; })()}
                   </div>
                </GlassCard>
 
@@ -1040,7 +1043,7 @@ export default function SalesPage() {
                      {followUps.length === 0 ? (
                        <p className="text-[12px] text-white/30">ไม่มีใบเสนอราคาที่ส่งเกิน 7 วันและรอติดตาม</p>
                      ) : followUps.map(q => (
-                       <ReminderItem key={q.docId} name={q.customer} detail={`${q.id} (ส่งแล้ว ${q.daysSince} วัน)`} />
+                       <ReminderItem key={q.docId} name={q.customer} detail={`${q.id} (ส่งแล้ว ${q.daysSince} วัน)`} onClick={() => router.push(`/sales/quotations/${encodeURIComponent(q.docId)}`)} />
                      ))}
                   </div>
                </GlassCard>
@@ -1276,23 +1279,23 @@ function ReceiptRow({ id, docId, invRef, customer, date, total, status, companyI
 }
 
 
-function PipelineStage({ label, count, value, color = "bg-white/10" }: { label: string, count: number, value: string, color?: string }) {
+function PipelineStage({ label, count, value, color = "bg-white/10", max = 20, active = false, onClick }: { label: string, count: number, value: string, color?: string, max?: number, active?: boolean, onClick?: () => void }) {
   return (
-    <div className="space-y-2">
-       <div className="flex justify-between items-center text-[13px] font-medium uppercase tracking-widest">
-          <span className="text-white/30">{label} ({count})</span>
+    <button type="button" onClick={onClick} title={`คลิกเพื่อแสดงเฉพาะใบเสนอราคา "${label}"`} className={cn("w-full text-left space-y-2 rounded-xl px-2.5 py-2 border transition-colors", active ? "bg-nexus-teal/10 border-nexus-teal/30" : "border-transparent hover:bg-white/[0.04] hover:border-white/10")}>
+       <div className="flex justify-between items-center text-[13px] font-medium tracking-wide">
+          <span className={active ? "text-nexus-teal font-bold" : "text-white/60"}>{label} ({count})</span>
           <span className="text-white/80 mono-numbers">{value}</span>
        </div>
        <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-          <div className={cn("h-full", color)} style={{ width: (count / 20 * 100) + "%" }} />
+          <div className={cn("h-full", color)} style={{ width: Math.min(100, (count / Math.max(1, max)) * 100) + "%" }} />
        </div>
-    </div>
+    </button>
   );
 }
 
-function ReminderItem({ name, detail }: { name: string, detail: string }) {
+function ReminderItem({ name, detail, onClick }: { name: string, detail: string, onClick?: () => void }) {
   return (
-    <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5 group hover:bg-white/[0.05] transition-all">
+    <div role={onClick ? "button" : undefined} tabIndex={onClick ? 0 : undefined} onClick={onClick} onKeyDown={(e) => { if (onClick && e.key === "Enter") onClick(); }} title={onClick ? "คลิกเพื่อเปิดใบเสนอราคา" : undefined} className={cn("flex items-center gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5 group hover:bg-white/[0.05] transition-all", onClick && "cursor-pointer")}>
        <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center text-warning group-hover:shadow-neon-warning transition-all">
           <Bell size={16} />
        </div>

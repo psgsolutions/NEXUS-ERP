@@ -49,10 +49,11 @@ import { signOut } from "firebase/auth";
 import { EntitySelector } from "@/components/layout/EntitySelector";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { HelpButton } from "@/components/guide/HelpPanel";
+import { NavButtons } from "@/components/layout/NavButtons";
 import { OnboardingHost } from "@/components/guide/Onboarding";
 import { FirebaseConnectionStatus } from "@/components/ui/FirebaseConnectionStatus";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
-import { pageLabel } from "@/lib/page-labels";
+import { pageLabel, parentPage } from "@/lib/page-labels";
 import { canAccessRoute, roleLabel } from "@/lib/permissions";
 
 export default function AuthenticatedLayout({
@@ -165,18 +166,26 @@ export default function AuthenticatedLayout({
       {/* Main Command Center Area */}
       <div className="flex-1 flex flex-col overflow-hidden relative min-w-0">
         <header className="h-16 border-b border-white/5 bg-surface-0/80 backdrop-blur-xl flex items-center justify-between px-4 md:px-5">
-          <div className="flex items-center gap-4 md:gap-6">
+          <div className="flex items-center gap-3 xl:gap-6 min-w-0">
             <div className="flex items-center gap-4 md:border-r border-white/10 md:pr-5">
                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-white/60 hover:text-nexus-teal hover:bg-white/10 transition-all cursor-pointer">
-                     <Link href="/dashboard"><PieChart size={16} /></Link>
-                  </div>
+                  <NavButtons />
                   {/* จอมือถือ: ซ่อนเส้นทางหน้า (พื้นที่ไม่พอ) */}
                   <nav className="hidden sm:flex items-center gap-2 text-[13px] font-bold text-white/50 whitespace-nowrap">
                      <Link href="/dashboard" className="hover:text-white transition-colors">ภาพรวม</Link>
                      {currentPage && currentPage !== "ภาพรวม" && <>
                        <ChevronRight size={10} />
-                       <span className="text-nexus-teal bg-nexus-teal/10 px-3 py-1 rounded-full border border-nexus-teal/20">{currentPage}</span>
+                       {parentPage(pathname) && pageLabel(parentPage(pathname)) !== currentPage ? (
+                         <>
+                           <Link href={parentPage(pathname)!} className="hover:text-white transition-colors">{currentPage}</Link>
+                           <ChevronRight size={10} />
+                           <span className="text-nexus-teal bg-nexus-teal/10 px-3 py-1 rounded-full border border-nexus-teal/20">รายละเอียด</span>
+                         </>
+                       ) : parentPage(pathname) ? (
+                         <Link href={parentPage(pathname)!} className="text-nexus-teal bg-nexus-teal/10 px-3 py-1 rounded-full border border-nexus-teal/20 hover:bg-nexus-teal/20" title="กลับไปหน้ารายการ">{currentPage}</Link>
+                       ) : (
+                         <span className="text-nexus-teal bg-nexus-teal/10 px-3 py-1 rounded-full border border-nexus-teal/20">{currentPage}</span>
+                       )}
                      </>}
                   </nav>
                </div>
@@ -184,7 +193,7 @@ export default function AuthenticatedLayout({
             
             <NexusSearchInput 
               placeholder="พิมพ์เพื่อค้นหา..." 
-              className="w-80 hidden md:block"
+              className="hidden lg:block w-52 xl:w-72 2xl:w-80"
               kbd="CTRL+K"
             />
             

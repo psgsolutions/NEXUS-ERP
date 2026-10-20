@@ -353,6 +353,8 @@ export default function InventoryPage() {
     { id: "layout", label: "แบบจำลองผังคลัง 3D (ทดลอง)", icon: <Layout size={14} /> },
   ], ["serials", "kits", "layout"], activeTab);
   const [searchQuery, setSearchQuery] = useState("");
+  // กรองเฉพาะสินค้าที่ต่ำกว่าเกณฑ์ (คลิกจากตัวเลขสรุป/การ์ดสินค้าใกล้หมด)
+  const [lowOnly, setLowOnly] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
@@ -452,10 +454,11 @@ export default function InventoryPage() {
   const selectedKit = kits.find((k: any) => k.id === selectedKitId);
 
   // Filtering calculations
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredProducts = products.filter(p =>
+    (!lowOnly || (p.stockStatus?.onHand || 0) <= ((p as any).minStock || 0)) && (
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.category && p.category.toLowerCase().includes(searchQuery.toLowerCase()))
+    (p.category && p.category.toLowerCase().includes(searchQuery.toLowerCase())))
   );
 
   const filteredAssets = assets.filter((a: any) => 
@@ -509,7 +512,7 @@ export default function InventoryPage() {
 
         {/* Aligned summaries in identical horizontal plane */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
+          <div role="button" tabIndex={0} title="คลิกเพื่อดูรายการสินค้าทั้งหมด" onClick={() => { setActiveTab("items"); setLowOnly(false); }} onKeyDown={(e) => { if (e.key === "Enter") (() => { setActiveTab("items"); setLowOnly(false); })(); }} className="cursor-pointer px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]">
             <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
               <Package size={16} />
             </div>
@@ -518,7 +521,7 @@ export default function InventoryPage() {
               <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">{totalQty.toLocaleString()} EA</span>
             </div>
           </div>
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
+          <div role="button" tabIndex={0} title="คลิกเพื่อดูรายงานมูลค่าสินค้าคงเหลือ" onClick={() => router.push("/finance/subledgers")} onKeyDown={(e) => { if (e.key === "Enter") (() => router.push("/finance/subledgers"))(); }} className="cursor-pointer px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-blue/30 hover:bg-white/[0.03]">
             <div className="w-8 h-8 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 shrink-0">
               <DollarSign size={16} />
             </div>
@@ -527,7 +530,7 @@ export default function InventoryPage() {
               <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none">฿{totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
             </div>
           </div>
-          <div className="px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-warning/30 hover:bg-white/[0.03]">
+          <div role="button" tabIndex={0} title="คลิกเพื่อแสดงเฉพาะสินค้าต่ำกว่าเกณฑ์" onClick={() => { setActiveTab("items"); setLowOnly(true); }} onKeyDown={(e) => { if (e.key === "Enter") (() => { setActiveTab("items"); setLowOnly(true); })(); }} className="cursor-pointer px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-warning/30 hover:bg-white/[0.03]">
             <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center text-warning border border-warning/20 shrink-0">
               <ShieldAlert size={16} />
             </div>
@@ -540,8 +543,8 @@ export default function InventoryPage() {
       </header>
 
       {/* Tab Navigation and Toolbars */}
-      <section className="px-6 min-h-[56px] py-2 bg-black/10 border-b border-white/5 flex flex-wrap items-center justify-between gap-2 shrink-0">
-        <PillTabs className="flex-1 min-w-[min(100%,520px)]" 
+      <section className="module-toolbar">
+        <PillTabs className="module-tabs flex-1 min-w-[min(100%,520px)]" 
           tabs={inventoryTabs.tabs}
           activeTab={activeTab}
           onTabChange={(tab) => {
@@ -557,7 +560,7 @@ export default function InventoryPage() {
         />
         
         {activeTab !== "layout" && (
-          <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
+          <div className="module-toolbar-actions">
             <PillButton
               variant="glass"
               className="gap-1.5"
@@ -663,6 +666,9 @@ export default function InventoryPage() {
                    kbd="F"
                  />
                  <div className="flex items-center gap-4 pr-1.5">
+                    {activeTab === "items" && lowOnly && (
+                      <button type="button" onClick={() => setLowOnly(false)} title="ยกเลิกตัวกรอง" className="h-7 px-3 rounded-full text-[12px] font-bold border bg-warning/15 border-warning/40 text-warning whitespace-nowrap">เฉพาะสินค้าต่ำกว่าเกณฑ์ ✕</button>
+                    )}
                     <span className="text-[11px] text-white/30 uppercase tracking-widest font-bold hidden sm:block px-2">
                       {activeTab === "items" ? `ค้นพบ ${filteredProducts.length} รายการ` :
                        activeTab === "assets" ? `ค้นพบ ${filteredAssets.length} รายการ` :
@@ -1005,6 +1011,7 @@ export default function InventoryPage() {
                     <div className="p-4 rounded-xl  border border-nexus-blue/15 space-y-3">
                       <p className="text-xs font-medium text-nexus-blue uppercase tracking-widest flex items-center gap-1.5">
                         <Cpu size={12} /> สินค้าใกล้หมด
+                        <button type="button" onClick={() => { setActiveTab("items"); setLowOnly(true); }} className="ml-auto text-[12px] normal-case tracking-normal text-nexus-teal hover:underline">ดูรายการ</button>
                       </p>
                       <p className="text-sm text-white/70 leading-relaxed font-medium">
                         พบสินค้าต่ำกว่าปริมาณสั่งซื้อขั้นต่ำ <span className="text-warning font-medium">{lowStockCount} SKU</span> แนะนำทำการเติมสินค้า เพื่อป้องกันความล่าช้าโครงการติดตั้ง

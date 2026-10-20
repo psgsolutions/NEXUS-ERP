@@ -40,3 +40,18 @@ export function pageLabel(pathname: string | null | undefined): string {
   const p = pathname || "";
   return BY_LENGTH.find(([prefix]) => p === prefix || p.startsWith(prefix + "/"))?.[1] || "";
 }
+
+/** หน้ารายการที่ใช้เป็น "หน้าหลักของเมนู" (ปุ่มขึ้นไปหน้ารายการ) — ต้องเป็นหน้าที่มีอยู่จริง */
+export const LIST_PAGES = [
+  "/dashboard", "/pos", "/support", "/service/dispatch", "/mobile/technician", "/mobile/technician/work-orders",
+  "/sales", "/sales/quotations", "/sales/orders", "/customers", "/projects", "/hr", "/inventory", "/inventory/stock-card",
+  "/inventory/locations", "/products", "/procurement", "/executive", "/finance", "/finance/subledgers", "/finance/reports",
+  "/finance/advances", "/ai", "/data-import", "/settings", "/logs",
+];
+const LIST_BY_LENGTH = [...LIST_PAGES].sort((a, b) => b.length - a.length);
+
+/** หน้าหลักของเมนูที่อยู่เหนือหน้านี้ (null = อยู่ที่หน้าหลักแล้ว) เช่น /sales/quotations/QT-1 -> /sales/quotations */
+export function parentPage(pathname: string | null | undefined): string | null {
+  const p = (pathname || "").replace(/\/+$/, "");
+  return LIST_BY_LENGTH.find((l) => p !== l && p.startsWith(l + "/")) || null;
+}

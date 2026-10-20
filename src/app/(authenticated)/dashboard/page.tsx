@@ -69,6 +69,10 @@ export default function DashboardPage() {
   const { data: purchaseRequests } = useRealtimeCollection<any>(co("purchase_requests"));
   const { data: quotations } = useRealtimeCollection<any>(co("quotations"));
   const { data: workOrders } = useRealtimeCollection<any>(co("work_orders"));
+  // งานรอแอดมินการเงิน: ใบสั่งขายที่ส่งมอบแล้วรอวางบิล / รายการค้างจ่าย
+  const billing = has("sales:billing") || has("finance:edit");
+  const { data: salesOrders } = useRealtimeCollection<any>(co("sales_orders", billing));
+  const { data: payables } = useRealtimeCollection<any>(co("expenses", has("finance:edit")));
   const { data: logs, loading: logsLoading } = useRealtimeCollection<any>(has("logs:view") ? "logs" : "");
 
   const journals = useMemo(() => [...companyJournals, ...legacyJournals], [companyJournals, legacyJournals]);
@@ -96,11 +100,14 @@ export default function DashboardPage() {
       { show: has("procurement:approve"), label: "ใบสั่งซื้อรออนุมัติ", href: "/procurement", ...count(purchaseOrders, (x) => normalizePoStatus(x.status) === "PENDING_APPROVAL") },
       { show: has("sales:approve") || has("sales:quote_approve") || has("sales:edit"), label: "ใบเสนอราคารออนุมัติ", href: "/sales?tab=quotations&status=pending", ...count(quotations, (x) => quotationStage(x) === "pending") },
       { show: has("finance:post"), label: "รายการบัญชีรอลงบัญชี", href: "/finance", ...count(journals, (x) => String(x.status || "").toLowerCase() === "draft") },
+      { show: has("procurement:edit") || has("finance:edit"), label: "ใบขอซื้ออนุมัติแล้ว รอออกใบสั่งซื้อ", href: "/procurement", ...count(purchaseRequests, (x) => upper(x.status) === "APPROVED") },
+      { show: billing, label: "ส่งมอบแล้ว รอออกใบกำกับ/วางบิล", href: "/sales?tab=orders", ...count(salesOrders, (x) => upper(x.status) === "DELIVERED") },
+      { show: has("finance:edit"), label: "รายการค้างจ่าย (ตั้งเบิกแล้ว)", href: "/finance/payments/new", ...count(payables, (x) => ["AWAITING PAYMENT", "PARTIALLY PAID"].includes(upper(x.status))) },
       { show: has("service:field") || has("projects:edit"), label: "ใบงานช่างที่ยังเปิดอยู่", href: "/mobile/technician/work-orders", ...count(workOrders, (x) => ["ASSIGNED", "IN_PROGRESS"].includes(upper(x.status))) },
     ];
     return rows.filter((r) => r.show);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [purchaseRequests, purchaseOrders, quotations, journals, workOrders, roles]);
+  }, [purchaseRequests, purchaseOrders, quotations, journals, workOrders, salesOrders, payables, roles]);
   const pendingTotal = pending.reduce((s, p) => s + p.total, 0);
 
   // เรื่องที่ควรดำเนินการก่อน (เรียงตามความเร่งด่วน)

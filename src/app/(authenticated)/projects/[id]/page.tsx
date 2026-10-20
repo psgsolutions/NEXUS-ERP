@@ -16,6 +16,7 @@ import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { ChangeOrdersPanel } from "@/components/projects/ChangeOrdersPanel";
 import { ContractPanel } from "@/components/projects/ContractPanel";
+import { BoqPurchasePanel } from "@/components/projects/BoqPurchasePanel";
 import { ProjectBillingPanel } from "@/components/projects/ProjectBillingPanel";
 import { ProjectCostPanel } from "@/components/projects/ProjectCostPanel";
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
@@ -58,7 +59,8 @@ export default function ProjectDetailPage() {
   const router = useRouter();
   const routeParams = useParams();
   const docId = decodeURIComponent(String(routeParams.id || ""));
-  const { user, role, roles, companyId } = useAuth();
+  const { user, role, roles, companyId, displayName } = useAuth();
+  const [showBoqPr, setShowBoqPr] = useState(false);
 
   const { data: own, loading } = useRealtimeDocument<any>(companyId && docId ? `companies/${companyId}/projects/${docId}` : null);
   const { data: legacy, loading: legacyLoading } = useRealtimeDocument<any>(!loading && !own && docId ? `projects/${docId}` : null);
@@ -374,6 +376,14 @@ export default function ProjectDetailPage() {
         onTabChange={setTab}
       />
       {tab === "overview" && overview}
+      {tab === "boq" && !isLegacy && companyId && can(roles, "projects:edit") && lines.some((l: any) => l.kind === "PRODUCT") && (
+        showBoqPr
+          ? <BoqPurchasePanel companyId={companyId} docId={docId} project={p} lines={lines} requester={displayName} onClose={() => setShowBoqPr(false)} />
+          : <div className="flex justify-end gap-2">
+              <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={() => router.push("/finance/payouts/new")} title="ส่งรายการค่าแรงช่าง/ผู้รับเหมาให้แอดมินจ่าย (หัก ณ ที่จ่าย 3% และออก 50 ทวิ ให้)">ขอจ่ายค่าแรงช่าง</PillButton>
+              <PillButton variant="primary" className="h-9 px-5 text-xs" onClick={() => setShowBoqPr(true)}>ขอซื้อตาม BOQ</PillButton>
+            </div>
+      )}
       {tab === "boq" && boq}
       {tab === "finance" && finance}
       {tab === "billing" && !isLegacy && <ProjectBillingPanel companyId={companyId || ""} docId={docId} customerId={p.customerId} />}

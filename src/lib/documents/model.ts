@@ -21,6 +21,8 @@ export interface DocumentProfile {
   footerNote?: string;
   /** ข้อมูลการชำระเงิน เช่น บัญชีธนาคาร */
   paymentInfo?: string;
+  /** การออกแบบเอกสารของบริษัท (ธีม + ปรับรายชนิดเอกสาร + ผังลากวาง) */
+  design?: import("./design").DocumentDesign;
 }
 
 export interface DocumentParty {

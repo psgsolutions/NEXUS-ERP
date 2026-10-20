@@ -1,4 +1,5 @@
 import type { DocumentProfile } from "./model";
+import { normalizeDesign } from "./design";
 
 /**
  * ข้อมูลหัวเอกสารของบริษัท: ฟิลด์หลักอยู่บน companies/{id} (name, address, taxId, branchCode ...)
@@ -9,6 +10,7 @@ export function documentProfileOf(company: Record<string, any> | null | undefine
   const c = company || {};
   const p = c.documentProfile || {};
   const s = (v: any) => String(v ?? "").trim();
+  const brandColor = /^#[0-9a-fA-F]{6}$/.test(s(p.brandColor)) ? s(p.brandColor) : "#1f6f5c";
   return {
     name: s(c.name || c.companyName),
     nameEn: s(p.nameEn || c.nameEn),
@@ -20,9 +22,10 @@ export function documentProfileOf(company: Record<string, any> | null | undefine
     email: s(c.email),
     website: s(c.website),
     logo: /^data:image\/(png|jpeg);base64,/.test(s(p.logo)) ? s(p.logo) : "",
-    brandColor: /^#[0-9a-fA-F]{6}$/.test(s(p.brandColor)) ? s(p.brandColor) : "#1f6f5c",
+    brandColor,
     footerNote: s(p.footerNote),
     paymentInfo: s(p.paymentInfo),
+    design: normalizeDesign(c.documentDesign, brandColor),
   };
 }
 

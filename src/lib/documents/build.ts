@@ -117,3 +117,29 @@ export function sampleModel(seller: DocumentProfile, today: string): DocumentMod
     watermark: "ตัวอย่าง",
   };
 }
+
+/** ชนิดเอกสารที่ออกแบบได้ (หน้าตั้งค่า › ออกแบบเอกสาร) พร้อมชื่อ/คอลัมน์/ช่องลงนามตั้งต้น */
+export const DESIGNABLE_DOCS: { type: string; title: string; titleEn: string; columns?: DocumentModel["columns"]; signatures: string[]; partyLabel: string }[] = [
+  { type: "quotation", title: "ใบเสนอราคา", titleEn: "QUOTATION", signatures: ["ผู้เสนอราคา", "ผู้อนุมัติ", "ผู้สั่งซื้อ"], partyLabel: "ลูกค้า" },
+  { type: "sales_order", title: "ใบสั่งขาย", titleEn: "SALES ORDER", signatures: ["ผู้จัดทำ", "ผู้อนุมัติ"], partyLabel: "ลูกค้า" },
+  { type: "invoice", title: "ใบกำกับภาษี / ใบแจ้งหนี้", titleEn: "TAX INVOICE / INVOICE", signatures: ["ผู้รับสินค้า / บริการ", "ผู้ส่งสินค้า", "ผู้มีอำนาจลงนาม"], partyLabel: "ลูกค้า" },
+  { type: "billing_note", title: "ใบวางบิล", titleEn: "BILLING NOTE", columns: ["no", "description", "amount"], signatures: ["ผู้วางบิล", "ผู้รับวางบิล"], partyLabel: "ลูกค้า" },
+  { type: "receipt", title: "ใบเสร็จรับเงิน", titleEn: "RECEIPT", columns: ["no", "description", "amount"], signatures: ["ผู้จ่ายเงิน", "ผู้รับเงิน"], partyLabel: "ได้รับเงินจาก" },
+  { type: "delivery_note", title: "ใบส่งของ", titleEn: "DELIVERY NOTE", columns: ["no", "code", "description", "qty", "unit"], signatures: ["ผู้ส่งของ", "ผู้รับของ", "ผู้ตรวจรับ"], partyLabel: "ลูกค้า" },
+  { type: "cndn", title: "ใบลดหนี้", titleEn: "CREDIT NOTE", columns: ["no", "description", "amount"], signatures: ["ผู้จัดทำ", "ผู้มีอำนาจลงนาม"], partyLabel: "ลูกค้า" },
+  { type: "purchase_order", title: "ใบสั่งซื้อ", titleEn: "PURCHASE ORDER", signatures: ["ผู้สั่งซื้อ", "ผู้อนุมัติ"], partyLabel: "ผู้ขาย" },
+  { type: "payment", title: "ใบสำคัญจ่าย", titleEn: "PAYMENT VOUCHER", columns: ["no", "description", "amount"], signatures: ["ผู้จัดทำ", "ผู้อนุมัติ", "ผู้รับเงิน"], partyLabel: "ผู้รับเงิน" },
+  { type: "work_order", title: "ใบสั่งงานบริการ", titleEn: "WORK ORDER", columns: ["no", "description", "qty", "unit"], signatures: ["ช่างผู้ปฏิบัติงาน", "ลูกค้า"], partyLabel: "ลูกค้า" },
+];
+
+/** เอกสารตัวอย่างของชนิดที่เลือก (หน้าออกแบบเอกสาร) */
+export function sampleModelFor(type: string, seller: DocumentProfile, today: string): DocumentModel {
+  const def = DESIGNABLE_DOCS.find((d) => d.type === type) || DESIGNABLE_DOCS[0];
+  const base = sampleModel(seller, today);
+  return {
+    ...base, type: def.type, title: def.title, titleEn: def.titleEn, signatures: def.signatures, watermark: undefined,
+    ...(def.columns ? { columns: def.columns } : {}),
+    party: base.party ? { ...base.party, label: def.partyLabel } : undefined,
+    lines: def.columns && !def.columns.includes("qty") ? base.lines.map((l) => ({ ...l, qty: undefined, unit: undefined, price: undefined })) : base.lines,
+  };
+}

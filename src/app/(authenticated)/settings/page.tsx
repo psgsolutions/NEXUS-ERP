@@ -2,9 +2,10 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { BookOpen, Building2, Fingerprint, Save, Settings as SettingsIcon, Users } from "lucide-react";
+import { BookOpen, Building2, Fingerprint, Palette, Save, Settings as SettingsIcon, Users } from "lucide-react";
 import { PillButton, PillInput, PillTabs, Toast } from "@/components/ui/Base";
 import { DocumentProfileSettings } from "@/components/settings/DocumentProfileSettings";
+import { DocumentDesigner } from "@/components/settings/DocumentDesigner";
 import { SpecLibraryManager } from "@/components/projects/SpecLibraryManager";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase-client";
@@ -18,9 +19,10 @@ import UsersPage from "./users/page";
  * (เอกสารทุกประเภทใช้เทมเพลตมาตรฐานเดียวกัน ปรับหัวเอกสาร โลโก้ สี ได้ที่แท็บข้อมูลนิติบุคคล)
  */
 
-type SettingsTab = "company" | "users" | "sequence" | "specs";
+type SettingsTab = "company" | "design" | "users" | "sequence" | "specs";
 const TABS: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   { id: "company", label: "ข้อมูลนิติบุคคล", icon: <Building2 size={14} /> },
+  { id: "design", label: "ออกแบบเอกสาร", icon: <Palette size={14} /> },
   { id: "users", label: "จัดการผู้ใช้งาน", icon: <Users size={14} /> },
   { id: "sequence", label: "รูปแบบเลขที่", icon: <Fingerprint size={14} /> },
   { id: "specs", label: "คลังสเปก TOR", icon: <BookOpen size={14} /> },
@@ -88,6 +90,7 @@ export default function SettingsPage() {
       </div>
 
       {activeTab === "company" && <DocumentProfileSettings />}
+      {activeTab === "design" && <DocumentDesigner />}
 
       {activeTab === "sequence" && (
         <div className="space-y-6 animate-in slide-in-from-bottom duration-500">

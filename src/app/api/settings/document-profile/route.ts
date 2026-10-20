@@ -5,10 +5,12 @@ import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { auditServer } from "@/services/audit.server";
 import { documentProfileOf } from "@/lib/documents/profile";
+import { normalizeDesign } from "@/lib/documents/design";
 
 /**
  * [API-SERVER] ข้อมูลนิติบุคคลและหัวเอกสาร — POST /api/settings/document-profile
  *  - { companyId, action: "get" }
+ *  - { companyId, action: "saveDesign", design: { theme, perDoc } }   การออกแบบหน้าเอกสาร (ธีม/ปรับรายเอกสาร/ผังลากวาง) — ตรวจค่าที่ server
  *  - { companyId, action: "save", profile: { name, nameEn, address, taxId, branchCode, branchName, phone, email, website, logo, brandColor, footerNote, paymentInfo } }
  * ชื่อ/ที่อยู่/เลขผู้เสียภาษี/สาขา เก็บบน companies/{id} (ใช้ทุกเอกสาร), หน้าตาเอกสารเก็บที่ companies/{id}.documentProfile
  */
@@ -23,6 +25,15 @@ export async function POST(request: Request) {
 
     if (body.action === "get") {
       return NextResponse.json({ success: true, profile: documentProfileOf((await ref.get()).data()) });
+    }
+    if (body.action === "saveDesign") {
+      if (!can(apiUser.roles, "settings:manage")) throw new ApiAuthError(403, "ออกแบบเอกสารได้เฉพาะผู้ดูแลระบบ");
+      const current = documentProfileOf((await ref.get()).data());
+      const design = normalizeDesign(body.design, current.brandColor);
+      if (JSON.stringify(design).length > 900_000) throw new ApiAuthError(400, "รูปภาพในผังเอกสารใหญ่เกินไป ลดขนาดรูปก่อน");
+      await ref.update({ documentDesign: design, updatedAt: admin.firestore.FieldValue.serverTimestamp(), updatedBy: apiUser.uid });
+      await auditServer.logUpdate(apiUser.uid, companyId, "DOCUMENT_DESIGN", companyId, { templateId: current.design?.theme.templateId }, { templateId: design.theme.templateId, font: design.theme.font, perDoc: Object.keys(design.perDoc) });
+      return NextResponse.json({ success: true, design });
     }
     if (body.action !== "save") throw new ApiAuthError(400, "คำสั่งไม่ถูกต้อง");
     if (!can(apiUser.roles, "settings:manage")) throw new ApiAuthError(403, "แก้ข้อมูลบริษัทได้เฉพาะผู้ดูแลระบบ");
@@ -45,7 +56,7 @@ export async function POST(request: Request) {
       documentProfile: { nameEn: str(p.nameEn, 200), logo, brandColor, footerNote: str(p.footerNote, 500), paymentInfo: str(p.paymentInfo, 500) },
       updatedAt: admin.firestore.FieldValue.serverTimestamp(), updatedBy: apiUser.uid,
     }, { merge: true });
-    const { logo: _a, ...beforeLog } = before; void _a;
+    const { logo: _a, design: _d, ...beforeLog } = before; void _a; void _d;
     await auditServer.logUpdate(apiUser.uid, companyId, "COMPANY_PROFILE", companyId, beforeLog, { name, taxId, branchCode, address: str(p.address, 500) });
     return NextResponse.json({ success: true });
   } catch (err: any) {

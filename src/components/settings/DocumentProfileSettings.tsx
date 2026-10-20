@@ -91,8 +91,8 @@ export function DocumentProfileSettings() {
       <GlassCard accentColor="teal" className="p-5 space-y-5 2xl:w-[560px] flex-shrink-0 self-start">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-[18px] font-bold text-white">ข้อมูลนิติบุคคลและหัวเอกสาร</h2>
-            <p className="text-[13px] text-white/50">ใช้พิมพ์บนทุกเอกสาร — ใบกำกับภาษีต้องมีชื่อ ที่อยู่ เลขผู้เสียภาษี และสาขาครบ</p>
+            <h2 className="text-[18px] font-bold text-white">ข้อมูลนิติบุคคล</h2>
+            <p className="text-[13px] text-white/50">ใช้พิมพ์บนทุกเอกสาร — ใบกำกับภาษีต้องมีชื่อ ที่อยู่ เลขผู้เสียภาษี และสาขาครบ · สีและรูปแบบเอกสาร ตั้งที่แท็บ &quot;ออกแบบเอกสาร&quot;</p>
           </div>
           {canEdit && <PillButton variant="confirm" className="h-9 px-5 text-xs font-bold flex-shrink-0" disabled={!dirty || saving} onClick={save}>{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} บันทึก</PillButton>}
         </div>
@@ -127,11 +127,6 @@ export function DocumentProfileSettings() {
           <Field label="โทรศัพท์"><PillInput value={form.phone || ""} onChange={(e) => set({ phone: e.target.value })} className="h-10" /></Field>
           <Field label="อีเมล"><PillInput value={form.email || ""} onChange={(e) => set({ email: e.target.value })} className="h-10" /></Field>
           <Field label="เว็บไซต์" wide><PillInput value={form.website || ""} onChange={(e) => set({ website: e.target.value })} className="h-10" /></Field>
-          <Field label="สีหลักของเอกสาร" wide>
-            <div className="flex items-center gap-2 h-10">
-              {COLORS.map((c) => <button key={c} type="button" onClick={() => set({ brandColor: c })} className={cn("w-8 h-8 rounded-full border-2", form.brandColor === c ? "border-white" : "border-transparent")} style={{ background: c }} aria-label={`สี ${c}`} />)}
-            </div>
-          </Field>
           <Field label="ข้อมูลการชำระเงิน" hint="เช่น ธนาคาร เลขที่บัญชี ชื่อบัญชี (แสดงท้ายเอกสารขาย)" wide><PillInput value={form.paymentInfo || ""} onChange={(e) => set({ paymentInfo: e.target.value })} className="h-10" /></Field>
           <Field label="ข้อความท้ายกระดาษ" wide><PillInput value={form.footerNote || ""} onChange={(e) => set({ footerNote: e.target.value })} placeholder="เช่น ขอบคุณที่ใช้บริการ" className="h-10" /></Field>
         </fieldset>

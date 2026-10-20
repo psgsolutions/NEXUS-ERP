@@ -132,8 +132,21 @@ export const DESIGNABLE_DOCS: { type: string; title: string; titleEn: string; co
   { type: "work_order", title: "ใบสั่งงานบริการ", titleEn: "WORK ORDER", columns: ["no", "description", "qty", "unit"], signatures: ["ช่างผู้ปฏิบัติงาน", "ลูกค้า"], partyLabel: "ลูกค้า" },
 ];
 
+/** หนังสือ (ขอเข้าพื้นที่ / ส่งมอบงาน / ขอคืนหลักประกัน) — ออกแบบได้เฉพาะหัวกระดาษและฟอนต์ เนื้อหาตามรูปแบบหนังสือ */
+export const LETTER_DESIGN = { type: "letter", title: "หนังสือ (ขอเข้าพื้นที่ · ส่งมอบงาน ฯลฯ)" };
+
 /** เอกสารตัวอย่างของชนิดที่เลือก (หน้าออกแบบเอกสาร) */
 export function sampleModelFor(type: string, seller: DocumentProfile, today: string): DocumentModel {
+  if (type === LETTER_DESIGN.type) {
+    return {
+      type: "letter", title: "หนังสือขออนุญาตเข้าพื้นที่", number: "ตัวอย่าง 001/2569", date: today, meta: [], seller, lines: [], totals: [], signatures: [],
+      letter: {
+        to: "ผู้อำนวยการหน่วยงานตัวอย่าง", subject: "ขออนุญาตเข้าพื้นที่ปฏิบัติงาน", refs: ["สัญญาเลขที่ 00/2569"], attachments: ["รายชื่อผู้ปฏิบัติงาน"],
+        body: ["ตามที่บริษัทฯ ได้รับจ้างดำเนินงานตามสัญญาที่อ้างถึง บริษัทฯ ขออนุญาตเข้าพื้นที่เพื่อปฏิบัติงาน ตั้งแต่วันที่ ........ ถึงวันที่ ........", "จึงเรียนมาเพื่อโปรดพิจารณาอนุญาต"],
+        signerName: "ชื่อผู้ลงนาม", signerTitle: "กรรมการผู้จัดการ",
+      },
+    };
+  }
   const def = DESIGNABLE_DOCS.find((d) => d.type === type) || DESIGNABLE_DOCS[0];
   const base = sampleModel(seller, today);
   return {

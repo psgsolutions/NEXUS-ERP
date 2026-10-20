@@ -2,11 +2,13 @@ import React from "react";
 import { Document, Image, Page, StyleSheet, View } from "@react-pdf/renderer";
 import type { DocumentModel } from "@/lib/documents/model";
 import { thaiDate } from "@/lib/documents/format";
-import { T } from "./StandardDocument";
+import { FONT_SCALE } from "@/lib/documents/design";
+import { LetterheadBlocks, T, documentContext } from "./StandardDocument";
 
 /**
  * หนังสือ (รูปแบบหนังสือภายนอก): หัวบริษัท · ที่ · วันที่ · เรื่อง · เรียน · อ้างถึง · สิ่งที่ส่งมาด้วย · เนื้อความ · ลงนาม
  * ใช้เมื่อ DocumentModel มี letter (เลือกโดย DocumentPdf)
+ * ฟอนต์ตามธีมของบริษัท · หัวกระดาษตามที่เลือกให้ "หนังสือ" (ตั้งค่า › ออกแบบเอกสาร) ถ้าไม่เลือกใช้หัวกึ่งกลางมาตรฐาน
  */
 const ink = "#1a1a1a", muted = "#555555";
 const s = StyleSheet.create({
@@ -29,9 +31,12 @@ export function LetterDocument({ doc }: { doc: DocumentModel }) {
   const seller = doc.seller;
   const contactLine = [seller.phone ? `โทร ${seller.phone}` : "", seller.email ? `อีเมล ${seller.email}` : ""].filter(Boolean).join("  ");
   const isListItem = (p: string) => /^\d+\.\s/.test(p);
+  const c = documentContext({ ...doc, type: "letter" }, "original");
+  const font = { fontFamily: c.t.font, fontSize: 12 * FONT_SCALE[c.t.font] };
   return (
     <Document title={`${l.subject} ${doc.number || ""}`.trim()}>
-      <Page size="A4" style={s.page}>
+      <Page size="A4" style={[s.page, font]}>
+        {c.lh ? <><LetterheadBlocks c={c} letter /><View style={{ height: Math.max(0, c.lh.height - 36) }} /></> : (
         <View style={s.head}>
           {/* eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt */}
           {seller.logo ? <Image src={seller.logo} style={s.logo} /> : null}
@@ -39,6 +44,7 @@ export function LetterDocument({ doc }: { doc: DocumentModel }) {
           <T style={s.small}>{seller.address}</T>
           {contactLine ? <T style={s.small}>{contactLine}</T> : null}
         </View>
+        )}
         <View style={s.row}>
           <T>ที่ {doc.number || "........"}</T>
           <T>{doc.date ? thaiDate(doc.date) : "วันที่ ........................"}</T>

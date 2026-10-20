@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Loader2, Palette, RotateCcw, Save, Sparkles, Wand2, LayoutTemplate, Move } from "lucide-react";
+import { Loader2, Palette, RotateCcw, Save, Sparkles, Wand2, LayoutTemplate, Move, PanelTop, Trash2 } from "lucide-react";
 import { GlassCard, PillButton, PillCheckbox, PillInput, PillSelect, cn } from "@/components/ui/Base";
 import { InfoTip } from "@/components/guide/Guidance";
 import { useAuth } from "@/context/AuthContext";
@@ -9,12 +9,12 @@ import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
-import { DESIGNABLE_DOCS, sampleModelFor } from "@/lib/documents/build";
+import { DESIGNABLE_DOCS, LETTER_DESIGN, sampleModelFor } from "@/lib/documents/build";
 import { toDateStr } from "@/lib/documents/format";
 import type { DocumentProfile } from "@/lib/documents/model";
 import {
-  FONT_LABELS, TEMPLATES, defaultFreeLayout, normalizeDesign, applyLayoutToAll,
-  type DocTheme, type DocumentDesign, type FontFamily, type PerDocDesign,
+  FONT_LABELS, LETTERHEAD_TEMPLATES, TEMPLATES, defaultFreeLayout, letterheadTemplate, normalizeDesign, applyLayoutToAll,
+  type DocTheme, type DocumentDesign, type FontFamily, type ItemColumn, type Letterhead, type PerDocDesign,
 } from "@/lib/documents/design";
 import { FreeLayoutEditor } from "./FreeLayoutEditor";
 
@@ -22,9 +22,11 @@ import { FreeLayoutEditor } from "./FreeLayoutEditor";
  * ออกแบบหน้าเอกสาร (ตั้งค่า › ออกแบบเอกสาร)
  *  - โหมดธีม: เลือกแม่แบบ ปรับฟอนต์ สี หัวเอกสาร ตาราง ยอดรวม ช่องลงนาม — ใช้กับทุกเอกสารของบริษัท
  *    + ปรับเฉพาะชนิดเอกสาร (ชื่อ ข้อความ คอลัมน์ ช่องลงนาม) · AI ช่วยแต่งธีมจากคำบรรยาย/โลโก้
- *  - โหมดลากวาง: วางกล่องได้อิสระต่อชนิดเอกสาร แล้วใช้ผังเดียวกันกับทุกเอกสารได้
+ *  - โหมดลากวาง: แก้บนหน้าเอกสารจริง วางกล่องได้อิสระต่อชนิดเอกสาร แล้วใช้ผังเดียวกันกับทุกเอกสารได้
+ *  - หัวกระดาษ: สร้างได้หลายแบบ (เอกสารการค้า / หนังสือ / แถบสี) แล้วเลือกใช้ต่อชนิดเอกสาร — แก้หัวเดียวเปลี่ยนทุกเอกสารที่ใช้
  * ตัวอย่าง PDF อัปเดตตามที่แก้ (ยังไม่บันทึก)
  */
+const TARGETS = [...DESIGNABLE_DOCS.map((d) => ({ type: d.type, title: d.title })), LETTER_DESIGN];
 
 const Row = ({ label, tip, children }: { label: string; tip?: string; children: React.ReactNode }) => (
   <div className="space-y-1">
@@ -80,21 +82,35 @@ export function DocumentDesigner() {
     apiFetch("/api/settings/document-profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "get" }) })
       .then((r) => r.json()).then((d) => { if (d.success) { setProfile(d.profile); setDesign(normalizeDesign(d.profile.design, d.profile.brandColor)); } });
   }, [companyId]);
-  // ตัวอย่าง PDF อัปเดตหลังหยุดแก้ครู่หนึ่ง
-  useEffect(() => { const t = setTimeout(() => setPreview(design), 700); return () => clearTimeout(t); }, [design]);
+  // ตัวอย่างอัปเดตหลังหยุดแก้ครู่หนึ่ง (โหมดลากวางเร็วกว่า เพื่อให้พื้นกระดาษตามทัน)
+  useEffect(() => { const t = setTimeout(() => setPreview(design), mode === "free" ? 350 : 700); return () => clearTimeout(t); }, [design, mode]);
 
   const theme = design.theme;
   const per: PerDocDesign = design.perDoc[docType] || {};
-  const def = DESIGNABLE_DOCS.find((d) => d.type === docType)!;
+  const isLetter = docType === LETTER_DESIGN.type;
+  const def = DESIGNABLE_DOCS.find((d) => d.type === docType) || { ...DESIGNABLE_DOCS[0], ...LETTER_DESIGN, titleEn: "", signatures: [] };
+  const letterhead = design.letterheads.find((l) => l.id === per.letterhead) || null;
   const setTheme = (patch: Partial<DocTheme>) => { setDesign((d) => ({ ...d, theme: { ...d.theme, ...patch } })); setDirty(true); };
   const setPer = (patch: Partial<PerDocDesign>) => { setDesign((d) => ({ ...d, perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), ...patch } } })); setDirty(true); };
-  // โหมดลากวาง: ตัวอย่างแสดงผังที่กำลังแก้เสมอ แม้ยังไม่ได้เปิดใช้พิมพ์จริง
-  const model = useMemo(() => {
-    if (!profile || !preview) return null;
-    const p = preview.perDoc[docType] || {};
-    const shown = mode === "free" ? { ...preview, perDoc: { ...preview.perDoc, [docType]: { ...p, free: { ...(p.free || defaultFreeLayout()), enabled: true } } } } : preview;
-    return sampleModelFor(docType, { ...profile, design: shown }, toDateStr(new Date()));
-  }, [profile, preview, docType, mode]);
+  const setLetterhead = (lh: Letterhead) => { setDesign((d) => ({ ...d, letterheads: d.letterheads.map((l) => (l.id === lh.id ? lh : l)) })); setDirty(true); };
+  const createLetterhead = (kind: "trade" | "letter" | "banner") => {
+    const id = `lh-${Date.now().toString(36)}`;
+    setDesign((d) => ({ ...d, letterheads: [...d.letterheads, letterheadTemplate(kind, id, d.theme.primary, d.theme.font)], perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), letterhead: id } } }));
+    setDirty(true); setMode("free");
+  };
+  const deleteLetterhead = async (lh: Letterhead) => {
+    const used = TARGETS.filter((t) => design.perDoc[t.type]?.letterhead === lh.id).length;
+    if (!(await showConfirm(`ลบ "${lh.name}"? เอกสาร ${used} ชนิดที่ใช้หัวนี้จะกลับไปใช้หัวเอกสารตามธีม`))) return;
+    setDesign((d) => ({
+      ...d, letterheads: d.letterheads.filter((l) => l.id !== lh.id),
+      perDoc: Object.fromEntries(Object.entries(d.perDoc).map(([k, v]) => [k, v.letterhead === lh.id ? { ...v, letterhead: undefined } : v])),
+    }));
+    setDirty(true);
+  };
+  const assignLetterhead = (type: string, id: string | undefined) => { setDesign((d) => ({ ...d, perDoc: { ...d.perDoc, [type]: { ...(d.perDoc[type] || {}), letterhead: id } } })); setDirty(true); };
+  const defaultColumns: ItemColumn[] = ((def.columns || ["no", "description", "qty", "unit", "price", "amount"]) as ItemColumn[]).filter((k) => !(per.hideColumns || []).includes(k));
+  // ตัวอย่างตรงกับที่จะพิมพ์จริง (ผังลากวางของเนื้อเอกสารแสดงเมื่อเปิดใช้)
+  const model = useMemo(() => (profile && preview ? sampleModelFor(docType, { ...profile, design: preview }, toDateStr(new Date())) : null), [profile, preview, docType]);
 
   const save = async () => {
     setSaving(true);
@@ -134,9 +150,9 @@ export function DocumentDesigner() {
             <button key={m} type="button" onClick={() => setMode(m)} className={cn("h-9 px-4 rounded-full text-[13px] font-semibold flex items-center gap-1.5", mode === m ? "bg-nexus-teal/15 text-nexus-teal" : "text-white/55 hover:text-white")}>{icon}{label}</button>
           ))}
         </div>
-        <div className="w-[230px]">
+        <div className="w-[260px]">
           <PillSelect value={docType} onChange={(e) => setDocType(String(e.target.value))} className="h-9 w-full">
-            {DESIGNABLE_DOCS.map((d) => <option key={d.type} value={d.type}>{d.title}</option>)}
+            {TARGETS.map((d) => <option key={d.type} value={d.type}>{d.title}</option>)}
           </PillSelect>
         </div>
         <span className="text-[12px] text-white/45">ธีมใช้กับทุกเอกสาร · การปรับรายเอกสารใช้กับ &quot;{def.title}&quot;</span>
@@ -146,10 +162,61 @@ export function DocumentDesigner() {
         </div>
       </div>
 
+      {/* หัวกระดาษของเอกสารชนิดนี้ */}
+      <GlassCard accentColor="purple" className="p-3 space-y-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="flex items-center gap-1.5 text-[13px] font-bold text-white"><PanelTop size={15} className="text-purple-300" /> หัวกระดาษของ &quot;{def.title}&quot;</span>
+          <div className="w-[240px]">
+            <PillSelect value={per.letterhead || ""} disabled={!canEdit} onChange={(e) => assignLetterhead(docType, String(e.target.value) || undefined)} className="h-9 w-full">
+              <option value="">{isLetter ? "หัวหนังสือมาตรฐาน (กึ่งกลาง)" : "ตามธีม (หัวเอกสารอัตโนมัติ)"}</option>
+              {design.letterheads.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </PillSelect>
+          </div>
+          {canEdit && design.letterheads.length < 6 && (
+            <div className="w-[230px]">
+              <PillSelect value="" onChange={(e) => e.target.value && createLetterhead(e.target.value as any)} className="h-9 w-full">
+                <option value="">+ สร้างหัวกระดาษใหม่จากแม่แบบ</option>
+                {LETTERHEAD_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </PillSelect>
+            </div>
+          )}
+          {letterhead && canEdit && (
+            <>
+              <PillInput value={letterhead.name} onChange={(e) => setLetterhead({ ...letterhead, name: e.target.value.slice(0, 40) })} className="h-9 w-[200px] text-sm" aria-label="ชื่อหัวกระดาษ" />
+              <PillButton variant="ghost" className="h-9 px-3 text-xs text-danger" onClick={() => deleteLetterhead(letterhead)}><Trash2 size={13} /> ลบหัวนี้</PillButton>
+            </>
+          )}
+          {letterhead && mode === "theme" && <PillButton variant="glass" className="h-9 px-3 text-xs ml-auto" onClick={() => setMode("free")}><Move size={13} /> แก้หัวกระดาษบนหน้าเอกสาร</PillButton>}
+        </div>
+        {letterhead && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[12px] text-white/55 mr-1">ใช้หัวนี้กับ:</span>
+            {TARGETS.map((t) => {
+              const on = design.perDoc[t.type]?.letterhead === letterhead.id;
+              return (
+                <button key={t.type} type="button" disabled={!canEdit} onClick={() => assignLetterhead(t.type, on ? undefined : letterhead.id)}
+                  className={cn("h-7 px-2.5 rounded-full text-[12px] border", on ? "border-purple-400/60 bg-purple-500/15 text-purple-100" : "border-white/12 text-white/55 hover:text-white")}>
+                  {t.type === LETTER_DESIGN.type ? "หนังสือ" : t.title}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {!design.letterheads.length && <p className="text-[12px] text-white/45">สร้างหัวกระดาษได้หลายแบบ เช่น หัวเอกสารการค้า (ใบเสนอราคา ใบวางบิล ใบเสร็จ) และหัวหนังสือ (ขอเข้าพื้นที่ ส่งมอบงาน) แล้วเลือกใช้ต่อชนิดเอกสาร</p>}
+      </GlassCard>
+
       {mode === "free" ? (
         <FreeLayoutEditor
-          layout={per.free || defaultFreeLayout()}
+          key={docType}
+          docType={docType}
+          font={theme.font}
+          layout={per.free || defaultFreeLayout(docType, theme.font)}
           onChange={(free) => setPer({ free })}
+          letterhead={letterhead}
+          onLetterheadChange={setLetterhead}
+          letterOnly={isLetter}
+          defaultColumns={defaultColumns}
+          defaultSignatures={per.signatures?.length ? per.signatures : def.signatures}
           model={model}
           canEdit={canEdit}
           docTitle={def.title}
@@ -206,6 +273,12 @@ export function DocumentDesigner() {
               </div>
             </GlassCard>
 
+            {isLetter ? (
+              <GlassCard accentColor="blue" className="p-4 space-y-2">
+                <h3 className="text-[15px] font-bold text-white">หนังสือ</h3>
+                <p className="text-[12.5px] text-white/55 leading-relaxed">หนังสือใช้ฟอนต์ตามธีม และหัวกระดาษที่เลือกด้านบน เนื้อหา (ที่ · วันที่ · เรื่อง · เรียน · อ้างถึง · สิ่งที่ส่งมาด้วย · เนื้อความ · ลงนาม) จัดตามรูปแบบหนังสือราชการ แก้ข้อความได้ตอนทำหนังสือในหน้าโครงการ</p>
+              </GlassCard>
+            ) : (
             <GlassCard accentColor="blue" className="p-4 space-y-3">
               <h3 className="text-[15px] font-bold text-white">ปรับเฉพาะ &quot;{def.title}&quot;</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -222,6 +295,7 @@ export function DocumentDesigner() {
               </div>
               <p className="text-[12px] text-white/45">ข้อมูลที่กฎหมายกำหนด (ผู้ขาย ผู้ซื้อ เลขผู้เสียภาษี เลขที่ วันที่ รายการ ภาษี) แสดงเสมอ ปิดไม่ได้</p>
             </GlassCard>
+            )}
             {canEdit && <PillButton variant="ghost" className="h-9 px-4 text-xs" onClick={() => { setDesign(normalizeDesign(null, profile.brandColor)); setDirty(true); }}><RotateCcw size={13} /> คืนค่าเริ่มต้นทั้งหมด</PillButton>}
           </fieldset>
 

@@ -5,6 +5,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { auditServer } from "@/services/audit.server";
 import { notifyInTx } from "@/lib/notifications.server";
 import { can, canApproveQuotation, quotationApprovalLimit } from "@/lib/permissions";
+import { quoteLimitAmount } from "@/lib/quotation.server";
 
 /**
  * [API-SERVER] อนุมัติ / ตีกลับใบเสนอราคาที่รออนุมัติ
@@ -34,8 +35,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       const docNo = q.documentNo || q.quotationNumber || id;
       if (String(q.status || "").toUpperCase() !== "PENDING_APPROVAL") throw new ApiAuthError(409, `${docNo} ไม่ได้อยู่ในสถานะรออนุมัติ`);
       // ตีกลับได้เสมอ (ผู้มีสิทธิ์อนุมัติ), อนุมัติต้องไม่เกินวงเงิน
-      if (decision === "approve" && !canApproveQuotation(apiUser.roles, Number(q.grandTotal) || 0)) {
-        throw new ApiAuthError(403, `ยอด ${(Number(q.grandTotal) || 0).toLocaleString("th-TH")} บาท เกินวงเงินอนุมัติของคุณ (${quotationApprovalLimit(apiUser.roles).toLocaleString("th-TH")} บาท) ต้องให้ผู้บริหารอนุมัติ`);
+      // รายการอยู่ใน subcollection lines (อ่านก่อนเขียนในทรานแซกชัน)
+      const lineDocs = decision === "approve" ? (await tx.get(ref.collection("lines"))).docs.map((d) => d.data()) : [];
+      const amount = quoteLimitAmount(q, lineDocs);
+      if (decision === "approve" && !canApproveQuotation(apiUser.roles, amount)) {
+        throw new ApiAuthError(403, `ยอด ${amount.toLocaleString("th-TH")} บาท เกินวงเงินอนุมัติของคุณ (${quotationApprovalLimit(apiUser.roles).toLocaleString("th-TH")} บาท) ต้องให้ผู้บริหารอนุมัติ`);
       }
       const status = decision === "approve" ? "SENT" : "REJECTED";
       tx.update(ref, {

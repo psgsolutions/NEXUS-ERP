@@ -83,10 +83,21 @@ export function submitStatus(gp: number, threshold: number, requiresApproval: bo
   return requiresApproval || overLimit || gp < threshold ? "PENDING_APPROVAL" : "SENT";
 }
 
+/**
+ * ยอดที่ใช้ตรวจวงเงินอนุมัติ: คำนวณจากรายการที่ server (ไม่เชื่อยอดรวมที่หน้าจอส่งมาอย่างเดียว)
+ * = รายการที่ไม่ใช่ทางเลือก − ส่วนลดท้ายบิล (+ VAT 7% เมื่อราคาไม่รวม VAT) แล้วใช้ค่าที่มากกว่ากับยอดที่ส่งมา
+ */
+export function quoteLimitAmount(header: Record<string, any>, lines: Record<string, any>[]): number {
+  const net = lines.filter((l) => l.itemType !== "GROUP_HEADER" && !l.isOptional).reduce((s, l) => s + num(l.lineTotal), 0) - num(header.docDiscountAmount);
+  const tax = String(header.taxType || header.vatType || "EXCLUSIVE").toUpperCase();
+  const computed = tax.startsWith("INCLUSIVE") || tax === "NONE" ? net : net * 1.07;
+  return r2(Math.max(num(header.grandTotal), computed));
+}
+
 /** ผู้ส่งที่มีวงเงินอนุมัติจำกัด (เช่น วิศวกร 1 ล้าน) ส่งใบที่ยอดเกินวงเงิน -> ต้องให้ผู้บริหารอนุมัติก่อน */
-export function overQuoteLimit(roles: string[], grandTotal: any): boolean {
+export function overQuoteLimit(roles: string[], amount: any): boolean {
   const limit = quotationApprovalLimit(roles);
-  return limit > 0 && Number.isFinite(limit) && num(grandTotal) > limit;
+  return limit > 0 && Number.isFinite(limit) && num(amount) > limit;
 }
 
 /** ลูกค้าใหม่ที่พิมพ์ชื่อเข้ามา (ยังไม่มีในฐานข้อมูล) — สร้างในทรานแซกชันเดียวกัน คืน customerId */

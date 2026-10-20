@@ -7,7 +7,7 @@ import { prepareSequence } from "@/lib/sequence-server";
 import { auditServer } from "@/services/audit.server";
 import {
   auditEntry, cleanHeader, companyGpThreshold, createCustomerInTx, grossProfitPercent, normalizeLines,
-  notifyPendingApproval, overQuoteLimit, str, submitStatus, writeProductWritebacks,
+  notifyPendingApproval, overQuoteLimit, quoteLimitAmount, str, submitStatus, writeProductWritebacks,
 } from "@/lib/quotation.server";
 
 /**
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
       // ---- คำนวณ ----
       const gp = submit ? grossProfitPercent(lines, header.docDiscountAmount) : null;
-      const status = submit ? submitStatus(gp!, threshold, requiresApproval, overQuoteLimit(apiUser.roles, header.grandTotal)) : "DRAFT";
+      const status = submit ? submitStatus(gp!, threshold, requiresApproval, overQuoteLimit(apiUser.roles, quoteLimitAmount(header, lines))) : "DRAFT";
       const docNo = seq.number;
 
       // ---- เขียน ----

@@ -6,7 +6,7 @@ import { can } from "@/lib/permissions";
 import { auditServer } from "@/services/audit.server";
 import {
   auditEntry, cleanHeader, companyGpThreshold, createCustomerInTx, grossProfitPercent, normalizeLines,
-  notifyPendingApproval, overQuoteLimit, str, submitStatus, writeProductWritebacks,
+  notifyPendingApproval, overQuoteLimit, quoteLimitAmount, str, submitStatus, writeProductWritebacks,
 } from "@/lib/quotation.server";
 
 /**
@@ -59,7 +59,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
       // ---- สถานะใหม่ ----
       const gp = submit ? grossProfitPercent(lines, header.docDiscountAmount) : null;
-      const nextStatus = submit ? submitStatus(gp!, threshold, requiresApproval, overQuoteLimit(apiUser.roles, header.grandTotal)) : curStatus;
+      const nextStatus = submit ? submitStatus(gp!, threshold, requiresApproval, overQuoteLimit(apiUser.roles, quoteLimitAmount(header, lines))) : curStatus;
 
       // ---- เขียน ----
       if (!header.customerId && body.newCustomer?.name) {

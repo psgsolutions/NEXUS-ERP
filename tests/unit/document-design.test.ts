@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { REQUIRED_BLOCKS, TEMPLATES, addableBlocksFor, applyLayoutToAll, defaultFreeLayout, docHasAmounts, letterheadTemplate, normalizeDesign, normalizeFreeLayout, normalizeTheme, requiredBlocksFor, requiredColumnsFor, resolveDesign } from "@/lib/documents/design";
+import { DESIGNABLE_DOCS } from "@/lib/documents/build";
+import { templateLayout } from "@/lib/documents/layout-templates";
+import { legalFieldVisible, REQUIRED_BLOCKS, TEMPLATES, addableBlocksFor, applyLayoutToAll, defaultFreeLayout, docHasAmounts, letterheadTemplate, normalizeDesign, normalizeFreeLayout, normalizeTheme, requiredBlocksFor, requiredColumnsFor, resolveDesign } from "@/lib/documents/design";
 
 describe("document design", () => {
   it("normalizes theme input and keeps brand color as default", () => {
     const t = normalizeTheme({ font: "Comic", fontSize: 50, primary: "red", header: "centered", margin: 5 }, "#123456");
     expect(t).toMatchObject({ font: "Sarabun", fontSize: 12, primary: "#123456", header: "centered", margin: 20 });
-    expect(TEMPLATES.map((x) => x.id)).toEqual(["modern", "classic", "government", "minimal", "bold", "elegant"]);
+    expect(TEMPLATES.map((x) => x.id).slice(0, 6)).toEqual(["modern", "classic", "government", "minimal", "bold", "elegant"]);
+    expect(TEMPLATES.length).toBeGreaterThanOrEqual(12);
+    expect(new Set(TEMPLATES.map((x) => x.id)).size).toBe(TEMPLATES.length);
     expect(normalizeTheme(TEMPLATES[2].theme).font).toBe("THSarabunIT9");
   });
 
@@ -74,5 +78,45 @@ describe("document design — block settings, per-document blocks, letterheads",
     expect(all.perDoc.delivery_note.letterhead).toBe("lh-t");
     expect(all.perDoc.delivery_note.free!.blocks.some((b) => b.kind === "totals")).toBe(false);
     expect(all.perDoc.receipt.free!.blocks.find((b) => b.kind === "items")!.cols).toBeUndefined();
+  });
+});
+
+describe("document design — template layouts, field rows, legal fields", () => {
+  it("every template layout keeps required blocks and shows number/date for every document", () => {
+    for (const t of TEMPLATES.filter((x) => x.layout)) {
+      for (const d of DESIGNABLE_DOCS) {
+        const design = normalizeDesign({ theme: t.theme, perDoc: { [d.type]: { free: templateLayout(t.layout, d.type, t.theme) } } });
+        const blocks = design.perDoc[d.type].free!.blocks;
+        for (const k of requiredBlocksFor(d.type)) expect(blocks.some((b) => b.kind === k), `${t.id}/${d.type}/${k}`).toBe(true);
+        expect(legalFieldVisible(blocks, "number"), `${t.id}/${d.type} number`).toBe(true);
+        expect(legalFieldVisible(blocks, "date"), `${t.id}/${d.type} date`).toBe(true);
+        for (const b of blocks) { expect(b.x + b.w).toBeLessThanOrEqual(596); expect(b.y + b.h).toBeLessThanOrEqual(842); }
+      }
+    }
+  });
+
+  it("meta rows, extra fields, totals rows and field blocks are validated", () => {
+    const f = normalizeFreeLayout({ enabled: true, blocks: [
+      { id: "m", kind: "meta", x: 0, y: 0, w: 200, h: 80, hide: ["m:โครงการ", "extra", "t:x"], fields: ["f:paymentTerms", "f:bad key", "m:x"] },
+      { id: "t", kind: "totals", x: 0, y: 100, w: 200, h: 80, hide: ["t:ส่วนลดท้ายบิล", "m:x"] },
+      { id: "f", kind: "field", x: 0, y: 200, w: 100, h: 18, field: "javascript:", hideLabel: true },
+      { id: "s", kind: "signatures", x: 0, y: 700, w: 500, h: 80, gap: 999 },
+      { id: "i", kind: "items", x: 0, y: 300, w: 500, h: 300, fill: 1 },
+    ] }, "quotation")!;
+    const by = (id: string) => f.blocks.find((b) => b.id === id)!;
+    expect(by("m")).toMatchObject({ hide: ["m:โครงการ"], fields: ["f:paymentTerms"] });
+    expect(by("t").hide).toEqual(["t:ส่วนลดท้ายบิล"]);
+    expect(by("f")).toMatchObject({ field: "number", hideLabel: true });
+    expect(by("s").gap).toBe(300);
+    expect(by("i").fill).toBe(true);
+  });
+
+  it("number/date cannot disappear: hidden in meta without another place is restored", () => {
+    const free = { enabled: true, blocks: [...defaultFreeLayout("quotation").blocks.filter((b) => b.kind !== "meta"), { id: "meta", kind: "meta", x: 0, y: 0, w: 100, h: 40, hide: ["number", "date"] }] };
+    const d = normalizeDesign({ perDoc: { quotation: { free } } });
+    expect(d.perDoc.quotation.free!.blocks.find((b) => b.kind === "meta")!.hide).toEqual([]);
+    const withField = { ...free, blocks: [...free.blocks, { id: "n", kind: "field", field: "number", x: 0, y: 50, w: 100, h: 18 }] };
+    const d2 = normalizeDesign({ perDoc: { quotation: { free: withField } } });
+    expect(d2.perDoc.quotation.free!.blocks.find((b) => b.kind === "meta")!.hide).toEqual(["number"]);
   });
 });

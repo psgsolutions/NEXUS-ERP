@@ -10,9 +10,16 @@ import { BlockView, LetterheadBlocks, PageChrome, SectionItems, T, blockContext,
  * - มีหัวกระดาษที่เลือก: วางกล่องของหัวกระดาษก่อน กล่องชนิดเดียวกันในผังของเอกสารไม่วาดซ้ำ
  * - รายการเกินกล่อง: แสดงเท่าที่พอ แล้วต่อในหน้าถัดไป (หัวกระดาษย่อ + ตาราง)
  */
+/** กล่องที่มีได้ชุดเดียวต่อหน้า: อยู่ในหัวกระดาษแล้วไม่วาดซ้ำจากผังเอกสาร */
+export const DEDUP_KINDS = ["seller", "title", "meta", "party"];
+
 export function FreeLayoutDocument({ doc, copy = "original" }: { doc: DocumentModel; copy?: CopyMode }) {
-  const c = documentContext(doc, copy);
-  const headKinds = new Set((c.lh?.blocks || []).filter((b) => !["text", "line", "rect", "image"].includes(b.kind)).map((b) => b.kind));
+  const base = documentContext(doc, copy);
+  // ข้อมูลเพิ่มที่วางแล้ว (ในกล่องเลขที่/ช่องข้อมูล) — หมายเหตุไม่แสดงซ้ำ
+  const placed = [...(base.lh?.blocks || []), ...(base.per.free?.blocks || [])];
+  const placedKeys = new Set(placed.flatMap((b) => (b.kind === "meta" ? b.fields || [] : b.kind === "field" && b.field ? [b.field] : [])));
+  const c = { ...base, shown: new Set((doc.fields || []).filter((f) => placedKeys.has(`f:${f.key}`)).map((f) => f.label)) };
+  const headKinds = new Set((c.lh?.blocks || []).filter((b) => DEDUP_KINDS.includes(b.kind)).map((b) => b.kind));
   const blocks: FreeBlock[] = (c.per.free?.blocks || []).filter((b) => !headKinds.has(b.kind));
   // ความจุของกล่องตาราง (ประมาณความสูงทีละแถว รวมบรรทัดที่ตัดขึ้นใหม่และรายละเอียด) — ส่วนที่เกินไปหน้าถัดไป
   const items = blocks.find((b) => b.kind === "items");
@@ -54,7 +61,7 @@ export function FreeLayoutDocument({ doc, copy = "original" }: { doc: DocumentMo
             <T style={c.s.sellerName}>{doc.seller.name}</T>
             <T style={{ fontWeight: "bold" }}>{c.per.title || doc.title} {doc.number} (ต่อ)</T>
           </View>
-          <SectionItems c={{ ...ic, doc: { ...doc, lines: rest } }} />
+          <SectionItems c={{ ...ic, fill: false, doc: { ...doc, lines: rest } }} />
         </Page>
       ) : null}
     </Document>

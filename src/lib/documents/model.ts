@@ -79,6 +79,11 @@ export interface DocumentModel {
   dateOption?: { actual: string; profileUndated: boolean; customerId: string; docKind: "billingNote" | "deliveryNote" | "receipt" };
   /** แถวข้อมูลด้านขวาเพิ่มเติม เช่น ครบกำหนด อ้างอิง */
   meta: { label: string; value: string }[];
+  /**
+   * ข้อมูลเพิ่มของเอกสารที่วางเองได้ในผังลากวาง (กล่องเลขที่ หรือช่องข้อมูลแยก) เช่น เงื่อนไขการชำระเงิน กำหนดส่งมอบ
+   * ค่าเดียวกันอาจอยู่ในหมายเหตุ ("ป้าย: ค่า") — เมื่อวางแยกแล้วหมายเหตุไม่แสดงซ้ำ
+   */
+  fields?: { key: string; label: string; value: string }[];
   seller: DocumentProfile;
   party?: DocumentParty;
   /** คอลัมน์ตารางรายการ (ค่าเริ่มต้นตามประเภท) */

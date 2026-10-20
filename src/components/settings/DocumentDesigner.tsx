@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Loader2, Palette, RotateCcw, Save, Sparkles, Wand2, LayoutTemplate, Move, PanelTop, Trash2 } from "lucide-react";
+import { Eye, Loader2, Palette, RotateCcw, Save, Sparkles, Wand2, LayoutTemplate, Move, PanelTop, Trash2 } from "lucide-react";
 import { GlassCard, PillButton, PillCheckbox, PillInput, PillSelect, cn } from "@/components/ui/Base";
 import { InfoTip } from "@/components/guide/Guidance";
 import { useAuth } from "@/context/AuthContext";
@@ -11,12 +11,14 @@ import { can } from "@/lib/permissions";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import { DESIGNABLE_DOCS, LETTER_DESIGN, sampleModelFor } from "@/lib/documents/build";
 import { toDateStr } from "@/lib/documents/format";
-import type { DocumentProfile } from "@/lib/documents/model";
+import type { DocumentModel, DocumentProfile } from "@/lib/documents/model";
 import {
-  FONT_LABELS, LETTERHEAD_TEMPLATES, TEMPLATES, defaultFreeLayout, letterheadTemplate, normalizeDesign, applyLayoutToAll,
+  FONT_LABELS, LETTERHEAD_TEMPLATES, PALETTES, TEMPLATES, defaultFreeLayout, letterheadTemplate, normalizeDesign, applyLayoutToAll,
   type DocTheme, type DocumentDesign, type FontFamily, type ItemColumn, type Letterhead, type PerDocDesign,
 } from "@/lib/documents/design";
+import { templateLayout } from "@/lib/documents/layout-templates";
 import { FreeLayoutEditor } from "./FreeLayoutEditor";
+import { usePdfPageImage, useThumbnail } from "./usePdfPageImage";
 
 /**
  * ออกแบบหน้าเอกสาร (ตั้งค่า › ออกแบบเอกสาร)
@@ -27,6 +29,52 @@ import { FreeLayoutEditor } from "./FreeLayoutEditor";
  * ตัวอย่าง PDF อัปเดตตามที่แก้ (ยังไม่บันทึก)
  */
 const TARGETS = [...DESIGNABLE_DOCS.map((d) => ({ type: d.type, title: d.title })), LETTER_DESIGN];
+
+/** การ์ดแม่แบบพร้อมภาพย่อจริง (วาดจากตัวสร้าง PDF ด้วยข้อมูลบริษัท) */
+function TemplateCard({ t, active, docType, profile, onPick }: { t: (typeof TEMPLATES)[number]; active: boolean; docType: string; profile: DocumentProfile; onPick: () => void }) {
+  const type = DESIGNABLE_DOCS.some((d) => d.type === docType) ? docType : DESIGNABLE_DOCS[0].type;
+  const url = useThumbnail(`${t.id}:${type}:${profile.logo?.length || 0}:${profile.name}`, () => {
+    const design = normalizeDesign({ theme: t.theme, perDoc: t.layout ? { [type]: { free: templateLayout(t.layout, type, t.theme) } } : {} });
+    return sampleModelFor(type, { ...profile, design }, toDateStr(new Date()));
+  }, 150);
+  return (
+    <button type="button" onClick={onPick} className={cn("text-left rounded-xl border p-2 transition-colors flex gap-2.5", active ? "border-nexus-teal/60 bg-nexus-teal/10" : "border-white/10 hover:border-white/25")}>
+      <div className="w-[76px] h-[107px] flex-shrink-0 rounded bg-white overflow-hidden flex items-center justify-center">
+        {/* eslint-disable-next-line @next/next/no-img-element -- ภาพย่อที่วาดในเบราว์เซอร์ (data URL) */}
+        {url ? <img src={url} alt="" className="w-full h-full object-cover object-top" /> : <Loader2 size={14} className="animate-spin text-slate-400" />}
+      </div>
+      <div className="min-w-0">
+        <div className="flex gap-1 mb-1">{[t.theme.primary, t.theme.accent].map((c, i) => <span key={i} className="w-3.5 h-3.5 rounded-full border border-white/20" style={{ background: c }} />)}</div>
+        <p className="text-[12.5px] font-bold text-white leading-snug">{t.name}</p>
+        <p className="text-[11px] text-white/50 leading-snug mt-0.5">{t.description}</p>
+        {t.layout && <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-200">มีผังลากวาง</span>}
+      </div>
+    </button>
+  );
+}
+
+/** ตัวอย่างแบบทันที: วาดหน้าเอกสารเป็นภาพใหม่ทุกครั้งที่แก้ (ไม่กระพริบ) · เปิด PDF จริงเพื่อพิมพ์/ดาวน์โหลดได้ */
+function LivePreview({ model, title }: { model: DocumentModel | null; title: string }) {
+  const { image, busy, error } = usePdfPageImage(model, 620, 3);
+  const [pdf, setPdf] = useState(false);
+  return (
+    <div className="flex-1 min-w-0 w-full rounded-2xl border border-white/10 overflow-hidden flex flex-col bg-white/[0.02] xl:sticky xl:top-4">
+      <div className="px-4 py-2.5 flex items-center gap-2 text-[13px] text-white/60">
+        <span>ตัวอย่าง &quot;{title}&quot; — อัปเดตทันทีที่แก้ (ยังไม่บันทึก)</span>
+        {busy && <Loader2 size={13} className="animate-spin text-nexus-teal" />}
+        <PillButton variant="glass" className="h-8 px-3 text-xs ml-auto" onClick={() => setPdf((v) => !v)}><Eye size={13} /> {pdf ? "กลับไปดูภาพ" : "เปิด PDF จริง"}</PillButton>
+      </div>
+      {pdf && model ? <div className="h-[900px] flex flex-col"><DocumentPdfViewer model={model} className="flex-1" /></div> : (
+        <div className="p-4 space-y-4 overflow-y-auto max-h-[1000px] flex flex-col items-center">
+          {error && <p className="text-[12px] text-danger">วาดตัวอย่างไม่สำเร็จ: {error}</p>}
+          {/* eslint-disable-next-line @next/next/no-img-element -- ภาพหน้าเอกสารที่วาดในเบราว์เซอร์ (data URL) */}
+          {(image?.pages || []).map((p, i) => <img key={i} src={p} alt={`หน้า ${i + 1}`} className="w-full max-w-[620px] bg-white shadow-2xl rounded-sm" />)}
+          {!image && !error && <div className="py-24 flex items-center gap-2 text-white/40 text-sm"><Loader2 size={16} className="animate-spin" /> กำลังวาดตัวอย่าง…</div>}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const Row = ({ label, tip, children }: { label: string; tip?: string; children: React.ReactNode }) => (
   <div className="space-y-1">
@@ -82,13 +130,13 @@ export function DocumentDesigner() {
     apiFetch("/api/settings/document-profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "get" }) })
       .then((r) => r.json()).then((d) => { if (d.success) { setProfile(d.profile); setDesign(normalizeDesign(d.profile.design, d.profile.brandColor)); } });
   }, [companyId]);
-  // ตัวอย่างอัปเดตหลังหยุดแก้ครู่หนึ่ง (โหมดลากวางเร็วกว่า เพื่อให้พื้นกระดาษตามทัน)
-  useEffect(() => { const t = setTimeout(() => setPreview(design), mode === "free" ? 350 : 700); return () => clearTimeout(t); }, [design, mode]);
+  // ตัวอย่างแบบทันที: รวบการแก้ที่ติดกันภายใน 120ms (ตัววาดจะวาดเฉพาะฉบับล่าสุดเสมอ)
+  useEffect(() => { const t = setTimeout(() => setPreview(design), 120); return () => clearTimeout(t); }, [design]);
 
   const theme = design.theme;
   const per: PerDocDesign = design.perDoc[docType] || {};
   const isLetter = docType === LETTER_DESIGN.type;
-  const def = DESIGNABLE_DOCS.find((d) => d.type === docType) || { ...DESIGNABLE_DOCS[0], ...LETTER_DESIGN, titleEn: "", signatures: [] };
+  const def = DESIGNABLE_DOCS.find((d) => d.type === docType) || { ...DESIGNABLE_DOCS[0], ...LETTER_DESIGN, titleEn: "", signatures: [], meta: [], fields: [] };
   const letterhead = design.letterheads.find((l) => l.id === per.letterhead) || null;
   const setTheme = (patch: Partial<DocTheme>) => { setDesign((d) => ({ ...d, theme: { ...d.theme, ...patch } })); setDirty(true); };
   const setPer = (patch: Partial<PerDocDesign>) => { setDesign((d) => ({ ...d, perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), ...patch } } })); setDirty(true); };
@@ -111,6 +159,25 @@ export function DocumentDesigner() {
   const defaultColumns: ItemColumn[] = ((def.columns || ["no", "description", "qty", "unit", "price", "amount"]) as ItemColumn[]).filter((k) => !(per.hideColumns || []).includes(k));
   // ตัวอย่างตรงกับที่จะพิมพ์จริง (ผังลากวางของเนื้อเอกสารแสดงเมื่อเปิดใช้)
   const model = useMemo(() => (profile && preview ? sampleModelFor(docType, { ...profile, design: preview }, toDateStr(new Date())) : null), [profile, preview, docType]);
+
+  /** ใช้แม่แบบกับทุกเอกสาร: ธีม + ผังของแม่แบบ (ถ้ามี) — แม่แบบที่ไม่มีผัง เนื้อเอกสารกลับไปจัดตามธีม */
+  const applyTemplate = async (t: (typeof TEMPLATES)[number]) => {
+    const anyFree = DESIGNABLE_DOCS.some((d) => design.perDoc[d.type]?.free?.enabled);
+    if (t.layout || anyFree) {
+      const msg = t.layout ? `ใช้แม่แบบ "${t.name}" กับเอกสารทุกชนิด? ทุกเอกสารจะได้ผังของแม่แบบนี้ (ลากปรับต่อได้ในโหมดลากวาง) ผังเดิมและหัวกระดาษที่เลือกไว้ของเอกสารการค้าจะถูกแทนที่`
+        : `ใช้แม่แบบ "${t.name}"? เนื้อเอกสารจะกลับไปจัดตามธีม (ผังลากวางเดิมถูกปิดไว้ เปิดใช้อีกได้)`;
+      if (!(await showConfirm(msg))) return;
+    }
+    setDesign((d) => {
+      const perDoc = { ...d.perDoc };
+      for (const x of DESIGNABLE_DOCS) {
+        const cur = perDoc[x.type] || {};
+        perDoc[x.type] = t.layout ? { ...cur, free: templateLayout(t.layout, x.type, t.theme), letterhead: undefined } : cur.free ? { ...cur, free: { ...cur.free, enabled: false } } : cur;
+      }
+      return { ...d, theme: { ...t.theme }, perDoc };
+    });
+    setDirty(true);
+  };
 
   const save = async () => {
     setSaving(true);
@@ -209,7 +276,9 @@ export function DocumentDesigner() {
         <FreeLayoutEditor
           key={docType}
           docType={docType}
-          font={theme.font}
+          theme={theme}
+          docMeta={def.meta || []}
+          docFields={def.fields || []}
           layout={per.free || defaultFreeLayout(docType, theme.font)}
           onChange={(free) => setPer({ free })}
           letterhead={letterhead}
@@ -226,18 +295,23 @@ export function DocumentDesigner() {
           }}
         />
       ) : (
-        <div className="flex flex-col 2xl:flex-row gap-4">
-          <fieldset disabled={!canEdit} className="2xl:w-[560px] flex-shrink-0 space-y-4">
+        <div className="flex flex-col xl:flex-row gap-4 items-start">
+          <fieldset disabled={!canEdit} className="w-full xl:w-[520px] flex-shrink-0 space-y-4">
             <GlassCard className="p-4 space-y-3">
-              <h3 className="flex items-center gap-2 text-[15px] font-bold text-white"><LayoutTemplate size={16} className="text-nexus-teal" /> แม่แบบ</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {TEMPLATES.map((t) => (
-                  <button key={t.id} type="button" onClick={() => { setTheme({ ...t.theme }); }} className={cn("text-left rounded-xl border p-2.5 transition-colors", theme.templateId === t.id ? "border-nexus-teal/60 bg-nexus-teal/10" : "border-white/10 hover:border-white/25")}>
-                    <div className="flex gap-1 mb-1.5">{[t.theme.primary, t.theme.accent, t.theme.text].map((c, i) => <span key={i} className="w-4 h-4 rounded-full border border-white/20" style={{ background: c }} />)}</div>
-                    <p className="text-[13px] font-bold text-white">{t.name}</p>
-                    <p className="text-[11px] text-white/50 leading-snug">{t.description}</p>
-                  </button>
-                ))}
+              <h3 className="flex items-center gap-2 text-[15px] font-bold text-white"><LayoutTemplate size={16} className="text-nexus-teal" /> แม่แบบ <span className="text-[12px] font-normal text-white/45">({TEMPLATES.length} แบบ · ภาพย่อจากข้อมูลบริษัทจริง)</span></h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[560px] overflow-y-auto pr-1">
+                {TEMPLATES.map((t) => <TemplateCard key={t.id} t={t} active={theme.templateId === t.id} docType={docType} profile={profile} onPick={() => applyTemplate(t)} />)}
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[12px] font-semibold text-white/60">ชุดสี (เปลี่ยนสีโดยคงรูปแบบเดิม)</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {PALETTES.map((p) => (
+                    <button key={p.id} type="button" title={p.name} aria-label={`ชุดสี ${p.name}`} onClick={() => setTheme({ primary: p.primary, accent: p.accent })}
+                      className={cn("h-8 pl-1 pr-2.5 rounded-full border flex items-center gap-1.5 text-[11.5px]", theme.primary === p.primary && theme.accent === p.accent ? "border-white/60 text-white" : "border-white/10 text-white/60 hover:text-white")}>
+                      <span className="flex"><span className="w-5 h-5 rounded-full border border-white/20" style={{ background: p.primary }} /><span className="w-5 h-5 -ml-1.5 rounded-full border border-white/20" style={{ background: p.accent }} /></span>{p.name}
+                    </button>
+                  ))}
+                </div>
               </div>
             </GlassCard>
 
@@ -261,15 +335,17 @@ export function DocumentDesigner() {
               <Row label="สีตัวอักษรรอง"><ColorField value={theme.muted} onChange={(v) => setTheme({ muted: v })} /></Row>
               <Row label="หัวเอกสาร"><PillSelect value={theme.header} onChange={(e) => setTheme({ header: e.target.value as any })} className="h-9 w-full"><option value="logo-left">โลโก้ซ้าย</option><option value="logo-right">โลโก้ขวา</option><option value="centered">กึ่งกลาง (แบบหนังสือ)</option><option value="banner">แถบสีเต็มความกว้าง</option></PillSelect></Row>
               <Row label={`ขนาดโลโก้ (${theme.logoSize} pt)`}><input type="range" min={32} max={120} step={4} value={theme.logoSize} onChange={(e) => setTheme({ logoSize: Number(e.target.value) })} className="w-full accent-[#0d9488] h-9" /></Row>
-              <Row label="กรอบข้อมูลลูกค้า"><PillSelect value={theme.party} onChange={(e) => setTheme({ party: e.target.value as any })} className="h-9 w-full"><option value="accent-bar">แถบสีด้านซ้าย</option><option value="boxed">กรอบเต็ม</option><option value="plain">ไม่มีกรอบ</option></PillSelect></Row>
+              <Row label="กรอบข้อมูลลูกค้า"><PillSelect value={theme.party} onChange={(e) => setTheme({ party: e.target.value as any })} className="h-9 w-full"><option value="accent-bar">แถบสีด้านซ้าย</option><option value="boxed">กรอบเต็ม</option><option value="plain">เส้นใต้</option><option value="none">ไม่มีกรอบ</option></PillSelect></Row>
               <Row label="ตารางรายการ"><PillSelect value={theme.table} onChange={(e) => setTheme({ table: e.target.value as any })} className="h-9 w-full"><option value="tint">หัวตารางสีอ่อน</option><option value="solid">หัวตารางสีทึบ</option><option value="lines">เส้นบาง</option><option value="grid">ตารางเส้นครบ</option><option value="zebra">แถวสลับสี</option></PillSelect></Row>
-              <Row label="ยอดรวมทั้งสิ้น"><PillSelect value={theme.totals} onChange={(e) => setTheme({ totals: e.target.value as any })} className="h-9 w-full"><option value="solid">พื้นสีเต็ม</option><option value="outline">กรอบสี</option><option value="plain">เส้นคั่น</option></PillSelect></Row>
+              <Row label="ยอดรวมทั้งสิ้น"><PillSelect value={theme.totals} onChange={(e) => setTheme({ totals: e.target.value as any })} className="h-9 w-full"><option value="solid">พื้นสีเต็ม</option><option value="outline">กรอบสี</option><option value="plain">เส้นคั่น</option><option value="grid">ตารางป้าย/ยอด</option></PillSelect></Row>
               <Row label="ช่องลงนาม"><PillSelect value={theme.signatures} onChange={(e) => setTheme({ signatures: e.target.value as any })} className="h-9 w-full"><option value="line">เส้นลงนาม</option><option value="box">กรอบลงนาม</option></PillSelect></Row>
               <Row label={`ระยะขอบกระดาษ (${theme.margin} pt)`}><input type="range" min={20} max={60} step={2} value={theme.margin} onChange={(e) => setTheme({ margin: Number(e.target.value) })} className="w-full accent-[#0d9488] h-9" /></Row>
               <Row label="ลายน้ำ" tip="ข้อความจาง ๆ กลางหน้า เช่น ชื่อบริษัท (เอกสารยกเลิก/ตัวอย่างแสดงลายน้ำของระบบแทน)"><PillInput value={theme.watermark} onChange={(e) => setTheme({ watermark: e.target.value })} placeholder="ไม่มี" className="h-9 w-full" /></Row>
               <div className="md:col-span-2 flex flex-wrap gap-4">
                 <PillCheckbox label="มุมโค้ง" checked={theme.rounded} onChange={(e) => setTheme({ rounded: e.target.checked })} />
                 <PillCheckbox label="แสดงเลขหน้า" checked={theme.showPageNumber} onChange={(e) => setTheme({ showPageNumber: e.target.checked })} />
+                <PillCheckbox label="ป้ายสองภาษา (ไทย/อังกฤษ)" checked={theme.bilingual} onChange={(e) => setTheme({ bilingual: e.target.checked })} />
+                <PillCheckbox label="รูปแบบฟอร์ม (ป้าย : ค่า)" checked={theme.formStyle} onChange={(e) => setTheme({ formStyle: e.target.checked })} />
               </div>
             </GlassCard>
 
@@ -299,10 +375,7 @@ export function DocumentDesigner() {
             {canEdit && <PillButton variant="ghost" className="h-9 px-4 text-xs" onClick={() => { setDesign(normalizeDesign(null, profile.brandColor)); setDirty(true); }}><RotateCcw size={13} /> คืนค่าเริ่มต้นทั้งหมด</PillButton>}
           </fieldset>
 
-          <div className="flex-1 min-w-0 h-[920px] rounded-2xl border border-white/10 overflow-hidden flex flex-col bg-white/[0.02]">
-            <div className="px-4 pt-3 text-[13px] text-white/60">ตัวอย่าง &quot;{def.title}&quot; (อัปเดตตามที่แก้ ยังไม่บันทึก)</div>
-            {model && <DocumentPdfViewer model={model} className="flex-1" />}
-          </div>
+          <LivePreview model={model} title={def.title} />
         </div>
       )}
     </div>

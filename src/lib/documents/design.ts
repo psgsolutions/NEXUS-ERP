@@ -9,9 +9,9 @@
 
 export type FontFamily = "Sarabun" | "THSarabunNew" | "THSarabunIT9";
 export type HeaderLayout = "logo-left" | "logo-right" | "centered" | "banner";
-export type PartyStyle = "accent-bar" | "boxed" | "plain";
+export type PartyStyle = "accent-bar" | "boxed" | "plain" | "none";
 export type TableStyle = "tint" | "solid" | "lines" | "grid" | "zebra";
-export type TotalsStyle = "solid" | "outline" | "plain";
+export type TotalsStyle = "solid" | "outline" | "plain" | "grid";
 export type SignatureStyle = "line" | "box";
 
 export interface DocTheme {
@@ -33,6 +33,10 @@ export interface DocTheme {
   margin: number;
   showPageNumber: boolean;
   watermark: string;
+  /** ป้ายกำกับสองภาษา (ไทย + อังกฤษตัวเล็ก) เช่น ชื่อลูกค้า / Customer Name */
+  bilingual: boolean;
+  /** รูปแบบฟอร์ม: ข้อมูลลูกค้า/เลขที่ แสดงเป็นแถว "ป้าย : ค่า" */
+  formStyle: boolean;
 }
 
 export interface PerDocDesign {
@@ -55,7 +59,7 @@ export interface Letterhead { id: string; name: string; height: number; blocks: 
 export interface DocumentDesign { theme: DocTheme; perDoc: Record<string, PerDocDesign>; letterheads: Letterhead[] }
 
 // ---------- ผังลากวางอิสระ ----------
-export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "text" | "line" | "rect" | "image";
+export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "field" | "text" | "line" | "rect" | "image";
 export type ItemColumn = "no" | "code" | "description" | "qty" | "unit" | "price" | "discount" | "amount";
 export interface FreeBlock {
   id: string;
@@ -78,6 +82,16 @@ export interface FreeBlock {
   cols?: ItemColumn[];
   /** ช่องลงนาม: ชื่อช่อง */
   labels?: string[];
+  /** ช่องลงนาม: ระยะห่างระหว่างช่อง (pt) เช่น เว้นกลางไว้วางโลโก้/ตราประทับ */
+  gap?: number;
+  /** ตารางรายการ: ยืดตารางเต็มความสูงกล่อง (เส้นคอลัมน์ลากถึงล่าง แบบฟอร์ม) */
+  fill?: boolean;
+  /** ช่องข้อมูล (kind=field): คีย์ข้อมูล number | date | m:<ป้าย> | f:<คีย์> */
+  field?: string;
+  /** ช่องข้อมูล: ไม่แสดงป้าย (แสดงเฉพาะค่า) */
+  hideLabel?: boolean;
+  /** กล่องเลขที่/วันที่: ข้อมูลเพิ่มที่แสดงเป็นแถว (f:<คีย์>) */
+  fields?: string[];
 }
 export interface FreeLayout { enabled: boolean; blocks: FreeBlock[] }
 
@@ -87,14 +101,13 @@ export const REQUIRED_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party",
 export const BLOCK_LABELS: Record<BlockKind, string> = {
   logo: "โลโก้", seller: "ข้อมูลผู้ขาย", title: "ชื่อเอกสาร", meta: "เลขที่/วันที่", party: "ข้อมูลลูกค้า/คู่ค้า", items: "ตารางรายการ",
   totals: "ยอดรวม", words: "จำนวนเงินตัวอักษร", notes: "หมายเหตุ", payment: "ข้อมูลการชำระเงิน", signatures: "ช่องลงนาม",
-  text: "ข้อความ", line: "เส้น", rect: "กรอบ/พื้นหลัง", image: "รูปภาพ",
+  field: "ช่องข้อมูล", text: "ข้อความ", line: "เส้น", rect: "กรอบ/พื้นหลัง", image: "รูปภาพ",
 };
 /** ส่วนย่อยในกล่องที่เลือกซ่อนได้ (ชื่อ ที่อยู่ เลขผู้เสียภาษีของผู้ขาย/ผู้ซื้อ แสดงเสมอ ตามกฎหมาย) */
 export const BLOCK_PARTS: Partial<Record<BlockKind, { key: string; label: string }[]>> = {
   seller: [{ key: "nameEn", label: "ชื่อภาษาอังกฤษ" }, { key: "contact", label: "โทร · อีเมล · เว็บไซต์" }],
   title: [{ key: "en", label: "ชื่อภาษาอังกฤษ" }, { key: "copy", label: "ป้ายต้นฉบับ/สำเนา" }],
-  meta: [{ key: "extra", label: "ครบกำหนด / อ้างอิง" }],
-  party: [{ key: "contact", label: "ผู้ติดต่อ · โทร · อีเมล" }],
+  party: [{ key: "contact", label: "ชื่อผู้ติดต่อ" }, { key: "phone", label: "โทรศัพท์" }, { key: "email", label: "อีเมล" }],
   items: [{ key: "detail", label: "รายละเอียดใต้รายการ" }, { key: "heading", label: "หัวข้อหมวด" }],
   signatures: [{ key: "date", label: "บรรทัดวันที่" }],
 };
@@ -103,9 +116,11 @@ export const ITEM_COLUMNS: { key: ItemColumn; label: string }[] = [
   { key: "unit", label: "หน่วย" }, { key: "price", label: "ราคา/หน่วย" }, { key: "discount", label: "ส่วนลด" }, { key: "amount", label: "จำนวนเงิน" },
 ];
 /** กล่องที่มีตัวอักษร (ปรับขนาด/ระยะบรรทัด/สีได้) */
-export const TEXT_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party", "items", "totals", "words", "notes", "payment", "signatures", "text"];
+export const TEXT_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party", "items", "totals", "words", "notes", "payment", "signatures", "field", "text"];
 /** กล่องที่วางในหัวกระดาษได้ */
-export const HEAD_KINDS: BlockKind[] = ["logo", "seller", "title", "meta", "text", "line", "rect", "image"];
+export const HEAD_KINDS: BlockKind[] = ["logo", "seller", "title", "meta", "field", "text", "line", "rect", "image"];
+/** คีย์ช่องข้อมูล: เลขที่ วันที่ แถวข้อมูลของเอกสาร (m:ป้าย) ข้อมูลเพิ่ม (f:คีย์) */
+const FIELD_KEY = /^(number|date|m:[^\n]{1,40}|f:[a-zA-Z]{1,30})$/;
 
 /** เอกสารที่ไม่มียอดเงิน (ไม่ต้องมีกล่องยอดรวม/จำนวนเงินตัวอักษร) */
 const NO_AMOUNT_DOCS = ["delivery_note", "work_order"];
@@ -114,7 +129,7 @@ export const docHasAmounts = (docType?: string) => !NO_AMOUNT_DOCS.includes(Stri
 export const requiredBlocksFor = (docType?: string): BlockKind[] => (docHasAmounts(docType) ? REQUIRED_BLOCKS : REQUIRED_BLOCKS.filter((k) => k !== "totals"));
 /** กล่องที่เพิ่มได้ในเอกสารชนิดนี้ */
 export const addableBlocksFor = (docType?: string): BlockKind[] =>
-  (["text", "line", "rect", "image", "logo", "words", "notes", "payment", "signatures", "totals"] as BlockKind[]).filter((k) => docHasAmounts(docType) || (k !== "words" && k !== "totals"));
+  (["text", "line", "rect", "image", "logo", "field", "words", "notes", "payment", "signatures", "totals"] as BlockKind[]).filter((k) => docHasAmounts(docType) || (k !== "words" && k !== "totals"));
 /** คอลัมน์ที่ต้องแสดงเสมอ */
 export const requiredColumnsFor = (docType?: string): ItemColumn[] => (docHasAmounts(docType) ? ["description", "amount"] : ["description"]);
 
@@ -122,20 +137,68 @@ export const FONT_LABELS: Record<FontFamily, string> = { Sarabun: "Sarabun (ท�
 /** ฟอนต์ TH Sarabun ตัวเล็กกว่า Sarabun ที่ขนาดเดียวกัน — ขยายให้ขนาดที่ตั้งดูเท่ากัน */
 export const FONT_SCALE: Record<FontFamily, number> = { Sarabun: 1, THSarabunNew: 1.32, THSarabunIT9: 1.32 };
 
+/** ป้ายภาษาอังกฤษของป้ายที่ใช้บ่อย (โหมดสองภาษา) */
+export const EN_LABELS: Record<string, string> = {
+  "ลำดับ": "Item", "รหัส": "Code", "รายการ": "Description", "จำนวน": "QTY.", "หน่วย": "Unit", "ราคา/หน่วย": "Unit Price", "ส่วนลด": "Discount", "จำนวนเงิน": "Amount",
+  "เลขที่": "No.", "วันที่": "Date", "ครบกำหนด": "Due Date", "กำหนดชำระ": "Due Date", "ยืนราคาถึง": "Price Validation", "กำหนดส่งมอบ": "Delivery", "กำหนดส่ง": "Delivery Date",
+  "เงื่อนไขการชำระเงิน": "Terms of Payment", "เงื่อนไขชำระ": "Payment Terms", "เครดิต": "Credit Term", "อ้างอิง": "Reference", "โครงการ": "Project", "ผู้เสนอราคา": "Quoted By",
+  "เลขที่ใบสั่งซื้อ": "PO No.", "ใบสั่งขาย": "Sales Order", "ใบสั่งซื้อ": "Purchase Order", "อ้างอิงใบเสนอราคา": "Quotation Ref.", "อ้างอิงใบขอซื้อ": "PR Ref.", "อ้างอิงใบกำกับ": "Invoice Ref.",
+  "ชำระโดย": "Payment Method", "จ่ายโดย": "Paid By", "บัญชี": "Account", "เช็คเลขที่": "Cheque No.", "ลงวันที่": "Dated", "ส่งที่คลัง": "Ship To", "งวดงาน": "Installment",
+  "ช่างผู้รับผิดชอบ": "Technician", "นัดหมาย": "Appointment", "สถานะ": "Status", "ออกแทนเลขที่": "Replaces No.",
+  "ลูกค้า": "Customer", "เสนอราคาให้": "Customer", "ผู้ขาย": "Vendor", "ได้รับเงินจาก": "Received From", "ผู้รับเงิน": "Payee", "ผู้ติดต่อ": "Contact", "ชื่อลูกค้า": "Customer Name",
+  "เลขประจำตัวผู้เสียภาษี": "Tax ID.", "ที่อยู่": "Address", "โทร": "Tel.", "อีเมล": "Email", "หมายเหตุ": "Remarks",
+  "ผู้อนุมัติ": "Approved By", "ผู้สั่งซื้อ": "Accepted By", "ลูกค้ายืนยันการสั่งซื้อ": "Accepted By", "ผู้จัดทำ": "Prepared By", "ผู้มีอำนาจลงนาม": "Authorized Signature",
+  "ผู้จ่ายเงิน": "Paid By", "ผู้วางบิล": "Billed By", "ผู้รับวางบิล": "Received By", "ผู้ส่งของ": "Delivered By", "ผู้รับของ": "Received By", "ผู้ตรวจรับ": "Inspected By",
+  "ผู้รับสินค้า / บริการ": "Received By", "ผู้ส่งสินค้า": "Delivered By", "ช่างผู้ปฏิบัติงาน": "Technician",
+  "รวมเป็นเงิน": "Total Amount", "ส่วนลดท้ายบิล": "Discount", "ยอดหลังหักส่วนลด": "Total After Discount", "มูลค่าก่อนภาษี": "Total Before VAT", "ภาษีมูลค่าเพิ่ม 7%": "VAT 7%",
+  "ภาษีมูลค่าเพิ่ม 7% (รวมในราคา)": "VAT 7% (Included)", "จำนวนเงินรวมทั้งสิ้น": "Grand Total", "หัก ณ ที่จ่าย": "Withholding Tax", "ยอดชำระสุทธิ": "Net Payable",
+};
+export const enLabel = (th: string) => EN_LABELS[th] || "";
+
+/** ชุดสีสำเร็จรูป (สีหลัก · สีรอง) */
+export const PALETTES: { id: string; name: string; primary: string; accent: string }[] = [
+  { id: "teal", name: "เขียวหยก", primary: "#1f6f5c", accent: "#1f6f5c" },
+  { id: "sky", name: "ฟ้าฟอร์ม", primary: "#5b8fd1", accent: "#9dc3e6" },
+  { id: "navy", name: "กรมท่า", primary: "#1e3a8a", accent: "#3b5bdb" },
+  { id: "ocean", name: "น้ำทะเล", primary: "#0e7490", accent: "#22a3c4" },
+  { id: "emerald", name: "มรกต", primary: "#047857", accent: "#10b981" },
+  { id: "forest", name: "ป่าไม้", primary: "#3f6212", accent: "#65a30d" },
+  { id: "royal", name: "ม่วงหลวง", primary: "#5b21b6", accent: "#8b5cf6" },
+  { id: "berry", name: "เบอร์รี่", primary: "#9d174d", accent: "#db2777" },
+  { id: "crimson", name: "แดงเลือดนก", primary: "#9f1239", accent: "#e11d48" },
+  { id: "sunset", name: "ส้มอาทิตย์", primary: "#c2410c", accent: "#f97316" },
+  { id: "gold", name: "น้ำตาลทอง", primary: "#7c2d12", accent: "#b45309" },
+  { id: "slate", name: "เทาเข้ม", primary: "#334155", accent: "#64748b" },
+  { id: "charcoal", name: "ดำ-เทา", primary: "#111111", accent: "#555555" },
+  { id: "navygold", name: "กรมท่า-ทอง", primary: "#1e3a5f", accent: "#c9a227" },
+];
+
 const BASE: DocTheme = {
   templateId: "modern", font: "Sarabun", fontSize: 9.5, primary: "#1f6f5c", accent: "#1f6f5c", text: "#1a1a1a", muted: "#666666",
   header: "logo-left", logoSize: 64, party: "accent-bar", table: "tint", rounded: true, totals: "solid", signatures: "line",
-  margin: 32, showPageNumber: true, watermark: "",
+  margin: 32, showPageNumber: true, watermark: "", bilingual: false, formStyle: false,
 };
 
-/** แม่แบบสำเร็จรูป (เลือกแล้วแก้ต่อได้ทุกค่า) */
-export const TEMPLATES: { id: string; name: string; description: string; theme: DocTheme }[] = [
+/**
+ * แม่แบบสำเร็จรูป (เลือกแล้วแก้ต่อได้ทุกค่า)
+ * layout: ผังลากวางของแม่แบบ (layout-templates.ts) — เลือกแล้วทุกเอกสารได้ผังนี้ ลากปรับต่อได้อิสระ · ไม่มี = จัดเนื้อตามธีม
+ */
+export const TEMPLATES: { id: string; name: string; description: string; theme: DocTheme; layout?: string }[] = [
   { id: "modern", name: "โมเดิร์น", description: "แถบสีด้านข้าง หัวตารางสีอ่อน ยอดรวมเต็มสี", theme: BASE },
   { id: "classic", name: "คลาสสิก", description: "เส้นตารางครบ ตัวอักษร TH Sarabun เหมาะงานทางการ", theme: { ...BASE, templateId: "classic", font: "THSarabunNew", primary: "#1e3a8a", accent: "#1e3a8a", party: "boxed", table: "grid", rounded: false, totals: "outline", signatures: "box" } },
   { id: "government", name: "ราชการ", description: "TH SarabunIT๙ สีดำล้วน หัวเอกสารกึ่งกลาง", theme: { ...BASE, templateId: "government", font: "THSarabunIT9", primary: "#111111", accent: "#111111", header: "centered", party: "plain", table: "grid", rounded: false, totals: "outline", signatures: "line", margin: 40 } },
   { id: "minimal", name: "มินิมอล", description: "เส้นบาง พื้นที่ว่างมาก ดูสะอาดตา", theme: { ...BASE, templateId: "minimal", primary: "#334155", accent: "#64748b", party: "plain", table: "lines", totals: "plain", margin: 40 } },
   { id: "bold", name: "แถบสีเด่น", description: "แถบหัวเอกสารเต็มสี หัวตารางทึบ", theme: { ...BASE, templateId: "bold", primary: "#0d9488", accent: "#0f766e", header: "banner", table: "solid", party: "boxed" } },
   { id: "elegant", name: "หรูเรียบ", description: "โทนน้ำตาลทอง ตารางสลับสี โลโก้ด้านขวา", theme: { ...BASE, templateId: "elegant", primary: "#7c2d12", accent: "#b45309", header: "logo-right", table: "zebra", party: "accent-bar", totals: "solid" } },
+  { id: "psg-form", name: "ฟอร์มสองภาษา (แบบเดิมของบริษัท)", description: "ป้ายไทย/อังกฤษ แถบ Quotation สีฟ้า ตารางยาวถึงยอดรวม ช่องลงนาม 2 ช่องมีโลโก้กลาง", layout: "form", theme: { ...BASE, templateId: "psg-form", primary: "#5b8fd1", accent: "#9dc3e6", text: "#111111", muted: "#555555", party: "none", table: "grid", rounded: true, totals: "grid", signatures: "box", margin: 26, bilingual: true, formStyle: true } },
+  { id: "form-navy", name: "ฟอร์มสองภาษา กรมท่า", description: "ผังฟอร์มเดียวกัน โทนกรมท่า มุมเหลี่ยม", layout: "form", theme: { ...BASE, templateId: "form-navy", primary: "#1e3a8a", accent: "#6d83c9", text: "#111111", party: "none", table: "grid", rounded: false, totals: "grid", signatures: "box", margin: 26, bilingual: true, formStyle: true } },
+  { id: "sidebar", name: "แถบข้างสีเข้ม", description: "แถบสีด้านซ้ายเต็มหน้า ชื่อเอกสารตัวใหญ่ ยอดรวมกรอบสี", layout: "sidebar", theme: { ...BASE, templateId: "sidebar", primary: "#1e3a5f", accent: "#c9a227", party: "plain", table: "lines", totals: "outline", margin: 32 } },
+  { id: "center-band", name: "หัวกลาง แถบชื่อเอกสาร", description: "บริษัทกึ่งกลาง แถบชื่อเอกสารเต็มความกว้าง ตารางทึบ", layout: "centerBand", theme: { ...BASE, templateId: "center-band", primary: "#0e7490", accent: "#22a3c4", party: "boxed", table: "solid", totals: "solid", signatures: "line" } },
+  { id: "cards", name: "การ์ดมน", description: "กล่องมุมมนแยกส่วน ลูกค้า/เลขที่เป็นการ์ดคู่ ยอดรวมการ์ดสี", layout: "cards", theme: { ...BASE, templateId: "cards", primary: "#5b21b6", accent: "#8b5cf6", party: "plain", table: "zebra", totals: "solid", signatures: "box", formStyle: true } },
+  { id: "bilingual-minimal", name: "มินิมอลสองภาษา", description: "เส้นบาง ป้ายไทย/อังกฤษ เหมาะส่งลูกค้าต่างชาติ", theme: { ...BASE, templateId: "bilingual-minimal", primary: "#111111", accent: "#555555", party: "plain", table: "lines", totals: "plain", margin: 40, bilingual: true } },
+  { id: "sunset", name: "ส้มสดใส", description: "หัวแถบสีส้ม ตารางสลับสี ดูเป็นมิตร", theme: { ...BASE, templateId: "sunset", primary: "#c2410c", accent: "#f97316", header: "banner", table: "zebra", party: "accent-bar", totals: "solid" } },
+  { id: "emerald-grid", name: "มรกตทางการ", description: "TH Sarabun เส้นตารางครบ ยอดรวมแบบตาราง", theme: { ...BASE, templateId: "emerald-grid", font: "THSarabunNew", primary: "#047857", accent: "#a7f3d0", party: "boxed", table: "grid", rounded: false, totals: "grid", signatures: "box", formStyle: true } },
+  { id: "berry", name: "เบอร์รี่โมเดิร์น", description: "โลโก้ขวา แถบสีด้านข้างลูกค้า หัวตารางสีอ่อน", theme: { ...BASE, templateId: "berry", primary: "#9d174d", accent: "#db2777", header: "logo-right", table: "tint", party: "accent-bar", totals: "solid" } },
 ];
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -157,14 +220,16 @@ export function normalizeTheme(raw: any, brandColor?: string): DocTheme {
     muted: color(r.muted, base.muted),
     header: pick(r.header, ["logo-left", "logo-right", "centered", "banner"] as const, base.header),
     logoSize: num(r.logoSize, 32, 120, base.logoSize),
-    party: pick(r.party, ["accent-bar", "boxed", "plain"] as const, base.party),
+    party: pick(r.party, ["accent-bar", "boxed", "plain", "none"] as const, base.party),
     table: pick(r.table, ["tint", "solid", "lines", "grid", "zebra"] as const, base.table),
     rounded: r.rounded === undefined ? base.rounded : !!r.rounded,
-    totals: pick(r.totals, ["solid", "outline", "plain"] as const, base.totals),
+    totals: pick(r.totals, ["solid", "outline", "plain", "grid"] as const, base.totals),
     signatures: pick(r.signatures, ["line", "box"] as const, base.signatures),
     margin: num(r.margin, 20, 60, base.margin),
     showPageNumber: r.showPageNumber === undefined ? true : !!r.showPageNumber,
     watermark: str(r.watermark, 30),
+    bilingual: !!r.bilingual,
+    formStyle: !!r.formStyle,
   };
 }
 
@@ -175,7 +240,10 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
   if (!b || !KINDS.includes(b.kind)) return null;
   const w = num(b.w, 4, A4.w, 100), h = num(b.h, 1, A4.h, 40);
   const parts = (BLOCK_PARTS[b.kind as BlockKind] || []).map((p) => p.key);
-  const hide: string[] = Array.isArray(b.hide) ? [...new Set<string>(b.hide.map(String))].filter((k) => parts.includes(k)) : [];
+  // แถวของกล่องเลขที่ (number/date/m:ป้าย) และแถวยอดรวม (t:ป้าย) เป็นคีย์ตามข้อมูลของเอกสาร
+  const okHide = (k: string) => parts.includes(k) || (b.kind === "meta" && (k === "number" || k === "date" || /^m:[^\n]{1,40}$/.test(k))) || (b.kind === "totals" && /^t:[^\n]{1,60}$/.test(k));
+  const hide: string[] = Array.isArray(b.hide) ? [...new Set<string>(b.hide.map(String))].filter(okHide).slice(0, 30) : [];
+  const fields: string[] = b.kind === "meta" && Array.isArray(b.fields) ? [...new Set<string>(b.fields.map(String))].filter((k) => /^f:[a-zA-Z]{1,30}$/.test(k)).slice(0, 10) : [];
   const cols = b.kind === "items" && Array.isArray(b.cols) ? COLUMN_KEYS.filter((k) => b.cols.includes(k)) : [];
   const labels = b.kind === "signatures" && Array.isArray(b.labels) ? b.labels.map((s: any) => str(s, 40)).filter(Boolean).slice(0, 4) : [];
   return {
@@ -193,7 +261,26 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(hide.length ? { hide } : {}),
     ...(cols.length ? { cols: cols.includes("description") ? cols : (["description", ...cols] as ItemColumn[]) } : {}),
     ...(labels.length ? { labels } : {}),
+    ...(fields.length ? { fields } : {}),
+    ...(b.kind === "signatures" && b.gap !== undefined && b.gap !== null ? { gap: num(b.gap, 0, 300, 16) } : {}),
+    ...(b.kind === "items" && b.fill ? { fill: true } : {}),
+    ...(b.kind === "field" ? { field: FIELD_KEY.test(String(b.field || "")) ? String(b.field) : "number" } : {}),
+    ...(b.kind === "field" && b.hideLabel ? { hideLabel: true } : {}),
   };
+}
+
+/** เลขที่/วันที่ต้องปรากฏเสมอ (ม.86/4): ดูจากกล่องเลขที่ ช่องข้อมูล หรือข้อความที่มี {{number}}/{{date}} */
+export function legalFieldVisible(blocks: FreeBlock[], key: "number" | "date"): boolean {
+  return blocks.some((b) => (b.kind === "meta" && !(b.hide || []).includes(key)) || (b.kind === "field" && b.field === key) || (b.kind === "text" && (b.text || "").includes(`{{${key}}}`)));
+}
+/** คืนเลขที่/วันที่ที่ถูกซ่อนโดยไม่มีที่แสดงอื่น (แก้ในกล่องเลขที่ของผังเอกสารก่อน ไม่มีจึงแก้ในหัวกระดาษ) */
+function restoreLegalFields(free: FreeLayout | undefined, lh: Letterhead | undefined) {
+  for (const key of ["number", "date"] as const) {
+    const all = [...(free?.enabled ? free.blocks : []), ...(lh?.blocks || [])];
+    if (!all.length || legalFieldVisible(all, key)) continue;
+    const target = (free?.enabled ? free.blocks : []).find((b) => b.kind === "meta") || lh?.blocks.find((b) => b.kind === "meta");
+    if (target) target.hide = (target.hide || []).filter((k) => k !== key);
+  }
 }
 
 export function normalizeFreeLayout(raw: any, docType?: string): FreeLayout | undefined {
@@ -234,6 +321,7 @@ export function normalizeDesign(raw: any, brandColor?: string): DocumentDesign {
     const free = normalizeFreeLayout(x.free, k);
     if (free) d.free = free;
     if (letterheads.some((l) => l.id === x.letterhead)) d.letterhead = x.letterhead;
+    restoreLegalFields(d.free, letterheads.find((l) => l.id === d.letterhead));
     if (Object.keys(d).length) perDoc[k] = d;
   }
   return { theme: normalizeTheme(r.theme, brandColor), perDoc, letterheads };

@@ -60,6 +60,10 @@ export function quotationModel(q: QuotationInput): DocumentModel {
       ...(q.salesperson ? [{ label: "ผู้เสนอราคา", value: q.salesperson }] : []),
     ],
     seller: q.seller,
+    fields: [
+      ...(q.paymentTerms ? [{ key: "paymentTerms", label: "เงื่อนไขการชำระเงิน", value: q.paymentTerms }] : []),
+      ...(q.deliveryDays ? [{ key: "delivery", label: "กำหนดส่งมอบ", value: `ภายใน ${q.deliveryDays} วัน` }] : []),
+    ],
     party: { label: "เสนอราคาให้", ...q.customer },
     columns: ["no", "description", "qty", "unit", "price", "discount", "amount"],
     lines: q.lines,
@@ -118,19 +122,32 @@ export function sampleModel(seller: DocumentProfile, today: string): DocumentMod
   };
 }
 
-/** ชนิดเอกสารที่ออกแบบได้ (หน้าตั้งค่า › ออกแบบเอกสาร) พร้อมชื่อ/คอลัมน์/ช่องลงนามตั้งต้น */
-export const DESIGNABLE_DOCS: { type: string; title: string; titleEn: string; columns?: DocumentModel["columns"]; signatures: string[]; partyLabel: string }[] = [
-  { type: "quotation", title: "ใบเสนอราคา", titleEn: "QUOTATION", signatures: ["ผู้เสนอราคา", "ผู้อนุมัติ", "ผู้สั่งซื้อ"], partyLabel: "ลูกค้า" },
-  { type: "sales_order", title: "ใบสั่งขาย", titleEn: "SALES ORDER", signatures: ["ผู้จัดทำ", "ผู้อนุมัติ"], partyLabel: "ลูกค้า" },
-  { type: "invoice", title: "ใบกำกับภาษี / ใบแจ้งหนี้", titleEn: "TAX INVOICE / INVOICE", signatures: ["ผู้รับสินค้า / บริการ", "ผู้ส่งสินค้า", "ผู้มีอำนาจลงนาม"], partyLabel: "ลูกค้า" },
-  { type: "billing_note", title: "ใบวางบิล", titleEn: "BILLING NOTE", columns: ["no", "description", "amount"], signatures: ["ผู้วางบิล", "ผู้รับวางบิล"], partyLabel: "ลูกค้า" },
-  { type: "receipt", title: "ใบเสร็จรับเงิน", titleEn: "RECEIPT", columns: ["no", "description", "amount"], signatures: ["ผู้จ่ายเงิน", "ผู้รับเงิน"], partyLabel: "ได้รับเงินจาก" },
-  { type: "delivery_note", title: "ใบส่งของ", titleEn: "DELIVERY NOTE", columns: ["no", "code", "description", "qty", "unit"], signatures: ["ผู้ส่งของ", "ผู้รับของ", "ผู้ตรวจรับ"], partyLabel: "ลูกค้า" },
-  { type: "cndn", title: "ใบลดหนี้", titleEn: "CREDIT NOTE", columns: ["no", "description", "amount"], signatures: ["ผู้จัดทำ", "ผู้มีอำนาจลงนาม"], partyLabel: "ลูกค้า" },
-  { type: "purchase_order", title: "ใบสั่งซื้อ", titleEn: "PURCHASE ORDER", signatures: ["ผู้สั่งซื้อ", "ผู้อนุมัติ"], partyLabel: "ผู้ขาย" },
-  { type: "payment", title: "ใบสำคัญจ่าย", titleEn: "PAYMENT VOUCHER", columns: ["no", "description", "amount"], signatures: ["ผู้จัดทำ", "ผู้อนุมัติ", "ผู้รับเงิน"], partyLabel: "ผู้รับเงิน" },
-  { type: "work_order", title: "ใบสั่งงานบริการ", titleEn: "WORK ORDER", columns: ["no", "description", "qty", "unit"], signatures: ["ช่างผู้ปฏิบัติงาน", "ลูกค้า"], partyLabel: "ลูกค้า" },
+/**
+ * ชนิดเอกสารที่ออกแบบได้ (หน้าตั้งค่า › ออกแบบเอกสาร) พร้อมชื่อ/คอลัมน์/ช่องลงนามตั้งต้น
+ * meta = แถวข้อมูลที่เอกสารจริงมี (ตาม adapters) · fields = ข้อมูลเพิ่มที่วางเองได้ — ใช้ทำรายการ "ข้อมูลในเอกสาร" และตัวอย่าง
+ */
+export const DESIGNABLE_DOCS: { type: string; title: string; titleEn: string; columns?: DocumentModel["columns"]; signatures: string[]; partyLabel: string; meta: string[]; fields?: { key: string; label: string }[] }[] = [
+  { type: "quotation", title: "ใบเสนอราคา", titleEn: "QUOTATION", columns: ["no", "description", "qty", "unit", "price", "discount", "amount"], signatures: ["ผู้เสนอราคา", "ผู้อนุมัติ", "ผู้สั่งซื้อ"], partyLabel: "ลูกค้า",
+    meta: ["ยืนราคาถึง", "อ้างอิง", "โครงการ", "ผู้เสนอราคา"], fields: [{ key: "paymentTerms", label: "เงื่อนไขการชำระเงิน" }, { key: "delivery", label: "กำหนดส่งมอบ" }] },
+  { type: "sales_order", title: "ใบสั่งขาย", titleEn: "SALES ORDER", signatures: ["ผู้จัดทำ", "ผู้อนุมัติ"], partyLabel: "ลูกค้า", meta: ["เครดิต", "อ้างอิงใบเสนอราคา", "เลขที่ใบสั่งซื้อ", "โครงการ"] },
+  { type: "invoice", title: "ใบกำกับภาษี / ใบแจ้งหนี้", titleEn: "TAX INVOICE / INVOICE", signatures: ["ผู้รับสินค้า / บริการ", "ผู้ส่งสินค้า", "ผู้มีอำนาจลงนาม"], partyLabel: "ลูกค้า", meta: ["ครบกำหนด", "ใบสั่งขาย", "เลขที่ใบสั่งซื้อ", "โครงการ", "งวดงาน"] },
+  { type: "billing_note", title: "ใบวางบิล", titleEn: "BILLING NOTE", columns: ["no", "description", "amount"], signatures: ["ผู้วางบิล", "ผู้รับวางบิล"], partyLabel: "ลูกค้า", meta: ["กำหนดชำระ", "เลขที่ใบสั่งซื้อ"] },
+  { type: "receipt", title: "ใบเสร็จรับเงิน", titleEn: "RECEIPT", columns: ["no", "description", "amount"], signatures: ["ผู้จ่ายเงิน", "ผู้รับเงิน"], partyLabel: "ได้รับเงินจาก", meta: ["ชำระโดย", "บัญชี", "เช็คเลขที่", "อ้างอิง"] },
+  { type: "delivery_note", title: "ใบส่งของ", titleEn: "DELIVERY NOTE", columns: ["no", "code", "description", "qty", "unit"], signatures: ["ผู้ส่งของ", "ผู้รับของ", "ผู้ตรวจรับ"], partyLabel: "ลูกค้า", meta: ["ใบสั่งขาย", "เลขที่ใบสั่งซื้อ", "โครงการ"] },
+  { type: "cndn", title: "ใบลดหนี้", titleEn: "CREDIT NOTE", columns: ["no", "description", "amount"], signatures: ["ผู้จัดทำ", "ผู้มีอำนาจลงนาม"], partyLabel: "ลูกค้า", meta: ["อ้างอิงใบกำกับ", "ลงวันที่"] },
+  { type: "purchase_order", title: "ใบสั่งซื้อ", titleEn: "PURCHASE ORDER", signatures: ["ผู้สั่งซื้อ", "ผู้อนุมัติ"], partyLabel: "ผู้ขาย", meta: ["กำหนดส่ง", "เงื่อนไขชำระ", "อ้างอิงใบขอซื้อ", "โครงการ", "ส่งที่คลัง"] },
+  { type: "payment", title: "ใบสำคัญจ่าย", titleEn: "PAYMENT VOUCHER", columns: ["no", "description", "amount"], signatures: ["ผู้จัดทำ", "ผู้อนุมัติ", "ผู้รับเงิน"], partyLabel: "ผู้รับเงิน", meta: ["จ่ายโดย", "บัญชี", "เช็คเลขที่", "อ้างอิง"] },
+  { type: "work_order", title: "ใบสั่งงานบริการ", titleEn: "WORK ORDER", columns: ["no", "description", "qty", "unit"], signatures: ["ช่างผู้ปฏิบัติงาน", "ลูกค้า"], partyLabel: "ลูกค้า", meta: ["ใบสั่งขาย", "ช่างผู้รับผิดชอบ", "นัดหมาย", "สถานะ"] },
 ];
+
+/** ค่าตัวอย่างของแถวข้อมูล (หน้าออกแบบ) */
+const SAMPLE_VALUES: Record<string, string> = {
+  "ยืนราคาถึง": "30 วัน", "อ้างอิง": "REF-0001", "โครงการ": "โครงการตัวอย่าง", "ผู้เสนอราคา": "ชื่อพนักงานขาย", "เครดิต": "30 วัน", "อ้างอิงใบเสนอราคา": "QT-0001",
+  "เลขที่ใบสั่งซื้อ": "PO-0001", "ครบกำหนด": "30 วัน", "ใบสั่งขาย": "SO-0001", "งวดงาน": "งวดที่ 1", "กำหนดชำระ": "30 วัน", "ชำระโดย": "โอนเงิน", "บัญชี": "กสิกรไทย 123-4-56789-0",
+  "เช็คเลขที่": "-", "อ้างอิงใบกำกับ": "INV-0001", "ลงวันที่": "1 ต.ค. 2569", "กำหนดส่ง": "7 วัน", "เงื่อนไขชำระ": "เครดิต 30 วัน", "อ้างอิงใบขอซื้อ": "PR-0001",
+  "ส่งที่คลัง": "คลังหลัก", "จ่ายโดย": "โอนเงิน", "ช่างผู้รับผิดชอบ": "ชื่อช่าง", "นัดหมาย": "21 ต.ค. 2569 09:00", "สถานะ": "รอดำเนินการ",
+  "เงื่อนไขการชำระเงิน": "เครดิต 30 วัน", "กำหนดส่งมอบ": "ภายใน 30 วัน",
+};
 
 /** หนังสือ (ขอเข้าพื้นที่ / ส่งมอบงาน / ขอคืนหลักประกัน) — ออกแบบได้เฉพาะหัวกระดาษและฟอนต์ เนื้อหาตามรูปแบบหนังสือ */
 export const LETTER_DESIGN = { type: "letter", title: "หนังสือ (ขอเข้าพื้นที่ · ส่งมอบงาน ฯลฯ)" };
@@ -149,8 +166,12 @@ export function sampleModelFor(type: string, seller: DocumentProfile, today: str
   }
   const def = DESIGNABLE_DOCS.find((d) => d.type === type) || DESIGNABLE_DOCS[0];
   const base = sampleModel(seller, today);
+  const fields = (def.fields || []).map((f) => ({ ...f, value: SAMPLE_VALUES[f.label] || "-" }));
   return {
     ...base, type: def.type, title: def.title, titleEn: def.titleEn, signatures: def.signatures, watermark: undefined,
+    meta: def.meta.map((label) => ({ label, value: SAMPLE_VALUES[label] || "-" })),
+    fields,
+    notes: [...fields.map((f) => `${f.label}: ${f.value}`), "หมายเหตุตัวอย่าง"],
     ...(def.columns ? { columns: def.columns } : {}),
     party: base.party ? { ...base.party, label: def.partyLabel } : undefined,
     lines: def.columns && !def.columns.includes("qty") ? base.lines.map((l) => ({ ...l, qty: undefined, unit: undefined, price: undefined })) : base.lines,

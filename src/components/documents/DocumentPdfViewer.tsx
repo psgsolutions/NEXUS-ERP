@@ -7,6 +7,7 @@ import { DocumentSharePanel } from "./DocumentSharePanel";
 import { PillButton, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api-client";
+import { effectiveDocProfile } from "@/lib/customer-doc-profile";
 import type { CopyMode, DocumentModel } from "@/lib/documents/model";
 
 /**
@@ -36,6 +37,12 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const frame = useRef<HTMLIFrameElement>(null);
+  // ใบวางบิล/ใบส่งของ/ใบเสร็จ (ไม่ใช่ใบกำกับ): เลือกใส่/เว้นวันที่ตอนพิมพ์ และจำเป็นค่าของลูกค้าได้
+  type DateOpt = { actual: string; profileUndated: boolean; customerId: string; docKind: "billingNote" | "deliveryNote" | "receipt"; undated: boolean };
+  const [dateMode, setDateMode] = useState<"profile" | "dated" | "undated">("profile");
+  const [dateOpt, setDateOpt] = useState<DateOpt | null>(null);
+  const [learnMsg, setLearnMsg] = useState("");
+  useEffect(() => { setDateMode("profile"); setLearnMsg(""); }, [source?.type, source?.id]);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -45,12 +52,14 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
         blob = await renderClientPdf(model, copy);
         setFileName(`${(model.number || "ตัวอย่าง").replace(/[\\/:*?"<>|\s]+/g, "-")}${copy === "copy" ? "-copy" : ""}.pdf`);
       } else if (source && companyId) {
-        const res = await apiFetch("/api/documents/pdf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, type: source.type, id: source.id, copy }) });
+        const res = await apiFetch("/api/documents/pdf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, type: source.type, id: source.id, copy, dateMode }) });
         if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || "สร้างเอกสารไม่สำเร็จ"); }
         blob = await res.blob();
         const cd = res.headers.get("content-disposition") || "";
         const m = cd.match(/filename="([^"]+)"/);
         setFileName(m ? decodeURIComponent(m[1]) : `${source.id}.pdf`);
+        const opt = res.headers.get("x-date-option");
+        try { setDateOpt(opt ? JSON.parse(decodeURIComponent(opt)) : null); } catch { setDateOpt(null); }
       } else return;
       setUrl((old) => { if (old) URL.revokeObjectURL(old); return URL.createObjectURL(blob); });
     } catch (e: any) {
@@ -58,7 +67,26 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
     } finally {
       setLoading(false);
     }
-  }, [model, source, companyId, copy]);
+  }, [model, source, companyId, copy, dateMode]);
+
+  // จำรูปแบบวันที่ที่เลือกเป็นค่าของลูกค้ารายนี้ (โปรไฟล์เอกสารลูกค้า)
+  const rememberDate = async () => {
+    if (!dateOpt?.customerId || !companyId) return;
+    setLearnMsg("");
+    try {
+      const post = (body: any) => apiFetch("/api/master-data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, entity: "customers", ...body }) }).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok || !d.success) throw new Error(d.error || "บันทึกไม่สำเร็จ"); return d; });
+      const { record } = await post({ action: "get", id: dateOpt.customerId });
+      const raw = record.docProfile || { orgType: "PRIVATE" };
+      if (raw.locked) { setLearnMsg("รูปแบบเอกสารของลูกค้ารายนี้ล็อกอยู่ — แก้ได้ที่หน้าข้อมูลลูกค้า"); return; }
+      const list = new Set(effectiveDocProfile(raw).undated);
+      if (dateOpt.undated) list.add(dateOpt.docKind); else list.delete(dateOpt.docKind);
+      await post({ action: "update", id: dateOpt.customerId, scope: "company", changes: { docProfile: { ...raw, undated: Array.from(list) } } });
+      setDateOpt({ ...dateOpt, profileUndated: dateOpt.undated });
+      setLearnMsg("จำแล้ว — ครั้งต่อไปพิมพ์แบบนี้ให้ลูกค้ารายนี้อัตโนมัติ");
+    } catch (e: any) {
+      setLearnMsg(e.message);
+    }
+  };
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
@@ -77,6 +105,19 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
             </button>
           ))}
         </div>
+        {dateOpt && (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex rounded-full bg-white/5 p-1" title="หน่วยงานบางแห่งให้เว้นวันที่ไว้ลงเอง">
+              {([["dated", "ใส่วันที่"], ["undated", "เว้นวันที่"]] as const).map(([m, label]) => (
+                <button key={m} type="button" onClick={() => { setDateMode(m); setLearnMsg(""); }} className={cn("h-8 px-4 rounded-full text-[13px]", (m === "undated") === dateOpt.undated ? "bg-white/15 text-white font-semibold" : "text-white/50 hover:text-white")}>{label}</button>
+              ))}
+            </div>
+            {dateOpt.customerId && dateOpt.undated !== dateOpt.profileUndated && (
+              <button type="button" onClick={rememberDate} className="text-[13px] font-semibold text-nexus-teal hover:underline">จำแบบนี้สำหรับลูกค้ารายนี้</button>
+            )}
+            {learnMsg && <span className="text-[12px] text-white/60">{learnMsg}</span>}
+          </div>
+        )}
         <div className="flex items-center gap-2">
           {/* ส่งได้เฉพาะเอกสารที่บันทึกแล้ว (มีเลขที่) */}
           {shareDoc && (

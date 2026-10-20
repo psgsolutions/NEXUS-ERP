@@ -45,6 +45,7 @@ import { quotationStage } from "@/lib/quotation-status";
 import { useRouter } from "next/navigation";
 import { can, type Permission } from "@/lib/permissions";
 import { OnboardingChecklist } from "@/components/guide/Onboarding";
+import { CustomerScheduleCard } from "@/components/dashboard/CustomerScheduleCard";
 
 const upper = (s: any) => String(s || "").toUpperCase();
 
@@ -186,6 +187,7 @@ export default function DashboardPage() {
       </div>
 
       <OnboardingChecklist />
+      {(has("sales:billing") || has("finance:edit")) && <CustomerScheduleCard />}
 
       {/* --- TOP METRICS & QUICK ACTIONS --- */}
       <div className="flex flex-col 2xl:flex-row justify-between w-full gap-4 2xl:gap-5">

@@ -22,6 +22,8 @@ export async function POST(request: Request) {
     const id = String(body.id || "").trim();
     if (body.type !== "sample" && (!id || id.includes("/"))) throw new ApiAuthError(400, "ไม่พบเลขที่เอกสาร");
     const doc = await def.load(companyId, id);
+    // ตัวเลือกตอนพิมพ์: ใส่วันที่ / เว้นวันที่ (เฉพาะเอกสารที่อนุญาต — ใบกำกับภาษีพิมพ์วันที่เสมอ)
+    if (doc.dateOption && (body.dateMode === "dated" || body.dateMode === "undated")) doc.date = body.dateMode === "dated" ? doc.dateOption.actual : "";
     if (body.format === "json") return NextResponse.json({ success: true, document: doc });
     const copy = body.copy === "copy" ? "copy" : "original";
     const pdf = await renderDocumentPdf(doc, copy, new URL(request.url).origin);
@@ -30,6 +32,7 @@ export async function POST(request: Request) {
         "Content-Type": "application/pdf",
         "Content-Disposition": `inline; filename="${encodeURIComponent(pdfFileName(doc, copy))}"`,
         "Cache-Control": "no-store",
+        ...(doc.dateOption ? { "X-Date-Option": encodeURIComponent(JSON.stringify({ ...doc.dateOption, undated: !doc.date })) } : {}),
       },
     });
   } catch (err: any) {

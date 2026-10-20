@@ -144,3 +144,67 @@ export function nextMonthlyDate(dayOfMonth: number, from: string): string {
   const dd = Math.min(dayOfMonth, last(yy, mm));
   return `${yy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
 }
+
+// ---------- รอบวางบิล / รับเงินของลูกค้า ----------
+
+export interface ScheduleEvent {
+  customerId: string;
+  customerName: string;
+  kind: "billing" | "payment";
+  date: string;
+  daysAway: number;
+  /** ใบแจ้งหนี้ค้างทั้งหมด / ยอดค้าง */
+  invoiceCount: number;
+  outstanding: number;
+  /** รับเงิน: ยอดที่ครบกำหนดภายในวันนั้น */
+  dueTotal: number;
+  attachments: string[];
+  billingMethod: BillingMethod;
+}
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+const dayDiff = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400e3);
+const dateStr = (v: any): string => {
+  if (!v) return "";
+  if (typeof v === "string") return v.slice(0, 10);
+  const secs = v.seconds ?? v._seconds;
+  return secs !== undefined ? new Date(secs * 1000 + 7 * 3600e3).toISOString().slice(0, 10) : "";
+};
+const openBalance = (inv: any) => {
+  if (inv.isDeleted === true || inv.isSample === true || String(inv.status || "").toLowerCase() === "cancelled") return 0;
+  const total = Number(inv.grandTotal ?? inv.totalAmount) || 0;
+  return r2(inv.balance !== undefined ? Number(inv.balance) || 0 : total - (Number(inv.paidAmount) || 0));
+};
+
+/** นัดวางบิล/รับเงินของลูกค้าที่ตั้งรอบไว้ ภายใน horizonDays วัน (เฉพาะลูกค้าที่มียอดค้าง) เรียงตามวัน */
+export function customerSchedule(customers: any[], invoices: any[], today: string, horizonDays = 31): ScheduleEvent[] {
+  const byCustomer = new Map<string, any[]>();
+  for (const inv of invoices) {
+    if (!inv?.customerId || openBalance(inv) <= 0.009) continue;
+    const k = String(inv.customerId);
+    byCustomer.set(k, [...(byCustomer.get(k) || []), inv]);
+  }
+  const events: ScheduleEvent[] = [];
+  for (const c of customers) {
+    const open = byCustomer.get(String(c.id));
+    if (!open?.length) continue;
+    const p = effectiveDocProfile(c);
+    const outstanding = r2(open.reduce((s, i) => s + openBalance(i), 0));
+    const base = { customerId: String(c.id), customerName: String(c.name || c.customerName || c.id), invoiceCount: open.length, outstanding, attachments: p.attachments, billingMethod: p.billingMethod };
+    if (p.billingDay) {
+      const date = nextMonthlyDate(p.billingDay, today);
+      const daysAway = dayDiff(today, date);
+      if (daysAway <= horizonDays) events.push({ ...base, kind: "billing", date, daysAway, dueTotal: 0 });
+    }
+    if (p.paymentDay) {
+      const date = nextMonthlyDate(p.paymentDay, today);
+      const daysAway = dayDiff(today, date);
+      const dueTotal = r2(open.filter((i) => { const d = dateStr(i.dueDate); return !d || d <= date; }).reduce((s, i) => s + openBalance(i), 0));
+      if (daysAway <= horizonDays && dueTotal > 0.009) events.push({ ...base, kind: "payment", date, daysAway, dueTotal });
+    }
+  }
+  return events.sort((a, b) => a.date.localeCompare(b.date) || a.customerName.localeCompare(b.customerName, "th"));
+}
+
+/** แจ้งเตือนล่วงหน้า: วางบิล 2 วัน, รับเงิน/เช็ค 1 วัน (รวมวันนั้นเอง) */
+export const SCHEDULE_LEAD_DAYS = { billing: 2, payment: 1 } as const;

@@ -142,6 +142,7 @@ export async function loadBillingNote(companyId: string, id: string): Promise<Do
   return {
     type: "billing_note", title: "ใบวางบิล", titleEn: "BILLING NOTE",
     number: str(d.billingNoteNo || d.documentNo || id), date: showDocDate(profile, "billingNote") ? toDateStr(d.issueDate || d.createdAt) : "",
+    dateOption: { actual: toDateStr(d.issueDate || d.createdAt), profileUndated: !showDocDate(profile, "billingNote"), customerId: str(d.customerId), docKind: "billingNote" },
     meta: [{ label: "กำหนดชำระ", value: d.dueDate ? thaiDate(d.dueDate) : "-" }, ...(d.customerPoNo ? [{ label: "เลขที่ใบสั่งซื้อ", value: str(d.customerPoNo) }] : [])],
     seller,
     party: partyOf("ลูกค้า", d.customerSnapshot, str(d.customerName)),
@@ -175,6 +176,7 @@ export async function loadReceipt(companyId: string, id: string): Promise<Docume
   return {
     type: "receipt", title: taxInv ? "ใบเสร็จรับเงิน / ใบกำกับภาษี" : "ใบเสร็จรับเงิน", titleEn: taxInv ? "RECEIPT / TAX INVOICE" : "RECEIPT",
     number: str(d.receiptNo || d.documentNo || id), date: showDocDate(profile, "receipt", { isTaxInvoice: taxInv }) ? toDateStr(d.paymentDate || d.createdAt) : "",
+    ...(taxInv ? {} : { dateOption: { actual: toDateStr(d.paymentDate || d.createdAt), profileUndated: !showDocDate(profile, "receipt"), customerId: str(d.customerId), docKind: "receipt" as const } }),
     meta: [
       { label: "ชำระโดย", value: str(d.paymentMethodLabel || d.paymentMethod) },
       ...(d.bankAccount ? [{ label: "บัญชี", value: str(d.bankAccount) }] : []),

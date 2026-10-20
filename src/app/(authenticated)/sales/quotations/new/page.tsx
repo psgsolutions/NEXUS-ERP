@@ -314,8 +314,24 @@ export default function QuotationCreationPage() {
 
   // โปรไฟล์เอกสารของลูกค้า: เลือกลูกค้าแล้วตั้งค่าเอกสารให้ตามที่องค์กรนั้นต้องการ
   const [profileNotice, setProfileNotice] = useState("");
+  // บันทึกใบนี้ด้วยประเภทราคาที่ต่างจากปกติของลูกค้า -> เสนอให้จำเป็นค่าของลูกค้า
+  const [learnPrice, setLearnPrice] = useState<"" | "EXCLUSIVE" | "INCLUSIVE">("");
+  const rememberPrice = async () => {
+    if (!selectedCustomer || !learnPrice) return;
+    try {
+      const raw = selectedCustomer.docProfile || { orgType: "PRIVATE" };
+      const res = await apiFetch("/api/master-data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "update", entity: "customers", id: selectedCustomer.id, scope: "company", changes: { docProfile: { ...raw, priceDisplay: learnPrice } } }) });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.success) throw new Error(d.error || "บันทึกไม่สำเร็จ");
+      setProfileNotice("จำแล้ว — ใบเสนอราคาครั้งต่อไปของลูกค้ารายนี้ใช้ประเภทราคานี้อัตโนมัติ");
+      setLearnPrice("");
+    } catch (e: any) {
+      setProfileNotice(e.message);
+    }
+  };
   useEffect(() => {
     setProfileNotice("");
+    setLearnPrice("");
     if (!selectedCustomer) return;
     const d = quotationDefaults({ ...effectiveDocProfile(selectedCustomer), creditTermDays: selectedCustomer.creditTermDays ?? selectedCustomer.docProfile?.creditTermDays });
     // ยังไม่มีราคา -> ตั้งประเภทราคาให้เลย, มีราคาแล้ว -> แจ้งให้ตรวจ (ไม่แปลงราคาที่กรอกไว้)
@@ -663,6 +679,7 @@ export default function QuotationCreationPage() {
       if (saved.id) setSavedQuotationId(saved.id);
       if (saved.docNo) setQuotationNumber(saved.docNo);
       if (saved.status) setStatus(saved.status);
+      if (selectedCustomer && !selectedCustomer.docProfile?.locked && (taxType === "EXCLUSIVE" || taxType === "INCLUSIVE") && taxType !== effectiveDocProfile(selectedCustomer).priceDisplay) setLearnPrice(taxType);
 
       // ส่งอีเมล / LINE: เปิดเอกสารพร้อมแผงส่ง (ส่งจริงจากแผง ไม่แจ้งสำเร็จล่วงหน้า)
       if (sendChannel === 'DOWNLOAD' || sendChannel === 'EMAIL' || sendChannel === 'LINE') {
@@ -844,6 +861,11 @@ export default function QuotationCreationPage() {
                   รูปแบบเอกสารลูกค้า: {docProfileSummary(selectedCustomer).join(" · ")}{" "}
                   <a href={`/customers/${encodeURIComponent(selectedCustomer.id)}`} target="_blank" rel="noreferrer" className="text-nexus-teal hover:underline">แก้ไข</a>
                   {profileNotice && <span className="block text-warning">{profileNotice}</span>}
+                  {learnPrice && (
+                    <button type="button" onClick={rememberPrice} className="block text-nexus-teal font-semibold hover:underline">
+                      จำ &quot;{learnPrice === "INCLUSIVE" ? "ราคารวม VAT" : "ราคาก่อน VAT"}&quot; เป็นค่าปกติของลูกค้ารายนี้
+                    </button>
+                  )}
                 </p>
               )}
             </div>

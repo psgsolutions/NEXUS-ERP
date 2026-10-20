@@ -73,6 +73,7 @@ export async function loadDeliveryNote(companyId: string, id: string): Promise<D
   return {
     type: "delivery_note", title: "ใบส่งของ", titleEn: "DELIVERY NOTE",
     number: str(d.dnNo || id), date: showDocDate(profile, "deliveryNote") ? toDateStr(d.deliveryDate || d.createdAt) : "",
+    dateOption: { actual: toDateStr(d.deliveryDate || d.createdAt), profileUndated: !showDocDate(profile, "deliveryNote"), customerId: str(d.customerId), docKind: "deliveryNote" },
     meta: [
       { label: "ใบสั่งขาย", value: str(d.soNo) },
       ...(d.customerPoNo ? [{ label: "เลขที่ใบสั่งซื้อ", value: str(d.customerPoNo) }] : []),

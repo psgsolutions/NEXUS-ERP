@@ -12,6 +12,8 @@ import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { InfoTip, WhatHappens } from "@/components/guide/Guidance";
 import { useAuth } from "@/context/AuthContext";
 import { can } from "@/lib/permissions";
+import { useCustomers } from "@/hooks/useCustomers";
+import { BILLING_LABELS, effectiveDocProfile } from "@/lib/customer-doc-profile";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { soPickRemaining } from "@/lib/picking";
 import { useSystemDialog } from "@/context/DialogContext";
@@ -45,6 +47,7 @@ export default function SalesOrderDetailPage() {
   const soDocId = decodeURIComponent(String(params.id || ""));
   const { companyId, roles } = useAuth();
   const canBill = can(roles, "sales:billing") || can(roles, "finance:edit");
+  const { data: customers } = useCustomers();
   const { showConfirm } = useSystemDialog();
   const { data: so, loading } = useRealtimeDocument<any>(companyId && soDocId ? `companies/${companyId}/sales_orders/${soDocId}` : null);
 
@@ -237,12 +240,18 @@ export default function SalesOrderDetailPage() {
     </div>
   );
 
+  // วางบิลตามที่ลูกค้ารายนี้กำหนด (โปรไฟล์เอกสารลูกค้า)
+  const billProfile = effectiveDocProfile((customers as any[]).find((c) => c.id === so?.customerId));
+  const billPrep = [
+    `วิธีวางบิลของลูกค้ารายนี้: ${BILLING_LABELS[billProfile.billingMethod]}${billProfile.billingDay ? ` · รับวางบิลวันที่ ${billProfile.billingDay}` : ""}`,
+    billProfile.attachments.length > 0 && `เตรียมเอกสารแนบ: ${billProfile.attachments.join(", ")}`,
+  ];
   const nextSteps: Record<string, (string | false)[]> = {
     DRAFT: ["กด \"อนุมัติใบสั่งขาย\" — ระบบตรวจวงเงินเครดิตของลูกค้าจากยอดค้างจริง", "แก้ไขรายการได้จนกว่าจะอนุมัติ"],
     CONFIRMED: needsPicking
       ? ["กด \"จัดของ / เบิกสินค้า\" — คลังเบิกสินค้า ตัดสต็อก และออกใบส่งของ", "เบิกครบแล้วสถานะเปลี่ยนเป็นส่งมอบ"]
       : ["กด \"บันทึกส่งมอบแล้ว\" เมื่อส่งงาน/บริการให้ลูกค้าแล้ว"],
-    DELIVERED: ["กด \"ออกใบกำกับภาษี + ใบวางบิล\" — เลขที่เรียงต่อเนื่อง ออกได้ครั้งเดียว (ยกเลิกได้โดยออกฉบับใหม่แทน)", "ตั้งยอดลูกหนี้ และส่งรายการบัญชีรายได้ + ภาษีขายให้ฝ่ายบัญชีอนุมัติ", "จากนั้นรับเงินที่ การเงินและบัญชี › รับชำระเงิน"],
+    DELIVERED: ["กด \"ออกใบกำกับภาษี + ใบวางบิล\" — เลขที่เรียงต่อเนื่อง ออกได้ครั้งเดียว (ยกเลิกได้โดยออกฉบับใหม่แทน)", ...billPrep, "ตั้งยอดลูกหนี้ และส่งรายการบัญชีรายได้ + ภาษีขายให้ฝ่ายบัญชีอนุมัติ", "จากนั้นรับเงินที่ การเงินและบัญชี › รับชำระเงิน"],
     COMPLETED: ["ออกใบกำกับภาษีแล้ว — รับเงินที่ การเงินและบัญชี › รับชำระเงิน", "ถ้าราคาหรือจำนวนผิด ให้ออกใบลดหนี้/เพิ่มหนี้ (ไม่แก้ใบกำกับเดิม)"],
   };
   const rightSidebar = (

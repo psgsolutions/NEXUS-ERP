@@ -4,9 +4,12 @@ import { can, resolveRoles } from "@/lib/permissions";
 import { inactiveReason } from "@/lib/user-status";
 import { mailConfigured, sendDigestEmail } from "@/lib/mailer.server";
 import { invoiceReminders, milestoneReminders } from "@/lib/reminders";
+import { listRecords } from "@/lib/master-store.server";
+import { BILLING_LABELS, SCHEDULE_LEAD_DAYS, customerSchedule } from "@/lib/customer-doc-profile";
 
 /**
  * แจ้งเตือนประจำวัน (เรียกจาก cron): ใบแจ้งหนี้ใกล้ครบ/เลยกำหนด + งวดงานที่ยังไม่เรียกเก็บ
+ *  + รอบวางบิล/รับเงินตามโปรไฟล์เอกสารลูกค้า (วางบิลล่วงหน้า 2 วัน, รับเงิน/เช็คล่วงหน้า 1 วัน)
  *  - แจ้งเตือนในระบบใช้ ID คงที่ต่อเหตุการณ์ (สร้างด้วย create) — รันซ้ำไม่แจ้งซ้ำ
  *  - ถ้าตั้งค่าอีเมลระบบแล้ว ส่งสรุป "รายการใหม่ของวันนี้" ให้ผู้มีสิทธิ์ดูการเงินของบริษัท (ไม่ส่งถึงลูกค้าอัตโนมัติ)
  */
@@ -27,7 +30,7 @@ export async function runBillingReminders(opts: { today: string; origin: string;
   const companies = opts.companyIds
     ? opts.companyIds.map((id) => ({ id }))
     : (await adminDb.collection("companies").select().get()).docs.map((d) => ({ id: d.id }));
-  const report: { companyId: string; invoices: number; milestones: number; created: number; emailed: number; emailError?: string }[] = [];
+  const report: { companyId: string; invoices: number; milestones: number; schedule: number; created: number; emailed: number; emailError?: string }[] = [];
 
   for (const { id: companyId } of companies) {
     const base = `companies/${companyId}`;
@@ -73,6 +76,23 @@ export async function runBillingReminders(opts: { today: string; origin: string;
       }
     }
 
+    // ---- รอบวางบิล / รับเงินของลูกค้า ----
+    const customers = await listRecords("customers", companyId).catch(() => []);
+    const schedule = customerSchedule(customers, invSnap.docs.map((d) => ({ id: d.id, ...d.data() })), opts.today, SCHEDULE_LEAD_DAYS.billing)
+      .filter((e) => e.daysAway <= SCHEDULE_LEAD_DAYS[e.kind]);
+    for (const e of schedule) {
+      const when = e.daysAway === 0 ? "วันนี้" : e.daysAway === 1 ? "พรุ่งนี้" : `อีก ${e.daysAway} วัน (${e.date})`;
+      const title = e.kind === "billing" ? `รอบวางบิล ${e.customerName} ${when}` : `${e.customerName} จ่ายเงิน/นัดรับเช็ค ${when}`;
+      const message = e.kind === "billing"
+        ? `ค้าง ${e.invoiceCount} ใบ ${money(e.outstanding)} บาท · ${BILLING_LABELS[e.billingMethod]}${e.attachments.length ? ` · แนบ: ${e.attachments.join(", ")}` : ""}`
+        : `ยอดถึงกำหนด ${money(e.dueTotal)} บาท · ตรวจรับเงิน/ไปรับเช็ค`;
+      const link = `/customers/${encodeURIComponent(e.customerId)}`;
+      const created = await createOnce(companyId, `CUSTREM-${e.kind}-${e.customerId}-${e.date}`, {
+        type: e.kind === "billing" ? "CUSTOMER_BILLING_DAY" : "CUSTOMER_PAYMENT_DAY", title, message, link, targetRoles: ["ACCOUNTANT", "SALES"],
+      }, { targetDocId: e.customerId });
+      if (created) fresh.push({ text: `${title} — ${message}`, link: `${opts.origin}${link}` });
+    }
+
     // ---- อีเมลสรุปรายการใหม่ ----
     let emailed = 0, emailError: string | undefined;
     if (opts.sendEmail !== false && fresh.length && mailConfigured()) {
@@ -85,7 +105,7 @@ export async function runBillingReminders(opts: { today: string; origin: string;
           await sendDigestEmail({
             to, senderName: String(company.data()?.name || "NEXUS ERP"),
             subject: `รายการต้องติดตามวันที่ ${opts.today} (${fresh.length} รายการ)`,
-            intro: "รายการที่ต้องติดตามใหม่วันนี้ (ใบแจ้งหนี้ใกล้ครบ/เลยกำหนด และงวดงานที่ยังไม่เรียกเก็บ)", items: fresh,
+            intro: "รายการที่ต้องติดตามใหม่วันนี้ (ใบแจ้งหนี้ใกล้ครบ/เลยกำหนด งวดงานที่ยังไม่เรียกเก็บ และรอบวางบิล/รับเงินของลูกค้า)", items: fresh,
           });
           emailed = to.length;
         } catch (e: any) {
@@ -94,7 +114,7 @@ export async function runBillingReminders(opts: { today: string; origin: string;
         }
       }
     }
-    report.push({ companyId, invoices: invs.length, milestones: milestoneCount, created: fresh.length, emailed, ...(emailError ? { emailError } : {}) });
+    report.push({ companyId, invoices: invs.length, milestones: milestoneCount, schedule: schedule.length, created: fresh.length, emailed, ...(emailError ? { emailError } : {}) });
   }
   return report;
 }

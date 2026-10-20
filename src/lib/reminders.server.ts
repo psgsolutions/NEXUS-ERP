@@ -6,10 +6,12 @@ import { mailConfigured, sendDigestEmail } from "@/lib/mailer.server";
 import { invoiceReminders, milestoneReminders } from "@/lib/reminders";
 import { listRecords } from "@/lib/master-store.server";
 import { BILLING_LABELS, SCHEDULE_LEAD_DAYS, customerSchedule } from "@/lib/customer-doc-profile";
+import { contractReminders } from "@/lib/gov-contract";
 
 /**
  * แจ้งเตือนประจำวัน (เรียกจาก cron): ใบแจ้งหนี้ใกล้ครบ/เลยกำหนด + งวดงานที่ยังไม่เรียกเก็บ
  *  + รอบวางบิล/รับเงินตามโปรไฟล์เอกสารลูกค้า (วางบิลล่วงหน้า 2 วัน, รับเงิน/เช็คล่วงหน้า 1 วัน)
+ *  + สัญญาโครงการ: ใกล้ครบ/เลยกำหนดส่งมอบ (ค่าปรับ), หลักประกันใกล้หมดอายุ, ถึงเวลาขอคืนหลักประกัน
  *  - แจ้งเตือนในระบบใช้ ID คงที่ต่อเหตุการณ์ (สร้างด้วย create) — รันซ้ำไม่แจ้งซ้ำ
  *  - ถ้าตั้งค่าอีเมลระบบแล้ว ส่งสรุป "รายการใหม่ของวันนี้" ให้ผู้มีสิทธิ์ดูการเงินของบริษัท (ไม่ส่งถึงลูกค้าอัตโนมัติ)
  */
@@ -30,7 +32,7 @@ export async function runBillingReminders(opts: { today: string; origin: string;
   const companies = opts.companyIds
     ? opts.companyIds.map((id) => ({ id }))
     : (await adminDb.collection("companies").select().get()).docs.map((d) => ({ id: d.id }));
-  const report: { companyId: string; invoices: number; milestones: number; schedule: number; created: number; emailed: number; emailError?: string }[] = [];
+  const report: { companyId: string; invoices: number; milestones: number; schedule: number; contracts: number; created: number; emailed: number; emailError?: string }[] = [];
 
   for (const { id: companyId } of companies) {
     const base = `companies/${companyId}`;
@@ -76,6 +78,24 @@ export async function runBillingReminders(opts: { today: string; origin: string;
       }
     }
 
+    // ---- สัญญาโครงการ ----
+    let contractCount = 0;
+    for (const p of prjSnap.docs) {
+      const project = p.data();
+      if (!project.contract || String(project.status || "").toLowerCase() === "cancelled") continue;
+      const projectNo = String(project.projectCode || project.projectNo || p.id);
+      const rs = contractReminders(projectNo, project.contract, opts.today);
+      contractCount += rs.length;
+      for (const r of rs) {
+        const delivery = r.kind === "due_soon" || r.kind === "overdue";
+        const link = `/projects/${encodeURIComponent(p.id)}?tab=contract`;
+        const n: NotificationInput = { type: `CONTRACT_${r.kind.toUpperCase()}`, title: r.title, message: r.message, link, targetRoles: delivery ? ["ENGINEER", "EXECUTIVE"] : ["ACCOUNTANT", "EXECUTIVE"], documentNo: projectNo };
+        const created = await createOnce(companyId, `CTREM-${p.id}-${r.key}`, n, { targetDocId: p.id });
+        if (delivery && project.projectManagerUid) await createOnce(companyId, `CTREM-${p.id}-${r.key}-pm`, { ...n, targetRoles: [], targetUserId: String(project.projectManagerUid) }, { targetDocId: p.id });
+        if (created) fresh.push({ text: `${r.title} — ${r.message}`, link: `${opts.origin}${link}` });
+      }
+    }
+
     // ---- รอบวางบิล / รับเงินของลูกค้า ----
     const customers = await listRecords("customers", companyId).catch(() => []);
     const schedule = customerSchedule(customers, invSnap.docs.map((d) => ({ id: d.id, ...d.data() })), opts.today, SCHEDULE_LEAD_DAYS.billing)
@@ -114,7 +134,7 @@ export async function runBillingReminders(opts: { today: string; origin: string;
         }
       }
     }
-    report.push({ companyId, invoices: invs.length, milestones: milestoneCount, schedule: schedule.length, created: fresh.length, emailed, ...(emailError ? { emailError } : {}) });
+    report.push({ companyId, invoices: invs.length, milestones: milestoneCount, schedule: schedule.length, contracts: contractCount, created: fresh.length, emailed, ...(emailError ? { emailError } : {}) });
   }
   return report;
 }

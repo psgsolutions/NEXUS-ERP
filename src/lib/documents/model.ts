@@ -72,6 +72,8 @@ export interface DocumentModel {
   number: string;
   date: string; // YYYY-MM-DD ("" = พิมพ์เว้นวันที่ให้ลูกค้าลงเอง ตามโปรไฟล์เอกสารของลูกค้า)
   /** เอกสารที่เลือกพิมพ์แบบเว้นวันที่ได้ (ใบวางบิล ใบส่งของ ใบเสร็จที่ไม่ใช่ใบกำกับภาษี) — ใช้กับตัวเลือกตอนพิมพ์และการจำค่าให้ลูกค้า */
+  /** หนังสือ (ขอเข้าพื้นที่ / ส่งมอบงาน / ขอคืนหลักประกัน) — มีค่านี้ใช้รูปแบบหนังสือแทนเอกสารมาตรฐาน */
+  letter?: { to: string; subject: string; refs: string[]; attachments: string[]; body: string[]; signerName?: string; signerTitle?: string };
   dateOption?: { actual: string; profileUndated: boolean; customerId: string; docKind: "billingNote" | "deliveryNote" | "receipt" };
   /** แถวข้อมูลด้านขวาเพิ่มเติม เช่น ครบกำหนด อ้างอิง */
   meta: { label: string; value: string }[];

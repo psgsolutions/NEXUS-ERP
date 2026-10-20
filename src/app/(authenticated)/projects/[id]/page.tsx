@@ -15,6 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { ChangeOrdersPanel } from "@/components/projects/ChangeOrdersPanel";
+import { ContractPanel } from "@/components/projects/ContractPanel";
 import { ProjectBillingPanel } from "@/components/projects/ProjectBillingPanel";
 import { ProjectCostPanel } from "@/components/projects/ProjectCostPanel";
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
@@ -364,6 +365,7 @@ export default function ProjectDetailPage() {
           { id: "boq", label: `รายการ (${lines.filter((l: any) => l.kind !== "GROUP").length})`, icon: <Package size={14} /> },
           { id: "finance", label: "งบประมาณ", icon: <Wallet size={14} /> },
           ...(!isLegacy ? [{ id: "billing", label: "เรียกเก็บเงิน", icon: <Receipt size={14} /> }] : []),
+          ...(!isLegacy ? [{ id: "contract", label: "สัญญา & หลักประกัน", icon: <ShieldCheck size={14} /> }] : []),
           { id: "docs", label: "เอกสารบังคับ", icon: <FileText size={14} /> },
           { id: "changes", label: `เปลี่ยนแปลง${Number(p.pendingChangeOrders) > 0 ? ` · รอ ${p.pendingChangeOrders}` : ""}`, icon: <GitPullRequest size={14} /> },
           { id: "history", label: "ประวัติ", icon: <History size={14} /> },
@@ -375,6 +377,7 @@ export default function ProjectDetailPage() {
       {tab === "boq" && boq}
       {tab === "finance" && finance}
       {tab === "billing" && !isLegacy && <ProjectBillingPanel companyId={companyId || ""} docId={docId} customerId={p.customerId} />}
+      {tab === "contract" && !isLegacy && companyId && <ContractPanel companyId={companyId} docId={docId} project={p} canEdit={can(roles, "projects:edit") || can(roles, "finance:edit")} />}
       {tab === "docs" && docs}
       {tab === "changes" && (
         <ChangeOrdersPanel

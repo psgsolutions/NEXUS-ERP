@@ -2,9 +2,11 @@ import React from "react";
 import type { CopyMode, DocumentModel } from "@/lib/documents/model";
 import { StandardDocument, registerDocumentFonts } from "./StandardDocument";
 import { Wht50Document } from "./Wht50Document";
+import { LetterDocument } from "./LetterDocument";
 
-/** เลือกเทมเพลตตามเอกสาร: แบบฟอร์มทางราชการ (50 ทวิ) หรือเทมเพลตมาตรฐาน */
+/** เลือกเทมเพลตตามเอกสาร: หนังสือ, แบบฟอร์มทางราชการ (50 ทวิ) หรือเทมเพลตมาตรฐาน */
 export function DocumentPdf({ doc, copy = "original" }: { doc: DocumentModel; copy?: CopyMode }) {
+  if (doc.letter) return <LetterDocument doc={doc} />;
   return doc.wht50 ? <Wht50Document doc={doc} copy={copy} /> : <StandardDocument doc={doc} copy={copy} />;
 }
 

@@ -20,7 +20,7 @@ const addDays = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400e3).t
   for (const [k, uid] of Object.entries(U)) await db.doc(`users/${uid}`).set({ companyId: C, roles: ROLES[k], role: ROLES[k][0], status: "ACTIVE", onboarding: { welcomed: true } });
   const toks = {}; for (const [k, uid] of Object.entries(U)) toks[k] = await tok(uid);
   const call = (who, url, b) => fetch(E2E_BASE + url, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + toks[who] }, body: JSON.stringify({ companyId: C, ...b }) }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => ({})) }));
-  const made = { customer: "", quotations: [], project: `${M}-PRJ`, bn: `${M}-BN`, inv: `${M}-IV`, prs: [] };
+  const made = { customer: "", quotations: [], project: `${M}-PRJ`, bn: `${M}-BN`, inv: `${M}-IV`, prs: [], advances: [] };
   try {
     // ---- โปรไฟล์เอกสารลูกค้า ----
     const cust = await call("eng", "/api/master-data", { action: "create", entity: "customers", data: { name: `${M} กรมทดสอบ`, taxId: `0994${T}` } });
@@ -84,10 +84,23 @@ const addDays = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400e3).t
     ok("engineer creates PR linked to project; cannot create PO", pr.status === 200 && prDoc?.data().projectId === made.project, JSON.stringify(pr.body));
     const po = await call("eng", "/api/procurement/purchase-orders", { action: "create", header: {}, items: [] });
     ok("engineer cannot create purchase orders", po.status === 403, String(po.status));
+
+    // ---- เงินทดรองจ่าย ----
+    const adv = await call("eng", "/api/finance/cash-advances", { action: "request", amount: 2000, purpose: `${M} ซื้ออุปกรณ์หน้างาน`, projectId: made.project, requesterName: "TEST วิศวกร" });
+    if (adv.body.advanceNo) made.advances.push(adv.body.advanceNo);
+    const engPay = await call("eng", "/api/finance/cash-advances", { action: "pay", id: adv.body.advanceNo, method: "CASH" });
+    const finPay = await call("fin", "/api/finance/cash-advances", { action: "pay", id: adv.body.advanceNo, method: "CASH", paymentDate: today });
+    ok("engineer requests advance, only finance pays", adv.status === 200 && engPay.status === 403 && finPay.status === 200, JSON.stringify([adv.body, engPay.status, finPay.body]));
+    const clr = await call("eng", "/api/finance/cash-advances", { action: "clear", id: adv.body.advanceNo, clearDate: today, items: [{ description: "สายไฟ", amount: 1070, vat: 70, taxInvoiceNo: "TEST-IV" }, { description: "น้ำมัน", amount: 500, vat: 0 }] });
+    const advJ = (await db.collection(`companies/${C}/journal_entries`).where("reference", "==", adv.body.advanceNo || "-").get()).docs.map((d) => d.data());
+    const clearJ = advJ.find((j) => j.bookType === "JV");
+    const line = (code) => clearJ?.items.find((l) => l.accountCode === code);
+    ok("clearing: WIP 1,500 to project, input VAT 70, refund 430, credit advance 2,000", clr.status === 200 && clr.body.difference === 430 && advJ.length === 2 && line("1161-00")?.debit === 1500 && line("1151-00")?.debit === 70 && line("1111-00")?.debit === 430 && line("1134-00")?.credit === 2000 && clearJ.projectId === made.project, JSON.stringify({ clr: clr.body, items: clearJ?.items }));
   } catch (e) { fails++; console.log("ERROR", e); } finally {
     const del = async (q) => { for (const d of (await q.get()).docs) await d.ref.delete(); };
     for (const id of made.quotations) { for (const sub of ["lines", "audit_logs"]) await del(db.collection(`companies/${C}/quotations/${id}/${sub}`)); await db.doc(`companies/${C}/quotations/${id}`).delete(); }
     for (const r of made.prs) await r.delete();
+    for (const no of made.advances) { await del(db.collection(`companies/${C}/journal_entries`).where("reference", "==", no)); await db.doc(`companies/${C}/cash_advances/${no}`).delete(); }
     await db.doc(`companies/${C}/billing_notes/${made.bn}`).delete(); await db.doc(`companies/${C}/invoices/${made.inv}`).delete(); await db.doc(`companies/${C}/projects/${made.project}`).delete();
     const notes = (await db.collection(`companies/${C}/notifications`).get()).docs.filter((d) => { const x = d.data(); return [made.customer, made.project, made.inv, ...made.quotations].some((id) => id && (d.id.includes(id) || String(x.link || "").includes(id) || x.targetDocId === id)); });
     for (const d of notes) await d.ref.delete();

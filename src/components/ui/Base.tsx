@@ -125,7 +125,8 @@ export function PillSelect({ className, children, value, onChange, placeholder =
     return null;
   })?.filter(Boolean) || [];
 
-  const selectedOption = options.find(opt => opt.value === value && opt.value !== "");
+  // เทียบแบบข้อความ (ตัวเลือกตัวเลข 1 ต้องตรงกับค่า "1") และแสดงตัวเลือกค่าว่างได้ (เช่น "ไม่ระบุ" / "ตามค่าตั้งต้น")
+  const selectedOption = options.find(opt => String(opt.value ?? "") === String(value ?? "") && (opt.value !== "" || opt.label !== undefined));
 
   useEffect(() => {
     setHighlightedIndex(-1);

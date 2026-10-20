@@ -16,12 +16,16 @@ export interface JournalLine { accountCode: string; accountName: string; debit: 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
 export function normalizeClearItems(raw: any): ClearItem[] {
-  return (Array.isArray(raw) ? raw : []).slice(0, 50).map((x: any) => ({
-    description: String(x?.description ?? "").trim().slice(0, 200),
-    amount: r2(Math.max(0, Number(x?.amount) || 0)),
-    vat: r2(Math.max(0, Number(x?.vat) || 0)),
-    taxInvoiceNo: String(x?.taxInvoiceNo ?? "").trim().slice(0, 60) || undefined,
-  })).filter((x) => x.description && x.amount > 0);
+  return (Array.isArray(raw) ? raw : []).slice(0, 50).map((x: any) => {
+    const taxInvoiceNo = String(x?.taxInvoiceNo ?? "").trim().slice(0, 60);
+    // ไม่ใส่คีย์ที่ว่าง (Firestore ไม่รับค่า undefined)
+    return {
+      description: String(x?.description ?? "").trim().slice(0, 200),
+      amount: r2(Math.max(0, Number(x?.amount) || 0)),
+      vat: r2(Math.max(0, Number(x?.vat) || 0)),
+      ...(taxInvoiceNo ? { taxInvoiceNo } : {}),
+    } as ClearItem;
+  }).filter((x) => x.description && x.amount > 0);
 }
 
 /**

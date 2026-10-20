@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { companyId, items, paymentMethod, cashReceived, discount, paymentRef, customer } = body as POSCheckoutPayload;
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.roles, "sales:edit")) throw new ApiAuthError(403, "ขายหน้าร้านได้เฉพาะฝ่ายขาย");
+    if (!can(apiUser.roles, "sales:billing")) throw new ApiAuthError(403, "ขายหน้าร้านได้เฉพาะผู้มีสิทธิ์ออกใบเสร็จ");
     const userId = apiUser.email || apiUser.uid;
 
     // 1. Tenant & Field Validation

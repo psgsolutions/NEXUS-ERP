@@ -93,7 +93,7 @@ export default function DashboardPage() {
     const rows = [
       { show: has("procurement:approve"), label: "ใบขอซื้อรออนุมัติ", href: "/procurement", ...count(purchaseRequests, (x) => upper(x.status) === "PENDING_APPROVAL") },
       { show: has("procurement:approve"), label: "ใบสั่งซื้อรออนุมัติ", href: "/procurement", ...count(purchaseOrders, (x) => normalizePoStatus(x.status) === "PENDING_APPROVAL") },
-      { show: has("sales:approve") || has("sales:edit"), label: "ใบเสนอราคารออนุมัติ", href: "/sales?tab=quotations&status=pending", ...count(quotations, (x) => quotationStage(x) === "pending") },
+      { show: has("sales:approve") || has("sales:quote_approve") || has("sales:edit"), label: "ใบเสนอราคารออนุมัติ", href: "/sales?tab=quotations&status=pending", ...count(quotations, (x) => quotationStage(x) === "pending") },
       { show: has("finance:post"), label: "รายการบัญชีรอลงบัญชี", href: "/finance", ...count(journals, (x) => String(x.status || "").toLowerCase() === "draft") },
       { show: has("service:field") || has("projects:edit"), label: "ใบงานช่างที่ยังเปิดอยู่", href: "/mobile/technician/work-orders", ...count(workOrders, (x) => ["ASSIGNED", "IN_PROGRESS"].includes(upper(x.status))) },
     ];

@@ -23,7 +23,7 @@ import {
   QUOTATION_STATUS_LABELS,
   QUOTATION_STATUS_COLORS
 } from "@/lib/erp-logic";
-import { canViewCost } from "@/lib/permissions";
+import { can, canApproveQuotation, canViewCost, quotationApprovalLimit } from "@/lib/permissions";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
@@ -862,11 +862,15 @@ export default function QuotationEditPage() {
         </PillButton>
 
         {/* Manager/Admin Approval Gate Buttons */}
-        {status === "PENDING_APPROVAL" && ['ADMIN', 'MANAGER', 'SUPERADMIN'].includes(role || '') && (
+        {status === "PENDING_APPROVAL" && (can(roles, "sales:approve") || can(roles, "sales:quote_approve")) && (
           <div className="flex items-center gap-2 border-r border-white/10 pr-2 mr-1">
-            <PillButton variant="confirm" onClick={() => handleApprovalAction("SENT")} disabled={isApproving} className="h-8 px-4 text-xs font-bold text-emerald-400 border-emerald-500/40">
-              <CheckCircle2 size={14} className="mr-1.5" /> อนุมัติเอกสาร
-            </PillButton>
+            {canApproveQuotation(roles, summary.grandTotal) ? (
+              <PillButton variant="confirm" onClick={() => handleApprovalAction("SENT")} disabled={isApproving} className="h-8 px-4 text-xs font-bold text-emerald-400 border-emerald-500/40">
+                <CheckCircle2 size={14} className="mr-1.5" /> อนุมัติเอกสาร
+              </PillButton>
+            ) : (
+              <span className="text-[12px] text-warning" title="ต้องให้ผู้บริหารอนุมัติ">เกินวงเงินอนุมัติของคุณ ({quotationApprovalLimit(roles).toLocaleString("th-TH")} บาท)</span>
+            )}
             <PillButton variant="glass" onClick={() => handleApprovalAction("REJECTED")} disabled={isApproving} className="h-8 px-4 text-xs font-bold text-rose-400 border-rose-500/40 hover:bg-rose-500/10">
               <XCircle size={14} className="mr-1.5" /> ปฏิเสธ (ส่งกลับแก้ไข)
             </PillButton>

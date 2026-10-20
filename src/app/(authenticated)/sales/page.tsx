@@ -796,7 +796,7 @@ export default function SalesPage() {
                           date={cndn.date}
                           total={cndn.total}
                           status={cndn.status}
-                          canCancel={cndn.cancellable && (can(roles, "sales:edit") || can(roles, "finance:edit"))}
+                          canCancel={cndn.cancellable && (can(roles, "sales:billing") || can(roles, "finance:edit"))}
                           onCancel={() => setCndnCancel({ docId: cndn.docId, no: cndn.id, reason: "" })}
                           onClick={() => setSelectedItem(cndn)}
                         />

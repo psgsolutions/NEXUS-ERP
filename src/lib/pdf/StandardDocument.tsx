@@ -118,7 +118,7 @@ export function StandardDocument({ doc, copy = "original" }: { doc: DocumentMode
             <T style={[s.copyBox, { borderColor: brand, color: brand }]}>{copy === "copy" ? "สำเนา" : "ต้นฉบับ"}</T>
             <View style={{ marginTop: 6 }}>
               <View style={s.metaRow}><T style={s.metaLabel}>เลขที่</T><T style={s.metaValue}>{doc.number || "-"}</T></View>
-              <View style={s.metaRow}><T style={s.metaLabel}>วันที่</T><T style={s.metaValue}>{thaiDate(doc.date)}</T></View>
+              <View style={s.metaRow}><T style={s.metaLabel}>วันที่</T><T style={s.metaValue}>{doc.date ? thaiDate(doc.date) : "......../......../........"}</T></View>
               {doc.meta.map((m) => (
                 <View key={m.label} style={s.metaRow}><T style={s.metaLabel}>{m.label}</T><T style={s.metaValue}>{m.value || "-"}</T></View>
               ))}

@@ -50,7 +50,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
     return NextResponse.json({
       success: true,
       document: {
-        title: doc.title, number: doc.number, date: thaiDate(doc.date),
+        title: doc.title, number: doc.number, date: doc.date ? thaiDate(doc.date) : "-",
         seller: { name: doc.seller.name, phone: doc.seller.phone || "", email: doc.seller.email || "", logo: doc.seller.logo || "", brandColor: doc.seller.brandColor || "" },
         partyName: doc.party?.name || "", total: grand ? grand.amount : null, totalLabel: grand?.label || "",
         cancelled: doc.watermark === "ยกเลิก", formCopies: !!doc.wht50,

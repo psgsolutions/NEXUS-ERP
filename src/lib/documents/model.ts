@@ -70,7 +70,7 @@ export interface DocumentModel {
   title: string;
   titleEn?: string;
   number: string;
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD ("" = พิมพ์เว้นวันที่ให้ลูกค้าลงเอง ตามโปรไฟล์เอกสารของลูกค้า)
   /** แถวข้อมูลด้านขวาเพิ่มเติม เช่น ครบกำหนด อ้างอิง */
   meta: { label: string; value: string }[];
   seller: DocumentProfile;

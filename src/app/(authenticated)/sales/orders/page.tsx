@@ -7,6 +7,7 @@ import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { PillButton, NexusTable, NexusTableRow, NexusTableCell, NexusSearchInput, StatusBadge, GlassCard } from "@/components/ui/Base";
 import { Plus, FileCheck, Calendar, Building2, Search, DollarSign, Clock, CheckCircle2, Truck, PackageCheck, FileText } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { can } from "@/lib/permissions";
 import { useSystemDialog } from "@/context/DialogContext";
 
 // สถานะจากหลายแหล่ง (Draft/Confirmed/COMPLETED/delivered) → OPEN / DELIVERED / COMPLETED / DRAFT / CANCELLED
@@ -21,7 +22,8 @@ function normalizeSoStatus(status: string) {
 
 export default function SalesOrderDashboardPage() {
   const router = useRouter();
-  const { companyId, user } = useAuth();
+  const { companyId, user, roles } = useAuth();
+  const canBill = can(roles, "sales:billing") || can(roles, "finance:edit");
   const { showAlert } = useSystemDialog();
   const [searchTerm, setSearchTerm] = useState("");
   // ใบสั่งขายจริงเก็บที่ companies/{companyId}/sales_orders; ปรับชื่อฟิลด์ที่ต่างกันตามแหล่งที่สร้างให้เป็นแบบเดียว
@@ -186,7 +188,7 @@ export default function SalesOrderDashboardPage() {
                         >
                           เปิดดู
                         </PillButton>
-                        {(so.status === 'DELIVERED' || so.status === 'delivered') && (
+                        {canBill && (so.status === 'DELIVERED' || so.status === 'delivered') && (
                           <PillButton 
                             variant="save"
                             className="h-8 px-4 text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 backdrop-blur-md hover:bg-emerald-500/30"

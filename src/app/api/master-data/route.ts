@@ -6,6 +6,7 @@ import { can } from "@/lib/permissions";
 import { canEditMaster, companiesInGroup, groupIdOfCompany } from "@/lib/company-group.server";
 import { processStockMovements } from "@/lib/stock-service";
 import { LEGACY_ROOT } from "@/lib/master-store.server";
+import { normalizeDocProfile } from "@/lib/customer-doc-profile";
 import { MASTER_SCHEMAS, isMasterEntity, mergeRecord, splitChanges, uniqueKeyDocId, uniqueKeyValue, type EditScope, type MasterEntity } from "@/lib/master-data";
 
 /**
@@ -19,6 +20,7 @@ import { MASTER_SCHEMAS, isMasterEntity, mergeRecord, splitChanges, uniqueKeyDoc
  * สินค้าที่ยังอยู่ root products (ก่อนย้ายข้อมูล): get/update ทำงานกับเอกสารเดิม
  *  - { action: "adopt", entity, id, data? }                ใช้รายการกลางที่มีอยู่แล้วในบริษัทนี้ (ตั้งค่าของบริษัทได้)
  *  - { action: "update", entity, id, changes, scope }      scope "group" = แก้ค่ากลาง / "company" = ตั้งค่าของบริษัท
+ *      ลูกค้า: changes.docProfile = โปรไฟล์เอกสาร (ของบริษัทเสมอ; แก้เฉพาะ docProfile ได้ด้วยสิทธิ์ finance:edit)
  *  - { action: "resetLocal", entity, id, fields }          ล้างค่าของบริษัท กลับไปใช้ค่ากลาง
  *  - { action: "remove", entity, id }                      ซ่อนรายการของบริษัท (isDeleted) — ข้อมูลกลางของเครือยังอยู่ ใช้ "adopt" นำกลับได้
  * entity: products | customers | suppliers | contractors
@@ -169,7 +171,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, duplicates: hits });
     }
 
-    if (!can(apiUser.roles, schema.editPermission)) throw new ApiAuthError(403, `ไม่มีสิทธิ์แก้ไขข้อมูล${schema.label}`);
+    // โปรไฟล์เอกสารลูกค้า (เฉพาะฟิลด์ docProfile ของบริษัท): แอดมินการเงินตั้งรูปแบบวางบิล/รับเงินได้ แม้ไม่มีสิทธิ์งานขาย
+    const changeKeys = body.changes && typeof body.changes === "object" ? Object.keys(body.changes) : [];
+    const profileOnly = action === "update" && entity === "customers" && changeKeys.length === 1 && changeKeys[0] === "docProfile";
+    if (!can(apiUser.roles, schema.editPermission) && !(profileOnly && can(apiUser.roles, "finance:edit"))) throw new ApiAuthError(403, `ไม่มีสิทธิ์แก้ไขข้อมูล${schema.label}`);
+    if (entity === "customers" && body.changes?.docProfile !== undefined) {
+      // ตรวจค่าที่ server และบันทึกผู้แก้ล่าสุด (โปรไฟล์อยู่ที่ข้อมูลของบริษัทเสมอ)
+      body.changes.docProfile = { ...normalizeDocProfile(body.changes.docProfile), updatedBy: apiUser.email || apiUser.uid, updatedAt: new Date().toISOString() };
+      body.scope = "company";
+    }
 
     if (action === "create") {
       const data = normalizeParty(entity, clean(body.data || {}));
@@ -263,7 +273,9 @@ export async function POST(request: Request) {
           tx.create(masterCol.doc(id).collection("history").doc(), historyEntry(apiUser, companyId, "update", master));
         }
         if (Object.keys(local).length) {
-          tx.set(localCol.doc(id), { ...local, companyId, groupId, updatedAt: now, updatedBy: apiUser.uid }, { merge: true });
+          const localData = { ...local, companyId, groupId, updatedAt: now, updatedBy: apiUser.uid };
+          // docProfile แทนที่ทั้งก้อน (merge ปกติจะเก็บค่าย่อยที่ผู้ใช้ลบออกไว้)
+          tx.set(localCol.doc(id), localData, "docProfile" in local ? { mergeFields: Object.keys(localData) } : { merge: true });
         }
       });
       return NextResponse.json({ success: true, id, updatedMaster: Object.keys(master), updatedLocal: Object.keys(local), ignored });

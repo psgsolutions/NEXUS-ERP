@@ -61,7 +61,7 @@ export default function POSPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [flash, setFlash] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
-  const canSell = can(roles, "sales:edit");
+  const canSell = can(roles, "sales:billing");
 
   useEffect(() => { try { setHeld(JSON.parse(localStorage.getItem(HOLD_KEY) || "[]")); } catch { setHeld([]); } }, []);
   const saveHeld = (list: any[]) => { setHeld(list); try { localStorage.setItem(HOLD_KEY, JSON.stringify(list)); } catch { /* ไม่มีพื้นที่เก็บในเครื่อง */ } };

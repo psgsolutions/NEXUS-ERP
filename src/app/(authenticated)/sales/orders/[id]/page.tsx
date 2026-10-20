@@ -11,6 +11,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { InfoTip, WhatHappens } from "@/components/guide/Guidance";
 import { useAuth } from "@/context/AuthContext";
+import { can } from "@/lib/permissions";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { soPickRemaining } from "@/lib/picking";
 import { useSystemDialog } from "@/context/DialogContext";
@@ -42,7 +43,8 @@ export default function SalesOrderDetailPage() {
   const router = useRouter();
   const params = useParams();
   const soDocId = decodeURIComponent(String(params.id || ""));
-  const { companyId } = useAuth();
+  const { companyId, roles } = useAuth();
+  const canBill = can(roles, "sales:billing") || can(roles, "finance:edit");
   const { showConfirm } = useSystemDialog();
   const { data: so, loading } = useRealtimeDocument<any>(companyId && soDocId ? `companies/${companyId}/sales_orders/${soDocId}` : null);
 
@@ -151,7 +153,10 @@ export default function SalesOrderDetailPage() {
             <Truck size={14} className="mr-1.5" /> บันทึกส่งมอบแล้ว
           </PillButton>
         )}
-        {status === "DELIVERED" && (
+        {status === "DELIVERED" && !canBill && (
+          <span className="text-[12px] text-white/60">ส่งมอบแล้ว — รอแอดมินการเงินออกใบกำกับภาษี/วางบิล</span>
+        )}
+        {status === "DELIVERED" && canBill && (
           <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={issueTaxInvoice}>
             <FileText size={14} className="mr-1.5" /> ออกใบกำกับภาษี + ใบวางบิล
           </PillButton>

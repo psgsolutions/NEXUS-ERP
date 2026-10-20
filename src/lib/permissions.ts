@@ -12,6 +12,9 @@ export type Role =
 export type Permission =
   | "dashboard:executive"
   | "sales:view" | "sales:edit" | "sales:delete" | "sales:approve" | "sales:cost"
+  // sales:billing = ออกใบกำกับภาษี/ใบแจ้งหนี้ ใบวางบิล ใบเสร็จ ใบลดหนี้/เพิ่มหนี้ ขายหน้าร้าน (แยกจากการทำใบเสนอราคา)
+  // sales:quote_approve = อนุมัติใบเสนอราคาได้ไม่เกินวงเงินของตำแหน่ง (quotationApprovalLimit)
+  | "sales:billing" | "sales:quote_approve"
   | "inventory:view" | "inventory:edit" | "inventory:delete"
   | "procurement:view" | "procurement:edit" | "procurement:approve"
   | "projects:view" | "projects:edit" | "projects:delete" | "projects:approve"
@@ -24,7 +27,7 @@ export type Permission =
 
 export const ALL_PERMISSIONS: Permission[] = [
   "dashboard:executive",
-  "sales:view", "sales:edit", "sales:delete", "sales:approve", "sales:cost",
+  "sales:view", "sales:edit", "sales:delete", "sales:approve", "sales:cost", "sales:billing", "sales:quote_approve",
   "inventory:view", "inventory:edit", "inventory:delete",
   "procurement:view", "procurement:edit", "procurement:approve",
   "projects:view", "projects:edit", "projects:delete", "projects:approve",
@@ -46,10 +49,11 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ACCOUNTANT: ["finance:view", "finance:edit", "finance:delete", "finance:post", "sales:view", "sales:cost", "procurement:view", "procurement:approve", "inventory:view", "hr:view", "logs:view"],
   // จัดซื้อ: ใบขอซื้อ/ใบสั่งซื้อ คู่ค้า รับสินค้า (อนุมัติไม่ได้)
   PURCHASING: ["procurement:view", "procurement:edit", "inventory:view", "inventory:edit"],
-  // ฝ่ายขาย: ลูกค้า ใบเสนอราคา ใบสั่งขาย ดูสต็อก (ไม่เห็นต้นทุน)
-  SALES: ["sales:view", "sales:edit", "sales:delete", "projects:view", "inventory:view"],
-  // วิศวกร/โครงการ: โครงการ ใบสั่งงาน เบิกของ ดูสต็อก
-  ENGINEER: ["projects:view", "projects:edit", "sales:view", "inventory:view", "inventory:edit"],
+  // ฝ่ายขาย: ลูกค้า ใบเสนอราคา ใบสั่งขาย ออกใบกำกับ/วางบิล/รับชำระ ดูสต็อก (ไม่เห็นต้นทุน)
+  SALES: ["sales:view", "sales:edit", "sales:delete", "sales:billing", "projects:view", "inventory:view"],
+  // วิศวกร/โครงการ: ทำทุกอย่างของงาน (ลูกค้า ใบเสนอราคา+ต้นทุน อนุมัติใบเสนอราคาไม่เกินวงเงิน โครงการ ขอซื้อ งานบริการ/MA เบิกของ)
+  // ยกเว้นงานบัญชี การออกใบสั่งซื้อ และการออกใบกำกับ/วางบิล/รับเงิน (ให้แอดมินการเงินทำ)
+  ENGINEER: ["projects:view", "projects:edit", "sales:view", "sales:edit", "sales:cost", "sales:quote_approve", "procurement:view", "inventory:view", "inventory:edit"],
   // คลังสินค้า: รับ/เบิก/โอน ตรวจนับ ดูใบสั่งซื้อ
   WAREHOUSE: ["inventory:view", "inventory:edit", "procurement:view"],
   // บุคคล: พนักงาน เวลาทำงาน เงินเดือน
@@ -65,8 +69,8 @@ export const ASSIGNABLE_ROLES: { value: Role; label: string; description: string
   { value: "ADMIN", label: "ผู้ดูแลระบบ", description: "จัดการผู้ใช้และตั้งค่าระบบ" },
   { value: "ACCOUNTANT", label: "บัญชี", description: "เอกสารบัญชี รับ-จ่ายเงิน ลงบัญชี ยื่นภาษี อนุมัติซื้อ" },
   { value: "PURCHASING", label: "จัดซื้อ", description: "ใบขอซื้อ ใบสั่งซื้อ คู่ค้า รับสินค้า" },
-  { value: "SALES", label: "ฝ่ายขาย", description: "ลูกค้า ใบเสนอราคา ใบสั่งขาย" },
-  { value: "ENGINEER", label: "วิศวกร/โครงการ", description: "โครงการ ใบสั่งงาน เบิกของ" },
+  { value: "SALES", label: "ฝ่ายขาย", description: "ลูกค้า ใบเสนอราคา ใบสั่งขาย ออกใบกำกับ/วางบิล/รับชำระ" },
+  { value: "ENGINEER", label: "วิศวกร/โครงการ", description: "ลูกค้า ใบเสนอราคา (เห็นต้นทุน อนุมัติไม่เกิน 1 ล้าน) โครงการ ขอซื้อ งานบริการ/MA — ไม่ออก PO/วางบิล/บัญชี" },
   { value: "WAREHOUSE", label: "คลังสินค้า", description: "รับ เบิก โอนสินค้า ตรวจนับ" },
   { value: "HR", label: "บุคคล", description: "พนักงาน เวลาทำงาน เงินเดือน" },
   { value: "TECHNICIAN", label: "ช่างเทคนิค", description: "แอปช่างหน้างาน" },
@@ -146,18 +150,29 @@ export function purchaseApprovalLimit(roles: RoleInput): number {
   return 0;
 }
 
+/** วงเงินอนุมัติใบเสนอราคา (ยอดรวม VAT): ผู้บริหาร/SUPERADMIN ไม่จำกัด, วิศวกรไม่เกิน 1,000,000 */
+export const ENGINEER_QUOTATION_LIMIT = 1_000_000;
+export function quotationApprovalLimit(roles: RoleInput): number {
+  if (can(roles, "sales:approve")) return Infinity;
+  if (can(roles, "sales:quote_approve")) return ENGINEER_QUOTATION_LIMIT;
+  return 0;
+}
+export function canApproveQuotation(roles: RoleInput, grandTotal: number): boolean {
+  return (Number(grandTotal) || 0) <= quotationApprovalLimit(roles);
+}
+
 /** สิทธิ์ที่ต้องมีเพื่อเปิดหน้า (มีข้อใดข้อหนึ่งก็พอ) — prefix ยาวกว่ามาก่อน */
 export const ROUTE_PERMISSIONS: { prefix: string; any: Permission[] }[] = [
   { prefix: "/executive", any: ["dashboard:executive"] },
   { prefix: "/finance/expense-claims", any: ["finance:edit", "projects:edit", "inventory:edit", "sales:edit", "hr:edit", "procurement:edit"] },
-  { prefix: "/finance/receipts", any: ["finance:view", "sales:edit"] },
+  { prefix: "/finance/receipts", any: ["finance:view", "sales:billing"] },
   { prefix: "/finance/payouts", any: ["finance:edit", "projects:edit"] },
   { prefix: "/finance", any: ["finance:view"] },
   { prefix: "/procurement", any: ["procurement:view", "finance:view"] },
   { prefix: "/inventory", any: ["inventory:view"] },
   { prefix: "/customers", any: ["sales:view"] },
   { prefix: "/sales", any: ["sales:view"] },
-  { prefix: "/pos", any: ["sales:edit"] },
+  { prefix: "/pos", any: ["sales:billing"] },
   { prefix: "/projects", any: ["projects:view"] },
   { prefix: "/service", any: ["projects:edit", "sales:edit", "inventory:edit", "procurement:edit", "projects:approve"] },
   // งานของฉัน: ทุกตำแหน่งที่อาจได้รับมอบหมายงาน (ช่าง คลัง จัดซื้อ ขาย โครงการ บุคคล)

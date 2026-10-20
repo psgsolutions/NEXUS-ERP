@@ -10,6 +10,8 @@ import { SmartSelect } from "@/components/ui/SmartComponents";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { InfoTip, WhatHappens } from "@/components/guide/Guidance";
 import { useAuth } from "@/context/AuthContext";
+import { useCustomers } from "@/hooks/useCustomers";
+import { effectiveDocProfile } from "@/lib/customer-doc-profile";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
@@ -52,9 +54,12 @@ function ReceiptForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { companyId, role, roles } = useAuth();
-  const canSave = can(roles, "finance:edit") || can(roles, "sales:edit");
+  const canSave = can(roles, "finance:edit") || can(roles, "sales:billing");
 
   const { data: invoices, loading } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/invoices` : "");
+  // อัตราหัก ณ ที่จ่ายที่ลูกค้ามักหัก (โปรไฟล์เอกสารลูกค้า) เป็นค่าเริ่มต้น เมื่อใบแจ้งหนี้ไม่ได้กำหนดไว้
+  const { data: customers } = useCustomers();
+  const customerWht = useMemo(() => new Map((customers as any[]).map((c) => [String(c.id), Number(effectiveDocProfile(c).whtRate) || 0])), [customers]);
 
   // ใบแจ้งหนี้ที่ยังมียอดค้าง (ไม่รวมเอกสารตัวอย่าง/ยกเลิก)
   const outstanding: Outstanding[] = useMemo(
@@ -74,12 +79,12 @@ function ReceiptForm() {
           dueMs: toMillis(inv.dueDate),
           issueMs: toMillis(inv.issueDate) || toMillis(inv.createdAt),
           // ใบแจ้งหนี้งวดงาน: อัตราหัก ณ ที่จ่ายที่ตั้งไว้ในโครงการเป็นค่าเริ่มต้น
-          defaultWht: [1, 2, 3, 5].includes(Number(inv.expectedWhtRate)) ? Number(inv.expectedWhtRate) : 0,
+          defaultWht: [1, 2, 3, 5].includes(Number(inv.expectedWhtRate)) ? Number(inv.expectedWhtRate) : customerWht.get(String(inv.customerId)) || 0,
           serviceVat: inv.vatTiming === "receipt",
         };
       })
       .filter((o) => o.balance > 0.009 && o.customerId),
-    [invoices]
+    [invoices, customerWht]
   );
 
   const customerOptions = useMemo(() => {

@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     if (!projectDocId || projectDocId.includes("/")) throw new ApiAuthError(400, "ไม่พบโครงการ");
     const projectRef = adminDb.doc(`companies/${companyId}/projects/${projectDocId}`);
     const canView = ["projects:view", "finance:view", "sales:view"].some((p) => can(apiUser.roles, p as any));
-    const canBill = can(apiUser.roles, "finance:edit") || can(apiUser.roles, "sales:edit");
+    const canBill = can(apiUser.roles, "finance:edit") || can(apiUser.roles, "sales:billing");
     if (!canView) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
 
     if (action === "status") {

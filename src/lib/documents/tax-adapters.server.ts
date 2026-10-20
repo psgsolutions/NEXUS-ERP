@@ -5,6 +5,8 @@ import { documentProfileOf } from "./profile";
 import { mergeSeller } from "./seller.server";
 import { quotationLines, totalsRows } from "./build";
 import { thaiDate, toDateStr } from "./format";
+import { customerDocProfile } from "./customer-profile.server";
+import { showDocDate } from "@/lib/customer-doc-profile";
 
 /**
  * เอกสารภาษีฝั่งขาย -> DocumentModel
@@ -100,6 +102,8 @@ export async function loadInvoice(companyId: string, id: string): Promise<Docume
   const net = taxType === "INCLUSIVE" ? num(d.grandTotal) : num(d.subTotal);
   const billDiscount = lineSum - net > 0.009 ? r2(lineSum - net) : 0;
   const vatRegistered = d.isVatRegistered !== false && taxType !== "NONE";
+  // ใบกำกับภาษีพิมพ์วันที่เสมอ (ม.86/4) — ใช้เฉพาะข้อความที่ลูกค้ากำหนด
+  const profile = await customerDocProfile(companyId, d.customerId);
   return {
     type: "invoice",
     title: vatRegistered ? "ใบกำกับภาษี / ใบแจ้งหนี้" : "ใบแจ้งหนี้",
@@ -121,6 +125,7 @@ export async function loadInvoice(companyId: string, id: string): Promise<Docume
       ...(d.replacesInvoiceNo ? [`ใบกำกับภาษีฉบับนี้ออกแทนฉบับเดิมเลขที่ ${d.replacesInvoiceNo}${d.replaceReason ? ` ซึ่งยกเลิกเนื่องจาก ${d.replaceReason}` : ""}`] : []),
       ...cancelNote(d),
       ...(d.billingNoteNo ? [`ใบวางบิลเลขที่ ${d.billingNoteNo}`] : []),
+      ...(profile.notes?.invoice ? [profile.notes.invoice] : []),
     ],
     signatures: ["ผู้รับสินค้า / บริการ", "ผู้ส่งสินค้า", "ผู้มีอำนาจลงนาม"],
     watermark: cancelled(d) ? "ยกเลิก" : undefined,
@@ -129,11 +134,14 @@ export async function loadInvoice(companyId: string, id: string): Promise<Docume
 
 export async function loadBillingNote(companyId: string, id: string): Promise<DocumentModel> {
   const { d, seller } = await companyAndDoc(companyId, `companies/${companyId}/billing_notes/${id}`, "ไม่พบใบวางบิล");
-  const inv = d.invoiceDocId ? (await adminDb.doc(`companies/${companyId}/invoices/${d.invoiceDocId}`).get()).data() : null;
+  const [inv, profile] = await Promise.all([
+    d.invoiceDocId ? adminDb.doc(`companies/${companyId}/invoices/${d.invoiceDocId}`).get().then((s) => s.data()) : Promise.resolve(null),
+    customerDocProfile(companyId, d.customerId),
+  ]);
   const total = num(d.totalAmount);
   return {
     type: "billing_note", title: "ใบวางบิล", titleEn: "BILLING NOTE",
-    number: str(d.billingNoteNo || d.documentNo || id), date: toDateStr(d.issueDate || d.createdAt),
+    number: str(d.billingNoteNo || d.documentNo || id), date: showDocDate(profile, "billingNote") ? toDateStr(d.issueDate || d.createdAt) : "",
     meta: [{ label: "กำหนดชำระ", value: d.dueDate ? thaiDate(d.dueDate) : "-" }, ...(d.customerPoNo ? [{ label: "เลขที่ใบสั่งซื้อ", value: str(d.customerPoNo) }] : [])],
     seller,
     party: partyOf("ลูกค้า", d.customerSnapshot, str(d.customerName)),
@@ -145,7 +153,12 @@ export async function loadBillingNote(companyId: string, id: string): Promise<Do
     }],
     totals: [{ label: "รวมยอดวางบิล", amount: total, strong: true }],
     amountInWords: total,
-    notes: [...cancelNote(d), "กรุณาชำระเงินภายในวันที่กำหนด"],
+    notes: [
+      ...cancelNote(d),
+      ...(profile.notes?.billingNote ? [profile.notes.billingNote] : []),
+      ...(profile.attachments.length ? [`เอกสารแนบ: ${profile.attachments.join(", ")}`] : []),
+      "กรุณาชำระเงินภายในวันที่กำหนด",
+    ],
     signatures: ["ผู้วางบิล", "ผู้รับวางบิล"],
     watermark: cancelled(d) ? "ยกเลิก" : undefined,
   };
@@ -158,9 +171,10 @@ export async function loadReceipt(companyId: string, id: string): Promise<Docume
   const applied = num(d.totalApplied ?? d.amount);
   const wht = num(d.totalWht);
   const taxInv = d.isTaxInvoice === true;
+  const profile = await customerDocProfile(companyId, d.customerId);
   return {
     type: "receipt", title: taxInv ? "ใบเสร็จรับเงิน / ใบกำกับภาษี" : "ใบเสร็จรับเงิน", titleEn: taxInv ? "RECEIPT / TAX INVOICE" : "RECEIPT",
-    number: str(d.receiptNo || d.documentNo || id), date: toDateStr(d.paymentDate || d.createdAt),
+    number: str(d.receiptNo || d.documentNo || id), date: showDocDate(profile, "receipt", { isTaxInvoice: taxInv }) ? toDateStr(d.paymentDate || d.createdAt) : "",
     meta: [
       { label: "ชำระโดย", value: str(d.paymentMethodLabel || d.paymentMethod) },
       ...(d.bankAccount ? [{ label: "บัญชี", value: str(d.bankAccount) }] : []),
@@ -183,7 +197,7 @@ export async function loadReceipt(companyId: string, id: string): Promise<Docume
       ...(wht ? [{ label: "หัก ณ ที่จ่าย", amount: -wht }, { label: "รับเงินสุทธิ", amount: num(d.cashReceived) || r2(applied - wht), strong: true }] : []),
     ],
     amountInWords: applied,
-    notes: [...cancelNote(d), ...(d.cheque ? ["ใบเสร็จนี้สมบูรณ์เมื่อเช็คผ่านบัญชีเรียบร้อยแล้ว"] : []), str(d.note)].filter(Boolean),
+    notes: [...cancelNote(d), ...(d.cheque ? ["ใบเสร็จนี้สมบูรณ์เมื่อเช็คผ่านบัญชีเรียบร้อยแล้ว"] : []), str(d.note), profile.notes?.receipt || ""].filter(Boolean),
     signatures: ["ผู้จ่ายเงิน", "ผู้รับเงิน"],
     watermark: cancelled(d) ? "ยกเลิก" : undefined,
   };

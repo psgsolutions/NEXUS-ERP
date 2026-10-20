@@ -6,6 +6,8 @@ import { mergeSeller } from "./seller.server";
 import { partyOf, taxTypeOf } from "./tax-adapters.server";
 import { quotationLines, totalsRows } from "./build";
 import { thaiDate, toDateStr } from "./format";
+import { customerDocProfile } from "./customer-profile.server";
+import { showDocDate } from "@/lib/customer-doc-profile";
 
 /**
  * เอกสารฝั่งขาย/บริการ -> DocumentModel
@@ -65,11 +67,12 @@ export async function loadSalesOrder(companyId: string, id: string): Promise<Doc
 
 export async function loadDeliveryNote(companyId: string, id: string): Promise<DocumentModel> {
   const { d, seller } = await load(companyId, "delivery_notes", id, "ไม่พบใบส่งของ");
+  const profile = await customerDocProfile(companyId, d.customerId);
   const lines: any[] = Array.isArray(d.lines) ? d.lines : [];
   const totalQty = lines.reduce((s, l) => s + num(l.qty), 0);
   return {
     type: "delivery_note", title: "ใบส่งของ", titleEn: "DELIVERY NOTE",
-    number: str(d.dnNo || id), date: toDateStr(d.deliveryDate || d.createdAt),
+    number: str(d.dnNo || id), date: showDocDate(profile, "deliveryNote") ? toDateStr(d.deliveryDate || d.createdAt) : "",
     meta: [
       { label: "ใบสั่งขาย", value: str(d.soNo) },
       ...(d.customerPoNo ? [{ label: "เลขที่ใบสั่งซื้อ", value: str(d.customerPoNo) }] : []),

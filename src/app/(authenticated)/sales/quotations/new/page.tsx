@@ -34,6 +34,7 @@ import { SmartSelect, StepperInput, SciFiDropdownPortal } from "@/components/ui/
 import { searchAddressByPostalCode } from "@/lib/thailand-address-helper";
 import { db } from "@/lib/firebase-client";
 import { apiFetch } from "@/lib/api-client";
+import { docProfileSummary, effectiveDocProfile, quotationDefaults } from "@/lib/customer-doc-profile";
 
 export default function QuotationCreationPage() {
   const { showAlert } = useSystemDialog();
@@ -310,6 +311,20 @@ export default function QuotationCreationPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [savedQuotationId, setSavedQuotationId] = useState("");
   const [expectedDeliveryDays, setExpectedDeliveryDays] = useState<number>(30);
+
+  // โปรไฟล์เอกสารของลูกค้า: เลือกลูกค้าแล้วตั้งค่าเอกสารให้ตามที่องค์กรนั้นต้องการ
+  const [profileNotice, setProfileNotice] = useState("");
+  useEffect(() => {
+    setProfileNotice("");
+    if (!selectedCustomer) return;
+    const d = quotationDefaults({ ...effectiveDocProfile(selectedCustomer), creditTermDays: selectedCustomer.creditTermDays ?? selectedCustomer.docProfile?.creditTermDays });
+    // ยังไม่มีราคา -> ตั้งประเภทราคาให้เลย, มีราคาแล้ว -> แจ้งให้ตรวจ (ไม่แปลงราคาที่กรอกไว้)
+    if (!items.some((it: any) => Number(it.price) > 0)) setTaxType(d.taxType);
+    else if (d.taxType !== taxType && taxType !== "INCLUSIVE_AUTO") setProfileNotice(`ลูกค้ารายนี้ใช้${d.taxType === "INCLUSIVE" ? "ราคารวม VAT" : "ราคาก่อน VAT"} — ตรวจประเภทภาษีของใบนี้`);
+    if (d.paymentTerms) setPaymentTerms(d.paymentTerms);
+    if (d.note) setRemark((prev) => (prev.includes(d.note) ? prev : prev ? `${prev}\n${d.note}` : d.note));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCustomerId]);
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [selectedSalespersonId, setSelectedSalespersonId] = useState("");
@@ -823,6 +838,13 @@ export default function QuotationCreationPage() {
                     เปลี่ยนลูกค้า
                   </button>
                 </div>
+              )}
+              {selectedCustomer && (
+                <p className="text-[12px] text-white/55 ml-1 leading-relaxed">
+                  รูปแบบเอกสารลูกค้า: {docProfileSummary(selectedCustomer).join(" · ")}{" "}
+                  <a href={`/customers/${encodeURIComponent(selectedCustomer.id)}`} target="_blank" rel="noreferrer" className="text-nexus-teal hover:underline">แก้ไข</a>
+                  {profileNotice && <span className="block text-warning">{profileNotice}</span>}
+                </p>
               )}
             </div>
 

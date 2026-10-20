@@ -171,7 +171,7 @@ export default function CustomerDashboardPage() {
                     <PillButton 
                        
                       className="h-8 px-4 text-[10px] text-nexus-blue border-nexus-blue/20 hover:bg-transparent"
-                      onClick={() => console.log('View customer', customer.id)}
+                      onClick={() => router.push(`/customers/${encodeURIComponent(customer.id)}`)}
                     >
                       ดูข้อมูล
                     </PillButton>

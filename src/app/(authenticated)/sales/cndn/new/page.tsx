@@ -23,7 +23,7 @@ function CnDnForm() {
   const qs = useSearchParams();
   const { companyId, role, roles } = useAuth();
   const { showConfirm } = useSystemDialog();
-  const canSave = can(roles, "sales:edit") || can(roles, "finance:edit");
+  const canSave = can(roles, "sales:billing") || can(roles, "finance:edit");
   const { data: invoices } = useRealtimeCollection<any>(companyId ? `companies/${companyId}/invoices` : "");
 
   const [type, setType] = useState<CnDnType>(qs?.get("type") === "DN" ? "DN" : "CN");

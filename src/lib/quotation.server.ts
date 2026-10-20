@@ -2,6 +2,7 @@ import * as admin from "firebase-admin";
 import { adminDb } from "@/lib/firebase-admin";
 import { canWriteBackToProductMaster } from "@/lib/erp-logic";
 import { notifyInTx } from "@/lib/notifications.server";
+import { ENGINEER_QUOTATION_LIMIT, quotationApprovalLimit } from "@/lib/permissions";
 
 /**
  * ส่วนกลางของการบันทึกใบเสนอราคาฝั่งเซิร์ฟเวอร์ (ใช้ทั้งสร้างใหม่และแก้ไข)
@@ -78,8 +79,14 @@ export async function companyGpThreshold(tx: admin.firestore.Transaction, compan
   return num(company.settings?.minGpPercentForAutoSend ?? 15);
 }
 
-export function submitStatus(gp: number, threshold: number, requiresApproval: boolean): "PENDING_APPROVAL" | "SENT" {
-  return requiresApproval || gp < threshold ? "PENDING_APPROVAL" : "SENT";
+export function submitStatus(gp: number, threshold: number, requiresApproval: boolean, overLimit = false): "PENDING_APPROVAL" | "SENT" {
+  return requiresApproval || overLimit || gp < threshold ? "PENDING_APPROVAL" : "SENT";
+}
+
+/** ผู้ส่งที่มีวงเงินอนุมัติจำกัด (เช่น วิศวกร 1 ล้าน) ส่งใบที่ยอดเกินวงเงิน -> ต้องให้ผู้บริหารอนุมัติก่อน */
+export function overQuoteLimit(roles: string[], grandTotal: any): boolean {
+  const limit = quotationApprovalLimit(roles);
+  return limit > 0 && Number.isFinite(limit) && num(grandTotal) > limit;
 }
 
 /** ลูกค้าใหม่ที่พิมพ์ชื่อเข้ามา (ยังไม่มีในฐานข้อมูล) — สร้างในทรานแซกชันเดียวกัน คืน customerId */
@@ -127,7 +134,8 @@ export function notifyPendingApproval(tx: admin.firestore.Transaction, companyId
     title: `ใบเสนอราคา ${docNo} รออนุมัติ`,
     message: `${customerName || "ลูกค้า"} · ยอด ${num(grandTotal).toLocaleString("th-TH")} บาท${gp !== null ? ` · GP ${gp}%` : ""}`,
     link: `/sales/quotations/${quotationId}`,
-    targetRoles: ["EXECUTIVE", "SUPERADMIN"],
+    // วิศวกรอนุมัติได้ไม่เกินวงเงิน -> แจ้งเฉพาะใบที่อยู่ในวงเงิน
+    targetRoles: num(grandTotal) <= ENGINEER_QUOTATION_LIMIT ? ["EXECUTIVE", "SUPERADMIN", "ENGINEER"] : ["EXECUTIVE", "SUPERADMIN"],
     documentNo: docNo,
   }, by);
 }

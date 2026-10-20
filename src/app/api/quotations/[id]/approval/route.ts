@@ -4,12 +4,12 @@ import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth"
 import { adminDb } from "@/lib/firebase-admin";
 import { auditServer } from "@/services/audit.server";
 import { notifyInTx } from "@/lib/notifications.server";
-import { can } from "@/lib/permissions";
+import { can, canApproveQuotation, quotationApprovalLimit } from "@/lib/permissions";
 
 /**
  * [API-SERVER] อนุมัติ / ตีกลับใบเสนอราคาที่รออนุมัติ
  * Endpoint: POST /api/quotations/{id}/approval  { companyId, decision: "approve" | "reject", comment? }
- * - เฉพาะผู้มีสิทธิ์อนุมัติงานขาย (ผู้บริหาร) และเฉพาะใบที่สถานะรออนุมัติ
+ * - ผู้บริหารอนุมัติได้ทุกยอด, ผู้มีสิทธิ์ sales:quote_approve (วิศวกร) ไม่เกินวงเงินของตำแหน่ง · เฉพาะใบที่สถานะรออนุมัติ
  * - อนุมัติ -> ส่งลูกค้าแล้ว (SENT), ตีกลับ -> REJECTED (ผู้ขายแก้แล้วส่งใหม่)
  */
 
@@ -20,7 +20,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const companyId = String(body.companyId || "").trim();
     if (!companyId || !id) throw new ApiAuthError(400, "ข้อมูลไม่ครบ");
     const apiUser = await requireApiUser(request, companyId);
-    if (!can(apiUser.roles, "sales:approve")) throw new ApiAuthError(403, "เฉพาะผู้บริหารที่อนุมัติใบเสนอราคาได้");
+    if (!can(apiUser.roles, "sales:approve") && !can(apiUser.roles, "sales:quote_approve")) throw new ApiAuthError(403, "ไม่มีสิทธิ์อนุมัติใบเสนอราคา");
     const decision = body.decision === "approve" ? "approve" : body.decision === "reject" ? "reject" : "";
     if (!decision) throw new ApiAuthError(400, "คำสั่งไม่ถูกต้อง");
     const comment = String(body.comment || "").trim().slice(0, 500);
@@ -33,6 +33,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       const q = snap.data()!;
       const docNo = q.documentNo || q.quotationNumber || id;
       if (String(q.status || "").toUpperCase() !== "PENDING_APPROVAL") throw new ApiAuthError(409, `${docNo} ไม่ได้อยู่ในสถานะรออนุมัติ`);
+      // ตีกลับได้เสมอ (ผู้มีสิทธิ์อนุมัติ), อนุมัติต้องไม่เกินวงเงิน
+      if (decision === "approve" && !canApproveQuotation(apiUser.roles, Number(q.grandTotal) || 0)) {
+        throw new ApiAuthError(403, `ยอด ${(Number(q.grandTotal) || 0).toLocaleString("th-TH")} บาท เกินวงเงินอนุมัติของคุณ (${quotationApprovalLimit(apiUser.roles).toLocaleString("th-TH")} บาท) ต้องให้ผู้บริหารอนุมัติ`);
+      }
       const status = decision === "approve" ? "SENT" : "REJECTED";
       tx.update(ref, {
         status,

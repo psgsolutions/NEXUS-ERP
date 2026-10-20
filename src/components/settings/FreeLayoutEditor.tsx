@@ -11,7 +11,7 @@ import { A4, BLOCK_LABELS, REQUIRED_BLOCKS, defaultFreeLayout, type BlockKind, t
  * ผังลากวางอิสระ: ลากกล่องเพื่อย้าย ลากมุมขวาล่างเพื่อปรับขนาด คลิกเพื่อแก้คุณสมบัติ
  * กล่องที่เอกสารภาษีต้องมี (ผู้ขาย ชื่อเอกสาร เลขที่/วันที่ ลูกค้า ตาราง ยอดรวม) ย้าย/ปรับได้แต่ลบไม่ได้
  */
-const SCALE = 0.95;
+const SCALE = 0.8;
 const GRID = 2;
 const snap = (v: number) => Math.round(v / GRID) * GRID;
 const ADDABLE: BlockKind[] = ["text", "line", "rect", "image", "logo", "words", "notes", "payment", "signatures"];
@@ -107,7 +107,8 @@ export function FreeLayoutEditor({ layout, onChange, model, canEdit, docTitle, o
         )}
       </div>
 
-      <div className="flex flex-col 2xl:flex-row gap-4">
+      {/* จอกว้าง ≥1360px: กระดาษ · คุณสมบัติ · ตัวอย่าง PDF เรียงแถวเดียว เห็นผลทันทีที่ลาก */}
+      <div className="flex flex-col min-[1360px]:flex-row gap-4">
         <div className="flex gap-3">
           {/* กระดาษ A4 */}
           <div className="relative bg-white rounded-sm shadow-2xl flex-shrink-0 overflow-hidden select-none" style={{ width: A4.w * SCALE, height: A4.h * SCALE }} onPointerDown={() => setSel(null)}>
@@ -133,7 +134,7 @@ export function FreeLayoutEditor({ layout, onChange, model, canEdit, docTitle, o
           </div>
 
           {/* คุณสมบัติ */}
-          <GlassCard className="p-3 w-[250px] flex-shrink-0 space-y-3 self-start">
+          <GlassCard className="p-3 w-[230px] flex-shrink-0 space-y-3 self-start">
             {canEdit && (
               <div className="space-y-1.5">
                 <p className="text-[12px] font-bold text-white/70 flex items-center gap-1"><Plus size={13} /> เพิ่มกล่อง</p>
@@ -187,8 +188,8 @@ export function FreeLayoutEditor({ layout, onChange, model, canEdit, docTitle, o
           </GlassCard>
         </div>
 
-        <div className="flex-1 min-w-0 h-[880px] rounded-2xl border border-white/10 overflow-hidden flex flex-col bg-white/[0.02]">
-          <div className="px-4 pt-3 text-[13px] text-white/60">ตัวอย่าง PDF จริง{layout.enabled ? "" : " (เปิด \"ใช้ผังลากวาง\" เพื่อดูผังนี้)"}</div>
+        <div className="flex-1 min-w-0 h-[880px] min-[1360px]:h-[700px] rounded-2xl border border-white/10 overflow-hidden flex flex-col bg-white/[0.02]">
+          <div className="px-4 pt-3 text-[13px] text-white/60">ตัวอย่าง PDF ของผังนี้{layout.enabled ? "" : " — ยังไม่ใช้พิมพ์จริง (ติ๊ก \"ใช้ผังลากวาง\" ด้านบนเพื่อใช้)"}</div>
           {model && <DocumentPdfViewer model={model} className="flex-1" />}
         </div>
       </div>

@@ -88,7 +88,13 @@ export function DocumentDesigner() {
   const def = DESIGNABLE_DOCS.find((d) => d.type === docType)!;
   const setTheme = (patch: Partial<DocTheme>) => { setDesign((d) => ({ ...d, theme: { ...d.theme, ...patch } })); setDirty(true); };
   const setPer = (patch: Partial<PerDocDesign>) => { setDesign((d) => ({ ...d, perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), ...patch } } })); setDirty(true); };
-  const model = useMemo(() => (profile && preview ? sampleModelFor(docType, { ...profile, design: preview }, toDateStr(new Date())) : null), [profile, preview, docType]);
+  // โหมดลากวาง: ตัวอย่างแสดงผังที่กำลังแก้เสมอ แม้ยังไม่ได้เปิดใช้พิมพ์จริง
+  const model = useMemo(() => {
+    if (!profile || !preview) return null;
+    const p = preview.perDoc[docType] || {};
+    const shown = mode === "free" ? { ...preview, perDoc: { ...preview.perDoc, [docType]: { ...p, free: { ...(p.free || defaultFreeLayout()), enabled: true } } } } : preview;
+    return sampleModelFor(docType, { ...profile, design: shown }, toDateStr(new Date()));
+  }, [profile, preview, docType, mode]);
 
   const save = async () => {
     setSaving(true);

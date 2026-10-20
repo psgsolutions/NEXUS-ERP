@@ -231,7 +231,7 @@ service cloud.firestore {
       function apiOnlyCollection(collection) {
         return collection in ['auditLogs', 'financialLedgers', 'quotations', 'receipts', 'payments', 'payrolls', 'serial_numbers', 'invoices', 'billing_notes', 'cndn', 'customer_refunds', 'counters', 'journal_entries', 'tax_filing_locks',
           // จัดซื้อ / ค่าใช้จ่าย / ขาย / งานบริการ: ออกเลข ตรวจสถานะ และอนุมัติที่ server
-          'purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders', 'delivery_notes',
+          'purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders', 'delivery_notes', 'cash_advances',
           // ลิงก์เอกสารและประวัติการส่ง: สร้าง/ส่งผ่าน /api/documents/share และ /api/documents/send
           'document_sends',
           // ตั้งค่าบริษัท (รูปแบบเลขที่เอกสาร ฯลฯ): /api/settings/company เท่านั้น

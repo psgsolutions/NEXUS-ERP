@@ -20,6 +20,7 @@ export const CHART_OF_ACCOUNTS: Account[] = [
   { code: "1131-00", name: "ลูกหนี้การค้า", type: "asset" },
   { code: "1132-00", name: "ลูกหนี้อื่น", type: "asset" },
   { code: "1133-00", name: "ลูกหนี้เงินประกันผลงาน", type: "asset" },
+  { code: "1134-00", name: "เงินทดรองจ่าย", type: "asset" },
   { code: "1141-00", name: "สินค้าคงเหลือ", type: "asset" },
   { code: "1151-00", name: "ภาษีซื้อ", type: "asset" },
   { code: "1152-00", name: "ภาษีซื้อยังไม่ถึงกำหนด", type: "asset" },

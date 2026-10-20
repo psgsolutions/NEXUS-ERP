@@ -73,6 +73,7 @@ export default function DashboardPage() {
   const billing = has("sales:billing") || has("finance:edit");
   const { data: salesOrders } = useRealtimeCollection<any>(co("sales_orders", billing));
   const { data: payables } = useRealtimeCollection<any>(co("expenses", has("finance:edit")));
+  const { data: advances } = useRealtimeCollection<any>(co("cash_advances", has("finance:edit")));
   const { data: logs, loading: logsLoading } = useRealtimeCollection<any>(has("logs:view") ? "logs" : "");
 
   const journals = useMemo(() => [...companyJournals, ...legacyJournals], [companyJournals, legacyJournals]);
@@ -102,12 +103,13 @@ export default function DashboardPage() {
       { show: has("finance:post"), label: "รายการบัญชีรอลงบัญชี", href: "/finance", ...count(journals, (x) => String(x.status || "").toLowerCase() === "draft") },
       { show: has("procurement:edit") || has("finance:edit"), label: "ใบขอซื้ออนุมัติแล้ว รอออกใบสั่งซื้อ", href: "/procurement", ...count(purchaseRequests, (x) => upper(x.status) === "APPROVED") },
       { show: billing, label: "ส่งมอบแล้ว รอออกใบกำกับ/วางบิล", href: "/sales?tab=orders", ...count(salesOrders, (x) => upper(x.status) === "DELIVERED") },
+      { show: has("finance:edit"), label: "เงินทดรองรอจ่าย", href: "/finance/advances", ...count(advances, (x) => upper(x.status) === "REQUESTED") },
       { show: has("finance:edit"), label: "รายการค้างจ่าย (ตั้งเบิกแล้ว)", href: "/finance/payments/new", ...count(payables, (x) => ["AWAITING PAYMENT", "PARTIALLY PAID"].includes(upper(x.status))) },
       { show: has("service:field") || has("projects:edit"), label: "ใบงานช่างที่ยังเปิดอยู่", href: "/mobile/technician/work-orders", ...count(workOrders, (x) => ["ASSIGNED", "IN_PROGRESS"].includes(upper(x.status))) },
     ];
     return rows.filter((r) => r.show);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [purchaseRequests, purchaseOrders, quotations, journals, workOrders, salesOrders, payables, roles]);
+  }, [purchaseRequests, purchaseOrders, quotations, journals, workOrders, salesOrders, payables, advances, roles]);
   const pendingTotal = pending.reduce((s, p) => s + p.total, 0);
 
   // เรื่องที่ควรดำเนินการก่อน (เรียงตามความเร่งด่วน)

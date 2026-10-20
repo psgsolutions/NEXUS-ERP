@@ -23,6 +23,7 @@ export const PAGE_LABELS: [prefix: string, label: string][] = [
   ["/finance/payments", "จ่ายชำระเงิน"],
   ["/finance/journal", "สมุดรายวัน"],
   ["/finance/period-close", "ปิดงวดบัญชี"],
+  ["/finance/advances", "เงินทดรองจ่าย"],
   ["/finance", "การเงินและบัญชี"],
   ["/accounting", "การเงินและบัญชี"],
   ["/ai", "วิเคราะห์ข้อมูล"],

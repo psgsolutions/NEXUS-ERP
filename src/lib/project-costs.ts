@@ -65,7 +65,9 @@ export function projectCostLines(input: {
 
   for (const j of input.siteJournals) {
     if (!live(j)) continue;
-    const amount = r2(Number(j.totalDebit) || 0);
+    // นับเฉพาะเดบิตงานระหว่างทำ (1161) — ไม่นับภาษีซื้อหรือรายการเงินสดในใบสำคัญเดียวกัน
+    const wip = (Array.isArray(j.items) ? j.items : []).filter((l: any) => String(l.accountCode) === "1161-00");
+    const amount = r2(wip.length ? wip.reduce((s: number, l: any) => s + (Number(l.debit) || 0), 0) : Number(j.totalDebit) || 0);
     if (!(amount > 0)) continue;
     lines.push({ date: dateOf(j.date || j.createdAt), category: "operating", source: "ค่าใช้จ่ายหน้างาน", docNo: String(j.reference || j.id || ""), description: String(j.description || "").replace(/^\[[^\]]+\]\s*/, ""), amount });
   }

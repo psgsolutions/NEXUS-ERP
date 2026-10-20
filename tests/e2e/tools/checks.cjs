@@ -29,7 +29,7 @@ const SRC = {
   IV: ["invoices", ["invoiceNo"]], PB: ["invoices", ["invoiceNo"]], BL: ["billing_notes", ["billingNoteNo"]], RE: ["receipts", ["receiptNo"]],
   CN: ["cndn", ["documentNo"]], DBN: ["cndn", ["documentNo"]], RF: ["customer_refunds", ["refundNo", "documentNo"]], POS: ["sales_transactions", ["transactionNo"]],
   PR: ["purchase_requests", ["prCode"]], PO: ["purchase_orders", ["poCode"]], GR: ["goods_receipts", ["grNo"]], EXP: ["expenses", ["expenseId"]],
-  PV: ["payments", ["paymentNo"]], WHT: ["withholding_taxes", ["whtId"]], PRJ: ["projects", ["projectCode", "projectNo", "documentNo"]],
+  PV: ["payments", ["paymentNo"]], ADV: ["cash_advances", ["advanceNo"]], WHT: ["withholding_taxes", ["whtId"]], PRJ: ["projects", ["projectCode", "projectNo", "documentNo"]],
   WO: ["work_orders", ["woCode"]], JOB: ["jobs", ["jobNo"]], TK: ["service_tickets", ["ticketNo"]], FIN: ["journal_entries", ["jvId"]],
 };
 

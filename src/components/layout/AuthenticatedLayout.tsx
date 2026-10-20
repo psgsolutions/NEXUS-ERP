@@ -36,6 +36,7 @@ import {
   Lock,
   TrendingUp,
   FileSpreadsheet,
+  HandCoins,
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import Link from "next/link";
@@ -113,6 +114,7 @@ export default function AuthenticatedLayout({
             <NavGroup title="การปฏิบัติงาน">
               {show("/dashboard") && <SideLink href="/dashboard" icon={<PieChart size={20} />} label="ภาพรวม" active={pathname === "/dashboard"} title="Dashboard" />}
               {show("/sales") && <SideLink href="/sales" icon={<BadgeDollarSign size={20} />} label="งานขาย" active={pathname === "/sales"} title="Sales" />}
+              {show("/finance/advances") && <SideLink href="/finance/advances" icon={<HandCoins size={20} />} label="เงินทดรองจ่าย" active={pathname === "/finance/advances"} title="Cash advances" />}
               {show("/projects") && <SideLink href="/projects" icon={<FolderKanban size={20} />} label="โครงการ" active={pathname === "/projects"} title="Projects" />}
               {show("/hr") && <SideLink href="/hr" icon={<UsersRound size={20} />} label="บุคลากร" active={pathname === "/hr"} title="HR" />}
               {show("/inventory") && <SideLink href="/inventory" icon={<Warehouse size={20} />} label="คลังสินค้า" active={pathname === "/inventory"} title="Inventory" />}

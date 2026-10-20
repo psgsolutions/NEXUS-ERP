@@ -66,7 +66,7 @@ async function main() {
     await setDoc(doc(db, 'groups/G1/products/P9/history/h1'), { action: 'create' });
     await setDoc(doc(db, 'companies/A/bank_accounts/BA1'), { companyId: 'A', name: 'K-Bank' });
     await setDoc(doc(db, 'companies/A/cheques/RE1'), { companyId: 'A', status: 'PENDING' });
-    for (const c of ['purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders', 'delivery_notes']) {
+    for (const c of ['purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders', 'delivery_notes', 'cash_advances']) {
       await setDoc(doc(db, `companies/A/${c}/D1`), { companyId: 'A', status: 'PENDING_APPROVAL' });
     }
     await setDoc(doc(db, 'companies/A/projects/P1/change_orders/co1'), { status: 'PENDING' });
@@ -256,7 +256,7 @@ async function main() {
     ['member cannot create tax filing', () => assertFails(setDoc(doc(userA, 'taxFilings/T2'), { companyId: 'A' }))],
     ['member cannot fake tax filing lock', () => assertFails(setDoc(doc(userA, 'companies/A/tax_filing_locks/L1'), { isLocked: true }))],
     // จัดซื้อ / ค่าใช้จ่าย / ขาย / งานบริการ: อ่านได้ เขียนผ่าน API เท่านั้น
-    ...['purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders', 'delivery_notes'].flatMap((c) => [
+    ...['purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders', 'delivery_notes', 'cash_advances'].flatMap((c) => [
       [`member reads ${c}`, () => assertSucceeds(getDoc(doc(['expenses', 'withholding_taxes'].includes(c) ? acctA : userA, `companies/A/${c}/D1`)))],
       [`member cannot create ${c}`, () => assertFails(setDoc(doc(userA, `companies/A/${c}/D2`), { companyId: 'A' }))],
       [`admin cannot approve ${c} directly`, () => assertFails(updateDoc(doc(adminA, `companies/A/${c}/D1`), { status: 'APPROVED' }))],

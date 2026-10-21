@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DESIGNABLE_DOCS } from "@/lib/documents/build";
 import { templateLayout } from "@/lib/documents/layout-templates";
-import { legalFieldVisible, REQUIRED_BLOCKS, TEMPLATES, addableBlocksFor, applyLayoutToAll, defaultFreeLayout, docHasAmounts, letterheadTemplate, normalizeDesign, normalizeFreeLayout, normalizeTheme, requiredBlocksFor, requiredColumnsFor, resolveDesign } from "@/lib/documents/design";
+import { legalFieldVisible, resolveBlockColors, resolveColor, tint, REQUIRED_BLOCKS, TEMPLATES, addableBlocksFor, applyLayoutToAll, defaultFreeLayout, docHasAmounts, letterheadTemplate, normalizeDesign, normalizeFreeLayout, normalizeTheme, requiredBlocksFor, requiredColumnsFor, resolveDesign } from "@/lib/documents/design";
 
 describe("document design", () => {
   it("normalizes theme input and keeps brand color as default", () => {
@@ -146,5 +146,28 @@ describe("document design — lines, frames, corners, table styling", () => {
     const m = l.blocks.find((b) => b.kind === "meta")!, p = l.blocks.find((b) => b.kind === "party")!;
     expect(m.hide).toEqual(meta.slice(2).map((x) => `m:${x}`));
     expect(m.y + m.h).toBeLessThanOrEqual(p.y);
+  });
+});
+
+describe("document design — template catalog and theme colours", () => {
+  it("has at least 50 templates per document type, one logo each, colours from the theme", () => {
+    const withLayout = TEMPLATES.filter((t) => t.layout);
+    expect(withLayout.length).toBeGreaterThanOrEqual(50);
+    for (const t of withLayout) for (const d of DESIGNABLE_DOCS) {
+      const blocks = templateLayout(t.layout, d.type, t.theme).blocks;
+      expect(blocks.filter((b) => b.kind === "logo").length, `${t.id}/${d.type} logos`).toBeLessThanOrEqual(1);
+      for (const b of blocks) for (const c of [b.bg, b.border, b.lineColor, b.headBg]) if (c) expect(c.startsWith("@") || c === "#ffffff", `${t.id} ${b.id} ${c}`).toBe(true);
+      expect(new Set(blocks.map((b) => b.id)).size, `${t.id}/${d.type} ids`).toBe(blocks.length);
+    }
+  });
+
+  it("theme colour tokens survive normalisation and resolve from the palette", () => {
+    const f = normalizeFreeLayout({ enabled: true, blocks: [{ id: "r", kind: "rect", x: 0, y: 0, w: 10, h: 10, bg: "@accent", border: "@primary", lineColor: "@bogus" }] })!;
+    const r = f.blocks.find((b) => b.id === "r")!;
+    expect(r).toMatchObject({ bg: "@accent", border: "@primary" });
+    expect(r.lineColor).toBeUndefined();
+    const theme = normalizeTheme({ primary: "#112233", accent: "#445566" });
+    expect(resolveBlockColors(r, theme)).toMatchObject({ bg: "#445566", border: "#112233" });
+    expect(resolveColor("@line", theme)).toBe(tint("#112233", 0.72));
   });
 });

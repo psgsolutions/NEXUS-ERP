@@ -71,10 +71,12 @@ export function usePdfPageImage(model: DocumentModel | null, widthPx: number, ma
 /** ภาพย่อ (แม่แบบ) — วาดเรียงทีละภาพ เก็บไว้ใช้ซ้ำ */
 const thumbCache = new Map<string, string>();
 let thumbQueue: Promise<unknown> = Promise.resolve();
-export function useThumbnail(key: string, make: () => DocumentModel | null, widthPx = 150) {
+/** enabled = เริ่มวาดเมื่อการ์ดเลื่อนเข้ามาในจอ (แม่แบบหลายสิบแบบไม่วาดพร้อมกันทั้งหมด) */
+export function useThumbnail(key: string, make: () => DocumentModel | null, widthPx = 150, enabled = true) {
   const [url, setUrl] = useState(() => thumbCache.get(key) || "");
   useEffect(() => {
     if (thumbCache.has(key)) { setUrl(thumbCache.get(key)!); return; }
+    if (!enabled) return;
     let cancel = false;
     const model = make();
     if (!model) return;
@@ -84,6 +86,6 @@ export function useThumbnail(key: string, make: () => DocumentModel | null, widt
     });
     return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- วาดใหม่เมื่อคีย์เปลี่ยนเท่านั้น
-  }, [key, widthPx]);
+  }, [key, widthPx, enabled]);
   return url;
 }

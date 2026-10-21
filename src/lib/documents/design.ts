@@ -215,7 +215,43 @@ const BASE: DocTheme = {
  * แม่แบบสำเร็จรูป (เลือกแล้วแก้ต่อได้ทุกค่า)
  * layout: ผังลากวางของแม่แบบ (layout-templates.ts) — เลือกแล้วทุกเอกสารได้ผังนี้ ลากปรับต่อได้อิสระ · ไม่มี = จัดเนื้อตามธีม
  */
-export const TEMPLATES: { id: string; name: string; description: string; theme: DocTheme; layout?: string }[] = [
+/**
+ * ตระกูลผัง — สรุปจากรูปแบบแม่แบบเอกสารธุรกิจที่พบบ่อย (Modern · Clean · Formal · Bold · Minimalist · Traditional,
+ * หัวแถบสี แถบข้าง หัวกระดาษ/ท้ายกระดาษ) ผังจริงอยู่ที่ layout-templates.ts
+ */
+export const ARCHETYPES: { id: string; name: string; desc: string }[] = [
+  { id: "standard", name: "มาตรฐาน", desc: "โลโก้ซ้าย ชื่อเอกสารขวา อ่านง่าย" },
+  { id: "form", name: "ฟอร์มสองภาษา", desc: "กล่องข้อมูลมีกรอบ ตารางยาวถึงยอดรวม" },
+  { id: "sidebar", name: "แถบข้าง", desc: "แถบสีด้านซ้ายเต็มหน้า" },
+  { id: "centerBand", name: "หัวกลาง", desc: "บริษัทกึ่งกลาง แถบชื่อเอกสาร" },
+  { id: "cards", name: "การ์ด", desc: "ลูกค้า/เลขที่เป็นการ์ดพื้นอ่อน" },
+  { id: "banner", name: "หัวแถบสีเต็ม", desc: "หัวกระดาษพื้นสีเต็มความกว้าง ตัวอักษรขาว" },
+  { id: "split", name: "หัวแบ่งสองฝั่ง", desc: "บล็อกสีชื่อเอกสาร คู่โลโก้และบริษัท" },
+  { id: "minimalLine", name: "มินิมอลเส้นบาง", desc: "ไม่มีกรอบ เส้นบางแบ่งส่วน" },
+  { id: "frame", name: "กรอบทั้งหน้า", desc: "กรอบเส้นรอบหน้า แบบฟอร์มทางการ" },
+  { id: "footerBand", name: "แถบท้ายกระดาษ", desc: "แถบสีท้ายหน้าพร้อมข้อมูลติดต่อ" },
+  { id: "mirror", name: "โลโก้ขวา", desc: "บริษัทชิดขวา ชื่อเอกสารชิดซ้าย" },
+  { id: "compact", name: "กะทัดรัด", desc: "หัวเล็ก ตารางยาว เหมาะรายการเยอะ" },
+];
+/** รูปแบบตาราง/ยอดรวม/ฟอนต์ ที่ใช้คู่กับทุกตระกูลผัง */
+const VARIANTS: { id: string; name: string; patch: Partial<DocTheme> }[] = [
+  { id: "a", name: "หัวตารางทึบ", patch: { table: "solid", totals: "solid", rounded: true } },
+  { id: "b", name: "ทางการเส้นครบ", patch: { table: "grid", totals: "grid", rounded: false, font: "THSarabunNew", formStyle: true } },
+  { id: "c", name: "แถวสลับสี", patch: { table: "zebra", totals: "outline", rounded: true } },
+  { id: "d", name: "เส้นบาง", patch: { table: "lines", totals: "plain", rounded: false } },
+  { id: "e", name: "สองภาษา", patch: { table: "tint", totals: "solid", bilingual: true, formStyle: true } },
+];
+/** แม่แบบที่สร้างจากตระกูลผัง × รูปแบบ (12 × 5 = 60 แบบต่อชนิดเอกสาร) สลับชุดสีให้หลากหลาย — เปลี่ยนชุดสีภายหลังได้ทุกแบบ */
+const GENERATED_TEMPLATES = ARCHETYPES.flatMap((a, ai) => VARIANTS.map((v, vi) => {
+  const p = PALETTES[(ai * 3 + vi * 5) % PALETTES.length];
+  const id = `${a.id}-${v.id}`;
+  return {
+    id, name: `${a.name} · ${v.name}`, description: `${a.desc} · ชุดสี${p.name}`, family: a.id, layout: a.id,
+    theme: { ...BASE, templateId: id, primary: p.primary, accent: p.accent, party: (a.id === "form" ? "none" : "accent-bar") as PartyStyle, ...v.patch, ...(a.id === "form" ? { formStyle: true } : {}) },
+  };
+}));
+
+export const TEMPLATES: { id: string; name: string; description: string; theme: DocTheme; layout?: string; family?: string }[] = [
   { id: "modern", name: "โมเดิร์น", description: "แถบสีด้านข้าง หัวตารางสีอ่อน ยอดรวมเต็มสี", theme: BASE },
   { id: "classic", name: "คลาสสิก", description: "เส้นตารางครบ ตัวอักษร TH Sarabun เหมาะงานทางการ", theme: { ...BASE, templateId: "classic", font: "THSarabunNew", primary: "#1e3a8a", accent: "#1e3a8a", party: "boxed", table: "grid", rounded: false, totals: "outline", signatures: "box" } },
   { id: "government", name: "ราชการ", description: "TH SarabunIT๙ สีดำล้วน หัวเอกสารกึ่งกลาง", theme: { ...BASE, templateId: "government", font: "THSarabunIT9", primary: "#111111", accent: "#111111", header: "centered", party: "plain", table: "grid", rounded: false, totals: "outline", signatures: "line", margin: 40 } },
@@ -231,9 +267,41 @@ export const TEMPLATES: { id: string; name: string; description: string; theme: 
   { id: "sunset", name: "ส้มสดใส", description: "หัวแถบสีส้ม ตารางสลับสี ดูเป็นมิตร", theme: { ...BASE, templateId: "sunset", primary: "#c2410c", accent: "#f97316", header: "banner", table: "zebra", party: "accent-bar", totals: "solid" } },
   { id: "emerald-grid", name: "มรกตทางการ", description: "TH Sarabun เส้นตารางครบ ยอดรวมแบบตาราง", theme: { ...BASE, templateId: "emerald-grid", font: "THSarabunNew", primary: "#047857", accent: "#a7f3d0", party: "boxed", table: "grid", rounded: false, totals: "grid", signatures: "box", formStyle: true } },
   { id: "berry", name: "เบอร์รี่โมเดิร์น", description: "โลโก้ขวา แถบสีด้านข้างลูกค้า หัวตารางสีอ่อน", theme: { ...BASE, templateId: "berry", primary: "#9d174d", accent: "#db2777", header: "logo-right", table: "tint", party: "accent-bar", totals: "solid" } },
+  ...GENERATED_TEMPLATES,
 ];
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
+
+/** ผสมสีกับขาว (t = สัดส่วนสีขาว 0–1) */
+export function tint(hex: string, t: number): string {
+  if (!HEX.test(hex)) return hex;
+  const n = parseInt(hex.slice(1), 16);
+  const mix = (v: number) => Math.round(v + (255 - v) * t).toString(16).padStart(2, "0");
+  return `#${mix((n >> 16) & 255)}${mix((n >> 8) & 255)}${mix(n & 255)}`;
+}
+
+/**
+ * สีอ้างอิงธีม — กล่องในผัง/แม่แบบเก็บเป็นคำอ้างอิง เปลี่ยนชุดสีแล้วทุกส่วน (แถบ กรอบ หัวตาราง เส้น) เปลี่ยนตามกันทั้งเอกสาร
+ */
+export const COLOR_TOKENS: Record<string, string> = { "@primary": "สีหลัก", "@accent": "สีรอง", "@soft": "สีอ่อน", "@line": "สีเส้น" };
+/** สีเส้นตาราง/กรอบตั้งต้น: สีหลักแบบอ่อน (เดิมเป็นเทาคงที่ ไม่ตามธีม) */
+export const themeLine = (t: DocTheme) => tint(t.primary, 0.72);
+export function resolveColor(v: string | undefined, t: DocTheme): string | undefined {
+  if (!v) return v;
+  switch (v) {
+    case "@primary": return t.primary;
+    case "@accent": return t.accent;
+    case "@soft": return tint(t.accent, 0.88);
+    case "@line": return themeLine(t);
+    default: return v;
+  }
+}
+/** แปลงสีอ้างอิงธีมของกล่องเป็นสีจริง */
+export function resolveBlockColors(b: FreeBlock, t: DocTheme): FreeBlock {
+  if (![b.color, b.bg, b.border, b.headBg, b.lineColor].some((v) => v?.startsWith("@"))) return b;
+  return { ...b, color: resolveColor(b.color, t), bg: resolveColor(b.bg, t), border: resolveColor(b.border, t), headBg: resolveColor(b.headBg, t), lineColor: resolveColor(b.lineColor, t) };
+}
+const colorOk = (v: any) => HEX.test(String(v || "")) || String(v || "") in COLOR_TOKENS;
 const pick = <T extends string>(v: any, list: readonly T[], d: T): T => (list.includes(v) ? v : d);
 const num = (v: any, min: number, max: number, d: number) => { const n = Number(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : d; };
 const color = (v: any, d: string) => (HEX.test(String(v || "")) ? String(v) : d);
@@ -286,9 +354,9 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(b.kind === "image" && /^data:image\/(png|jpeg);base64,/.test(String(b.src || "")) && String(b.src).length < 400_000 ? { src: String(b.src) } : {}),
     ...(b.fontSize !== undefined && b.fontSize !== null ? { fontSize: num(b.fontSize, 6, 40, 10) } : {}),
     ...(b.lineHeight !== undefined && b.lineHeight !== null ? { lineHeight: num(b.lineHeight, 1, 2.5, 1.35) } : {}),
-    ...(HEX.test(String(b.color || "")) ? { color: b.color } : {}),
-    ...(HEX.test(String(b.bg || "")) ? { bg: b.bg } : {}),
-    ...(HEX.test(String(b.border || "")) ? { border: b.border } : {}),
+    ...(colorOk(b.color) ? { color: b.color } : {}),
+    ...(colorOk(b.bg) ? { bg: b.bg } : {}),
+    ...(colorOk(b.border) ? { border: b.border } : {}),
     ...(["left", "center", "right"].includes(b.align) ? { align: b.align } : {}),
     ...(b.bold ? { bold: true } : {}),
     ...(hide.length ? { hide } : {}),
@@ -305,8 +373,8 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(["tint", "solid", "lines", "grid", "zebra"].includes(b.table) ? { table: b.table } : {}),
     ...(["solid", "outline", "plain", "grid"].includes(b.totalsStyle) ? { totalsStyle: b.totalsStyle } : {}),
     ...(["accent-bar", "boxed", "plain", "none"].includes(b.partyStyle) ? { partyStyle: b.partyStyle } : {}),
-    ...(HEX.test(String(b.headBg || "")) ? { headBg: b.headBg } : {}),
-    ...(HEX.test(String(b.lineColor || "")) ? { lineColor: b.lineColor } : {}),
+    ...(colorOk(b.headBg) ? { headBg: b.headBg } : {}),
+    ...(colorOk(b.lineColor) ? { lineColor: b.lineColor } : {}),
     ...(b.locked ? { locked: true } : {}),
   };
 }
@@ -421,13 +489,13 @@ export function letterheadTemplate(kind: "trade" | "letter" | "banner", id: stri
     return { id, name, height: lineY + 12, blocks: [
       { id: "logo", kind: "logo", x: (A4.w - 56) / 2, y: 26, w: 56, h: 56 },
       { id: "seller", kind: "seller", x: m, y: 86, w: W, h: sellerH, align: "center", hide: ["nameEn"] },
-      { id: "line", kind: "line", x: m, y: lineY, w: W, h: 1, color: primary },
+      { id: "line", kind: "line", x: m, y: lineY, w: W, h: 1, color: "@primary" },
     ] };
   }
   if (kind === "banner") {
     const bandH = r(112 * k), metaH = r(46 * k);
     return { id, name, height: bandH + metaH + 10, blocks: [
-      { id: "band", kind: "rect", x: 0, y: 0, w: A4.w, h: bandH, bg: primary },
+      { id: "band", kind: "rect", x: 0, y: 0, w: A4.w, h: bandH, bg: "@primary", radius: 0 },
       { id: "logo", kind: "logo", x: m, y: 20, w: 64, h: 64 },
       { id: "seller", kind: "seller", x: m + 74, y: 16, w: W * 0.58 - 74, h: bandH - 24, color: "#ffffff" },
       { id: "title", kind: "title", x: m + W * 0.58, y: 18, w: W * 0.42, h: bandH - 26, align: "right", color: "#ffffff" },

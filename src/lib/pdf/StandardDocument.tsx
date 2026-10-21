@@ -2,7 +2,7 @@ import React from "react";
 import { Document, Font, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { ColumnKey, CopyMode, DocumentModel } from "@/lib/documents/model";
 import { amountInWords, branchLabel, formatTaxId, money, qtyText, thaiDate } from "@/lib/documents/format";
-import { FONT_SCALE, enLabel, legalFieldVisible, resolveDesign, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
+import { FONT_SCALE, enLabel, legalFieldVisible, resolveBlockColors, resolveDesign, themeLine, tint, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
 
 /**
  * เทมเพลตเอกสาร A4 (ใช้ร่วมทุกประเภทเอกสาร) — หน้าตาตามธีมของบริษัท (ตั้งค่า › ออกแบบเอกสาร)
@@ -71,7 +71,7 @@ export function themeStyles(t: DocTheme, lh = 1.35, radius?: number) {
     en: { fontSize: fz(6), color: t.muted, lineHeight: 1.15 },
     thText: { fontSize: fz(8.5), fontWeight: "bold", paddingHorizontal: 4 },
     td: { paddingHorizontal: 4 },
-    words: { borderWidth: 1, borderColor: line, borderRadius: r, padding: 6, fontWeight: "bold", textAlign: "center", backgroundColor: `${t.accent}10` },
+    words: { borderWidth: 1, borderColor: themeLine(t), borderRadius: r, padding: 6, fontWeight: "bold", textAlign: "center", backgroundColor: `${t.accent}10` },
     totalRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 2.5, paddingHorizontal: 6 },
     signBox: { flex: 1, alignItems: "center" },
     signLine: { width: "85%", borderBottomWidth: 0.8, borderColor: "#888888", height: 28 },
@@ -97,7 +97,8 @@ export type Ctx = {
 };
 /** รัศมีมุม: ค่าของกล่องก่อน ไม่มีจึงตามธีม (มุมโค้ง/เหลี่ยม) */
 const rad = (c: Ctx, d = 4) => (c.radius !== undefined ? Math.min(c.radius, d * 6) : c.t.rounded ? d : 0);
-const lineOf = (c: Ctx) => c.lineColor || line;
+/** สีเส้นตาราง/กรอบ: ของกล่องก่อน ไม่มีจึงเป็นสีเส้นของธีม (สีหลักแบบอ่อน) */
+const lineOf = (c: Ctx) => c.lineColor || themeLine(c.t);
 /** สีตัวอักษรที่อ่านได้บนพื้นสีนี้ */
 const onColor = (hex: string) => { const n = parseInt(hex.slice(1, 7), 16); const l = 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255); return l < 150 ? "#ffffff" : "#111111"; };
 
@@ -142,10 +143,12 @@ export function SectionTitle({ c, align = "right", inverse = false }: { c: Ctx; 
 function Lbl({ c, th, style, align, suffix = "" }: { c: Ctx; th: string; style?: any; align?: "left" | "center" | "right"; suffix?: string }) {
   const en = c.t.bilingual ? enLabel(th) : "";
   if (!en) return <T style={[style, align ? { textAlign: align } : {}]}>{th}{suffix}</T>;
+  // ป้ายอังกฤษใช้สีเดียวกับป้ายไทยเมื่อป้ายมีสีเฉพาะ (เช่น ตัวขาวบนแถบยอดรวมสีทึบ)
+  const tone = style && !Array.isArray(style) && style.color ? { color: style.color, opacity: 0.85 } : {};
   return (
     <View>
       <T style={[style, align ? { textAlign: align } : {}]}>{th}{suffix}</T>
-      <T style={[c.s.en, align ? { textAlign: align } : {}]}>{en}</T>
+      <T style={[c.s.en, tone, align ? { textAlign: align } : {}]}>{en}</T>
     </View>
   );
 }
@@ -287,7 +290,7 @@ export function SectionItems({ c }: { c: Ctx }) {
       {doc.lines.length === 0 ? <T style={[s.td, { paddingVertical: 8, color: t.muted, textAlign: "center" }]}>ไม่มีรายการ</T> : null}
       {doc.lines.map((l, i) => {
         const zebra = t.table === "zebra" && i % 2 === 1 ? { backgroundColor: `${t.accent}0d` } : {};
-        const rowStyle = [{ flexDirection: "row" as const, borderBottomWidth: fill ? 0 : 0.5, borderColor: grid ? lineOf(c) : c.lineColor || "#eeeeee", paddingVertical: 3.5 }, zebra];
+        const rowStyle = [{ flexDirection: "row" as const, borderBottomWidth: fill ? 0 : 0.5, borderColor: grid ? lineOf(c) : c.lineColor || tint(c.t.primary, 0.9), paddingVertical: 3.5 }, zebra];
         if (l.heading) {
           if (c.hide.has("heading")) return null;
           // ตารางยืดเต็มกล่อง: หัวข้อหมวดอยู่ในช่องรายการ ไม่ทับเส้นคอลัมน์
@@ -384,7 +387,7 @@ export function SectionSignatures({ c }: { c: Ctx }) {
       {labels.map((label) => {
         const sg = c.doc.signed?.[label];
         return (
-          <View key={label} style={[c.s.signBox, boxed ? { borderWidth: 0.8, borderColor: c.t.formStyle ? c.t.primary : line, borderRadius: rad(c), paddingVertical: 6 } : {}]}>
+          <View key={label} style={[c.s.signBox, boxed ? { borderWidth: 0.8, borderColor: c.t.formStyle ? c.t.primary : lineOf(c), borderRadius: rad(c), paddingVertical: 6 } : {}]}>
             {/* eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt */}
             {sg?.image ? <Image src={sg.image} style={c.s.signImage} /> : <View style={c.s.signLine} />}
             {sg?.name ? <T style={{ marginTop: 3 }}>({sg.name})</T> : null}
@@ -432,7 +435,8 @@ export function documentContext(doc: DocumentModel, copy: CopyMode): Ctx {
 }
 
 /** บริบทของกล่องหนึ่ง: ขนาดตัวอักษร ระยะบรรทัด สี ส่วนย่อยที่ซ่อน คอลัมน์ ช่องลงนาม ของกล่องนั้น */
-export function blockContext(c: Ctx, b: FreeBlock): Ctx {
+export function blockContext(c: Ctx, raw: FreeBlock): Ctx {
+  const b = resolveBlockColors(raw, c.t);
   const own = b.fontSize !== undefined || b.lineHeight !== undefined || !!b.color || b.radius !== undefined || !!b.table || !!b.totalsStyle || !!b.partyStyle;
   const t: DocTheme = own ? {
     ...c.t,
@@ -482,7 +486,8 @@ const fillVars = (text: string, doc: DocumentModel) => text.replace(/\{\{([^{}]{
  * เนื้อหาวางในชั้นที่ไม่จำกัดความสูง — กล่องสูงตายตัวทำให้ react-pdf บีบบรรทัดซ้อนกันหรือทิ้งข้อความที่ไม่พอดี
  * items: เนื้อหาตารางที่ส่งมาเอง (FreeLayoutDocument ตัดรายการที่ล้นไปหน้าถัดไป) · letter: หนังสือไม่มีชื่อเอกสาร/เลขที่แบบเอกสารการค้า
  */
-export function BlockView({ c, b, items, letter = false }: { c: Ctx; b: FreeBlock; items?: React.ReactNode; letter?: boolean }) {
+export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: FreeBlock; items?: React.ReactNode; letter?: boolean }) {
+  const b = resolveBlockColors(raw, c.t);
   const bc = blockContext(c, b);
   const own = b.fontSize !== undefined || b.lineHeight !== undefined || !!b.color;
   const content = (() => {

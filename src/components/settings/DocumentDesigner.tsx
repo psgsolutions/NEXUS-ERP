@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, Loader2, Palette, RotateCcw, Save, Sparkles, Wand2, LayoutTemplate, Move, PanelTop, Trash2 } from "lucide-react";
 import { GlassCard, PillButton, PillCheckbox, PillInput, PillSelect, cn } from "@/components/ui/Base";
 import { InfoTip } from "@/components/guide/Guidance";
@@ -13,7 +13,7 @@ import { DESIGNABLE_DOCS, LETTER_DESIGN, sampleModelFor } from "@/lib/documents/
 import { toDateStr } from "@/lib/documents/format";
 import type { DocumentModel, DocumentProfile } from "@/lib/documents/model";
 import {
-  FONT_LABELS, LETTERHEAD_TEMPLATES, PALETTES, TEMPLATES, defaultFreeLayout, letterheadTemplate, normalizeDesign, applyLayoutToAll,
+  ARCHETYPES, FONT_LABELS, LETTERHEAD_TEMPLATES, PALETTES, TEMPLATES, defaultFreeLayout, letterheadTemplate, normalizeDesign, applyLayoutToAll,
   type DocTheme, type DocumentDesign, type FontFamily, type ItemColumn, type Letterhead, type PerDocDesign,
 } from "@/lib/documents/design";
 import { templateLayout } from "@/lib/documents/layout-templates";
@@ -33,12 +33,22 @@ const TARGETS = [...DESIGNABLE_DOCS.map((d) => ({ type: d.type, title: d.title }
 /** การ์ดแม่แบบพร้อมภาพย่อจริง (วาดจากตัวสร้าง PDF ด้วยข้อมูลบริษัท) */
 function TemplateCard({ t, active, docType, profile, onPick }: { t: (typeof TEMPLATES)[number]; active: boolean; docType: string; profile: DocumentProfile; onPick: () => void }) {
   const type = DESIGNABLE_DOCS.some((d) => d.type === docType) ? docType : DESIGNABLE_DOCS[0].type;
+  // วาดภาพย่อเมื่อการ์ดเลื่อนเข้ามาในจอเท่านั้น
+  const ref = useRef<HTMLButtonElement>(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || seen) return;
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setSeen(true); io.disconnect(); } }, { rootMargin: "200px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [seen]);
   const url = useThumbnail(`${t.id}:${type}:${profile.logo?.length || 0}:${profile.name}`, () => {
     const design = normalizeDesign({ theme: t.theme, perDoc: t.layout ? { [type]: { free: templateLayout(t.layout, type, t.theme) } } : {} });
     return sampleModelFor(type, { ...profile, design }, toDateStr(new Date()));
-  }, 150);
+  }, 150, seen);
   return (
-    <button type="button" onClick={onPick} className={cn("text-left rounded-xl border p-2 transition-colors flex gap-2.5", active ? "border-nexus-teal/60 bg-nexus-teal/10" : "border-white/10 hover:border-white/25")}>
+    <button ref={ref} type="button" onClick={onPick} className={cn("text-left rounded-xl border p-2 transition-colors flex gap-2.5", active ? "border-nexus-teal/60 bg-nexus-teal/10" : "border-white/10 hover:border-white/25")}>
       <div className="w-[76px] h-[107px] flex-shrink-0 rounded bg-white overflow-hidden flex items-center justify-center">
         {/* eslint-disable-next-line @next/next/no-img-element -- ภาพย่อที่วาดในเบราว์เซอร์ (data URL) */}
         {url ? <img src={url} alt="" className="w-full h-full object-cover object-top" /> : <Loader2 size={14} className="animate-spin text-slate-400" />}
@@ -124,6 +134,9 @@ export function DocumentDesigner() {
   const [aiUseLogo, setAiUseLogo] = useState(true);
   const [aiBusy, setAiBusy] = useState(false);
   const [preview, setPreview] = useState<DocumentDesign | null>(null);
+  // แกลเลอรีแม่แบบ: กรองตามตระกูลผัง ("" = ทั้งหมด, "pick" = แนะนำ)
+  const [family, setFamily] = useState("");
+  const shownTemplates = TEMPLATES.filter((t) => !family || (family === "pick" ? !t.family : t.family === family));
 
   useEffect(() => {
     if (!companyId) return;
@@ -298,9 +311,16 @@ export function DocumentDesigner() {
         <div className="flex flex-col xl:flex-row gap-4 items-start">
           <fieldset disabled={!canEdit} className="w-full xl:w-[520px] flex-shrink-0 space-y-4">
             <GlassCard className="p-4 space-y-3">
-              <h3 className="flex items-center gap-2 text-[15px] font-bold text-white"><LayoutTemplate size={16} className="text-nexus-teal" /> แม่แบบ <span className="text-[12px] font-normal text-white/45">({TEMPLATES.length} แบบ · ภาพย่อจากข้อมูลบริษัทจริง)</span></h3>
+              <h3 className="flex items-center gap-2 text-[15px] font-bold text-white"><LayoutTemplate size={16} className="text-nexus-teal" /> แม่แบบ <span className="text-[12px] font-normal text-white/45">({TEMPLATES.length} แบบสำหรับ &quot;{def.title}&quot; · ภาพย่อจากข้อมูลบริษัทจริง)</span></h3>
+              {/* กรองตามตระกูลผัง */}
+              <div className="flex flex-wrap gap-1">
+                {[["", `ทั้งหมด (${TEMPLATES.length})`], ["pick", "แนะนำ"], ...ARCHETYPES.map((a) => [a.id, a.name])].map(([id, label]) => (
+                  <button key={id} type="button" onClick={() => setFamily(id)} title={ARCHETYPES.find((a) => a.id === id)?.desc}
+                    className={cn("h-7 px-2.5 rounded-full text-[11.5px] border", family === id ? "border-nexus-teal/60 bg-nexus-teal/15 text-nexus-teal" : "border-white/10 text-white/55 hover:text-white")}>{label}</button>
+                ))}
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[560px] overflow-y-auto pr-1">
-                {TEMPLATES.map((t) => <TemplateCard key={t.id} t={t} active={theme.templateId === t.id} docType={docType} profile={profile} onPick={() => applyTemplate(t)} />)}
+                {shownTemplates.map((t) => <TemplateCard key={t.id} t={t} active={theme.templateId === t.id} docType={docType} profile={profile} onPick={() => applyTemplate(t)} />)}
               </div>
               <div className="space-y-1.5">
                 <p className="text-[12px] font-semibold text-white/60">ชุดสี (เปลี่ยนสีโดยคงรูปแบบเดิม)</p>

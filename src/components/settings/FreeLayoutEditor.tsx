@@ -10,7 +10,7 @@ import { GlassCard, PillButton, PillCheckbox, PillInput, PillSelect, cn } from "
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import type { DocumentModel } from "@/lib/documents/model";
 import {
-  A4, BLOCK_LABELS, BLOCK_PARTS, HEAD_KINDS, ITEM_COLUMNS, TEMPLATES, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign,
+  A4, BLOCK_LABELS, BLOCK_PARTS, COLOR_TOKENS, HEAD_KINDS, resolveColor, ITEM_COLUMNS, TEMPLATES, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign,
   type BlockKind, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, type Letterhead,
 } from "@/lib/documents/design";
 import { templateLayout } from "@/lib/documents/layout-templates";
@@ -271,8 +271,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     if (Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
     const x = Math.min(d.x0, d.x1), y = Math.min(d.y0, d.y1);
     const b = tool === "line"
-      ? (Math.abs(dx) >= Math.abs(dy) ? newBlock("line", { x, y: d.y0, w: Math.abs(dx), h: 1, color: theme.primary }) : newBlock("line", { x: d.x0, y, w: 1, h: Math.abs(dy), color: theme.primary }))
-      : newBlock("rect", { x, y, w: Math.max(4, Math.abs(dx)), h: Math.max(4, Math.abs(dy)), border: theme.primary, radius: 0 });
+      ? (Math.abs(dx) >= Math.abs(dy) ? newBlock("line", { x, y: d.y0, w: Math.abs(dx), h: 1, color: "@primary" }) : newBlock("line", { x: d.x0, y, w: 1, h: Math.abs(dy), color: "@primary" }))
+      : newBlock("rect", { x, y, w: Math.max(4, Math.abs(dx)), h: Math.max(4, Math.abs(dy)), border: "@primary", radius: 0 });
     applyMany(new Map(), [{ zone: addZone, b }]);
     setSel([`${addZone === "head" ? "h" : "d"}:${b.id}`]);
     setTab("block");
@@ -401,13 +401,27 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   };
   const totalRows = (model?.totals || []).filter((r) => !r.strong && !r.label.startsWith("ภาษีมูลค่าเพิ่ม") && r.label !== "จำนวนเงินรวมทั้งสิ้น");
 
-  const colorRow = (it: Item, label: string, key: "color" | "bg" | "border" | "headBg" | "lineColor") => (
-    <div className="flex items-center gap-2">
-      <span className="text-[12px] text-white/60 w-[64px]">{label}</span>
-      <input type="color" value={it.b[key] || "#ffffff"} onChange={(e) => update(it, { [key]: e.target.value } as any)} className="w-8 h-8 rounded bg-transparent border border-white/10" aria-label={label} />
-      {it.b[key] && <button type="button" className="text-[12px] text-white/50 hover:text-white" onClick={() => unset(it, key)}>{key === "color" || key === "headBg" || key === "lineColor" ? "ตามธีม" : "ไม่มี"}</button>}
-    </div>
-  );
+  /** เลือกสี: สีของธีม (เปลี่ยนชุดสีแล้วเปลี่ยนตาม — แนะนำ) หรือสีกำหนดเอง */
+  const colorRow = (it: Item, label: string, key: "color" | "bg" | "border" | "headBg" | "lineColor") => {
+    const v = it.b[key];
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] text-white/60 w-[64px]">{label}</span>
+          <input type="color" value={resolveColor(v, theme) || "#ffffff"} onChange={(e) => update(it, { [key]: e.target.value } as any)} className="w-8 h-8 rounded bg-transparent border border-white/10" aria-label={label} title="สีกำหนดเอง (ไม่เปลี่ยนตามชุดสี)" />
+          {v && <button type="button" className="text-[12px] text-white/50 hover:text-white" onClick={() => unset(it, key)}>{key === "color" || key === "headBg" || key === "lineColor" ? "ตามธีม" : "ไม่มี"}</button>}
+        </div>
+        <div className="flex flex-wrap gap-1 pl-[72px]">
+          {Object.entries(COLOR_TOKENS).map(([tok, name]) => (
+            <button key={tok} type="button" title={`${name}ของธีม (เปลี่ยนตามชุดสี)`} onClick={() => update(it, { [key]: tok } as any)}
+              className={cn("h-6 pl-0.5 pr-1.5 rounded-full border text-[10.5px] flex items-center gap-1", v === tok ? "border-nexus-teal/60 text-white" : "border-white/10 text-white/50 hover:text-white")}>
+              <span className="w-4 h-4 rounded-full border border-white/20" style={{ background: resolveColor(tok, theme) }} />{name}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
   const numInput = (it: Item, key: "x" | "y" | "w" | "h") => (
     <PillInput inputMode="decimal" value={Math.round(it.b[key] * 10) / 10} onChange={(e) => update(it, { [key]: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 } as any)} className="h-8 w-full text-sm font-mono text-right" />
   );

@@ -105,6 +105,8 @@ export interface FreeBlock {
   /** ตาราง: สีพื้นหัวตาราง · สีเส้นในตาราง/กรอบ */
   headBg?: string;
   lineColor?: string;
+  /** ล็อกตำแหน่ง (ลาก/ปรับขนาดไม่ได้ จนกว่าจะปลดล็อก) */
+  locked?: boolean;
 }
 export interface FreeLayout { enabled: boolean; blocks: FreeBlock[] }
 
@@ -167,6 +169,23 @@ export const EN_LABELS: Record<string, string> = {
   "ภาษีมูลค่าเพิ่ม 7% (รวมในราคา)": "VAT 7% (Included)", "จำนวนเงินรวมทั้งสิ้น": "Grand Total", "หัก ณ ที่จ่าย": "Withholding Tax", "ยอดชำระสุทธิ": "Net Payable",
 };
 export const enLabel = (th: string) => EN_LABELS[th] || "";
+
+/**
+ * ข้อมูลที่แทรกในกล่องข้อความได้ (ดึงจากฐานข้อมูลตอนพิมพ์) — {{คีย์}}
+ * แถวข้อมูลของเอกสาร {{m:ป้าย}} และข้อมูลเพิ่ม {{f:คีย์}} เพิ่มตามชนิดเอกสาร
+ */
+export const TEXT_VARIABLES: { key: string; label: string; source: string }[] = [
+  { key: "number", label: "เลขที่เอกสาร", source: "เอกสาร" }, { key: "date", label: "วันที่เอกสาร", source: "เอกสาร" },
+  { key: "title", label: "ชื่อเอกสาร", source: "เอกสาร" }, { key: "titleEn", label: "ชื่อเอกสารภาษาอังกฤษ", source: "เอกสาร" },
+  { key: "total", label: "ยอดรวมทั้งสิ้น (ตัวเลข)", source: "คำนวณจากรายการ" }, { key: "totalWords", label: "ยอดรวม (ตัวอักษร)", source: "คำนวณจากรายการ" },
+  { key: "customer", label: "ชื่อลูกค้า/คู่ค้า", source: "ลูกค้าในเอกสาร" }, { key: "customer.address", label: "ที่อยู่ลูกค้า", source: "ลูกค้าในเอกสาร" },
+  { key: "customer.taxId", label: "เลขผู้เสียภาษีลูกค้า", source: "ลูกค้าในเอกสาร" }, { key: "customer.contact", label: "ผู้ติดต่อลูกค้า", source: "ลูกค้าในเอกสาร" },
+  { key: "customer.phone", label: "โทรลูกค้า", source: "ลูกค้าในเอกสาร" }, { key: "customer.email", label: "อีเมลลูกค้า", source: "ลูกค้าในเอกสาร" },
+  { key: "seller.name", label: "ชื่อบริษัท", source: "ข้อมูลนิติบุคคล" }, { key: "seller.nameEn", label: "ชื่อบริษัทภาษาอังกฤษ", source: "ข้อมูลนิติบุคคล" },
+  { key: "seller.address", label: "ที่อยู่บริษัท", source: "ข้อมูลนิติบุคคล" }, { key: "seller.taxId", label: "เลขผู้เสียภาษีบริษัท", source: "ข้อมูลนิติบุคคล" },
+  { key: "seller.phone", label: "โทรบริษัท", source: "ข้อมูลนิติบุคคล" }, { key: "seller.email", label: "อีเมลบริษัท", source: "ข้อมูลนิติบุคคล" },
+  { key: "seller.website", label: "เว็บไซต์บริษัท", source: "ข้อมูลนิติบุคคล" }, { key: "seller.payment", label: "บัญชีรับชำระเงิน", source: "ข้อมูลนิติบุคคล" },
+];
 
 /** ชุดสีสำเร็จรูป (สีหลัก · สีรอง) */
 export const PALETTES: { id: string; name: string; primary: string; accent: string }[] = [
@@ -232,7 +251,7 @@ export function normalizeTheme(raw: any, brandColor?: string): DocTheme {
     text: color(r.text, base.text),
     muted: color(r.muted, base.muted),
     header: pick(r.header, ["logo-left", "logo-right", "centered", "banner"] as const, base.header),
-    logoSize: num(r.logoSize, 32, 120, base.logoSize),
+    logoSize: num(r.logoSize, 32, 200, base.logoSize),
     party: pick(r.party, ["accent-bar", "boxed", "plain", "none"] as const, base.party),
     table: pick(r.table, ["tint", "solid", "lines", "grid", "zebra"] as const, base.table),
     rounded: r.rounded === undefined ? base.rounded : !!r.rounded,
@@ -288,6 +307,7 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(["accent-bar", "boxed", "plain", "none"].includes(b.partyStyle) ? { partyStyle: b.partyStyle } : {}),
     ...(HEX.test(String(b.headBg || "")) ? { headBg: b.headBg } : {}),
     ...(HEX.test(String(b.lineColor || "")) ? { lineColor: b.lineColor } : {}),
+    ...(b.locked ? { locked: true } : {}),
   };
 }
 

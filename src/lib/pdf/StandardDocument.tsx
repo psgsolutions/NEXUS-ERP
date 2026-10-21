@@ -447,13 +447,35 @@ export function blockContext(c: Ctx, b: FreeBlock): Ctx {
   };
 }
 
-const fillVars = (text: string, doc: DocumentModel) => text
-  .replace(/\{\{number\}\}/g, doc.number || "")
-  .replace(/\{\{date\}\}/g, doc.date ? thaiDate(doc.date) : "")
-  .replace(/\{\{customer\}\}/g, doc.party?.name || "")
-  .replace(/\{\{title\}\}/g, doc.title || "")
-  .replace(/\{\{titleEn\}\}/g, doc.titleEn || "")
-  .replace(/\{\{total\}\}/g, doc.amountInWords !== undefined ? money(doc.amountInWords) : "");
+/** แทนค่าข้อมูลในกล่องข้อความ (รายการตัวแปรอยู่ที่ TEXT_VARIABLES) — ไม่รู้จัก/ไม่มีข้อมูล = ว่าง */
+const fillVars = (text: string, doc: DocumentModel) => text.replace(/\{\{([^{}]{1,60})\}\}/g, (_m, key: string) => {
+  const s = doc.seller, p = doc.party;
+  switch (key) {
+    case "number": return doc.number || "";
+    case "date": return doc.date ? thaiDate(doc.date) : "";
+    case "title": return doc.title || "";
+    case "titleEn": return doc.titleEn || "";
+    case "total": return doc.amountInWords !== undefined ? money(doc.amountInWords) : "";
+    case "totalWords": return doc.amountInWords !== undefined ? amountInWords(doc.amountInWords) : "";
+    case "customer": return p?.name || "";
+    case "customer.address": return p?.address || "";
+    case "customer.taxId": return p?.taxId ? formatTaxId(p.taxId) : "";
+    case "customer.contact": return p?.contact || "";
+    case "customer.phone": return p?.phone || "";
+    case "customer.email": return p?.email || "";
+    case "seller.name": return s.name || "";
+    case "seller.nameEn": return s.nameEn || "";
+    case "seller.address": return s.address || "";
+    case "seller.taxId": return formatTaxId(s.taxId) || "";
+    case "seller.phone": return s.phone || "";
+    case "seller.email": return s.email || "";
+    case "seller.website": return s.website || "";
+    case "seller.payment": return s.paymentInfo || "";
+  }
+  if (key.startsWith("m:")) return doc.meta.find((m) => m.label === key.slice(2))?.value || "";
+  if (key.startsWith("f:")) return doc.fields?.find((f) => f.key === key.slice(2))?.value || "";
+  return "";
+});
 
 /**
  * กล่องหนึ่งกล่อง วางตำแหน่งแน่นอนบนหน้า (ผังลากวาง/หัวกระดาษ)
@@ -465,7 +487,9 @@ export function BlockView({ c, b, items, letter = false }: { c: Ctx; b: FreeBloc
   const own = b.fontSize !== undefined || b.lineHeight !== undefined || !!b.color;
   const content = (() => {
     switch (b.kind) {
-      case "logo": return <SectionLogo c={bc} />;
+      // โลโก้ในผังลากวาง: ขยายเต็มกล่อง (คงสัดส่วน · PNG โปร่งใสคงพื้นโปร่ง)
+      // eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt
+      case "logo": return c.doc.seller.logo ? <Image src={c.doc.seller.logo} style={{ width: b.w, height: b.h, objectFit: "contain" }} /> : null;
       case "seller": return <SectionSeller c={bc} align={b.align} />;
       case "title": return letter ? null : <SectionTitle c={bc} align={b.align || "right"} />;
       case "meta": return letter ? null : <SectionMeta c={bc} align={b.align || "right"} />;
@@ -499,7 +523,7 @@ export function BlockView({ c, b, items, letter = false }: { c: Ctx; b: FreeBloc
       ...(b.bg ? { backgroundColor: b.bg, borderRadius: radius } : {}),
       ...(b.border ? { borderWidth: b.borderWidth ?? 1, borderColor: b.border, borderRadius: radius, ...(b.dash && b.dash !== "solid" ? { borderStyle: b.dash } : {}) } : {}),
     }}>
-      {b.kind === "rect" ? null : b.kind === "image"
+      {b.kind === "rect" ? null : b.kind === "image" || b.kind === "logo"
         ? content
         : <View style={{ position: "absolute", top: pad, left: pad, right: pad, ...(own ? { fontSize: bc.s.page.fontSize, lineHeight: bc.s.page.lineHeight, color: bc.t.text } : {}) }}>{content}</View>}
     </View>

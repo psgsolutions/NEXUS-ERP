@@ -20,17 +20,50 @@ import type { DocumentProfile } from "@/lib/documents/model";
 const COLORS = ["#1f6f5c", "#0d9488", "#1e3a8a", "#334155", "#7c2d12", "#6d28d9"];
 const EMPTY: DocumentProfile = { name: "", nameEn: "", address: "", taxId: "", branchCode: "00000", branchName: "", phone: "", email: "", website: "", logo: "", brandColor: COLORS[0], footerNote: "", paymentInfo: "" };
 
-/** ย่อโลโก้ให้ด้านยาวไม่เกิน 480px (PNG คงพื้นโปร่งใส) */
-async function shrinkLogo(file: File): Promise<string> {
+/** ขนาดที่เก็บได้ (data URL) — เก็บในเอกสารบริษัทร่วมกับการออกแบบเอกสาร (รวมไม่เกิน ~1MB) */
+const LOGO_MAX = 600_000;
+
+/** ภาพมีพื้นโปร่งใสหรือไม่ (มีพิกเซลที่ไม่ทึบ) */
+function hasAlpha(c: HTMLCanvasElement) {
+  const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
+  for (let i = 3; i < d.length; i += 16) if (d[i] < 250) return true;
+  return false;
+}
+
+/**
+ * เตรียมโลโก้ให้คมเมื่อขยายบนเอกสาร: ด้านยาวสูงสุด 1200px (SVG วาดที่ 1200px)
+ * พื้นโปร่งใส (PNG/WebP/SVG) เก็บเป็น PNG คงพื้นโปร่ง · ไฟล์ PNG เดิมเก็บ PNG เสมอ · รูปทึบอื่นเป็น JPEG คุณภาพสูง
+ * ใหญ่เกินที่เก็บได้จะลดความละเอียดทีละขั้นจนพอดี
+ */
+async function prepareLogo(file: File): Promise<{ data: string; w: number; h: number; transparent: boolean }> {
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = bad; i.src = url; });
-    const scale = Math.min(1, 480 / Math.max(img.width, img.height));
-    const c = document.createElement("canvas");
-    c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
-    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
-    return file.type === "image/png" ? c.toDataURL("image/png") : c.toDataURL("image/jpeg", 0.88);
+    const svg = file.type === "image/svg+xml";
+    const W = img.naturalWidth || img.width || 1200, H = img.naturalHeight || img.height || 1200;
+    let last = { data: "", w: 0, h: 0, transparent: false };
+    for (const max of [1200, 1000, 800, 640, 480]) {
+      const scale = svg ? max / Math.max(W, H) : Math.min(1, max / Math.max(W, H));
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(W * scale)); c.height = Math.max(1, Math.round(H * scale));
+      const g = c.getContext("2d")!;
+      g.imageSmoothingQuality = "high";
+      g.drawImage(img, 0, 0, c.width, c.height);
+      const transparent = hasAlpha(c);
+      const data = transparent || file.type === "image/png" ? c.toDataURL("image/png") : c.toDataURL("image/jpeg", 0.92);
+      last = { data, w: c.width, h: c.height, transparent };
+      if (data.length <= LOGO_MAX) return last;
+    }
+    return last;
   } finally { URL.revokeObjectURL(url); }
+}
+
+/** ขนาดและพื้นโปร่งใสของโลโก้ที่เก็บไว้ (แสดงข้อมูลใต้ภาพตัวอย่าง) */
+async function logoInfo(data: string): Promise<{ w: number; h: number; transparent: boolean; kb: number }> {
+  const img = await new Promise<HTMLImageElement>((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = bad; i.src = data; });
+  const c = document.createElement("canvas"); c.width = img.naturalWidth; c.height = img.naturalHeight;
+  c.getContext("2d")!.drawImage(img, 0, 0);
+  return { w: img.naturalWidth, h: img.naturalHeight, transparent: data.startsWith("data:image/png") && hasAlpha(c), kb: Math.round((data.length * 0.75) / 1024) };
 }
 
 const Field = ({ label, hint, children, wide }: { label: string; hint?: string; children: React.ReactNode; wide?: boolean }) => (
@@ -51,6 +84,8 @@ export function DocumentProfileSettings() {
   const [dirty, setDirty] = useState(false);
   const [preview, setPreview] = useState<DocumentProfile>(EMPTY);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [logoMeta, setLogoMeta] = useState<{ w: number; h: number; transparent: boolean; kb: number } | null>(null);
+  useEffect(() => { if (form.logo) logoInfo(form.logo).then(setLogoMeta).catch(() => setLogoMeta(null)); else setLogoMeta(null); }, [form.logo]);
 
   useEffect(() => {
     if (!companyId) return;
@@ -78,10 +113,11 @@ export function DocumentProfileSettings() {
   const onLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; e.target.value = "";
     if (!f) return;
-    if (!/^image\/(png|jpeg)$/.test(f.type)) return void showAlert("ใช้ไฟล์ PNG หรือ JPG", "ไฟล์ไม่รองรับ", "warning");
-    const data = await shrinkLogo(f);
-    if (data.length > 380_000) return void showAlert("โลโก้ใหญ่เกินไป ลองไฟล์ที่เล็กลง", "ไฟล์ใหญ่เกินไป", "warning");
-    set({ logo: data });
+    if (!/^image\/(png|jpeg|webp|svg\+xml)$/.test(f.type)) return void showAlert("ใช้ไฟล์ PNG, JPG, WebP หรือ SVG", "ไฟล์ไม่รองรับ", "warning");
+    const out = await prepareLogo(f).catch(() => null);
+    if (!out) return void showAlert("เปิดไฟล์รูปนี้ไม่ได้ ลองบันทึกเป็น PNG ใหม่", "ไฟล์ไม่รองรับ", "warning");
+    if (out.data.length > LOGO_MAX) return void showAlert("โลโก้ใหญ่เกินไป ลองไฟล์ที่เล็กลง", "ไฟล์ใหญ่เกินไป", "warning");
+    set({ logo: out.data });
   };
 
   if (!loaded) return <div className="py-16 flex items-center justify-center gap-2 text-white/40 text-sm"><Loader2 size={16} className="animate-spin" /> กำลังโหลด…</div>;
@@ -103,13 +139,17 @@ export function DocumentProfileSettings() {
         )}
 
         <div className="flex items-center gap-4">
-          <button type="button" disabled={!canEdit} onClick={() => fileRef.current?.click()} className="w-24 h-24 rounded-2xl border-2 border-dashed border-white/15 hover:border-nexus-teal/50 flex items-center justify-center overflow-hidden bg-white flex-shrink-0">
+          {/* พื้นตารางหมากรุก: เห็นชัดว่าโลโก้พื้นโปร่งใสยังโปร่งอยู่ */}
+          <button type="button" disabled={!canEdit} onClick={() => fileRef.current?.click()} className="w-40 h-28 rounded-2xl border-2 border-dashed border-white/15 hover:border-nexus-teal/50 flex items-center justify-center overflow-hidden flex-shrink-0 p-2"
+            style={{ backgroundColor: "#ffffff", backgroundImage: "linear-gradient(45deg,#e5e7eb 25%,transparent 25%),linear-gradient(-45deg,#e5e7eb 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e5e7eb 75%),linear-gradient(-45deg,transparent 75%,#e5e7eb 75%)", backgroundSize: "14px 14px", backgroundPosition: "0 0,0 7px,7px -7px,-7px 0" }}>
             {form.logo ? <img src={form.logo} alt="โลโก้บริษัท" className="max-w-full max-h-full object-contain" /> : <ImagePlus size={24} className="text-black/30" />}
           </button>
-          <div className="space-y-2">
-            <p className="text-[13px] text-white/70">โลโก้บนหัวเอกสาร (PNG/JPG)</p>
+          <div className="space-y-1.5">
+            <p className="text-[13px] text-white/70">โลโก้บนหัวเอกสาร (PNG · JPG · WebP · SVG)</p>
+            {logoMeta && <p className="text-[12px] text-white/50">{logoMeta.w}×{logoMeta.h} px · {logoMeta.kb} KB · {logoMeta.transparent ? <span className="text-nexus-teal">พื้นหลังโปร่งใส ✓</span> : "พื้นหลังทึบ"}</p>}
+            <p className="text-[11px] text-white/40 leading-snug">เก็บละเอียดสูงสุด 1200px ขยายบนเอกสารได้คมชัด · ไฟล์พื้นโปร่งใสคงความโปร่งใสไว้ · ปรับขนาดบนเอกสารที่แท็บ &quot;ออกแบบเอกสาร&quot;</p>
             {canEdit && form.logo && <PillButton variant="ghost" className="h-8 px-3 text-xs text-danger" onClick={() => set({ logo: "" })}><Trash2 size={13} /> เอาโลโก้ออก</PillButton>}
-            <input ref={fileRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={onLogo} />
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={onLogo} />
           </div>
         </div>
 

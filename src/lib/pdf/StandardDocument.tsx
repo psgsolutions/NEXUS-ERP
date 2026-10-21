@@ -2,7 +2,7 @@ import React from "react";
 import { Document, Font, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { ColumnKey, CopyMode, DocumentModel } from "@/lib/documents/model";
 import { amountInWords, branchLabel, formatTaxId, money, qtyText, thaiDate } from "@/lib/documents/format";
-import { FONT_SCALE, enLabel, legalFieldVisible, resolveBlockColors, resolveDesign, themeLine, tint, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
+import { FONT_SCALE, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
 
 /**
  * เทมเพลตเอกสาร A4 (ใช้ร่วมทุกประเภทเอกสาร) — หน้าตาตามธีมของบริษัท (ตั้งค่า › ออกแบบเอกสาร)
@@ -167,6 +167,23 @@ type FieldRow = { key: string; label: string; value: string };
 /** ข้อมูลที่วางได้: เลขที่ วันที่ แถวข้อมูลของเอกสาร (m:ป้าย) ข้อมูลเพิ่ม (f:คีย์) */
 export function fieldValue(c: Ctx, key?: string): FieldRow | null {
   if (!key) return null;
+  const s = c.doc.seller, p = c.doc.party;
+  // ช่องย่อยจากกล่องผู้ขาย/ลูกค้า/ชื่อเอกสาร (แยกกล่องเพื่อจัดวางเอง)
+  switch (key) {
+    case "title": return { key, label: "ชื่อเอกสาร", value: docTitle(c) };
+    case "titleEn": return { key, label: "ชื่อภาษาอังกฤษ", value: docTitleEn(c) || "" };
+    case "seller.name": return { key, label: "ชื่อบริษัท", value: s.name || "" };
+    case "seller.nameEn": return { key, label: "ชื่อภาษาอังกฤษ", value: s.nameEn || "" };
+    case "seller.address": return { key, label: "ที่อยู่", value: s.address || "" };
+    case "seller.taxId": return { key, label: "เลขประจำตัวผู้เสียภาษี", value: `${formatTaxId(s.taxId) || "-"}  ${branchLabel(s.branchCode, s.branchName)}` };
+    case "seller.contact": return { key, label: "ติดต่อ", value: [s.phone && `โทร ${s.phone}`, s.email, s.website].filter(Boolean).join("  ·  ") };
+    case "customer.name": return { key, label: p?.label || "ลูกค้า", value: p?.name || "-" };
+    case "customer.address": return { key, label: "ที่อยู่", value: p?.address || "" };
+    case "customer.taxId": return { key, label: "เลขประจำตัวผู้เสียภาษี", value: p?.taxId ? `${formatTaxId(p.taxId)}  ${branchLabel(p.branchCode, p.branchName)}` : "" };
+    case "customer.contact": return { key, label: p?.contactLabel || "ผู้ติดต่อ", value: p?.contact || "" };
+    case "customer.phone": return { key, label: "โทร", value: p?.phone || "" };
+    case "customer.email": return { key, label: "อีเมล", value: p?.email || "" };
+  }
   if (key === "number") return { key, label: "เลขที่", value: c.doc.number || "-" };
   if (key === "date") return { key, label: "วันที่", value: c.doc.date ? thaiDate(c.doc.date) : "......../......../........" };
   if (key.startsWith("m:")) { const m = c.doc.meta.find((x) => x.label === key.slice(2)); return m ? { key, label: m.label, value: m.value } : null; }
@@ -197,7 +214,8 @@ export function SectionMeta({ c, align = "right" }: { c: Ctx; align?: "left" | "
 
 export function SectionField({ c, b }: { c: Ctx; b: FreeBlock }) {
   const f = fieldValue(c, b.field);
-  if (!f) return null;
+  // ไม่มีข้อมูล (เช่น ยังไม่ได้กรอกชื่อภาษาอังกฤษ/อีเมล) = ไม่พิมพ์อะไร
+  if (!f || !f.value.trim()) return null;
   if (b.hideLabel) return <T style={{ textAlign: b.align, fontWeight: b.bold ? "bold" : undefined }}>{f.value || "-"}</T>;
   return (
     <View style={{ flexDirection: "row", justifyContent: b.align === "right" ? "flex-end" : b.align === "center" ? "center" : "flex-start" }}>
@@ -543,8 +561,8 @@ export function LetterheadBlocks({ c, letter = false }: { c: Ctx; letter?: boole
 /** หัวกระดาษที่ไม่มีชื่อผู้ขาย/ชื่อเอกสาร/เลขที่-วันที่ (เช่น หัวหนังสือ): เติมใต้หัวกระดาษให้ข้อมูลภาษีครบเสมอ */
 function LetterheadGaps({ c }: { c: Ctx }) {
   const blocks = c.lh?.blocks || [];
-  const needSeller = !blocks.some((b) => b.kind === "seller");
-  const needTitle = !blocks.some((b) => b.kind === "title");
+  const needSeller = !requiredSatisfied("seller", blocks);
+  const needTitle = !requiredSatisfied("title", blocks);
   const needMeta = !legalFieldVisible(blocks, "number") || !legalFieldVisible(blocks, "date");
   if (!needSeller && !needTitle && !needMeta) return null;
   return (

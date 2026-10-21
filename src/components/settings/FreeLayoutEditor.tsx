@@ -4,13 +4,13 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
   AlertTriangle, AlignVerticalDistributeCenter, ArrowDown, ArrowLeftRight, ArrowUp, ArrowUpDown, CheckCircle2, Copy, CopyPlus, Database, Eye, ImagePlus, ListChecks, Loader2, Lock, Magnet, Minus, MousePointer2,
-  Pin, PinOff, Redo2, Square, Trash2, Undo2,
+  Group as GroupIcon, Pin, PinOff, Redo2, Split, Square, Trash2, Undo2, Ungroup,
 } from "lucide-react";
 import { GlassCard, PillButton, PillCheckbox, PillInput, PillSelect, cn } from "@/components/ui/Base";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import type { DocumentModel } from "@/lib/documents/model";
 import {
-  A4, BLOCK_LABELS, BLOCK_PARTS, COLOR_TOKENS, HEAD_KINDS, resolveColor, ITEM_COLUMNS, TEMPLATES, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign,
+  A4, BLOCK_LABELS, BLOCK_PARTS, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, TEMPLATES, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign,
   type BlockKind, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, type Letterhead,
 } from "@/lib/documents/design";
 import { templateLayout } from "@/lib/documents/layout-templates";
@@ -58,6 +58,16 @@ const STEPS = [
   { title: "ตรวจและบันทึก", hint: "แท็บ \"ตรวจ\": ระบบหากล่องทับกัน ชิดขอบ หรือขาดข้อมูลที่กฎหมายกำหนด คลิกเพื่อไปแก้ แล้วกด \"บันทึกการออกแบบ\" มุมขวาบน" },
 ];
 const Sep = () => <span className="w-px h-6 bg-white/10 mx-0.5" />;
+/** กล่องที่แยกหัวข้อเป็นช่องย่อยได้ */
+const SPLITTABLE: BlockKind[] = ["seller", "party", "meta", "title"];
+/** ช่องย่อยของผู้ขาย/ลูกค้า/ชื่อเอกสาร (เลือกในช่องข้อมูลได้) */
+const SUB_FIELDS = [
+  { key: "title", label: "ชื่อเอกสาร" }, { key: "titleEn", label: "ชื่อเอกสารภาษาอังกฤษ" },
+  { key: "seller.name", label: "ชื่อบริษัท" }, { key: "seller.nameEn", label: "ชื่อบริษัทภาษาอังกฤษ" }, { key: "seller.address", label: "ที่อยู่บริษัท" },
+  { key: "seller.taxId", label: "เลขผู้เสียภาษีบริษัท" }, { key: "seller.contact", label: "ติดต่อบริษัท" },
+  { key: "customer.name", label: "ชื่อลูกค้า" }, { key: "customer.address", label: "ที่อยู่ลูกค้า" }, { key: "customer.taxId", label: "เลขผู้เสียภาษีลูกค้า" },
+  { key: "customer.contact", label: "ผู้ติดต่อลูกค้า" }, { key: "customer.phone", label: "โทรลูกค้า" }, { key: "customer.email", label: "อีเมลลูกค้า" },
+];
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div className="space-y-1"><label className="text-[11px] text-white/55 ml-1">{label}</label>{children}</div>
 );
@@ -103,6 +113,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const [grid, setGrid] = useState(10);
   const [gridMode, setGridMode] = useState<"drag" | "always" | "off">("drag");
   const [moving, setMoving] = useState(false);
+  const [freeMove, setFreeMove] = useState(false);
   // ขนาดกระดาษบนจอ: พอดีความกว้างพื้นที่ (ปัด 0.05 กันวาดภาพใหม่ถี่ตอนย่อขยายหน้าต่าง) หรือซูมคงที่
   const [zoom, setZoom] = useState<"fit" | number>("fit");
   const [fitS, setFitS] = useState(1.25);
@@ -177,6 +188,55 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const update = (it: Item, patch: Partial<FreeBlock>) => applyMany(new Map([[it.key, { ...it.b, ...patch }]]));
   /** ล้างค่าของกล่อง (กลับไปใช้ค่าตามธีม) */
   const unset = (it: Item, ...keys: (keyof FreeBlock)[]) => { const n: any = { ...it.b }; for (const k of keys) delete n[k]; applyMany(new Map([[it.key, n]])); };
+  /** สมาชิกทั้งกลุ่มของกล่องนี้ (ไม่มีกลุ่ม = ตัวเอง) */
+  const groupOf = (it: Item) => (it.b.group ? items.filter((x) => x.zone === it.zone && x.b.group === it.b.group).map((x) => x.key) : [it.key]);
+  const newGroupId = () => `g-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+  /** จัดกลุ่มกล่องที่เลือก (แยกตามหัวกระดาษ/เนื้อเอกสาร) */
+  const groupSelected = () => {
+    if (selected.length < 2) return;
+    const ids: Record<string, string> = { head: newGroupId(), doc: newGroupId() + "d" };
+    applyMany(new Map(selected.map((i) => [i.key, { ...i.b, group: ids[i.zone] }])));
+  };
+  const ungroupSelected = () => applyMany(new Map(selected.filter((i) => i.b.group).map((i) => [i.key, { ...i.b, group: undefined }])));
+  const anyGrouped = selected.some((i) => i.b.group);
+
+  /**
+   * แยกกล่องเป็นช่องข้อมูลย่อย (ชื่อ ที่อยู่ เลขผู้เสียภาษี ฯลฯ) วางตามตำแหน่งเดิม จัดกลุ่มไว้ให้ — แล้วลากแต่ละหัวข้อได้อิสระ
+   * ข้อมูลยังดึงจากฐานข้อมูลเหมือนเดิม · ข้อมูลที่กฎหมายบังคับนับครบเมื่อช่องย่อยครบ
+   */
+  const splitBlock = (it: Item) => {
+    const b = it.b, hide = new Set(b.hide || []);
+    const base = (b.fontSize ?? theme.fontSize) * FONT_SCALE[font];
+    const row = (n = 1) => Math.round(base * 1.45 * n + 2);
+    const rows: [string, number, Partial<FreeBlock>][] =
+      b.kind === "seller" ? [
+        ["seller.name", row(1.4), { hideLabel: true, bold: true, fontSize: Math.round((b.fontSize ?? theme.fontSize) * 1.35 * 10) / 10, color: b.color || "@primary" }],
+        ...(hide.has("nameEn") ? [] : [["seller.nameEn", row(0.9), { hideLabel: true, fontSize: Math.round((b.fontSize ?? theme.fontSize) * 0.9 * 10) / 10 }] as [string, number, Partial<FreeBlock>]]),
+        ["seller.address", row(2), { hideLabel: true }],
+        ["seller.taxId", row(), {}],
+        ...(hide.has("contact") ? [] : [["seller.contact", row(0.9), { hideLabel: true, fontSize: Math.round((b.fontSize ?? theme.fontSize) * 0.9 * 10) / 10 }] as [string, number, Partial<FreeBlock>]]),
+      ]
+      : b.kind === "party" ? [
+        ["customer.name", row(), { bold: true }], ["customer.address", row(2), {}], ["customer.taxId", row(), {}],
+        ...(["contact", "phone", "email"] as const).filter((k) => !hide.has(k)).map((k) => [`customer.${k}`, row(), {}] as [string, number, Partial<FreeBlock>]),
+      ]
+      : b.kind === "meta" ? fieldOptions.filter((o) => (o.key === "number" || o.key === "date" || o.key.startsWith("m:")) ? !hide.has(o.key) : (b.fields || []).includes(o.key)).map((o) => [o.key, row(), {}] as [string, number, Partial<FreeBlock>])
+      : b.kind === "title" ? [
+        ["title", row(1.9), { hideLabel: true, bold: true, fontSize: Math.round((b.fontSize ?? theme.fontSize) * 1.8 * 10) / 10, color: b.color || "@primary" }],
+        ...(hide.has("en") ? [] : [["titleEn", row(0.9), { hideLabel: true, fontSize: Math.round((b.fontSize ?? theme.fontSize) * 0.9 * 10) / 10 }] as [string, number, Partial<FreeBlock>]]),
+      ] : [];
+    if (!rows.length) return;
+    const group = newGroupId();
+    let y = b.y;
+    const adds = rows.map(([field, h, extra]) => {
+      const nb: FreeBlock = { id: `field-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, kind: "field", field, x: b.x, y, w: b.w, h, group, ...(b.align ? { align: b.align } : {}), ...(b.kind === "meta" && !b.align ? { align: "right" as const } : {}), ...(b.color ? { color: b.color } : {}), ...extra };
+      y += h + 1;
+      return { zone: it.zone, b: nb };
+    });
+    applyMany(new Map([[it.key, null]]), adds);
+    setSel(adds.map((a) => `${a.zone === "head" ? "h" : "d"}:${a.b.id}`));
+  };
+
   /** ทำสำเนากล่องที่เลือก (กล่องที่มีได้ชุดเดียว เช่น ตาราง ยอดรวม ทำซ้ำไม่ได้) */
   const duplicate = () => {
     const adds = selected.filter((i) => !SINGLE.includes(i.b.kind)).map((i) => ({ zone: i.zone, b: { ...i.b, id: `${i.b.kind}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, x: i.b.x + 10, y: i.b.y + 10, locked: undefined } }));
@@ -194,7 +254,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     for (const i of items) if (!exclude.has(i.key)) { xs.push(i.b.x, i.b.x + i.b.w / 2, i.b.x + i.b.w); ys.push(i.b.y, i.b.y + i.b.h / 2, i.b.y + i.b.h); }
     return { xs, ys };
   };
-  const toGrid = (v: number) => (snapOn ? Math.round(v / grid) * grid : Math.round(v * 2) / 2);
+  /** free = วางอิสระ (ปิดดูดติด หรือกด Alt ค้าง) — ปัดแค่ 0.1pt */
+  const toGrid = (v: number, free = !snapOn) => (free ? Math.round(v * 10) / 10 : Math.round(v / grid) * grid);
 
   useEffect(() => {
     const move = (e: PointerEvent) => {
@@ -202,29 +263,32 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       const d = drag.current;
       if (!d) return;
       let dx = (e.clientX - d.px) / S, dy = (e.clientY - d.py) / S;
-      if (d.mode === "head") { if (letterhead) commitHead({ ...letterhead, height: Math.max(40, Math.min(320, toGrid(d.h + dy))) }); return; }
+      const free = !snapOn || e.altKey;
+      setFreeMove(e.altKey);
+      if (d.mode === "head") { if (letterhead) commitHead({ ...letterhead, height: Math.max(40, Math.min(320, toGrid(d.h + dy, free))) }); return; }
       const t = targets(new Set(d.orig.keys()));
       const g: Guides = { x: [], y: [] };
       if (d.mode === "move") {
         const list = [...d.orig.values()];
         const L = Math.min(...list.map((b) => b.x)), R = Math.max(...list.map((b) => b.x + b.w)), Tp = Math.min(...list.map((b) => b.y)), B = Math.max(...list.map((b) => b.y + b.h));
-        const sx = snapOn ? nearest([L + dx, (L + R) / 2 + dx, R + dx], t.xs) : null;
-        const sy = snapOn ? nearest([Tp + dy, (Tp + B) / 2 + dy, B + dy], t.ys) : null;
-        if (sx) { dx += sx.delta; g.x.push(sx.at); } else dx = toGrid(L + dx) - L;
-        if (sy) { dy += sy.delta; g.y.push(sy.at); } else dy = toGrid(Tp + dy) - Tp;
+        const sx = free ? null : nearest([L + dx, (L + R) / 2 + dx, R + dx], t.xs);
+        const sy = free ? null : nearest([Tp + dy, (Tp + B) / 2 + dy, B + dy], t.ys);
+        if (sx) { dx += sx.delta; g.x.push(sx.at); } else dx = toGrid(L + dx, free) - L;
+        if (sy) { dy += sy.delta; g.y.push(sy.at); } else dy = toGrid(Tp + dy, free) - Tp;
         applyMany(new Map([...d.orig].map(([k, b]) => [k, { ...b, x: b.x + dx, y: b.y + dy }])));
       } else {
         const [k, b] = [...d.orig][0];
         let right = b.x + b.w + dx, bottom = b.y + b.h + dy;
-        const sx = snapOn ? nearest([right], t.xs) : null, sy = snapOn ? nearest([bottom], t.ys) : null;
-        if (sx) { right = sx.at; g.x.push(sx.at); } else right = toGrid(right);
-        if (sy) { bottom = sy.at; g.y.push(sy.at); } else bottom = toGrid(bottom);
+        const sx = free ? null : nearest([right], t.xs), sy = free ? null : nearest([bottom], t.ys);
+        if (sx) { right = sx.at; g.x.push(sx.at); } else right = toGrid(right, free);
+        if (sy) { bottom = sy.at; g.y.push(sy.at); } else bottom = toGrid(bottom, free);
         applyMany(new Map([[k, { ...b, w: Math.max(4, right - b.x), h: Math.max(1, bottom - b.y) }]]));
       }
       setGuides(g);
     };
     const up = () => {
       setMoving(false);
+      setFreeMove(false);
       if (draft) { finishDraw(draft); return; }
       if (drag.current) { drag.current = null; setGuides({ x: [], y: [] }); }
     };
@@ -234,6 +298,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       if (e.ctrlKey || e.metaKey) {
         const k = e.key.toLowerCase();
         if (k === "z" && !e.shiftKey) { e.preventDefault(); undo(); } else if (k === "y" || (k === "z" && e.shiftKey)) { e.preventDefault(); redo(); } else if (k === "d") { e.preventDefault(); duplicate(); }
+        else if (k === "g") { e.preventDefault(); if (e.shiftKey) ungroupSelected(); else groupSelected(); }
         return;
       }
       if (!selected.length) return;
@@ -283,8 +348,10 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     if (tool !== "select") return; // โหมดวาด: ให้กระดาษรับการลากแทน
     e.stopPropagation();
     let next = sel;
-    if (e.shiftKey && mode === "move") next = sel.includes(it.key) ? sel.filter((k) => k !== it.key) : [...sel, it.key];
-    else if (!sel.includes(it.key) || mode === "size") next = [it.key];
+    const members = groupOf(it);
+    if (e.shiftKey && mode === "move") next = sel.includes(it.key) ? sel.filter((k) => !members.includes(k)) : [...sel, ...members.filter((k) => !sel.includes(k))];
+    else if (mode === "size") next = [it.key];
+    else if (!sel.includes(it.key)) next = members; // คลิกสมาชิกกลุ่ม = เลือกทั้งกลุ่ม (ดับเบิลคลิกเพื่อแก้กล่องเดียว)
     setSel(next);
     setTab("block");
     if (!canEdit || !next.includes(it.key)) return;
@@ -363,6 +430,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const fieldOptions = [
     { key: "number", label: "เลขที่" }, { key: "date", label: "วันที่" },
     ...docMeta.map((l) => ({ key: `m:${l}`, label: l })), ...docFields.map((f) => ({ key: `f:${f.key}`, label: f.label })),
+    ...SUB_FIELDS,
   ];
   const placeOf = (key: string): Place => {
     if (items.some((i) => i.b.kind === "field" && i.b.field === key)) return "separate";
@@ -627,6 +695,13 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         {letterhead && !letterOnly && HEAD_KINDS.includes(b.kind) && (
           <PillCheckbox label="อยู่ในหัวกระดาษ (ใช้ร่วมกับเอกสารที่ใช้หัวนี้)" checked={it.zone === "head"} onChange={() => moveZone(it)} />
         )}
+        {canEdit && SPLITTABLE.includes(b.kind) && (
+          <div className="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] p-2.5 space-y-1.5">
+            <p className="text-[11.5px] text-white/65 leading-relaxed">ต้องการจัดวางหัวข้อในกล่องนี้เอง (เช่น ย้ายที่อยู่ไปอีกฝั่ง)? แยกเป็นช่องย่อยแล้วลากแต่ละหัวข้อได้อิสระ ข้อมูลยังดึงจากฐานข้อมูลเหมือนเดิม</p>
+            <PillButton variant="glass" className="h-8 px-3 text-xs w-full" onClick={() => splitBlock(it)}><Split size={13} /> แยกหัวข้อเป็นกล่องย่อย</PillButton>
+          </div>
+        )}
+        {b.group && <p className="text-[11.5px] text-purple-200/80 flex items-center gap-1"><GroupIcon size={12} /> อยู่ในกลุ่ม — คลิกเลือกทั้งกลุ่ม · ดับเบิลคลิกแก้กล่องเดียว</p>}
         <PillCheckbox label="ล็อกตำแหน่ง (กันลากโดยไม่ตั้งใจ)" checked={!!b.locked} onChange={(e) => update(it, { locked: e.target.checked || undefined })} />
         <div className="flex gap-1.5 pt-1">
           <PillButton variant="ghost" className="h-8 px-2.5 text-xs" onClick={() => reorder(it, -1)} title="ไปด้านหลัง"><ArrowDown size={13} /></PillButton>
@@ -710,6 +785,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           onClick={(e) => { setSel(e.shiftKey ? (sel.includes(it.key) ? sel.filter((k) => k !== it.key) : [...sel, it.key]) : [it.key]); }}>
           <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", it.zone === "head" ? "bg-purple-400" : "bg-nexus-teal")} />
           <span className="truncate flex-1">{nameOf(it.b)}{isLocked(it) ? " 🔒" : ""}</span>
+          {it.b.group && <GroupIcon size={11} className="text-purple-300/70 flex-shrink-0" />}
           {canEdit && <button type="button" title={it.b.locked ? "ปลดล็อก" : "ล็อกตำแหน่ง"} onClick={(e) => { e.stopPropagation(); update(it, { locked: it.b.locked ? undefined : true }); }} className={cn("p-1 rounded", it.b.locked ? "text-warning" : "text-white/30 hover:text-white")}>{it.b.locked ? <Pin size={12} /> : <PinOff size={12} />}</button>}
         </div>
       ))}
@@ -736,9 +812,9 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     // eslint-disable-next-line react-hooks/exhaustive-deps -- คำนวณจากกล่องปัจจุบัน
   }, [layout, letterhead, bodyOn, theme.showPageNumber]);
   const legal = letterOnly ? [] : [
-    { label: "ผู้ขาย (ชื่อ ที่อยู่ เลขผู้เสียภาษี)", ok: !!firstOf("seller") }, { label: "ชื่อเอกสาร", ok: !!firstOf("title") },
+    { label: "ผู้ขาย (ชื่อ ที่อยู่ เลขผู้เสียภาษี)", ok: requiredSatisfied("seller", items.map((i) => i.b)) }, { label: "ชื่อเอกสาร", ok: requiredSatisfied("title", items.map((i) => i.b)) },
     { label: "เลขที่", ok: legalFieldVisible(items.map((i) => i.b), "number") }, { label: "วันที่", ok: legalFieldVisible(items.map((i) => i.b), "date") },
-    { label: "ลูกค้า/คู่ค้า", ok: !!firstOf("party") }, { label: "ตารางรายการ", ok: !!firstOf("items") },
+    { label: "ลูกค้า/คู่ค้า", ok: requiredSatisfied("party", items.map((i) => i.b)) }, { label: "ตารางรายการ", ok: !!firstOf("items") },
     ...(docHasAmounts(docType) ? [{ label: "ยอดรวมและภาษี", ok: !!firstOf("totals") }] : []),
   ];
   const checkPanel = (
@@ -821,6 +897,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           </div>
         )}
         <Sep />
+        <ToolBtn title="จัดกลุ่ม: ย้ายพร้อมกัน (Ctrl+G)" disabled={!canEdit || selected.length < 2} onClick={groupSelected}><GroupIcon size={15} /></ToolBtn>
+        <ToolBtn title="แยกกลุ่ม (Ctrl+Shift+G)" disabled={!canEdit || !anyGrouped} onClick={ungroupSelected}><Ungroup size={15} /></ToolBtn>
         <ToolBtn title="ทำสำเนา (Ctrl+D)" disabled={!canEdit || !selected.some((i) => !SINGLE.includes(i.b.kind))} onClick={duplicate}><CopyPlus size={15} /></ToolBtn>
         <ToolBtn title={allLocked ? "ปลดล็อกตำแหน่ง" : "ล็อกตำแหน่ง"} on={allLocked} disabled={!can} onClick={toggleLock}>{allLocked ? <PinOff size={15} /> : <Pin size={15} />}</ToolBtn>
         <ToolBtn title="ลบ (Delete)" disabled={!can || !selected.some((i) => !isLocked(i))} onClick={() => remove(selected)}><Trash2 size={15} /></ToolBtn>
@@ -851,7 +929,10 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
               {[2, 5, 10, 20].map((g) => <option key={g} value={String(g)}>{g} pt</option>)}
             </PillSelect>
           </div>
-          <ToolBtn title="ดูดติดกริดและเส้นนำ" on={snapOn} onClick={() => setSnapOn((v) => !v)}><Magnet size={15} /></ToolBtn>
+          <button type="button" title="ดูดติดกริดและเส้นนำ · กด Alt ค้างขณะลาก = วางอิสระชั่วคราว" onClick={() => setSnapOn((v) => !v)}
+            className={cn("h-8 px-2 rounded-lg flex items-center gap-1 border text-[11.5px]", snapOn ? "border-nexus-teal/60 bg-nexus-teal/15 text-nexus-teal" : "border-white/10 text-white/60 hover:text-white")}>
+            <Magnet size={14} /> {snapOn ? "ดูดติด" : "วางอิสระ"}
+          </button>
           <div className="w-[124px]" title="ขนาดกระดาษบนจอ">
             <PillSelect value={String(zoom)} onChange={(e) => setZoom(e.target.value === "fit" ? "fit" : Number(e.target.value))} className="h-8 w-full text-[12px]">
               <option value="fit">พอดีความกว้าง</option><option value="1">ซูม 100%</option><option value="1.333">ขนาดจริง</option><option value="1.5">ซูม 150%</option><option value="2">ซูม 200%</option>
@@ -891,7 +972,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
               const moved = !!(image && o && (o.x !== b.x || o.y !== b.y));
               const fresh = !o;
               return (
-                <div key={it.key} onPointerDown={(e) => start(e, it, "move")}
+                <div key={it.key} onPointerDown={(e) => start(e, it, "move")} onDoubleClick={(e) => { e.stopPropagation(); setSel([it.key]); setTab("block"); }}
                   className={cn("absolute group", canEdit ? "cursor-move" : "cursor-pointer",
                     on ? "outline outline-2 outline-[#0d9488] z-20" : "outline outline-1 outline-dashed outline-transparent hover:outline-slate-400 z-10",
                     fresh && !on && "outline-slate-300")}
@@ -921,6 +1002,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                 <span className="absolute right-1 -top-[16px] text-[10px] px-1.5 rounded bg-purple-600 text-white whitespace-nowrap">ขอบล่างหัวกระดาษ · เนื้อหาเริ่มใต้เส้นนี้</span>
               </div>
             )}
+            {freeMove && moving && <span className="absolute top-2 left-2 z-40 text-[11px] px-2 py-1 rounded-full bg-amber-500/90 text-white">วางอิสระ (ไม่ดูดกริด)</span>}
             {(busy || !image) && <span className="absolute top-2 right-2 z-40 flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-slate-800/80 text-white"><Loader2 size={11} className="animate-spin" /> กำลังอัปเดต</span>}
             {error && <span className="absolute bottom-2 left-2 right-2 z-40 text-[11px] px-2 py-1 rounded bg-red-600/90 text-white">วาดตัวอย่างไม่สำเร็จ: {error}</span>}
           </div>

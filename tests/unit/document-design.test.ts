@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DESIGNABLE_DOCS } from "@/lib/documents/build";
 import { templateLayout } from "@/lib/documents/layout-templates";
-import { legalFieldVisible, resolveBlockColors, resolveColor, tint, REQUIRED_BLOCKS, TEMPLATES, addableBlocksFor, applyLayoutToAll, defaultFreeLayout, docHasAmounts, letterheadTemplate, normalizeDesign, normalizeFreeLayout, normalizeTheme, requiredBlocksFor, requiredColumnsFor, resolveDesign } from "@/lib/documents/design";
+import { legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveColor, tint, REQUIRED_BLOCKS, TEMPLATES, addableBlocksFor, applyLayoutToAll, defaultFreeLayout, docHasAmounts, letterheadTemplate, normalizeDesign, normalizeFreeLayout, normalizeTheme, requiredBlocksFor, requiredColumnsFor, resolveDesign } from "@/lib/documents/design";
 
 describe("document design", () => {
   it("normalizes theme input and keeps brand color as default", () => {
@@ -169,5 +169,27 @@ describe("document design — template catalog and theme colours", () => {
     const theme = normalizeTheme({ primary: "#112233", accent: "#445566" });
     expect(resolveBlockColors(r, theme)).toMatchObject({ bg: "#445566", border: "#112233" });
     expect(resolveColor("@line", theme)).toBe(tint("#112233", 0.72));
+  });
+});
+
+describe("document design — split boxes into fields, groups", () => {
+  it("split seller/party/meta fields count as the required boxes and keep their group", () => {
+    const base = defaultFreeLayout("quotation").blocks.filter((b) => !["seller", "party", "meta"].includes(b.kind));
+    const f = (field: string, y: number) => ({ id: `f-${field.replace(/\W/g, "")}`, kind: "field", field, x: 40, y, w: 200, h: 14, group: "g-seller" });
+    const raw = { enabled: true, blocks: [...base, f("seller.name", 20), f("seller.address", 36), f("seller.taxId", 52), f("customer.name", 160), f("customer.address", 176), f("customer.taxId", 192), f("number", 100), f("date", 116)] };
+    const out = normalizeFreeLayout(raw, "quotation")!;
+    for (const k of ["seller", "party", "meta"]) expect(out.blocks.some((b) => b.kind === k), k).toBe(false);
+    expect(requiredSatisfied("seller", out.blocks)).toBe(true);
+    expect(out.blocks.find((b) => b.field === "seller.name")!.group).toBe("g-seller");
+    // ขาดเลขผู้เสียภาษีผู้ขาย → คืนกล่องผู้ขายให้ (ข้อมูลภาษีต้องครบ)
+    const missing = normalizeFreeLayout({ ...raw, blocks: raw.blocks.filter((b: any) => b.field !== "seller.taxId") }, "quotation")!;
+    expect(missing.blocks.some((b) => b.kind === "seller")).toBe(true);
+  });
+
+  it("rejects unknown field keys and bad group ids", () => {
+    const out = normalizeFreeLayout({ enabled: true, blocks: [{ id: "x", kind: "field", field: "seller.password", x: 0, y: 0, w: 10, h: 10, group: "BAD GROUP!" }] })!;
+    const x = out.blocks.find((b) => b.id === "x")!;
+    expect(x.field).toBe("number");
+    expect(x.group).toBeUndefined();
   });
 });

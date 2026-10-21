@@ -107,6 +107,8 @@ export interface FreeBlock {
   lineColor?: string;
   /** ล็อกตำแหน่ง (ลาก/ปรับขนาดไม่ได้ จนกว่าจะปลดล็อก) */
   locked?: boolean;
+  /** กลุ่ม: กล่องที่มีรหัสกลุ่มเดียวกันเลือกและย้ายไปพร้อมกัน */
+  group?: string;
 }
 export interface FreeLayout { enabled: boolean; blocks: FreeBlock[] }
 
@@ -135,7 +137,24 @@ export const TEXT_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party", "it
 /** กล่องที่วางในหัวกระดาษได้ */
 export const HEAD_KINDS: BlockKind[] = ["logo", "seller", "title", "meta", "field", "text", "line", "rect", "image"];
 /** คีย์ช่องข้อมูล: เลขที่ วันที่ แถวข้อมูลของเอกสาร (m:ป้าย) ข้อมูลเพิ่ม (f:คีย์) */
-const FIELD_KEY = /^(number|date|m:[^\n]{1,40}|f:[a-zA-Z]{1,30})$/;
+const FIELD_KEY = /^(number|date|title|titleEn|m:[^\n]{1,40}|f:[a-zA-Z]{1,30}|seller\.(name|nameEn|address|taxId|contact)|customer\.(name|address|taxId|contact|phone|email))$/;
+
+/**
+ * กล่องที่แยกเป็นช่องข้อมูลย่อยได้ (จัดวางหัวข้อในกล่องเองอย่างอิสระ)
+ * ข้อมูลที่กฎหมายบังคับครบเมื่อมีช่องย่อยครบตามนี้ — ใช้แทนกล่องเดิมได้
+ */
+export const SPLIT_EQUIV: Partial<Record<BlockKind, string[]>> = {
+  seller: ["seller.name", "seller.address", "seller.taxId"],
+  party: ["customer.name", "customer.address", "customer.taxId"],
+  meta: ["number", "date"],
+  title: ["title"],
+};
+/** กล่องชนิดนี้ (หรือช่องย่อยที่แทนกันได้) มีครบในผังหรือไม่ */
+export function requiredSatisfied(kind: BlockKind, blocks: FreeBlock[]): boolean {
+  if (blocks.some((b) => b.kind === kind)) return true;
+  const eq = SPLIT_EQUIV[kind];
+  return !!eq && eq.every((f) => blocks.some((b) => b.kind === "field" && b.field === f));
+}
 
 /** เอกสารที่ไม่มียอดเงิน (ไม่ต้องมีกล่องยอดรวม/จำนวนเงินตัวอักษร) */
 const NO_AMOUNT_DOCS = ["delivery_note", "work_order"];
@@ -376,6 +395,7 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(colorOk(b.headBg) ? { headBg: b.headBg } : {}),
     ...(colorOk(b.lineColor) ? { lineColor: b.lineColor } : {}),
     ...(b.locked ? { locked: true } : {}),
+    ...(/^[a-z0-9-]{1,40}$/.test(String(b.group || "")) ? { group: String(b.group) } : {}),
   };
 }
 
@@ -399,7 +419,8 @@ export function normalizeFreeLayout(raw: any, docType?: string): FreeLayout | un
   for (const b of raw.blocks.slice(0, 60)) { const n = normalizeBlock(b, blocks.length); if (n) blocks.push(n); }
   // กล่องที่กฎหมายบังคับต้องอยู่ครบ: ขาดตัวไหนเติมกลับจากผังมาตรฐาน
   const defaults = defaultFreeLayout().blocks;
-  for (const k of requiredBlocksFor(docType)) if (!blocks.some((b) => b.kind === k)) blocks.push(defaults.find((b) => b.kind === k)!);
+  // (กล่องที่แยกเป็นช่องย่อยครบแล้วนับว่ามี)
+  for (const k of requiredBlocksFor(docType)) if (!requiredSatisfied(k, blocks)) blocks.push(defaults.find((b) => b.kind === k)!);
   return { enabled: !!raw.enabled, blocks };
 }
 

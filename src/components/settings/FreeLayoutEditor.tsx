@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
-  AlignVerticalDistributeCenter, ArrowDown, ArrowUp, Copy, Eye, Grid3x3, ImagePlus, ListChecks, Loader2, Lock, Magnet, Minus, MousePointer2, Plus, RotateCcw, Square, SquareDashedMousePointer, Trash2,
+  AlignVerticalDistributeCenter, ArrowDown, ArrowUp, Copy, Eye, ImagePlus, ListChecks, Loader2, Lock, Magnet, Minus, MousePointer2, Plus, RotateCcw, Square, SquareDashedMousePointer, Trash2,
 } from "lucide-react";
 import { GlassCard, PillButton, PillCheckbox, PillInput, PillSelect, cn } from "@/components/ui/Base";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
@@ -23,10 +23,11 @@ import { usePdfPageImage } from "./usePdfPageImage";
  *  - ช่วยจัดวาง: ตารางกริด ดูดติดกริด เส้นนำแนวขอบ/กึ่งกลางของกล่องอื่นและหน้ากระดาษ
  *    เลือกหลายกล่อง (Shift+คลิก) แล้วจัดชิด/กระจาย/ปรับขนาดเท่ากัน · ลูกศรขยับ 1pt (Shift 10pt) · Delete ลบ
  *  - แท็บ "ข้อมูลในเอกสาร": รายการข้อมูลทั้งหมดของเอกสารชนิดนี้ ติ๊กเลือกแสดง/ซ่อน หรือแยกเป็นกล่องวางเองได้
+ *  - กระดาษขยายเต็มพื้นที่ (พอดีความกว้าง) หรือซูม 100–200% — ภาพหน้าเอกสารวาดตามขนาดจอจึงคมชัด
+ *  - กริดจาง แสดงเฉพาะตอนลาก/วาด (ตั้งให้แสดงตลอดหรือปิดได้)
  *  - เครื่องมือวาด: ลากบนกระดาษเพื่อวาดเส้น (แนวนอน/แนวตั้งตามทิศที่ลาก) หรือกรอบ · ปรับความหนา เส้นประ มุมโค้ง/เหลี่ยม
  *  - กล่องที่เอกสารภาษีต้องมี ย้าย/ปรับได้แต่ลบไม่ได้
  */
-const S = 1; // px ต่อ pt บนจอ
 const SNAP_PT = 4;
 const MARGIN = 32;
 const SINGLE: BlockKind[] = ["seller", "title", "meta", "party", "items", "totals", "words", "notes", "payment", "signatures"];
@@ -85,7 +86,20 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const [tab, setTab] = useState<"block" | "data">("block");
   const [showPdf, setShowPdf] = useState(false);
   const [grid, setGrid] = useState(10);
-  const [showGrid, setShowGrid] = useState(true);
+  const [gridMode, setGridMode] = useState<"drag" | "always" | "off">("drag");
+  const [moving, setMoving] = useState(false);
+  // ขนาดกระดาษบนจอ: พอดีความกว้างพื้นที่ (ปัด 0.05 กันวาดภาพใหม่ถี่ตอนย่อขยายหน้าต่าง) หรือซูมคงที่
+  const [zoom, setZoom] = useState<"fit" | number>("fit");
+  const [fitS, setFitS] = useState(1.25);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setFitS(Math.round(Math.min(2.4, Math.max(0.8, (e.contentRect.width - 4) / A4.w)) * 20) / 20));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const S = zoom === "fit" ? fitS : zoom; // px ต่อ pt บนจอ
   const [snapOn, setSnapOn] = useState(true);
   const [guides, setGuides] = useState<Guides>({ x: [], y: [] });
   const [tool, setTool] = useState<"select" | "line" | "rect">("select");
@@ -171,6 +185,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       setGuides(g);
     };
     const up = () => {
+      setMoving(false);
       if (draft) { finishDraw(draft); return; }
       if (drag.current) { drag.current = null; setGuides({ x: [], y: [] }); }
     };
@@ -203,6 +218,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     if (tool === "select" || !canEdit || (!bodyOn && !letterhead)) return;
     e.preventDefault(); e.stopPropagation();
     const p = toPt(e);
+    setMoving(true);
     setDraft({ x0: p.x, y0: p.y, x1: p.x, y1: p.y });
   };
   const finishDraw = (d: { x0: number; y0: number; x1: number; y1: number }) => {
@@ -230,6 +246,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     if (!canEdit || !next.includes(it.key)) return;
     e.preventDefault();
     const keys = mode === "size" ? [it.key] : next;
+    setMoving(true);
     drag.current = { mode, px: e.clientX, py: e.clientY, orig: new Map(keys.map((k) => [k, byKey.get(k)!.b])), h: 0 };
   };
   const startHead = (e: React.PointerEvent) => {
@@ -614,6 +631,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   );
 
   const gridPx = grid * S;
+  const showGrid = gridMode === "always" || (gridMode === "drag" && moving);
   const can = canEdit && selected.length > 0;
 
   return (
@@ -647,8 +665,17 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         <ToolBtn title="วาดเส้น (ลากบนกระดาษ แนวนอน/แนวตั้งตามทิศที่ลาก)" on={tool === "line"} disabled={!canEdit} onClick={() => setTool(tool === "line" ? "select" : "line")}><Minus size={15} /></ToolBtn>
         <ToolBtn title="วาดกรอบ (ลากบนกระดาษ)" on={tool === "rect"} disabled={!canEdit} onClick={() => setTool(tool === "rect" ? "select" : "rect")}><Square size={15} /></ToolBtn>
         <span className="w-px h-6 bg-white/10 mx-1" />
-        <ToolBtn title="แสดงตารางกริด" on={showGrid} onClick={() => setShowGrid((v) => !v)}><Grid3x3 size={15} /></ToolBtn>
+        <div className="w-[150px]" title="ตารางกริดช่วยจัดวาง">
+          <PillSelect value={gridMode} onChange={(e) => setGridMode(e.target.value as any)} className="h-8 w-full text-[12px]">
+            <option value="drag">กริด: ขณะลาก</option><option value="always">กริด: แสดงตลอด</option><option value="off">กริด: ปิด</option>
+          </PillSelect>
+        </div>
         <ToolBtn title="ดูดติดกริดและเส้นนำ" on={snapOn} onClick={() => setSnapOn((v) => !v)}><Magnet size={15} /></ToolBtn>
+        <div className="w-[136px]" title="ขนาดกระดาษบนจอ">
+          <PillSelect value={String(zoom)} onChange={(e) => setZoom(e.target.value === "fit" ? "fit" : Number(e.target.value))} className="h-8 w-full text-[12px]">
+            <option value="fit">พอดีความกว้าง</option><option value="1">ซูม 100%</option><option value="1.333">ขนาดจริง</option><option value="1.5">ซูม 150%</option><option value="2">ซูม 200%</option>
+          </PillSelect>
+        </div>
         <div className="w-[100px]">
           <PillSelect value={String(grid)} onChange={(e) => setGrid(Number(e.target.value))} className="h-8 w-full text-[12px]">
             {[2, 5, 10, 20].map((g) => <option key={g} value={String(g)}>กริด {g} pt</option>)}
@@ -670,18 +697,18 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
 
       <div className="flex flex-col lg:flex-row gap-4 items-start">
         {/* กระดาษ A4: ภาพหน้าจริง + กล่องที่ลากได้ */}
-        <div className="overflow-x-auto max-w-full flex-shrink-0">
+        <div ref={wrapRef} className="flex-1 min-w-0 w-full overflow-auto max-h-[calc(100vh-96px)] rounded-lg">
           <div ref={paperRef} className={cn("relative bg-white rounded-sm shadow-2xl overflow-hidden select-none", tool !== "select" && "cursor-crosshair")} style={{ width: A4.w * S, height: A4.h * S }} onPointerDown={(e) => { if (tool !== "select") startDraw(e); else setSel([]); }}>
             {/* eslint-disable-next-line @next/next/no-img-element -- ภาพหน้าเอกสารที่วาดในเบราว์เซอร์ (data URL) */}
             {image && <img src={image.url} alt="" className="absolute inset-0 w-full h-full pointer-events-none" />}
             {showGrid && (
               <div className="absolute inset-0 pointer-events-none z-[5]" style={{
                 // เส้นกริดบางและจาง (เส้นรองจางมาก ทุก 5 ช่องเข้มขึ้นเล็กน้อย) ไม่บังเนื้อเอกสาร
-                backgroundImage: "linear-gradient(to right, rgba(100,116,139,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(100,116,139,0.06) 1px, transparent 1px), linear-gradient(to right, rgba(100,116,139,0.13) 1px, transparent 1px), linear-gradient(to bottom, rgba(100,116,139,0.13) 1px, transparent 1px)",
+                backgroundImage: "linear-gradient(to right, rgba(100,116,139,0.035) 1px, transparent 1px), linear-gradient(to bottom, rgba(100,116,139,0.035) 1px, transparent 1px), linear-gradient(to right, rgba(100,116,139,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(100,116,139,0.08) 1px, transparent 1px)",
                 backgroundSize: `${gridPx}px ${gridPx}px, ${gridPx}px ${gridPx}px, ${gridPx * 5}px ${gridPx * 5}px, ${gridPx * 5}px ${gridPx * 5}px`,
               }} />
             )}
-            {showGrid && <div className="absolute pointer-events-none z-[5] border border-dashed border-sky-400/25" style={{ left: MARGIN * S, top: 30 * S, right: MARGIN * S, bottom: 30 * S }} />}
+            {showGrid && <div className="absolute pointer-events-none z-[5] border border-dashed border-sky-400/20" style={{ left: MARGIN * S, top: 30 * S, right: MARGIN * S, bottom: 30 * S }} />}
             {/* ตัวอย่างขณะวาด */}
             {draft && (tool === "line" ? (() => {
               const horiz = Math.abs(draft.x1 - draft.x0) >= Math.abs(draft.y1 - draft.y0);

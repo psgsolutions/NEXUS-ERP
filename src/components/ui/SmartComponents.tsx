@@ -264,7 +264,7 @@ export function SmartSelect({
           className={cn(
             "w-full h-8 pl-9 pr-14 rounded-full bg-white/5 border border-white/10",
             "text-[14px] font-medium transition-all duration-200",
-            !value && !isFocused && "text-white/30 font-normal placeholder:text-white/30",
+            !value && !isFocused && "text-white/30 font-normal",
             (value || isFocused) && "text-white font-semibold",
             isOpen && "border-nexus-teal ring-1 ring-nexus-teal/50 shadow-neon-teal bg-black/40",
             disabled && "opacity-50 cursor-not-allowed pointer-events-none"

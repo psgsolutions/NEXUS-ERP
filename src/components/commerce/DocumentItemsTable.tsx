@@ -63,7 +63,7 @@ const CompactVerticalStepperInput = ({ value, onChange, min = 0 }: { value: numb
         value={value === 0 ? "" : value}
         onChange={(e) => onChange(Math.max(min, Number(e.target.value) || 0))}
         onFocus={(e) => e.target.select()}
-        className="flex-1 w-full h-full bg-transparent text-center font-mono text-[13px] font-black text-white px-1 focus:outline-none placeholder:text-white/70 rounded-full not-italic [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        className="flex-1 w-full h-full bg-transparent text-center font-mono text-[13px] font-black text-white px-1 focus:outline-none rounded-full not-italic [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         min={min}
       />
       <div className="absolute right-1 top-1 bottom-1 flex flex-col items-center justify-between w-4 opacity-0 group-hover/stepper:opacity-100 focus-within:opacity-100 transition-opacity bg-black/40 rounded-full overflow-hidden border border-white/10">
@@ -248,7 +248,7 @@ const InlineRow = ({
             onChange={(e) => updateItem(item.id, "name", e.target.value)}
             disabled={isLocked}
             placeholder="ระบุชื่อหัวข้อกลุ่ม (เช่น: หมวดหมู่อุปกรณ์เครือข่าย)..."
-            className="flex-1 min-w-0 bg-transparent text-[13px] font-bold text-white focus:outline-none placeholder:text-white/70"
+            className="flex-1 min-w-0 bg-transparent text-[13px] font-bold text-white focus:outline-none"
           />
         </div>
         <div className="flex items-center gap-1">
@@ -321,7 +321,7 @@ const InlineRow = ({
               setSearchTerm(item.sku || "");
               setActiveSearchField('sku');
             }}
-            className="w-full min-w-0 bg-transparent text-center font-mono text-[12px] text-nexus-teal font-bold focus:outline-none placeholder:text-white/70 placeholder:font-sans placeholder:font-normal cursor-text"
+            className="w-full min-w-0 bg-transparent text-center font-mono text-[12px] text-nexus-teal font-bold focus:outline-none cursor-text"
           />
           <ChevronDown size={12} className={cn("text-nexus-teal/60 group-hover/trigger:text-nexus-teal shrink-0 transition-transform duration-200", activeSearchField === 'sku' && "rotate-180 text-nexus-teal")} />
         </div>
@@ -370,7 +370,7 @@ const InlineRow = ({
                 setSearchTerm(item.name || "");
                 setActiveSearchField('name');
               }}
-              className="w-full min-w-0 bg-transparent text-[12px] text-white font-bold focus:outline-none placeholder:text-white/70 placeholder:font-normal cursor-text"
+              className="w-full min-w-0 bg-transparent text-[12px] text-white font-bold focus:outline-none cursor-text"
             />
           </div>
           <ChevronDown size={12} className={cn("text-nexus-teal/60 group-hover/trigger:text-nexus-teal shrink-0 transition-transform duration-200", activeSearchField === 'name' && "rotate-180 text-nexus-teal")} />
@@ -449,7 +449,7 @@ const InlineRow = ({
         onChange={(e) => updateItem(item.id, "discountValue", Number(e.target.value) || 0)}
         placeholder="0"
         onFocus={(e) => e.target.select()}
-        className="w-full min-w-0 bg-transparent text-right font-mono text-[12px] text-white px-1 focus:outline-none placeholder:text-white/70 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        className="w-full min-w-0 bg-transparent text-right font-mono text-[12px] text-white px-1 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
       />
     </div>
   ) : (
@@ -581,7 +581,7 @@ const InlineRow = ({
               value={item.details || ""}
               onChange={(e) => updateItem(item.id, "details", e.target.value)}
               disabled={isLocked}
-              className="w-full bg-white/[0.02] border border-white/10 rounded-xl p-3 text-[12px] text-white/80 focus:outline-none focus:border-nexus-teal/50 transition-colors custom-scrollbar placeholder:text-white/70"
+              className="w-full bg-white/[0.02] border border-white/10 rounded-xl p-3 text-[12px] text-white/80 focus:outline-none focus:border-nexus-teal/50 transition-colors custom-scrollbar"
               rows={3}
               placeholder="ระบุสเปก, รุ่น, สี, ขนาด หรือรายละเอียดอื่นๆ..."
             />
@@ -596,7 +596,7 @@ const InlineRow = ({
               value={item.datasheetUrl || ""}
               onChange={(e) => updateItem(item.id, "datasheetUrl", e.target.value)}
               disabled={isLocked}
-              className="w-full bg-white/[0.02] border border-white/10 rounded-full px-4 h-8 text-[12px] text-white/80 focus:outline-none focus:border-nexus-teal/50 transition-colors placeholder:text-white/70"
+              className="w-full bg-white/[0.02] border border-white/10 rounded-full px-4 h-8 text-[12px] text-white/80 focus:outline-none focus:border-nexus-teal/50 transition-colors"
               placeholder="https://..."
             />
             {canEditProduct && (

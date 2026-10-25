@@ -111,7 +111,7 @@ export default function RegisterUserPage() {
                   <input 
                     type="text" 
                     placeholder="ขอรหัสจากผู้ดูแลบริษัท" 
-                    className="w-full pl-12 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white font-mono text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all placeholder:text-white/10"
+                    className="w-full pl-12 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white font-mono text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all"
                     value={companyId}
                     onChange={(e) => setCompanyId(e.target.value.toUpperCase())}
                     required
@@ -127,7 +127,7 @@ export default function RegisterUserPage() {
                     <input 
                       type="text" 
                       placeholder="สมชาย" 
-                      className="w-full pl-10 h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all placeholder:text-white/10"
+                      className="w-full pl-10 h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       required
@@ -139,7 +139,7 @@ export default function RegisterUserPage() {
                   <input 
                     type="text" 
                     placeholder="ใจดี" 
-                    className="w-full h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all placeholder:text-white/10"
+                    className="w-full h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                   />
@@ -153,7 +153,7 @@ export default function RegisterUserPage() {
                   <input 
                     type="email" 
                     placeholder="user@example.com" 
-                    className="w-full pl-12 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all placeholder:text-white/10"
+                    className="w-full pl-12 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -168,7 +168,7 @@ export default function RegisterUserPage() {
                   <input 
                     type="password" 
                     placeholder="••••••••" 
-                    className="w-full pl-12 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white font-mono text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all placeholder:text-white/10"
+                    className="w-full pl-12 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white font-mono text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required

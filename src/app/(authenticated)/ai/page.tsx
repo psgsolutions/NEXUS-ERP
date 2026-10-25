@@ -100,7 +100,7 @@ export default function AIHubPage() {
             rows={1}
             disabled={!allowed || busy}
             placeholder="พิมพ์คำถาม แล้วกด Enter (Shift+Enter ขึ้นบรรทัดใหม่)"
-            className="flex-1 min-h-[44px] max-h-40 resize-none rounded-2xl bg-white/[0.04] border border-white/10 px-4 py-3 text-[14px] text-white placeholder:text-white/30 focus:outline-none focus:border-nexus-teal/40"
+            className="flex-1 min-h-[44px] max-h-40 resize-none rounded-2xl bg-white/[0.04] border border-white/10 px-4 py-3 text-[14px] text-white focus:outline-none focus:border-nexus-teal/40"
           />
           <PillButton type="submit" variant="confirm" disabled={!allowed || busy || !input.trim()} className="h-11 w-11 p-0 flex items-center justify-center shrink-0" title="ส่งคำถาม">
             <Send size={16} />

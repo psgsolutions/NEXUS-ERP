@@ -54,7 +54,7 @@ export const CommandPalette = () => {
           <input 
             autoFocus
             placeholder="พิมพ์เพื่อค้นหาหรือสั่งการ..." 
-            className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-white/20 text-xl font-bold"
+            className="flex-1 bg-transparent border-none outline-none text-white text-xl font-bold"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

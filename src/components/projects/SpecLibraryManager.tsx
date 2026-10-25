@@ -25,7 +25,7 @@ const toDraft = (t: SpecTemplate): Draft => ({
   variants: t.variants.map((v) => ({ ...v, clauses: v.clauses.join("\n") })),
 });
 const newId = (p: string) => `${p}${Date.now().toString(36).toUpperCase()}`;
-const textareaCls = "w-full bg-black/20 border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:outline-none resize-y leading-relaxed placeholder:text-white/30";
+const textareaCls = "w-full bg-black/20 border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:outline-none resize-y leading-relaxed";
 
 export function SpecLibraryManager() {
   const { companyId, role, roles } = useAuth();

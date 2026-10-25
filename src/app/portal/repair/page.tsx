@@ -26,7 +26,7 @@ async function shrinkImage(file: File, maxSide = 1280, quality = 0.72): Promise<
   }
 }
 
-const inputCls = "w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50 text-base leading-[1.9] focus:outline-none focus:border-blue-500 focus:bg-white transition-all";
+const inputCls = "surface-light w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50 text-base leading-[1.9] focus:outline-none focus:border-blue-500 focus:bg-white transition-all";
 
 function RepairPortalContent() {
   const searchParams = useSearchParams();
@@ -144,7 +144,7 @@ function RepairPortalContent() {
             <textarea value={formData.symptom} maxLength={2000}
               onChange={(e) => setFormData({ ...formData, symptom: e.target.value })}
               placeholder="อธิบายอาการเบื้องต้นที่พบ..."
-              className="w-full flex-1 min-h-[120px] p-4 rounded-xl border border-slate-200 bg-slate-50 text-base leading-[1.9] focus:outline-none focus:border-blue-500 focus:bg-white transition-all resize-none" />
+              className="surface-light w-full flex-1 min-h-[120px] p-4 rounded-xl border border-slate-200 bg-slate-50 text-base leading-[1.9] focus:outline-none focus:border-blue-500 focus:bg-white transition-all resize-none" />
           </div>
 
           <div className="space-y-1">

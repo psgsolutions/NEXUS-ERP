@@ -14,7 +14,7 @@ const STATUS_BADGE: Record<ChangeOrderStatus, "pending" | "active" | "danger"> =
 const baht = (n: number) => `฿${(Number(n) || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const tsText = (t: any) => (t?.toDate ? t.toDate().toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" }) : "-");
 const DAY = 86400e3;
-const textareaCls = "w-full bg-black/20 border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:outline-none resize-y leading-relaxed placeholder:text-white/30";
+const textareaCls = "w-full bg-black/20 border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:outline-none resize-y leading-relaxed";
 
 export function ChangeOrdersPanel({ companyId, docId, project, status, canRequest, canApprove, canQuote = false, onMessage }: {
   companyId: string;

@@ -103,7 +103,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
             {config.type === "prompt" && (
               <input ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} placeholder={config.placeholder}
                 onKeyDown={(e) => { if (e.key === "Enter") handleClose(text); if (e.key === "Escape") handleClose(null); }}
-                className="w-full h-11 px-4 rounded-2xl bg-white/[0.04] border border-white/10 text-white text-[14px] leading-[1.9] outline-none focus:border-nexus-teal/40 placeholder:text-white/30" />
+                className="w-full h-11 px-4 rounded-2xl bg-white/[0.04] border border-white/10 text-white text-[14px] leading-[1.9] outline-none focus:border-nexus-teal/40" />
             )}
 
             <div className="flex items-center justify-end gap-3 mt-2">

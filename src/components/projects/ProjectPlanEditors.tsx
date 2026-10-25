@@ -248,7 +248,7 @@ const SOURCE_CHIP: Record<DocSource, { label: string; cls: string }> = {
   ai: { label: "AI เรียบเรียง", cls: "text-nexus-blue border-nexus-blue/30 bg-nexus-blue/10" },
 };
 
-const textareaCls = "w-full bg-black/20 border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:outline-none resize-y leading-relaxed placeholder:text-white/30";
+const textareaCls = "w-full bg-black/20 border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:outline-none resize-y leading-relaxed";
 const autoRows = (v: string, min = 2) => Math.min(40, Math.max(min, (v || "").split("\n").length + 1));
 
 export function DocSectionsEditor({ defs, sections, source, onChange, onRegenerate, aiNotes, onAiNotes, onAi, aiBusy }: {

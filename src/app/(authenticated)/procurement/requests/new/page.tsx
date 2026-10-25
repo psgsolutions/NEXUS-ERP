@@ -312,7 +312,7 @@ export default function NewPurchaseRequestPage() {
             </Field>
             <Field label="วัตถุประสงค์ / ความจำเป็น *" required>
               <textarea 
-                className="w-full h-32 rounded-3xl bg-white/[0.02] border border-white/5 text-white text-[13px] font-bold p-6 focus:outline-none focus:border-cyan-400/40 transition-all custom-scrollbar placeholder:text-white/20"
+                className="w-full h-32 rounded-3xl bg-white/[0.02] border border-white/5 text-white text-[13px] font-bold p-6 focus:outline-none focus:border-cyan-400/40 transition-all custom-scrollbar"
                 value={header.reason}
                 onChange={(e) => setHeader({...header, reason: e.target.value})}
                 placeholder="ระบุเหตุผลความจำเป็นในการจัดซื้อครั้งนี้..."

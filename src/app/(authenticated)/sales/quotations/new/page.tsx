@@ -905,7 +905,7 @@ export default function QuotationCreationPage() {
                     value={addrLine1}
                     onChange={(e) => setAddrLine1(e.target.value)}
                     placeholder="บ้านเลขที่ / อาคาร / ชั้น / หมู่บ้าน"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                   <div className="grid grid-cols-5 gap-2 pt-1">
                     <input
@@ -913,35 +913,35 @@ export default function QuotationCreationPage() {
                       value={addrLine2}
                       onChange={(e) => setAddrLine2(e.target.value)}
                       placeholder="ซอย / ถนน"
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
                     <input
                       type="text"
                       value={subDistrict}
                       onChange={(e) => setSubDistrict(e.target.value)}
                       placeholder="แขวง / ตำบล"
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
                     <input
                       type="text"
                       value={district}
                       onChange={(e) => setDistrict(e.target.value)}
                       placeholder="เขต / อำเภอ"
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
                     <input
                       type="text"
                       value={province}
                       onChange={(e) => setProvince(e.target.value)}
                       placeholder="จังหวัด"
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
                     <input
                       type="text"
                       value={postalCode}
                       onChange={(e) => setPostalCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
                       placeholder="รหัสไปรษณีย์"
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -955,7 +955,7 @@ export default function QuotationCreationPage() {
                     value={customerTaxId}
                     onChange={(e) => setCustomerTaxId(e.target.value.replace(/\D/g, '').slice(0, 13))}
                     placeholder="เลขประจำตัวผู้เสียภาษี 13 หลัก"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                 </div>
                 <div className="space-y-1">
@@ -965,7 +965,7 @@ export default function QuotationCreationPage() {
                     value={customerBranch}
                     onChange={(e) => setCustomerBranch(e.target.value)}
                     placeholder="สำนักงานใหญ่ หรือ เลขสาขา"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                 </div>
               </div>
@@ -978,21 +978,21 @@ export default function QuotationCreationPage() {
                     value={contactPerson}
                     onChange={(e) => setContactPerson(e.target.value)}
                     placeholder="ชื่อผู้ติดต่อ (บังคับกรอก)"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                   <input
                     type="text"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="เบอร์โทรศัพท์"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                   <input
                     type="text"
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
                     placeholder="อีเมล"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                 </div>
               </div>
@@ -1068,7 +1068,7 @@ export default function QuotationCreationPage() {
                           value={salespersonSearchTerm}
                           onChange={(e) => setSalespersonSearchTerm(e.target.value)}
                           placeholder="ค้นหาพนักงานขาย..."
-                          className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-nexus-teal focus:outline-none focus:shadow-[0_0_15px_rgba(20,184,166,0.15)] placeholder:text-white/30"
+                          className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-nexus-teal focus:outline-none focus:shadow-[0_0_15px_rgba(20,184,166,0.15)]"
                         />
                       </div>
                     }
@@ -1127,7 +1127,7 @@ export default function QuotationCreationPage() {
                 min={0}
                 max={100}
                 suffix="%"
-                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 text-white focus:text-nexus-teal text-[13px] placeholder:text-white/30"
+                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 text-white focus:text-nexus-teal text-[13px]"
               />
             </div>
             <div className="space-y-1 col-span-3">
@@ -1137,7 +1137,7 @@ export default function QuotationCreationPage() {
                 onChange={(val) => setExpectedDeliveryDays(val)}
                 min={0}
                 suffix="วัน"
-                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 text-white focus:text-nexus-teal text-[13px] placeholder:text-white/30"
+                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 text-white focus:text-nexus-teal text-[13px]"
               />
             </div>
             <div className="space-y-1 col-span-6">
@@ -1441,7 +1441,7 @@ export default function QuotationCreationPage() {
           <textarea
             value={termsAndConditions}
             onChange={(e) => setTermsAndConditions(e.target.value)}
-            className="w-full h-32 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed placeholder:text-white/30 transition-all"
+            className="w-full h-32 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed transition-all"
           />
         </div>
         <div className="bg-surface-1 border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
@@ -1458,7 +1458,7 @@ export default function QuotationCreationPage() {
             value={remark}
             onChange={(e) => setRemark(e.target.value)}
             placeholder="หมายเหตุเพิ่มเติมที่ต้องการแสดงบนเอกสาร..."
-            className="w-full h-24 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed placeholder:text-white/30 transition-all"
+            className="w-full h-24 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed transition-all"
           />
           <div className="flex flex-wrap gap-2 pt-1">
             {['#รับประกัน 1 ปี', '#ชำระมัดจำ 50%', '#ส่งมอบภายใน 30 วัน', '#ราคานี้ยืนระยะเวลา 15 วัน'].map(tag => (
@@ -1481,7 +1481,7 @@ export default function QuotationCreationPage() {
             value={internalNotes}
             onChange={(e) => setInternalNotes(e.target.value)}
             placeholder="ระบุเหตุผลการให้ส่วนลด หรือข้อความสำหรับผู้อนุมัติ (ลูกค้าจะไม่เห็นข้อความนี้)..."
-            className="w-full h-32 bg-black/40 border border-warning/10 rounded-xl p-3 text-[13px] text-warning/80 focus:outline-none focus:border-warning/50 resize-none leading-relaxed placeholder:text-warning/30"
+            className="w-full h-32 bg-black/40 border border-warning/10 rounded-xl p-3 text-[13px] text-warning/80 focus:outline-none focus:border-warning/50 resize-none leading-relaxed"
           />
         </div>
       </div>

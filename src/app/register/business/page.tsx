@@ -161,7 +161,7 @@ export default function RegisterBusinessPage() {
                     type="text"
                     inputMode="numeric"
                     placeholder="เลขประจำตัวผู้เสียภาษี 13 หลัก"
-                    className="flex-1 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white font-mono text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 transition-all placeholder:text-white/10"
+                    className="flex-1 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white font-mono text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 transition-all"
                     value={taxId}
                     onChange={(e) => setTaxId(e.target.value.replace(/\D/g, '').substring(0, 13))}
                     required
@@ -195,7 +195,7 @@ export default function RegisterBusinessPage() {
                 </div>
                 <div className={cn("space-y-2", personType === "juristic" ? "col-span-2" : "col-span-3")}>
                   <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-2">ชื่อกิจการ</label>
-                  <input type="text" placeholder="ระบุชื่อกิจการ..." className="w-full h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white font-medium focus:outline-none focus:border-nexus-teal/40 transition-all placeholder:text-white/10" value={companyName} onChange={(e) => setCompanyName(e.target.value)} required />
+                  <input type="text" placeholder="ระบุชื่อกิจการ..." className="w-full h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white font-medium focus:outline-none focus:border-nexus-teal/40 transition-all" value={companyName} onChange={(e) => setCompanyName(e.target.value)} required />
                 </div>
               </div>
 
@@ -284,9 +284,9 @@ export default function RegisterBusinessPage() {
               <div className="space-y-3 pt-2 border-t border-white/5">
                 <label className="text-[11px] font-bold text-white/60 uppercase tracking-[0.1em] ml-2 block pt-4">บัญชีผู้ดูแลกิจการ (ใช้เข้าสู่ระบบ)</label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <input type="text" placeholder="ชื่อ-นามสกุล" autoComplete="name" className="w-full h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 transition-all placeholder:text-white/10" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} required />
-                  <input type="email" placeholder="อีเมล" autoComplete="email" className="w-full h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 transition-all placeholder:text-white/10" value={email} onChange={(e) => setEmail(e.target.value)} required />
-                  <input type="password" placeholder="รหัสผ่าน (8 ตัวขึ้นไป)" autoComplete="new-password" minLength={8} className="w-full h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white font-mono text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 transition-all placeholder:text-white/10" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  <input type="text" placeholder="ชื่อ-นามสกุล" autoComplete="name" className="w-full h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 transition-all" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} required />
+                  <input type="email" placeholder="อีเมล" autoComplete="email" className="w-full h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 transition-all" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  <input type="password" placeholder="รหัสผ่าน (8 ตัวขึ้นไป)" autoComplete="new-password" minLength={8} className="w-full h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white font-mono text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 transition-all" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
               </div>
 

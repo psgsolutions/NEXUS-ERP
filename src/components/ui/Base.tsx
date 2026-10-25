@@ -52,7 +52,7 @@ export const PillInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttri
       <input
         ref={ref}
         className={cn(
-          "h-8 px-5 py-0 leading-[1.9] rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all placeholder:text-white/30 backdrop-blur-sm truncate w-full",
+          "h-8 px-5 py-0 leading-[1.9] rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all backdrop-blur-sm truncate w-full",
           className
         )}
         {...props}
@@ -89,7 +89,7 @@ export function NexusSearchInput({
           "w-full h-8 pl-10 pr-12 py-0 leading-[1.9] rounded-full bg-white/[0.02] border border-white/5",
           "text-white text-[13px] font-bold tracking-wide",
           "focus:outline-none focus:border-nexus-teal/30 focus:bg-white/[0.05] focus:shadow-[0_0_30px_rgba(0,255,209,0.05)]",
-          "transition-all duration-500 placeholder:text-white/10 placeholder:font-black placeholder:uppercase placeholder:tracking-widest",
+          "transition-all duration-500",
           "backdrop-blur-xl"
         )}
       />
@@ -211,7 +211,7 @@ export function PillSelect({ className, children, value, onChange, placeholder =
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "h-8 w-full px-5 pr-9 py-1 leading-normal rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-bold focus:outline-none focus:border-nexus-teal/60 focus:ring-1 focus:ring-nexus-teal/40 transition-all cursor-pointer flex items-center justify-between group backdrop-blur-sm",
-          (!value || !selectedOption) && "text-white/30 font-normal",
+          (!value || !selectedOption) && "text-[color:var(--placeholder)] font-normal",
           value && selectedOption && "text-white font-bold",
           isOpen && "border-nexus-teal/40 bg-white/[0.06]",
           className
@@ -1305,7 +1305,7 @@ export function NexusDatePicker({
       disabled={disabled}
       onChange={(e) => onChange?.({ target: { value: e.target.value } })}
       className={cn(
-        "h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold focus:border-nexus-teal/40 focus:bg-white/[0.06] focus:outline-none transition-all placeholder:text-white/20",
+        "h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold focus:border-nexus-teal/40 focus:bg-white/[0.06] focus:outline-none transition-all",
         disabled && "opacity-50 cursor-not-allowed",
         className
       )}

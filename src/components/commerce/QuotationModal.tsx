@@ -276,7 +276,7 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
                             value={form.subject}
                             onChange={(e) => setForm({...form, subject: e.target.value})}
                             placeholder="ระบุชื่อโครงการ..." 
-                            className="w-full text-white font-black text-xl bg-transparent border-b-2 border-transparent focus:border-nexus-teal/40 rounded-none px-0 py-2 placeholder:text-white/20 h-10" 
+                            className="w-full text-white font-black text-xl bg-transparent border-b-2 border-transparent focus:border-nexus-teal/40 rounded-none px-0 py-2 h-10" 
                         />
                     </Field>
                 </div>

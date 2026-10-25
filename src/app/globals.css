@@ -10,7 +10,19 @@
   }
 }
 
+/* ข้อความตัวอย่างในช่องกรอก: สีจางเท่ากันทุกช่อง (มองเห็นได้แต่ไม่แย่งข้อความจริง)
+   ตั้งที่เดียว ไม่ใส่สีรายช่อง · หน้าพื้นสว่าง (เช่น portal แจ้งซ่อม) ใส่ class surface-light ที่ช่องกรอก */
+input::placeholder, textarea::placeholder {
+  color: var(--placeholder) !important;
+  opacity: 1;
+  font-weight: 400 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+.surface-light { --placeholder: rgb(15 23 42 / 0.4); }
+
 :root {
+  --placeholder: rgb(255 255 255 / 0.36);
   --background: #0D0D0D;
   --surface-0: #0D0D0D;   /* Base app canvas */
   --surface-1: #0F0F12;   /* First-layer cards / panels */

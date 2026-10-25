@@ -505,7 +505,7 @@ export default function ProductDetailPage() {
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     placeholder="รายละเอียดสินค้าสำหรับเอกสาร..."
                     rows={3}
-                    className="w-full px-4 py-3 rounded-2xl bg-white/15 border border-white/10 text-sm font-bold text-white placeholder:text-white/20 focus:outline-none focus:border-nexus-teal/30 resize-none"
+                    className="w-full px-4 py-3 rounded-2xl bg-white/15 border border-white/10 text-sm font-bold text-white focus:outline-none focus:border-nexus-teal/30 resize-none"
                   />
                 ) : (
                   <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm text-white/60 min-h-[80px]">

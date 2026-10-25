@@ -1004,14 +1004,14 @@ export default function QuotationEditPage() {
                       value={addrLine1}
                       onChange={(e) => setAddrLine1(e.target.value)}
                       placeholder="บ้านเลขที่ / อาคาร / ชั้น"
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
                     <input
                       type="text"
                       value={addrLine2}
                       onChange={(e) => setAddrLine2(e.target.value)}
                       placeholder="ถนน / ซอย"
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
                   </div>
                   <div className="grid grid-cols-4 gap-2">
@@ -1020,28 +1020,28 @@ export default function QuotationEditPage() {
                       value={subDistrict}
                       onChange={(e) => setSubDistrict(e.target.value)}
                       placeholder="ตำบล / แขวง"
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
                     <input
                       type="text"
                       value={district}
                       onChange={(e) => setDistrict(e.target.value)}
                       placeholder="เขต / อำเภอ"
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
                     <input
                       type="text"
                       value={province}
                       onChange={(e) => setProvince(e.target.value)}
                       placeholder="จังหวัด"
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
                     <input
                       type="text"
                       value={postalCode}
                       onChange={(e) => setPostalCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
                       placeholder="รหัสไปรษณีย์"
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -1055,7 +1055,7 @@ export default function QuotationEditPage() {
                     value={customerTaxId}
                     onChange={(e) => setCustomerTaxId(e.target.value.replace(/\D/g, '').slice(0, 13))}
                     placeholder="เลขประจำตัวผู้เสียภาษี 13 หลัก"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                 </div>
                 <div className="space-y-1">
@@ -1065,7 +1065,7 @@ export default function QuotationEditPage() {
                     value={customerBranch}
                     onChange={(e) => setCustomerBranch(e.target.value)}
                     placeholder="สำนักงานใหญ่ หรือ เลขสาขา"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                 </div>
               </div>
@@ -1078,21 +1078,21 @@ export default function QuotationEditPage() {
                     value={contactPerson}
                     onChange={(e) => setContactPerson(e.target.value)}
                     placeholder="ชื่อผู้ติดต่อ"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                   <input
                     type="text"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="เบอร์โทรศัพท์"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                   <input
                     type="text"
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
                     placeholder="อีเมล"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/70 transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                 </div>
               </div>
@@ -1176,7 +1176,7 @@ export default function QuotationEditPage() {
                               setIsSalespersonSearchActive(false);
                             }
                           }}
-                          className="w-full h-8 pl-9 pr-4 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-nexus-teal/50 rounded-full text-[13px] font-bold text-nexus-teal focus:outline-none placeholder:text-white/30"
+                          className="w-full h-8 pl-9 pr-4 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-nexus-teal/50 rounded-full text-[13px] font-bold text-nexus-teal focus:outline-none"
                         />
                       </div>
                     }
@@ -1258,7 +1258,7 @@ export default function QuotationEditPage() {
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="เช่น โครงการระบบเครือข่าย สนง.ใหญ่"
-                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 leading-relaxed text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/30 transition-all text-left"
+                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 leading-relaxed text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all text-left"
               />
             </div>
             <div className="space-y-1 col-span-3">
@@ -1268,7 +1268,7 @@ export default function QuotationEditPage() {
                 value={leadSource}
                 onChange={(e) => setLeadSource(e.target.value)}
                 placeholder="เช่น Website, งานสัมมนา, ลูกค้าแนะนำ"
-                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 leading-relaxed text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/30 transition-all text-left"
+                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 leading-relaxed text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all text-left"
               />
             </div>
             <div className="space-y-1 col-span-6">
@@ -1278,7 +1278,7 @@ export default function QuotationEditPage() {
                 value={incoTerms}
                 onChange={(e) => setIncoTerms(e.target.value)}
                 placeholder="เช่น FOB, EXW, ส่งมอบถึงสถานที่ติดตั้ง"
-                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 leading-relaxed text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/30 transition-all text-left"
+                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 leading-relaxed text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all text-left"
               />
             </div>
             <div className="space-y-1 col-span-6">
@@ -1288,7 +1288,7 @@ export default function QuotationEditPage() {
                 value={shippingAddress}
                 onChange={(e) => setShippingAddress(e.target.value)}
                 placeholder="ระบุสถานที่จัดส่ง หรือเว้นว่างเพื่อใช้ที่อยู่ตามบิล"
-                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 leading-relaxed text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none placeholder:text-white/30 transition-all"
+                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 leading-relaxed text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
               />
             </div>
           </div>
@@ -1328,7 +1328,7 @@ export default function QuotationEditPage() {
                   value={referenceNo}
                   onChange={(e) => setReferenceNo(e.target.value)}
                   placeholder="PR-2026-001"
-                  className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-2 py-0 leading-relaxed text-[13px] font-bold text-nexus-teal font-mono text-center focus:outline-none placeholder:text-white/30 transition-all"
+                  className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-2 py-0 leading-relaxed text-[13px] font-bold text-nexus-teal font-mono text-center focus:outline-none transition-all"
                 />
               </div>
             </div>
@@ -1402,7 +1402,7 @@ export default function QuotationEditPage() {
           <textarea
             value={termsAndConditions}
             onChange={(e) => setTermsAndConditions(e.target.value)}
-            className="w-full h-32 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed placeholder:text-white/30 transition-all"
+            className="w-full h-32 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed transition-all"
           />
         </div>
         <div className="bg-surface-1 border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
@@ -1413,7 +1413,7 @@ export default function QuotationEditPage() {
             value={remark}
             onChange={(e) => setRemark(e.target.value)}
             placeholder="หมายเหตุเพิ่มเติมที่ต้องการแสดงบนเอกสาร..."
-            className="w-full h-32 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed placeholder:text-white/30 transition-all"
+            className="w-full h-32 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed transition-all"
           />
         </div>
         {!isLocked && (
@@ -1425,7 +1425,7 @@ export default function QuotationEditPage() {
             value={internalNotes}
             onChange={(e) => setInternalNotes(e.target.value)}
             placeholder="ระบุเหตุผลการให้ส่วนลด หรือข้อความสำหรับผู้อนุมัติ (ลูกค้าจะไม่เห็นข้อความนี้)..."
-            className="w-full h-32 bg-black/40 border border-warning/10 rounded-xl p-3 text-[13px] text-warning/80 focus:outline-none focus:border-warning/50 resize-none leading-relaxed placeholder:text-warning/30"
+            className="w-full h-32 bg-black/40 border border-warning/10 rounded-xl p-3 text-[13px] text-warning/80 focus:outline-none focus:border-warning/50 resize-none leading-relaxed"
           />
         </div>
         )}
@@ -1443,7 +1443,7 @@ export default function QuotationEditPage() {
             onChange={(e) => { setInternalNotes(e.target.value); setNotesDirty(true); }}
             disabled={status === "SUPERSEDED"}
             placeholder="ระบุเหตุผลการให้ส่วนลด หรือข้อความสำหรับผู้อนุมัติ (ลูกค้าจะไม่เห็นข้อความนี้)..."
-            className="w-full h-32 bg-black/40 border border-warning/10 rounded-xl p-3 text-[13px] text-warning/80 focus:outline-none focus:border-warning/50 resize-none leading-relaxed placeholder:text-warning/30"
+            className="w-full h-32 bg-black/40 border border-warning/10 rounded-xl p-3 text-[13px] text-warning/80 focus:outline-none focus:border-warning/50 resize-none leading-relaxed"
           />
           {status !== "SUPERSEDED" && (
             <div className="flex items-center justify-end gap-3">

@@ -187,7 +187,7 @@ export default function LoginPage() {
                     type="email"
                     autoComplete="username"
                     placeholder="name@company.com"
-                    className="w-full pl-12 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all placeholder:text-white/10"
+                    className="w-full pl-12 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -203,7 +203,7 @@ export default function LoginPage() {
                     type={showPassword ? "text" : "password"}
                     autoComplete="current-password"
                     placeholder="••••••••"
-                    className="w-full pl-12 pr-12 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-nexus-teal font-mono text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all placeholder:text-white/10"
+                    className="w-full pl-12 pr-12 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-nexus-teal font-mono text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required

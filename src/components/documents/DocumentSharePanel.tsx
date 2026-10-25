@@ -116,7 +116,7 @@ export function DocumentSharePanel({ type, id, title, defaultTo = "" }: { type: 
             <div className="space-y-1">
               <label className={label}>ข้อความ</label>
               <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} placeholder="เรียน ลูกค้า ขอส่งเอกสารตามลิงก์ด้านล่าง (ค่าเริ่มต้น)"
-                className="w-full px-4 py-2 leading-[1.9] rounded-2xl bg-white/[0.03] border border-white/10 text-white text-[14px] focus:outline-none focus:border-nexus-teal/40 placeholder:text-white/30 resize-none" />
+                className="w-full px-4 py-2 leading-[1.9] rounded-2xl bg-white/[0.03] border border-white/10 text-white text-[14px] focus:outline-none focus:border-nexus-teal/40 resize-none" />
             </div>
             <label className="flex items-center gap-2 text-[12px] text-white/70 cursor-pointer"><input type="checkbox" checked={attach} onChange={(e) => setAttach(e.target.checked)} /> แนบไฟล์ PDF ไปด้วย</label>
             <PillButton variant="confirm" className="h-9 w-full text-xs font-bold" disabled={!!busy || !to.trim()} onClick={sendEmail}>

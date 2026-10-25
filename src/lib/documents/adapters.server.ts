@@ -11,6 +11,7 @@ import { toDateStr } from "./format";
 import { LETTER_LABELS, type LetterKind } from "@/lib/letters";
 import { TICKET_PRIORITY, TICKET_STATUS, ticketCategoryLabel, ticketChannelLabel, type TicketPriority } from "@/lib/service-tickets";
 import { thaiDate } from "./format";
+import { normalizeInboxData } from "@/lib/expense-inbox";
 
 /**
  * แปลงเอกสารแต่ละประเภทในฐานข้อมูล -> DocumentModel (ใช้กับ PDF / ลิงก์ลูกค้า / อีเมล / แอปอื่น)
@@ -108,6 +109,39 @@ const serviceTicket: DocumentTypeDef = {
   },
 };
 
+/**
+ * ใบรับรองแทนใบเสร็จรับเงิน — รายจ่ายที่เรียกใบเสร็จจากผู้รับไม่ได้ (บิลเงินสด ค่าจ้างรายย่อย)
+ * สร้างจากรูปบิลในกล่องรอยืนยัน · ผู้จ่ายเงินรับรองว่าจ่ายเพื่อกิจการของบริษัทโดยแท้ · ไม่มีภาษีซื้อ
+ */
+const substituteReceipt: DocumentTypeDef = {
+  label: "ใบรับรองแทนใบเสร็จรับเงิน",
+  permission: ["finance:view", "projects:edit", "sales:edit", "inventory:edit", "hr:edit", "service:field"],
+  async load(companyId, id) {
+    const [snap, seller] = await Promise.all([adminDb.doc(`companies/${companyId}/photo_inbox/${id}`).get(), sellerOf(companyId)]);
+    if (!snap.exists) throw new ApiAuthError(404, "ไม่พบรายการรูปบิล");
+    const x = snap.data()!;
+    const d = normalizeInboxData(x.data);
+    const payer = str(x.payerName || x.createdByName);
+    return {
+      type: "substitute_receipt", title: "ใบรับรองแทนใบเสร็จรับเงิน", titleEn: "SUBSTITUTE RECEIPT", number: str(x.expenseId) ? `SR-${str(x.expenseId)}` : `SR-${id.slice(0, 8).toUpperCase()}`, date: d.date || toDateStr(x.createdAt),
+      meta: [...(x.expenseId ? [{ label: "ใบเบิก", value: str(x.expenseId) }] : []), ...(d.docNo ? [{ label: "เลขที่บิลเดิม", value: d.docNo }] : [])],
+      seller,
+      party: { label: "ผู้รับเงิน", name: d.vendorName || "-", address: d.vendorAddress, taxId: d.vendorTaxId },
+      columns: ["no", "description", "qty", "price", "amount"],
+      lines: d.items.length ? d.items.map((l) => ({ description: l.description || "-", qty: l.qty, price: l.unitPrice, amount: l.amount })) : [{ description: "ค่าใช้จ่าย", qty: 1, price: d.total, amount: d.total }],
+      totals: [{ label: "รวมเป็นเงิน", amount: d.total, strong: true }],
+      amountInWords: d.total,
+      notes: [
+        `ข้าพเจ้า${payer ? ` ${payer}` : ""} ขอรับรองว่ารายจ่ายข้างต้นนี้ไม่อาจเรียกใบเสร็จรับเงินจากผู้รับได้ และได้จ่ายไปเพื่อกิจการของบริษัทโดยแท้`,
+        ...(d.note ? [`หมายเหตุ: ${d.note}`] : []),
+      ],
+      signatures: ["ผู้จ่ายเงิน (ผู้รับรอง)", "ผู้อนุมัติ"],
+      ...(payer ? { signed: { "ผู้จ่ายเงิน (ผู้รับรอง)": { name: payer } } } : {}),
+      watermark: x.status === "CONFIRMED" ? undefined : x.status === "REJECTED" ? "ไม่อนุมัติ" : "รอยืนยัน",
+    };
+  },
+};
+
 /** ตัวอย่างสำหรับหน้าตั้งค่าหัวเอกสาร (ข้อมูลบริษัทจริง + รายการตัวอย่าง) */
 const sample: DocumentTypeDef = {
   label: "ตัวอย่างเอกสาร",
@@ -138,5 +172,6 @@ export const DOCUMENT_TYPES: Record<string, DocumentTypeDef> = {
   payslip: { label: "สลิปเงินเดือน", permission: ["hr:edit", "finance:edit"], load: loadPayslip },
   letter,
   service_ticket: serviceTicket,
+  substitute_receipt: { ...substituteReceipt, internal: true },
   sample,
 };

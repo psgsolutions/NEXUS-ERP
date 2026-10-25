@@ -6,6 +6,7 @@ import { can } from "@/lib/permissions";
 import { prepareSequence } from "@/lib/sequence-server";
 import { auditServer } from "@/services/audit.server";
 import { EXPENSE_ACCOUNTS } from "@/lib/payables";
+import { createExpenseClaim } from "@/lib/expenses.server";
 
 /**
  * [API-SERVER] ตั้งค่าใช้จ่ายรอจ่าย (companies/{id}/expenses) — จ่ายจริงผ่าน /api/finance/payments
@@ -35,33 +36,7 @@ export async function POST(request: Request) {
 
     if (action === "claim") {
       if (!["finance:edit", "projects:edit", "inventory:edit", "sales:edit", "hr:edit"].some((p) => can(apiUser.roles, p as any))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
-      const subtotal = r2(Math.max(0, Number(body.subtotal) || 0));
-      if (!(subtotal > 0)) throw new ApiAuthError(400, "กรุณาระบุยอดเงินเบิก");
-      if (!str(body.description)) throw new ApiAuthError(400, "กรุณาระบุรายละเอียดการเบิก");
-      const account = EXPENSE_ACCOUNTS.find((a) => a.code === str(body.expenseAccountCode)) || EXPENSE_ACCOUNTS[0];
-      const empRef = adminDb.doc(`employees/${str(body.employeeId, 120)}`);
-      const vat = body.hasVat ? r2(subtotal * 0.07) : 0;
-      // เบิกค่าใช้จ่ายเข้าโครงการ (ไม่บังคับ): นับเป็นต้นทุนจริงของโครงการ
-      const projectId = str(body.projectId, 120);
-      const projectRef = projectId && !projectId.includes("/") ? adminDb.doc(`companies/${companyId}/projects/${projectId}`) : null;
-      const id = await adminDb.runTransaction(async (tx) => {
-        const emp = await tx.get(empRef);
-        const proj = projectRef ? await tx.get(projectRef) : null;
-        if (projectId && !proj?.exists) throw new ApiAuthError(400, "ไม่พบโครงการที่เลือก");
-        if (!emp.exists || emp.data()!.companyId !== companyId) throw new ApiAuthError(400, "กรุณาเลือกพนักงานผู้เบิก");
-        const e = emp.data()!;
-        const name = str(e.name || [e.firstName, e.lastName].filter(Boolean).join(" ") || e.fullName || emp.id, 200);
-        const seq = await take(tx); const code = seq.number; seq.commit();
-        tx.create(adminDb.doc(`companies/${companyId}/expenses/${code}`), {
-          ...base, id: code, expenseId: code, documentType: "ExpenseClaim",
-          employeeId: emp.id, employeeName: name, supplierName: name, vendor: name,
-          expenseAccountCode: account.code, description: str(body.description, 1000), hasVat: !!body.hasVat,
-          ...(proj?.exists ? { projectId, projectName: str(proj.data()!.projectName || proj.data()!.title, 200) } : {}),
-          subTotal: subtotal, vatAmount: vat, totalAmount: r2(subtotal + vat), dueDate: todayBkk(),
-        });
-        return code;
-      });
-      await auditServer.logCreate(apiUser.uid, companyId, "EXPENSE_CLAIM", id, { total: r2(subtotal + vat) });
+      const id = await createExpenseClaim(apiUser, companyId, { employeeId: str(body.employeeId, 120), expenseAccountCode: str(body.expenseAccountCode), description: str(body.description, 1000), hasVat: !!body.hasVat, subtotal: Number(body.subtotal) || 0, projectId: str(body.projectId, 120) });
       return NextResponse.json({ success: true, expenseId: id });
     }
 

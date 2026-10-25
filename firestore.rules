@@ -97,7 +97,7 @@ service cloud.firestore {
     // ---------- Root collections (generic) ----------
     // collection ที่มีกฎเฉพาะด้านล่างถูกตัดออกจาก wildcard เพื่อไม่ให้ wildcard อนุญาตทับ
     function isSpecialRoot(collectionName) {
-      return collectionName in ['users', 'companies', 'counters', 'periodClosings', 'logs', 'activity_logs', 'employees', 'attendance', 'journal_entries', 'taxFilings', 'assetDepreciations', 'service_tickets', 'rate_limits', 'document_shares', 'groups', 'products', 'suppliers', 'contractors', 'customers'];
+      return collectionName in ['users', 'companies', 'counters', 'periodClosings', 'logs', 'activity_logs', 'employees', 'attendance', 'journal_entries', 'taxFilings', 'assetDepreciations', 'service_tickets', 'rate_limits', 'document_shares', 'groups', 'products', 'suppliers', 'contractors', 'customers', 'line_links', 'line_users'];
     }
 
     match /{collectionName}/{documentId} {
@@ -242,6 +242,8 @@ service cloud.firestore {
           'letters',
           // ไฟล์แนบ (รูปใบเสร็จ บิล): /api/attachments เท่านั้น (อ่านตรงไม่ได้ — ดูได้เฉพาะผู้อัปโหลดและฝ่ายบัญชี)
           'attachments',
+          // กล่องรูปบิลรอยืนยัน: /api/expense-inbox (ยืนยันเป็นรายจ่ายโดยฝ่ายบัญชี)
+          'photo_inbox',
           // ทะเบียนบัญชีธนาคาร เช็ค และการกระทบยอด: บันทึกผ่าน /api/finance/* เท่านั้น
           'bank_accounts', 'cheques', 'bank_reconciliations',
           // งานมอบหมาย: จ่ายงาน/รับงาน/ปิดงานผ่าน /api/jobs เท่านั้น

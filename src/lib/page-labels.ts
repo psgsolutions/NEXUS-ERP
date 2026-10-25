@@ -31,6 +31,7 @@ export const PAGE_LABELS: [prefix: string, label: string][] = [
   ["/settings", "ตั้งค่า"],
   ["/logs", "บันทึกการใช้งาน"],
   ["/documents/accounting", "ส่งเอกสารให้สำนักบัญชี"],
+  ["/finance/expense-claims/photos", "ถ่ายบิลเบิกเงิน"],
   ["/documents", "ประวัติเอกสาร"],
 ];
 
@@ -47,7 +48,7 @@ export const LIST_PAGES = [
   "/dashboard", "/pos", "/support", "/service/dispatch", "/mobile/technician", "/mobile/technician/work-orders",
   "/sales", "/sales/quotations", "/sales/orders", "/customers", "/projects", "/hr", "/inventory", "/inventory/stock-card",
   "/inventory/locations", "/products", "/procurement", "/executive", "/finance", "/finance/subledgers", "/finance/reports",
-  "/finance/advances", "/ai", "/data-import", "/settings", "/logs",
+  "/finance/advances", "/finance/expense-claims/photos", "/documents", "/documents/accounting", "/ai", "/data-import", "/settings", "/logs",
 ];
 const LIST_BY_LENGTH = [...LIST_PAGES].sort((a, b) => b.length - a.length);
 

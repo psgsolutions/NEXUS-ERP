@@ -165,6 +165,8 @@ export function canApproveQuotation(roles: RoleInput, grandTotal: number): boole
 export const ROUTE_PERMISSIONS: { prefix: string; any: Permission[] }[] = [
   { prefix: "/executive", any: ["dashboard:executive"] },
   { prefix: "/documents/accounting", any: ["finance:view"] },
+  // ถ่ายบิลเบิกเงิน: ช่างหน้างานส่งรูปบิลได้ด้วย (ฝ่ายบัญชียืนยันก่อนเป็นรายจ่าย)
+  { prefix: "/finance/expense-claims/photos", any: ["finance:edit", "projects:edit", "inventory:edit", "sales:edit", "hr:edit", "procurement:edit", "service:field"] },
   { prefix: "/finance/expense-claims", any: ["finance:edit", "projects:edit", "inventory:edit", "sales:edit", "hr:edit", "procurement:edit"] },
   { prefix: "/finance/receipts", any: ["finance:view", "sales:billing"] },
   { prefix: "/finance/payouts", any: ["finance:edit", "projects:edit"] },

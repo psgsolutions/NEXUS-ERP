@@ -90,6 +90,15 @@ export async function POST(request: Request) {
             const pay = (await adminDb.doc(`companies/${companyId}/payments/${it.id}`).get()).data() || {};
             const expIds = Array.from(new Set((Array.isArray(pay.lines) ? pay.lines : []).map((l: any) => String(l?.expenseDocId || "")).filter(Boolean))).slice(0, 10);
             for (const expId of expIds) {
+              // บิลที่ไม่มีใบเสร็จ: ใบรับรองแทนใบเสร็จรับเงินที่ออกจากรูปบิล
+              const exp = (await adminDb.doc(`companies/${companyId}/expenses/${expId}`).get()).data() || {};
+              if (exp.source?.kind === "photo_inbox" && ["CASH_BILL", "NONE"].includes(exp.source?.docType)) {
+                try {
+                  const sr = await DOCUMENT_TYPES.substitute_receipt.load(companyId, String(exp.source.id));
+                  files[`ไฟล์แนบใบเสร็จ/${doc.number.replace(/[\\/:*?"<>|\s]+/g, "-")}/${expId}-ใบรับรองแทนใบเสร็จ.pdf`] = new Uint8Array(await renderDocumentPdf(sr, "original", origin));
+                  attached++;
+                } catch { /* ไม่มีรายการรูปบิลแล้ว — ข้าม */ }
+              }
               const att = await adminDb.collection(`companies/${companyId}/attachments`).where("ownerType", "==", "expense").where("ownerId", "==", expId).limit(20).get();
               for (const a of att.docs) {
                 const data = String(a.get("data") || ""), comma = data.indexOf(",");

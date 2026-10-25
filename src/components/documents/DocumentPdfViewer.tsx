@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { DOC_PARTS } from "@/lib/documents/layout-templates";
 import { createPortal } from "react-dom";
 import { Download, Loader2, Printer, Send, X } from "lucide-react";
 import { DocumentSharePanel } from "./DocumentSharePanel";
@@ -98,11 +99,13 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
   const print = () => frame.current?.contentWindow?.print();
   // 50 ทวิ: ฉบับที่ 1 แนบแบบยื่น / ฉบับที่ 2 ผู้ถูกหักเก็บไว้
   const formCopies = source?.type === "wht" || !!model?.wht50;
+  // ใบเสนอราคา ใบสั่งซื้อ ฯลฯ ไม่มีต้นฉบับ/สำเนา
+  const noCopy = !!DOC_PARTS[source?.type || model?.type || ""]?.noCopy;
 
   return (
     <div className={cn("flex flex-col min-h-0", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-white/10">
-        <div className="flex rounded-full bg-white/5 p-1">
+        <div className={cn("flex rounded-full bg-white/5 p-1", noCopy && "invisible")}>
           {(["original", "copy"] as CopyMode[]).map((c) => (
             <button key={c} type="button" onClick={() => setCopy(c)} className={cn("h-8 px-4 rounded-full text-[13px]", copy === c ? "bg-white/15 text-white font-semibold" : "text-white/50 hover:text-white")}>
               {formCopies ? (c === "original" ? "ฉบับที่ 1" : "ฉบับที่ 2") : c === "original" ? "ต้นฉบับ" : "สำเนา"}

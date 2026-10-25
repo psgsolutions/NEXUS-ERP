@@ -1,5 +1,5 @@
 import React from "react";
-import { Document, Font, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Ellipse, Font, Image, Page, Polygon, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import type { ColumnKey, CopyMode, DocumentModel } from "@/lib/documents/model";
 import { amountInWords, branchLabel, formatTaxId, money, qtyText, thaiDate } from "@/lib/documents/format";
 import { FONT_SCALE, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
@@ -240,6 +240,19 @@ export function SectionInfo({ c, b }: { c: Ctx; b: FreeBlock }) {
   if (!rows.length) return null;
   const lw = b.labelWidth ?? 90;
   const justify = b.align === "right" ? "flex-end" : b.align === "center" ? "center" : "flex-start";
+  if (b.flow === "row") {
+    // เรียงเป็นแถวแนวนอน: ป้าย : ค่า ต่อกัน (ขึ้นบรรทัดใหม่เมื่อเต็ม)
+    return (
+      <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: justify, columnGap: 14, rowGap: 2 }}>
+        {rows.map((r, i) => (
+          <View key={r.key} style={{ flexDirection: "row" }}>
+            {b.hideLabel || (i === 0 && b.emphasizeFirst) ? null : <Lbl c={c} th={b.names?.[r.key] || r.label} suffix=" :" style={{ fontWeight: "bold" }} />}
+            <T style={[{ paddingLeft: b.hideLabel ? 0 : 4 }, b.bold || (i === 0 && b.emphasizeFirst) ? { fontWeight: "bold" } : {}, i === 0 && b.emphasizeFirst ? { color: c.t.primary } : {}]}>{r.value}</T>
+          </View>
+        ))}
+      </View>
+    );
+  }
   return (
     <View>
       {rows.map((r, i) => {
@@ -589,7 +602,7 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
     }
   })();
   // กล่องที่มีกรอบ/พื้นหลัง: เว้นขอบในให้เนื้อหาไม่ชิดเส้น
-  const pad = b.kind === "text" ? 2 : (b.border || b.bg) && b.kind !== "items" ? 4 : 0;
+  const pad = b.pad ?? (b.kind === "text" ? 2 : (b.border || b.bg) && b.kind !== "items" ? 4 : 0);
   if (b.kind === "line") {
     // เส้น: แนวนอนเมื่อกว้างกว่าสูง (ความหนา = สูง) · แนวตั้งเมื่อสูงกว่า (ความหนา = กว้าง) · เส้นประ/จุดวาดด้วยขอบ
     const vertical = b.h > b.w, thick = Math.max(0.25, vertical ? b.w : b.h), color = b.color || c.t.primary;
@@ -598,11 +611,25 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
     return <View style={{ position: "absolute", left: b.x, top: b.y, ...style }} />;
   }
   const radius = b.radius ?? (c.t.rounded ? 4 : 0);
+  // มุมโค้งแยกแต่ละมุม (บนซ้าย บนขวา ล่างขวา ล่างซ้าย)
+  const corners = b.radii ? { borderTopLeftRadius: b.radii[0], borderTopRightRadius: b.radii[1], borderBottomRightRadius: b.radii[2], borderBottomLeftRadius: b.radii[3] } : { borderRadius: radius };
+  if (b.kind === "shape") {
+    // รูปทรง: วงรี/วงกลม · สามเหลี่ยม (วาดเป็นเวกเตอร์)
+    const sw = b.border ? b.borderWidth ?? 1 : 0, dash = b.dash === "dashed" ? `${sw * 4} ${sw * 2.5}` : b.dash === "dotted" ? `${sw} ${sw * 1.8}` : undefined;
+    const paint = { fill: b.bg || "none", stroke: b.border || "none", strokeWidth: sw, ...(dash ? { strokeDasharray: dash } : {}) };
+    return (
+      <Svg style={{ position: "absolute", left: b.x, top: b.y, width: b.w, height: b.h }} viewBox={`0 0 ${b.w} ${b.h}`}>
+        {b.shape === "triangle"
+          ? <Polygon points={`${b.w / 2},${sw / 2} ${b.w - sw / 2},${b.h - sw / 2} ${sw / 2},${b.h - sw / 2}`} {...paint} />
+          : <Ellipse cx={b.w / 2} cy={b.h / 2} rx={Math.max(0, b.w / 2 - sw / 2)} ry={Math.max(0, b.h / 2 - sw / 2)} {...paint} />}
+      </Svg>
+    );
+  }
   return (
     <View style={{
       position: "absolute", left: b.x, top: b.y, width: b.w, height: b.h,
-      ...(b.bg ? { backgroundColor: b.bg, borderRadius: radius } : {}),
-      ...(b.border ? { borderWidth: b.borderWidth ?? 1, borderColor: b.border, borderRadius: radius, ...(b.dash && b.dash !== "solid" ? { borderStyle: b.dash } : {}) } : {}),
+      ...(b.bg ? { backgroundColor: b.bg, ...corners } : {}),
+      ...(b.border ? { borderWidth: b.borderWidth ?? 1, borderColor: b.border, ...corners, ...(b.dash && b.dash !== "solid" ? { borderStyle: b.dash } : {}) } : {}),
     }}>
       {b.kind === "rect" ? null : b.kind === "image" || b.kind === "logo" || b.kind === "stamp"
         ? content

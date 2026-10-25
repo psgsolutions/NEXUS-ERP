@@ -4,7 +4,7 @@
  * เปิด: ใส่ในกล่องที่เหมาะที่สุดที่มีอยู่ · ปิด: เอาออกจากทุกกล่อง · ข้อมูลที่กฎหมายกำหนดล็อกไว้
  */
 import { A4, TEMPLATES, defaultFreeLayout, requiredColumnsFor, resolveColumns, type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, ITEM_COLUMNS } from "./design";
-import { templateLayout } from "./layout-templates";
+import { DOC_PARTS, templateLayout } from "./layout-templates";
 
 export interface DataItem { key: string; label: string; on: boolean; locked?: boolean }
 export interface DataGroup { id: string; title: string; source: string; kinds: BlockKind[]; items: DataItem[] }
@@ -151,4 +151,12 @@ export function toggleData(layout: FreeLayout, key: string, on: boolean, c: Data
     else if (!blocks.some((b) => b.kind === kind)) { const d = def(kind); blocks.push({ ...(d || { x: 32, y: 600, w: 300, h: 30 }), id: uid(kind), kind }); }
   }
   return { ...layout, enabled: true, blocks };
+}
+
+/** หน้ากระดาษเปล่า: เหลือเฉพาะกล่องข้อมูลที่กฎหมายกำหนด (ไม่มีกรอบ สี เส้น) ให้ออกแบบใหม่ทั้งหมด */
+export function blankLayout(docType: string, theme: DocTheme): FreeLayout {
+  const keep: BlockKind[] = ["seller", "title", "meta", "party", "items", "totals", "signatures"];
+  const blocks = defaultFreeLayout(docType, theme.font).blocks.filter((b) => keep.includes(b.kind))
+    .map((b) => (b.kind === "title" && DOC_PARTS[docType]?.noCopy ? { ...b, hide: ["copy"] } : b.kind === "party" ? { ...b, partyStyle: "none" as const } : b.kind === "items" ? { ...b, table: "lines" as const } : b.kind === "totals" ? { ...b, totalsStyle: "plain" as const } : b));
+  return { enabled: true, blocks };
 }

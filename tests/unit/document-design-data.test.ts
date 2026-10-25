@@ -48,3 +48,36 @@ describe("one checklist for what the document shows", () => {
     expect(l.blocks.filter((b) => b.kind === "payment")).toHaveLength(1);
   });
 });
+
+describe("design tools: shapes, corners, flow, margins, blank page, document rules", () => {
+  it("keeps shapes, per-corner radii, padding, row flow and page margin within limits", async () => {
+    const { normalizeFreeLayout } = await import("@/lib/documents/design");
+    const out = normalizeFreeLayout({ enabled: true, margin: 500, blocks: [
+      { id: "c", kind: "shape", shape: "hexagon", x: 10, y: 10, w: 50, h: 50 },
+      { id: "t", kind: "shape", shape: "triangle", x: 10, y: 10, w: 50, h: 50 },
+      { id: "r", kind: "rect", x: 10, y: 10, w: 50, h: 50, radii: [2, 99, -1, "x"], pad: 99 },
+      { id: "i", kind: "info", x: 10, y: 10, w: 200, h: 20, fields: ["number"], flow: "row" },
+    ] }, "quotation")!;
+    const get = (id: string) => out.blocks.find((b) => b.id === id)!;
+    expect(get("c").shape).toBe("ellipse");
+    expect(get("t").shape).toBe("triangle");
+    expect(get("r").radii).toEqual([2, 60, 0, 0]);
+    expect(get("r").pad).toBe(30);
+    expect(get("i").flow).toBe("row");
+    expect(out.margin).toBe(80);
+  });
+
+  it("blank page keeps only legally required data, quotation has no original/copy label", async () => {
+    const { blankLayout } = await import("@/lib/documents/design-data");
+    const { templateLayout } = await import("@/lib/documents/layout-templates");
+    const blank = blankLayout("invoice", theme);
+    expect(blank.blocks.map((b) => b.kind).sort()).toEqual(["items", "meta", "party", "seller", "signatures", "title", "totals"]);
+    expect(blank.blocks.some((b) => ["rect", "line", "logo"].includes(b.kind))).toBe(false);
+    expect(blankLayout("quotation", theme).blocks.find((b) => b.kind === "title")!.hide).toContain("copy");
+    expect(templateLayout("banner", "quotation", theme).blocks.find((b) => b.kind === "title")!.hide).toContain("copy");
+    expect(templateLayout("banner", "invoice", theme).blocks.find((b) => b.kind === "title")!.hide || []).not.toContain("copy");
+    expect(templateLayout("standard", "invoice", theme).blocks.find((b) => b.kind === "info")?.fields).toContain("m:ครบกำหนด");
+    // ใบสั่งงาน (ไม่มีกล่องเฉพาะ) ยังมีหมายเหตุ
+    expect(templateLayout("standard", "work_order", theme).blocks.some((b) => b.kind === "notes")).toBe(true);
+  });
+});

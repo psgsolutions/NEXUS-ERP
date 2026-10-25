@@ -59,7 +59,7 @@ export interface Letterhead { id: string; name: string; height: number; blocks: 
 export interface DocumentDesign { theme: DocTheme; perDoc: Record<string, PerDocDesign>; letterheads: Letterhead[] }
 
 // ---------- ผังลากวางอิสระ ----------
-export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "info" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "field" | "text" | "line" | "rect" | "image" | "stamp";
+export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "info" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "field" | "text" | "line" | "rect" | "shape" | "image" | "stamp";
 export type ItemColumn = "no" | "code" | "description" | "detail" | "qty" | "unit" | "qtyUnit" | "price" | "discount" | "discountText" | "gross" | "amount";
 /** คอลัมน์ตารางที่ตั้งเอง: ลำดับตามรายการ · หัวคอลัมน์ · จัดวาง · ความกว้าง (% ของตาราง ว่าง = อัตโนมัติ) */
 export interface ColumnSpec { key: ItemColumn; label?: string; align?: "left" | "center" | "right"; width?: number }
@@ -67,6 +67,14 @@ export interface FreeBlock {
   id: string;
   kind: BlockKind;
   x: number; y: number; w: number; h: number; // pt บนกระดาษ A4 (595 x 842)
+  /** รูปทรง (kind "shape"): วงรี/วงกลม · สามเหลี่ยม */
+  shape?: "ellipse" | "triangle";
+  /** มุมโค้งแยกแต่ละมุม [บนซ้าย, บนขวา, ล่างขวา, ล่างซ้าย] (pt) — มีค่านี้ใช้แทน radius */
+  radii?: [number, number, number, number];
+  /** ระยะห่างขอบในกล่อง (pt) */
+  pad?: number;
+  /** กล่องข้อมูล: เรียงหัวข้อแนวตั้ง (ค่าเดิม) หรือเป็นแถวแนวนอน */
+  flow?: "column" | "row";
   text?: string;       // text: รองรับ {{number}} {{date}} {{customer}} {{total}}
   src?: string;        // image: data URL
   /** ขนาดตัวอักษร (pt) — กล่องข้อมูลระบบ: ขนาดเนื้อหาของกล่อง (หัวข้อในกล่องขยายตามสัดส่วน) */
@@ -119,13 +127,13 @@ export interface FreeBlock {
   /** กลุ่ม: กล่องที่มีรหัสกลุ่มเดียวกันเลือกและย้ายไปพร้อมกัน */
   group?: string;
 }
-export interface FreeLayout { enabled: boolean; blocks: FreeBlock[] }
+export interface FreeLayout { enabled: boolean; blocks: FreeBlock[]; /** ขอบกระดาษที่ใช้จัดวาง (pt) — เส้นนำ/ดูดติด/ตรวจขอบ */ margin?: number }
 
 export const A4 = { w: 595.28, h: 841.89 };
 /** กล่องที่เอกสารภาษีต้องมี (ลบไม่ได้ในผังอิสระ) */
 export const REQUIRED_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party", "items", "totals"];
 export const BLOCK_LABELS: Record<BlockKind, string> = {
-  logo: "โลโก้", seller: "ข้อมูลผู้ขาย", title: "ชื่อเอกสาร", meta: "เลขที่/วันที่", party: "ข้อมูลลูกค้า/คู่ค้า", info: "กล่องข้อมูล", stamp: "ตราประทับ", items: "ตารางรายการ",
+  logo: "โลโก้", seller: "ข้อมูลผู้ขาย", title: "ชื่อเอกสาร", meta: "เลขที่/วันที่", party: "ข้อมูลลูกค้า/คู่ค้า", info: "กล่องข้อมูล", stamp: "ตราประทับ", shape: "รูปทรง", items: "ตารางรายการ",
   totals: "ยอดรวม", words: "จำนวนเงินตัวอักษร", notes: "หมายเหตุ", payment: "ข้อมูลการชำระเงิน", signatures: "ช่องลงนาม",
   field: "ข้อมูลเดี่ยว", text: "ข้อความ", line: "เส้น", rect: "กรอบ/พื้นหลัง", image: "รูปภาพ",
 };
@@ -154,7 +162,7 @@ export function resolveColumns(b: { colSpec?: ColumnSpec[]; cols?: ItemColumn[] 
 /** กล่องที่มีตัวอักษร (ปรับขนาด/ระยะบรรทัด/สีได้) */
 export const TEXT_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party", "info", "items", "totals", "words", "notes", "payment", "signatures", "field", "text"];
 /** กล่องที่วางในหัวกระดาษได้ */
-export const HEAD_KINDS: BlockKind[] = ["logo", "seller", "title", "meta", "info", "field", "text", "line", "rect", "image", "stamp"];
+export const HEAD_KINDS: BlockKind[] = ["logo", "seller", "title", "meta", "info", "field", "text", "line", "rect", "shape", "image", "stamp"];
 /** คีย์ช่องข้อมูล: เลขที่ วันที่ แถวข้อมูลของเอกสาร (m:ป้าย) ข้อมูลเพิ่ม (f:คีย์) */
 const FIELD_KEY = /^(number|date|title|titleEn|m:[^\n]{1,40}|f:[a-zA-Z]{1,30}|seller\.(name|nameEn|address|taxId|contact)|customer\.(name|address|taxId|contact|phone|email))$/;
 
@@ -182,7 +190,7 @@ export const docHasAmounts = (docType?: string) => !NO_AMOUNT_DOCS.includes(Stri
 export const requiredBlocksFor = (docType?: string): BlockKind[] => (docHasAmounts(docType) ? REQUIRED_BLOCKS : REQUIRED_BLOCKS.filter((k) => k !== "totals"));
 /** กล่องที่เพิ่มได้ในเอกสารชนิดนี้ */
 export const addableBlocksFor = (docType?: string): BlockKind[] =>
-  (["info", "text", "line", "rect", "image", "logo", "stamp", "field", "words", "notes", "payment", "signatures", "totals"] as BlockKind[]).filter((k) => docHasAmounts(docType) || (k !== "words" && k !== "totals"));
+  (["info", "text", "line", "rect", "shape", "image", "logo", "stamp", "field", "words", "notes", "payment", "signatures", "totals"] as BlockKind[]).filter((k) => docHasAmounts(docType) || (k !== "words" && k !== "totals"));
 /** คอลัมน์ที่ต้องแสดงเสมอ */
 export const requiredColumnsFor = (docType?: string): ItemColumn[] => (docHasAmounts(docType) ? ["description", "amount"] : ["description"]);
 
@@ -426,6 +434,10 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(b.radius !== undefined && b.radius !== null ? { radius: num(b.radius, 0, 40, 4) } : {}),
     ...(b.borderWidth !== undefined && b.borderWidth !== null ? { borderWidth: num(b.borderWidth, 0.25, 8, 1) } : {}),
     ...(["dashed", "dotted"].includes(b.dash) ? { dash: b.dash } : {}),
+    ...(b.kind === "shape" ? { shape: b.shape === "triangle" ? "triangle" : "ellipse" } : {}),
+    ...(Array.isArray(b.radii) && b.radii.length === 4 ? { radii: b.radii.map((v: any) => num(v, 0, 60, 0)) as [number, number, number, number] } : {}),
+    ...(b.pad !== undefined && b.pad !== null ? { pad: num(b.pad, 0, 30, 4) } : {}),
+    ...(b.kind === "info" && b.flow === "row" ? { flow: "row" as const } : {}),
     ...(["tint", "solid", "lines", "grid", "zebra"].includes(b.table) ? { table: b.table } : {}),
     ...(["solid", "outline", "plain", "grid"].includes(b.totalsStyle) ? { totalsStyle: b.totalsStyle } : {}),
     ...(["accent-bar", "boxed", "plain", "none"].includes(b.partyStyle) ? { partyStyle: b.partyStyle } : {}),
@@ -458,7 +470,7 @@ export function normalizeFreeLayout(raw: any, docType?: string): FreeLayout | un
   const defaults = defaultFreeLayout().blocks;
   // (กล่องที่แยกเป็นช่องย่อยครบแล้วนับว่ามี)
   for (const k of requiredBlocksFor(docType)) if (!requiredSatisfied(k, blocks)) blocks.push(defaults.find((b) => b.kind === k)!);
-  return { enabled: !!raw.enabled, blocks };
+  return { enabled: !!raw.enabled, blocks, ...(raw.margin !== undefined && raw.margin !== null ? { margin: num(raw.margin, 0, 80, 32) } : {}) };
 }
 
 export function normalizeLetterhead(raw: any, index = 0): Letterhead | null {

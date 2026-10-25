@@ -25,8 +25,8 @@ import { usePdfPageImage, useThumbnail } from "./usePdfPageImage";
 
 /**
  * ออกแบบหน้าเอกสาร (ตั้งค่า › ออกแบบเอกสาร) — 2 แบบ สลับได้ตลอด
- *  - แบบง่าย: 1 เลือกแม่แบบ · 2 สีและตัวอักษร · 3 ติ๊กข้อมูลที่แสดง · 4 ชื่อเอกสาร — ตัวอย่างหน้าเอกสารใหญ่อัปเดตทันที
- *  - ลากวางเอง: แถบเพิ่มของด้านซ้าย · คลิกกล่องบนกระดาษแล้วมีแถบเครื่องมือลอยเหนือกล่อง · แผงขวาเฉพาะกล่องที่เลือก
+ *  - อัตโนมัติ: 1 เลือกแม่แบบ · 2 สีและตัวอักษร · 3 ติ๊กข้อมูลที่แสดง · 4 ชื่อเอกสาร — ตัวอย่างหน้าเอกสารใหญ่อัปเดตทันที
+ *  - ออกแบบเอง: เริ่มจากแม่แบบหรือหน้าเปล่า · แถบเพิ่มของ/รูปทรงด้านซ้าย · ลากคลุม/Ctrl+คลิกเลือกหลายกล่อง · คลิกกล่องบนกระดาษแล้วมีแถบเครื่องมือลอยเหนือกล่อง · แผงขวาเฉพาะกล่องที่เลือก
  *  - ทุกเอกสารใช้ผังของแม่แบบ (แม่แบบที่ไม่มีผังเฉพาะใช้ผังที่ใกล้เคียง) — ไม่มีโหมด "จัดอัตโนมัติ" แยกให้สับสน
  *  - แถบเอกสาร: ภาพย่อทุกชนิด กดสลับ · ย้อนกลับ/ทำซ้ำทุกการแก้ · ประวัติเวอร์ชันที่บันทึก · ดูด้วยเอกสารจริงได้
  *  - บันทึก: ปุ่มลอย / Ctrl+S · เตือนก่อนออกเมื่อยังไม่บันทึก
@@ -202,7 +202,7 @@ export function DocumentDesigner() {
   const [docType, setDocType] = useState(DESIGNABLE_DOCS[0].type);
   const [saving, setSaving] = useState(false);
   const [modal, setModal] = useState<"" | "templates" | "versions" | "pdf">("");
-  // แบบง่าย / ลากวางเอง (จำไว้ในเครื่อง)
+  // อัตโนมัติ / ออกแบบเอง (จำไว้ในเครื่อง)
   const [mode, setModeState] = useState<"simple" | "canvas">("simple");
   useEffect(() => { try { if (localStorage.getItem("nexus.designer.mode") === "canvas") setModeState("canvas"); } catch { /* ใช้แบบง่าย */ } }, []);
   const setMode = (m: "simple" | "canvas") => { setModeState(m); try { localStorage.setItem("nexus.designer.mode", m); } catch { /* ไม่เป็นไร */ } };
@@ -497,7 +497,7 @@ export function DocumentDesigner() {
                   return <button key={t.type} type="button" onClick={() => assignLetterhead(t.type, on ? undefined : letterhead.id)} className={cn("h-7 px-2 rounded-full text-[11.5px] border", on ? "border-purple-400/60 bg-purple-500/15 text-purple-100" : "border-white/10 text-white/50 hover:text-white")}>{SHORT[t.type]}</button>;
                 })}
               </div>
-              <p className="text-[11px] text-white/40">จัดตำแหน่งในหัวกระดาษได้ที่ &quot;ลากวางเอง&quot; (กล่องสีม่วง)</p>
+              <p className="text-[11px] text-white/40">จัดตำแหน่งในหัวกระดาษได้ที่ &quot;ออกแบบเอง&quot; (กล่องสีม่วง)</p>
             </>
           )}
         </Section>
@@ -520,7 +520,7 @@ export function DocumentDesigner() {
         </div>
         <div className="flex flex-wrap items-center gap-2 px-1">
           <div className="flex rounded-full bg-white/5 p-1 border border-white/10">
-            {([["simple", "แบบง่าย", ListChecks], ["canvas", "ลากวางเอง", MousePointerClick]] as const).map(([m, label, I]) => (
+            {([["simple", "อัตโนมัติ", ListChecks], ["canvas", "ออกแบบเอง", MousePointerClick]] as const).map(([m, label, I]) => (
               <button key={m} type="button" onClick={() => setMode(m)} className={cn("h-8 px-4 rounded-full text-[13px] flex items-center gap-1.5", mode === m ? "bg-nexus-teal/20 text-nexus-teal font-bold" : "text-white/55 hover:text-white")}><I size={14} /> {label}</button>
             ))}
           </div>
@@ -553,7 +553,7 @@ export function DocumentDesigner() {
               <p className="text-[13px] text-white/70">ตัวอย่าง{docName} (เปลี่ยนทันทีที่แก้)</p>
               <div className="ml-auto flex gap-2">
                 <PillButton variant="glass" className="h-8 px-3 text-xs" onClick={() => setModal("pdf")}><Eye size={13} /> ดู PDF / พิมพ์</PillButton>
-                {canEdit && <PillButton variant="primary" className="h-8 px-3 text-xs" onClick={() => setMode("canvas")}><MousePointerClick size={13} /> จัดตำแหน่งเอง (ลากวาง)</PillButton>}
+                {canEdit && <PillButton variant="primary" className="h-8 px-3 text-xs" onClick={() => setMode("canvas")}><MousePointerClick size={13} /> ปรับแก้จากแม่แบบนี้ (ออกแบบเอง)</PillButton>}
               </div>
             </div>
             <PagePreview model={model} />

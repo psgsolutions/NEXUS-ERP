@@ -194,16 +194,18 @@ const compact: Gen = (docType, t) => {
 
 /** ส่วนเฉพาะของเอกสารแต่ละชนิด: กล่องข้อมูล (แถวที่ย้ายออกจากกล่องเลขที่) · บัญชีรับเงิน · ข้อความรับรองเหนือช่องลงนาม */
 /** ack.slot = ช่องลงนามที่ข้อความนี้เป็นของ (ลำดับ · -1 = ช่องสุดท้าย) */
-export const DOC_PARTS: Record<string, { box?: string[]; payment?: boolean; ack?: { text: string; slot: number } }> = {
-  quotation: { box: ["f:paymentTerms", "f:delivery"], payment: true, ack: { text: "ยืนยันการสั่งซื้อตามรายการและเงื่อนไขข้างต้น", slot: -1 } },
-  sales_order: { box: ["m:เครดิต"], payment: true },
-  invoice: { payment: true, ack: { text: "ได้รับสินค้า/บริการตามรายการข้างต้นไว้ถูกต้องแล้ว", slot: 0 } },
+export const DOC_PARTS: Record<string, { box?: string[]; payment?: boolean; ack?: { text: string; slot: number }; noCopy?: boolean }> = {
+  quotation: { noCopy: true, box: ["f:paymentTerms", "f:delivery"], payment: true, ack: { text: "ยืนยันการสั่งซื้อตามรายการและเงื่อนไขข้างต้น", slot: -1 } },
+  sales_order: { noCopy: true, box: ["m:เครดิต"], payment: true },
+  // ใบกำกับภาษี/ใบแจ้งหนี้: เงื่อนไขชำระ (ครบกำหนด อ้างอิงใบสั่งซื้อ) + บัญชีรับเงิน ตามแบบใบแจ้งหนี้สากล
+  invoice: { box: ["m:ครบกำหนด", "m:เลขที่ใบสั่งซื้อ", "m:ใบสั่งขาย"], payment: true, ack: { text: "ได้รับสินค้า/บริการตามรายการข้างต้นไว้ถูกต้องแล้ว", slot: 0 } },
   billing_note: { box: ["m:กำหนดชำระ", "m:เลขที่ใบสั่งซื้อ"], payment: true, ack: { text: "ได้รับใบวางบิลไว้ตรวจสอบแล้ว  นัดชำระ/รับเช็ค ......../......../........", slot: -1 } },
   receipt: { box: ["m:ชำระโดย", "m:บัญชี", "m:เช็คเลขที่", "m:อ้างอิง"] },
   delivery_note: { ack: { text: "ได้รับสินค้าตามรายการข้างต้นถูกต้องในสภาพเรียบร้อย", slot: 1 } },
   cndn: { box: ["m:อ้างอิงใบกำกับ", "m:ลงวันที่"] },
-  purchase_order: { box: ["m:กำหนดส่ง", "m:ส่งที่คลัง", "m:เงื่อนไขชำระ"], ack: { text: "ยืนยันรับคำสั่งซื้อตามรายการและเงื่อนไขข้างต้น", slot: -1 } },
-  payment: { box: ["m:จ่ายโดย", "m:บัญชี", "m:เช็คเลขที่", "m:อ้างอิง"], ack: { text: "ได้รับเงินตามรายการข้างต้นถูกต้องแล้ว", slot: -1 } },
+  work_order: { noCopy: true },
+  purchase_order: { noCopy: true, box: ["m:กำหนดส่ง", "m:ส่งที่คลัง", "m:เงื่อนไขชำระ"], ack: { text: "ยืนยันรับคำสั่งซื้อตามรายการและเงื่อนไขข้างต้น", slot: -1 } },
+  payment: { noCopy: true, box: ["m:จ่ายโดย", "m:บัญชี", "m:เช็คเลขที่", "m:อ้างอิง"], ack: { text: "ได้รับเงินตามรายการข้างต้นถูกต้องแล้ว", slot: -1 } },
 };
 
 /**
@@ -219,10 +221,13 @@ export function tailor(docType: string, t: DocTheme, blocks: FreeBlock[]): FreeB
   const sign = blocks.find((b) => b.kind === "signatures");
   const notes = blocks.find((b) => b.kind === "notes");
   const pay = blocks.find((b) => b.kind === "payment");
-  let out = blocks.filter((b) => b !== notes && b !== pay);
+  // เอกสารที่ไม่มีต้นฉบับ/สำเนา (ใบเสนอราคา ใบสั่งซื้อ ฯลฯ): ไม่แสดงป้าย
+  // จัดคอลัมน์ซ้ายใหม่เฉพาะเอกสารที่มีกล่องข้อมูล/บัญชีรับเงิน (ที่เหลือคงหมายเหตุไว้ตามเดิม)
+  const relayout = !!notes && (fields.length > 0 || !!part.payment || !!pay);
+  let out = blocks.filter((b) => !relayout || (b !== notes && b !== pay)).map((b) => (part.noCopy && b.kind === "title" ? { ...b, hide: [...new Set([...(b.hide || []), "copy"])] } : b));
   const extra: FreeBlock[] = [];
   const limit = sign ? sign.y - (part.ack ? 26 : 6) : A4.h - 40;
-  if (notes) {
+  if (relayout && notes) {
     const k = FONT_SCALE[t.font], row = Math.round((t.bilingual ? 24 : 15) * k);
     const boxH = fields.length ? fields.length * row + 8 : 0;
     const payH = part.payment && pay ? pay.h : 0;

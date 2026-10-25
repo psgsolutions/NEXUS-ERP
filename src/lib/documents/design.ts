@@ -59,8 +59,10 @@ export interface Letterhead { id: string; name: string; height: number; blocks: 
 export interface DocumentDesign { theme: DocTheme; perDoc: Record<string, PerDocDesign>; letterheads: Letterhead[] }
 
 // ---------- ผังลากวางอิสระ ----------
-export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "field" | "text" | "line" | "rect" | "image";
-export type ItemColumn = "no" | "code" | "description" | "qty" | "unit" | "price" | "discount" | "amount";
+export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "info" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "field" | "text" | "line" | "rect" | "image";
+export type ItemColumn = "no" | "code" | "description" | "detail" | "qty" | "unit" | "qtyUnit" | "price" | "discount" | "discountText" | "gross" | "amount";
+/** คอลัมน์ตารางที่ตั้งเอง: ลำดับตามรายการ · หัวคอลัมน์ · จัดวาง · ความกว้าง (% ของตาราง ว่าง = อัตโนมัติ) */
+export interface ColumnSpec { key: ItemColumn; label?: string; align?: "left" | "center" | "right"; width?: number }
 export interface FreeBlock {
   id: string;
   kind: BlockKind;
@@ -78,8 +80,15 @@ export interface FreeBlock {
   bold?: boolean;
   /** ส่วนย่อยที่ซ่อน (คีย์ตาม BLOCK_PARTS) */
   hide?: string[];
-  /** ตารางรายการ: คอลัมน์ที่แสดง */
+  /** ตารางรายการ: คอลัมน์ที่แสดง (แบบเดิม — ใช้ colSpec ถ้ามี) */
   cols?: ItemColumn[];
+  /** ตารางรายการ: คอลัมน์ที่ตั้งเอง (ลำดับ หัวคอลัมน์ จัดวาง ความกว้าง) */
+  colSpec?: ColumnSpec[];
+  /** กล่องข้อมูล: เน้นแถวแรก (เช่น ชื่อบริษัท/ลูกค้า ตัวหนาใหญ่) · ความกว้างป้าย (pt) */
+  emphasizeFirst?: boolean;
+  labelWidth?: number;
+  /** กล่องข้อมูล: ชื่อหัวข้อที่ตั้งเอง ตามคีย์ข้อมูล (ว่าง = ชื่อตั้งต้น) */
+  names?: Record<string, string>;
   /** ช่องลงนาม: ชื่อช่อง */
   labels?: string[];
   /** ช่องลงนาม: ระยะห่างระหว่างช่อง (pt) เช่น เว้นกลางไว้วางโลโก้/ตราประทับ */
@@ -90,7 +99,7 @@ export interface FreeBlock {
   field?: string;
   /** ช่องข้อมูล: ไม่แสดงป้าย (แสดงเฉพาะค่า) */
   hideLabel?: boolean;
-  /** กล่องเลขที่/วันที่: ข้อมูลเพิ่มที่แสดงเป็นแถว (f:<คีย์>) */
+  /** กล่องเลขที่/วันที่: ข้อมูลเพิ่มที่แสดงเป็นแถว (f:<คีย์>) · กล่องข้อมูล (info): หัวข้อที่เลือกแสดง ตามลำดับ */
   fields?: string[];
   /** รัศมีมุม (pt) 0 = เหลี่ยม — กรอบ/พื้นของกล่อง และกรอบตาราง/ยอดรวม/ลูกค้าในกล่อง */
   radius?: number;
@@ -116,7 +125,7 @@ export const A4 = { w: 595.28, h: 841.89 };
 /** กล่องที่เอกสารภาษีต้องมี (ลบไม่ได้ในผังอิสระ) */
 export const REQUIRED_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party", "items", "totals"];
 export const BLOCK_LABELS: Record<BlockKind, string> = {
-  logo: "โลโก้", seller: "ข้อมูลผู้ขาย", title: "ชื่อเอกสาร", meta: "เลขที่/วันที่", party: "ข้อมูลลูกค้า/คู่ค้า", items: "ตารางรายการ",
+  logo: "โลโก้", seller: "ข้อมูลผู้ขาย", title: "ชื่อเอกสาร", meta: "เลขที่/วันที่", party: "ข้อมูลลูกค้า/คู่ค้า", info: "กล่องข้อมูล", items: "ตารางรายการ",
   totals: "ยอดรวม", words: "จำนวนเงินตัวอักษร", notes: "หมายเหตุ", payment: "ข้อมูลการชำระเงิน", signatures: "ช่องลงนาม",
   field: "ข้อมูลเดี่ยว", text: "ข้อความ", line: "เส้น", rect: "กรอบ/พื้นหลัง", image: "รูปภาพ",
 };
@@ -128,14 +137,24 @@ export const BLOCK_PARTS: Partial<Record<BlockKind, { key: string; label: string
   items: [{ key: "detail", label: "รายละเอียดใต้รายการ" }, { key: "heading", label: "หัวข้อหมวด" }],
   signatures: [{ key: "date", label: "บรรทัดวันที่" }],
 };
-export const ITEM_COLUMNS: { key: ItemColumn; label: string }[] = [
-  { key: "no", label: "ลำดับ" }, { key: "code", label: "รหัส" }, { key: "description", label: "รายการ" }, { key: "qty", label: "จำนวน" },
-  { key: "unit", label: "หน่วย" }, { key: "price", label: "ราคา/หน่วย" }, { key: "discount", label: "ส่วนลด" }, { key: "amount", label: "จำนวนเงิน" },
+export const ITEM_COLUMNS: { key: ItemColumn; label: string; align: "left" | "center" | "right"; width?: number; extra?: boolean }[] = [
+  { key: "no", label: "ลำดับ", align: "center", width: 6 }, { key: "code", label: "รหัส", align: "left", width: 13 }, { key: "description", label: "รายการ", align: "left" },
+  { key: "detail", label: "รายละเอียด", align: "left", extra: true },
+  { key: "qty", label: "จำนวน", align: "right", width: 9 }, { key: "unit", label: "หน่วย", align: "center", width: 8 },
+  { key: "qtyUnit", label: "จำนวน+หน่วย", align: "right", width: 13, extra: true },
+  { key: "price", label: "ราคา/หน่วย", align: "right", width: 13 }, { key: "gross", label: "ราคารวมก่อนลด", align: "right", width: 14, extra: true },
+  { key: "discount", label: "ส่วนลด", align: "right", width: 10 }, { key: "discountText", label: "ส่วนลด (%)", align: "center", width: 9, extra: true },
+  { key: "amount", label: "จำนวนเงิน", align: "right", width: 14 },
 ];
+/** คอลัมน์ตามที่ตั้ง (colSpec) หรือแบบเดิม (cols / ค่าตั้งต้นของเอกสาร) */
+export function resolveColumns(b: { colSpec?: ColumnSpec[]; cols?: ItemColumn[] } | undefined, fallback: ItemColumn[]): ColumnSpec[] {
+  if (b?.colSpec?.length) return b.colSpec;
+  return (b?.cols?.length ? b.cols : fallback).map((key) => ({ key }));
+}
 /** กล่องที่มีตัวอักษร (ปรับขนาด/ระยะบรรทัด/สีได้) */
-export const TEXT_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party", "items", "totals", "words", "notes", "payment", "signatures", "field", "text"];
+export const TEXT_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party", "info", "items", "totals", "words", "notes", "payment", "signatures", "field", "text"];
 /** กล่องที่วางในหัวกระดาษได้ */
-export const HEAD_KINDS: BlockKind[] = ["logo", "seller", "title", "meta", "field", "text", "line", "rect", "image"];
+export const HEAD_KINDS: BlockKind[] = ["logo", "seller", "title", "meta", "info", "field", "text", "line", "rect", "image"];
 /** คีย์ช่องข้อมูล: เลขที่ วันที่ แถวข้อมูลของเอกสาร (m:ป้าย) ข้อมูลเพิ่ม (f:คีย์) */
 const FIELD_KEY = /^(number|date|title|titleEn|m:[^\n]{1,40}|f:[a-zA-Z]{1,30}|seller\.(name|nameEn|address|taxId|contact)|customer\.(name|address|taxId|contact|phone|email))$/;
 
@@ -153,7 +172,7 @@ export const SPLIT_EQUIV: Partial<Record<BlockKind, string[]>> = {
 export function requiredSatisfied(kind: BlockKind, blocks: FreeBlock[]): boolean {
   if (blocks.some((b) => b.kind === kind)) return true;
   const eq = SPLIT_EQUIV[kind];
-  return !!eq && eq.every((f) => blocks.some((b) => b.kind === "field" && b.field === f));
+  return !!eq && eq.every((f) => blocks.some((b) => (b.kind === "field" && b.field === f) || (b.kind === "info" && (b.fields || []).includes(f))));
 }
 
 /** เอกสารที่ไม่มียอดเงิน (ไม่ต้องมีกล่องยอดรวม/จำนวนเงินตัวอักษร) */
@@ -163,7 +182,7 @@ export const docHasAmounts = (docType?: string) => !NO_AMOUNT_DOCS.includes(Stri
 export const requiredBlocksFor = (docType?: string): BlockKind[] => (docHasAmounts(docType) ? REQUIRED_BLOCKS : REQUIRED_BLOCKS.filter((k) => k !== "totals"));
 /** กล่องที่เพิ่มได้ในเอกสารชนิดนี้ */
 export const addableBlocksFor = (docType?: string): BlockKind[] =>
-  (["text", "line", "rect", "image", "logo", "field", "words", "notes", "payment", "signatures", "totals"] as BlockKind[]).filter((k) => docHasAmounts(docType) || (k !== "words" && k !== "totals"));
+  (["info", "text", "line", "rect", "image", "logo", "field", "words", "notes", "payment", "signatures", "totals"] as BlockKind[]).filter((k) => docHasAmounts(docType) || (k !== "words" && k !== "totals"));
 /** คอลัมน์ที่ต้องแสดงเสมอ */
 export const requiredColumnsFor = (docType?: string): ItemColumn[] => (docHasAmounts(docType) ? ["description", "amount"] : ["description"]);
 
@@ -363,7 +382,17 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
   // แถวของกล่องเลขที่ (number/date/m:ป้าย) และแถวยอดรวม (t:ป้าย) เป็นคีย์ตามข้อมูลของเอกสาร
   const okHide = (k: string) => parts.includes(k) || (b.kind === "meta" && (k === "number" || k === "date" || /^m:[^\n]{1,40}$/.test(k))) || (b.kind === "totals" && /^t:[^\n]{1,60}$/.test(k));
   const hide: string[] = Array.isArray(b.hide) ? [...new Set<string>(b.hide.map(String))].filter(okHide).slice(0, 30) : [];
-  const fields: string[] = b.kind === "meta" && Array.isArray(b.fields) ? [...new Set<string>(b.fields.map(String))].filter((k) => /^f:[a-zA-Z]{1,30}$/.test(k)).slice(0, 10) : [];
+  const fields: string[] = !Array.isArray(b.fields) ? []
+    : b.kind === "meta" ? [...new Set<string>(b.fields.map(String))].filter((k) => /^f:[a-zA-Z]{1,30}$/.test(k)).slice(0, 10)
+    : b.kind === "info" ? [...new Set<string>(b.fields.map(String))].filter((k) => FIELD_KEY.test(k)).slice(0, 20) : [];
+  const colSpec: ColumnSpec[] = b.kind === "items" && Array.isArray(b.colSpec)
+    ? b.colSpec.filter((x: any, i: number, a: any[]) => x && COLUMN_KEYS.includes(x.key) && a.findIndex((y: any) => y?.key === x.key) === i).slice(0, 12).map((x: any) => ({
+      key: x.key,
+      ...(str(x.label, 30) ? { label: str(x.label, 30) } : {}),
+      ...(["left", "center", "right"].includes(x.align) ? { align: x.align } : {}),
+      ...(x.width !== undefined && x.width !== null && x.width !== "" ? { width: num(x.width, 3, 80, 10) } : {}),
+    })) : [];
+  if (colSpec.length && !colSpec.some((x) => x.key === "description")) colSpec.unshift({ key: "description" });
   const cols = b.kind === "items" && Array.isArray(b.cols) ? COLUMN_KEYS.filter((k) => b.cols.includes(k)) : [];
   const labels = b.kind === "signatures" && Array.isArray(b.labels) ? b.labels.map((s: any) => str(s, 40)).filter(Boolean).slice(0, 4) : [];
   return {
@@ -381,11 +410,19 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(hide.length ? { hide } : {}),
     ...(cols.length ? { cols: cols.includes("description") ? cols : (["description", ...cols] as ItemColumn[]) } : {}),
     ...(labels.length ? { labels } : {}),
-    ...(fields.length ? { fields } : {}),
+    ...(fields.length || b.kind === "info" ? { fields } : {}),
+    ...(colSpec.length ? { colSpec } : {}),
+    ...(b.kind === "info" && b.emphasizeFirst ? { emphasizeFirst: true } : {}),
+    ...(() => {
+      if (b.kind !== "info" || !b.names || typeof b.names !== "object") return {};
+      const names = Object.fromEntries(fields.map((k) => [k, str(b.names[k], 40)]).filter(([, v]) => v));
+      return Object.keys(names).length ? { names } : {};
+    })(),
+    ...(b.kind === "info" && b.labelWidth !== undefined && b.labelWidth !== null ? { labelWidth: num(b.labelWidth, 20, 300, 90) } : {}),
     ...(b.kind === "signatures" && b.gap !== undefined && b.gap !== null ? { gap: num(b.gap, 0, 300, 16) } : {}),
     ...(b.kind === "items" && b.fill ? { fill: true } : {}),
     ...(b.kind === "field" ? { field: FIELD_KEY.test(String(b.field || "")) ? String(b.field) : "number" } : {}),
-    ...(b.kind === "field" && b.hideLabel ? { hideLabel: true } : {}),
+    ...((b.kind === "field" || b.kind === "info") && b.hideLabel ? { hideLabel: true } : {}),
     ...(b.radius !== undefined && b.radius !== null ? { radius: num(b.radius, 0, 40, 4) } : {}),
     ...(b.borderWidth !== undefined && b.borderWidth !== null ? { borderWidth: num(b.borderWidth, 0.25, 8, 1) } : {}),
     ...(["dashed", "dotted"].includes(b.dash) ? { dash: b.dash } : {}),
@@ -401,7 +438,7 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
 
 /** เลขที่/วันที่ต้องปรากฏเสมอ (ม.86/4): ดูจากกล่องเลขที่ ช่องข้อมูล หรือข้อความที่มี {{number}}/{{date}} */
 export function legalFieldVisible(blocks: FreeBlock[], key: "number" | "date"): boolean {
-  return blocks.some((b) => (b.kind === "meta" && !(b.hide || []).includes(key)) || (b.kind === "field" && b.field === key) || (b.kind === "text" && (b.text || "").includes(`{{${key}}}`)));
+  return blocks.some((b) => (b.kind === "meta" && !(b.hide || []).includes(key)) || (b.kind === "field" && b.field === key) || (b.kind === "info" && (b.fields || []).includes(key)) || (b.kind === "text" && (b.text || "").includes(`{{${key}}}`)));
 }
 /** คืนเลขที่/วันที่ที่ถูกซ่อนโดยไม่มีที่แสดงอื่น (แก้ในกล่องเลขที่ของผังเอกสารก่อน ไม่มีจึงแก้ในหัวกระดาษ) */
 function restoreLegalFields(free: FreeLayout | undefined, lh: Letterhead | undefined) {

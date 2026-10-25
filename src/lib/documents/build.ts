@@ -97,6 +97,7 @@ export function quotationLines(raw: any[]): DocumentLine[] {
       detail: str(l.details || ((l.productName || l.name) ? l.description : "")),
       qty, unit: str(l.uom || l.unit), price,
       discount: r2(discount),
+      discountText: str(l.discountString) || (num(l.discountValue) ? (pct ? `${num(l.discountValue)}%` : "") : ""),
       amount: l.lineTotal !== undefined ? num(l.lineTotal) : r2(Math.max(0, gross - discount)),
     };
   });

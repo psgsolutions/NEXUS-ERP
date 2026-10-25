@@ -40,7 +40,7 @@ export interface DocumentParty {
   email?: string;
 }
 
-export type ColumnKey = "no" | "code" | "description" | "qty" | "unit" | "price" | "discount" | "amount" | "debit" | "credit";
+export type ColumnKey = "no" | "code" | "description" | "detail" | "qty" | "unit" | "qtyUnit" | "price" | "discount" | "discountText" | "gross" | "amount" | "debit" | "credit";
 
 export interface DocumentLine {
   /** บรรทัดหัวข้อกลุ่ม (ไม่มีจำนวน/ราคา) */
@@ -53,6 +53,8 @@ export interface DocumentLine {
   unit?: string;
   price?: number;
   discount?: number;
+  /** ส่วนลดตามที่กรอก เช่น "10%" (แสดงในคอลัมน์ส่วนลด %) */
+  discountText?: string;
   amount?: number;
   /** ใบสำคัญบัญชี */
   debit?: number;

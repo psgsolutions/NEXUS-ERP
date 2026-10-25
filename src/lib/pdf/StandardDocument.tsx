@@ -2,7 +2,7 @@ import React from "react";
 import { Document, Font, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { ColumnKey, CopyMode, DocumentModel } from "@/lib/documents/model";
 import { amountInWords, branchLabel, formatTaxId, money, qtyText, thaiDate } from "@/lib/documents/format";
-import { FONT_SCALE, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
+import { FONT_SCALE, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
 
 /**
  * เทมเพลตเอกสาร A4 (ใช้ร่วมทุกประเภทเอกสาร) — หน้าตาตามธีมของบริษัท (ตั้งค่า › ออกแบบเอกสาร)
@@ -40,10 +40,14 @@ export const COL: Record<ColumnKey, { label: string; width: string; align: "left
   no: { label: "ลำดับ", width: "6%", align: "center" },
   code: { label: "รหัส", width: "13%", align: "left" },
   description: { label: "รายการ", width: "auto", align: "left" },
+  detail: { label: "รายละเอียด", width: "auto", align: "left" },
   qty: { label: "จำนวน", width: "9%", align: "right" },
   unit: { label: "หน่วย", width: "8%", align: "center" },
+  qtyUnit: { label: "จำนวน", width: "13%", align: "right" },
   price: { label: "ราคา/หน่วย", width: "13%", align: "right" },
+  gross: { label: "ราคารวม", width: "14%", align: "right" },
   discount: { label: "ส่วนลด", width: "10%", align: "right" },
+  discountText: { label: "ส่วนลด", width: "9%", align: "center" },
   amount: { label: "จำนวนเงิน", width: "14%", align: "right" },
   debit: { label: "เดบิต", width: "15%", align: "right" },
   credit: { label: "เครดิต", width: "15%", align: "right" },
@@ -87,7 +91,7 @@ export type ThemeStyles = ReturnType<typeof themeStyles>;
  */
 export type Ctx = {
   doc: DocumentModel; t: DocTheme; s: ThemeStyles; per: PerDocDesign; copy: CopyMode; lh?: Letterhead;
-  hide: Set<string>; cols?: ItemColumn[]; labels?: string[];
+  hide: Set<string>; cols?: ItemColumn[]; colSpec?: ColumnSpec[]; labels?: string[];
   /** กล่องเลขที่: ข้อมูลเพิ่ม · ช่องลงนาม: ระยะห่าง · ตาราง: ยืดเต็มกล่อง (ต้องรู้ขนาดกล่อง) */
   fields?: string[]; gap?: number; fill?: boolean; box?: { w: number; h: number };
   /** ป้ายของข้อมูลที่วางแยกแล้ว (หมายเหตุไม่แสดงซ้ำ) */
@@ -225,6 +229,32 @@ export function SectionField({ c, b }: { c: Ctx; b: FreeBlock }) {
   );
 }
 
+/**
+ * กล่องข้อมูล: หัวข้อที่เลือกเอง ตามลำดับ (ข้อมูลใดก็ได้ของเอกสาร) · ข้อมูลว่างไม่พิมพ์แถว
+ * เน้นแถวแรก = ชื่อบริษัท/ลูกค้าตัวหนาใหญ่ ไม่มีป้าย · ซ่อนป้าย = แสดงเฉพาะค่า
+ */
+export function SectionInfo({ c, b }: { c: Ctx; b: FreeBlock }) {
+  const rows = (b.fields || []).map((k) => fieldValue(c, k)).filter((r): r is FieldRow => !!r && !!r.value.trim());
+  if (!rows.length) return null;
+  const lw = b.labelWidth ?? 90;
+  const justify = b.align === "right" ? "flex-end" : b.align === "center" ? "center" : "flex-start";
+  return (
+    <View>
+      {rows.map((r, i) => {
+        const label = b.names?.[r.key] || r.label;
+        if (i === 0 && b.emphasizeFirst) return <T key={r.key} style={{ fontWeight: "bold", fontSize: c.s.page.fontSize * 1.25, lineHeight: 1.3, marginBottom: 2, color: c.t.primary, textAlign: b.align }}>{r.value}</T>;
+        if (b.hideLabel) return <T key={r.key} style={{ textAlign: b.align, fontWeight: b.bold ? "bold" : undefined }}>{r.value}</T>;
+        return (
+          <View key={r.key} style={{ flexDirection: "row", justifyContent: justify, marginTop: 1 }}>
+            <View style={{ width: lw }}><Lbl c={c} th={label} suffix=" :" style={{ fontWeight: "bold" }} /></View>
+            <T style={[{ flex: b.align === "left" || !b.align ? 1 : undefined, paddingLeft: 4 }, b.bold ? { fontWeight: "bold" } : {}]}>{r.value}</T>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 const PARTY_NAME_LABEL: Record<string, string> = { "ลูกค้า": "ชื่อลูกค้า", "เสนอราคาให้": "ชื่อลูกค้า" };
 
 export function SectionParty({ c }: { c: Ctx }) {
@@ -277,9 +307,20 @@ export function SectionParty({ c }: { c: Ctx }) {
 export function SectionItems({ c }: { c: Ctx }) {
   const { doc, t, s } = c;
   const hidden = new Set(c.per.hideColumns || []);
-  // คอลัมน์ที่เลือกในกล่องตาราง (ผังลากวาง) มาก่อน · ไม่เช่นนั้นใช้คอลัมน์ของเอกสาร ลบที่ซ่อนในธีม
-  const cols: ColumnKey[] = c.cols?.length ? c.cols : (doc.columns || ["no", "description", "qty", "unit", "price", "amount"]).filter((k) => !hidden.has(k));
-  const cell = (k: ColumnKey) => ({ ...(COL[k].width === "auto" ? { flex: 1 } : { width: COL[k].width }), textAlign: COL[k].align });
+  // คอลัมน์ที่ตั้งในกล่องตาราง (ลำดับ หัวคอลัมน์ จัดวาง ความกว้าง) มาก่อน · ไม่เช่นนั้นใช้คอลัมน์ของเอกสาร ลบที่ซ่อนในธีม
+  const spec = resolveColumns(c, (doc.columns || ["no", "description", "qty", "unit", "price", "amount"]).filter((k) => !hidden.has(k)) as ItemColumn[]);
+  const cols: ColumnKey[] = spec.map((x) => x.key);
+  const pctOf = (i: number) => (spec[i].width !== undefined ? spec[i].width! : COL[cols[i]].width === "auto" ? 0 : parseFloat(COL[cols[i]].width));
+  // ไม่มีคอลัมน์อัตโนมัติ = แบ่งตามสัดส่วนความกว้างที่ตั้ง (เต็มตารางพอดี)
+  const noAuto = cols.every((_k, i) => pctOf(i) > 0);
+  const sumPct = cols.reduce((a, _k, i) => a + pctOf(i), 0) || 1;
+  const alignOf = (i: number) => spec[i].align || COL[cols[i]].align;
+  const labelOf = (i: number) => spec[i].label || COL[cols[i]].label;
+  const cell = (k: ColumnKey) => {
+    const i = cols.indexOf(k), w = pctOf(i);
+    return { ...(noAuto ? { flexGrow: w, flexShrink: 1, flexBasis: 0 } : w ? { width: `${w}%` } : { flex: 1 }), textAlign: alignOf(i) };
+  };
+  const detailCol = cols.includes("detail");
   // ยืดตารางเต็มกล่อง (แบบฟอร์ม): เส้นคอลัมน์ลากถึงล่างกล่อง ไม่มีเส้นคั่นแถว
   const fill = !!(c.fill && c.box);
   const grid = t.table === "grid" && !fill;
@@ -289,10 +330,11 @@ export function SectionItems({ c }: { c: Ctx }) {
   const xs: number[] = [];
   if (fill) {
     const W = c.box!.w;
-    const fixed = cols.map((k) => (COL[k].width === "auto" ? 0 : (parseFloat(COL[k].width) / 100) * W));
-    const auto = Math.max(0, W - fixed.reduce((a, b) => a + b, 0));
+    const fixed = cols.map((_k, i) => (noAuto ? (pctOf(i) / sumPct) * W : (pctOf(i) / 100) * W));
+    const autoN = noAuto ? 0 : cols.filter((_k, i) => !pctOf(i)).length;
+    const auto = autoN ? Math.max(0, W - fixed.reduce((a, b) => a + b, 0)) / autoN : 0;
     let x = 0;
-    cols.forEach((k, i) => { x += COL[k].width === "auto" ? auto : fixed[i]; if (i < cols.length - 1) xs.push(x); });
+    cols.forEach((_k, i) => { x += fixed[i] || auto; if (i < cols.length - 1) xs.push(x); });
   }
   let n = 0;
   return (
@@ -301,7 +343,7 @@ export function SectionItems({ c }: { c: Ctx }) {
       <View style={[{ flexDirection: "row", borderBottomWidth: 1, borderColor: fill ? t.primary : lineOf(c), paddingVertical: 4 }, head]} fixed>
         {cols.map((k, i) => (
           <View key={k} style={[cell(k), grid && i ? { borderLeftWidth: 0.5, borderColor: lineOf(c) } : {}]}>
-            <Lbl c={c} th={COL[k].label} style={[s.thText, headText]} align={t.bilingual ? "center" : COL[k].align} />
+            <Lbl c={c} th={labelOf(i)} style={[s.thText, headText]} align={t.bilingual ? "center" : alignOf(i)} />
           </View>
         ))}
       </View>
@@ -321,13 +363,16 @@ export function SectionItems({ c }: { c: Ctx }) {
             {cols.map((k, j) => {
               const v = k === "no" ? String(n) : k === "code" ? l.code || "" : k === "description" ? l.description
                 : k === "qty" ? (l.qty !== undefined ? qtyText(l.qty) : "") : k === "unit" ? l.unit || ""
+                : k === "detail" ? l.detail || "" : k === "qtyUnit" ? (l.qty !== undefined ? `${qtyText(l.qty)} ${l.unit || ""}`.trim() : "")
+                : k === "gross" ? (l.qty !== undefined && l.price !== undefined ? money(l.qty * l.price) : "")
+                : k === "discountText" ? l.discountText || (l.discount ? money(l.discount) : "")
                 : k === "price" ? (l.price !== undefined ? money(l.price) : "") : k === "discount" ? (l.discount ? money(l.discount) : "")
                 : k === "debit" ? (l.debit ? money(l.debit) : "") : k === "credit" ? (l.credit ? money(l.credit) : "")
                 : l.amount !== undefined ? money(l.amount) : "";
               return (
                 <View key={k} style={[s.td, cell(k), grid && j ? { borderLeftWidth: 0.5, borderColor: lineOf(c) } : {}]}>
                   <T>{v}</T>
-                  {k === "description" && l.detail && !c.hide.has("detail") ? <T style={s.small}>{l.detail}</T> : null}
+                  {k === "description" && l.detail && !detailCol && !c.hide.has("detail") ? <T style={s.small}>{l.detail}</T> : null}
                 </View>
               );
             })}
@@ -464,7 +509,7 @@ export function blockContext(c: Ctx, raw: FreeBlock): Ctx {
     ...(b.radius !== undefined ? { rounded: b.radius > 0 } : {}),
   } : c.t;
   return {
-    ...c, t, s: own ? themeStyles(t, b.lineHeight ?? 1.35, b.radius) : c.s, hide: new Set(b.hide || []), cols: b.cols, labels: b.labels, fields: b.fields, gap: b.gap, fill: b.fill, box: { w: b.w, h: b.h },
+    ...c, t, s: own ? themeStyles(t, b.lineHeight ?? 1.35, b.radius) : c.s, hide: new Set(b.hide || []), cols: b.cols, colSpec: b.colSpec, labels: b.labels, fields: b.fields, gap: b.gap, fill: b.fill, box: { w: b.w, h: b.h },
     radius: b.radius, lineColor: b.lineColor, lineWidth: b.borderWidth, headBg: b.headBg,
   };
 }
@@ -524,6 +569,7 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
       case "payment": return <SectionPayment c={bc} align={b.align} />;
       case "signatures": return <SectionSignatures c={bc} />;
       case "field": return <SectionField c={bc} b={b} />;
+      case "info": return <SectionInfo c={bc} b={b} />;
       case "text": return <T style={{ fontSize: (b.fontSize || 10) * FONT_SCALE[c.t.font], lineHeight: b.lineHeight ?? 1.35, color: b.color || c.t.text, textAlign: b.align, fontWeight: b.bold ? "bold" : undefined }}>{fillVars(b.text || "", c.doc)}</T>;
       // eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt
       case "image": return b.src ? <Image src={b.src} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : null;

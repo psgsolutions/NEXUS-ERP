@@ -17,7 +17,7 @@ export function FreeLayoutDocument({ doc, copy = "original" }: { doc: DocumentMo
   const base = documentContext(doc, copy);
   // ข้อมูลเพิ่มที่วางแล้ว (ในกล่องเลขที่/ช่องข้อมูล) — หมายเหตุไม่แสดงซ้ำ
   const placed = [...(base.lh?.blocks || []), ...(base.per.free?.blocks || [])];
-  const placedKeys = new Set(placed.flatMap((b) => (b.kind === "meta" ? b.fields || [] : b.kind === "field" && b.field ? [b.field] : [])));
+  const placedKeys = new Set(placed.flatMap((b) => (b.kind === "meta" || b.kind === "info" ? b.fields || [] : b.kind === "field" && b.field ? [b.field] : [])));
   const c = { ...base, shown: new Set((doc.fields || []).filter((f) => placedKeys.has(`f:${f.key}`)).map((f) => f.label)) };
   const headKinds = new Set((c.lh?.blocks || []).filter((b) => DEDUP_KINDS.includes(b.kind)).map((b) => b.kind));
   const blocks: FreeBlock[] = (c.per.free?.blocks || []).filter((b) => !headKinds.has(b.kind));

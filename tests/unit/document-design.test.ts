@@ -193,3 +193,29 @@ describe("document design — split boxes into fields, groups", () => {
     expect(x.group).toBeUndefined();
   });
 });
+
+describe("document design — data boxes and table column spec", () => {
+  it("info boxes keep chosen fields in order, count toward legal boxes, and drop unknown keys", () => {
+    const base = defaultFreeLayout("quotation").blocks.filter((b) => b.kind !== "seller" && b.kind !== "meta");
+    const raw = { enabled: true, blocks: [...base,
+      { id: "i1", kind: "info", x: 40, y: 20, w: 260, h: 60, fields: ["seller.taxId", "seller.name", "seller.address", "seller.password", "seller.name"], emphasizeFirst: true, names: { "seller.taxId": "Tax ID", "customer.name": "x" }, labelWidth: 999 },
+      { id: "i2", kind: "info", x: 360, y: 20, w: 200, h: 40, fields: ["number", "date", "f:paymentTerms"] },
+    ] };
+    const out = normalizeFreeLayout(raw, "quotation")!;
+    const i1 = out.blocks.find((b) => b.id === "i1")!;
+    expect(i1.fields).toEqual(["seller.taxId", "seller.name", "seller.address"]);
+    expect(i1.names).toEqual({ "seller.taxId": "Tax ID" });
+    expect(i1.labelWidth).toBe(300);
+    expect(out.blocks.some((b) => b.kind === "seller" || b.kind === "meta")).toBe(false);
+    expect(requiredSatisfied("seller", out.blocks)).toBe(true);
+    expect(legalFieldVisible(out.blocks, "number")).toBe(true);
+    expect(addableBlocksFor("quotation")).toContain("info");
+  });
+
+  it("column spec: known keys once, label/align/width limits, description always kept", () => {
+    const out = normalizeFreeLayout({ enabled: true, blocks: [{ id: "t", kind: "items", x: 40, y: 200, w: 515, h: 300,
+      colSpec: [{ key: "code", align: "center", width: 200 }, { key: "detail", label: "รายละเอียดสินค้า" }, { key: "code" }, { key: "bogus" }, { key: "amount", align: "middle", width: "" }] }] }, "quotation")!;
+    const t = out.blocks.find((b) => b.id === "t")!;
+    expect(t.colSpec).toEqual([{ key: "description" }, { key: "code", align: "center", width: 80 }, { key: "detail", label: "รายละเอียดสินค้า" }, { key: "amount" }]);
+  });
+});

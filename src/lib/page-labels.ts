@@ -30,8 +30,7 @@ export const PAGE_LABELS: [prefix: string, label: string][] = [
   ["/data-import", "นำเข้าข้อมูล Excel"],
   ["/settings", "ตั้งค่า"],
   ["/logs", "บันทึกการใช้งาน"],
-  ["/documents/history", "ประวัติเอกสาร"],
-  ["/documents", "เอกสาร"],
+  ["/documents", "ประวัติเอกสาร"],
 ];
 
 const BY_LENGTH = [...PAGE_LABELS].sort((a, b) => b[0].length - a[0].length);

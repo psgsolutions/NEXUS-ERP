@@ -115,7 +115,7 @@ export default function AuthenticatedLayout({
             {/* OPERATIONS TIER */}
             <NavGroup title="การปฏิบัติงาน">
               {show("/dashboard") && <SideLink href="/dashboard" icon={<PieChart size={20} />} label="ภาพรวม" active={pathname === "/dashboard"} title="Dashboard" />}
-              {show("/documents/history") && <SideLink href="/documents/history" icon={<FileStack size={20} />} label="ประวัติเอกสาร" active={pathname === "/documents/history"} title="Documents" />}
+              {show("/documents") && <SideLink href="/documents" icon={<FileStack size={20} />} label="ประวัติเอกสาร" active={pathname === "/documents"} title="Documents" />}
               {show("/sales") && <SideLink href="/sales" icon={<BadgeDollarSign size={20} />} label="งานขาย" active={pathname === "/sales"} title="Sales" />}
               {show("/finance/advances") && <SideLink href="/finance/advances" icon={<HandCoins size={20} />} label="เงินทดรองจ่าย" active={pathname === "/finance/advances"} title="Cash advances" />}
               {show("/projects") && <SideLink href="/projects" icon={<FolderKanban size={20} />} label="โครงการ" active={pathname === "/projects"} title="Projects" />}

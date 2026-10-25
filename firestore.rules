@@ -238,6 +238,8 @@ service cloud.firestore {
           'settings', 'design_versions',
           // ลายเซ็น/ตราประทับอิเล็กทรอนิกส์: /api/settings/document-signing เท่านั้น (อ่านจาก client ไม่ได้)
           'document_assets',
+          // หนังสือที่ออกแล้ว: บันทึกผ่าน /api/documents/letters (เลขที่ไม่ซ้ำ)
+          'letters',
           // ทะเบียนบัญชีธนาคาร เช็ค และการกระทบยอด: บันทึกผ่าน /api/finance/* เท่านั้น
           'bank_accounts', 'cheques', 'bank_reconciliations',
           // งานมอบหมาย: จ่ายงาน/รับงาน/ปิดงานผ่าน /api/jobs เท่านั้น

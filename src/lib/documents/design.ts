@@ -84,8 +84,12 @@ export interface FreeBlock {
   color?: string;
   bg?: string;
   border?: string;
-  align?: "left" | "center" | "right";
+  align?: "left" | "center" | "right" | "justify";
   bold?: boolean;
+  /** ข้อความ: ตัวเอียง · ขีดเส้นใต้ · ขีดฆ่า · ระยะห่างตัวอักษร (pt) · ฟอนต์ของกล่อง (ว่าง = ตามธีม) */
+  italic?: boolean; underline?: boolean; strike?: boolean; letterSpacing?: number; font?: FontFamily;
+  /** ความทึบ 0.1–1 (กรอบ รูปทรง รูปภาพ ข้อความ) */
+  opacity?: number;
   /** ส่วนย่อยที่ซ่อน (คีย์ตาม BLOCK_PARTS) */
   hide?: string[];
   /** ตารางรายการ: คอลัมน์ที่แสดง (แบบเดิม — ใช้ colSpec ถ้ามี) */
@@ -413,8 +417,12 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(colorOk(b.color) ? { color: b.color } : {}),
     ...(colorOk(b.bg) ? { bg: b.bg } : {}),
     ...(colorOk(b.border) ? { border: b.border } : {}),
-    ...(["left", "center", "right"].includes(b.align) ? { align: b.align } : {}),
+    ...(["left", "center", "right", "justify"].includes(b.align) ? { align: b.align } : {}),
     ...(b.bold ? { bold: true } : {}),
+    ...(b.italic ? { italic: true } : {}), ...(b.underline ? { underline: true } : {}), ...(b.strike ? { strike: true } : {}),
+    ...(b.letterSpacing !== undefined && b.letterSpacing !== null && Number(b.letterSpacing) !== 0 ? { letterSpacing: num(b.letterSpacing, -2, 10, 0) } : {}),
+    ...(b.font && (Object.keys(FONT_SCALE) as string[]).includes(b.font) ? { font: b.font } : {}),
+    ...(b.opacity !== undefined && b.opacity !== null && Number(b.opacity) < 1 ? { opacity: num(b.opacity, 0.1, 1, 1) } : {}),
     ...(hide.length ? { hide } : {}),
     ...(cols.length ? { cols: cols.includes("description") ? cols : (["description", ...cols] as ItemColumn[]) } : {}),
     ...(labels.length ? { labels } : {}),

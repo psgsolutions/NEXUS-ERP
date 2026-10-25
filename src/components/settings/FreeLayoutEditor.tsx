@@ -7,6 +7,8 @@ import {
   Group as GroupIcon, Pin, PinOff, Redo2, Split, Square, Trash2, Undo2, Ungroup, AlignLeft, AlignCenter, AlignRight, Wand2, X, Rows3,
   Bold, Type, Stamp as StampIcon, MoreHorizontal, Image as ImageIcon, TextCursorInput, BringToFront, SendToBack, ChevronLeft, PanelBottom,
   Circle, Triangle, RotateCcw, StretchHorizontal, StretchVertical,
+  Italic, Underline, Strikethrough, AlignJustify, ChevronUp, ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen,
+  ArrowUpToLine, ArrowDownToLine, BoxSelect, Ruler as RulerIcon, Grid3x3, Paintbrush, ZoomIn,
 } from "lucide-react";
 import { templateLayout } from "@/lib/documents/layout-templates";
 import { DataChecklist } from "./DataChecklist";
@@ -15,7 +17,7 @@ import { GlassCard, PillButton, PillCheckbox, PillInput, PillSelect, cn } from "
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import type { DocumentModel } from "@/lib/documents/model";
 import {
-  A4, BLOCK_LABELS, BLOCK_PARTS, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES,
+  A4, BLOCK_LABELS, BLOCK_PARTS, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, FONT_LABELS, type FontFamily,
   type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, type Letterhead,
 } from "@/lib/documents/design";
 import { usePdfPageImage } from "./usePdfPageImage";
@@ -87,6 +89,48 @@ const Group = ({ title, source, children }: { title: string; source?: string; ch
   </div>
 );
 
+/** ปุ่มใหญ่ในริบบอน (ไอคอนบน ป้ายล่าง) */
+const RBtn = ({ icon, label, onClick, disabled, on, title }: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean; on?: boolean; title?: string }) => (
+  <button type="button" title={title || label} disabled={disabled} onClick={onClick}
+    className={cn("h-[58px] min-w-[54px] px-1.5 rounded-lg flex flex-col items-center justify-center gap-1 text-[11.5px] leading-tight disabled:opacity-30", on ? "bg-nexus-teal/20 text-nexus-teal" : "text-white/80 hover:bg-white/10")}>
+    <span className={on ? "text-nexus-teal" : "text-nexus-teal/90"}>{icon}</span>{label}
+  </button>
+);
+/** ปุ่มเล็กในริบบอน (ไอคอนอย่างเดียว) */
+const RIcon = ({ title, onClick, disabled, on, children }: { title: string; onClick: () => void; disabled?: boolean; on?: boolean; children: React.ReactNode }) => (
+  <button type="button" title={title} aria-label={title} disabled={disabled} onClick={onClick}
+    className={cn("h-8 min-w-8 px-1.5 rounded-md flex items-center justify-center text-[12px] disabled:opacity-30", on ? "bg-nexus-teal/25 text-nexus-teal" : "text-white/75 hover:bg-white/10")}>{children}</button>
+);
+/** กลุ่มในริบบอน (ป้ายชื่อกลุ่มด้านล่าง เหมือน Office) */
+const RGroup = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div className="flex flex-col px-2 border-r border-white/10 last:border-r-0 flex-shrink-0">
+    <div className="flex items-center gap-1 flex-1 min-h-[62px]">{children}</div>
+    <p className="text-[10.5px] text-white/40 text-center pt-0.5">{label}</p>
+  </div>
+);
+/** ไม้บรรทัด (ซม.) ตามขนาดกระดาษบนจอ · hl = ช่วงของกล่องที่เลือก */
+function Ruler({ axis, S, hl }: { axis: "x" | "y"; S: number; hl?: [number, number] | null }) {
+  const mm = 72 / 25.4, len = axis === "x" ? A4.w : A4.h, n = Math.floor(len / mm);
+  const H = 18;
+  return (
+    <div className={cn("absolute bg-[#1b1b20] border-white/10 overflow-hidden select-none", axis === "x" ? "border-b" : "border-r")}
+      style={axis === "x" ? { left: H, top: 0, width: len * S, height: H } : { left: 0, top: H, width: H, height: len * S }}>
+      {hl && <div className="absolute bg-nexus-teal/25" style={axis === "x" ? { left: hl[0] * S, width: (hl[1] - hl[0]) * S, top: 0, bottom: 0 } : { top: hl[0] * S, height: (hl[1] - hl[0]) * S, left: 0, right: 0 }} />}
+      {Array.from({ length: n + 1 }, (_, i) => {
+        const p = i * mm * S, big = i % 10 === 0, mid = i % 5 === 0;
+        if (!big && !mid && S < 1.1) return null;
+        const t = big ? 9 : mid ? 6 : 3;
+        return (
+          <React.Fragment key={i}>
+            <div className="absolute bg-white/35" style={axis === "x" ? { left: p, bottom: 0, width: 1, height: t } : { top: p, right: 0, height: 1, width: t }} />
+            {big && i > 0 && <span className="absolute text-[9px] text-white/50 leading-none" style={axis === "x" ? { left: p + 2, top: 1 } : { top: p + 2, left: 1, writingMode: "vertical-rl" }}>{i / 10}</span>}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
 /** ตำแหน่งที่ใกล้ที่สุดในระยะดูด */
 function nearest(values: number[], targets: number[]): { delta: number; at: number } | null {
   let best: { delta: number; at: number } | null = null;
@@ -114,8 +158,12 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   // พิมพ์ข้อความบนกระดาษ (ดับเบิลคลิกกล่องข้อความ) · เมนูกล่องข้อมูล · ตัวเลือกการวาง (กริด/ดูดติด)
   const [editing, setEditing] = useState<string | null>(null);
   const [infoMenu, setInfoMenu] = useState(false);
-  const [advOpen, setAdvOpen] = useState(false);
   const [restartOpen, setRestartOpen] = useState(false);
+  // ริบบอน: แท็บที่เปิด · ย่อเหลือชื่อแท็บ · ไม้บรรทัด · แผงซ้าย/ขวา (จำไว้ในเครื่อง)
+  const [rtab, setRtab] = useState("insert");
+  const [ui, setUi] = useState({ ribbon: true, ruler: true, left: true, right: true });
+  useEffect(() => { try { const v = JSON.parse(localStorage.getItem("nexus.designer.ui") || "null"); if (v) setUi((u) => ({ ...u, ...v })); } catch { /* ค่าตั้งต้น */ } }, []);
+  const setUiPart = (patch: Partial<typeof ui>) => setUi((u) => { const n = { ...u, ...patch }; try { localStorage.setItem("nexus.designer.ui", JSON.stringify(n)); } catch { /* ไม่เป็นไร */ } return n; });
   // ลากคลุมบนพื้นกระดาษเพื่อเลือกหลายกล่อง (pt) · add = กด Ctrl/Shift ค้าง (เลือกเพิ่ม)
   const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number; add: boolean } | null>(null);
   // ระยะห่างระหว่างกล่องเมื่อเรียงต่อกัน (pt)
@@ -138,7 +186,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setFitS(Math.round(Math.min(2.4, Math.max(0.8, (e.contentRect.width - 4) / A4.w)) * 20) / 20));
+    const ro = new ResizeObserver(([e]) => setFitS(Math.round(Math.min(2.4, Math.max(0.8, (e.contentRect.width - 26) / A4.w)) * 20) / 20));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -332,7 +380,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       if (!canEdit || (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable))) return;
       if (e.ctrlKey || e.metaKey) {
         const k = e.key.toLowerCase();
-        if (k === "z" && !e.shiftKey) { e.preventDefault(); undo(); } else if (k === "y" || (k === "z" && e.shiftKey)) { e.preventDefault(); redo(); } else if (k === "d") { e.preventDefault(); duplicate(); }
+        if (k === "z" && !e.shiftKey) { e.preventDefault(); undo(); } else if (k === "y" || (k === "z" && e.shiftKey)) { e.preventDefault(); redo(); } else if (k === "d") { e.preventDefault(); duplicate(); } else if (k === "a") { e.preventDefault(); setSel(items.map((i) => i.key)); }
         else if (k === "g") { e.preventDefault(); if (e.shiftKey) ungroupSelected(); else groupSelected(); }
         return;
       }
@@ -1046,9 +1094,21 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     const r = paperRef.current!.getBoundingClientRect();
     addAt(kind === "info" ? "info:empty" : kind, { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S });
   };
-  const leftBar = canEdit && (bodyOn || letterhead) && (
+  const leftBar = canEdit && (bodyOn || letterhead) && (!ui.left ? (
+    <div className="relative z-30 flex-shrink-0 lg:sticky lg:top-16 w-full lg:w-[44px] flex lg:flex-col gap-1 items-center">
+      <RIcon title="ขยายแผงเพิ่มของ" onClick={() => setUiPart({ left: true })}><PanelLeftOpen size={16} /></RIcon>
+      {palette.map((p) => (
+        <button key={p.kind} type="button" title={`${p.label} — คลิกหรือลากไปวาง`} draggable onDragStart={(e) => { e.dataTransfer.setData("text/nexus-kind", p.kind === "info" ? "info:empty" : p.kind); e.dataTransfer.effectAllowed = "copy"; }}
+          onClick={() => addAt(p.kind === "info" ? "info:empty" : p.kind, visibleCenter())}
+          className="w-10 h-10 rounded-xl border border-white/10 bg-white/[0.03] hover:border-nexus-teal/50 hover:bg-nexus-teal/10 flex items-center justify-center text-nexus-teal cursor-grab">{p.icon}</button>
+      ))}
+    </div>
+  ) : (
     <div className="relative z-30 w-full lg:w-[132px] flex-shrink-0 lg:sticky lg:top-16 space-y-1.5">
-      <p className="text-[11px] text-white/45 px-1 leading-snug">คลิกหรือลากไปวางบนกระดาษ</p>
+      <div className="flex items-center gap-1">
+        <p className="text-[11px] text-white/45 px-1 leading-snug flex-1">คลิกหรือลากไปวางบนกระดาษ</p>
+        <RIcon title="ย่อแผงเพิ่มของ" onClick={() => setUiPart({ left: false })}><PanelLeftClose size={15} /></RIcon>
+      </div>
       <div className="grid grid-cols-4 lg:grid-cols-1 gap-1">
         {palette.map((p) => (
           <div key={p.kind} className="relative">
@@ -1078,6 +1138,316 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           </div>
         </>
       )}
+    </div>
+  ));
+
+  // ---------- ริบบอน ----------
+  const SHAPE_KINDS: BlockKind[] = ["rect", "shape", "line", "image", "logo", "stamp"];
+  const textSel = selected.filter((i) => TEXT_BLOCKS.includes(i.b.kind));
+  const shapeSel = selected.filter((i) => SHAPE_KINDS.includes(i.b.kind));
+  const t0 = textSel[0]?.b, s0 = shapeSel[0]?.b;
+  const patchSel = (list: Item[], patch: Partial<FreeBlock> | ((b: FreeBlock) => Partial<FreeBlock>)) => { if (canEdit && list.length) applyMany(new Map(list.map((i) => [i.key, { ...i.b, ...(typeof patch === "function" ? patch(i.b) : patch) }]))); };
+  const ctxTab = textSel.length && !shapeSel.length ? "ftext" : shapeSel.length ? "fshape" : null;
+  // เลือกข้อความ → แท็บรูปแบบข้อความ · เลือกรูปทรง/รูปภาพ → แท็บรูปแบบรูปทรง (เหมือนแท็บตามบริบทของ Office)
+  useEffect(() => { if (ctxTab) setRtab(ctxTab); else setRtab((t) => (t === "ftext" || t === "fshape" ? "insert" : t)); }, [ctxTab, sel.join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
+  /** ลำดับชั้น: บนสุด/ล่างสุด */
+  const zEnd = (it: Item, to: "front" | "back") => {
+    const list = it.zone === "head" ? letterhead!.blocks : layout.blocks;
+    const rest = list.filter((x) => x.id !== it.b.id), next = to === "front" ? [...rest, it.b] : [it.b, ...rest];
+    if (it.zone === "head") commitHead({ ...letterhead!, blocks: next }); else commitLayout({ ...layout, blocks: next });
+  };
+  /** กึ่งกลางหน้ากระดาษ (ทั้งกลุ่มที่เลือกเลื่อนไปพร้อมกัน) */
+  const pageCenter = (axis: "x" | "y" | "both") => {
+    if (!selected.length) return;
+    const L = Math.min(...selected.map((i) => i.b.x)), R = Math.max(...selected.map((i) => i.b.x + i.b.w)), T = Math.min(...selected.map((i) => i.b.y)), B = Math.max(...selected.map((i) => i.b.y + i.b.h));
+    const dx = axis === "y" ? 0 : (A4.w - (R - L)) / 2 - L, dy = axis === "x" ? 0 : (A4.h - (B - T)) / 2 - T;
+    applyMany(new Map(selected.filter((i) => !i.b.locked).map((i) => [i.key, { ...i.b, x: i.b.x + dx, y: i.b.y + dy }])));
+  };
+  const SIZES = [7, 8, 9, 9.5, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 40];
+  const textSize = t0 ? t0.fontSize ?? theme.fontSize : theme.fontSize;
+  const colorChips = (value: string | undefined, onPick: (v: string | undefined) => void, none?: string) => (
+    <div className="flex items-center gap-1">
+      <label title="เลือกสีเอง" className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-white/10 cursor-pointer">
+        <span className="w-5 h-5 rounded border border-white/30" style={{ background: resolveColor(value, theme) || "transparent" }} />
+        <input type="color" className="sr-only" value={resolveColor(value, theme) || "#000000"} onChange={(e) => onPick(e.target.value)} />
+      </label>
+      {Object.entries(COLOR_TOKENS).map(([tok, name]) => (
+        <button key={tok} type="button" title={`${name}ของธีม`} onClick={() => onPick(tok)} className={cn("w-5 h-5 rounded-full border", value === tok ? "border-white" : "border-white/20")} style={{ background: resolveColor(tok, theme) }} />
+      ))}
+      {none && <button type="button" onClick={() => onPick(undefined)} className="text-[10.5px] text-white/50 hover:text-white px-1">{none}</button>}
+    </div>
+  );
+  const mini = "h-8 rounded-md bg-white/5 border border-white/10 text-[12px] text-white px-1.5";
+  const SHAPE_PRESETS: { label: string; style: Partial<FreeBlock> }[] = [
+    { label: "เส้นสีหลัก ไม่มีพื้น", style: { border: "@primary", bg: undefined, dash: undefined } },
+    { label: "พื้นสีหลัก", style: { bg: "@primary", border: undefined } },
+    { label: "พื้นสีรอง", style: { bg: "@accent", border: undefined } },
+    { label: "พื้นอ่อน เส้นสีหลัก", style: { bg: "@soft", border: "@primary" } },
+    { label: "พื้นอ่อน ไม่มีเส้น", style: { bg: "@soft", border: undefined } },
+    { label: "เส้นประสีหลัก", style: { border: "@primary", bg: undefined, dash: "dashed" } },
+  ];
+  const tabs: { id: string; label: string; ctx?: boolean }[] = [
+    { id: "home", label: "หน้าแรก" }, { id: "insert", label: "แทรก" }, { id: "layout", label: "เค้าโครง" }, { id: "arrange", label: "จัดเรียง" },
+    ...(ctxTab === "ftext" ? [{ id: "ftext", label: "รูปแบบข้อความ", ctx: true }] : ctxTab === "fshape" ? [{ id: "fshape", label: "รูปแบบรูปทรง", ctx: true }] : []),
+  ];
+  const ribbonBody = (() => {
+    switch (rtab) {
+      case "home": return (
+        <>
+          <RGroup label="ประวัติการแก้">
+            <RBtn icon={<Undo2 size={18} />} label="ย้อนกลับ" title="ย้อนกลับ (Ctrl+Z)" disabled={!history.canUndo || !canEdit} onClick={undo} />
+            <RBtn icon={<Redo2 size={18} />} label="ทำซ้ำ" title="ทำซ้ำ (Ctrl+Y)" disabled={!history.canRedo || !canEdit} onClick={redo} />
+          </RGroup>
+          <RGroup label="กล่องที่เลือก">
+            <RBtn icon={<BoxSelect size={18} />} label="เลือกทั้งหมด" title="เลือกทุกกล่อง (Ctrl+A)" onClick={() => setSel(items.map((i) => i.key))} />
+            <RBtn icon={<CopyPlus size={18} />} label="ทำสำเนา" title="ทำสำเนา (Ctrl+D)" disabled={!canEdit || !selected.some((i) => !SINGLE.includes(i.b.kind))} onClick={duplicate} />
+            <RBtn icon={allLocked && selected.length ? <PinOff size={18} /> : <Pin size={18} />} label={allLocked && selected.length ? "ปลดล็อก" : "ล็อก"} disabled={!can} onClick={toggleLock} />
+            <RBtn icon={<Trash2 size={18} />} label="ลบ" title="ลบ (Delete)" disabled={!can || !selected.some((i) => !isLocked(i))} onClick={() => remove(selected)} />
+          </RGroup>
+          <RGroup label="มุมมอง">
+            <select value={String(zoom)} onChange={(e) => setZoom(e.target.value === "fit" ? "fit" : Number(e.target.value))} className={cn(mini, "w-[124px]")} title="ขนาดกระดาษบนจอ">
+              <option value="fit">พอดีความกว้าง</option><option value="1">ซูม 100%</option><option value="1.333">ขนาดจริง</option><option value="1.5">ซูม 150%</option><option value="2">ซูม 200%</option>
+            </select>
+            <RBtn icon={<Eye size={18} />} label="ดู PDF" on={showPdf} onClick={() => setShowPdf((v) => !v)} />
+          </RGroup>
+        </>
+      );
+      case "insert": return (
+        <>
+          <RGroup label="ข้อความและข้อมูล">
+            <RBtn icon={<Type size={18} />} label="ข้อความ" disabled={!canEdit} onClick={() => addAt("text", visibleCenter())} />
+            {addable.includes("info") && (
+              <div className="relative">
+                <RBtn icon={<Rows3 size={18} />} label="กล่องข้อมูล ▾" disabled={!canEdit} onClick={() => setInfoMenu((v) => !v)} />
+                {infoMenu && (
+                  <div className="absolute left-0 top-full mt-1 z-[60] w-[210px] rounded-xl border border-white/10 bg-[#18181d] shadow-2xl p-1">
+                    {INFO_PRESETS.filter((x) => x.id !== "extra" || docFields.length).map((x) => (
+                      <button key={x.id} type="button" onClick={() => { setInfoMenu(false); addInfo(x.id); }} className="w-full text-left h-8 px-2.5 rounded-lg text-[12.5px] text-white/80 hover:bg-white/10">{x.label}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {addable.includes("field") && <RBtn icon={<TextCursorInput size={18} />} label="ข้อมูลเดี่ยว" disabled={!canEdit} onClick={() => addAt("field", visibleCenter())} />}
+          </RGroup>
+          <RGroup label="รูปทรง">
+            <RBtn icon={<Square size={18} />} label="สี่เหลี่ยม" disabled={!canEdit} onClick={() => addAt("rect", visibleCenter())} />
+            <RBtn icon={<Circle size={18} />} label="วงกลม" disabled={!canEdit} onClick={() => addAt("shape:ellipse", visibleCenter())} />
+            <RBtn icon={<Triangle size={18} />} label="สามเหลี่ยม" disabled={!canEdit} onClick={() => addAt("shape:triangle", visibleCenter())} />
+            <RBtn icon={<Minus size={18} />} label="เส้น" disabled={!canEdit} onClick={() => addAt("line", visibleCenter())} />
+          </RGroup>
+          <RGroup label="ภาพ">
+            <RBtn icon={<ImageIcon size={18} />} label="รูปภาพ" disabled={!canEdit} onClick={() => addAt("image", visibleCenter())} />
+            {addable.includes("logo") && <RBtn icon={<ImagePlus size={18} />} label="โลโก้" disabled={!canEdit} onClick={() => addAt("logo", visibleCenter())} />}
+            {addable.includes("stamp") && <RBtn icon={<StampIcon size={18} />} label="ตราประทับ" disabled={!canEdit} onClick={() => addAt("stamp", visibleCenter())} />}
+          </RGroup>
+          {missing.length > 0 && (
+            <RGroup label="ส่วนของเอกสารที่ยังไม่มี">
+              {missing.map((k) => <RBtn key={k} icon={<PanelBottom size={18} />} label={BLOCK_LABELS[k]} disabled={!canEdit} onClick={() => addAt(k, visibleCenter())} />)}
+            </RGroup>
+          )}
+        </>
+      );
+      case "layout": return (
+        <>
+          <RGroup label={`ขอบกระดาษ ${margin} pt`}>
+            {([["ปกติ", 32], ["แคบ", 18], ["กว้าง", 48]] as const).map(([label, v]) => <RIcon key={label} title={`ขอบกระดาษ${label} (${v} pt)`} on={margin === v} disabled={!canEdit || !bodyOn} onClick={() => commitLayout({ ...layout, margin: v })}>{label}</RIcon>)}
+            <input type="number" min={0} max={80} value={margin} disabled={!canEdit || !bodyOn} title="ขอบกระดาษ (pt)" onChange={(e) => commitLayout({ ...layout, margin: Math.max(0, Math.min(80, Number(e.target.value) || 0)) })} className={cn(mini, "w-14 text-right")} />
+          </RGroup>
+          <RGroup label="เส้นช่วยจัดวาง">
+            <RBtn icon={<RulerIcon size={18} />} label="ไม้บรรทัด" on={ui.ruler} onClick={() => setUiPart({ ruler: !ui.ruler })} />
+            <RBtn icon={<Magnet size={18} />} label={snapOn ? "ดูดติด" : "วางอิสระ"} on={snapOn} title="ดูดติดกริดและแนวกล่องอื่น (Alt ค้าง = วางอิสระชั่วคราว)" onClick={() => setSnapOn((v) => !v)} />
+            <div className="flex flex-col gap-1">
+              <select value={gridMode} onChange={(e) => setGridMode(e.target.value as any)} className={cn(mini, "w-[118px] h-7")} title="เส้นกริด">
+                <option value="drag">กริด: ขณะลาก</option><option value="always">กริด: ตลอด</option><option value="off">กริด: ปิด</option>
+              </select>
+              <select value={String(grid)} onChange={(e) => setGrid(Number(e.target.value))} className={cn(mini, "w-[118px] h-7")} title="ระยะกริด">
+                {[2, 5, 10, 20].map((g) => <option key={g} value={String(g)}>ระยะกริด {g} pt</option>)}
+              </select>
+            </div>
+          </RGroup>
+          {bodyOn && canEdit && (
+            <RGroup label="ผังหน้า">
+              <div className="relative">
+                <RBtn icon={<RotateCcw size={18} />} label="เริ่มผังใหม่ ▾" onClick={() => setRestartOpen((v) => !v)} />
+                {restartOpen && (
+                  <div className="absolute left-0 top-full mt-1 z-[60] w-[250px] rounded-xl border border-white/10 bg-[#18181d] shadow-2xl p-1 max-h-[60vh] overflow-y-auto">
+                    <button type="button" onClick={() => { setRestartOpen(false); commitLayout(blankLayout(docType, theme)); setSel([]); }} className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-white/10">
+                      <p className="text-[12.5px] font-bold text-white">หน้ากระดาษเปล่า</p>
+                      <p className="text-[11px] text-white/50">เหลือเฉพาะข้อมูลที่กฎหมายกำหนด ไม่มีกรอบ/สี — ออกแบบใหม่ทั้งหมด</p>
+                    </button>
+                    <p className="px-2.5 pt-2 pb-1 text-[11px] text-white/40">ปรับแก้จากแม่แบบ</p>
+                    {ARCHETYPES.map((a) => (
+                      <button key={a.id} type="button" onClick={() => { setRestartOpen(false); commitLayout(templateLayout(a.id, docType, theme)); setSel([]); }} className="w-full text-left h-8 px-2.5 rounded-lg text-[12.5px] text-white/80 hover:bg-white/10">{a.name}</button>
+                    ))}
+                    <p className="px-2.5 py-1.5 text-[11px] text-white/40">ไม่ถูกใจกด ย้อนกลับ (Ctrl+Z)</p>
+                  </div>
+                )}
+              </div>
+            </RGroup>
+          )}
+          {letterhead && (
+            <RGroup label="หัวกระดาษ">
+              <span className="text-[11.5px] text-white/55">สูง</span>
+              <input type="number" min={40} max={320} value={letterhead.height} disabled={!canEdit} onChange={(e) => commitHead({ ...letterhead, height: Math.max(40, Math.min(320, Number(e.target.value) || 40)) })} className={cn(mini, "w-16 text-right")} />
+              <span className="text-[11.5px] text-white/55">pt</span>
+            </RGroup>
+          )}
+        </>
+      );
+      case "arrange": return (
+        <>
+          <RGroup label="กึ่งกลางหน้า">
+            <RIcon title="กึ่งกลางหน้าแนวนอน" disabled={!can} onClick={() => pageCenter("x")}><AlignCenterVertical size={16} /></RIcon>
+            <RIcon title="กึ่งกลางหน้าแนวตั้ง" disabled={!can} onClick={() => pageCenter("y")}><AlignCenterHorizontal size={16} /></RIcon>
+            <RIcon title="กึ่งกลางหน้า" disabled={!can} onClick={() => pageCenter("both")}><BoxSelect size={16} /></RIcon>
+          </RGroup>
+          <RGroup label={multi ? "จัดแนวกล่องที่เลือก" : "จัดชิดขอบกระดาษ"}>
+            <RIcon title="ชิดซ้าย" disabled={!can} onClick={() => align("left")}><AlignStartVertical size={16} /></RIcon>
+            <RIcon title="กึ่งกลาง" disabled={!can} onClick={() => align("hcenter")}><AlignCenterVertical size={16} /></RIcon>
+            <RIcon title="ชิดขวา" disabled={!can} onClick={() => align("right")}><AlignEndVertical size={16} /></RIcon>
+            <RIcon title="ชิดบน" disabled={!can} onClick={() => align("top")}><AlignStartHorizontal size={16} /></RIcon>
+            <RIcon title="กึ่งกลางแนวตั้ง" disabled={!can} onClick={() => align("vcenter")}><AlignCenterHorizontal size={16} /></RIcon>
+            <RIcon title="ชิดล่าง" disabled={!can} onClick={() => align("bottom")}><AlignEndHorizontal size={16} /></RIcon>
+          </RGroup>
+          <RGroup label="กระจาย · เว้นระยะ">
+            <RIcon title="กระจายแนวนอนเท่ากัน (3 กล่องขึ้นไป)" disabled={selected.length < 3 || !canEdit} onClick={() => distribute("x")}><AlignHorizontalDistributeCenter size={16} /></RIcon>
+            <RIcon title="กระจายแนวตั้งเท่ากัน (3 กล่องขึ้นไป)" disabled={selected.length < 3 || !canEdit} onClick={() => distribute("y")}><AlignVerticalDistributeCenter size={16} /></RIcon>
+            <span className="text-[11px] text-white/50 pl-1">ห่าง</span>
+            <input type="number" min={0} max={200} value={gap} onChange={(e) => setGap(Math.max(0, Math.min(200, Number(e.target.value) || 0)))} title="ระยะห่างระหว่างกล่อง (pt)" className={cn(mini, "w-14 text-right")} />
+            <RIcon title="เรียงลงมาเว้นระยะ" disabled={selected.length < 2 || !canEdit} onClick={() => stack("y")}><StretchVertical size={16} /></RIcon>
+            <RIcon title="เรียงไปทางขวาเว้นระยะ" disabled={selected.length < 2 || !canEdit} onClick={() => stack("x")}><StretchHorizontal size={16} /></RIcon>
+          </RGroup>
+          <RGroup label="ลำดับชั้น">
+            <RBtn icon={<ArrowUpToLine size={18} />} label="บนสุด" disabled={!primary || multi || !canEdit} onClick={() => primary && zEnd(primary, "front")} />
+            <RBtn icon={<BringToFront size={18} />} label="ขึ้นหนึ่งชั้น" disabled={!primary || multi || !canEdit} onClick={() => primary && reorder(primary, 1)} />
+            <RBtn icon={<SendToBack size={18} />} label="ลงหนึ่งชั้น" disabled={!primary || multi || !canEdit} onClick={() => primary && reorder(primary, -1)} />
+            <RBtn icon={<ArrowDownToLine size={18} />} label="ล่างสุด" disabled={!primary || multi || !canEdit} onClick={() => primary && zEnd(primary, "back")} />
+          </RGroup>
+          <RGroup label="กลุ่ม">
+            <RBtn icon={<GroupIcon size={18} />} label="จัดกลุ่ม" title="จัดกลุ่ม (Ctrl+G)" disabled={selected.length < 2 || !canEdit} onClick={groupSelected} />
+            <RBtn icon={<Ungroup size={18} />} label="แยกกลุ่ม" title="แยกกลุ่ม (Ctrl+Shift+G)" disabled={!anyGrouped || !canEdit} onClick={ungroupSelected} />
+          </RGroup>
+        </>
+      );
+      case "ftext": return t0 ? (
+        <>
+          <RGroup label="แบบอักษร">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-1">
+                <select value={t0.font || ""} onChange={(e) => patchSel(textSel, { font: (e.target.value || undefined) as FontFamily | undefined })} className={cn(mini, "w-[150px] h-7")} title="ฟอนต์">
+                  <option value="">ตามธีม ({FONT_LABELS[theme.font].split(" (")[0]})</option>
+                  {(Object.keys(FONT_LABELS) as FontFamily[]).map((f) => <option key={f} value={f}>{FONT_LABELS[f].split(" (")[0]}</option>)}
+                </select>
+                <select value={String(textSize)} onChange={(e) => patchSel(textSel, { fontSize: Number(e.target.value) })} className={cn(mini, "w-[64px] h-7")} title="ขนาดตัวอักษร (pt)">
+                  {[...new Set([...SIZES, textSize])].sort((a, b) => a - b).map((v) => <option key={v} value={String(v)}>{v}</option>)}
+                </select>
+                <RIcon title="ตัวใหญ่ขึ้น" onClick={() => patchSel(textSel, (b) => ({ fontSize: Math.min(40, (b.fontSize ?? theme.fontSize) + 1) }))}><span className="font-bold">A+</span></RIcon>
+                <RIcon title="ตัวเล็กลง" onClick={() => patchSel(textSel, (b) => ({ fontSize: Math.max(6, (b.fontSize ?? theme.fontSize) - 1) }))}><span className="font-bold">A−</span></RIcon>
+              </div>
+              <div className="flex items-center gap-0.5">
+                <RIcon title="ตัวหนา" on={!!t0.bold} onClick={() => patchSel(textSel, { bold: !t0.bold || undefined })}><Bold size={15} /></RIcon>
+                <RIcon title="ตัวเอียง (TH Sarabun)" on={!!t0.italic} onClick={() => patchSel(textSel, { italic: !t0.italic || undefined })}><Italic size={15} /></RIcon>
+                <RIcon title="ขีดเส้นใต้" on={!!t0.underline} onClick={() => patchSel(textSel, { underline: !t0.underline || undefined })}><Underline size={15} /></RIcon>
+                <RIcon title="ขีดฆ่า" on={!!t0.strike} onClick={() => patchSel(textSel, { strike: !t0.strike || undefined })}><Strikethrough size={15} /></RIcon>
+                <span className="w-px h-5 bg-white/10 mx-1" />
+                <span className="text-[11px] text-white/50">สี</span>
+                {colorChips(t0.color, (v) => patchSel(textSel, { color: v }), "ตามแม่แบบ")}
+              </div>
+            </div>
+          </RGroup>
+          <RGroup label="ย่อหน้า">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-0.5">
+                {(["left", "center", "right", "justify"] as const).map((a) => { const I = a === "justify" ? AlignJustify : ALIGN_ICON[a]; return <RIcon key={a} title={a === "left" ? "ชิดซ้าย" : a === "center" ? "กึ่งกลาง" : a === "right" ? "ชิดขวา" : "เต็มบรรทัด"} on={t0.align === a} onClick={() => patchSel(textSel, { align: a })}><I size={15} /></RIcon>; })}
+              </div>
+              <div className="flex items-center gap-1">
+                <select value={String(t0.lineHeight ?? 1.35)} onChange={(e) => patchSel(textSel, { lineHeight: Number(e.target.value) })} className={cn(mini, "w-[96px] h-7")} title="ระยะบรรทัด">
+                  {[1, 1.15, 1.35, 1.5, 1.75, 2].map((v) => <option key={v} value={String(v)}>บรรทัด {v}</option>)}
+                </select>
+                <select value={String(t0.letterSpacing ?? 0)} onChange={(e) => patchSel(textSel, { letterSpacing: Number(e.target.value) || undefined })} className={cn(mini, "w-[104px] h-7")} title="ระยะห่างตัวอักษร">
+                  {[-0.5, 0, 0.5, 1, 2, 3].map((v) => <option key={v} value={String(v)}>ตัวอักษร {v > 0 ? "+" : ""}{v}</option>)}
+                </select>
+              </div>
+            </div>
+          </RGroup>
+          <RGroup label="กล่องข้อความ">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-1"><span className="text-[11px] text-white/50 w-8">พื้น</span>{colorChips(t0.bg, (v) => patchSel(textSel, { bg: v }), "ไม่มี")}</div>
+              <div className="flex items-center gap-1"><span className="text-[11px] text-white/50 w-8">กรอบ</span>{colorChips(t0.border, (v) => patchSel(textSel, { border: v }), "ไม่มี")}</div>
+            </div>
+            <select value={String(t0.pad ?? "")} onChange={(e) => patchSel(textSel, { pad: e.target.value === "" ? undefined : Number(e.target.value) })} className={cn(mini, "w-[92px] h-7 self-center")} title="ระยะห่างขอบใน">
+              <option value="">ขอบใน อัตโนมัติ</option>{[0, 2, 4, 6, 8, 12, 16].map((v) => <option key={v} value={String(v)}>ขอบใน {v}</option>)}
+            </select>
+          </RGroup>
+        </>
+      ) : null;
+      case "fshape": return s0 ? (
+        <>
+          {s0.kind !== "line" && !["image", "logo", "stamp"].includes(s0.kind) && (
+            <RGroup label="สไตล์รูปทรง">
+              {SHAPE_PRESETS.map((p) => {
+                const bg = resolveColor(p.style.bg, theme), bd = resolveColor(p.style.border, theme);
+                return <button key={p.label} type="button" title={p.label} onClick={() => patchSel(shapeSel, (b) => { const n: Partial<FreeBlock> = { ...p.style }; if (!("dash" in p.style)) n.dash = b.dash; return n; })}
+                  className="w-8 h-8 rounded-md hover:ring-2 ring-white/40" style={{ background: bg || "transparent", border: bd ? `2px ${p.style.dash || "solid"} ${bd}` : "1px solid rgba(255,255,255,0.15)" }} />;
+              })}
+            </RGroup>
+          )}
+          {!["image", "logo", "stamp"].includes(s0.kind) && (
+            <RGroup label="สีและเส้น">
+              <div className="flex flex-col gap-1">
+                {s0.kind !== "line" && <div className="flex items-center gap-1"><span className="text-[11px] text-white/50 w-8">พื้น</span>{colorChips(s0.bg, (v) => patchSel(shapeSel, { bg: v }), "ไม่มี")}</div>}
+                <div className="flex items-center gap-1"><span className="text-[11px] text-white/50 w-8">เส้น</span>{colorChips(s0.kind === "line" ? s0.color : s0.border, (v) => patchSel(shapeSel, (b) => (b.kind === "line" ? { color: v } : { border: v })), s0.kind === "line" ? undefined : "ไม่มี")}</div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <select value={String(s0.kind === "line" ? Math.min(s0.w, s0.h) : s0.borderWidth ?? 1)} onChange={(e) => { const v = Number(e.target.value); patchSel(shapeSel, (b) => (b.kind === "line" ? (b.h > b.w ? { w: v } : { h: v }) : { borderWidth: v })); }} className={cn(mini, "w-[96px] h-7")} title="ความหนาเส้น">
+                  {[...new Set([0.5, 0.75, 1, 1.5, 2, 3, 4, 6, s0.kind === "line" ? Math.min(s0.w, s0.h) : s0.borderWidth ?? 1])].sort((a, b) => a - b).map((v) => <option key={v} value={String(v)}>เส้น {v} pt</option>)}
+                </select>
+                <select value={s0.dash || "solid"} onChange={(e) => patchSel(shapeSel, { dash: e.target.value === "solid" ? undefined : (e.target.value as any) })} className={cn(mini, "w-[96px] h-7")} title="รูปแบบเส้น">
+                  <option value="solid">เส้นทึบ</option><option value="dashed">เส้นประ</option><option value="dotted">เส้นจุด</option>
+                </select>
+              </div>
+            </RGroup>
+          )}
+          {(s0.kind === "rect" || s0.kind === "shape") && (
+            <RGroup label="รูปทรง · มุม">
+              <RIcon title="สี่เหลี่ยม" on={s0.kind === "rect"} onClick={() => patchSel(shapeSel, () => ({ kind: "rect", shape: undefined }))}><Square size={15} /></RIcon>
+              <RIcon title="วงกลม/วงรี" on={s0.kind === "shape" && s0.shape !== "triangle"} onClick={() => patchSel(shapeSel, () => ({ kind: "shape", shape: "ellipse", radii: undefined }))}><Circle size={15} /></RIcon>
+              <RIcon title="สามเหลี่ยม" on={s0.shape === "triangle"} onClick={() => patchSel(shapeSel, () => ({ kind: "shape", shape: "triangle", radii: undefined }))}><Triangle size={15} /></RIcon>
+              {s0.kind === "rect" && (
+                <select value={String(s0.radii ? "x" : s0.radius ?? 0)} onChange={(e) => e.target.value !== "x" && patchSel(shapeSel, { radius: Number(e.target.value), radii: undefined })} className={cn(mini, "w-[92px] h-7")} title="มุมโค้ง (ปรับแยกมุมที่แผงขวา)">
+                  {s0.radii && <option value="x">แยกแต่ละมุม</option>}
+                  {[0, 2, 4, 8, 12, 20, 30].map((v) => <option key={v} value={String(v)}>{v ? `โค้ง ${v}` : "เหลี่ยม"}</option>)}
+                </select>
+              )}
+            </RGroup>
+          )}
+          <RGroup label={`ความทึบ ${Math.round((s0.opacity ?? 1) * 100)}%`}>
+            <input type="range" min={10} max={100} step={5} value={Math.round((s0.opacity ?? 1) * 100)} onChange={(e) => { const v = Number(e.target.value) / 100; patchSel(shapeSel, { opacity: v >= 1 ? undefined : v }); }} className="w-[110px] accent-[#0d9488]" />
+          </RGroup>
+          <RGroup label="ลำดับชั้น">
+            <RIcon title="บนสุด" disabled={multi} onClick={() => primary && zEnd(primary, "front")}><ArrowUpToLine size={16} /></RIcon>
+            <RIcon title="ล่างสุด" disabled={multi} onClick={() => primary && zEnd(primary, "back")}><ArrowDownToLine size={16} /></RIcon>
+          </RGroup>
+        </>
+      ) : null;
+      default: return null;
+    }
+  })();
+  const ribbon = (
+    <div className="rounded-xl border border-white/10 bg-[#141418]">
+      <div className="flex items-center gap-0.5 px-1.5 pt-1 border-b border-white/10">
+        <RIcon title="ย้อนกลับ (Ctrl+Z)" disabled={!history.canUndo || !canEdit} onClick={undo}><Undo2 size={14} /></RIcon>
+        <RIcon title="ทำซ้ำ (Ctrl+Y)" disabled={!history.canRedo || !canEdit} onClick={redo}><Redo2 size={14} /></RIcon>
+        <span className="w-px h-4 bg-white/10 mx-1" />
+        {tabs.map((t) => (
+          <button key={t.id} type="button" onClick={() => { setRtab(t.id); if (!ui.ribbon) setUiPart({ ribbon: true }); }}
+            className={cn("h-8 px-3 text-[12.5px] border-b-2 -mb-px", rtab === t.id && ui.ribbon ? (t.ctx ? "border-purple-400 text-purple-200 font-bold" : "border-nexus-teal text-white font-bold") : t.ctx ? "border-transparent text-purple-200/80 hover:text-purple-100" : "border-transparent text-white/60 hover:text-white")}>{t.label}</button>
+        ))}
+        <span className="ml-auto text-[11.5px] text-white/40 pr-1 hidden xl:inline">{selected.length ? `เลือก ${selected.length} กล่อง · Ctrl+คลิก เลือกเพิ่ม/ลด` : "คลิกกล่องเพื่อแก้ · ลากคลุมเพื่อเลือกหลายกล่อง"}</span>
+        <RIcon title={ui.ribbon ? "ย่อแถบเครื่องมือ (เหลือชื่อแท็บ)" : "ขยายแถบเครื่องมือ"} onClick={() => setUiPart({ ribbon: !ui.ribbon })}>{ui.ribbon ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</RIcon>
+      </div>
+      {ui.ribbon && <div className="flex items-stretch overflow-x-auto px-1 py-1.5">{ribbonBody || <p className="text-[12px] text-white/45 px-3 py-4">เลือกกล่องบนกระดาษก่อน</p>}</div>}
     </div>
   );
 
@@ -1112,65 +1482,25 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
 
   return (
     <div className="space-y-3">
-      {/* แถบบน: ย้อนกลับ/ทำซ้ำ · ขนาดกระดาษ · ตัวเลือกการวาง */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <ToolBtn title="ย้อนกลับ (Ctrl+Z)" disabled={!history.canUndo || !canEdit} onClick={undo}><Undo2 size={15} /></ToolBtn>
-        <ToolBtn title="ทำซ้ำ (Ctrl+Y)" disabled={!history.canRedo || !canEdit} onClick={redo}><Redo2 size={15} /></ToolBtn>
-        <span className="text-[12px] text-white/45 ml-1">{selected.length ? `เลือก ${selected.length} กล่อง — Ctrl+คลิก เลือกเพิ่ม/ลด` : "คลิกกล่องเพื่อแก้ · ลากคลุมเพื่อเลือกหลายกล่อง"}</span>
-        {bodyOn && canEdit && (
-          <div className="relative">
-            <PillButton variant="glass" className="h-8 px-3 text-xs" onClick={() => setRestartOpen((v) => !v)}><RotateCcw size={13} /> เริ่มผังใหม่</PillButton>
-            {restartOpen && (
-              <div className="absolute left-0 top-10 z-50 w-[250px] rounded-xl border border-white/10 bg-[#18181d] shadow-2xl p-1 max-h-[60vh] overflow-y-auto">
-                <button type="button" onClick={() => { setRestartOpen(false); commitLayout(blankLayout(docType, theme)); setSel([]); }} className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-white/10">
-                  <p className="text-[12.5px] font-bold text-white">หน้ากระดาษเปล่า</p>
-                  <p className="text-[11px] text-white/50">เหลือเฉพาะข้อมูลที่กฎหมายกำหนด ไม่มีกรอบ/สี — ออกแบบใหม่ทั้งหมด</p>
-                </button>
-                <p className="px-2.5 pt-2 pb-1 text-[11px] text-white/40">ปรับแก้จากแม่แบบ</p>
-                {ARCHETYPES.map((a) => (
-                  <button key={a.id} type="button" onClick={() => { setRestartOpen(false); commitLayout(templateLayout(a.id, docType, theme)); setSel([]); }} className="w-full text-left h-8 px-2.5 rounded-lg text-[12.5px] text-white/80 hover:bg-white/10">{a.name}</button>
-                ))}
-                <p className="px-2.5 py-1.5 text-[11px] text-white/40">ไม่ถูกใจกด ย้อนกลับ (Ctrl+Z)</p>
-              </div>
-            )}
-          </div>
-        )}
-        <div className="ml-auto flex items-center gap-1.5 relative">
-          <div className="w-[130px]" title="ขนาดกระดาษบนจอ">
-            <PillSelect value={String(zoom)} onChange={(e) => setZoom(e.target.value === "fit" ? "fit" : Number(e.target.value))} className="h-8 w-full text-[12px]">
-              <option value="fit">พอดีความกว้าง</option><option value="1">ซูม 100%</option><option value="1.333">ขนาดจริง</option><option value="1.5">ซูม 150%</option><option value="2">ซูม 200%</option>
-            </PillSelect>
-          </div>
-          <ToolBtn title="ดู PDF ทุกหน้า (พิมพ์/ดาวน์โหลด)" on={showPdf} onClick={() => setShowPdf((v) => !v)}><Eye size={15} /></ToolBtn>
-          <ToolBtn title="ตัวช่วยจัดวาง: กริด · ดูดติด" on={advOpen} onClick={() => setAdvOpen((v) => !v)}><MoreHorizontal size={15} /></ToolBtn>
-          {advOpen && (
-            <div className="absolute right-0 top-10 z-50 w-[250px] rounded-xl border border-white/10 bg-[#18181d] shadow-2xl p-3 space-y-2.5">
-              <PillCheckbox label="ดูดติดกริดและแนวกล่องอื่น" checked={snapOn} onChange={(e) => setSnapOn(e.target.checked)} />
-              <p className="text-[11px] text-white/40 -mt-1.5 pl-1">กด Alt ค้างขณะลาก = วางอิสระชั่วคราว</p>
-              <Field label="เส้นกริด">
-                <PillSelect value={gridMode} onChange={(e) => setGridMode(e.target.value as any)} className="h-8 w-full text-[12px]">
-                  <option value="drag">แสดงขณะลาก</option><option value="always">แสดงตลอด</option><option value="off">ไม่แสดง</option>
-                </PillSelect>
-              </Field>
-              <Field label="ระยะกริด">
-                <PillSelect value={String(grid)} onChange={(e) => setGrid(Number(e.target.value))} className="h-8 w-full text-[12px]">
-                  {[2, 5, 10, 20].map((g) => <option key={g} value={String(g)}>{g} pt</option>)}
-                </PillSelect>
-              </Field>
-            </div>
-          )}
-        </div>
-      </div>
+      {ribbon}
 
       <div className="flex flex-col lg:flex-row gap-3 items-start">
         {leftBar}
         {/* กระดาษ A4: ภาพหน้าจริง + กล่องที่ลากได้ */}
         <div ref={wrapRef} className="flex-1 min-w-0 w-full overflow-auto max-h-[calc(100vh-96px)] rounded-lg pt-12">
+          <div className="relative" style={{ paddingLeft: ui.ruler ? 18 : 0, paddingTop: ui.ruler ? 18 : 0, width: A4.w * S + (ui.ruler ? 18 : 0) }}>
+          {ui.ruler && (
+            <>
+              <div className="absolute left-0 top-0 w-[18px] h-[18px] bg-[#1b1b20] border-r border-b border-white/10" title="ไม้บรรทัด (ซม.)" />
+              <Ruler axis="x" S={S} hl={selected.length ? [Math.min(...selected.map((i) => i.b.x)), Math.max(...selected.map((i) => i.b.x + i.b.w))] : null} />
+              <Ruler axis="y" S={S} hl={selected.length ? [Math.min(...selected.map((i) => i.b.y)), Math.max(...selected.map((i) => i.b.y + i.b.h))] : null} />
+            </>
+          )}
           <div className="relative" style={{ width: A4.w * S, height: A4.h * S }}>
           <div ref={paperRef} onDragOver={(e) => { if (e.dataTransfer.types.includes("text/nexus-kind")) e.preventDefault(); }} onDrop={dropAt}
             className={cn("relative bg-white rounded-sm shadow-2xl overflow-hidden select-none", tool !== "select" && "cursor-crosshair")} style={{ width: A4.w * S, height: A4.h * S }}
             onPointerDown={(e) => {
-              setInfoMenu(false); setAdvOpen(false); setRestartOpen(false);
+              setInfoMenu(false); setRestartOpen(false);
               if (tool !== "select") startDraw(e);
               else if (!bodyOn && !letterOnly && canEdit) convertAt(e);
               else { const r = paperRef.current!.getBoundingClientRect(); const x = (e.clientX - r.left) / S, y = (e.clientY - r.top) / S; setMarquee({ x0: x, y0: y, x1: x, y1: y, add: e.ctrlKey || e.metaKey || e.shiftKey }); }
@@ -1256,10 +1586,21 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           {floatingBar}
           {inlineEditor}
           </div>
+          </div>
         </div>
 
-        {/* แผงขวา: ตั้งค่าของกล่องที่เลือก */}
+        {/* แผงขวา (รูปแบบ): ตั้งค่าของกล่องที่เลือก — ย่อเป็นแถบแคบได้ */}
+        {!ui.right ? (
+          <button type="button" onClick={() => setUiPart({ right: true })} title="ขยายแผงรูปแบบ"
+            className="flex-shrink-0 lg:sticky lg:top-16 w-full lg:w-[34px] h-10 lg:h-[160px] rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/10 flex lg:flex-col items-center justify-center gap-1.5 text-white/70">
+            <PanelRightOpen size={15} /><span className="text-[11.5px] lg:[writing-mode:vertical-rl]">รูปแบบ{problems ? ` · ควรแก้ ${problems}` : ""}</span>
+          </button>
+        ) : (
         <GlassCard className="p-3 w-full lg:w-[330px] flex-shrink-0 space-y-3 lg:sticky lg:top-16 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto lg:pb-14">
+          <div className="flex items-center gap-2 -mb-1">
+            <p className="text-[13px] font-bold text-white flex items-center gap-1.5"><Paintbrush size={14} className="text-nexus-teal" /> รูปแบบ</p>
+            <button type="button" onClick={() => setUiPart({ right: false })} title="ย่อแผงรูปแบบ" className="ml-auto h-7 w-7 rounded-md flex items-center justify-center text-white/55 hover:text-white hover:bg-white/10"><PanelRightClose size={15} /></button>
+          </div>
           {problems > 0 && (
             <details className="rounded-xl border border-warning/30 bg-warning/10 px-2.5 py-2">
               <summary className="cursor-pointer text-[12.5px] font-bold text-warning flex items-center gap-1.5"><AlertTriangle size={13} /> ควรแก้ {problems} จุด</summary>
@@ -1274,6 +1615,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
               </div>
             ) : pagePanel}
         </GlassCard>
+        )}
       </div>
 
       {showPdf && model && (

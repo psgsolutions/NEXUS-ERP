@@ -275,7 +275,7 @@ export function DocumentDesigner() {
   // ดูตัวอย่างด้วยเอกสารจริงล่าสุดของชนิดนี้
   useEffect(() => {
     setRealId(""); setRealModel(null); setRealDocs([]);
-    if (!companyId || !canEdit || docType === LETTER_DESIGN.type) return;
+    if (!companyId || !canEdit) return;
     apiFetch("/api/settings/document-profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "sampleDocs", type: docType }) })
       .then((r) => r.json()).then((d) => { if (d.success) setRealDocs(d.docs || []); }).catch(() => {});
   }, [companyId, canEdit, docType]);
@@ -526,7 +526,7 @@ export function DocumentDesigner() {
           </div>
           <span className="text-[12.5px] text-white/70">กำลังแก้: <b className="text-white">{def.title}</b></span>
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            {!isLetter && realDocs.length > 0 && (
+            {realDocs.length > 0 && (
               <div className="w-[230px]" title="ดูตัวอย่างการออกแบบด้วยเอกสารจริง">
                 <PillSelect value={realId} onChange={(e) => pickReal(String(e.target.value))} className="h-8 w-full text-[12px]">
                   <option value="">ดูด้วย: ข้อมูลตัวอย่าง</option>

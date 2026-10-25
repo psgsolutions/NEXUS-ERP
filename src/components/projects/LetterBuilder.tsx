@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { FileText, RefreshCw } from "lucide-react";
+import { FileText, Loader2, RefreshCw, Save } from "lucide-react";
 import { GlassCard, PillButton, PillInput, PillSelect, cn } from "@/components/ui/Base";
+import { useSystemDialog } from "@/context/DialogContext";
+import { apiFetch } from "@/lib/api-client";
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { documentProfileOf } from "@/lib/documents/profile";
@@ -11,7 +13,8 @@ import { GUARANTEE_LABELS, warrantyEnd, type ProjectContract } from "@/lib/gov-c
 import { LETTER_LABELS, buildLetter, type LetterKind } from "@/lib/letters";
 
 /**
- * ทำหนังสือจากข้อมูลโครงการ: เลือกชนิด → ระบบเติมข้อความให้ → แก้ได้ → ดูตัวอย่าง/พิมพ์/ดาวน์โหลด (ไม่บันทึกในระบบ)
+ * ทำหนังสือจากข้อมูลโครงการ: เลือกชนิด → ระบบเติมข้อความให้ → แก้ได้ → ดูตัวอย่าง/พิมพ์/ดาวน์โหลด
+ * "บันทึกหนังสือที่ออก" เก็บไว้ในระบบ (เลขที่ไม่ซ้ำ) — ดูย้อนหลัง/พิมพ์ซ้ำได้ที่ ประวัติเอกสาร
  */
 const todayBkk = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
 const area = "w-full min-h-[150px] rounded-2xl bg-white/[0.03] border border-white/10 px-4 py-3 text-[14px] leading-[1.9] text-white focus:outline-none focus:border-nexus-teal/50";
@@ -35,6 +38,19 @@ export function LetterBuilder({ companyId, project, contract }: { companyId: str
   const [body, setBody] = useState("");
   const [extra, setExtra] = useState<{ refs: string[]; attachments: string[] }>({ refs: [], attachments: [] });
   const [preview, setPreview] = useState<DocumentModel | null>(null);
+  const { showAlert } = useSystemDialog();
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await apiFetch("/api/documents/letters", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "save", letter: {
+        kind, number, date, to, subject, refs: extra.refs, attachments: extra.attachments, body: body.split("\n").map((p) => p.trim()).filter(Boolean), signerName: signer, signerTitle, projectId: String(project?.id || ""),
+      } }) });
+      const d = await res.json();
+      if (!res.ok || !d.success) throw new Error(d.error || "บันทึกหนังสือไม่สำเร็จ");
+      showAlert(`บันทึกหนังสือเลขที่ ${number} แล้ว — ดูย้อนหลังและพิมพ์ซ้ำได้ที่เมนู "ประวัติเอกสาร"`);
+    } catch (e: any) { showAlert(e.message, "บันทึกไม่สำเร็จ", "error"); } finally { setSaving(false); }
+  };
 
   const returnable = contract.guarantees.filter((g) => !g.returned);
   const generate = (k: LetterKind = kind as LetterKind) => {
@@ -111,7 +127,8 @@ export function LetterBuilder({ companyId, project, contract }: { companyId: str
             </label>
             <textarea value={body} onChange={(e) => setBody(e.target.value)} className={area} />
           </div>
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <PillButton variant="glass" onClick={save} disabled={saving || !to.trim() || !subject.trim() || !number.trim()} title={!number.trim() ? "ใส่เลขที่หนังสือก่อนบันทึก" : "เก็บหนังสือนี้ไว้ในระบบ (ประวัติเอกสาร)"} className="h-9 px-5 text-xs">{saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} บันทึกหนังสือที่ออก</PillButton>
             <PillButton variant="primary" onClick={open} disabled={!to.trim() || !subject.trim()} className="h-9 px-5 text-xs">ดูตัวอย่าง / พิมพ์</PillButton>
           </div>
         </div>

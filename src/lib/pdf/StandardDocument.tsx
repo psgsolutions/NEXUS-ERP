@@ -17,9 +17,10 @@ const thaiSeg = typeof Intl !== "undefined" && "Segmenter" in Intl ? new Intl.Se
 export function registerDocumentFonts(base: string) {
   if (fontsReady === base) return;
   const f = (name: string) => `${base}/fonts/${encodeURIComponent(name)}`;
-  Font.register({ family: "Sarabun", fonts: [{ src: f("Sarabun-Regular.ttf"), fontWeight: "normal" }, { src: f("Sarabun-Bold.ttf"), fontWeight: "bold" }] });
-  Font.register({ family: "THSarabunNew", fonts: [{ src: f("THSarabun.ttf"), fontWeight: "normal" }, { src: f("THSarabun Bold.ttf"), fontWeight: "bold" }] });
-  Font.register({ family: "THSarabunIT9", fonts: [{ src: f("THSarabunIT๙.ttf"), fontWeight: "normal" }, { src: f("THSarabunIT๙ Bold.ttf"), fontWeight: "bold" }] });
+  // ตัวเอียง: TH Sarabun มีไฟล์เอียงจริง · Sarabun ไม่มีไฟล์เอียง ใช้ตัวตรงแทน (ไม่ให้พิมพ์ล้ม)
+  Font.register({ family: "Sarabun", fonts: [{ src: f("Sarabun-Regular.ttf"), fontWeight: "normal" }, { src: f("Sarabun-Bold.ttf"), fontWeight: "bold" }, { src: f("Sarabun-Regular.ttf"), fontWeight: "normal", fontStyle: "italic" }, { src: f("Sarabun-Bold.ttf"), fontWeight: "bold", fontStyle: "italic" }] });
+  Font.register({ family: "THSarabunNew", fonts: [{ src: f("THSarabun.ttf"), fontWeight: "normal" }, { src: f("THSarabun Bold.ttf"), fontWeight: "bold" }, { src: f("THSarabun Italic.ttf"), fontWeight: "normal", fontStyle: "italic" }, { src: f("THSarabun BoldItalic.ttf"), fontWeight: "bold", fontStyle: "italic" }] });
+  Font.register({ family: "THSarabunIT9", fonts: [{ src: f("THSarabunIT๙.ttf"), fontWeight: "normal" }, { src: f("THSarabunIT๙ Bold.ttf"), fontWeight: "bold" }, { src: f("THSarabunIT๙ Italic.ttf"), fontWeight: "normal", fontStyle: "italic" }, { src: f("THSarabunIT๙ BoldItalic.ttf"), fontWeight: "bold", fontStyle: "italic" }] });
   // ภาษาไทยไม่มีช่องว่างระหว่างคำ: แบ่งคำให้ตัดบรรทัดได้
   Font.registerHyphenationCallback((word) => (thaiSeg && /[฀-๿]/.test(word) ? Array.from(thaiSeg.segment(word), (s) => s.segment) : [word]));
   fontsReady = base;
@@ -536,6 +537,12 @@ export function blockContext(c: Ctx, raw: FreeBlock): Ctx {
   };
 }
 
+/** รูปแบบตัวอักษรของกล่อง: ฟอนต์ ตัวเอียง ขีดเส้นใต้/ขีดฆ่า ระยะห่างตัวอักษร (ข้อความในกล่องรับต่อ) */
+function textDeco(b: FreeBlock) {
+  const deco = [b.underline ? "underline" : "", b.strike ? "line-through" : ""].filter(Boolean).join(" ");
+  return { ...(b.font ? { fontFamily: b.font } : {}), ...(b.italic ? { fontStyle: "italic" as const } : {}), ...(deco ? { textDecoration: deco as any } : {}), ...(b.letterSpacing ? { letterSpacing: b.letterSpacing } : {}) };
+}
+
 /** แทนค่าข้อมูลในกล่องข้อความ (รายการตัวแปรอยู่ที่ TEXT_VARIABLES) — ไม่รู้จัก/ไม่มีข้อมูล = ว่าง */
 const fillVars = (text: string, doc: DocumentModel) => text.replace(/\{\{([^{}]{1,60})\}\}/g, (_m, key: string) => {
   const s = doc.seller, p = doc.party;
@@ -575,27 +582,29 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
   const b = resolveBlockColors(raw, c.t);
   const bc = blockContext(c, b);
   const own = b.fontSize !== undefined || b.lineHeight !== undefined || !!b.color;
+  // ส่วนของเอกสาร (ผู้ขาย ชื่อเอกสาร ฯลฯ) จัดได้ ซ้าย/กลาง/ขวา — "เต็มบรรทัด" ใช้กับกล่องข้อความ
+  const a3 = (b.align === "justify" ? "left" : b.align) as "left" | "center" | "right" | undefined;
   const content = (() => {
     switch (b.kind) {
       // โลโก้ในผังลากวาง: ขยายเต็มกล่อง (คงสัดส่วน · PNG โปร่งใสคงพื้นโปร่ง)
       // eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt
       case "logo": return c.doc.seller.logo ? <Image src={c.doc.seller.logo} style={{ width: b.w, height: b.h, objectFit: "contain" }} /> : null;
-      case "seller": return <SectionSeller c={bc} align={b.align} />;
-      case "title": return letter ? null : <SectionTitle c={bc} align={b.align || "right"} />;
-      case "meta": return letter ? null : <SectionMeta c={bc} align={b.align || "right"} />;
+      case "seller": return <SectionSeller c={bc} align={a3} />;
+      case "title": return letter ? null : <SectionTitle c={bc} align={a3 || "right"} />;
+      case "meta": return letter ? null : <SectionMeta c={bc} align={a3 || "right"} />;
       case "party": return <SectionParty c={bc} />;
       case "items": return items ?? <SectionItems c={bc} />;
       case "totals": return <SectionTotals c={bc} />;
-      case "words": return <SectionWords c={bc} align={b.align} />;
-      case "notes": return <SectionNotes c={bc} align={b.align} />;
-      case "payment": return <SectionPayment c={bc} align={b.align} />;
+      case "words": return <SectionWords c={bc} align={a3} />;
+      case "notes": return <SectionNotes c={bc} align={a3} />;
+      case "payment": return <SectionPayment c={bc} align={a3} />;
       case "signatures": return <SectionSignatures c={bc} />;
       case "field": return <SectionField c={bc} b={b} />;
       case "info": return <SectionInfo c={bc} b={b} />;
       // ตราประทับ: พิมพ์เฉพาะเอกสารที่ใส่ตราอิเล็กทรอนิกส์ (ออกจริง และตั้งให้ประทับ)
       // eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt
       case "stamp": return c.doc.stamp ? <Image src={c.doc.stamp.image} style={{ width: b.w, height: b.h, objectFit: "contain", opacity: 0.92 }} /> : null;
-      case "text": return <T style={{ fontSize: (b.fontSize || 10) * FONT_SCALE[c.t.font], lineHeight: b.lineHeight ?? 1.35, color: b.color || c.t.text, textAlign: b.align, fontWeight: b.bold ? "bold" : undefined }}>{fillVars(b.text || "", c.doc)}</T>;
+      case "text": return <T style={{ fontSize: (b.fontSize || 10) * FONT_SCALE[b.font || c.t.font], lineHeight: b.lineHeight ?? 1.35, color: b.color || c.t.text, textAlign: b.align, fontWeight: b.bold ? "bold" : undefined, ...textDeco(b) }}>{fillVars(b.text || "", c.doc)}</T>;
       // eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt
       case "image": return b.src ? <Image src={b.src} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : null;
       default: return null;
@@ -618,7 +627,7 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
     const sw = b.border ? b.borderWidth ?? 1 : 0, dash = b.dash === "dashed" ? `${sw * 4} ${sw * 2.5}` : b.dash === "dotted" ? `${sw} ${sw * 1.8}` : undefined;
     const paint = { fill: b.bg || "none", stroke: b.border || "none", strokeWidth: sw, ...(dash ? { strokeDasharray: dash } : {}) };
     return (
-      <Svg style={{ position: "absolute", left: b.x, top: b.y, width: b.w, height: b.h }} viewBox={`0 0 ${b.w} ${b.h}`}>
+      <Svg style={{ position: "absolute", left: b.x, top: b.y, width: b.w, height: b.h, ...(b.opacity ? { opacity: b.opacity } : {}) }} viewBox={`0 0 ${b.w} ${b.h}`}>
         {b.shape === "triangle"
           ? <Polygon points={`${b.w / 2},${sw / 2} ${b.w - sw / 2},${b.h - sw / 2} ${sw / 2},${b.h - sw / 2}`} {...paint} />
           : <Ellipse cx={b.w / 2} cy={b.h / 2} rx={Math.max(0, b.w / 2 - sw / 2)} ry={Math.max(0, b.h / 2 - sw / 2)} {...paint} />}
@@ -628,12 +637,13 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
   return (
     <View style={{
       position: "absolute", left: b.x, top: b.y, width: b.w, height: b.h,
+      ...(b.opacity ? { opacity: b.opacity } : {}),
       ...(b.bg ? { backgroundColor: b.bg, ...corners } : {}),
       ...(b.border ? { borderWidth: b.borderWidth ?? 1, borderColor: b.border, ...corners, ...(b.dash && b.dash !== "solid" ? { borderStyle: b.dash } : {}) } : {}),
     }}>
       {b.kind === "rect" ? null : b.kind === "image" || b.kind === "logo" || b.kind === "stamp"
         ? content
-        : <View style={{ position: "absolute", top: pad, left: pad, right: pad, ...(own ? { fontSize: bc.s.page.fontSize, lineHeight: bc.s.page.lineHeight, color: bc.t.text } : {}) }}>{content}</View>}
+        : <View style={{ position: "absolute", top: pad, left: pad, right: pad, ...(own ? { fontSize: bc.s.page.fontSize, lineHeight: bc.s.page.lineHeight, color: bc.t.text } : {}), ...(b.kind !== "text" ? textDeco(b) : {}) }}>{content}</View>}
     </View>
   );
 }

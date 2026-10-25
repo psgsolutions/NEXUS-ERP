@@ -8,6 +8,7 @@ import type { DocumentModel } from "./model";
 import { quotationLines, quotationModel, sampleModel } from "./build";
 import { documentProfileOf } from "./profile";
 import { toDateStr } from "./format";
+import { LETTER_LABELS, type LetterKind } from "@/lib/letters";
 
 /**
  * แปลงเอกสารแต่ละประเภทในฐานข้อมูล -> DocumentModel (ใช้กับ PDF / ลิงก์ลูกค้า / อีเมล / แอปอื่น)
@@ -57,6 +58,22 @@ const quotation: DocumentTypeDef = {
   },
 };
 
+/** หนังสือที่ออกแล้ว (บันทึกจากหน้าโครงการ › ทำหนังสือ) */
+const letter: DocumentTypeDef = {
+  label: "หนังสือ",
+  permission: "projects:view",
+  async load(companyId, id) {
+    const [snap, seller] = await Promise.all([adminDb.doc(`companies/${companyId}/letters/${id}`).get(), sellerOf(companyId)]);
+    if (!snap.exists) throw new ApiAuthError(404, "ไม่พบหนังสือ");
+    const l = snap.data()!;
+    const arr = (v: any) => (Array.isArray(v) ? v.map(String) : []);
+    return {
+      type: "letter", title: LETTER_LABELS[l.kind as LetterKind] || str(l.title) || "หนังสือ", number: str(l.number), date: str(l.date), meta: [], seller, lines: [], totals: [], signatures: [],
+      letter: { to: str(l.to), subject: str(l.subject), refs: arr(l.refs), attachments: arr(l.attachments), body: arr(l.body), signerName: str(l.signerName), signerTitle: str(l.signerTitle) },
+    };
+  },
+};
+
 /** ตัวอย่างสำหรับหน้าตั้งค่าหัวเอกสาร (ข้อมูลบริษัทจริง + รายการตัวอย่าง) */
 const sample: DocumentTypeDef = {
   label: "ตัวอย่างเอกสาร",
@@ -85,5 +102,6 @@ export const DOCUMENT_TYPES: Record<string, DocumentTypeDef> = {
   wht: { label: "หนังสือรับรองการหักภาษี ณ ที่จ่าย", permission: "finance:view", load: loadWht },
   journal: { label: "ใบสำคัญบัญชี", permission: "finance:view", load: loadJournal, internal: true },
   payslip: { label: "สลิปเงินเดือน", permission: ["hr:edit", "finance:edit"], load: loadPayslip },
+  letter,
   sample,
 };

@@ -7,6 +7,7 @@ import { DOCUMENT_TYPES } from "@/lib/documents/adapters.server";
 import { auditServer } from "@/services/audit.server";
 import { documentProfileOf } from "@/lib/documents/profile";
 import { normalizeDesign } from "@/lib/documents/design";
+import { DOC_SOURCES } from "@/lib/documents/sources.server";
 
 /**
  * [API-SERVER] ข้อมูลนิติบุคคลและหัวเอกสาร — POST /api/settings/document-profile
@@ -18,19 +19,6 @@ import { normalizeDesign } from "@/lib/documents/design";
 const str = (v: any, max = 300) => String(v ?? "").trim().slice(0, max);
 
 const VERSION_KEEP = 20;
-/** ชนิดเอกสาร → collection และฟิลด์เลขที่ (ตาม adapters) */
-const SAMPLE_SOURCES: Record<string, { col: string; no: string[] }> = {
-  quotation: { col: "quotations", no: ["documentNo", "quotationNumber"] },
-  sales_order: { col: "sales_orders", no: ["documentNo", "soId"] },
-  invoice: { col: "invoices", no: ["invoiceNo", "documentNo"] },
-  billing_note: { col: "billing_notes", no: ["billingNoteNo", "documentNo"] },
-  receipt: { col: "receipts", no: ["receiptNo", "documentNo"] },
-  delivery_note: { col: "delivery_notes", no: ["dnNo"] },
-  cndn: { col: "cndn", no: ["documentNo", "cndnNo"] },
-  purchase_order: { col: "purchase_orders", no: ["poCode", "documentNo"] },
-  payment: { col: "payments", no: ["paymentNo", "documentNo"] },
-  work_order: { col: "work_orders", no: ["woCode", "documentNo"] },
-};
 
 export async function POST(request: Request) {
   try {
@@ -58,12 +46,12 @@ export async function POST(request: Request) {
     // ---------- เอกสารจริงล่าสุดของชนิดนี้ (ดูตัวอย่างการออกแบบด้วยข้อมูลจริง) ----------
     if (body.action === "sampleDocs") {
       if (!can(apiUser.roles, "settings:manage")) throw new ApiAuthError(403, "ใช้ได้เฉพาะผู้ดูแลระบบ");
-      const type = str(body.type, 30), src = SAMPLE_SOURCES[type], perm = DOCUMENT_TYPES[type]?.permission;
+      const type = str(body.type, 30), src = DOC_SOURCES[type], perm = DOCUMENT_TYPES[type]?.permission;
       // แสดงเฉพาะเอกสารชนิดที่ผู้ใช้มีสิทธิ์เปิดอยู่แล้ว (หน้าออกแบบไม่ข้ามสิทธิ์การดูเอกสาร)
       if (!src || !perm || !canAny(apiUser.roles, ([] as any[]).concat(perm))) return NextResponse.json({ success: true, docs: [] });
       const snap = await ref.collection(src.col).orderBy("createdAt", "desc").limit(12).get();
       const docs = snap.docs.filter((d) => d.get("docKind") !== "opening" && String(d.get("status") || "").toUpperCase() !== "CANCELLED").slice(0, 8)
-        .map((d) => ({ id: d.id, label: [src.no.map((k) => d.get(k)).find(Boolean) || d.id, d.get("customerName") || d.get("supplierName") || d.get("vendorName") || d.get("payeeName") || ""].filter(Boolean).join(" · ") }));
+        .map((d) => ({ id: d.id, label: [src.no.map((k) => d.get(k)).find(Boolean) || d.id, src.party.map((k) => d.get(k)).find(Boolean) || ""].filter(Boolean).join(" · ") }));
       return NextResponse.json({ success: true, docs });
     }
     if (body.action === "saveDesign") {

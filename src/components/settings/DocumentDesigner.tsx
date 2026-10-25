@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Copy, History, LayoutTemplate, Loader2, PanelTop, RotateCcw, Save, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { Copy, Eye, History, LayoutTemplate, ListChecks, Loader2, MousePointerClick, PanelTop, RotateCcw, Save, Trash2, Wand2, X } from "lucide-react";
 import { GlassCard, PillButton, PillCheckbox, PillInput, PillSelect, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
@@ -13,20 +13,23 @@ import { EMPTY_SIGNING, applySigning, normalizeSigning, type SigningConfig } fro
 import { toDateStr } from "@/lib/documents/format";
 import type { DocumentModel, DocumentProfile } from "@/lib/documents/model";
 import {
-  ARCHETYPES, FONT_LABELS, LETTERHEAD_TEMPLATES, PALETTES, TEMPLATES, defaultFreeLayout, letterheadTemplate, normalizeDesign, applyLayoutToAll,
+  ARCHETYPES, FONT_LABELS, LETTERHEAD_TEMPLATES, PALETTES, TEMPLATES, letterheadTemplate, normalizeDesign, applyLayoutToAll,
   type DocTheme, type DocumentDesign, type FontFamily, type ItemColumn, type Letterhead, type PerDocDesign,
 } from "@/lib/documents/design";
 import { templateLayout } from "@/lib/documents/layout-templates";
+import { dataGroups, ensureLayout, layoutIdFor, toggleData, type DataContext } from "@/lib/documents/design-data";
+import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import { FreeLayoutEditor } from "./FreeLayoutEditor";
-import { useThumbnail } from "./usePdfPageImage";
+import { DataChecklist } from "./DataChecklist";
+import { usePdfPageImage, useThumbnail } from "./usePdfPageImage";
 
 /**
- * ออกแบบหน้าเอกสาร (ตั้งค่า › ออกแบบเอกสาร) — หน้าเดียว แก้บนกระดาษจริง
- *  - แถบเอกสาร: ภาพย่อเอกสารทุกชนิด กดสลับดู/แก้ (เห็นผลของการเปลี่ยนสี/แม่แบบกับทุกเอกสาร)
- *  - กระดาษตรงกลาง: หน้าแรกของ PDF จริง คลิกหัวข้อเพื่อแก้ (จัดหน้าอัตโนมัติ → คลิกแล้วเริ่มจัดตำแหน่งเอง)
- *  - แผงขวา: แม่แบบ · หน้าตา · แก้ไข · ข้อมูล · ตรวจ — ทุกส่วนมีป้ายบอกว่าใช้กับ "ทุกเอกสาร" หรือ "เฉพาะเอกสารนี้"
- *  - แม่แบบ: คลิกเพื่อลองดูก่อน แล้วกดใช้ · ย้อนกลับ/ทำซ้ำได้ทุกการแก้ · ประวัติเวอร์ชันที่บันทึก (ย้อนทั้งชุด)
- *  - ดูตัวอย่างด้วยเอกสารจริงล่าสุดได้ · บันทึก: ปุ่มลอย / Ctrl+S · เตือนก่อนออกเมื่อยังไม่บันทึก
+ * ออกแบบหน้าเอกสาร (ตั้งค่า › ออกแบบเอกสาร) — 2 แบบ สลับได้ตลอด
+ *  - แบบง่าย: 1 เลือกแม่แบบ · 2 สีและตัวอักษร · 3 ติ๊กข้อมูลที่แสดง · 4 ชื่อเอกสาร — ตัวอย่างหน้าเอกสารใหญ่อัปเดตทันที
+ *  - ลากวางเอง: แถบเพิ่มของด้านซ้าย · คลิกกล่องบนกระดาษแล้วมีแถบเครื่องมือลอยเหนือกล่อง · แผงขวาเฉพาะกล่องที่เลือก
+ *  - ทุกเอกสารใช้ผังของแม่แบบ (แม่แบบที่ไม่มีผังเฉพาะใช้ผังที่ใกล้เคียง) — ไม่มีโหมด "จัดอัตโนมัติ" แยกให้สับสน
+ *  - แถบเอกสาร: ภาพย่อทุกชนิด กดสลับ · ย้อนกลับ/ทำซ้ำทุกการแก้ · ประวัติเวอร์ชันที่บันทึก · ดูด้วยเอกสารจริงได้
+ *  - บันทึก: ปุ่มลอย / Ctrl+S · เตือนก่อนออกเมื่อยังไม่บันทึก
  */
 const SHORT: Record<string, string> = {
   quotation: "ใบเสนอราคา", sales_order: "ใบสั่งขาย", invoice: "ใบกำกับภาษี", billing_note: "ใบวางบิล", receipt: "ใบเสร็จ",
@@ -38,15 +41,53 @@ const RECOMMENDED = ["modern", "psg-form", "banner-a", "minimalLine-d", "sidebar
 
 const hash = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
 
-/** ใช้แม่แบบกับการออกแบบ: ธีม + ผังของแม่แบบ (ถ้ามี) ทุกเอกสารการค้า — แม่แบบไม่มีผัง เนื้อเอกสารกลับไปจัดอัตโนมัติ */
+/** ใช้แม่แบบกับการออกแบบ: ธีม + ผังของแม่แบบทุกเอกสารการค้า */
 function withTemplate(d: DocumentDesign, t: (typeof TEMPLATES)[number]): DocumentDesign {
   const perDoc = { ...d.perDoc };
-  for (const x of DESIGNABLE_DOCS) {
-    const cur = perDoc[x.type] || {};
-    perDoc[x.type] = t.layout ? { ...cur, free: templateLayout(t.layout, x.type, t.theme), letterhead: undefined } : cur.free ? { ...cur, free: { ...cur.free, enabled: false } } : cur;
-  }
+  for (const x of DESIGNABLE_DOCS) perDoc[x.type] = { ...(perDoc[x.type] || {}), free: templateLayout(layoutIdFor(t.id, t.theme), x.type, t.theme), letterhead: undefined };
   return { ...d, theme: { ...t.theme }, perDoc };
 }
+/** เอกสารที่ยังไม่เคยจัดผัง: สร้างผังจากแม่แบบที่ใช้อยู่ (หน้าออกแบบแสดงและแก้แบบเดียวกันทุกเอกสาร) */
+function withLayouts(d: DocumentDesign): DocumentDesign {
+  const perDoc = { ...d.perDoc };
+  for (const x of DESIGNABLE_DOCS) if (!perDoc[x.type]?.free?.enabled) perDoc[x.type] = { ...(perDoc[x.type] || {}), free: ensureLayout(perDoc[x.type]?.free, x.type, d.theme) };
+  return { ...d, perDoc };
+}
+
+/** ตัวอย่างหน้าเอกสาร (หน้าแรกของ PDF จริง) ขนาดตามพื้นที่ */
+function PagePreview({ model }: { model: DocumentModel | null }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [w, setW] = useState(620);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setW(Math.max(320, Math.min(860, Math.round(e.contentRect.width / 40) * 40))));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const { image, busy, error } = usePdfPageImage(model, w);
+  return (
+    <div ref={ref} className="w-full">
+      <div className="relative bg-white rounded-sm shadow-2xl mx-auto overflow-hidden" style={{ width: w, height: Math.round(w * 1.4142) }}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- ภาพหน้าเอกสารที่วาดในเบราว์เซอร์ (data URL) */}
+        {image && <img src={image.url} alt="ตัวอย่างหน้าเอกสาร" className="absolute inset-0 w-full h-full" />}
+        {(busy || !image) && !error && <span className="absolute top-2 right-2 flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-slate-800/80 text-white"><Loader2 size={11} className="animate-spin" /> กำลังอัปเดต</span>}
+        {error && <span className="absolute bottom-2 left-2 right-2 text-[11px] px-2 py-1 rounded bg-red-600/90 text-white">วาดตัวอย่างไม่สำเร็จ: {error}</span>}
+      </div>
+    </div>
+  );
+}
+/** ขั้นในหน้าแบบง่าย (หมายเลข · ชื่อ · ขอบเขต) */
+const Step = ({ n, title, scope, children }: { n: number; title: string; scope: React.ReactNode; children: React.ReactNode }) => (
+  <GlassCard className="p-3.5 space-y-2.5">
+    <div className="flex items-center gap-2">
+      <span className="w-6 h-6 rounded-full bg-nexus-teal text-white text-[12px] font-bold flex items-center justify-center flex-shrink-0">{n}</span>
+      <p className="text-[14px] font-bold text-white">{title}</p>
+      <span className="ml-auto">{scope}</span>
+    </div>
+    {children}
+  </GlassCard>
+);
 
 /** ดึงสีเด่นของโลโก้ (ไม่ใช้ AI): เฉลี่ยพิกเซลที่มีสีสด ไม่ขาว/ดำ/โปร่งใส */
 async function logoColor(dataUrl: string): Promise<string | null> {
@@ -104,7 +145,7 @@ function TemplateCard({ t, active, docType, profile, onPick, size = "sm" }: { t:
     return () => io.disconnect();
   }, [seen]);
   const url = useThumbnail(`${t.id}:${type}:${profile.logo?.length || 0}:${profile.name}`, () => {
-    const design = normalizeDesign({ theme: t.theme, perDoc: t.layout ? { [type]: { free: templateLayout(t.layout, type, t.theme) } } : {} });
+    const design = normalizeDesign({ theme: t.theme, perDoc: { [type]: { free: templateLayout(layoutIdFor(t.id, t.theme), type, t.theme) } } });
     return sampleModelFor(type, { ...profile, design }, toDateStr(new Date()));
   }, size === "lg" ? 220 : 150, seen);
   return (
@@ -160,8 +201,12 @@ export function DocumentDesigner() {
   const [savedJson, setSavedJson] = useState("");
   const [docType, setDocType] = useState(DESIGNABLE_DOCS[0].type);
   const [saving, setSaving] = useState(false);
-  const [trial, setTrial] = useState<(typeof TEMPLATES)[number] | null>(null);
-  const [modal, setModal] = useState<"" | "templates" | "versions">("");
+  const [modal, setModal] = useState<"" | "templates" | "versions" | "pdf">("");
+  // แบบง่าย / ลากวางเอง (จำไว้ในเครื่อง)
+  const [mode, setModeState] = useState<"simple" | "canvas">("simple");
+  useEffect(() => { try { if (localStorage.getItem("nexus.designer.mode") === "canvas") setModeState("canvas"); } catch { /* ใช้แบบง่าย */ } }, []);
+  const setMode = (m: "simple" | "canvas") => { setModeState(m); try { localStorage.setItem("nexus.designer.mode", m); } catch { /* ไม่เป็นไร */ } };
+  const [applied, setApplied] = useState("");
   const [family, setFamily] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiUseLogo, setAiUseLogo] = useState(true);
@@ -190,7 +235,7 @@ export function DocumentDesigner() {
     apiFetch("/api/settings/document-profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "get" }) })
       .then((r) => r.json()).then((d) => {
         if (!d.success) return;
-        const nd = normalizeDesign(d.profile.design, d.profile.brandColor);
+        const nd = withLayouts(normalizeDesign(d.profile.design, d.profile.brandColor));
         setProfile(d.profile); setDesign(nd); setSavedJson(JSON.stringify(nd));
       });
     apiFetch("/api/settings/document-signing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "get" }) })
@@ -205,7 +250,8 @@ export function DocumentDesigner() {
       const res = await apiFetch("/api/settings/document-profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "saveDesign", design: designRef.current }) });
       const d = await res.json();
       if (!res.ok || !d.success) throw new Error(d.error || "บันทึกไม่สำเร็จ");
-      setDesign(d.design); setSavedJson(JSON.stringify(d.design)); setVersions(null);
+      const nd = withLayouts(d.design);
+      setDesign(nd); setSavedJson(JSON.stringify(nd)); setVersions(null);
       showAlert("บันทึกการออกแบบแล้ว — เอกสารที่พิมพ์หลังจากนี้ใช้รูปแบบใหม่ทั้งหมด (ย้อนกลับได้จาก \"ประวัติ\")");
     } catch (e: any) { showAlert(e.message, "บันทึกไม่สำเร็จ", "error"); } finally { setSaving(false); }
   }, [canEdit, saving, companyId, showAlert]);
@@ -220,8 +266,7 @@ export function DocumentDesigner() {
     return () => { window.removeEventListener("keydown", key); window.removeEventListener("beforeunload", leave); (window as any).__nexusDesignDirty = false; };
   }, [dirty, save]);
 
-  // ลองแม่แบบ: แสดงผลบนกระดาษก่อน ยังไม่เปลี่ยนการออกแบบจริง
-  const shown = useMemo(() => (trial ? withTemplate(design, trial) : design), [design, trial]);
+  const shown = design;
   const [preview, setPreview] = useState<DocumentDesign | null>(null);
   useEffect(() => { const t = setTimeout(() => setPreview(shown), 120); return () => clearTimeout(t); }, [shown]);
   const [stripDesign, setStripDesign] = useState<DocumentDesign | null>(null);
@@ -265,17 +310,26 @@ export function DocumentDesigner() {
     change((d) => ({ ...d, letterheads: d.letterheads.filter((l) => l.id !== lh.id), perDoc: Object.fromEntries(Object.entries(d.perDoc).map(([k, v]) => [k, v.letterhead === lh.id ? { ...v, letterhead: undefined } : v])) }));
   };
   const defaultColumns: ItemColumn[] = ((def.columns || ["no", "description", "qty", "unit", "price", "amount"]) as ItemColumn[]).filter((k) => !(per.hideColumns || []).includes(k));
+  // ผังของเอกสารนี้ (เอกสารการค้าทุกชนิดมีผังเสมอ) · รายการติ๊ก "ข้อมูลที่แสดง"
+  const curLayout = ensureLayout(per.free, docType, theme);
+  const dataCtx: DataContext = {
+    docType, docTitle: def.title, meta: def.meta || [], fields: def.fields || [], columns: defaultColumns,
+    totals: ["ส่วนลดท้ายบิล", "ยอดหลังหักส่วนลด", "หัก ณ ที่จ่าย", "ยอดชำระสุทธิ"],
+  };
+  const groups = isLetter ? [] : dataGroups(curLayout, { ...dataCtx, head: letterhead?.blocks });
+  const toggle = (key: string, on: boolean) => setPer({ free: toggleData(curLayout, key, on, { ...dataCtx, head: letterhead?.blocks }) });
+  const signBlock = curLayout.blocks.find((b) => b.kind === "signatures");
+  const setSignLabels = (labels: string[] | undefined) => setPer({ free: { ...curLayout, blocks: curLayout.blocks.map((b) => { if (b !== signBlock) return b; const n = { ...b, labels }; if (!labels) delete n.labels; return n; }) } });
   const model = useMemo(() => {
     if (!profile || !preview) return null;
     if (realModel) return { ...realModel, seller: { ...realModel.seller, design: preview } };
     return applySigning(sampleModelFor(docType, { ...profile, design: preview }, toDateStr(new Date())), signing, def.signatures);
   }, [profile, preview, docType, realModel, signing, def.signatures]);
 
-  const applyTemplate = async (t: (typeof TEMPLATES)[number]) => {
-    const overwrites = DESIGNABLE_DOCS.some((d) => design.perDoc[d.type]?.free?.enabled);
-    if (overwrites && !(await showConfirm(`ใช้แม่แบบ "${t.name}" กับทุกเอกสาร? ผังที่จัดเองไว้จะถูกแทนที่ (ย้อนกลับได้ด้วย Ctrl+Z หรือ "ประวัติ")`))) return;
+  /** ใช้แม่แบบกับทุกเอกสารทันที (ย้อนกลับได้ด้วย Ctrl+Z / ปุ่มย้อนกลับ) */
+  const applyTemplate = (t: (typeof TEMPLATES)[number]) => {
     change((d) => withTemplate(d, t));
-    setTrial(null);
+    setApplied(t.name);
   };
   const runAi = async () => {
     setAiBusy(true);
@@ -300,69 +354,34 @@ export function DocumentDesigner() {
   const restoreVersion = async (id: string) => {
     const r = await apiFetch("/api/settings/document-profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "version", id }) }).then((x) => x.json()).catch(() => null);
     if (!r?.success) return showAlert(r?.error || "เปิดเวอร์ชันไม่สำเร็จ", "ย้อนเวอร์ชันไม่สำเร็จ", "error");
-    change(() => r.design);
+    change(() => withLayouts(r.design));
     setModal("");
     showAlert("เปิดเวอร์ชันที่เลือกแล้ว — ตรวจดูบนกระดาษ ถ้าใช่กด \"บันทึก\" เพื่อใช้จริง");
   };
 
   if (!profile) return <div className="py-16 flex items-center justify-center gap-2 text-white/40 text-sm"><Loader2 size={16} className="animate-spin" /> กำลังโหลด…</div>;
   const currentTpl = TEMPLATES.find((t) => t.id === design.theme.templateId);
+  const custom = !PALETTES.some((p) => p.primary === theme.primary && p.accent === theme.accent);
+  const shownTemplates = TEMPLATES.filter((t) => !family || (family === "pick" ? !t.family : t.family === family));
 
-  // ---------- แท็บ "แม่แบบ" ----------
-  const templatesPanel = (
-    <div className="space-y-2.5">
-      <Section title="แม่แบบ" all>
-        <p className="text-[12px] text-white/55">ใช้อยู่: <b className="text-white/85">{currentTpl?.name || "กำหนดเอง"}</b> · คลิกแม่แบบเพื่อลองดูบนกระดาษก่อน</p>
-        <div className="grid grid-cols-3 gap-1.5">
-          {RECOMMENDED.map((id) => TEMPLATES.find((t) => t.id === id)).filter((t): t is (typeof TEMPLATES)[number] => !!t).map((t) => (
-            <TemplateCard key={t.id} t={t} active={(trial?.id || design.theme.templateId) === t.id} docType={docType} profile={profile} onPick={() => setTrial(t)} />
-          ))}
-        </div>
-        <PillButton variant="glass" className="h-9 px-3 text-xs w-full" onClick={() => setModal("templates")}><LayoutTemplate size={14} /> ดูแม่แบบทั้งหมด ({TEMPLATES.length} แบบ)</PillButton>
-      </Section>
-      {!isLetter && (
-        <Section title="ผังของเอกสารนี้" doc={docName}>
-          <Row label="เริ่มผังใหม่จากแม่แบบ (เฉพาะเอกสารนี้)">
-            <PillSelect value="" disabled={!canEdit || !!trial} onChange={(e) => { const id = String(e.target.value); if (!id) return; const t = TEMPLATES.find((x) => x.id === id); setPer({ free: templateLayout(id === "standard" ? undefined : t?.layout, docType, theme) }); }} className="h-9 w-full">
-              <option value="">เลือกผัง…</option>
-              <option value="standard">ผังมาตรฐาน</option>
-              {ARCHETYPES.filter((a) => a.id !== "standard").map((a) => <option key={a.id} value={TEMPLATES.find((t) => t.family === a.id)?.id || a.id}>{a.name}</option>)}
-            </PillSelect>
-          </Row>
-          {per.free?.enabled && canEdit && (
-            <PillButton variant="ghost" className="h-8 px-3 text-xs w-full" onClick={async () => {
-              if (!(await showConfirm(`ใช้ผังของ "${def.title}" กับเอกสารทุกชนิด? (ผังเดิมของเอกสารอื่นจะถูกแทนที่ · ย้อนกลับได้)`))) return;
-              change((d) => applyLayoutToAll(d, docType, DESIGNABLE_DOCS.map((x) => x.type)));
-            }}><Copy size={13} /> ใช้ผังนี้กับทุกเอกสาร</PillButton>
-          )}
-        </Section>
-      )}
-      <Section title="ให้ AI ช่วยออกแบบ" all open={false}>
-        <PillInput value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} placeholder="เช่น ดูหรู ทางการ โทนน้ำเงินเข้ม" className="w-full h-9" />
-        <PillCheckbox label="ใช้สีและรูปทรงจากโลโก้บริษัท" checked={aiUseLogo} onChange={(e) => setAiUseLogo(e.target.checked)} />
-        <PillButton variant="primary" className="h-9 px-4 text-xs w-full" disabled={!canEdit || aiBusy || (!aiPrompt.trim() && !(aiUseLogo && profile.logo))} onClick={runAi}>{aiBusy ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />} ให้ AI ออกแบบสีและรูปแบบ</PillButton>
-      </Section>
-    </div>
+  // ---------- ขั้น 1: แม่แบบ ----------
+  const templatesStep = (
+    <Step n={1} title="เลือกแม่แบบ" scope={<Scope />}>
+      <p className="text-[12px] text-white/55">ใช้อยู่: <b className="text-white/85">{currentTpl?.name || "กำหนดเอง"}</b> · คลิกเพื่อใช้กับทุกเอกสาร (หน้าตาตามแม่แบบ เนื้อหาตามชนิดเอกสาร)</p>
+      <div className="grid grid-cols-3 gap-1.5">
+        {RECOMMENDED.map((id) => TEMPLATES.find((t) => t.id === id)).filter((t): t is (typeof TEMPLATES)[number] => !!t).map((t) => (
+          <TemplateCard key={t.id} t={t} active={design.theme.templateId === t.id} docType={docType} profile={profile} onPick={() => canEdit && applyTemplate(t)} />
+        ))}
+      </div>
+      {applied && <p className="text-[12px] text-nexus-teal">ใช้แม่แบบ &quot;{applied}&quot; แล้ว · ไม่ถูกใจกด ย้อนกลับ (Ctrl+Z)</p>}
+      <PillButton variant="glass" className="h-9 px-3 text-xs w-full" onClick={() => setModal("templates")}><LayoutTemplate size={14} /> ดูแม่แบบทั้งหมด ({TEMPLATES.length} แบบ)</PillButton>
+    </Step>
   );
 
-  // ---------- แท็บ "หน้าตา" ----------
-  const custom = !PALETTES.some((p) => p.primary === theme.primary && p.accent === theme.accent);
-  const lookPanel = (
-    <fieldset disabled={!canEdit || !!trial} className="space-y-2.5">
-      {!isLetter && (
-        <Section title="การจัดหน้า" doc={docName}>
-          <div className="grid grid-cols-2 gap-1.5">
-            {([[false, "อัตโนมัติตามแม่แบบ", "หัวข้อเรียงลงเอง ยืดตามเนื้อหา"], [true, "จัดตำแหน่งเอง", "ลากวางหัวข้อได้อิสระ"]] as const).map(([on, label, sub]) => (
-              <button key={label} type="button" onClick={() => setPer({ free: on ? { ...(per.free?.blocks?.length ? per.free : defaultFreeLayout(docType, theme.font, def.meta)), enabled: true } : per.free ? { ...per.free, enabled: false } : undefined })}
-                className={cn("rounded-xl border p-2 text-left", !!per.free?.enabled === on ? "border-nexus-teal/60 bg-nexus-teal/10" : "border-white/10 hover:border-white/25")}>
-                <p className="text-[12.5px] font-bold text-white flex items-center gap-1">{!!per.free?.enabled === on && <Check size={13} className="text-nexus-teal" />}{label}</p>
-                <p className="text-[11px] text-white/50">{sub}</p>
-              </button>
-            ))}
-          </div>
-        </Section>
-      )}
-      <Section title="สี" all>
+  // ---------- ขั้น 2: สีและตัวอักษร ----------
+  const lookStep = (
+    <Step n={2} title="สีและตัวอักษร" scope={<Scope />}>
+      <fieldset disabled={!canEdit} className="space-y-2.5">
         <div className="flex flex-wrap gap-1.5">
           {PALETTES.map((p) => (
             <button key={p.id} type="button" title={p.name} aria-label={`ชุดสี ${p.name}`} onClick={() => setTheme({ primary: p.primary, accent: p.accent })}
@@ -370,9 +389,7 @@ export function DocumentDesigner() {
               <span className="w-7 h-7 rounded-full overflow-hidden flex"><span className="w-1/2 h-full" style={{ background: p.primary }} /><span className="w-1/2 h-full" style={{ background: p.accent }} /></span>
             </button>
           ))}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <PillButton variant="ghost" className="h-8 px-3 text-xs" onClick={fromLogo}>ดึงสีจากโลโก้</PillButton>
+          <PillButton variant="ghost" className="h-9 px-3 text-xs" onClick={fromLogo}>ดึงสีจากโลโก้</PillButton>
         </div>
         <details open={custom} className="rounded-lg border border-white/10 px-2.5 py-1.5">
           <summary className="cursor-pointer text-[12px] text-white/60">กำหนดสีเอง (รหัสสี)</summary>
@@ -383,95 +400,131 @@ export function DocumentDesigner() {
             <Row label="ตัวอักษรรอง"><ColorField value={theme.muted} onChange={(v) => setTheme({ muted: v })} /></Row>
           </div>
         </details>
-      </Section>
-      <Section title="ตัวอักษร" all>
         <div className="grid grid-cols-2 gap-2">
           <Row label="ฟอนต์"><PillSelect value={theme.font} onChange={(e) => setTheme({ font: e.target.value as FontFamily })} className="h-9 w-full">{(Object.keys(FONT_LABELS) as FontFamily[]).map((f) => <option key={f} value={f}>{FONT_LABELS[f]}</option>)}</PillSelect></Row>
-          <Row label={`ขนาด ${theme.fontSize} pt`}><input type="range" min={7.5} max={12} step={0.5} value={theme.fontSize} onChange={(e) => setTheme({ fontSize: Number(e.target.value) })} className="w-full accent-[#0d9488] h-9" /></Row>
-        </div>
-      </Section>
-      <Section title="รูปแบบ" all open={false}>
-        <div className="grid grid-cols-2 gap-2">
-          {!per.free?.enabled && !isLetter && <Row label="หัวเอกสาร"><PillSelect value={theme.header} onChange={(e) => setTheme({ header: e.target.value as any })} className="h-9 w-full"><option value="logo-left">โลโก้ซ้าย</option><option value="logo-right">โลโก้ขวา</option><option value="centered">กึ่งกลาง</option><option value="banner">แถบสีเต็ม</option></PillSelect></Row>}
+          <Row label={`ขนาดตัวอักษร ${theme.fontSize} pt`}><input type="range" min={7.5} max={12} step={0.5} value={theme.fontSize} onChange={(e) => setTheme({ fontSize: Number(e.target.value) })} className="w-full accent-[#0d9488] h-9" /></Row>
           <Row label={`ขนาดโลโก้ ${theme.logoSize} pt`}><input type="range" min={32} max={200} step={4} value={theme.logoSize} onChange={(e) => setTheme({ logoSize: Number(e.target.value) })} className="w-full accent-[#0d9488] h-9" /></Row>
           <Row label="ตาราง"><PillSelect value={theme.table} onChange={(e) => setTheme({ table: e.target.value as any })} className="h-9 w-full"><option value="tint">หัวสีอ่อน</option><option value="solid">หัวสีทึบ</option><option value="lines">เส้นบาง</option><option value="grid">เส้นครบ</option><option value="zebra">แถวสลับสี</option></PillSelect></Row>
-          <Row label="ยอดรวม"><PillSelect value={theme.totals} onChange={(e) => setTheme({ totals: e.target.value as any })} className="h-9 w-full"><option value="solid">พื้นสีเต็ม</option><option value="outline">กรอบสี</option><option value="plain">เส้นคั่น</option><option value="grid">ตารางป้าย/ยอด</option></PillSelect></Row>
-          <Row label="กรอบลูกค้า"><PillSelect value={theme.party} onChange={(e) => setTheme({ party: e.target.value as any })} className="h-9 w-full"><option value="accent-bar">แถบสีซ้าย</option><option value="boxed">กรอบเต็ม</option><option value="plain">เส้นใต้</option><option value="none">ไม่มีกรอบ</option></PillSelect></Row>
-          <Row label="ช่องลงนาม"><PillSelect value={theme.signatures} onChange={(e) => setTheme({ signatures: e.target.value as any })} className="h-9 w-full"><option value="line">เส้นลงนาม</option><option value="box">กรอบลงนาม</option></PillSelect></Row>
-          <Row label={`ขอบกระดาษ ${theme.margin} pt`}><input type="range" min={20} max={60} step={2} value={theme.margin} onChange={(e) => setTheme({ margin: Number(e.target.value) })} className="w-full accent-[#0d9488] h-9" /></Row>
-          <Row label="ลายน้ำ"><PillInput value={theme.watermark} onChange={(e) => setTheme({ watermark: e.target.value })} placeholder="ไม่มี" className="h-9 w-full" /></Row>
         </div>
-        <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-          <PillCheckbox label="มุมโค้ง" checked={theme.rounded} onChange={(e) => setTheme({ rounded: e.target.checked })} />
-          <PillCheckbox label="เลขหน้า" checked={theme.showPageNumber} onChange={(e) => setTheme({ showPageNumber: e.target.checked })} />
-          <PillCheckbox label="ป้ายไทย/อังกฤษ" checked={theme.bilingual} onChange={(e) => setTheme({ bilingual: e.target.checked })} />
-          <PillCheckbox label="แบบฟอร์ม (ป้าย : ค่า)" checked={theme.formStyle} onChange={(e) => setTheme({ formStyle: e.target.checked })} />
-        </div>
-      </Section>
-      <Section title="หัวกระดาษ" doc={docName} open={!!letterhead || isLetter}>
-        <PillSelect value={per.letterhead || ""} onChange={(e) => assignLetterhead(docType, String(e.target.value) || undefined)} className="h-9 w-full">
-          <option value="">{isLetter ? "หัวหนังสือมาตรฐาน (กึ่งกลาง)" : "ตามแม่แบบ (อัตโนมัติ)"}</option>
-          {shown.letterheads.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-        </PillSelect>
-        {shown.letterheads.length < 6 && (
-          <PillSelect value="" onChange={(e) => e.target.value && createLetterhead(e.target.value as any)} className="h-9 w-full">
-            <option value="">+ สร้างหัวกระดาษใหม่…</option>
-            {LETTERHEAD_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </PillSelect>
-        )}
-        {letterhead && (
-          <>
-            <div className="flex gap-1.5">
-              <PillInput value={letterhead.name} onChange={(e) => setLetterhead({ ...letterhead, name: e.target.value.slice(0, 40) })} className="h-8 flex-1 text-sm" aria-label="ชื่อหัวกระดาษ" />
-              <PillButton variant="ghost" className="h-8 px-2.5 text-xs text-danger" onClick={() => deleteLetterhead(letterhead)}><Trash2 size={13} /></PillButton>
-            </div>
-            <p className="text-[11.5px] text-white/50">ใช้หัวนี้กับ <Scope /> ที่เลือก:</p>
-            <div className="flex flex-wrap gap-1">
-              {TARGETS.map((t) => {
-                const on = shown.perDoc[t.type]?.letterhead === letterhead.id;
-                return <button key={t.type} type="button" onClick={() => assignLetterhead(t.type, on ? undefined : letterhead.id)} className={cn("h-7 px-2 rounded-full text-[11.5px] border", on ? "border-purple-400/60 bg-purple-500/15 text-purple-100" : "border-white/10 text-white/50 hover:text-white")}>{SHORT[t.type]}</button>;
-              })}
-            </div>
-            <p className="text-[11px] text-white/40">แก้หัวกระดาษบนกระดาษได้เลย (หัวข้อสีม่วง) — เปลี่ยนทุกเอกสารที่ใช้หัวนี้</p>
-          </>
-        )}
-      </Section>
-      {!isLetter ? (
-        <Section title="ชื่อและข้อความ" doc={docName} open={false}>
-          <Row label="ชื่อเอกสาร"><PillInput value={per.title || ""} placeholder={def.title} onChange={(e) => setPer({ title: e.target.value })} className="h-9 w-full" /></Row>
-          <Row label="ชื่อภาษาอังกฤษ"><PillInput value={per.titleEn ?? ""} placeholder={def.titleEn} onChange={(e) => setPer({ titleEn: e.target.value })} className="h-9 w-full" /></Row>
-          <Row label="ข้อความท้ายเอกสาร (เพิ่ม)"><PillInput value={per.extraNote || ""} placeholder="เช่น เงื่อนไขการรับประกัน" onChange={(e) => setPer({ extraNote: e.target.value })} className="h-9 w-full" /></Row>
-          <p className="text-[11px] text-white/40">คอลัมน์ตารางและช่องลงนาม ตั้งที่แท็บ &quot;ข้อมูล&quot;</p>
-        </Section>
-      ) : (
-        <p className="text-[12px] text-white/50 leading-relaxed px-1">หนังสือ (ขอเข้าพื้นที่ · ส่งมอบงาน · ขอคืนหลักประกัน): แก้ได้เฉพาะหัวกระดาษและฟอนต์ เนื้อหาเป็นรูปแบบหนังสือราชการ</p>
-      )}
-      {canEdit && <PillButton variant="ghost" className="h-8 px-3 text-xs" onClick={async () => { if (await showConfirm("คืนค่าการออกแบบทั้งหมดเป็นค่าเริ่มต้น? (ย้อนกลับได้ก่อนบันทึก)")) change(() => normalizeDesign(null, profile.brandColor)); }}><RotateCcw size={13} /> คืนค่าเริ่มต้นทั้งหมด</PillButton>}
-    </fieldset>
+      </fieldset>
+    </Step>
   );
 
-  const shownTemplates = TEMPLATES.filter((t) => !family || (family === "pick" ? !t.family : t.family === family));
-  const trialBar = trial && (
-    <div className="rounded-xl border border-purple-400/40 bg-purple-500/10 px-3 py-2 flex flex-wrap items-center gap-2">
-      <Sparkles size={15} className="text-purple-200" />
-      <span className="text-[13px] text-white">กำลังลองแม่แบบ <b>&quot;{trial.name}&quot;</b> — ยังไม่ได้ใช้จริง · ใช้กับ <Scope /></span>
-      <div className="ml-auto flex gap-2">
-        <PillButton variant="ghost" className="h-8 px-3 text-xs" onClick={() => setTrial(null)}>ยกเลิก</PillButton>
-        <PillButton variant="confirm" className="h-8 px-4 text-xs" disabled={!canEdit} onClick={() => applyTemplate(trial)}><Check size={13} /> ใช้แม่แบบนี้</PillButton>
-      </div>
-    </div>
+  // ---------- ขั้น 3: ข้อมูลที่แสดง ----------
+  const dataStep = !isLetter && (
+    <Step n={3} title={`ข้อมูลที่แสดงใน${docName}`} scope={<Scope doc={docName} />}>
+      <p className="text-[12px] text-white/55">ติ๊กเฉพาะที่ต้องการ — ตอนพิมพ์ระบบเติมข้อมูลจริงให้เอง · 🔒 กฎหมายกำหนด แสดงเสมอ</p>
+      <DataChecklist groups={groups} onToggle={toggle} canEdit={canEdit} />
+      {signBlock && (
+        <Row label="ชื่อช่องลงนาม (คั่นด้วย , สูงสุด 4 ช่อง)">
+          <PillInput value={(signBlock.labels || []).join(", ")} placeholder={def.signatures.join(", ")} disabled={!canEdit}
+            onChange={(e) => { const l = e.target.value.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 4); setSignLabels(l.length ? l : undefined); }} className="h-9 w-full text-sm" />
+        </Row>
+      )}
+    </Step>
+  );
+
+  // ---------- ขั้น 4: ชื่อเอกสารและข้อความ ----------
+  const textStep = !isLetter ? (
+    <Step n={4} title="ชื่อเอกสารและข้อความ" scope={<Scope doc={docName} />}>
+      <fieldset disabled={!canEdit} className="space-y-2">
+        <div className="grid grid-cols-2 gap-2">
+          <Row label="ชื่อเอกสาร"><PillInput value={per.title || ""} placeholder={def.title} onChange={(e) => setPer({ title: e.target.value })} className="h-9 w-full" /></Row>
+          <Row label="ชื่อภาษาอังกฤษ"><PillInput value={per.titleEn ?? ""} placeholder={def.titleEn} onChange={(e) => setPer({ titleEn: e.target.value })} className="h-9 w-full" /></Row>
+        </div>
+        <Row label="ข้อความท้ายเอกสาร (เพิ่ม)"><PillInput value={per.extraNote || ""} placeholder="เช่น เงื่อนไขการรับประกัน" onChange={(e) => setPer({ extraNote: e.target.value })} className="h-9 w-full" /></Row>
+      </fieldset>
+    </Step>
+  ) : (
+    <GlassCard className="p-3.5 text-[12.5px] text-white/55 leading-relaxed">หนังสือ (ขอเข้าพื้นที่ · ส่งมอบงาน · ขอคืนหลักประกัน): แก้ได้เฉพาะหัวกระดาษ สี และฟอนต์ เนื้อหาเป็นรูปแบบหนังสือราชการ</GlassCard>
+  );
+
+  // ---------- ตั้งค่าเพิ่มเติม (พับไว้) ----------
+  const moreSettings = (
+    <details className="group rounded-2xl border border-white/10 bg-white/[0.02]" open={isLetter}>
+      <summary className="list-none cursor-pointer select-none px-3.5 py-3 text-[13px] font-bold text-white/75 flex items-center gap-2"><span className="text-white/35 group-open:rotate-90 transition-transform">›</span> ตั้งค่าเพิ่มเติม (รูปแบบ · หัวกระดาษ · AI)</summary>
+      <fieldset disabled={!canEdit} className="px-3 pb-3 space-y-2.5">
+        <Section title="รูปแบบส่วนต่าง ๆ" all>
+          <div className="grid grid-cols-2 gap-2">
+            <Row label="ยอดรวม"><PillSelect value={theme.totals} onChange={(e) => setTheme({ totals: e.target.value as any })} className="h-9 w-full"><option value="solid">พื้นสีเต็ม</option><option value="outline">กรอบสี</option><option value="plain">เส้นคั่น</option><option value="grid">ตารางป้าย/ยอด</option></PillSelect></Row>
+            <Row label="กรอบลูกค้า"><PillSelect value={theme.party} onChange={(e) => setTheme({ party: e.target.value as any })} className="h-9 w-full"><option value="accent-bar">แถบสีซ้าย</option><option value="boxed">กรอบเต็ม</option><option value="plain">เส้นใต้</option><option value="none">ไม่มีกรอบ</option></PillSelect></Row>
+            <Row label="ช่องลงนาม"><PillSelect value={theme.signatures} onChange={(e) => setTheme({ signatures: e.target.value as any })} className="h-9 w-full"><option value="line">เส้นลงนาม</option><option value="box">กรอบลงนาม</option></PillSelect></Row>
+            <Row label="ลายน้ำ"><PillInput value={theme.watermark} onChange={(e) => setTheme({ watermark: e.target.value })} placeholder="ไม่มี" className="h-9 w-full" /></Row>
+            <Row label={`ขอบกระดาษ ${theme.margin} pt`}><input type="range" min={20} max={60} step={2} value={theme.margin} onChange={(e) => setTheme({ margin: Number(e.target.value) })} className="w-full accent-[#0d9488] h-9" /></Row>
+          </div>
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+            <PillCheckbox label="มุมโค้ง" checked={theme.rounded} onChange={(e) => setTheme({ rounded: e.target.checked })} />
+            <PillCheckbox label="เลขหน้า" checked={theme.showPageNumber} onChange={(e) => setTheme({ showPageNumber: e.target.checked })} />
+            <PillCheckbox label="ป้ายไทย/อังกฤษ" checked={theme.bilingual} onChange={(e) => setTheme({ bilingual: e.target.checked })} />
+            <PillCheckbox label="แบบฟอร์ม (ป้าย : ค่า)" checked={theme.formStyle} onChange={(e) => setTheme({ formStyle: e.target.checked })} />
+          </div>
+        </Section>
+        {!isLetter && (
+          <Section title="ผังของเอกสารนี้" doc={docName} open={false}>
+            <Row label="เริ่มผังใหม่จากแบบอื่น (เฉพาะเอกสารนี้)">
+              <PillSelect value="" onChange={(e) => { const id = String(e.target.value); if (id) setPer({ free: templateLayout(id, docType, theme) }); }} className="h-9 w-full">
+                <option value="">เลือกผัง…</option>
+                {ARCHETYPES.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </PillSelect>
+            </Row>
+            <PillButton variant="ghost" className="h-8 px-3 text-xs w-full" onClick={async () => {
+              if (!(await showConfirm(`ใช้ผังของ "${def.title}" กับเอกสารทุกชนิด? (ผังเดิมของเอกสารอื่นจะถูกแทนที่ · ย้อนกลับได้)`))) return;
+              change((d) => applyLayoutToAll({ ...d, perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), free: curLayout } } }, docType, DESIGNABLE_DOCS.map((x) => x.type)));
+            }}><Copy size={13} /> ใช้ผังนี้กับทุกเอกสาร</PillButton>
+          </Section>
+        )}
+        <Section title="หัวกระดาษ" doc={docName} open={!!letterhead || isLetter}>
+          <PillSelect value={per.letterhead || ""} onChange={(e) => assignLetterhead(docType, String(e.target.value) || undefined)} className="h-9 w-full">
+            <option value="">{isLetter ? "หัวหนังสือมาตรฐาน (กึ่งกลาง)" : "ตามแม่แบบ"}</option>
+            {shown.letterheads.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </PillSelect>
+          {shown.letterheads.length < 6 && (
+            <PillSelect value="" onChange={(e) => e.target.value && createLetterhead(e.target.value as any)} className="h-9 w-full">
+              <option value="">+ สร้างหัวกระดาษใหม่…</option>
+              {LETTERHEAD_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </PillSelect>
+          )}
+          {letterhead && (
+            <>
+              <div className="flex gap-1.5">
+                <PillInput value={letterhead.name} onChange={(e) => setLetterhead({ ...letterhead, name: e.target.value.slice(0, 40) })} className="h-8 flex-1 text-sm" aria-label="ชื่อหัวกระดาษ" />
+                <PillButton variant="ghost" className="h-8 px-2.5 text-xs text-danger" onClick={() => deleteLetterhead(letterhead)}><Trash2 size={13} /></PillButton>
+              </div>
+              <p className="text-[11.5px] text-white/50">ใช้หัวนี้กับเอกสาร:</p>
+              <div className="flex flex-wrap gap-1">
+                {TARGETS.map((t) => {
+                  const on = shown.perDoc[t.type]?.letterhead === letterhead.id;
+                  return <button key={t.type} type="button" onClick={() => assignLetterhead(t.type, on ? undefined : letterhead.id)} className={cn("h-7 px-2 rounded-full text-[11.5px] border", on ? "border-purple-400/60 bg-purple-500/15 text-purple-100" : "border-white/10 text-white/50 hover:text-white")}>{SHORT[t.type]}</button>;
+                })}
+              </div>
+              <p className="text-[11px] text-white/40">จัดตำแหน่งในหัวกระดาษได้ที่ &quot;ลากวางเอง&quot; (กล่องสีม่วง)</p>
+            </>
+          )}
+        </Section>
+        <Section title="ให้ AI ช่วยออกแบบ" all open={false}>
+          <PillInput value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} placeholder="เช่น ดูหรู ทางการ โทนน้ำเงินเข้ม" className="w-full h-9" />
+          <PillCheckbox label="ใช้สีและรูปทรงจากโลโก้บริษัท" checked={aiUseLogo} onChange={(e) => setAiUseLogo(e.target.checked)} />
+          <PillButton variant="primary" className="h-9 px-4 text-xs w-full" disabled={aiBusy || (!aiPrompt.trim() && !(aiUseLogo && profile.logo))} onClick={runAi}>{aiBusy ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />} ให้ AI ออกแบบสีและรูปแบบ</PillButton>
+        </Section>
+        <PillButton variant="ghost" className="h-8 px-3 text-xs" onClick={async () => { if (await showConfirm("คืนค่าการออกแบบทั้งหมดเป็นค่าเริ่มต้น? (ย้อนกลับได้ก่อนบันทึก)")) change(() => withLayouts(normalizeDesign(null, profile.brandColor))); }}><RotateCcw size={13} /> คืนค่าเริ่มต้นทั้งหมด</PillButton>
+      </fieldset>
+    </details>
   );
 
   return (
     <div className="space-y-3">
-      {/* แถบเอกสาร: ภาพย่อทุกชนิด กดสลับ · ประวัติ · ดูด้วยเอกสารจริง */}
+      {/* แถบเอกสาร: ภาพย่อทุกชนิด กดสลับ · แบบง่าย/ลากวาง · ประวัติ · ดูด้วยเอกสารจริง */}
       <GlassCard className="p-2.5 space-y-2">
         <div className="flex gap-1.5 overflow-x-auto pb-1">
           {TARGETS.map((t) => <DocChip key={t.type} type={t.type} active={docType === t.type} design={stripDesign || shown} profile={profile} onClick={() => setDocType(t.type)} />)}
         </div>
         <div className="flex flex-wrap items-center gap-2 px-1">
+          <div className="flex rounded-full bg-white/5 p-1 border border-white/10">
+            {([["simple", "แบบง่าย", ListChecks], ["canvas", "ลากวางเอง", MousePointerClick]] as const).map(([m, label, I]) => (
+              <button key={m} type="button" onClick={() => setMode(m)} className={cn("h-8 px-4 rounded-full text-[13px] flex items-center gap-1.5", mode === m ? "bg-nexus-teal/20 text-nexus-teal font-bold" : "text-white/55 hover:text-white")}><I size={14} /> {label}</button>
+            ))}
+          </div>
           <span className="text-[12.5px] text-white/70">กำลังแก้: <b className="text-white">{def.title}</b></span>
-          <span className="text-[11.5px] text-white/40 flex items-center gap-1">ป้าย <Scope /> = เปลี่ยนทุกเอกสาร · <Scope doc="เอกสารนี้" /> = เฉพาะเอกสารที่เลือก</span>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {!isLetter && realDocs.length > 0 && (
               <div className="w-[230px]" title="ดูตัวอย่างการออกแบบด้วยเอกสารจริง">
@@ -486,38 +539,63 @@ export function DocumentDesigner() {
         </div>
       </GlassCard>
 
-      <FreeLayoutEditor
-        key={docType}
-        docType={docType}
-        theme={theme}
-        docMeta={def.meta || []}
-        docFields={def.fields || []}
-        layout={per.free || defaultFreeLayout(docType, theme.font, def.meta)}
-        onChange={(free) => setPer({ free })}
-        letterhead={letterhead}
-        onLetterheadChange={setLetterhead}
-        letterOnly={isLetter}
-        defaultColumns={defaultColumns}
-        defaultSignatures={per.signatures?.length ? per.signatures : def.signatures}
-        model={model}
-        canEdit={canEdit && !trial}
-        docTitle={def.title}
-        history={{ undo, redo, canUndo: hist.current.past.length > 0, canRedo: hist.current.future.length > 0 }}
-        panelTabs={[{ id: "tpl", label: "แม่แบบ", content: templatesPanel }, { id: "look", label: "หน้าตา", content: lookPanel }]}
-        per={per}
-        onPer={setPer}
-        hint={trialBar}
-      />
+      {mode === "simple" ? (
+        <div className="flex flex-col xl:flex-row gap-4 items-start">
+          <div className="w-full xl:w-[460px] flex-shrink-0 space-y-3">
+            {templatesStep}
+            {lookStep}
+            {dataStep}
+            {textStep}
+            {moreSettings}
+          </div>
+          <div className="flex-1 min-w-0 w-full space-y-2 xl:sticky xl:top-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-[13px] text-white/70">ตัวอย่าง{docName} (เปลี่ยนทันทีที่แก้)</p>
+              <div className="ml-auto flex gap-2">
+                <PillButton variant="glass" className="h-8 px-3 text-xs" onClick={() => setModal("pdf")}><Eye size={13} /> ดู PDF / พิมพ์</PillButton>
+                {canEdit && <PillButton variant="primary" className="h-8 px-3 text-xs" onClick={() => setMode("canvas")}><MousePointerClick size={13} /> จัดตำแหน่งเอง (ลากวาง)</PillButton>}
+              </div>
+            </div>
+            <PagePreview model={model} />
+          </div>
+        </div>
+      ) : (
+        <FreeLayoutEditor
+          key={docType}
+          docType={docType}
+          theme={theme}
+          docMeta={def.meta || []}
+          docFields={def.fields || []}
+          layout={curLayout}
+          onChange={(free) => setPer({ free })}
+          letterhead={letterhead}
+          onLetterheadChange={setLetterhead}
+          letterOnly={isLetter}
+          defaultColumns={defaultColumns}
+          defaultSignatures={per.signatures?.length ? per.signatures : def.signatures}
+          model={model}
+          canEdit={canEdit}
+          docTitle={def.title}
+          history={{ undo, redo, canUndo: hist.current.past.length > 0, canRedo: hist.current.future.length > 0 }}
+          dataCtx={dataCtx}
+        />
+      )}
 
       {/* บันทึก: ลอยตามเมื่อมีการแก้ (Ctrl+S) */}
       {canEdit && dirty && (
         <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[150] flex items-center gap-2 rounded-full border border-warning/40 bg-[#18181d]/95 backdrop-blur px-3 py-2 shadow-2xl">
           <span className="text-[12.5px] text-warning px-1">ยังไม่บันทึก</span>
+          <PillButton variant="ghost" className="h-8 px-3 text-xs" disabled={!hist.current.past.length} onClick={undo}>ย้อนกลับ</PillButton>
           <PillButton variant="ghost" className="h-8 px-3 text-xs" onClick={async () => { if (await showConfirm("ยกเลิกการแก้ทั้งหมดที่ยังไม่บันทึก?")) change(() => JSON.parse(savedJson)); }}>ยกเลิกการแก้</PillButton>
           <PillButton variant="confirm" className="h-8 px-4 text-xs" disabled={saving} onClick={save}>{saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} บันทึก (Ctrl+S)</PillButton>
         </div>
       )}
 
+      {modal === "pdf" && model && (
+        <Modal title={`ตัวอย่าง${def.title}`} onClose={() => setModal("")} wide>
+          <div className="h-[75vh] flex flex-col"><DocumentPdfViewer model={model} className="flex-1" /></div>
+        </Modal>
+      )}
       {modal === "templates" && (
         <Modal title={`แม่แบบทั้งหมด ${TEMPLATES.length} แบบ — ภาพจาก "${def.title}" ของบริษัท`} onClose={() => setModal("")} wide>
           <div className="flex flex-wrap gap-1">
@@ -526,15 +604,15 @@ export function DocumentDesigner() {
                 className={cn("h-8 px-3 rounded-full text-[12px] border", family === id ? "border-nexus-teal/60 bg-nexus-teal/15 text-nexus-teal" : "border-white/10 text-white/60 hover:text-white")}>{label}</button>
             ))}
           </div>
-          <p className="text-[12px] text-white/50">คลิกแม่แบบเพื่อลองดูบนกระดาษ (ยังไม่ใช้จริง) — ถูกใจแล้วกด &quot;ใช้แม่แบบนี้&quot;</p>
+          <p className="text-[12px] text-white/50">คลิกแม่แบบเพื่อใช้กับทุกเอกสาร — ไม่ถูกใจกด ย้อนกลับ (Ctrl+Z)</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
-            {shownTemplates.map((t) => <TemplateCard key={t.id} t={t} size="lg" active={(trial?.id || design.theme.templateId) === t.id} docType={docType} profile={profile} onPick={() => { setTrial(t); setModal(""); }} />)}
+            {shownTemplates.map((t) => <TemplateCard key={t.id} t={t} size="lg" active={design.theme.templateId === t.id} docType={docType} profile={profile} onPick={() => { if (canEdit) applyTemplate(t); setModal(""); }} />)}
           </div>
         </Modal>
       )}
       {modal === "versions" && (
         <Modal title="ประวัติการออกแบบที่บันทึก" onClose={() => setModal("")}>
-          <p className="text-[12px] text-white/50">เปิดเวอร์ชันเก่าเพื่อดูบนกระดาษ แล้วกด &quot;บันทึก&quot; ถ้าต้องการใช้ (เก็บล่าสุด 20 ครั้ง)</p>
+          <p className="text-[12px] text-white/50">เปิดเวอร์ชันเก่าเพื่อดู แล้วกด &quot;บันทึก&quot; ถ้าต้องการใช้ (เก็บล่าสุด 20 ครั้ง)</p>
           {!versions ? <div className="py-6 flex justify-center"><Loader2 size={16} className="animate-spin text-white/40" /></div>
             : !versions.length ? <p className="text-[13px] text-white/60 py-4 text-center">ยังไม่มีประวัติ — จะเริ่มเก็บตั้งแต่การบันทึกครั้งถัดไป</p>
             : (

@@ -3,17 +3,19 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
-  AlertTriangle, AlignVerticalDistributeCenter, ArrowDown, ArrowLeftRight, ArrowUp, ArrowUpDown, CheckCircle2, Copy, CopyPlus, Database, Eye, ImagePlus, ListChecks, Loader2, Lock, Magnet, Minus, MousePointer2,
+  AlertTriangle, AlignVerticalDistributeCenter, ArrowDown, ArrowLeftRight, ArrowUp, ArrowUpDown, CheckCircle2, Copy, CopyPlus, Database, Eye, ImagePlus, Loader2, Lock, Magnet, Minus, MousePointer2,
   Group as GroupIcon, Pin, PinOff, Redo2, Split, Square, Trash2, Undo2, Ungroup, AlignLeft, AlignCenter, AlignRight, Wand2, X, Rows3,
+  Bold, Type, Stamp as StampIcon, MoreHorizontal, Image as ImageIcon, TextCursorInput, BringToFront, SendToBack, ChevronLeft, PanelBottom,
 } from "lucide-react";
+import { DataChecklist } from "./DataChecklist";
+import { dataGroups, toggleData, type DataContext } from "@/lib/documents/design-data";
 import { GlassCard, PillButton, PillCheckbox, PillInput, PillSelect, cn } from "@/components/ui/Base";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import type { DocumentModel } from "@/lib/documents/model";
 import {
-  A4, BLOCK_LABELS, BLOCK_PARTS, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, TEMPLATES, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns,
-  type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, type Letterhead, type PerDocDesign,
+  A4, BLOCK_LABELS, BLOCK_PARTS, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns,
+  type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, type Letterhead,
 } from "@/lib/documents/design";
-import { templateLayout } from "@/lib/documents/layout-templates";
 import { usePdfPageImage } from "./usePdfPageImage";
 
 /**
@@ -43,7 +45,6 @@ const ALIGN_ICON = { left: AlignLeft, center: AlignCenter, right: AlignRight } a
 type Zone = "head" | "doc";
 type Item = { key: string; zone: Zone; b: FreeBlock };
 type Guides = { x: number[]; y: number[] };
-type Place = "hidden" | "meta" | "separate";
 
 async function shrinkImage(file: File): Promise<string> {
   const url = URL.createObjectURL(file);
@@ -56,13 +57,6 @@ async function shrinkImage(file: File): Promise<string> {
   } finally { URL.revokeObjectURL(url); }
 }
 
-/** ขั้นตอนสร้างฟอร์ม (กดเพื่อไปยังแท็บที่เกี่ยวข้อง) */
-const STEPS = [
-  { title: "เลือกแม่แบบ", hint: "แท็บ \"แม่แบบ\": คลิกแม่แบบเพื่อลองดูบนกระดาษ ถูกใจกด \"ใช้แม่แบบนี้\" — ใช้กับทุกเอกสารของบริษัท ปรับสีได้ที่แท็บ \"หน้าตา\"" },
-  { title: "เลือกข้อมูลที่แสดง", hint: "แท็บ \"ข้อมูล\": ติ๊กข้อมูลที่ต้องการแสดง ทุกช่องดึงจากฐานข้อมูลเอง (บริษัท ลูกค้า รายการ ยอดเงิน) ไม่ต้องพิมพ์ค่าลงกระดาษ" },
-  { title: "จัดตำแหน่งและแต่ง", hint: "คลิกหัวข้อบนกระดาษแล้วลากย้าย/ปรับขนาด วาดเส้นหรือกรอบจากแถบเครื่องมือ แต่งตัวอักษร สี มุม ที่แท็บ \"แก้ไข\" · Ctrl+Z ย้อนกลับได้เสมอ" },
-  { title: "ตรวจและบันทึก", hint: "แท็บ \"ตรวจ\": ระบบหาหัวข้อทับกัน ชิดขอบ หรือขาดข้อมูลที่กฎหมายกำหนด คลิกเพื่อไปแก้ แล้วกด \"บันทึก\" (Ctrl+S) ด้านบน" },
-];
 const Sep = () => <span className="w-px h-6 bg-white/10 mx-0.5" />;
 /** กล่องที่แยกหัวข้อเป็นช่องย่อยได้ */
 const SPLITTABLE: BlockKind[] = ["seller", "party", "meta", "title"];
@@ -98,7 +92,7 @@ function nearest(values: number[], targets: number[]): { delta: number; at: numb
   return best;
 }
 
-export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead, onLetterheadChange, letterOnly, model, canEdit, docTitle, defaultColumns, defaultSignatures, docMeta, docFields, history, panelTabs, per, onPer, hint }: {
+export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead, onLetterheadChange, letterOnly, model, canEdit, docTitle, defaultColumns, defaultSignatures, docMeta, docFields, history, dataCtx }: {
   docType: string; theme: DocTheme;
   layout: FreeLayout; onChange: (l: FreeLayout) => void;
   letterhead: Letterhead | null; onLetterheadChange: (l: Letterhead) => void;
@@ -110,24 +104,19 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   docMeta: string[]; docFields: { key: string; label: string }[];
   /** ย้อนกลับ/ทำซ้ำทั้งการออกแบบ (หน้าหลักเก็บประวัติ — รวมการเปลี่ยนแม่แบบ/สี) */
   history: { undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean };
-  /** แท็บเพิ่มของแผงขวา (แม่แบบ · หน้าตา) วางก่อนแท็บแก้ไข/ข้อมูล/ตรวจ */
-  panelTabs: { id: string; label: string; content: React.ReactNode }[];
-  /** ค่าเฉพาะเอกสารนี้ (คอลัมน์/ช่องลงนามตอนจัดหน้าอัตโนมัติ) */
-  per: PerDocDesign; onPer: (patch: Partial<PerDocDesign>) => void;
-  /** แถบข้อความเหนือกระดาษ (เช่น กำลังลองแม่แบบ) */
-  hint?: React.ReactNode;
+  /** รายการ "ข้อมูลที่แสดงในเอกสาร" ของเอกสารชนิดนี้ */
+  dataCtx: DataContext;
 }) {
   const font = theme.font;
   const [sel, setSel] = useState<string[]>([]);
-  const firstTab = panelTabs[0]?.id || "block";
-  const [tab, setTab] = useState<string>(!letterOnly && layout.enabled ? "block" : firstTab);
-  /** ขั้นตอน 4 ขั้น ผูกกับแท็บ: แม่แบบ → ข้อมูล → แก้ไข → ตรวจ */
-  const step = tab === "data" ? 2 : tab === "block" || tab === "look" ? 3 : tab === "check" ? 4 : 1;
-  const goStep = (n: number) => setTab(n === 2 ? "data" : n === 3 ? "block" : n === 4 ? "check" : firstTab);
-  // วิธีใช้ 4 ขั้น: พับเก็บได้ (จำไว้ในเครื่อง)
-  const [stepsOpen, setStepsOpen] = useState(true);
-  useEffect(() => { try { if (localStorage.getItem("nexus.designer.steps") === "0") setStepsOpen(false); } catch { /* ไม่มีที่เก็บก็แสดงตามปกติ */ } }, []);
-  const toggleSteps = (open: boolean) => { setStepsOpen(open); try { localStorage.setItem("nexus.designer.steps", open ? "1" : "0"); } catch { /* ไม่เป็นไร */ } };
+  // พิมพ์ข้อความบนกระดาษ (ดับเบิลคลิกกล่องข้อความ) · เมนูกล่องข้อมูล · ตัวเลือกการวาง (กริด/ดูดติด)
+  const [editing, setEditing] = useState<string | null>(null);
+  const [infoMenu, setInfoMenu] = useState(false);
+  const [advOpen, setAdvOpen] = useState(false);
+  // ความกว้างจริงของแถบเครื่องมือลอย (ไม่ให้ล้นขอบกระดาษ)
+  const barRef = useRef<HTMLDivElement>(null);
+  const [barW, setBarW] = useState(360);
+  useEffect(() => { const w = barRef.current?.offsetWidth; if (w && Math.abs(w - barW) > 2) setBarW(w); });
   const [showPdf, setShowPdf] = useState(false);
   const [grid, setGrid] = useState(10);
   const [gridMode, setGridMode] = useState<"drag" | "always" | "off">("drag");
@@ -261,7 +250,6 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     for (const k of ["hide", "partyStyle", "cols", "colSpec", "labels"]) delete n[k];
     applyMany(new Map([[it.key, null]]), [{ zone: it.zone, b: n }]);
     setSel([`${it.zone === "head" ? "h" : "d"}:${n.id}`]);
-    setTab("data");
   };
 
   /** ทำสำเนากล่องที่เลือก (กล่องที่มีได้ชุดเดียว เช่น ตาราง ยอดรวม ทำซ้ำไม่ได้) */
@@ -367,7 +355,6 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       : newBlock("rect", { x, y, w: Math.max(4, Math.abs(dx)), h: Math.max(4, Math.abs(dy)), border: "@primary", radius: 0 });
     applyMany(new Map(), [{ zone: addZone, b }]);
     setSel([`${addZone === "head" ? "h" : "d"}:${b.id}`]);
-    setTab("block");
     setTool("select");
   };
 
@@ -380,7 +367,6 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     else if (mode === "size") next = [it.key];
     else if (!sel.includes(it.key)) next = members; // คลิกสมาชิกกลุ่ม = เลือกทั้งกลุ่ม (ดับเบิลคลิกเพื่อแก้กล่องเดียว)
     setSel(next);
-    setTab("block");
     if (!canEdit || !next.includes(it.key)) return;
     const keys = (mode === "size" ? [it.key] : next).filter((k) => !byKey.get(k)?.b.locked);
     if (!keys.length) return; // กล่องที่ล็อกไว้: เลือกได้แต่ไม่ขยับ
@@ -417,7 +403,6 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     let p = start0;
     applyMany(new Map(sorted.map((i) => { const n = { ...i.b, [axis]: p }; p += i.b[size] + gap; return [i.key, n]; })));
   };
-  const sameSize = (dim: "w" | "h") => { if (primary && multi) applyMany(new Map(selected.map((i) => [i.key, { ...i.b, [dim]: primary.b[dim] }]))); };
 
   // ---------- เพิ่ม/ย้ายกล่อง ----------
   const addZone: Zone = letterOnly || !bodyOn ? "head" : "doc";
@@ -439,9 +424,26 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     const b = newBlock("info", { fields, w: id === "doc" ? 200 : 260, h: Math.max(30, (fields.length || 2) * row + 8), ...(id === "seller" || id === "customer" ? { emphasizeFirst: true } : {}), ...(id === "doc" ? { labelWidth: 60 } : {}) });
     applyMany(new Map(), [{ zone: addZone, b }]);
     setSel([`${addZone === "head" ? "h" : "d"}:${b.id}`]);
-    setTab("data");
   };
-  const add = (kind: BlockKind) => { const b = newBlock(kind); applyMany(new Map(), [{ zone: addZone, b }]); setSel([`${addZone === "head" ? "h" : "d"}:${b.id}`]); setTab("block"); };
+  /** ตำแหน่ง (pt) ของจุดกึ่งกลางกระดาษที่มองเห็นบนจอ */
+  const visibleCenter = () => {
+    const r = paperRef.current?.getBoundingClientRect();
+    if (!r) return { x: A4.w / 2, y: 200 };
+    return { x: A4.w / 2, y: Math.max(40, Math.min(A4.h - 60, (window.innerHeight / 2 - r.top) / S)) };
+  };
+  /** เพิ่มกล่องให้กึ่งกลางอยู่ที่จุด (pt) */
+  const addAt = (kind: string, at: { x: number; y: number }) => {
+    let b: FreeBlock;
+    if (kind.startsWith("info:")) { addInfo(kind.slice(5)); return; }
+    if (kind === "line") b = newBlock("line", { w: 200, h: 1, color: "@primary" });
+    else if (kind === "rect") b = newBlock("rect", { w: 200, h: 80, border: "@primary", radius: 0 });
+    else b = newBlock(kind as BlockKind);
+    b = { ...b, x: Math.round(at.x - b.w / 2), y: Math.round(at.y - b.h / 2) };
+    applyMany(new Map(), [{ zone: addZone, b }]);
+    setSel([`${addZone === "head" ? "h" : "d"}:${b.id}`]);
+    if (kind === "text") setEditing(`${addZone === "head" ? "h" : "d"}:${b.id}`);
+  };
+  const add = (kind: BlockKind) => { const b = newBlock(kind); applyMany(new Map(), [{ zone: addZone, b }]); setSel([`${addZone === "head" ? "h" : "d"}:${b.id}`]); };
   /** ย้ายกล่องระหว่างหัวกระดาษ (ใช้ร่วม) กับเนื้อเอกสาร */
   const moveZone = (it: Item) => {
     if (!letterhead) return;
@@ -471,42 +473,6 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     ...docMeta.map((l) => ({ key: `m:${l}`, label: l })), ...docFields.map((f) => ({ key: `f:${f.key}`, label: f.label })),
     ...SUB_FIELDS,
   ];
-  const placeOf = (key: string): Place => {
-    if (items.some((i) => i.b.kind === "field" && i.b.field === key)) return "separate";
-    if (!meta) return "hidden";
-    const inMeta = key.startsWith("f:") ? (meta.b.fields || []).includes(key) : !(meta.b.hide || []).includes(key);
-    return inMeta ? "meta" : "hidden";
-  };
-  const setPlace = (key: string, place: Place) => {
-    const next = new Map<string, FreeBlock | null>();
-    const adds: { zone: Zone; b: FreeBlock }[] = [];
-    for (const i of items) if (i.b.kind === "field" && i.b.field === key && place !== "separate") next.set(i.key, null);
-    if (meta) {
-      const hide = new Set(meta.b.hide || []), fields = new Set(meta.b.fields || []);
-      if (key.startsWith("f:")) { if (place === "meta") fields.add(key); else fields.delete(key); }
-      else if (place === "meta") hide.delete(key); else hide.add(key);
-      next.set(meta.key, { ...meta.b, hide: [...hide], fields: [...fields] });
-    }
-    if (place === "separate" && !items.some((i) => i.b.kind === "field" && i.b.field === key)) {
-      const count = items.filter((i) => i.b.kind === "field").length;
-      const anchor = meta?.b;
-      adds.push({ zone: meta?.zone || addZone, b: newBlock("field", { field: key, x: anchor?.x ?? 360, y: Math.min(A4.h - 20, (anchor ? anchor.y + anchor.h + 4 : 150) + count * 20), w: anchor?.w ?? 200, h: 18 }) });
-    }
-    applyMany(next, adds);
-  };
-  const togglePart = (kind: BlockKind, part: string, show: boolean) => {
-    const it = firstOf(kind);
-    if (!it) return;
-    const hide = new Set(it.b.hide || []);
-    if (show) hide.delete(part); else hide.add(part);
-    update(it, { hide: [...hide] });
-  };
-  const partShown = (kind: BlockKind, part: string) => { const it = firstOf(kind); return !!it && !(it.b.hide || []).includes(part); };
-  const presence = (kind: BlockKind, on: boolean) => {
-    if (on) { if (!firstOf(kind)) applyMany(new Map(), [{ zone: addZone, b: newBlock(kind) }]); }
-    else applyMany(new Map(items.filter((i) => i.b.kind === kind).map((i) => [i.key, null])));
-  };
-  const totalRows = (model?.totals || []).filter((r) => !r.strong && !r.label.startsWith("ภาษีมูลค่าเพิ่ม") && r.label !== "จำนวนเงินรวมทั้งสิ้น");
 
   /** เลือกสี: สีของธีม (เปลี่ยนชุดสีแล้วเปลี่ยนตาม — แนะนำ) หรือสีกำหนดเอง */
   const colorRow = (it: Item, label: string, key: "color" | "bg" | "border" | "headBg" | "lineColor") => {
@@ -531,18 +497,6 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   };
   const numInput = (it: Item, key: "x" | "y" | "w" | "h") => (
     <PillInput inputMode="decimal" value={Math.round(it.b[key] * 10) / 10} onChange={(e) => update(it, { [key]: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 } as any)} className="h-8 w-full text-sm font-mono text-right" />
-  );
-  const placeSelect = (k: string, locked: boolean) => (
-    <div className="w-[128px] flex-shrink-0">
-      <PillSelect value={placeOf(k) === "hidden" && locked ? "meta" : placeOf(k)} disabled={!canEdit || !meta} onChange={(e) => setPlace(k, e.target.value as Place)} className="h-7 w-full text-[12px]">
-        {!locked && <option value="hidden">ไม่แสดง</option>}
-        <option value="meta">ในกล่องเลขที่</option>
-        <option value="separate">กล่องแยก</option>
-      </PillSelect>
-    </div>
-  );
-  const check = (label: string, checked: boolean, onChange: (v: boolean) => void, disabled = false) => (
-    <PillCheckbox key={label} label={label} checked={checked} disabled={disabled || !canEdit} onChange={(e) => onChange(e.target.checked)} />
   );
 
   const textRef = useRef<HTMLTextAreaElement>(null);
@@ -728,7 +682,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           </div>
         )}
         {(b.kind === "meta" || b.kind === "totals") && (
-          <button type="button" onClick={() => setTab("data")} className="text-[12px] text-nexus-teal hover:underline flex items-center gap-1"><ListChecks size={13} /> เลือกแถวที่แสดงในแท็บ &quot;ข้อมูลในเอกสาร&quot;</button>
+          <div className="space-y-1"><p className="text-[11.5px] font-bold text-white/70">แถวที่แสดง</p><DataChecklist compact canEdit={canEdit} groups={groups.filter((g) => g.id === (b.kind === "meta" ? "doc" : "totals"))} onToggle={toggle} /></div>
         )}
 
         {b.kind === "items" && (
@@ -765,7 +719,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
 
         {b.kind === "signatures" && (
           <>
-            <button type="button" onClick={() => setTab("data")} className="text-[12px] text-nexus-teal hover:underline flex items-center gap-1"><ListChecks size={13} /> ตั้งชื่อช่องลงนามที่แท็บ &quot;ข้อมูล&quot;</button>
+            <Field label="ชื่อช่องลงนาม (คั่นด้วย , สูงสุด 4 ช่อง)">{sigInput(b.labels || [], (v) => (v ? update(it, { labels: v }) : unset(it, "labels")))}</Field>
             <Field label={`ระยะห่างระหว่างช่อง ${b.gap ?? 16} pt (เว้นกลางวางโลโก้/ตราประทับได้)`}>
               <input type="range" min={0} max={300} step={2} value={b.gap ?? 16} onChange={(e) => update(it, { gap: Number(e.target.value) })} className="w-full accent-[#0d9488] h-8" />
             </Field>
@@ -849,104 +803,13 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     );
   };
 
-  const itemsBlock = firstOf("items");
-  const totalsBlock = firstOf("totals");
-  const infoItems = items.filter((i) => i.b.kind === "info");
-  const activeInfo = primary?.b.kind === "info" ? primary : infoItems[0] || null;
-  const autoCols = (defaultColumns as ItemColumn[]);
   const sigInput = (value: string[], onSet: (v: string[] | undefined) => void) => (
     <PillInput value={value.join(", ")} placeholder={defaultSignatures.join(", ")} disabled={!canEdit}
       onChange={(e) => { const l = e.target.value.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 4); onSet(l.length ? l : undefined); }} className="h-8 w-full text-sm" />
   );
-  const dataPanel = !bodyOn ? (
-    <div className="space-y-2.5">
-      <Group title="ตารางรายการ" source="ดึงจาก รายการสินค้า/บริการในเอกสาร">
-        <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-          {ITEM_COLUMNS.filter((c) => ["code", "unit", "discount", "price"].includes(c.key) || autoCols.includes(c.key)).map((c) => check(c.label, autoCols.includes(c.key) || (!["code", "unit", "discount", "price"].includes(c.key)),
-            (v) => onPer({ hideColumns: v ? (per.hideColumns || []).filter((k) => k !== c.key) : [...(per.hideColumns || []), c.key] }), !["code", "unit", "discount", "price"].includes(c.key)))}
-        </div>
-      </Group>
-      <Group title="ช่องลงนาม" source="ชื่อช่อง คั่นด้วย , (สูงสุด 4 ช่อง)">
-        {sigInput(per.signatures || [], (v) => onPer({ signatures: v }))}
-      </Group>
-      <div className="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] p-2.5 text-[12px] text-white/65 leading-relaxed space-y-1.5">
-        <p>เลือกหัวข้ออื่น (เลขที่/วันที่ แถวข้อมูล ผู้ติดต่อ แถวยอดเงิน ฯลฯ) ได้เมื่อจัดตำแหน่งเอง</p>
-        {canEdit && <PillButton variant="glass" className="h-8 px-3 text-xs" onClick={() => commitLayout(layout.blocks.length ? { ...layout, enabled: true } : { ...defaultFreeLayout(docType, font, docMeta), enabled: true })}>เริ่มจัดตำแหน่งเอง</PillButton>}
-      </div>
-    </div>
-  ) : (
-    <div className="space-y-2.5 max-h-[760px] overflow-y-auto pr-1">
-      <div className="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] p-2.5 text-[11.5px] text-white/65 leading-relaxed">
-        <p className="font-bold text-sky-200 flex items-center gap-1"><Database size={12} /> ทุกช่องเชื่อมฐานข้อมูลอัตโนมัติ</p>
-        ติ๊กเฉพาะข้อมูลที่ต้องการแสดง ตอนพิมพ์ระบบเติมข้อมูลจริงของเอกสารนั้นให้เอง ไม่ต้องพิมพ์ค่าลงผัง · เลขที่/วันที่/แถวข้อมูล เลือกให้อยู่ในกล่องเลขที่ หรือแยกเป็นกล่องลากวางเองได้ · 🔒 กฎหมายกำหนด
-      </div>
-      <Group title="กล่องข้อมูล" source="เลือกกล่อง แล้วติ๊กหัวข้อที่จะแสดง · เรียงลำดับ · ตั้งชื่อเองได้">
-        {infoItems.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {infoItems.map((i, n) => (
-              <button key={i.key} type="button" onClick={() => setSel([i.key])}
-                className={cn("h-7 px-2.5 rounded-full border text-[11.5px] max-w-full truncate", activeInfo?.key === i.key ? "border-nexus-teal/60 bg-nexus-teal/15 text-white" : "border-white/10 text-white/60 hover:text-white")}>
-                {n + 1}. {(i.b.fields || []).length ? (i.b.names?.[i.b.fields![0]] || fieldLabel(i.b.fields![0])) : "ว่าง"}{(i.b.fields || []).length > 1 ? ` +${i.b.fields!.length - 1}` : ""}
-              </button>
-            ))}
-          </div>
-        )}
-        {canEdit && (
-          <PillSelect value="" onChange={(e) => e.target.value && addInfo(String(e.target.value))} className="h-8 w-full text-[12px]">
-            <option value="">+ สร้างกล่องข้อมูลใหม่…</option>
-            {INFO_PRESETS.filter((p) => p.id !== "extra" || docFields.length).map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-          </PillSelect>
-        )}
-        {activeInfo ? <div className="rounded-xl border border-nexus-teal/25 bg-nexus-teal/[0.04] p-2.5">{infoEditor(activeInfo)}</div>
-          : <p className="text-[11.5px] text-white/45">ยังไม่มีกล่องข้อมูล — สร้างใหม่ หรือเลือกกล่องผู้ขาย/ลูกค้า/เลขที่ แล้วกด &quot;เปลี่ยนเป็นกล่องข้อมูล&quot;</p>}
-      </Group>
-      <Group title="ข้อมูลเอกสาร" source={`ดึงจาก ${docTitle} ที่บันทึกในระบบ`}>
-        <p className="text-[12px] text-white/50">ชื่อเอกสาร 🔒</p>
-        {check("ชื่อภาษาอังกฤษ", partShown("title", "en"), (v) => togglePart("title", "en", v), !firstOf("title"))}
-        {check("ป้ายต้นฉบับ/สำเนา", partShown("title", "copy"), (v) => togglePart("title", "copy", v), !firstOf("title"))}
-        {fieldOptions.filter((o) => !SUB_FIELDS.some((s) => s.key === o.key)).map((o) => (
-          <div key={o.key} className="flex items-center justify-between gap-2">
-            <span className="text-[12.5px] text-white/80 truncate">{o.label}{o.key === "number" || o.key === "date" ? " 🔒" : ""}</span>
-            {placeSelect(o.key, o.key === "number" || o.key === "date")}
-          </div>
-        ))}
-      </Group>
-      <Group title="ผู้ขาย (บริษัท)" source="ดึงจาก ตั้งค่า › ข้อมูลนิติบุคคล">
-        {check("โลโก้", !!firstOf("logo"), (v) => presence("logo", v))}
-        {check("ชื่อภาษาอังกฤษ", partShown("seller", "nameEn"), (v) => togglePart("seller", "nameEn", v))}
-        {check("โทร · อีเมล · เว็บไซต์", partShown("seller", "contact"), (v) => togglePart("seller", "contact", v))}
-        <p className="text-[11px] text-white/40">ชื่อ ที่อยู่ เลขผู้เสียภาษี สาขา 🔒</p>
-      </Group>
-      <Group title="ลูกค้า / คู่ค้า" source="ดึงจาก ลูกค้าที่เลือกในเอกสาร (ฐานข้อมูลลูกค้า)">
-        {check("ชื่อผู้ติดต่อ", partShown("party", "contact"), (v) => togglePart("party", "contact", v))}
-        {check("โทรศัพท์", partShown("party", "phone"), (v) => togglePart("party", "phone", v))}
-        {check("อีเมล", partShown("party", "email"), (v) => togglePart("party", "email", v))}
-        <p className="text-[11px] text-white/40">ชื่อ ที่อยู่ เลขผู้เสียภาษี สาขา 🔒</p>
-      </Group>
-      {itemsBlock && (
-        <Group title="ตารางรายการ" source="ดึงจาก รายการสินค้า/บริการในเอกสาร">
-          {columnsEditor(itemsBlock)}
-          {!resolveColumns(itemsBlock.b, defaultColumns as ItemColumn[]).some((x) => x.key === "detail") && check("รายละเอียดใต้รายการ", partShown("items", "detail"), (v) => togglePart("items", "detail", v))}
-          {check("หัวข้อหมวด", partShown("items", "heading"), (v) => togglePart("items", "heading", v))}
-        </Group>
-      )}
-      {docHasAmounts(docType) && (
-        <Group title="ยอดเงิน" source="คำนวณอัตโนมัติจากรายการ ส่วนลด และภาษี">
-          {totalRows.map((r) => check(r.label, !!totalsBlock && !(totalsBlock.b.hide || []).includes(`t:${r.label}`),
-            (v) => totalsBlock && update(totalsBlock, { hide: v ? (totalsBlock.b.hide || []).filter((k) => k !== `t:${r.label}`) : [...(totalsBlock.b.hide || []), `t:${r.label}`] }), !totalsBlock))}
-          <p className="text-[11px] text-white/40">ภาษีมูลค่าเพิ่ม · ยอดรวมทั้งสิ้น 🔒 · แถวส่วนลด/หัก ณ ที่จ่าย แสดงเฉพาะเอกสารที่มี</p>
-          {check("จำนวนเงินตัวอักษร", !!firstOf("words"), (v) => presence("words", v))}
-        </Group>
-      )}
-      <Group title="ท้ายเอกสาร" source="หมายเหตุจากเอกสาร · บัญชีรับเงินจากข้อมูลนิติบุคคล">
-        {check("หมายเหตุ", !!firstOf("notes"), (v) => presence("notes", v))}
-        {check("ข้อมูลการชำระเงิน (บัญชีธนาคาร)", !!firstOf("payment"), (v) => presence("payment", v))}
-        {check("ช่องลงนาม", !!firstOf("signatures"), (v) => presence("signatures", v))}
-        {check("บรรทัดวันที่ใต้ลายเซ็น", partShown("signatures", "date"), (v) => togglePart("signatures", "date", v), !firstOf("signatures"))}
-        {firstOf("signatures") && <Field label="ชื่อช่องลงนาม (คั่นด้วย , สูงสุด 4 ช่อง)">{sigInput(firstOf("signatures")!.b.labels || [], (v) => (v ? update(firstOf("signatures")!, { labels: v }) : unset(firstOf("signatures")!, "labels")))}</Field>}
-      </Group>
-    </div>
-  );
+  // ---------- ข้อมูลที่แสดง (รายการติ๊กเดียว ใช้ร่วมกับหน้าแบบง่าย) ----------
+  const groups = letterOnly ? [] : dataGroups(layout, { ...dataCtx, head: letterhead?.blocks });
+  const toggle = (key: string, on: boolean) => commitLayout(toggleData(layout, key, on, { ...dataCtx, head: letterhead?.blocks }));
 
   // ---------- ชั้นของกล่อง (บนสุดอยู่บน) ----------
   const nameOf = (b: FreeBlock) => `${BLOCK_LABELS[b.kind]}${b.kind === "info" && b.fields?.length ? ` · ${fieldLabel(b.fields[0])}` : ""}${b.kind === "field" ? ` · ${fieldOptions.find((f) => f.key === b.field)?.label || ""}` : b.kind === "text" ? ` · ${(b.text || "").slice(0, 18)}` : ""}`;
@@ -1000,7 +863,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       <Group title={issues.length ? `พบ ${issues.length} จุดที่ควรแก้` : "ผังเรียบร้อย"}>
         {!issues.length && <p className="text-[12px] text-white/55">ไม่มีกล่องทับกันหรือล้นขอบ พร้อมบันทึก</p>}
         {issues.map((x, i) => (
-          <button key={i} type="button" onClick={() => { setSel(x.keys); setTab("block"); }} className="w-full text-left text-[12px] text-warning hover:text-white flex items-start gap-1.5">
+          <button key={i} type="button" onClick={() => { setSel(x.keys); }} className="w-full text-left text-[12px] text-warning hover:text-white flex items-start gap-1.5">
             <AlertTriangle size={13} className="mt-0.5 flex-shrink-0" /> <span>{x.text}</span>
           </button>
         ))}
@@ -1009,7 +872,6 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     </div>
   );
 
-  const tabs = [...panelTabs.map((t) => ({ id: t.id, label: t.label })), { id: "block", label: "แก้ไข" }, ...(letterOnly ? [] : [{ id: "data", label: "ข้อมูล" }]), { id: "check", label: issues.length ? `ตรวจ (${issues.length})` : "ตรวจ" }];
   /** จัดหน้าอัตโนมัติ → คลิกบนกระดาษ: เปิดจัดตำแหน่งเอง (ผังเดิมหรือผังมาตรฐาน) แล้วเลือกหัวข้อที่คลิก */
   const convertAt = (e: React.PointerEvent) => {
     const r = paperRef.current!.getBoundingClientRect();
@@ -1018,107 +880,201 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     commitLayout(lay);
     const hit = lay.blocks.filter((b) => !headKinds.has(b.kind) && x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h).sort((a, b) => a.w * a.h - b.w * b.h)[0];
     setSel(hit ? [`d:${hit.id}`] : []);
-    setTab("block");
   };
 
   const gridPx = grid * S;
   const showGrid = gridMode === "always" || (gridMode === "drag" && moving);
   const can = canEdit && selected.length > 0;
 
-  return (
-    <div className="space-y-3">
-      {hint}
-      {/* วิธีใช้ 4 ขั้น (พับเก็บได้) */}
-      {!letterOnly && stepsOpen && (
-        <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {STEPS.map((st, i) => (
-              <button key={st.title} type="button" onClick={() => goStep(i + 1)}
-                className={cn("h-8 pl-1 pr-3 rounded-full text-[12.5px] flex items-center gap-1.5 border transition-colors", step === i + 1 ? "border-nexus-teal/60 bg-nexus-teal/15 text-white" : "border-white/10 text-white/55 hover:text-white")}>
-                <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold", step === i + 1 ? "bg-nexus-teal text-white" : "bg-white/10")}>{i + 1}</span>{st.title}
-              </button>
-            ))}
-            <button type="button" onClick={() => toggleSteps(false)} className="ml-auto text-[11.5px] text-white/40 hover:text-white">ซ่อนวิธีใช้</button>
+
+  // ---------- แถบเครื่องมือลอยเหนือกล่องที่เลือก ----------
+  const pb = primary?.b;
+  const textual = !!pb && TEXT_BLOCKS.includes(pb.kind);
+  const barTop = pb ? (pb.y * S - 46 < 0 ? (pb.y + pb.h) * S + 8 : pb.y * S - 46) : 0;
+  const barLeft = pb ? Math.max(0, Math.min(A4.w * S - barW, pb.x * S)) : 0;
+  const FBtn = ({ title, on, onClick, children, danger }: { title: string; on?: boolean; onClick: () => void; children: React.ReactNode; danger?: boolean }) => (
+    <button type="button" title={title} aria-label={title} onClick={onClick}
+      className={cn("h-8 min-w-8 px-1.5 rounded-lg flex items-center justify-center text-[12px]", on ? "bg-[#0d9488] text-white" : danger ? "text-red-600 hover:bg-red-50" : "text-slate-700 hover:bg-slate-100")}>{children}</button>
+  );
+  const floatingBar = canEdit && selected.length > 0 && !moving && !editing && (
+    <div ref={barRef} className="absolute z-50 flex items-center gap-0.5 rounded-xl bg-white shadow-xl border border-slate-200 px-1 py-1" style={{ left: multi ? Math.max(0, Math.min(A4.w * S - barW, Math.min(...selected.map((i) => i.b.x)) * S)) : barLeft, top: multi ? Math.max(0, Math.min(...selected.map((i) => i.b.y)) * S - 46) : barTop }}
+      onPointerDown={(e) => e.stopPropagation()}>
+      {multi ? (
+        <>
+          <FBtn title="ชิดซ้าย" onClick={() => align("left")}><AlignStartVertical size={15} /></FBtn>
+          <FBtn title="กึ่งกลางแนวนอน" onClick={() => align("hcenter")}><AlignCenterVertical size={15} /></FBtn>
+          <FBtn title="ชิดขวา" onClick={() => align("right")}><AlignEndVertical size={15} /></FBtn>
+          <FBtn title="ชิดบน" onClick={() => align("top")}><AlignStartHorizontal size={15} /></FBtn>
+          <FBtn title="กึ่งกลางแนวตั้ง" onClick={() => align("vcenter")}><AlignCenterHorizontal size={15} /></FBtn>
+          <FBtn title="ชิดล่าง" onClick={() => align("bottom")}><AlignEndHorizontal size={15} /></FBtn>
+          {selected.length > 2 && <><FBtn title="กระจายแนวนอนเท่ากัน" onClick={() => distribute("x")}><AlignHorizontalDistributeCenter size={15} /></FBtn><FBtn title="กระจายแนวตั้งเท่ากัน" onClick={() => distribute("y")}><AlignVerticalDistributeCenter size={15} /></FBtn></>}
+          <span className="w-px h-5 bg-slate-200 mx-0.5" />
+          {anyGrouped ? <FBtn title="แยกกลุ่ม (Ctrl+Shift+G)" onClick={ungroupSelected}><Ungroup size={15} /></FBtn> : <FBtn title="จัดกลุ่ม: ย้ายพร้อมกัน (Ctrl+G)" onClick={groupSelected}><GroupIcon size={15} /></FBtn>}
+          {selected.some((i) => !isLocked(i)) && <FBtn title="ลบ (Delete)" danger onClick={() => remove(selected)}><Trash2 size={15} /></FBtn>}
+        </>
+      ) : primary && pb && (
+        <>
+          {textual && (
+            <>
+              <FBtn title="ตัวเล็กลง" onClick={() => update(primary, { fontSize: Math.max(6, Math.round(((pb.fontSize ?? theme.fontSize) - 0.5) * 10) / 10) })}><span className="font-bold">A−</span></FBtn>
+              <span className="w-9 text-center text-[12px] font-mono text-slate-600" title="ขนาดตัวอักษร (pt)">{pb.fontSize ?? theme.fontSize}</span>
+              <FBtn title="ตัวใหญ่ขึ้น" onClick={() => update(primary, { fontSize: Math.min(40, Math.round(((pb.fontSize ?? theme.fontSize) + 0.5) * 10) / 10) })}><span className="font-bold">A+</span></FBtn>
+            </>
+          )}
+          {["text", "field", "info"].includes(pb.kind) && <FBtn title="ตัวหนา" on={!!pb.bold} onClick={() => update(primary, { bold: !pb.bold || undefined })}><Bold size={15} /></FBtn>}
+          {ALIGNABLE.includes(pb.kind) && (["left", "center", "right"] as const).map((a) => { const I = ALIGN_ICON[a]; return <FBtn key={a} title={a === "left" ? "ชิดซ้าย" : a === "center" ? "กึ่งกลาง" : "ชิดขวา"} on={pb.align === a} onClick={() => update(primary, { align: a })}><I size={15} /></FBtn>; })}
+          {(textual || pb.kind === "line") && (
+            <label title="สีตัวอักษร/เส้น" className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-slate-100 cursor-pointer">
+              <span className="w-5 h-5 rounded-full border border-slate-300" style={{ background: resolveColor(pb.color, theme) || (pb.kind === "line" ? theme.primary : theme.text) }} />
+              <input type="color" className="sr-only" value={resolveColor(pb.color, theme) || theme.text} onChange={(e) => update(primary, { color: e.target.value })} />
+            </label>
+          )}
+          {pb.kind === "rect" && (
+            <label title="สีพื้น" className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-slate-100 cursor-pointer">
+              <span className="w-5 h-5 rounded border border-slate-300" style={{ background: resolveColor(pb.bg, theme) || "#ffffff" }} />
+              <input type="color" className="sr-only" value={resolveColor(pb.bg, theme) || "#ffffff"} onChange={(e) => update(primary, { bg: e.target.value })} />
+            </label>
+          )}
+          {pb.kind === "text" && <FBtn title="พิมพ์ข้อความ (ดับเบิลคลิกที่กล่องก็ได้)" onClick={() => setEditing(primary.key)}><Type size={15} /></FBtn>}
+          <span className="w-px h-5 bg-slate-200 mx-0.5" />
+          {!SINGLE.includes(pb.kind) && <FBtn title="ทำสำเนา (Ctrl+D)" onClick={duplicate}><CopyPlus size={15} /></FBtn>}
+          <FBtn title="นำมาไว้ด้านหน้า" onClick={() => reorder(primary, 1)}><BringToFront size={15} /></FBtn>
+          <FBtn title="ส่งไปไว้ด้านหลัง" onClick={() => reorder(primary, -1)}><SendToBack size={15} /></FBtn>
+          <FBtn title={pb.locked ? "ปลดล็อกตำแหน่ง" : "ล็อกตำแหน่ง"} on={!!pb.locked} onClick={toggleLock}>{pb.locked ? <PinOff size={15} /> : <Pin size={15} />}</FBtn>
+          {!isLocked(primary) && <FBtn title="ลบ (Delete)" danger onClick={() => remove([primary])}><Trash2 size={15} /></FBtn>}
+        </>
+      )}
+    </div>
+  );
+
+  // ---------- พิมพ์ข้อความบนกระดาษ ----------
+  const editItem = editing ? byKey.get(editing) : null;
+  const inlineEditor = editItem && (
+    <textarea autoFocus value={editItem.b.text || ""} onChange={(e) => update(editItem, { text: e.target.value })}
+      onBlur={() => setEditing(null)} onKeyDown={(e) => { if (e.key === "Escape") (e.target as HTMLTextAreaElement).blur(); e.stopPropagation(); }} onPointerDown={(e) => e.stopPropagation()}
+      className="absolute z-50 resize-none rounded border-2 border-[#0d9488] bg-white/95 text-slate-900 p-0.5 outline-none shadow-lg"
+      style={{ left: editItem.b.x * S, top: editItem.b.y * S, width: Math.max(140, editItem.b.w * S), minHeight: Math.max(40, editItem.b.h * S), fontSize: (editItem.b.fontSize || 10) * FONT_SCALE[font] * S, lineHeight: editItem.b.lineHeight ?? 1.35, textAlign: editItem.b.align, fontWeight: editItem.b.bold ? 700 : 400, color: resolveColor(editItem.b.color, theme) || "#111" }} />
+  );
+
+  // ---------- แถบเพิ่มของ (ซ้าย): คลิก = วางกลางจอ · ลากไปวางบนกระดาษ ----------
+  const palette: { kind: string; label: string; icon: React.ReactNode }[] = [
+    { kind: "text", label: "ข้อความ", icon: <Type size={16} /> },
+    ...(addable.includes("info") ? [{ kind: "info", label: "กล่องข้อมูล", icon: <Rows3 size={16} /> }] : []),
+    ...(addable.includes("field") ? [{ kind: "field", label: "ข้อมูลเดี่ยว", icon: <TextCursorInput size={16} /> }] : []),
+    { kind: "line", label: "เส้น", icon: <Minus size={16} /> },
+    { kind: "rect", label: "กรอบ / พื้นสี", icon: <Square size={16} /> },
+    { kind: "image", label: "รูปภาพ", icon: <ImageIcon size={16} /> },
+    ...(addable.includes("logo") ? [{ kind: "logo", label: "โลโก้", icon: <ImagePlus size={16} /> }] : []),
+    ...(addable.includes("stamp") ? [{ kind: "stamp", label: "ตราประทับ", icon: <StampIcon size={16} /> }] : []),
+  ];
+  const missing = addable.filter((k) => SINGLE.includes(k));
+  const dropAt = (e: React.DragEvent) => {
+    const kind = e.dataTransfer.getData("text/nexus-kind");
+    if (!kind || !canEdit) return;
+    e.preventDefault();
+    const r = paperRef.current!.getBoundingClientRect();
+    addAt(kind === "info" ? "info:empty" : kind, { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S });
+  };
+  const leftBar = canEdit && (bodyOn || letterhead) && (
+    <div className="w-full lg:w-[132px] flex-shrink-0 lg:sticky lg:top-16 space-y-1.5">
+      <p className="text-[11px] text-white/45 px-1 leading-snug">คลิกหรือลากไปวางบนกระดาษ</p>
+      <div className="grid grid-cols-4 lg:grid-cols-1 gap-1">
+        {palette.map((p) => (
+          <div key={p.kind} className="relative">
+            <button type="button" draggable onDragStart={(e) => { e.dataTransfer.setData("text/nexus-kind", p.kind); e.dataTransfer.effectAllowed = "copy"; }}
+              onClick={() => (p.kind === "info" ? setInfoMenu((v) => !v) : addAt(p.kind, visibleCenter()))}
+              className="w-full h-10 px-2 rounded-xl border border-white/10 bg-white/[0.03] hover:border-nexus-teal/50 hover:bg-nexus-teal/10 flex items-center gap-2 text-[12.5px] text-white/80 cursor-grab active:cursor-grabbing">
+              <span className="text-nexus-teal">{p.icon}</span>{p.label}
+            </button>
+            {p.kind === "info" && infoMenu && (
+              <div className="absolute left-0 lg:left-full lg:ml-1 top-full lg:top-0 z-50 w-[210px] rounded-xl border border-white/10 bg-[#18181d] shadow-2xl p-1">
+                {INFO_PRESETS.filter((x) => x.id !== "extra" || docFields.length).map((x) => (
+                  <button key={x.id} type="button" onClick={() => { setInfoMenu(false); addInfo(x.id); }} className="w-full text-left h-8 px-2.5 rounded-lg text-[12.5px] text-white/80 hover:bg-white/10">{x.label}</button>
+                ))}
+              </div>
+            )}
           </div>
-          <p className="text-[12px] text-white/55 leading-relaxed">{STEPS[step - 1].hint}</p>
+        ))}
+      </div>
+      {missing.length > 0 && (
+        <>
+          <p className="text-[11px] text-white/45 px-1 pt-1">ส่วนที่ยังไม่มีบนกระดาษ</p>
+          <div className="grid grid-cols-4 lg:grid-cols-1 gap-1">
+            {missing.map((k) => (
+              <button key={k} type="button" draggable onDragStart={(e) => e.dataTransfer.setData("text/nexus-kind", k)} onClick={() => addAt(k, visibleCenter())}
+                className="w-full h-9 px-2 rounded-xl border border-dashed border-white/15 hover:border-nexus-teal/50 flex items-center gap-2 text-[12px] text-white/65"><PanelBottom size={14} /> {BLOCK_LABELS[k]}</button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  // ---------- แผงขวา: ไม่ได้เลือก = ทั้งหน้า · เลือก = ตั้งค่ากล่องนั้น ----------
+  const problems = legal.filter((l) => !l.ok).length + issues.length;
+  const pagePanel = (
+    <div className="space-y-3">
+      <p className="text-[12px] text-white/55 leading-relaxed">คลิกกล่องบนกระดาษเพื่อแก้ (แถบเครื่องมือจะขึ้นเหนือกล่อง) · ลากเพื่อย้าย · ลากมุมขวาล่างเพื่อปรับขนาด · ดับเบิลคลิกข้อความเพื่อพิมพ์</p>
+      {!letterOnly && (
+        <div className="space-y-1.5">
+          <p className="text-[13px] font-bold text-white">ข้อมูลที่แสดงในเอกสารนี้</p>
+          <DataChecklist groups={groups} onToggle={toggle} canEdit={canEdit} />
         </div>
       )}
+      {letterhead && (
+        <Field label="ความสูงหัวกระดาษ (pt)">
+          <PillInput inputMode="decimal" value={letterhead.height} disabled={!canEdit} onChange={(e) => commitHead({ ...letterhead, height: Math.max(40, Math.min(320, Number(e.target.value.replace(/[^\d.]/g, "")) || 40)) })} className="h-8 w-full text-sm font-mono text-right" />
+        </Field>
+      )}
+      <details className="rounded-xl border border-white/10 px-2.5 py-2">
+        <summary className="cursor-pointer text-[12.5px] font-bold text-white/70">กล่องทั้งหมดบนกระดาษ ({items.length})</summary>
+        <div className="pt-2">{layersPanel}</div>
+      </details>
+    </div>
+  );
 
-      {/* แถบเครื่องมือ (กระทัดรัด): ย้อน/ทำซ้ำ · วาด/แทรก · จัดการกล่อง · จัดแนว · มุมมอง */}
-      <div className="sticky top-0 z-30 flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-[#111114]/95 backdrop-blur p-1.5">
+  return (
+    <div className="space-y-3">
+      {/* แถบบน: ย้อนกลับ/ทำซ้ำ · ขนาดกระดาษ · ตัวเลือกการวาง */}
+      <div className="flex flex-wrap items-center gap-1.5">
         <ToolBtn title="ย้อนกลับ (Ctrl+Z)" disabled={!history.canUndo || !canEdit} onClick={undo}><Undo2 size={15} /></ToolBtn>
         <ToolBtn title="ทำซ้ำ (Ctrl+Y)" disabled={!history.canRedo || !canEdit} onClick={redo}><Redo2 size={15} /></ToolBtn>
-        <Sep />
-        <ToolBtn title="เลือก/ลากย้าย" on={tool === "select"} onClick={() => setTool("select")}><MousePointer2 size={15} /></ToolBtn>
-        <ToolBtn title="วาดเส้น: ลากบนกระดาษ (แนวนอน/แนวตั้งตามทิศที่ลาก)" on={tool === "line"} disabled={!canEdit || (!bodyOn && !letterhead)} onClick={() => setTool(tool === "line" ? "select" : "line")}><Minus size={15} /></ToolBtn>
-        <ToolBtn title="วาดกรอบ: ลากบนกระดาษ" on={tool === "rect"} disabled={!canEdit || (!bodyOn && !letterhead)} onClick={() => setTool(tool === "rect" ? "select" : "rect")}><Square size={15} /></ToolBtn>
-        {canEdit && (letterhead || bodyOn) && (
-          <div className="w-[150px]" title="เพิ่มหัวข้อใหม่บนกระดาษ">
-            <PillSelect value="" onChange={(e) => { const v = String(e.target.value); if (v.startsWith("info:")) addInfo(v.slice(5)); else if (v) add(v as BlockKind); }} className="h-8 w-full text-[12px]">
-              <option value="">+ เพิ่มหัวข้อ{addZone === "head" ? "ในหัวกระดาษ" : ""}</option>
-              {addable.flatMap((k) => k === "info"
-                ? INFO_PRESETS.filter((p) => p.id !== "extra" || docFields.length).map((p) => <option key={`info:${p.id}`} value={`info:${p.id}`}>กล่องข้อมูล · {p.label}</option>)
-                : [<option key={k} value={k}>{BLOCK_LABELS[k]}</option>])}
-            </PillSelect>
-          </div>
-        )}
-        {/* จัดการหัวข้อ: แสดงเมื่อเลือกหัวข้อแล้ว (ไม่มีปุ่มที่กดไม่ได้ให้รก) */}
-        {selected.length > 0 ? (
-          <>
-            <Sep />
-            {selected.length > 1 && <ToolBtn title="จัดกลุ่ม: ย้ายพร้อมกัน (Ctrl+G)" disabled={!canEdit} onClick={groupSelected}><GroupIcon size={15} /></ToolBtn>}
-            {anyGrouped && <ToolBtn title="แยกกลุ่ม (Ctrl+Shift+G)" disabled={!canEdit} onClick={ungroupSelected}><Ungroup size={15} /></ToolBtn>}
-            {selected.some((i) => !SINGLE.includes(i.b.kind)) && <ToolBtn title="ทำสำเนา (Ctrl+D)" disabled={!canEdit} onClick={duplicate}><CopyPlus size={15} /></ToolBtn>}
-            <ToolBtn title={allLocked ? "ปลดล็อกตำแหน่ง" : "ล็อกตำแหน่ง"} on={allLocked} disabled={!can} onClick={toggleLock}>{allLocked ? <PinOff size={15} /> : <Pin size={15} />}</ToolBtn>
-            {selected.some((i) => !isLocked(i)) && <ToolBtn title="ลบ (Delete)" disabled={!can} onClick={() => remove(selected)}><Trash2 size={15} /></ToolBtn>}
-            <Sep />
-            <ToolBtn title={multi ? "ชิดซ้าย" : "ชิดขอบซ้ายกระดาษ"} disabled={!can} onClick={() => align("left")}><AlignStartVertical size={15} /></ToolBtn>
-            <ToolBtn title={multi ? "กึ่งกลางแนวนอน" : "กึ่งกลางหน้า"} disabled={!can} onClick={() => align("hcenter")}><AlignCenterVertical size={15} /></ToolBtn>
-            <ToolBtn title={multi ? "ชิดขวา" : "ชิดขอบขวากระดาษ"} disabled={!can} onClick={() => align("right")}><AlignEndVertical size={15} /></ToolBtn>
-            <ToolBtn title="ชิดบน" disabled={!can} onClick={() => align("top")}><AlignStartHorizontal size={15} /></ToolBtn>
-            <ToolBtn title="กึ่งกลางแนวตั้ง" disabled={!can} onClick={() => align("vcenter")}><AlignCenterHorizontal size={15} /></ToolBtn>
-            <ToolBtn title="ชิดล่าง" disabled={!can} onClick={() => align("bottom")}><AlignEndHorizontal size={15} /></ToolBtn>
-          </>
-        ) : (
-          <span className="text-[11.5px] text-white/40 ml-2">{!letterOnly && !bodyOn ? "คลิกที่กระดาษเพื่อเริ่มจัดตำแหน่งเอง" : "คลิกหัวข้อบนกระดาษเพื่อแก้ไข"}{!stepsOpen && !letterOnly && <button type="button" onClick={() => toggleSteps(true)} className="ml-2 text-nexus-teal hover:underline">วิธีใช้ 4 ขั้น</button>}</span>
-        )}
-        {/* เครื่องมือหลายกล่อง: แสดงเมื่อเลือก 2 กล่องขึ้นไป (แถบเครื่องมือไม่รก) */}
-        {multi && (
-          <>
-            <ToolBtn title="กระจายแนวนอนเท่ากัน (3 กล่องขึ้นไป)" disabled={selected.length < 3 || !canEdit} onClick={() => distribute("x")}><AlignHorizontalDistributeCenter size={15} /></ToolBtn>
-            <ToolBtn title="กระจายแนวตั้งเท่ากัน (3 กล่องขึ้นไป)" disabled={selected.length < 3 || !canEdit} onClick={() => distribute("y")}><AlignVerticalDistributeCenter size={15} /></ToolBtn>
-            <ToolBtn title="กว้างเท่ากล่องแรกที่เลือก" disabled={!canEdit} onClick={() => sameSize("w")}><ArrowLeftRight size={15} /></ToolBtn>
-            <ToolBtn title="สูงเท่ากล่องแรกที่เลือก" disabled={!canEdit} onClick={() => sameSize("h")}><ArrowUpDown size={15} /></ToolBtn>
-          </>
-        )}
-        <div className="ml-auto flex items-center gap-1">
-          <div className="w-[124px]" title="ตารางกริดช่วยจัดวาง">
-            <PillSelect value={gridMode} onChange={(e) => setGridMode(e.target.value as any)} className="h-8 w-full text-[12px]">
-              <option value="drag">กริด: ขณะลาก</option><option value="always">กริด: แสดงตลอด</option><option value="off">กริด: ปิด</option>
-            </PillSelect>
-          </div>
-          <div className="w-[76px]" title="ระยะกริด">
-            <PillSelect value={String(grid)} onChange={(e) => setGrid(Number(e.target.value))} className="h-8 w-full text-[12px]">
-              {[2, 5, 10, 20].map((g) => <option key={g} value={String(g)}>{g} pt</option>)}
-            </PillSelect>
-          </div>
-          <button type="button" title="ดูดติดกริดและเส้นนำ · กด Alt ค้างขณะลาก = วางอิสระชั่วคราว" onClick={() => setSnapOn((v) => !v)}
-            className={cn("h-8 px-2 rounded-lg flex items-center gap-1 border text-[11.5px]", snapOn ? "border-nexus-teal/60 bg-nexus-teal/15 text-nexus-teal" : "border-white/10 text-white/60 hover:text-white")}>
-            <Magnet size={14} /> {snapOn ? "ดูดติด" : "วางอิสระ"}
-          </button>
-          <ToolBtn title={showPdf ? "ซ่อน PDF ทุกหน้า" : "ดู PDF ทุกหน้า (พิมพ์/ดาวน์โหลด)"} on={showPdf} onClick={() => setShowPdf((v) => !v)}><Eye size={15} /></ToolBtn>
-          <div className="w-[124px]" title="ขนาดกระดาษบนจอ">
+        <span className="text-[12px] text-white/45 ml-1">{selected.length ? `เลือก ${selected.length} กล่อง — Shift+คลิก เลือกเพิ่ม` : "คลิกกล่องบนกระดาษเพื่อแก้ไข"}</span>
+        <div className="ml-auto flex items-center gap-1.5 relative">
+          <div className="w-[130px]" title="ขนาดกระดาษบนจอ">
             <PillSelect value={String(zoom)} onChange={(e) => setZoom(e.target.value === "fit" ? "fit" : Number(e.target.value))} className="h-8 w-full text-[12px]">
               <option value="fit">พอดีความกว้าง</option><option value="1">ซูม 100%</option><option value="1.333">ขนาดจริง</option><option value="1.5">ซูม 150%</option><option value="2">ซูม 200%</option>
             </PillSelect>
           </div>
+          <ToolBtn title="ดู PDF ทุกหน้า (พิมพ์/ดาวน์โหลด)" on={showPdf} onClick={() => setShowPdf((v) => !v)}><Eye size={15} /></ToolBtn>
+          <ToolBtn title="ตัวช่วยจัดวาง: กริด · ดูดติด" on={advOpen} onClick={() => setAdvOpen((v) => !v)}><MoreHorizontal size={15} /></ToolBtn>
+          {advOpen && (
+            <div className="absolute right-0 top-10 z-50 w-[250px] rounded-xl border border-white/10 bg-[#18181d] shadow-2xl p-3 space-y-2.5">
+              <PillCheckbox label="ดูดติดกริดและแนวกล่องอื่น" checked={snapOn} onChange={(e) => setSnapOn(e.target.checked)} />
+              <p className="text-[11px] text-white/40 -mt-1.5 pl-1">กด Alt ค้างขณะลาก = วางอิสระชั่วคราว</p>
+              <Field label="เส้นกริด">
+                <PillSelect value={gridMode} onChange={(e) => setGridMode(e.target.value as any)} className="h-8 w-full text-[12px]">
+                  <option value="drag">แสดงขณะลาก</option><option value="always">แสดงตลอด</option><option value="off">ไม่แสดง</option>
+                </PillSelect>
+              </Field>
+              <Field label="ระยะกริด">
+                <PillSelect value={String(grid)} onChange={(e) => setGrid(Number(e.target.value))} className="h-8 w-full text-[12px]">
+                  {[2, 5, 10, 20].map((g) => <option key={g} value={String(g)}>{g} pt</option>)}
+                </PillSelect>
+              </Field>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 items-start">
+      <div className="flex flex-col lg:flex-row gap-3 items-start">
+        {leftBar}
         {/* กระดาษ A4: ภาพหน้าจริง + กล่องที่ลากได้ */}
-        <div ref={wrapRef} className="flex-1 min-w-0 w-full overflow-auto max-h-[calc(100vh-96px)] rounded-lg">
-          <div ref={paperRef} className={cn("relative bg-white rounded-sm shadow-2xl overflow-hidden select-none", tool !== "select" && "cursor-crosshair", tool === "select" && !bodyOn && !letterOnly && canEdit && "cursor-pointer")} style={{ width: A4.w * S, height: A4.h * S }} onPointerDown={(e) => { if (tool !== "select") startDraw(e); else if (!bodyOn && !letterOnly && canEdit) convertAt(e); else setSel([]); }}>
+        <div ref={wrapRef} className="flex-1 min-w-0 w-full overflow-auto max-h-[calc(100vh-96px)] rounded-lg pt-12">
+          <div className="relative" style={{ width: A4.w * S, height: A4.h * S }}>
+          <div ref={paperRef} onDragOver={(e) => { if (e.dataTransfer.types.includes("text/nexus-kind")) e.preventDefault(); }} onDrop={dropAt}
+            className={cn("relative bg-white rounded-sm shadow-2xl overflow-hidden select-none", tool !== "select" && "cursor-crosshair")} style={{ width: A4.w * S, height: A4.h * S }}
+            onPointerDown={(e) => { setInfoMenu(false); setAdvOpen(false); if (tool !== "select") startDraw(e); else if (!bodyOn && !letterOnly && canEdit) convertAt(e); else setSel([]); }}>
             {/* eslint-disable-next-line @next/next/no-img-element -- ภาพหน้าเอกสารที่วาดในเบราว์เซอร์ (data URL) */}
             {image && <img src={image.url} alt="" className="absolute inset-0 w-full h-full pointer-events-none" />}
             {showGrid && (
@@ -1150,7 +1106,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
               const frame = b.kind === "rect";
               const fresh = !o;
               return (
-                <div key={it.key} onPointerDown={(e) => start(e, it, "move")} onDoubleClick={(e) => { e.stopPropagation(); setSel([it.key]); setTab("block"); }}
+                <div key={it.key} onPointerDown={(e) => start(e, it, "move")} onDoubleClick={(e) => { e.stopPropagation(); setSel([it.key]); if (b.kind === "text" && canEdit) setEditing(it.key); }}
                   className={cn("absolute group", canEdit ? "cursor-move" : "cursor-pointer",
                     // กรอบ/เส้น/รูป อยู่ชั้นล่างของการคลิก — คลิกข้อมูลที่อยู่ในกรอบได้ · กรอบเลือกที่ขอบ
                     on ? "outline outline-2 outline-[#0d9488] z-20" : cn("outline outline-1 outline-dashed outline-transparent hover:outline-slate-400", ["rect", "line", "image"].includes(b.kind) ? "z-[8]" : "z-10"),
@@ -1196,40 +1152,26 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             {(busy || !image) && <span className="absolute top-2 right-2 z-40 flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-slate-800/80 text-white"><Loader2 size={11} className="animate-spin" /> กำลังอัปเดต</span>}
             {error && <span className="absolute bottom-2 left-2 right-2 z-40 text-[11px] px-2 py-1 rounded bg-red-600/90 text-white">วาดตัวอย่างไม่สำเร็จ: {error}</span>}
           </div>
+          {floatingBar}
+          {inlineEditor}
+          </div>
         </div>
 
-        {/* แผงขวา: แม่แบบ · หน้าตา · แก้ไข · ข้อมูล · ตรวจ */}
-        <GlassCard className="p-3 w-full lg:w-[340px] flex-shrink-0 space-y-3 lg:sticky lg:top-16 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto lg:pb-14">
-          <div className="flex rounded-full bg-white/5 p-1 border border-white/10 gap-0.5">
-            {tabs.map((t) => (
-              <button key={t.id} type="button" onClick={() => setTab(t.id)}
-                className={cn("flex-1 h-8 px-1 rounded-full text-[12px] font-semibold whitespace-nowrap", tab === t.id ? "bg-nexus-teal/15 text-nexus-teal" : t.id === "check" && issues.length ? "text-warning" : "text-white/55 hover:text-white")}>{t.label}</button>
-            ))}
-          </div>
-          {panelTabs.find((t) => t.id === tab)?.content ?? (tab === "data" && !letterOnly ? dataPanel : tab === "check" ? checkPanel : (
-            !letterhead && !bodyOn ? (
+        {/* แผงขวา: ตั้งค่าของกล่องที่เลือก */}
+        <GlassCard className="p-3 w-full lg:w-[330px] flex-shrink-0 space-y-3 lg:sticky lg:top-16 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto lg:pb-14">
+          {problems > 0 && (
+            <details className="rounded-xl border border-warning/30 bg-warning/10 px-2.5 py-2">
+              <summary className="cursor-pointer text-[12.5px] font-bold text-warning flex items-center gap-1.5"><AlertTriangle size={13} /> ควรแก้ {problems} จุด</summary>
+              <div className="pt-2">{checkPanel}</div>
+            </details>
+          )}
+          {multi ? <p className="text-[12.5px] text-white/70">เลือก {selected.length} กล่อง — ลากเพื่อย้ายพร้อมกัน หรือใช้แถบเครื่องมือเหนือกล่องเพื่อจัดแนว</p>
+            : primary ? (
               <div className="space-y-2">
-                <p className="text-[12.5px] text-white/60 leading-relaxed">
-                  {letterOnly ? "เลือกหรือสร้างหัวกระดาษที่แท็บ \"หน้าตา\" แล้วลากจัดวางบนกระดาษได้เลย" : "ตอนนี้จัดหน้าอัตโนมัติตามแม่แบบ — คลิกหัวข้อบนกระดาษ (เช่น ชื่อบริษัท ตาราง) เพื่อเริ่มจัดตำแหน่งเอง"}
-                </p>
+                <button type="button" onClick={() => setSel([])} className="text-[12px] text-white/50 hover:text-white flex items-center gap-1"><ChevronLeft size={13} /> ทั้งหน้า</button>
+                {props(primary)}
               </div>
-            ) : multi ? (
-              <p className="text-[12.5px] text-white/70">เลือก {selected.length} หัวข้อ — ลากเพื่อย้ายพร้อมกัน หรือใช้ปุ่มจัดแนวบนแถบเครื่องมือ</p>
-            ) : !primary ? (
-              <div className="space-y-3">
-                <p className="text-[12px] text-white/50 leading-relaxed">คลิกหัวข้อบนกระดาษเพื่อแต่ง · ลากเพื่อย้าย (เส้นชมพู = ตรงแนว · Alt ค้าง = วางอิสระ) · ลากมุมขวาล่างเพื่อปรับขนาด · Shift+คลิก เลือกหลายหัวข้อ · Ctrl+Z ย้อนกลับ</p>
-                {letterhead && (
-                  <Field label="ความสูงหัวกระดาษ (pt)">
-                    <PillInput inputMode="decimal" value={letterhead.height} disabled={!canEdit} onChange={(e) => commitHead({ ...letterhead, height: Math.max(40, Math.min(320, Number(e.target.value.replace(/[^\d.]/g, "")) || 40)) })} className="h-8 w-full text-sm font-mono text-right" />
-                  </Field>
-                )}
-                <div className="space-y-1">
-                  <p className="text-[12px] font-bold text-white/70">หัวข้อทั้งหมดบนกระดาษ</p>
-                  {layersPanel}
-                </div>
-              </div>
-            ) : props(primary)
-          ))}
+            ) : pagePanel}
         </GlassCard>
       </div>
 

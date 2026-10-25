@@ -218,6 +218,9 @@ async function main() {
     ['anonymous cannot read share links', () => assertFails(getDoc(doc(anon, 'document_shares/tok1')))],
     ['member reads send log', () => assertSucceeds(getDoc(doc(userA, 'companies/A/document_sends/S1')))],
     ['member cannot fake send log', () => assertFails(setDoc(doc(userA, 'companies/A/document_sends/S2'), { companyId: 'A' }))],
+    // ประวัติการออกแบบเอกสาร: บันทึก/ย้อนผ่าน /api/settings/document-profile เท่านั้น
+    ['admin cannot write design version directly', () => assertFails(setDoc(doc(adminA, 'companies/A/design_versions/v1'), { design: {} }))],
+    ['member cannot delete design history', () => assertFails(deleteDoc(doc(userA, 'companies/A/design_versions/v0')))],
     ['member cannot reset rate limits', () => assertFails(setDoc(doc(userA, 'rate_limits/portal_ip_h_x_1'), { count: 0 }))],
     // ข้อมูลกลางของเครือ
     ['member reads own implicit group master', () => assertSucceeds(getDoc(doc(userA, 'groups/A/products/P1')))],

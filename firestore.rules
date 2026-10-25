@@ -234,8 +234,8 @@ service cloud.firestore {
           'purchase_requests', 'purchase_orders', 'expenses', 'withholding_taxes', 'sales_orders', 'work_orders', 'delivery_notes', 'cash_advances',
           // ลิงก์เอกสารและประวัติการส่ง: สร้าง/ส่งผ่าน /api/documents/share และ /api/documents/send
           'document_sends',
-          // ตั้งค่าบริษัท (รูปแบบเลขที่เอกสาร ฯลฯ): /api/settings/company เท่านั้น
-          'settings',
+          // ตั้งค่าบริษัท (รูปแบบเลขที่เอกสาร ฯลฯ): /api/settings/company เท่านั้น · ประวัติการออกแบบเอกสาร: /api/settings/document-profile
+          'settings', 'design_versions',
           // ทะเบียนบัญชีธนาคาร เช็ค และการกระทบยอด: บันทึกผ่าน /api/finance/* เท่านั้น
           'bank_accounts', 'cheques', 'bank_reconciliations',
           // งานมอบหมาย: จ่ายงาน/รับงาน/ปิดงานผ่าน /api/jobs เท่านั้น

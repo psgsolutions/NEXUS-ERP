@@ -9,6 +9,7 @@ import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
 import { DESIGNABLE_DOCS, LETTER_DESIGN, sampleModelFor } from "@/lib/documents/build";
+import { EMPTY_SIGNING, applySigning, normalizeSigning, type SigningConfig } from "@/lib/documents/esign";
 import { toDateStr } from "@/lib/documents/format";
 import type { DocumentModel, DocumentProfile } from "@/lib/documents/model";
 import {
@@ -153,6 +154,8 @@ export function DocumentDesigner() {
   const { showAlert, showConfirm } = useSystemDialog();
   const canEdit = can(roles, "settings:manage");
   const [profile, setProfile] = useState<DocumentProfile | null>(null);
+  // ลายเซ็น/ตราที่ตั้งไว้ (แสดงบนตัวอย่างให้เห็นตำแหน่งจริง)
+  const [signing, setSigning] = useState<SigningConfig>(EMPTY_SIGNING);
   const [design, setDesign] = useState<DocumentDesign>(normalizeDesign(null));
   const [savedJson, setSavedJson] = useState("");
   const [docType, setDocType] = useState(DESIGNABLE_DOCS[0].type);
@@ -190,6 +193,8 @@ export function DocumentDesigner() {
         const nd = normalizeDesign(d.profile.design, d.profile.brandColor);
         setProfile(d.profile); setDesign(nd); setSavedJson(JSON.stringify(nd));
       });
+    apiFetch("/api/settings/document-signing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "get" }) })
+      .then((r) => r.json()).then((d) => { if (d.success) setSigning(normalizeSigning(d.signing)); }).catch(() => {});
   }, [companyId]);
 
   const dirty = !!savedJson && JSON.stringify(design) !== savedJson;
@@ -263,8 +268,8 @@ export function DocumentDesigner() {
   const model = useMemo(() => {
     if (!profile || !preview) return null;
     if (realModel) return { ...realModel, seller: { ...realModel.seller, design: preview } };
-    return sampleModelFor(docType, { ...profile, design: preview }, toDateStr(new Date()));
-  }, [profile, preview, docType, realModel]);
+    return applySigning(sampleModelFor(docType, { ...profile, design: preview }, toDateStr(new Date())), signing, def.signatures);
+  }, [profile, preview, docType, realModel, signing, def.signatures]);
 
   const applyTemplate = async (t: (typeof TEMPLATES)[number]) => {
     const overwrites = DESIGNABLE_DOCS.some((d) => design.perDoc[d.type]?.free?.enabled);

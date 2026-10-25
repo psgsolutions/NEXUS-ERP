@@ -42,7 +42,10 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
   const [dateMode, setDateMode] = useState<"profile" | "dated" | "undated">("profile");
   const [dateOpt, setDateOpt] = useState<DateOpt | null>(null);
   const [learnMsg, setLearnMsg] = useState("");
-  useEffect(() => { setDateMode("profile"); setLearnMsg(""); }, [source?.type, source?.id]);
+  // ลายเซ็น/ตราอิเล็กทรอนิกส์ (เอกสารที่ออกจริงและตั้งไว้) — เลือกพิมพ์โดยไม่ใส่ได้
+  const [esign, setEsign] = useState(true);
+  const [esignAvail, setEsignAvail] = useState(false);
+  useEffect(() => { setDateMode("profile"); setLearnMsg(""); setEsign(true); }, [source?.type, source?.id]);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -52,12 +55,13 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
         blob = await renderClientPdf(model, copy);
         setFileName(`${(model.number || "ตัวอย่าง").replace(/[\\/:*?"<>|\s]+/g, "-")}${copy === "copy" ? "-copy" : ""}.pdf`);
       } else if (source && companyId) {
-        const res = await apiFetch("/api/documents/pdf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, type: source.type, id: source.id, copy, dateMode }) });
+        const res = await apiFetch("/api/documents/pdf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, type: source.type, id: source.id, copy, dateMode, esign }) });
         if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || "สร้างเอกสารไม่สำเร็จ"); }
         blob = await res.blob();
         const cd = res.headers.get("content-disposition") || "";
         const m = cd.match(/filename="([^"]+)"/);
         setFileName(m ? decodeURIComponent(m[1]) : `${source.id}.pdf`);
+        setEsignAvail(!!res.headers.get("x-esign"));
         const opt = res.headers.get("x-date-option");
         try { setDateOpt(opt ? JSON.parse(decodeURIComponent(opt)) : null); } catch { setDateOpt(null); }
       } else return;
@@ -67,7 +71,7 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
     } finally {
       setLoading(false);
     }
-  }, [model, source, companyId, copy, dateMode]);
+  }, [model, source, companyId, copy, dateMode, esign]);
 
   // จำรูปแบบวันที่ที่เลือกเป็นค่าของลูกค้ารายนี้ (โปรไฟล์เอกสารลูกค้า)
   const rememberDate = async () => {
@@ -105,6 +109,13 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
             </button>
           ))}
         </div>
+        {esignAvail && (
+          <div className="flex rounded-full bg-white/5 p-1" title="ลายเซ็นและตราประทับอิเล็กทรอนิกส์ (ตั้งค่า › ลายเซ็น · ตราประทับ)">
+            {([[true, "ใส่ลายเซ็น/ตรา"], [false, "ไม่ใส่"]] as const).map(([v, label]) => (
+              <button key={label} type="button" onClick={() => setEsign(v)} className={cn("h-8 px-4 rounded-full text-[13px]", esign === v ? "bg-white/15 text-white font-semibold" : "text-white/50 hover:text-white")}>{label}</button>
+            ))}
+          </div>
+        )}
         {dateOpt && (
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex rounded-full bg-white/5 p-1" title="หน่วยงานบางแห่งให้เว้นวันที่ไว้ลงเอง">

@@ -3,6 +3,7 @@ import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth"
 import { canAny } from "@/lib/permissions";
 import { DOCUMENT_TYPES } from "@/lib/documents/adapters.server";
 import { renderDocumentPdf, pdfFileName } from "@/lib/documents/render.server";
+import { withSigning } from "@/lib/documents/esign.server";
 import { createShare, listSends, listShares, logSend, publicOrigin, revokeShare, shareUrl, SHARE_DAYS_MAX } from "@/lib/documents/share.server";
 import { mailConfigured, parseEmails, sendDocumentEmail } from "@/lib/mailer.server";
 import { consumeRateLimit } from "@/lib/rate-limit.server";
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
     }
 
     // เอกสารต้องมีอยู่จริงและเปิดได้ก่อนส่ง
-    const doc = await def.load(companyId, id);
+    const doc = await withSigning(companyId, await def.load(companyId, id));
 
     if (action === "link") {
       const channel = body.channel === "line" ? "line" : "link";

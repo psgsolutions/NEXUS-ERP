@@ -3,6 +3,7 @@ import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth"
 import { canAny } from "@/lib/permissions";
 import { DOCUMENT_TYPES } from "@/lib/documents/adapters.server";
 import { renderDocumentPdf, pdfFileName } from "@/lib/documents/render.server";
+import { withSigning } from "@/lib/documents/esign.server";
 
 export const runtime = "nodejs";
 
@@ -10,6 +11,7 @@ export const runtime = "nodejs";
  * [API-SERVER] พิมพ์เอกสารเป็น PDF (เทมเพลตมาตรฐานเดียวกันทุกประเภท)
  * POST /api/documents/pdf  { companyId, type, id, copy?: "original" | "copy", format?: "pdf" | "json" }
  *  - format "json" คืน DocumentModel (ใช้กับแอปอื่น/แสดงผลเอง)
+ *  - esign: false = พิมพ์โดยไม่ใส่ลายเซ็น/ตราอิเล็กทรอนิกส์ (ค่าเริ่มต้นใส่ตามที่ตั้งไว้ เฉพาะเอกสารที่ออกจริง)
  */
 export async function POST(request: Request) {
   try {
@@ -21,7 +23,10 @@ export async function POST(request: Request) {
     if (!canAny(apiUser.roles, ([] as any[]).concat(def.permission))) throw new ApiAuthError(403, `ไม่มีสิทธิ์เปิด${def.label}`);
     const id = String(body.id || "").trim();
     if (body.type !== "sample" && (!id || id.includes("/"))) throw new ApiAuthError(400, "ไม่พบเลขที่เอกสาร");
-    const doc = await def.load(companyId, id);
+    const raw = await def.load(companyId, id);
+    const signedDoc = await withSigning(companyId, raw);
+    const esign = signedDoc !== raw;
+    const doc = body.esign === false ? raw : signedDoc;
     // ตัวเลือกตอนพิมพ์: ใส่วันที่ / เว้นวันที่ (เฉพาะเอกสารที่อนุญาต — ใบกำกับภาษีพิมพ์วันที่เสมอ)
     if (doc.dateOption && (body.dateMode === "dated" || body.dateMode === "undated")) doc.date = body.dateMode === "dated" ? doc.dateOption.actual : "";
     if (body.format === "json") return NextResponse.json({ success: true, document: doc });
@@ -32,6 +37,7 @@ export async function POST(request: Request) {
         "Content-Type": "application/pdf",
         "Content-Disposition": `inline; filename="${encodeURIComponent(pdfFileName(doc, copy))}"`,
         "Cache-Control": "no-store",
+        ...(esign ? { "X-ESign": body.esign === false ? "off" : "on" } : {}),
         ...(doc.dateOption ? { "X-Date-Option": encodeURIComponent(JSON.stringify({ ...doc.dateOption, undated: !doc.date })) } : {}),
       },
     });

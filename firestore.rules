@@ -236,6 +236,8 @@ service cloud.firestore {
           'document_sends',
           // ตั้งค่าบริษัท (รูปแบบเลขที่เอกสาร ฯลฯ): /api/settings/company เท่านั้น · ประวัติการออกแบบเอกสาร: /api/settings/document-profile
           'settings', 'design_versions',
+          // ลายเซ็น/ตราประทับอิเล็กทรอนิกส์: /api/settings/document-signing เท่านั้น (อ่านจาก client ไม่ได้)
+          'document_assets',
           // ทะเบียนบัญชีธนาคาร เช็ค และการกระทบยอด: บันทึกผ่าน /api/finance/* เท่านั้น
           'bank_accounts', 'cheques', 'bank_reconciliations',
           // งานมอบหมาย: จ่ายงาน/รับงาน/ปิดงานผ่าน /api/jobs เท่านั้น
@@ -250,11 +252,11 @@ service cloud.firestore {
         return collection in ['journal_entries', 'payments', 'financialLedgers', 'tax_filing_locks', 'customer_refunds', 'payrolls', 'expenses', 'withholding_taxes', 'cheques', 'bank_reconciliations'];
       }
       function canReadCollection(collection) {
-        return !restrictedRead(collection) || (
+        return collection != 'document_assets' && (!restrictedRead(collection) || (
           collection == 'payrolls' ? hasRole(['ACCOUNTANT', 'EXECUTIVE', 'HR'])
           : collection in ['expenses', 'withholding_taxes'] ? hasRole(['ACCOUNTANT', 'EXECUTIVE', 'PURCHASING', 'WAREHOUSE', 'HR'])
           : financeReader()
-        );
+        ));
       }
       match /{collection}/{docId} {
         allow read: if inCompany(companyId) && canReadCollection(collection);

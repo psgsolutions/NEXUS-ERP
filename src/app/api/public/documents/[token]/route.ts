@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { DOCUMENT_TYPES } from "@/lib/documents/adapters.server";
 import { renderDocumentPdf, pdfFileName } from "@/lib/documents/render.server";
+import { withSigning } from "@/lib/documents/esign.server";
 import { markViewed, resolveShare } from "@/lib/documents/share.server";
 import { thaiDate } from "@/lib/documents/format";
 import { clientIp, consumeRateLimit } from "@/lib/rate-limit.server";
@@ -29,7 +30,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
     const { share } = r;
     const def = DOCUMENT_TYPES[share.type];
     if (!def || def.internal) return NextResponse.json({ success: false, error: "ไม่พบเอกสาร" }, { status: 404 });
-    const doc = await def.load(share.companyId, share.id);
+    const doc = await withSigning(share.companyId, await def.load(share.companyId, share.id));
     const url = new URL(request.url);
 
     if (url.searchParams.get("pdf")) {

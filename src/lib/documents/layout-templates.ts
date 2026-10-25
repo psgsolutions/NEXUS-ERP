@@ -5,6 +5,8 @@
  *   · กรอบทั้งหน้า · แถบท้ายกระดาษ · โลโก้ขวา · กะทัดรัด
  * กติกา: โลโก้มีจุดเดียวบนหัวกระดาษ · แถบสีที่ชนขอบกระดาษเป็นมุมเหลี่ยม · สีของแถบ/กรอบ/เส้นใช้สีอ้างอิงธีม (@primary @accent @soft @line)
  * เปลี่ยนชุดสีแล้วทุกส่วนเปลี่ยนตามกัน · ความสูงกล่องขยายตามฟอนต์ · เอกสารที่ไม่มียอดเงินไม่มีกล่องยอดรวม
+ * ทุกแม่แบบปรับตามชนิดเอกสาร (tailor): กล่องข้อมูลเฉพาะ (เช่น ใบเสร็จ: รายละเอียดการชำระเงิน · ใบวางบิล: กำหนดชำระ)
+ * และข้อความรับรองเหนือช่องลงนาม (เช่น ใบส่งของ: ได้รับสินค้าครบถ้วน) — หน้าตาตามธีมเดิม เนื้อหาตามเอกสารนั้น
  */
 import { A4, FONT_SCALE, defaultFreeLayout, docHasAmounts, tint, type DocTheme, type FreeBlock, type FreeLayout } from "./design";
 import { DESIGNABLE_DOCS } from "./build";
@@ -190,10 +192,75 @@ const compact: Gen = (docType, t) => {
   return [...h.blocks, ...body(docType, t, M, W0, h.bottom + 8, { metaBesideParty: undefined }).map((b) => (b.kind === "party" ? { ...b, fontSize: 8.5 } : b))];
 };
 
+/** ส่วนเฉพาะของเอกสารแต่ละชนิด: กล่องข้อมูล (แถวที่ย้ายออกจากกล่องเลขที่) · บัญชีรับเงิน · ข้อความรับรองเหนือช่องลงนาม */
+/** ack.slot = ช่องลงนามที่ข้อความนี้เป็นของ (ลำดับ · -1 = ช่องสุดท้าย) */
+export const DOC_PARTS: Record<string, { box?: string[]; payment?: boolean; ack?: { text: string; slot: number } }> = {
+  quotation: { box: ["f:paymentTerms", "f:delivery"], payment: true, ack: { text: "ยืนยันการสั่งซื้อตามรายการและเงื่อนไขข้างต้น", slot: -1 } },
+  sales_order: { box: ["m:เครดิต"], payment: true },
+  invoice: { payment: true, ack: { text: "ได้รับสินค้า/บริการตามรายการข้างต้นไว้ถูกต้องแล้ว", slot: 0 } },
+  billing_note: { box: ["m:กำหนดชำระ", "m:เลขที่ใบสั่งซื้อ"], payment: true, ack: { text: "ได้รับใบวางบิลไว้ตรวจสอบแล้ว  นัดชำระ/รับเช็ค ......../......../........", slot: -1 } },
+  receipt: { box: ["m:ชำระโดย", "m:บัญชี", "m:เช็คเลขที่", "m:อ้างอิง"] },
+  delivery_note: { ack: { text: "ได้รับสินค้าตามรายการข้างต้นถูกต้องในสภาพเรียบร้อย", slot: 1 } },
+  cndn: { box: ["m:อ้างอิงใบกำกับ", "m:ลงวันที่"] },
+  purchase_order: { box: ["m:กำหนดส่ง", "m:ส่งที่คลัง", "m:เงื่อนไขชำระ"], ack: { text: "ยืนยันรับคำสั่งซื้อตามรายการและเงื่อนไขข้างต้น", slot: -1 } },
+  payment: { box: ["m:จ่ายโดย", "m:บัญชี", "m:เช็คเลขที่", "m:อ้างอิง"], ack: { text: "ได้รับเงินตามรายการข้างต้นถูกต้องแล้ว", slot: -1 } },
+};
+
+/**
+ * ปรับผังของแม่แบบให้เป็นเอกสารชนิดนั้น: วางกล่องข้อมูลเฉพาะในคอลัมน์ซ้ายใต้จำนวนเงินตัวอักษร (ต่อด้วยหมายเหตุ บัญชีรับเงิน)
+ * ย้ายแถวที่อยู่ในกล่องออกจากกล่องเลขที่ · ข้อความรับรองเหนือช่องลงนาม
+ */
+export function tailor(docType: string, t: DocTheme, blocks: FreeBlock[]): FreeBlock[] {
+  const part = DOC_PARTS[docType];
+  if (!part) return blocks;
+  const def = docDef(docType);
+  const known = new Set([...(def?.meta || []).map((l) => `m:${l}`), ...(def?.fields || []).map((x) => `f:${x.key}`)]);
+  const fields = (part.box || []).filter((k) => known.has(k));
+  const sign = blocks.find((b) => b.kind === "signatures");
+  const notes = blocks.find((b) => b.kind === "notes");
+  const pay = blocks.find((b) => b.kind === "payment");
+  let out = blocks.filter((b) => b !== notes && b !== pay);
+  const extra: FreeBlock[] = [];
+  const limit = sign ? sign.y - (part.ack ? 26 : 6) : A4.h - 40;
+  if (notes) {
+    const k = FONT_SCALE[t.font], row = Math.round((t.bilingual ? 24 : 15) * k);
+    const boxH = fields.length ? fields.length * row + 8 : 0;
+    const payH = part.payment && pay ? pay.h : 0;
+    // ที่ไม่พอ: ยกส่วนท้าย (จำนวนเงินตัวอักษร ยอดรวม หมายเหตุ ฯลฯ) ขึ้น และลดความสูงตาราง
+    const deficit = (boxH ? boxH + 4 : 0) + 18 + (payH ? payH + 4 : 0) - (limit - notes.y);
+    const items = out.find((b) => b.kind === "items");
+    let top = notes.y;
+    if (deficit > 0 && items && items.h - deficit >= 120) {
+      const itemsEnd = items.y + items.h;
+      out = out.map((b) => (b === items ? { ...b, h: b.h - deficit } : b.y >= itemsEnd - 1 && b.y < limit && b.kind !== "signatures" ? { ...b, y: b.y - deficit } : b));
+      top -= deficit;
+    }
+    const bottom = Math.max(limit, top + 40);
+    let y = top;
+    if (fields.length) {
+      extra.push({ id: "docInfo", kind: "info", x: notes.x, y, w: notes.w, h: boxH, fields, labelWidth: 100, border: "@line", radius: t.rounded ? 4 : 0, fontSize: Math.max(7.5, t.fontSize - 1) });
+      y += boxH + 4;
+    }
+    const notesH = Math.max(16, bottom - y - (payH ? payH + 4 : 0));
+    extra.push({ ...notes, y, h: notesH, x: notes.x });
+    if (payH) extra.push({ ...pay!, y: y + notesH + 4 });
+    // แถวที่อยู่ในกล่องข้อมูลแล้ว ไม่แสดงซ้ำในกล่องเลขที่
+    const moved = fields.filter((x) => x.startsWith("m:"));
+    out = out.map((b) => (b.kind === "meta" && moved.length ? { ...b, hide: [...new Set([...(b.hide || []), ...moved])] } : b));
+  }
+  if (part.ack && sign) {
+    // เหนือช่องลงนามของผู้รับรอง (ช่องเท่ากันตามจำนวนช่องในแม่แบบ)
+    const n = Math.max(1, (sign.labels?.length || def?.signatures.length || 2));
+    const i = part.ack.slot < 0 ? n - 1 : Math.min(n - 1, part.ack.slot), w = sign.w / n;
+    extra.push({ id: "ack", kind: "text", x: sign.x + i * w, y: sign.y - 24, w, h: 22, text: part.ack.text, fontSize: 8, align: "center", color: "@primary" });
+  }
+  return [...out, ...extra];
+}
+
 export const LAYOUT_TEMPLATES: Record<string, Gen> = { standard, form, sidebar, centerBand, cards, banner, split, minimalLine, frame, footerBand, mirror, compact };
 
 /** ผังของแม่แบบสำหรับเอกสารชนิดนี้ (ไม่มีผังเฉพาะ = ผังมาตรฐาน) */
 export function templateLayout(layoutId: string | undefined, docType: string, theme: DocTheme): FreeLayout {
   const gen = (layoutId && LAYOUT_TEMPLATES[layoutId]) || standard;
-  return { enabled: true, blocks: gen(docType, theme) };
+  return { enabled: true, blocks: tailor(docType, theme, gen(docType, theme)) };
 }

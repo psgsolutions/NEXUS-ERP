@@ -221,6 +221,10 @@ async function main() {
     // ประวัติการออกแบบเอกสาร: บันทึก/ย้อนผ่าน /api/settings/document-profile เท่านั้น
     ['admin cannot write design version directly', () => assertFails(setDoc(doc(adminA, 'companies/A/design_versions/v1'), { design: {} }))],
     ['member cannot delete design history', () => assertFails(deleteDoc(doc(userA, 'companies/A/design_versions/v0')))],
+    // ลายเซ็น/ตราประทับอิเล็กทรอนิกส์: อ่าน/เขียนผ่าน /api/settings/document-signing เท่านั้น
+    ['admin cannot read signatures directly', () => assertFails(getDoc(doc(adminA, 'companies/A/document_assets/signing')))],
+    ['member cannot read signatures', () => assertFails(getDoc(doc(userA, 'companies/A/document_assets/signing')))],
+    ['admin cannot write signatures directly', () => assertFails(setDoc(doc(adminA, 'companies/A/document_assets/signing'), { stamp: '' }))],
     ['member cannot reset rate limits', () => assertFails(setDoc(doc(userA, 'rate_limits/portal_ip_h_x_1'), { count: 0 }))],
     // ข้อมูลกลางของเครือ
     ['member reads own implicit group master', () => assertSucceeds(getDoc(doc(userA, 'groups/A/products/P1')))],

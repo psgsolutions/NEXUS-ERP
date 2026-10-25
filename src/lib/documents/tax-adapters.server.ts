@@ -1,4 +1,5 @@
 import { adminDb } from "@/lib/firebase-admin";
+import { DOC_COLUMN_LABELS } from "./build";
 import { ApiAuthError } from "@/lib/api-auth";
 import type { DocumentModel, DocumentParty } from "./model";
 import { documentProfileOf } from "./profile";
@@ -146,9 +147,12 @@ export async function loadBillingNote(companyId: string, id: string): Promise<Do
     meta: [{ label: "กำหนดชำระ", value: d.dueDate ? thaiDate(d.dueDate) : "-" }, ...(d.customerPoNo ? [{ label: "เลขที่ใบสั่งซื้อ", value: str(d.customerPoNo) }] : [])],
     seller,
     party: partyOf("ลูกค้า", d.customerSnapshot, str(d.customerName)),
-    columns: ["no", "description", "amount"],
+    // ตารางเป็นรายการเอกสารที่วางบิล: เลขที่เอกสารแยกคอลัมน์
+    columns: ["no", "code", "description", "amount"],
+    columnLabels: DOC_COLUMN_LABELS.billing_note,
     lines: [{
-      description: `ใบกำกับภาษี/ใบแจ้งหนี้ เลขที่ ${str(d.invoiceRefNo)}${inv?.issueDate ? ` ลงวันที่ ${thaiDate(inv.issueDate)}` : ""}`,
+      code: str(d.invoiceRefNo),
+      description: `ใบกำกับภาษี/ใบแจ้งหนี้${inv?.issueDate ? ` ลงวันที่ ${thaiDate(inv.issueDate)}` : ""}`,
       detail: [d.salesOrderRefNo ? `อ้างอิงใบสั่งขาย ${d.salesOrderRefNo}` : "", d.dueDate ? `ครบกำหนด ${thaiDate(d.dueDate)}` : ""].filter(Boolean).join(" · "),
       amount: total,
     }],
@@ -185,11 +189,13 @@ export async function loadReceipt(companyId: string, id: string): Promise<Docume
     ],
     seller,
     party: partyOf("ได้รับเงินจาก", d.customerSnapshot || firstInv?.customerSnapshot, str(d.customerName)),
-    columns: ["no", "description", "amount"],
+    columns: ["no", "code", "description", "amount"],
+    columnLabels: DOC_COLUMN_LABELS.receipt,
     lines: lines.map((l) => ({
+      code: str(l.invoiceNo),
       description: l.vatOnReceipt
-        ? `ค่าบริการตามใบแจ้งหนี้เลขที่ ${str(l.invoiceNo)}${l.milestoneName ? ` (${str(l.milestoneName)})` : ""}${l.projectName ? ` โครงการ ${str(l.projectName)}` : ""}`
-        : `ชำระค่าสินค้า/บริการ ตามใบกำกับภาษีเลขที่ ${str(l.invoiceNo)}`,
+        ? `ค่าบริการตามใบแจ้งหนี้${l.milestoneName ? ` (${str(l.milestoneName)})` : ""}${l.projectName ? ` โครงการ ${str(l.projectName)}` : ""}`
+        : "ชำระค่าสินค้า/บริการ ตามใบกำกับภาษี",
       detail: l.whtAmount ? `หัก ณ ที่จ่าย ${num(l.whtRate)}% = ${num(l.whtAmount).toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท` : "",
       amount: num(l.amount),
     })),

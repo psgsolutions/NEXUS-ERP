@@ -425,7 +425,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const newBlock = (kind: BlockKind, extra: Partial<FreeBlock> = {}): FreeBlock => {
     const id = `${kind}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 4)}`;
     const def = defaultFreeLayout(docType, font).blocks.find((b) => b.kind === kind);
-    const size: Record<string, [number, number]> = { text: [200, 24], line: [300, 1.5], rect: [200, 80], image: [120, 80], logo: [64, 64], field: [180, 18] };
+    const size: Record<string, [number, number]> = { text: [200, 24], line: [300, 1.5], rect: [200, 80], image: [120, 80], logo: [64, 64], stamp: [72, 72], field: [180, 18] };
     const [w, h] = def ? [def.w, def.h] : size[kind] || [200, 40];
     return { id, kind, x: def?.x ?? 60, y: def?.y ?? (addZone === "head" ? 30 : 160), w, h, ...(kind === "text" ? { text: "ข้อความ {{number}}", fontSize: 10 } : {}), ...(kind === "field" ? { field: "number" } : {}), ...extra };
   };
@@ -772,6 +772,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           </>
         )}
 
+        {b.kind === "stamp" && <p className="text-[11px] text-white/45">รูปตราตั้งที่แท็บ &quot;ลายเซ็น · ตราประทับ&quot; · พิมพ์เฉพาะเอกสารที่ออกจริง (ฉบับร่าง/ยกเลิกไม่มีตรา) · ตอนพิมพ์เลือกไม่ใส่ได้</p>}
         {b.kind === "rect" && <p className="text-[11px] text-white/45">กรอบคลิกเลือกที่เส้นขอบ (ข้างในคลิกข้อมูลที่อยู่ในกรอบได้) หรือเลือกจากรายการชั้น</p>}
         {b.kind === "image" && (
           <>

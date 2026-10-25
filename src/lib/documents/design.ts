@@ -59,7 +59,7 @@ export interface Letterhead { id: string; name: string; height: number; blocks: 
 export interface DocumentDesign { theme: DocTheme; perDoc: Record<string, PerDocDesign>; letterheads: Letterhead[] }
 
 // ---------- ผังลากวางอิสระ ----------
-export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "info" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "field" | "text" | "line" | "rect" | "image";
+export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "info" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "field" | "text" | "line" | "rect" | "image" | "stamp";
 export type ItemColumn = "no" | "code" | "description" | "detail" | "qty" | "unit" | "qtyUnit" | "price" | "discount" | "discountText" | "gross" | "amount";
 /** คอลัมน์ตารางที่ตั้งเอง: ลำดับตามรายการ · หัวคอลัมน์ · จัดวาง · ความกว้าง (% ของตาราง ว่าง = อัตโนมัติ) */
 export interface ColumnSpec { key: ItemColumn; label?: string; align?: "left" | "center" | "right"; width?: number }
@@ -125,7 +125,7 @@ export const A4 = { w: 595.28, h: 841.89 };
 /** กล่องที่เอกสารภาษีต้องมี (ลบไม่ได้ในผังอิสระ) */
 export const REQUIRED_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party", "items", "totals"];
 export const BLOCK_LABELS: Record<BlockKind, string> = {
-  logo: "โลโก้", seller: "ข้อมูลผู้ขาย", title: "ชื่อเอกสาร", meta: "เลขที่/วันที่", party: "ข้อมูลลูกค้า/คู่ค้า", info: "กล่องข้อมูล", items: "ตารางรายการ",
+  logo: "โลโก้", seller: "ข้อมูลผู้ขาย", title: "ชื่อเอกสาร", meta: "เลขที่/วันที่", party: "ข้อมูลลูกค้า/คู่ค้า", info: "กล่องข้อมูล", stamp: "ตราประทับ", items: "ตารางรายการ",
   totals: "ยอดรวม", words: "จำนวนเงินตัวอักษร", notes: "หมายเหตุ", payment: "ข้อมูลการชำระเงิน", signatures: "ช่องลงนาม",
   field: "ข้อมูลเดี่ยว", text: "ข้อความ", line: "เส้น", rect: "กรอบ/พื้นหลัง", image: "รูปภาพ",
 };
@@ -154,7 +154,7 @@ export function resolveColumns(b: { colSpec?: ColumnSpec[]; cols?: ItemColumn[] 
 /** กล่องที่มีตัวอักษร (ปรับขนาด/ระยะบรรทัด/สีได้) */
 export const TEXT_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party", "info", "items", "totals", "words", "notes", "payment", "signatures", "field", "text"];
 /** กล่องที่วางในหัวกระดาษได้ */
-export const HEAD_KINDS: BlockKind[] = ["logo", "seller", "title", "meta", "info", "field", "text", "line", "rect", "image"];
+export const HEAD_KINDS: BlockKind[] = ["logo", "seller", "title", "meta", "info", "field", "text", "line", "rect", "image", "stamp"];
 /** คีย์ช่องข้อมูล: เลขที่ วันที่ แถวข้อมูลของเอกสาร (m:ป้าย) ข้อมูลเพิ่ม (f:คีย์) */
 const FIELD_KEY = /^(number|date|title|titleEn|m:[^\n]{1,40}|f:[a-zA-Z]{1,30}|seller\.(name|nameEn|address|taxId|contact)|customer\.(name|address|taxId|contact|phone|email))$/;
 
@@ -182,7 +182,7 @@ export const docHasAmounts = (docType?: string) => !NO_AMOUNT_DOCS.includes(Stri
 export const requiredBlocksFor = (docType?: string): BlockKind[] => (docHasAmounts(docType) ? REQUIRED_BLOCKS : REQUIRED_BLOCKS.filter((k) => k !== "totals"));
 /** กล่องที่เพิ่มได้ในเอกสารชนิดนี้ */
 export const addableBlocksFor = (docType?: string): BlockKind[] =>
-  (["info", "text", "line", "rect", "image", "logo", "field", "words", "notes", "payment", "signatures", "totals"] as BlockKind[]).filter((k) => docHasAmounts(docType) || (k !== "words" && k !== "totals"));
+  (["info", "text", "line", "rect", "image", "logo", "stamp", "field", "words", "notes", "payment", "signatures", "totals"] as BlockKind[]).filter((k) => docHasAmounts(docType) || (k !== "words" && k !== "totals"));
 /** คอลัมน์ที่ต้องแสดงเสมอ */
 export const requiredColumnsFor = (docType?: string): ItemColumn[] => (docHasAmounts(docType) ? ["description", "amount"] : ["description"]);
 

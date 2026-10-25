@@ -98,7 +98,11 @@ export interface DocumentModel {
   /** ช่องลงนามด้านล่าง เช่น ["ผู้รับเงิน", "ผู้มีอำนาจลงนาม"] */
   signatures: string[];
   /** ลายเซ็นที่เก็บไว้แล้ว (data URL) และชื่อผู้ลงนาม ตามหัวข้อช่องลงนาม */
-  signed?: Record<string, { image?: string; name?: string; date?: string }>;
+  signed?: Record<string, { image?: string; name?: string; title?: string; date?: string }>;
+  /** ตราประทับอิเล็กทรอนิกส์ของบริษัท (ใส่ให้เฉพาะเอกสารที่ออกจริง) · slots = ช่องลงนามที่ประทับทับ */
+  stamp?: { image: string; size: number; slots: string[] };
+  /** หัวคอลัมน์ของเอกสารชนิดนี้ (เช่น ใบวางบิล: รหัส = เลขที่ใบแจ้งหนี้) */
+  columnLabels?: Partial<Record<ColumnKey, string>>;
   /** รูปประกอบ เช่น ก่อน/หลังทำงาน (data URL) */
   photos?: { label: string; src: string }[];
   /** ลายน้ำ เช่น "ยกเลิก" / "ฉบับร่าง" */

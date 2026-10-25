@@ -116,6 +116,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   // ความกว้างจริงของแถบเครื่องมือลอย (ไม่ให้ล้นขอบกระดาษ)
   const barRef = useRef<HTMLDivElement>(null);
   const [barW, setBarW] = useState(360);
+  // วัดหลังวาดทุกครั้ง (เนื้อหาแถบเปลี่ยนตามกล่องที่เลือก) — ตั้งค่าเฉพาะเมื่อกว้างต่างจริง จึงไม่วนซ้ำ
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { const w = barRef.current?.offsetWidth; if (w && Math.abs(w - barW) > 2) setBarW(w); });
   const [showPdf, setShowPdf] = useState(false);
   const [grid, setGrid] = useState(10);

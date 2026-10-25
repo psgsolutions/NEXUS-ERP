@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import * as admin from "firebase-admin";
 import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
-import { can } from "@/lib/permissions";
+import { can, canAny } from "@/lib/permissions";
+import { DOCUMENT_TYPES } from "@/lib/documents/adapters.server";
 import { auditServer } from "@/services/audit.server";
 import { documentProfileOf } from "@/lib/documents/profile";
 import { normalizeDesign } from "@/lib/documents/design";
@@ -16,6 +17,21 @@ import { normalizeDesign } from "@/lib/documents/design";
  */
 const str = (v: any, max = 300) => String(v ?? "").trim().slice(0, max);
 
+const VERSION_KEEP = 20;
+/** ชนิดเอกสาร → collection และฟิลด์เลขที่ (ตาม adapters) */
+const SAMPLE_SOURCES: Record<string, { col: string; no: string[] }> = {
+  quotation: { col: "quotations", no: ["documentNo", "quotationNumber"] },
+  sales_order: { col: "sales_orders", no: ["documentNo", "soId"] },
+  invoice: { col: "invoices", no: ["invoiceNo", "documentNo"] },
+  billing_note: { col: "billing_notes", no: ["billingNoteNo", "documentNo"] },
+  receipt: { col: "receipts", no: ["receiptNo", "documentNo"] },
+  delivery_note: { col: "delivery_notes", no: ["dnNo"] },
+  cndn: { col: "cndn", no: ["documentNo", "cndnNo"] },
+  purchase_order: { col: "purchase_orders", no: ["poCode", "documentNo"] },
+  payment: { col: "payments", no: ["paymentNo", "documentNo"] },
+  work_order: { col: "work_orders", no: ["woCode", "documentNo"] },
+};
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -26,6 +42,30 @@ export async function POST(request: Request) {
     if (body.action === "get") {
       return NextResponse.json({ success: true, profile: documentProfileOf((await ref.get()).data()) });
     }
+    // ---------- ประวัติเวอร์ชันการออกแบบ (ย้อนกลับได้ทั้งชุด) ----------
+    if (body.action === "versions") {
+      if (!can(apiUser.roles, "settings:manage")) throw new ApiAuthError(403, "ดูประวัติการออกแบบได้เฉพาะผู้ดูแลระบบ");
+      const snap = await ref.collection("design_versions").orderBy("savedAt", "desc").limit(VERSION_KEEP).get();
+      return NextResponse.json({ success: true, versions: snap.docs.map((d) => ({ id: d.id, savedAt: d.get("savedAt")?.toDate?.()?.toISOString() || "", savedByName: d.get("savedByName") || "", templateId: d.get("templateId") || "" })) });
+    }
+    if (body.action === "version") {
+      if (!can(apiUser.roles, "settings:manage")) throw new ApiAuthError(403, "ดูประวัติการออกแบบได้เฉพาะผู้ดูแลระบบ");
+      const v = await ref.collection("design_versions").doc(str(body.id, 60)).get();
+      if (!v.exists) throw new ApiAuthError(404, "ไม่พบเวอร์ชันนี้");
+      const current = documentProfileOf((await ref.get()).data());
+      return NextResponse.json({ success: true, design: normalizeDesign(v.get("design"), current.brandColor) });
+    }
+    // ---------- เอกสารจริงล่าสุดของชนิดนี้ (ดูตัวอย่างการออกแบบด้วยข้อมูลจริง) ----------
+    if (body.action === "sampleDocs") {
+      if (!can(apiUser.roles, "settings:manage")) throw new ApiAuthError(403, "ใช้ได้เฉพาะผู้ดูแลระบบ");
+      const type = str(body.type, 30), src = SAMPLE_SOURCES[type], perm = DOCUMENT_TYPES[type]?.permission;
+      // แสดงเฉพาะเอกสารชนิดที่ผู้ใช้มีสิทธิ์เปิดอยู่แล้ว (หน้าออกแบบไม่ข้ามสิทธิ์การดูเอกสาร)
+      if (!src || !perm || !canAny(apiUser.roles, ([] as any[]).concat(perm))) return NextResponse.json({ success: true, docs: [] });
+      const snap = await ref.collection(src.col).orderBy("createdAt", "desc").limit(12).get();
+      const docs = snap.docs.filter((d) => d.get("docKind") !== "opening" && String(d.get("status") || "").toUpperCase() !== "CANCELLED").slice(0, 8)
+        .map((d) => ({ id: d.id, label: [src.no.map((k) => d.get(k)).find(Boolean) || d.id, d.get("customerName") || d.get("supplierName") || d.get("vendorName") || d.get("payeeName") || ""].filter(Boolean).join(" · ") }));
+      return NextResponse.json({ success: true, docs });
+    }
     if (body.action === "saveDesign") {
       if (!can(apiUser.roles, "settings:manage")) throw new ApiAuthError(403, "ออกแบบเอกสารได้เฉพาะผู้ดูแลระบบ");
       const current = documentProfileOf((await ref.get()).data());
@@ -33,6 +73,11 @@ export async function POST(request: Request) {
       // เอกสารบริษัทเก็บได้ ~1MB: การออกแบบ + โลโก้ รวมกันต้องไม่เกิน
       if (JSON.stringify(design).length + (current.logo || "").length > 950_000) throw new ApiAuthError(400, "รูปภาพในผังเอกสารรวมกับโลโก้ใหญ่เกินที่เก็บได้ ลดขนาดรูปในผังก่อน");
       await ref.update({ documentDesign: design, updatedAt: admin.firestore.FieldValue.serverTimestamp(), updatedBy: apiUser.uid });
+      // เก็บเวอร์ชัน (ล่าสุด VERSION_KEEP รุ่น) ย้อนกลับทั้งชุดได้จากหน้าออกแบบ
+      const versions = ref.collection("design_versions");
+      await versions.add({ design, savedAt: admin.firestore.FieldValue.serverTimestamp(), savedBy: apiUser.uid, savedByName: str((apiUser as any).name || (apiUser as any).email || "", 80), templateId: design.theme.templateId });
+      const old = await versions.orderBy("savedAt", "desc").offset(VERSION_KEEP).get();
+      await Promise.all(old.docs.map((d) => d.ref.delete()));
       await auditServer.logUpdate(apiUser.uid, companyId, "DOCUMENT_DESIGN", companyId, { templateId: current.design?.theme.templateId }, { templateId: design.theme.templateId, font: design.theme.font, perDoc: Object.keys(design.perDoc) });
       return NextResponse.json({ success: true, design });
     }

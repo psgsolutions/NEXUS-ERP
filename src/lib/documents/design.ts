@@ -118,7 +118,7 @@ export const REQUIRED_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party",
 export const BLOCK_LABELS: Record<BlockKind, string> = {
   logo: "โลโก้", seller: "ข้อมูลผู้ขาย", title: "ชื่อเอกสาร", meta: "เลขที่/วันที่", party: "ข้อมูลลูกค้า/คู่ค้า", items: "ตารางรายการ",
   totals: "ยอดรวม", words: "จำนวนเงินตัวอักษร", notes: "หมายเหตุ", payment: "ข้อมูลการชำระเงิน", signatures: "ช่องลงนาม",
-  field: "ช่องข้อมูล", text: "ข้อความ", line: "เส้น", rect: "กรอบ/พื้นหลัง", image: "รูปภาพ",
+  field: "ข้อมูลเดี่ยว", text: "ข้อความ", line: "เส้น", rect: "กรอบ/พื้นหลัง", image: "รูปภาพ",
 };
 /** ส่วนย่อยในกล่องที่เลือกซ่อนได้ (ชื่อ ที่อยู่ เลขผู้เสียภาษีของผู้ขาย/ผู้ซื้อ แสดงเสมอ ตามกฎหมาย) */
 export const BLOCK_PARTS: Partial<Record<BlockKind, { key: string; label: string }[]>> = {

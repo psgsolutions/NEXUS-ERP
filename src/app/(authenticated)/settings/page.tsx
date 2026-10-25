@@ -8,6 +8,7 @@ import { DocumentProfileSettings } from "@/components/settings/DocumentProfileSe
 import { DocumentDesigner } from "@/components/settings/DocumentDesigner";
 import { SpecLibraryManager } from "@/components/projects/SpecLibraryManager";
 import { useAuth } from "@/context/AuthContext";
+import { useSystemDialog } from "@/context/DialogContext";
 import { db } from "@/lib/firebase-client";
 import { resolveSequenceFormat } from "@/lib/sequence-engine";
 import { doc, getDoc } from "firebase/firestore";
@@ -39,6 +40,12 @@ export default function SettingsPage() {
   const searchParams = useSearchParams();
   const requested = searchParams.get("tab") as SettingsTab;
   const [activeTab, setActiveTab] = useState<SettingsTab>(TABS.some((t) => t.id === requested) ? requested : "company");
+  const { showConfirm } = useSystemDialog();
+  // ออกจากแท็บออกแบบเอกสารโดยยังไม่บันทึก: ถามก่อน (การแก้ที่ยังไม่บันทึกจะหาย)
+  const changeTab = async (id: SettingsTab) => {
+    if (activeTab === "design" && (window as any).__nexusDesignDirty && !(await showConfirm("ยังไม่ได้บันทึกการออกแบบเอกสาร ออกจากหน้านี้หรือไม่? การแก้ที่ยังไม่บันทึกจะหาย"))) return;
+    setActiveTab(id);
+  };
   const [toast, setToast] = useState({ message: "", isVisible: false });
   const { companyId } = useAuth();
   const [formats, setFormats] = useState<Record<string, string>>({});
@@ -80,7 +87,7 @@ export default function SettingsPage() {
           <h1 className="text-2xl font-bold text-white tracking-tight">การตั้งค่าระบบ</h1>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <PillTabs tabs={TABS} activeTab={activeTab} onTabChange={(id: any) => setActiveTab(id)} />
+          <PillTabs tabs={TABS} activeTab={activeTab} onTabChange={(id: any) => changeTab(id)} />
           {activeTab === "sequence" && (
             <PillButton className="px-8 shadow-neon-teal shrink-0" disabled={saving} onClick={saveFormats}>
               <Save size={18} /> บันทึกรูปแบบเลขที่

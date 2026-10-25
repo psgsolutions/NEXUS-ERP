@@ -9,6 +9,8 @@ import { quotationLines, quotationModel, sampleModel } from "./build";
 import { documentProfileOf } from "./profile";
 import { toDateStr } from "./format";
 import { LETTER_LABELS, type LetterKind } from "@/lib/letters";
+import { TICKET_PRIORITY, TICKET_STATUS, ticketCategoryLabel, ticketChannelLabel, type TicketPriority } from "@/lib/service-tickets";
+import { thaiDate } from "./format";
 
 /**
  * แปลงเอกสารแต่ละประเภทในฐานข้อมูล -> DocumentModel (ใช้กับ PDF / ลิงก์ลูกค้า / อีเมล / แอปอื่น)
@@ -74,6 +76,38 @@ const letter: DocumentTypeDef = {
   },
 };
 
+/** ใบรับแจ้ง/ใบเปิดเคสงานบริการ (ส่งให้ลูกค้ายืนยันเรื่องที่รับแจ้ง) */
+const serviceTicket: DocumentTypeDef = {
+  label: "ใบเปิดเคส",
+  permission: ["sales:view", "projects:view", "inventory:view", "service:field"],
+  async load(companyId, id) {
+    const [snap, seller] = await Promise.all([adminDb.doc(`companies/${companyId}/service_tickets/${id}`).get(), sellerOf(companyId)]);
+    if (!snap.exists || snap.data()!.isDeleted === true) throw new ApiAuthError(404, "ไม่พบใบแจ้ง");
+    const t = snap.data()!;
+    const st = TICKET_STATUS[t.status as keyof typeof TICKET_STATUS];
+    const at = (v: any) => { const d = v?.toDate?.() || (v ? new Date(v) : null); return d && !isNaN(d.getTime()) ? `${thaiDate(d.toISOString().slice(0, 10))} ${new Date(d.getTime() + 7 * 3600e3).toISOString().slice(11, 16)} น.` : "-"; };
+    const followUps = (Array.isArray(t.history) ? t.history : []).filter((h: any) => h?.note).slice(-6).map((h: any) => `${at(h.at)} ${str(h.action)}: ${str(h.note)}`);
+    return {
+      type: "service_ticket", title: "ใบรับแจ้งงานบริการ", titleEn: "SERVICE CASE", number: str(t.ticketNo || id), date: toDateStr(t.createdAt),
+      meta: [
+        { label: "ประเภทงาน", value: ticketCategoryLabel(str(t.category)) },
+        { label: "ความเร่งด่วน", value: TICKET_PRIORITY[t.priority as TicketPriority] || str(t.priority) },
+        { label: "กำหนดดำเนินการ", value: at(t.slaDueAt) },
+        { label: "ช่องทางที่แจ้ง", value: ticketChannelLabel(str(t.channel)) },
+        { label: "สถานะ", value: st?.label || str(t.status) },
+      ],
+      seller,
+      party: { label: "ลูกค้า", name: str(t.customerName) || "-", address: str(t.address), contact: str(t.contact), phone: str(t.phone) },
+      columns: ["no", "description"],
+      lines: [{ description: `${str(t.productName) || "อุปกรณ์/ระบบที่แจ้ง"}${t.serialNumber ? ` (S/N ${str(t.serialNumber)})` : ""}`, detail: `อาการที่แจ้ง: ${str(t.symptom)}${t.serialNumber ? ` · ${t.inWarranty ? "อยู่ในระยะรับประกัน" : "ไม่อยู่ในระยะรับประกัน"}` : ""}` }],
+      totals: [],
+      notes: [...followUps.map((f: string) => `ติดตาม: ${f}`), "บริษัทฯ จะติดต่อนัดหมายเข้าดำเนินการตามกำหนดข้างต้น"],
+      signatures: ["ผู้รับแจ้ง", "ลูกค้า"],
+      watermark: t.status === "CANCELLED" ? "ยกเลิก" : undefined,
+    };
+  },
+};
+
 /** ตัวอย่างสำหรับหน้าตั้งค่าหัวเอกสาร (ข้อมูลบริษัทจริง + รายการตัวอย่าง) */
 const sample: DocumentTypeDef = {
   label: "ตัวอย่างเอกสาร",
@@ -103,5 +137,6 @@ export const DOCUMENT_TYPES: Record<string, DocumentTypeDef> = {
   journal: { label: "ใบสำคัญบัญชี", permission: "finance:view", load: loadJournal, internal: true },
   payslip: { label: "สลิปเงินเดือน", permission: ["hr:edit", "finance:edit"], load: loadPayslip },
   letter,
+  service_ticket: serviceTicket,
   sample,
 };

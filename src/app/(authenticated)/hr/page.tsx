@@ -4,7 +4,8 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { where } from "firebase/firestore";
-import { CalendarCheck, Clock, DollarSign, MapPin, Plus, UserX, Users, Wallet } from "lucide-react";
+import { CalendarCheck, Clock, DollarSign, MapPin, Paperclip, Plus, UserX, Users, Wallet } from "lucide-react";
+import { AttachmentsDialog } from "@/components/shared/AttachmentPicker";
 import { GlassCard, NexusSearchInput, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillTabs, StatusBadge, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
@@ -27,6 +28,7 @@ export default function HRPage() {
   const { companyId } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("profiles");
   const [searchQuery, setSearchQuery] = useState("");
+  const [filesOf, setFilesOf] = useState<{ id: string; no: string } | null>(null);
   const today = bkkParts(Date.now()).date;
 
   const { data: employees, loading } = useRealtimeCollection<any>("employees");
@@ -190,7 +192,8 @@ export default function HRPage() {
                       <NexusTableCell className="text-white/70">{x.description || "-"}</NexusTableCell>
                       <NexusTableCell mono className="text-white">{baht(x.totalAmount)}</NexusTableCell>
                       <NexusTableCell><StatusBadge status={paid ? "active" : partial ? "warning" : "pending"} label={paid ? "จ่ายแล้ว" : partial ? "จ่ายบางส่วน" : "รอจ่าย"} /></NexusTableCell>
-                      <NexusTableCell>
+                      <NexusTableCell className="whitespace-nowrap">
+                        <button type="button" onClick={() => setFilesOf({ id: x.id, no: x.expenseId || x.id })} className="h-8 px-3 mr-1.5 rounded-full border border-white/15 text-white/70 text-[12px] font-bold inline-flex items-center gap-1 hover:bg-white/10" title="รูปใบเสร็จ/บิลที่แนบ"><Paperclip size={12} /> ไฟล์แนบ</button>
                         {!paid && !x.isSample ? (
                           <Link href={`/finance/payments/new?expense=${encodeURIComponent(x.id)}`} className="h-8 px-3 rounded-full border border-nexus-teal/30 text-nexus-teal text-[12px] font-bold inline-flex items-center hover:bg-nexus-teal/10">จ่ายชำระ</Link>
                         ) : <span className="text-white/30">-</span>}
@@ -200,6 +203,7 @@ export default function HRPage() {
                 })}
               </NexusTable>
             )}
+            {filesOf && <AttachmentsDialog open onClose={() => setFilesOf(null)} title={`ไฟล์แนบ ${filesOf.no}`} ownerType="expense" ownerId={filesOf.id} />}
           </GlassCard>
         </div>
       </div>

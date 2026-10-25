@@ -240,6 +240,8 @@ service cloud.firestore {
           'document_assets',
           // หนังสือที่ออกแล้ว: บันทึกผ่าน /api/documents/letters (เลขที่ไม่ซ้ำ)
           'letters',
+          // ไฟล์แนบ (รูปใบเสร็จ บิล): /api/attachments เท่านั้น (อ่านตรงไม่ได้ — ดูได้เฉพาะผู้อัปโหลดและฝ่ายบัญชี)
+          'attachments',
           // ทะเบียนบัญชีธนาคาร เช็ค และการกระทบยอด: บันทึกผ่าน /api/finance/* เท่านั้น
           'bank_accounts', 'cheques', 'bank_reconciliations',
           // งานมอบหมาย: จ่ายงาน/รับงาน/ปิดงานผ่าน /api/jobs เท่านั้น
@@ -254,7 +256,7 @@ service cloud.firestore {
         return collection in ['journal_entries', 'payments', 'financialLedgers', 'tax_filing_locks', 'customer_refunds', 'payrolls', 'expenses', 'withholding_taxes', 'cheques', 'bank_reconciliations'];
       }
       function canReadCollection(collection) {
-        return collection != 'document_assets' && (!restrictedRead(collection) || (
+        return !(collection in ['document_assets', 'attachments']) && (!restrictedRead(collection) || (
           collection == 'payrolls' ? hasRole(['ACCOUNTANT', 'EXECUTIVE', 'HR'])
           : collection in ['expenses', 'withholding_taxes'] ? hasRole(['ACCOUNTANT', 'EXECUTIVE', 'PURCHASING', 'WAREHOUSE', 'HR'])
           : financeReader()

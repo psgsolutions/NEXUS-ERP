@@ -222,6 +222,8 @@ async function main() {
     ['admin cannot write design version directly', () => assertFails(setDoc(doc(adminA, 'companies/A/design_versions/v1'), { design: {} }))],
     ['member cannot delete design history', () => assertFails(deleteDoc(doc(userA, 'companies/A/design_versions/v0')))],
     // ลายเซ็น/ตราประทับอิเล็กทรอนิกส์: อ่าน/เขียนผ่าน /api/settings/document-signing เท่านั้น
+    ['member cannot read attachments directly', () => assertFails(getDoc(doc(userA, 'companies/A/attachments/F1')))],
+    ['member cannot write attachments directly', () => assertFails(setDoc(doc(userA, 'companies/A/attachments/F2'), { data: 'x' }))],
     ['member reads issued letters', () => assertSucceeds(getDoc(doc(userA, 'companies/A/letters/L1')))],
     ['member cannot write letters directly', () => assertFails(setDoc(doc(userA, 'companies/A/letters/L2'), { number: 'X' }))],
     ['admin cannot read signatures directly', () => assertFails(getDoc(doc(adminA, 'companies/A/document_assets/signing')))],

@@ -15,6 +15,9 @@ export const DOC_SOURCES: Record<string, DocSource> = {
   purchase_order: { col: "purchase_orders", no: ["poCode", "documentNo"], party: ["supplierName", "vendorName"], amount: ["grandTotal", "totalAmount"], date: ["poDate", "createdAt"] },
   payment: { col: "payments", no: ["paymentNo", "documentNo"], party: ["payeeName", "supplierName", "vendorName"], amount: ["amount", "totalAmount"], date: ["paymentDate", "createdAt"] },
   work_order: { col: "work_orders", no: ["woCode", "documentNo"], party: ["customerName"], amount: [], date: ["scheduleDate", "createdAt"] },
+  wht: { col: "withholding_taxes", no: ["whtId"], party: ["vendorName", "vendor"], amount: ["whtAmount", "taxAmount"], date: ["filingDate", "issuedAt", "createdAt"] },
+  journal: { col: "journal_entries", no: ["jvId", "journalNo", "documentNo"], party: ["description"], amount: ["totalDebit"], date: ["date", "createdAt"] },
+  service_ticket: { col: "service_tickets", no: ["ticketNo"], party: ["customerName", "phone"], amount: [], date: ["createdAt"] },
   letter: { col: "letters", no: ["number"], party: ["to"], amount: [], date: ["date", "createdAt"] },
 };
 

@@ -164,6 +164,7 @@ export function canApproveQuotation(roles: RoleInput, grandTotal: number): boole
 /** สิทธิ์ที่ต้องมีเพื่อเปิดหน้า (มีข้อใดข้อหนึ่งก็พอ) — prefix ยาวกว่ามาก่อน */
 export const ROUTE_PERMISSIONS: { prefix: string; any: Permission[] }[] = [
   { prefix: "/executive", any: ["dashboard:executive"] },
+  { prefix: "/documents/accounting", any: ["finance:view"] },
   { prefix: "/finance/expense-claims", any: ["finance:edit", "projects:edit", "inventory:edit", "sales:edit", "hr:edit", "procurement:edit"] },
   { prefix: "/finance/receipts", any: ["finance:view", "sales:billing"] },
   { prefix: "/finance/payouts", any: ["finance:edit", "projects:edit"] },

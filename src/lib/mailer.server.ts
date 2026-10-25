@@ -60,6 +60,22 @@ export async function sendDocumentEmail(args: {
   });
 }
 
+/** ส่งชุดเอกสาร (เช่น เอกสารบัญชีรายเดือนให้สำนักบัญชี) — แนบไฟล์หลายไฟล์ */
+export async function sendBundleEmail(args: { to: string[]; cc?: string[]; subject: string; message: string; senderName: string; replyTo?: string; attachments: { filename: string; content: Buffer; contentType: string }[] }) {
+  const lines = args.message.split(/\r?\n/).map((l) => esc(l)).join("<br>");
+  const names = args.attachments.map((a) => a.filename).join(", ");
+  return transporter().sendMail({
+    from: { name: safeName(args.senderName) || "NEXUS ERP", address: process.env.SMTP_USER! },
+    to: args.to,
+    ...(args.cc?.length ? { cc: args.cc } : {}),
+    ...(args.replyTo && EMAIL_RE.test(args.replyTo) ? { replyTo: args.replyTo } : {}),
+    subject: args.subject.replace(/[\r\n]+/g, " ").slice(0, 200),
+    text: `${args.message}\n\nไฟล์แนบ: ${names}\nอีเมลนี้ส่งจากระบบของ ${args.senderName}`,
+    html: `<div style="font-family:Tahoma,Arial,sans-serif;font-size:14px;color:#222;line-height:1.7"><p>${lines}</p><p style="color:#888;font-size:12px">ไฟล์แนบ: ${esc(names)}<br>อีเมลนี้ส่งจากระบบของ ${esc(args.senderName)}</p></div>`,
+    attachments: args.attachments,
+  });
+}
+
 /** อีเมลแจ้งเตือนภายในบริษัท (สรุปรายการต้องติดตาม) — items แสดงเป็นรายการพร้อมลิงก์ */
 export async function sendDigestEmail(args: { to: string[]; subject: string; intro: string; senderName: string; items: { text: string; link?: string }[] }) {
   const list = args.items.map((i) => `<li style="margin:4px 0">${i.link ? `<a href="${esc(i.link)}">${esc(i.text)}</a>` : esc(i.text)}</li>`).join("");

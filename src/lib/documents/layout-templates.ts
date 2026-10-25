@@ -206,6 +206,7 @@ export const DOC_PARTS: Record<string, { box?: string[]; payment?: boolean; ack?
   work_order: { noCopy: true },
   // หนังสือ (ไม่ใช่แม่แบบเอกสารการค้า — ใช้กับปุ่มต้นฉบับ/สำเนาตอนพิมพ์)
   letter: { noCopy: true },
+  service_ticket: { noCopy: true },
   purchase_order: { noCopy: true, box: ["m:กำหนดส่ง", "m:ส่งที่คลัง", "m:เงื่อนไขชำระ"], ack: { text: "ยืนยันรับคำสั่งซื้อตามรายการและเงื่อนไขข้างต้น", slot: -1 } },
   payment: { noCopy: true, box: ["m:จ่ายโดย", "m:บัญชี", "m:เช็คเลขที่", "m:อ้างอิง"], ack: { text: "ได้รับเงินตามรายการข้างต้นถูกต้องแล้ว", slot: -1 } },
 };

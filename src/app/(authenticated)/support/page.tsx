@@ -3,7 +3,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { AlertTriangle, Check, Clock, Headset, Image as ImageIcon, Inbox, Link as LinkIcon, Loader2, Phone, Plus, RefreshCw, Search, ShieldCheck, Wrench, X } from "lucide-react";
+import { AlertTriangle, Check, Clock, FileText, Headset, Image as ImageIcon, Inbox, Link as LinkIcon, Loader2, Phone, Plus, RefreshCw, Search, ShieldCheck, Wrench, X } from "lucide-react";
+import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { GlassCard, NexusSearchInput, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillInput, PillSelect, StatusBadge, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
@@ -235,16 +236,20 @@ function TicketDrawer({ ticket: t, people, canEdit, busy, onClose, onAction }: {
   const [time, setTime] = useState("");
   const [note, setNote] = useState("");
   const [mode, setMode] = useState<"" | "dispatch" | "cancel">("");
+  const [doc, setDoc] = useState(false);
   const isOpen = OPEN_TICKET_STATUSES.includes(t.status);
   const st = TICKET_STATUS[t.status as keyof typeof TICKET_STATUS];
   return (
     <Drawer title={`${t.ticketNo} · ${ticketCategoryLabel(t.category)}`} onClose={onClose}
-      footer={canEdit && <>
+      footer={<>
+        <PillButton variant="glass" className="h-10 px-4 text-xs" onClick={() => setDoc(true)} title="พิมพ์ หรือส่งใบเปิดเคสให้ลูกค้า (ลิงก์/อีเมล/LINE)"><FileText size={14} className="mr-1" /> ใบเปิดเคส</PillButton>
+        {canEdit && <>
         {isOpen && mode !== "cancel" && <PillButton variant="ghost" className="h-10 px-4 text-xs text-danger" onClick={() => setMode("cancel")}>ยกเลิกเรื่อง</PillButton>}
         {isOpen && <PillButton variant="glass" className="h-10 px-4 text-xs" disabled={busy} onClick={() => onAction("resolve", { note: "แก้ไขแล้ว (ไม่ต้องส่งช่าง)" })}><Check size={14} className="mr-1" /> แก้ไขแล้ว</PillButton>}
         {t.status === "RESOLVED" && <PillButton variant="confirm" className="h-10 px-4 text-xs font-bold" disabled={busy} onClick={() => onAction("close")}>ปิดเรื่อง</PillButton>}
         {["RESOLVED", "CLOSED"].includes(t.status) && <PillButton variant="glass" className="h-10 px-4 text-xs" disabled={busy} onClick={() => onAction("reopen")}>เปิดเรื่องอีกครั้ง</PillButton>}
         {isOpen && mode !== "dispatch" && <PillButton variant="primary" className="h-10 px-5 text-xs font-bold" onClick={() => setMode("dispatch")}><Wrench size={14} className="mr-1" /> ส่งให้ช่าง</PillButton>}
+        </>}
       </>}>
       <div className="space-y-2">
         <div className="flex items-center gap-2 flex-wrap"><StatusBadge status={st?.badge || "pending"} label={st?.label || t.status} /><span className="text-[13px]"><Sla t={t} /></span></div>
@@ -319,6 +324,7 @@ function TicketDrawer({ ticket: t, people, canEdit, busy, onClose, onAction }: {
           <p key={i} className="text-[12px] text-white/50"><span className="font-mono text-white/40">{fmt(h.at)}</span> · {h.action}{h.note ? `: ${h.note}` : ""} · {h.byName}</p>
         ))}
       </div>
+      <DocumentPdfModal open={doc} onClose={() => setDoc(false)} title={`ใบเปิดเคส ${t.ticketNo}`} source={{ type: "service_ticket", id: t.ticketNo }} shareSource={{ type: "service_ticket", id: t.ticketNo }} />
     </Drawer>
   );
 }

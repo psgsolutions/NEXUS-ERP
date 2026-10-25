@@ -8,7 +8,6 @@ import {
   FileText,
   ShieldCheck,
   Camera,
-  Image as ImageIcon,
   Trash2,
   Receipt,
   ArrowLeft
@@ -25,6 +24,8 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api-client";
+import { AttachmentPicker, uploadAttachments } from "@/components/shared/AttachmentPicker";
+import type { PendingFile } from "@/lib/attachments";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
@@ -56,6 +57,8 @@ export default function NewExpenseClaimPage() {
       .catch(() => setEmployees([]));
   }, [companyId]);
   const [saving, setSaving] = useState(false);
+  // รูปใบเสร็จ/บิลที่แนบ (อัปโหลดหลังสร้างใบเบิกแล้ว)
+  const [files, setFiles] = useState<PendingFile[]>([]);
   const employeeName = (e: any) => e ? (e.name || [e.firstName, e.lastName].filter(Boolean).join(" ") || e.employeeCode || e.id) : "";
 
   const [vatAmount, setVatAmount] = useState(0);
@@ -97,7 +100,11 @@ export default function NewExpenseClaimPage() {
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
       const expId = data.expenseId;
-      showAlert(`ส่งคำขอเบิกเงินเรียบร้อยแล้ว (${expId})`);
+      if (files.length) {
+        try { await uploadAttachments(companyId, "expense", expId, files); }
+        catch (e: any) { showAlert(`สร้างใบเบิก ${expId} แล้ว แต่แนบไฟล์ไม่ครบ: ${e.message} — แนบเพิ่มได้ที่รายการเบิก`, "แนบไฟล์ไม่ครบ", "warning"); router.push("/finance"); return; }
+      }
+      showAlert(`ส่งคำขอเบิกเงินเรียบร้อยแล้ว (${expId})${files.length ? ` พร้อมไฟล์แนบ ${files.length} ไฟล์` : ""}`);
       router.push("/finance");
     } catch (err: any) {
       showAlert(`บันทึกไม่สำเร็จ: ${err.message}`, "แจ้งเตือน", "error");
@@ -220,10 +227,7 @@ export default function NewExpenseClaimPage() {
           <Field label="แนบรูปถ่ายใบเสร็จ (RECEIPTS)">
             <div />
           </Field>
-          <div className="w-full p-6 rounded-2xl border border-dashed border-white/10 flex flex-col items-center justify-center text-white/40 bg-white/[0.02]">
-            <ImageIcon size={28} className="mb-2 opacity-50" />
-            <p className="text-[12px] font-semibold">ยังไม่รองรับการแนบไฟล์ (รอตั้งค่าพื้นที่เก็บไฟล์ Firebase Storage) เก็บใบเสร็จตัวจริงไว้ประกอบการเบิก</p>
-          </div>
+          <AttachmentPicker pending={files} onPending={setFiles} disabled={saving} hint="เลือกได้หลายไฟล์พร้อมกัน (รูป/PDF) หรือกดถ่ายรูปจากมือถือ · ระบบย่อรูปให้เอง · เก็บใบเสร็จตัวจริงไว้ด้วย" />
         </div>
 
       </GlassCard>

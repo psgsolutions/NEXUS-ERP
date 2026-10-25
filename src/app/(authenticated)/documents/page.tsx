@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FileStack, LayoutGrid, List, Loader2, Search } from "lucide-react";
+import Link from "next/link";
+import { FileStack, LayoutGrid, List, Loader2, Search, Send } from "lucide-react";
 import { GlassCard, PillButton, PillInput, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
+import { can } from "@/lib/permissions";
 import { apiFetch } from "@/lib/api-client";
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { renderPdfPages } from "@/components/settings/usePdfPageImage";
@@ -15,7 +17,7 @@ import { money, thaiDate } from "@/lib/documents/format";
  */
 const TYPE_LABEL: Record<string, string> = {
   quotation: "ใบเสนอราคา", sales_order: "ใบสั่งขาย", invoice: "ใบกำกับภาษี/ใบแจ้งหนี้", billing_note: "ใบวางบิล", receipt: "ใบเสร็จรับเงิน",
-  delivery_note: "ใบส่งของ", cndn: "ใบลดหนี้/เพิ่มหนี้", purchase_order: "ใบสั่งซื้อ", payment: "ใบสำคัญจ่าย", work_order: "ใบสั่งงาน", letter: "หนังสือ",
+  delivery_note: "ใบส่งของ", cndn: "ใบลดหนี้/เพิ่มหนี้", purchase_order: "ใบสั่งซื้อ", payment: "ใบสำคัญจ่าย", work_order: "ใบสั่งงาน", wht: "หนังสือรับรองหัก ณ ที่จ่าย", journal: "ใบสำคัญบัญชี", service_ticket: "ใบเปิดเคส", letter: "หนังสือ",
 };
 type Row = { type: string; id: string; number: string; party: string; date: string; amount: number | null; status: string; cancelled: boolean; createdAt: string };
 
@@ -65,7 +67,7 @@ function Thumb({ row, companyId }: { row: Row; companyId: string }) {
 }
 
 export default function DocumentHistoryPage() {
-  const { companyId } = useAuth();
+  const { companyId, roles } = useAuth();
   const [types, setTypes] = useState<string[]>([]);
   const [type, setType] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
@@ -103,6 +105,7 @@ export default function DocumentHistoryPage() {
           <h1 className="text-lg font-bold text-white tracking-tight leading-none">ประวัติเอกสาร</h1>
           <p className="text-xs font-semibold text-white/60 mt-1 leading-none">เอกสารและหนังสือที่บริษัทออกแล้ว — คลิกเพื่อดูภาพเอกสาร พิมพ์ซ้ำ หรือส่งต่อ</p>
         </div>
+        {can(roles, "finance:view") && <Link href="/documents/accounting" className="ml-auto h-9 px-4 rounded-full text-xs font-bold flex items-center gap-2 bg-white/10 text-white border border-white/20 hover:bg-white/20"><Send size={14} /> ส่งเอกสารให้สำนักบัญชี</Link>}
       </header>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">

@@ -1,19 +1,20 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileSpreadsheet, RefreshCw, Trash2, Upload } from "lucide-react";
+import { Download, FileDown, FileSpreadsheet, RefreshCw, Trash2, Upload } from "lucide-react";
 import { GlassCard, NexusDatePicker, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillCheckbox, PillTabs, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
 import { CHART_OF_ACCOUNTS } from "@/lib/chart-of-accounts";
-import { IMPORT_TEMPLATES, mapHeaders, parseRows, toCreateRequest, type ImportEntity, type ImportTemplate, type ParsedRow } from "@/lib/import/templates";
+import { IMPORT_TEMPLATES, mapHeaders, parseRows, toCreateRequest, toTemplateRow, type ImportEntity, type ImportTemplate, type ParsedRow } from "@/lib/import/templates";
 import { OPENING_TB_REF, OPENING_TEMPLATES, tbLines, type OpeningKind } from "@/lib/import/opening";
 
 /**
- * นำเข้าข้อมูลจาก Excel สำหรับเริ่มใช้ระบบ
- *  - ข้อมูลหลัก: ลูกค้า ผู้ขาย สินค้า (+จำนวนยกมา) ส่งทีละแถวผ่าน /api/master-data
+ * นำเข้า/ส่งออกข้อมูลด้วย Excel
+ *  - ข้อมูลหลัก: ลูกค้า ผู้ขาย สินค้า (+จำนวนยกมา) ส่งทีละแถวผ่าน /api/master-data · พนักงานผ่าน /api/hr/employees
+ *  - ส่งออก (/api/data-export) ได้ไฟล์หัวตารางเดียวกับแม่แบบ + "รหัสในระบบ" → แก้ใน Excel แล้วนำเข้ากลับ = แก้รายการเดิม
  *  - ยอดยกมาทางบัญชี (ฝ่ายบัญชี): งบทดลองยกมา -> ใบสำคัญ JV ร่าง (/api/finance/journal-entries),
  *    ลูกหนี้/เจ้าหนี้คงค้างรายใบ (/api/finance/opening-balances) + กระทบยอดกับบัญชีคุม
  * อ่านไฟล์ในเบราว์เซอร์ ตรวจทุกแถวก่อน (server ตรวจซ้ำอีกชั้น)
@@ -29,12 +30,13 @@ interface Status {
 }
 
 const TEMPLATES: Record<TabId, ImportTemplate> = { ...IMPORT_TEMPLATES, ...OPENING_TEMPLATES };
-const TAB_ORDER: TabId[] = ["customers", "suppliers", "products", "tb", "ar", "ap"];
+const TAB_ORDER: TabId[] = ["customers", "suppliers", "products", "employees", "tb", "ar", "ap"];
 const isOpening = (t: TabId): t is OpeningKind => t === "tb" || t === "ar" || t === "ap";
 const PREVIEW: Record<TabId, string[]> = {
   customers: ["name", "taxId", "phone", "creditTermDays"],
   suppliers: ["name", "taxId", "phone", "creditTermDays"],
   products: ["sku", "name", "unit", "price", "openingQty"],
+  employees: ["firstName", "lastName", "position", "department", "employmentType"],
   tb: ["accountCode", "accountName", "debit", "credit"],
   ar: ["docNo", "date", "partyName", "amount"],
   ap: ["docNo", "date", "partyName", "amount"],
@@ -47,6 +49,7 @@ const STEPS: Record<TabId, string> = {
   customers: "แถวที่ซ้ำกับข้อมูลในระบบจะถูกข้ามและแจ้งเหตุผล",
   suppliers: "ระบบสร้างผู้รับเหมารหัสเดียวกันให้ด้วย",
   products: "ใส่จำนวนคงเหลือยกมาได้ (รับเข้าคลังเป็นยอดยกมา)",
+  employees: "ระบบออกรหัสพนักงานให้ — เลขบัตรประชาชนซ้ำกับคนเดิมจะไม่ถูกเพิ่ม",
   tb: "ยอดคงเหลือทุกบัญชี ณ วันก่อนเริ่มใช้ระบบ เดบิตต้องเท่ากับเครดิต — ได้ใบสำคัญร่างรออนุมัติลงบัญชี",
   ar: "ใบแจ้งหนี้ที่ลูกค้ายังค้างชำระ — ไม่บันทึกบัญชีซ้ำ (ยอดรวมอยู่ในงบทดลองแล้ว) รับชำระต่อในระบบได้",
   ap: "ใบแจ้งหนี้ผู้ขายที่ยังค้างจ่าย — ไม่บันทึกบัญชีซ้ำ จ่ายชำระต่อในระบบได้ (ล้างเจ้าหนี้ 2111)",
@@ -111,6 +114,22 @@ export default function DataImportPage() {
     XLSX.writeFile(wb, `แม่แบบนำเข้า-${template.label.replace(/\//g, "-")}.xlsx`);
   };
 
+  /** ส่งออกข้อมูลในระบบ — หัวตารางเดียวกับแม่แบบ แก้แล้วนำเข้ากลับได้ */
+  const exportData = async () => {
+    if (!companyId || isOpening(tab)) return;
+    setBusy(true); setError(""); setInfo("");
+    try {
+      const d = await post("/api/data-export", { entity: tab });
+      const XLSX = await loadXlsx();
+      const wb = XLSX.utils.book_new();
+      const sheet = XLSX.utils.aoa_to_sheet([template.columns.map((c) => (c.required ? `${c.header}*` : c.header)), ...d.records.map((r: any) => toTemplateRow(tab as ImportEntity, r))]);
+      sheet["!cols"] = template.columns.map((c) => ({ wch: Math.max(14, c.header.length + 4) }));
+      XLSX.utils.book_append_sheet(wb, sheet, "ข้อมูล");
+      XLSX.writeFile(wb, `${template.label.replace(/\//g, "-")}-${bkkToday()}.xlsx`);
+      setInfo(`ส่งออก ${d.records.length} รายการแล้ว — แก้ในไฟล์แล้วนำเข้ากลับ: แถวที่มี "รหัสในระบบ" = แก้รายการเดิม · แถวที่ไม่มี = เพิ่มใหม่`);
+    } catch (err: any) { setError(err.message); } finally { setBusy(false); }
+  };
+
   const readFile = async (file: File) => {
     reset();
     setFileName(file.name);
@@ -146,6 +165,22 @@ export default function DataImportPage() {
       update([row.rowNo], { status: "saving", message: "" });
       try {
         const req = toCreateRequest(entity, row.values, { postOpeningJournal: postJournal });
+        const id = String(row.values._id || "").trim();
+        if (entity === "employees") {
+          await post("/api/hr/employees", { ...req.data, ...(id ? { employeeDocId: id } : {}) });
+          update([row.rowNo], { status: "done", message: id ? "แก้ไขแล้ว" : "" });
+          continue;
+        }
+        if (id) {
+          // แก้รายการเดิม: ค่ากลางของเครือ (ถ้ามีสิทธิ์) ไม่เช่นนั้นเป็นค่าของบริษัท · จำนวนยกมาไม่ใช้ตอนแก้
+          const changes = { ...req.data };
+          delete changes.importedFrom;
+          const save = (e: string, scope: "group" | "company") => post("/api/master-data", { action: "update", entity: e, id, changes, scope });
+          await save(entity, "group").catch((err) => (/สิทธิ์|403/.test(err.message) ? save(entity, "company") : Promise.reject(err)));
+          if (entity === "suppliers") await save("contractors", "group").catch(() => save("contractors", "company")).catch(() => undefined);
+          update([row.rowNo], { status: "done", message: "แก้ไขแล้ว" });
+          continue;
+        }
         if (entity === "products") {
           await post("/api/master-data", { action: "create", entity, id: `PROD-${Date.now()}-${row.rowNo}`, ...req });
         } else if (entity === "suppliers") {
@@ -235,7 +270,7 @@ export default function DataImportPage() {
   const existingTb = tab === "tb" ? status?.tb || [] : [];
 
   if (!allowed.length) {
-    return <div className="p-10 text-white/60">ไม่มีสิทธิ์นำเข้าข้อมูล (ต้องมีสิทธิ์แก้ไขลูกค้า ผู้ขาย สินค้า หรือบัญชี)</div>;
+    return <div className="p-10 text-white/60">ไม่มีสิทธิ์นำเข้าข้อมูล (ต้องมีสิทธิ์แก้ไขลูกค้า ผู้ขาย สินค้า พนักงาน หรือบัญชี)</div>;
   }
 
   return (
@@ -243,8 +278,8 @@ export default function DataImportPage() {
       <header className="px-6 py-2.5 min-h-[60px] border-b border-white/5 flex items-center gap-3 bg-black/20 shrink-0">
         <div className="w-9 h-9 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/10"><FileSpreadsheet size={20} /></div>
         <div>
-          <h1 className="text-lg font-bold text-white tracking-tight leading-none">นำเข้าข้อมูลจาก Excel</h1>
-          <p className="text-xs font-semibold text-white/60 mt-1 leading-none">ย้ายข้อมูลหลักและยอดยกมาจากระบบเดิม</p>
+          <h1 className="text-lg font-bold text-white tracking-tight leading-none">นำเข้า/ส่งออกข้อมูล Excel</h1>
+          <p className="text-xs font-semibold text-white/60 mt-1 leading-none">ย้ายข้อมูลหลักและยอดยกมาจากระบบเดิม · ส่งออกไปแก้แล้วนำเข้ากลับ</p>
         </div>
       </header>
 
@@ -254,13 +289,14 @@ export default function DataImportPage() {
             <PillTabs className="flex-1 min-w-[240px]" tabs={allowed.map((t) => ({ id: t, label: TEMPLATES[t].label }))} activeTab={tab} onTabChange={switchTab} />
             <div className="flex items-center gap-2">
               <PillButton variant="glass" onClick={downloadTemplate} className="h-9 px-4 text-xs"><Download size={14} className="mr-1.5" /> ดาวน์โหลดแม่แบบ</PillButton>
+              {!isOpening(tab) && <PillButton variant="glass" onClick={exportData} disabled={busy} className="h-9 px-4 text-xs" title="ส่งออกข้อมูลในระบบเป็น Excel (แก้แล้วนำเข้ากลับได้)"><FileDown size={14} className="mr-1.5" /> ส่งออก Excel</PillButton>}
               <PillButton variant="glass" onClick={() => fileRef.current?.click()} disabled={busy} className="h-9 px-4 text-xs"><Upload size={14} className="mr-1.5" /> เลือกไฟล์ Excel</PillButton>
               <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) readFile(f); }} />
             </div>
           </div>
 
           <p className="text-[13px] text-white/50 px-1 leading-relaxed">
-            1. ดาวน์โหลดแม่แบบ{template.label} แล้วกรอกในชีต &quot;ข้อมูล&quot; (คัดลอกคอลัมน์จากไฟล์เดิมมาวางได้) · 2. เลือกไฟล์ ระบบตรวจทุกแถวก่อน · 3. กดนำเข้า — {STEPS[tab]}
+            1. ดาวน์โหลดแม่แบบ{template.label} แล้วกรอกในชีต &quot;ข้อมูล&quot; (คัดลอกคอลัมน์จากไฟล์เดิมมาวางได้){!isOpening(tab) && <> หรือ &quot;ส่งออก Excel&quot; เพื่อแก้ข้อมูลเดิม</>} · 2. เลือกไฟล์ ระบบตรวจทุกแถวก่อน · 3. กดนำเข้า — {STEPS[tab]}
           </p>
 
           {isOpening(tab) && status && (
@@ -327,10 +363,11 @@ export default function DataImportPage() {
 
           {rows.length > 0 && (
             <GlassCard accentColor="teal" className="p-2">
-              <NexusTable headers={["ลำดับ", ...previewCols.map((c) => c.header), "สถานะ", "หมายเหตุ"]}>
+              <NexusTable headers={["ลำดับ", ...(isOpening(tab) ? [] : ["การทำงาน"]), ...previewCols.map((c) => c.header), "สถานะ", "หมายเหตุ"]}>
                 {rows.map((r) => (
                   <NexusTableRow key={r.rowNo}>
                     <NexusTableCell className="font-mono text-white/50">{r.rowNo}</NexusTableCell>
+                    {!isOpening(tab) && <NexusTableCell className={cn("text-[12px] font-bold", r.values._id ? "text-warning" : "text-white/60")}>{r.values._id ? "แก้ไข" : "เพิ่มใหม่"}</NexusTableCell>}
                     {previewCols.map((c) => (
                       <NexusTableCell key={c.key} className={cn(c.type === "number" || c.type === "int" ? "font-mono" : "", "text-white/80")}>
                         {r.values[c.key] === undefined ? "-" : c.type === "number" ? money(r.values[c.key]) : typeof r.values[c.key] === "number" ? r.values[c.key].toLocaleString("th-TH") : String(r.values[c.key])}

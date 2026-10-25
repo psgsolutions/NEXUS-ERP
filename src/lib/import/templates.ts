@@ -1,11 +1,13 @@
 /**
  * แม่แบบนำเข้าข้อมูลจาก Excel (ฟังก์ชันล้วน — ใช้ทั้งหน้าจอและ unit test)
- * แต่ละแถวแปลงเป็นคำขอ /api/master-data { action: "create" } แบบเดียวกับฟอร์มเพิ่มข้อมูลในระบบ
+ * แต่ละแถวแปลงเป็นคำขอแบบเดียวกับฟอร์มเพิ่มข้อมูลในระบบ (ลูกค้า/ผู้ขาย/สินค้า: /api/master-data · พนักงาน: /api/hr/employees)
  * จับคอลัมน์ด้วยชื่อหัวตาราง (ไม่สนลำดับ, ตัด * และช่องว่าง) — คอลัมน์ที่ไม่รู้จักถูกข้าม
+ * คอลัมน์ "รหัสในระบบ": ว่าง = เพิ่มใหม่ · มีค่า (จากไฟล์ส่งออก) = แก้รายการเดิม — ส่งออก แก้ใน Excel แล้วนำเข้ากลับได้
+ * คอลัมน์ครบตามฟอร์มของแต่ละโมดูล (toTemplateRow แปลงข้อมูลในระบบกลับเป็นแถว Excel ด้วยหัวตารางเดียวกัน)
  */
 
-export type ImportEntity = "customers" | "suppliers" | "products";
-type ColType = "text" | "number" | "int" | "taxId" | "branch" | "email" | "choice" | "date";
+export type ImportEntity = "customers" | "suppliers" | "products" | "employees";
+type ColType = "text" | "number" | "int" | "taxId" | "branch" | "email" | "choice" | "date" | "bool";
 
 export interface ImportColumn {
   key: string;
@@ -21,7 +23,7 @@ export interface ImportColumn {
 export interface ImportTemplate {
   entity: string;
   label: string;
-  permission: "sales:edit" | "procurement:edit" | "inventory:edit" | "finance:edit";
+  permission: "sales:edit" | "procurement:edit" | "inventory:edit" | "finance:edit" | "hr:edit";
   columns: ImportColumn[];
   /** คีย์ที่ต้องไม่ซ้ำภายในไฟล์ (และในระบบ — server ตรวจซ้ำอีกชั้น) */
   uniqueKeys: string[][];
@@ -29,8 +31,15 @@ export interface ImportTemplate {
   validate?: (values: Record<string, any>) => string[];
 }
 
+/** รหัสในระบบ: ว่าง = เพิ่มใหม่ · มีค่า = แก้รายการเดิม */
+const SYSTEM_ID: ImportColumn = { key: "_id", header: "รหัสในระบบ", type: "text", example: "", note: "ว่าง = เพิ่มใหม่ · มีค่า (จากไฟล์ส่งออก) = แก้รายการเดิม — ห้ามแก้รหัสนี้" };
+const YES_NO = { "ใช่": true, "มี": true, "yes": true, "y": true, "ไม่ใช่": false, "ไม่มี": false, "no": false, "n": false } as Record<string, any>;
+
 const ADDRESS: ImportColumn[] = [
   { key: "address", header: "ที่อยู่ (เลขที่ อาคาร ซอย ถนน)", type: "text", example: "99/1 ถนนพระราม 9" },
+  { key: "building", header: "อาคาร/หมู่บ้าน", type: "text", example: "อาคารเอ ชั้น 5", note: "ไม่บังคับ (กรอกรวมในช่องที่อยู่ก็ได้)" },
+  { key: "soi", header: "ซอย", type: "text", example: "" },
+  { key: "road", header: "ถนน", type: "text", example: "" },
   { key: "subDistrict", header: "ตำบล/แขวง", type: "text", example: "ห้วยขวาง" },
   { key: "district", header: "อำเภอ/เขต", type: "text", example: "ห้วยขวาง" },
   { key: "province", header: "จังหวัด", type: "text", example: "กรุงเทพมหานคร" },
@@ -47,19 +56,25 @@ export const IMPORT_TEMPLATES: Record<ImportEntity, ImportTemplate> = {
     entity: "customers", label: "ลูกค้า", permission: "sales:edit",
     uniqueKeys: [["taxId", "branchCode"]],
     columns: [
+      SYSTEM_ID,
       { key: "name", header: "ชื่อลูกค้า", required: true, type: "text", example: "บริษัท ตัวอย่าง จำกัด" },
-      ...PARTY_TAX, ...ADDRESS,
+      { key: "orgType", header: "ประเภทลูกค้า", type: "choice", example: "เอกชน", note: "เอกชน / ส่วนราชการ / รัฐวิสาหกิจ / บุคคลธรรมดา — ใช้ตั้งรูปแบบเอกสารที่ลูกค้าต้องการ", choices: { "เอกชน": "PRIVATE", "ส่วนราชการ": "GOV", "ราชการ": "GOV", "หน่วยงานรัฐ": "GOV", "รัฐวิสาหกิจ": "STATE", "บุคคลธรรมดา": "PERSON", "บุคคล": "PERSON" } },
+      ...PARTY_TAX,
+      { key: "branchName", header: "ชื่อสาขา", type: "text", example: "", note: "ว่าง = สำนักงานใหญ่" },
+      ...ADDRESS,
       { key: "phone", header: "โทรศัพท์", type: "text", example: "02-123-4567", leadingZero: true },
       { key: "email", header: "อีเมล", type: "email", example: "account@example.com" },
       { key: "contactPerson", header: "ผู้ติดต่อ", type: "text", example: "คุณสมชาย" },
       { key: "creditLimit", header: "วงเงินเครดิต (บาท)", type: "number", example: "100000", note: "0 หรือว่าง = ไม่จำกัด" },
       { key: "creditTermDays", header: "เครดิต (วัน)", type: "int", example: "30" },
+      { key: "note", header: "หมายเหตุ", type: "text", example: "" },
     ],
   },
   suppliers: {
     entity: "suppliers", label: "ผู้ขาย", permission: "procurement:edit",
     uniqueKeys: [["taxId", "branchCode"]],
     columns: [
+      SYSTEM_ID,
       { key: "name", header: "ชื่อผู้ขาย", required: true, type: "text", example: "บริษัท ซัพพลาย จำกัด" },
       { key: "category", header: "ประเภท", type: "choice", example: "บริษัท", note: "บริษัท / ห้าง-ร้าน / ทีมช่าง", choices: { "บริษัท": "COMPANY", "ห้าง-ร้าน": "STORE", "ห้าง/ร้าน": "STORE", "ร้าน": "STORE", "ทีมช่าง": "TEAM", "บุคคล": "TEAM" } },
       ...PARTY_TAX, ...ADDRESS,
@@ -70,24 +85,71 @@ export const IMPORT_TEMPLATES: Record<ImportEntity, ImportTemplate> = {
       { key: "bankName", header: "ธนาคาร", type: "text", example: "กสิกรไทย" },
       { key: "bankAccount", header: "เลขที่บัญชี", type: "text", example: "123-4-56789-0" },
       { key: "bankAccountName", header: "ชื่อบัญชี", type: "text", example: "บริษัท ซัพพลาย จำกัด" },
+      { key: "paymentMethod", header: "วิธีจ่ายเงิน", type: "choice", example: "โอน", note: "โอน / เช็ค / เงินสด", choices: { "โอน": "TRANSFER", "โอนเงิน": "TRANSFER", "เช็ค": "CHEQUE", "เงินสด": "CASH" } },
+      { key: "businessType", header: "ประเภทธุรกิจ", type: "choice", example: "บริการ", note: "บริการ / สินค้า / สินค้าและบริการ", choices: { "บริการ": "SERVICE", "สินค้า": "GOODS", "สินค้าและบริการ": "BOTH", "ทั้งสองอย่าง": "BOTH" } },
+      { key: "chequePickupDay", header: "วันรับเช็ค", type: "text", example: "", note: "เช่น ทุกวันศุกร์ (กรณีจ่ายด้วยเช็ค)" },
+      { key: "note", header: "หมายเหตุ", type: "text", example: "" },
     ],
   },
   products: {
     entity: "products", label: "สินค้า/บริการ", permission: "inventory:edit",
     uniqueKeys: [["sku"], ["barcode"]],
     columns: [
+      SYSTEM_ID,
       { key: "sku", header: "รหัสสินค้า (SKU)", required: true, type: "text", example: "CAM-4MP-01", note: "ห้ามซ้ำ" },
       { key: "name", header: "ชื่อสินค้า", required: true, type: "text", example: "กล้อง IP 4MP" },
       { key: "itemType", header: "ประเภท", type: "choice", example: "สินค้า", note: "สินค้า / บริการ (บริการไม่มีสต็อก)", choices: { "สินค้า": "PRODUCT", "บริการ": "SERVICE", "ค่าแรง": "SERVICE" } },
       { key: "unit", header: "หน่วย", required: true, type: "text", example: "ตัว" },
       { key: "barcode", header: "บาร์โค้ด", type: "text", example: "8850000000017", note: "ห้ามซ้ำ (ว่างได้)" },
       { key: "category", header: "หมวดหมู่", type: "text", example: "CCTV" },
+      { key: "subCategory", header: "หมวดย่อย", type: "text", example: "กล้อง IP" },
       { key: "brand", header: "ยี่ห้อ", type: "text", example: "Hikvision" },
       { key: "model", header: "รุ่น", type: "text", example: "DS-2CD1043" },
+      { key: "description", header: "รายละเอียด/สเปก", type: "text", example: "4MP, IR 30m, PoE", note: "แสดงใต้ชื่อในใบเสนอราคา" },
+      { key: "taxType", header: "ภาษีขาย", type: "choice", example: "VAT 7%", note: "VAT 7% / ภาษี 0% / ยกเว้นภาษี", choices: { "VAT 7%": "VAT_7", "VAT7%": "VAT_7", "7%": "VAT_7", "ภาษี 0%": "NON_VAT", "0%": "NON_VAT", "ยกเว้นภาษี": "EXEMPT", "ยกเว้น": "EXEMPT" } },
+      { key: "packageUnit", header: "หน่วยซื้อ/แพ็ค", type: "text", example: "กล่อง", note: "ว่าง = เท่ากับหน่วย" },
+      { key: "conversionRate", header: "จำนวนต่อแพ็ค", type: "number", example: "10", note: "1 หน่วยซื้อ = กี่หน่วยขาย (ว่าง = 1)" },
       { key: "price", header: "ราคาขาย (ก่อน VAT)", type: "number", example: "2500" },
+      { key: "priceProject", header: "ราคาโครงการ", type: "number", example: "2800", note: "ว่าง = ราคาขาย" },
+      { key: "priceWholesale", header: "ราคาส่ง", type: "number", example: "2300", note: "ว่าง = ราคาขาย" },
+      { key: "minimumFloorPrice", header: "ราคาขายต่ำสุด", type: "number", example: "2000", note: "ขายต่ำกว่านี้ต้องขออนุมัติ" },
       { key: "cost", header: "ต้นทุนต่อหน่วย", type: "number", example: "1800", note: "ใช้เป็นต้นทุนของยอดยกมา" },
       { key: "reorderPoint", header: "จุดสั่งซื้อ", type: "int", example: "5" },
-      { key: "openingQty", header: "จำนวนคงเหลือยกมา", type: "int", example: "20", note: "รับเข้าคลังเป็นยอดยกมา (สินค้าเท่านั้น)" },
+      { key: "minStock", header: "สต็อกต่ำสุด", type: "int", example: "5", note: "ว่าง = จุดสั่งซื้อ" },
+      { key: "maxStock", header: "สต็อกสูงสุด", type: "int", example: "50" },
+      { key: "warehouseId", header: "รหัสคลัง", type: "text", example: "WH-01", note: "ว่าง = WH-01" },
+      { key: "rackLocation", header: "ตำแหน่งชั้นวาง", type: "text", example: "A-01-02" },
+      { key: "isSerialized", header: "ติดตามซีเรียล", type: "bool", example: "ไม่ใช่", note: "ใช่ / ไม่ใช่" },
+      { key: "warrantyMonths", header: "รับประกัน (เดือน)", type: "int", example: "24" },
+      { key: "weightKg", header: "น้ำหนัก (กก.)", type: "number", example: "0.5" },
+      { key: "supplierSku", header: "รหัสสินค้าของผู้ขาย", type: "text", example: "HK-1043" },
+      { key: "leadTimeDays", header: "ระยะเวลาสั่งซื้อ (วัน)", type: "int", example: "7" },
+      { key: "lifecycleStatus", header: "สถานะสินค้า", type: "choice", example: "ใช้งาน", note: "ใช้งาน / ร่าง / ทยอยยกเลิก", choices: { "ใช้งาน": "ACTIVE", "ใช้งานปกติ": "ACTIVE", "ร่าง": "DRAFT", "ทยอยยกเลิก": "PHASE_OUT", "เลิกขาย": "PHASE_OUT" } },
+      { key: "openingQty", header: "จำนวนคงเหลือยกมา", type: "int", example: "20", note: "รับเข้าคลังเป็นยอดยกมา (สินค้าเท่านั้น · ใช้เฉพาะตอนเพิ่มใหม่)" },
+    ],
+  },
+  employees: {
+    entity: "employees", label: "พนักงาน", permission: "hr:edit",
+    uniqueKeys: [["citizenId"]],
+    columns: [
+      SYSTEM_ID,
+      { key: "prefix", header: "คำนำหน้า", type: "choice", example: "นาย", note: "นาย / นาง / นางสาว", choices: { "นาย": "Mr.", "นาง": "Mrs.", "นางสาว": "Ms.", "น.ส.": "Ms." } },
+      { key: "firstName", header: "ชื่อ", required: true, type: "text", example: "สมชาย" },
+      { key: "lastName", header: "นามสกุล", required: true, type: "text", example: "ใจดี" },
+      { key: "nickname", header: "ชื่อเล่น", type: "text", example: "ชาย" },
+      { key: "citizenId", header: "เลขบัตรประชาชน", type: "taxId", example: "1103700012345", note: "13 หลัก — ใช้ตรวจข้อมูลซ้ำ" },
+      { key: "position", header: "ตำแหน่ง", required: true, type: "text", example: "ช่างติดตั้ง" },
+      { key: "department", header: "แผนก", type: "text", example: "ติดตั้ง/ช่าง" },
+      { key: "employmentType", header: "ประเภทการจ้าง", type: "choice", example: "พนักงานประจำ", note: "พนักงานประจำ / สัญญาจ้าง / รายวัน / พาร์ตไทม์", choices: { "พนักงานประจำ": "permanent", "ประจำ": "permanent", "สัญญาจ้าง": "contract", "รายวัน": "daily", "พาร์ตไทม์": "parttime" } },
+      { key: "joinDate", header: "วันที่เริ่มงาน", type: "date", example: "01/06/2568" },
+      { key: "status", header: "สถานะ", type: "choice", example: "ปฏิบัติงาน", note: "ปฏิบัติงาน / ทดลองงาน / ลาออก", choices: { "ปฏิบัติงาน": "active", "ทดลองงาน": "probation", "ลาออก": "resigned" } },
+      { key: "phone", header: "โทรศัพท์", type: "text", example: "081-234-5678", leadingZero: true },
+      { key: "email", header: "อีเมล", type: "email", example: "somchai@example.com" },
+      { key: "workLocation", header: "สถานที่ทำงาน", type: "text", example: "สำนักงานใหญ่" },
+      { key: "salary", header: "เงินเดือน/ค่าแรง", type: "number", example: "18000", note: "รายวัน = ค่าแรงต่อวัน" },
+      { key: "socialSecurity", header: "ประกันสังคม", type: "bool", example: "ใช่", note: "ใช่ / ไม่ใช่ (ว่าง = ใช่)" },
+      { key: "bankName", header: "ธนาคาร", type: "text", example: "กสิกรไทย" },
+      { key: "bankAccount", header: "เลขที่บัญชี", type: "text", example: "123-4-56789-0" },
     ],
   },
 };
@@ -186,6 +248,11 @@ export function parseRows(template: ImportTemplate, rows: any[][], index: Record
           if (!d) errors.push(`${c.header} ไม่ใช่วันที่ (ใช้ 30/09/2026 หรือ 30/09/2569) ("${text}")`); else values[c.key] = d;
           break;
         }
+        case "bool": {
+          const v = YES_NO[text.toLowerCase()] ?? YES_NO[text];
+          if (v === undefined) errors.push(`${c.header} ต้องเป็น ใช่ / ไม่ใช่ ("${text}")`); else values[c.key] = v;
+          break;
+        }
         case "email":
           if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) errors.push(`${c.header} ไม่ถูกต้อง ("${text}")`); else values[c.key] = text.toLowerCase();
           break;
@@ -215,20 +282,30 @@ export function parseRows(template: ImportTemplate, rows: any[][], index: Record
 }
 
 const partyAddress = (v: Record<string, any>) => ({
-  addressNo: v.address || "", address_detail: v.address || "",
+  addressNo: v.address || "", address_detail: v.address || "", building: v.building || "", soi: v.soi || "", road: v.road || "",
   subDistrict: v.subDistrict || "", district: v.district || "", province: v.province || "", zipCode: v.zipCode || "",
-  address: [v.address, v.subDistrict, v.district, v.province, v.zipCode].filter(Boolean).join(" "),
+  address: [v.address, v.building, v.soi && `ซ.${v.soi}`, v.road && `ถ.${v.road}`, v.subDistrict, v.district, v.province, v.zipCode].filter(Boolean).join(" "),
 });
 
 /** คำขอสร้างข้อมูล (รูปแบบเดียวกับฟอร์มในระบบ) */
 export interface CreateRequest { data: Record<string, any>; openingStock?: { qty: number; unitCost: number; postJournal: boolean } }
 
 export function toCreateRequest(entity: ImportEntity, v: Record<string, any>, opts: { postOpeningJournal?: boolean } = {}): CreateRequest {
+  if (entity === "employees") {
+    return { data: {
+      prefix: v.prefix || "Mr.", firstName: v.firstName, lastName: v.lastName, nickname: v.nickname || "", citizenId: v.citizenId || "",
+      position: v.position, department: v.department || "", employmentType: v.employmentType || "permanent", joinDate: v.joinDate || "",
+      status: v.status || "active", phone: v.phone || "", email: v.email || "", workLocation: v.workLocation || "",
+      salary: v.salary || 0, socialSecurity: v.socialSecurity !== false, bankName: v.bankName || "", bankAccount: v.bankAccount || "",
+    } };
+  }
   if (entity === "customers") {
     return { data: {
       name: v.name, customerName: v.name, taxId: v.taxId || "", branchCode: v.branchCode || "00000", ...partyAddress(v),
       phone: v.phone || "", phoneNumber: v.phone || "", email: v.email || "", contactPerson: v.contactPerson || "", contactName: v.contactPerson || "",
       creditLimit: v.creditLimit || 0, creditTermDays: v.creditTermDays ?? 30, status: "ACTIVE", importedFrom: "excel",
+      branchName: v.branchName || "", note: v.note || "",
+      ...(v.orgType ? { orgType: v.orgType, grade: v.orgType === "GOV" ? "Government" : "Private" } : {}),
     } };
   }
   if (entity === "suppliers") {
@@ -241,23 +318,69 @@ export function toCreateRequest(entity: ImportEntity, v: Record<string, any>, op
       payment_term: `${v.creditTermDays ?? 30} Days`, creditTermDays: v.creditTermDays ?? 30,
       bankName: v.bankName || "", bank_name: v.bankName || "", bankAccount: v.bankAccount || "", account_number: v.bankAccount || "",
       bankAccountName: v.bankAccountName || "", account_name: v.bankAccountName || "",
+      payment_method: v.paymentMethod || "TRANSFER", paymentMethod: v.paymentMethod || "TRANSFER", business_type: v.businessType || "SERVICE",
+      cheque_pickup_day: v.chequePickupDay || "", note: v.note || "",
       status: "active", isActive: true, importedFrom: "excel",
     } };
   }
   const service = v.itemType === "SERVICE";
   const price = v.price ?? 0, cost = v.cost ?? 0;
+  const pack = v.packageUnit || v.unit, rate = v.conversionRate || 1;
   return {
     data: {
       sku: v.sku, productCode: v.sku, barcode: v.barcode || "", barcodes: v.barcode ? [v.barcode] : [],
       name: v.name, productName: v.name, itemType: service ? "SERVICE" : "PRODUCT", productType: service ? "SERVICE" : "PHYSICAL",
-      category: v.category || "general", brand: v.brand || "", model: v.model || "",
-      unit: v.unit, baseUnit: v.unit, packageUnit: v.unit, purchaseUnit: v.unit, conversionRate: 1,
-      taxType: "VAT_7", vatType: "VAT_7", lifecycleStatus: "ACTIVE",
-      pricing: { pricePOS: price, priceProject: price, priceWholesale: price },
-      unitPrice: price, costPrice: cost,
-      inventoryControl: { reorderPoint: v.reorderPoint || 0, minStock: v.reorderPoint || 0, maxStock: 0, orderUnit: v.unit },
+      category: v.category || "general", subCategory: v.subCategory || "", brand: v.brand || "", model: v.model || "", mainModel: v.model || "",
+      description: v.description || "", technicalSpecs: v.description || "",
+      unit: v.unit, baseUnit: v.unit, packageUnit: pack, purchaseUnit: pack, conversionRate: rate, conversionFactor: rate,
+      taxType: v.taxType || "VAT_7", vatType: v.taxType || "VAT_7", lifecycleStatus: v.lifecycleStatus || "ACTIVE",
+      pricing: { pricePOS: price, priceProject: v.priceProject ?? price, priceWholesale: v.priceWholesale ?? price, ...(v.minimumFloorPrice !== undefined ? { minimumFloorPrice: v.minimumFloorPrice } : {}) },
+      unitPrice: price, costPrice: cost, wholesalePrice: v.priceWholesale ?? price,
+      inventoryControl: { reorderPoint: v.reorderPoint || 0, minStock: v.minStock ?? v.reorderPoint ?? 0, maxStock: v.maxStock || 0, orderUnit: pack },
+      warehouseId: v.warehouseId || "WH-01", rackLocation: v.rackLocation || "",
+      warehouseLocation: v.rackLocation ? `${v.warehouseId || "WH-01"}:${v.rackLocation}` : v.warehouseId || "WH-01",
+      isSerialized: !!v.isSerialized, isSerialTracked: !!v.isSerialized,
+      ...(v.warrantyMonths !== undefined ? { warrantyMonths: v.warrantyMonths } : {}),
+      ...(v.weightKg !== undefined ? { weightKg: v.weightKg } : {}),
+      ...(v.supplierSku || v.leadTimeDays !== undefined ? { supplierConfig: [{ supplierId: "", supplierSku: v.supplierSku || "", mpn: "", latestCost: cost, leadTimeDays: v.leadTimeDays || 0, isPrimary: true }] } : {}),
       importedFrom: "excel",
     },
     ...(!service && v.openingQty ? { openingStock: { qty: v.openingQty, unitCost: cost, postJournal: opts.postOpeningJournal !== false } } : {}),
   };
+}
+
+/** ค่าในระบบ → ข้อความในไฟล์ (ตัวเลือกใช้ข้อความแรกที่ตรงกับค่า) */
+const choiceText = (c: ImportColumn, v: any) => (v === undefined || v === null || v === "" ? "" : Object.entries(c.choices || {}).find(([, x]) => x === v)?.[0] ?? String(v));
+
+/** ข้อมูลในระบบ → แถว Excel ตามหัวตารางของแม่แบบ (ใช้ส่งออก แก้ แล้วนำเข้ากลับ) */
+export function toTemplateRow(entity: ImportEntity, r: Record<string, any>): any[] {
+  const pick = (...ks: any[]) => ks.find((x) => x !== undefined && x !== null && x !== "");
+  const sup = Array.isArray(r.supplierConfig) ? r.supplierConfig.find((x: any) => x?.isPrimary) || r.supplierConfig[0] : null;
+  const v: Record<string, any> = entity === "employees" ? { ...r, _id: r.id }
+    : entity === "products" ? {
+      _id: r.id, sku: pick(r.sku, r.productCode), name: pick(r.name, r.productName), itemType: r.itemType === "SERVICE" || r.productType === "SERVICE" ? "SERVICE" : "PRODUCT",
+      unit: pick(r.unit, r.baseUnit), barcode: r.barcode, category: r.category, subCategory: r.subCategory, brand: r.brand, model: pick(r.model, r.mainModel),
+      description: pick(r.description, r.technicalSpecs), taxType: pick(r.taxType, r.vatType), packageUnit: pick(r.packageUnit, r.purchaseUnit), conversionRate: pick(r.conversionRate, r.conversionFactor),
+      price: pick(r.unitPrice, r.pricing?.pricePOS), priceProject: r.pricing?.priceProject, priceWholesale: pick(r.pricing?.priceWholesale, r.wholesalePrice), minimumFloorPrice: r.pricing?.minimumFloorPrice,
+      cost: pick(r.costPrice, r.pricing?.costWAC), reorderPoint: r.inventoryControl?.reorderPoint, minStock: r.inventoryControl?.minStock, maxStock: r.inventoryControl?.maxStock,
+      warehouseId: r.warehouseId, rackLocation: r.rackLocation, isSerialized: r.isSerialized ?? r.isSerialTracked, warrantyMonths: r.warrantyMonths, weightKg: r.weightKg,
+      supplierSku: sup?.supplierSku, leadTimeDays: sup?.leadTimeDays, lifecycleStatus: r.lifecycleStatus,
+    }
+    : {
+      _id: r.id, name: pick(r.name, r.customerName, r.supplierName), orgType: pick(r.docProfile?.orgType, r.orgType), category: pick(r.entity_category, r.contractor_type),
+      taxId: pick(r.taxId, r.tax_id), branchCode: pick(r.branchCode, r.branch_code), branchName: r.branchName,
+      address: pick(r.addressNo, r.address_detail), building: r.building, soi: r.soi, road: r.road, subDistrict: r.subDistrict, district: r.district, province: r.province, zipCode: r.zipCode,
+      phone: pick(r.phone, r.phoneNumber), email: r.email, contactPerson: pick(r.contactPerson, r.contactName, r.contact_person),
+      creditLimit: r.creditLimit, creditTermDays: pick(r.creditTermDays, r.credit_term_days, parseInt(String(r.payment_term || ""), 10) || undefined),
+      bankName: pick(r.bankName, r.bank_name), bankAccount: pick(r.bankAccount, r.account_number), bankAccountName: pick(r.bankAccountName, r.account_name),
+      paymentMethod: pick(r.paymentMethod, r.payment_method), businessType: r.business_type, chequePickupDay: r.cheque_pickup_day, note: r.note,
+    };
+  return IMPORT_TEMPLATES[entity].columns.map((c) => {
+    const x = v[c.key];
+    if (x === undefined || x === null) return "";
+    if (c.type === "choice") return choiceText(c, x);
+    if (c.type === "bool") return x ? "ใช่" : "ไม่ใช่";
+    if (c.type === "date") return /^\d{4}-\d{2}-\d{2}/.test(String(x)) ? `${String(x).slice(8, 10)}/${String(x).slice(5, 7)}/${Number(String(x).slice(0, 4)) + 543}` : String(x);
+    return x;
+  });
 }

@@ -27,7 +27,7 @@ export const PAGE_LABELS: [prefix: string, label: string][] = [
   ["/finance", "การเงินและบัญชี"],
   ["/accounting", "การเงินและบัญชี"],
   ["/ai", "วิเคราะห์ข้อมูล"],
-  ["/data-import", "นำเข้าข้อมูล Excel"],
+  ["/data-import", "นำเข้า/ส่งออก Excel"],
   ["/settings", "ตั้งค่า"],
   ["/logs", "บันทึกการใช้งาน"],
   ["/documents", "ประวัติเอกสาร"],

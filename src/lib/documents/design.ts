@@ -136,9 +136,98 @@ export interface FreeBlock {
   /** กลุ่ม: กล่องที่มีรหัสกลุ่มเดียวกันเลือกและย้ายไปพร้อมกัน */
   group?: string;
 }
-export interface FreeLayout { enabled: boolean; blocks: FreeBlock[]; /** ขอบกระดาษที่ใช้จัดวาง (pt) — เส้นนำ/ดูดติด/ตรวจขอบ */ margin?: number }
+export interface FreeLayout {
+  enabled: boolean; blocks: FreeBlock[];
+  /** ขอบกระดาษที่ใช้จัดวาง (pt) — เส้นนำ/ดูดติด/ตรวจขอบ · margins = แยกแต่ละด้าน [บน ขวา ล่าง ซ้าย] */
+  margin?: number; margins?: Margins;
+  /** ขนาดกระดาษ (ไม่ตั้ง = A4) · แนวนอน */
+  paper?: PaperSize; landscape?: boolean;
+}
 
 export const A4 = { w: 595.28, h: 841.89 };
+export type PaperSize = "A4" | "A5" | "Letter";
+export type Margins = [number, number, number, number];
+export const PAPERS: Record<PaperSize, { w: number; h: number; label: string }> = {
+  A4: { w: 595.28, h: 841.89, label: "A4 (21 × 29.7 ซม.)" },
+  A5: { w: 419.53, h: 595.28, label: "A5 (14.8 × 21 ซม.)" },
+  Letter: { w: 612, h: 792, label: "Letter (21.6 × 27.9 ซม.)" },
+};
+/** ด้านยาวสุดของกระดาษที่รองรับ — ขอบเขตตำแหน่งกล่อง (แนวนอนกว้างกว่า A4 แนวตั้ง) */
+const PAGE_MAX = 842;
+/** ขนาดหน้าของผัง (pt) ตามกระดาษและแนว */
+export function pageOf(l?: Pick<FreeLayout, "paper" | "landscape"> | null): { w: number; h: number } {
+  const p = PAPERS[l?.paper as PaperSize] || PAPERS.A4;
+  return l?.landscape ? { w: p.h, h: p.w } : { w: p.w, h: p.h };
+}
+/** ขอบกระดาษ [บน ขวา ล่าง ซ้าย] */
+export function marginsOf(l?: Pick<FreeLayout, "margin" | "margins"> | null): Margins {
+  const m = l?.margin ?? 32;
+  return l?.margins ? [...l.margins] as Margins : [m, m, m, m];
+}
+/**
+ * เปลี่ยนกระดาษ/แนว/ขอบ: ย้ายกล่องตามสัดส่วน — ส่วนในขอบยืด/หดตามพื้นที่ใหม่ ส่วนที่ชิดขอบกระดาษ (แถบสีเต็มหน้า) ยังชิดขอบ
+ * กล่องข้อความคงความสูงเดิม (ตัวอักษรไม่เล็กลง) · เส้นคงความหนา
+ */
+export function refitBlocks(blocks: FreeBlock[], from: { w: number; h: number }, fm: Margins, to: { w: number; h: number }, tm: Margins): FreeBlock[] {
+  const seg = (v: number, s0: number, e0: number, s1: number, e1: number) => (e0 - s0 < 0.01 ? s1 : s1 + ((v - s0) / (e0 - s0)) * (e1 - s1));
+  const map = (v: number, L0: number, A0: number, B0: number, L1: number, A1: number, B1: number) =>
+    v <= A0 ? seg(v, 0, A0, 0, A1) : v >= L0 - B0 ? seg(v, L0 - B0, L0, L1 - B1, L1) : seg(v, A0, L0 - B0, A1, L1 - B1);
+  const fx = (v: number) => map(v, from.w, fm[3], fm[1], to.w, tm[3], tm[1]);
+  const fy = (v: number) => map(v, from.h, fm[0], fm[2], to.h, tm[0], tm[2]);
+  const r = (v: number) => Math.round(v * 10) / 10;
+  const out = blocks.map((b) => {
+    const x1 = fx(b.x), x2 = fx(b.x + b.w), y1 = fy(b.y), y2 = fy(b.y + b.h);
+    if (b.kind === "line") return b.w >= b.h ? { ...b, x: x1, w: Math.max(4, x2 - x1), y: y1 } : { ...b, x: x1, y: y1, h: Math.max(4, y2 - y1) };
+    const keepH = TEXT_BLOCKS.includes(b.kind) && b.kind !== "items";
+    return { ...b, x: x1, w: Math.max(4, x2 - x1), y: y1, h: keepH ? b.h : Math.max(4, y2 - y1) };
+  });
+  // กล่องข้อความคงความสูง: กล่องที่เคยอยู่ใต้กันในแนวเดียวกันต้องไม่ทับกัน — ดันลงตามลำดับ (ตารางรายการหดรับแทน)
+  const DECO = ["rect", "shape", "line", "image"];
+  const content = blocks.map((b, i) => i).filter((i) => !DECO.includes(blocks[i].kind)).sort((i, j) => blocks[i].y - blocks[j].y);
+  const ry = (to.h - tm[0] - tm[2]) / Math.max(1, from.h - fm[0] - fm[2]);
+  const xOverlap = (a: FreeBlock, b: FreeBlock) => Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > 2;
+  for (const j of content) {
+    const ob = blocks[j];
+    let top = out[j].y;
+    for (const i of content) {
+      const oa = blocks[i];
+      if (i === j || oa.y + oa.h > ob.y + 0.5 || !xOverlap(oa, ob)) continue;
+      top = Math.max(top, out[i].y + out[i].h + Math.max(0, ob.y - (oa.y + oa.h)) * Math.min(1, ry));
+    }
+    if (top > out[j].y) {
+      const bottom = out[j].y + out[j].h;
+      out[j] = { ...out[j], y: top, h: ob.kind === "items" ? Math.max(40, bottom - top) : out[j].h };
+    }
+  }
+  // กรอบ/พื้นที่เคยครอบกล่องข้อมูล: ครอบตามตำแหน่งใหม่ (คงระยะขอบใน)
+  blocks.forEach((ob, k) => {
+    if (ob.kind !== "rect" && ob.kind !== "shape") return;
+    const inside = content.filter((i) => { const c = blocks[i]; return c.x >= ob.x - 1 && c.y >= ob.y - 1 && c.x + c.w <= ob.x + ob.w + 1 && c.y + c.h <= ob.y + ob.h + 1; });
+    if (!inside.length) return;
+    const T = Math.min(...inside.map((i) => blocks[i].y)) - ob.y, B = ob.y + ob.h - Math.max(...inside.map((i) => blocks[i].y + blocks[i].h));
+    const y = Math.min(...inside.map((i) => out[i].y)) - T, bottom = Math.max(...inside.map((i) => out[i].y + out[i].h)) + B;
+    out[k] = { ...out[k], y, h: Math.max(4, bottom - y) };
+  });
+  // ยังล้นขอบล่าง: หดตารางรายการ แล้วยกทุกอย่างที่อยู่ใต้ตารางขึ้นตาม
+  const ti = out.findIndex((b) => b.kind === "items");
+  const over = Math.max(...out.filter((b) => !DECO.includes(b.kind) || b.kind === "rect").map((b) => b.y + b.h)) - (to.h - tm[2]);
+  if (ti >= 0 && over > 0) {
+    const t = out[ti], cut = Math.min(over, Math.max(0, t.h - 60)), tb = t.y + t.h;
+    for (let k = 0; k < out.length; k++) if (k !== ti && out[k].y >= tb - 1) out[k] = { ...out[k], y: out[k].y - cut };
+    out[ti] = { ...t, h: t.h - cut };
+  }
+  // ระยะใต้ตารางห่างเกินเดิม (จากการดัน/หด): ยกส่วนใต้ตารางขึ้นให้ห่างเท่าเดิม แล้วคืนพื้นที่ให้ตาราง
+  if (ti >= 0) {
+    const ot = blocks[ti], t = out[ti], tb = t.y + t.h;
+    const below = out.map((b, k) => k).filter((k) => k !== ti && blocks[k].y >= ot.y + ot.h - 1);
+    if (below.length) {
+      const was = Math.min(...below.map((k) => blocks[k].y)) - (ot.y + ot.h), now = Math.min(...below.map((k) => out[k].y)) - tb;
+      const extra = now - Math.max(0, was) * Math.min(1, ry);
+      if (extra > 1) out[ti] = { ...t, h: t.h + extra };
+    }
+  }
+  return out.map((b) => ({ ...b, x: r(b.x), y: r(Math.min(b.y, to.h - 4)), w: r(b.w), h: r(Math.max(0.25, Math.min(b.h, to.h - Math.min(b.y, to.h - 4)))) }));
+}
 /** กล่องที่เอกสารภาษีต้องมี (ลบไม่ได้ในผังอิสระ) */
 export const REQUIRED_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party", "items", "totals"];
 export const BLOCK_LABELS: Record<BlockKind, string> = {
@@ -403,7 +492,7 @@ const COLUMN_KEYS = ITEM_COLUMNS.map((c) => c.key);
 function normalizeBlock(b: any, index: number): FreeBlock | null {
   if (!b || !KINDS.includes(b.kind)) return null;
   // เส้นแนวตั้ง/แนวนอนบางได้ถึง 0.25pt
-  const w = num(b.w, 0.25, A4.w, 100), h = num(b.h, 0.25, A4.h, 40);
+  const w = num(b.w, 0.25, PAGE_MAX, 100), h = num(b.h, 0.25, PAGE_MAX, 40);
   const parts = (BLOCK_PARTS[b.kind as BlockKind] || []).map((p) => p.key);
   // แถวของกล่องเลขที่ (number/date/m:ป้าย) และแถวยอดรวม (t:ป้าย) เป็นคีย์ตามข้อมูลของเอกสาร
   const okHide = (k: string) => parts.includes(k) || (b.kind === "meta" && (k === "number" || k === "date" || /^m:[^\n]{1,40}$/.test(k))) || (b.kind === "totals" && /^t:[^\n]{1,60}$/.test(k));
@@ -423,7 +512,7 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
   const labels = b.kind === "signatures" && Array.isArray(b.labels) ? b.labels.map((s: any) => str(s, 40)).filter(Boolean).slice(0, 4) : [];
   return {
     id: str(b.id, 40) || `${b.kind}-${index}`, kind: b.kind,
-    x: num(b.x, 0, A4.w - 4, 0), y: num(b.y, 0, A4.h - 1, 0), w, h,
+    x: num(b.x, 0, PAGE_MAX - 4, 0), y: num(b.y, 0, PAGE_MAX - 1, 0), w, h,
     ...(b.text !== undefined ? { text: str(b.text, 1000) } : {}),
     ...(b.kind === "image" && /^data:image\/(png|jpeg);base64,/.test(String(b.src || "")) && String(b.src).length < 400_000 ? { src: String(b.src) } : {}),
     ...(b.fontSize !== undefined && b.fontSize !== null ? { fontSize: num(b.fontSize, 6, 40, 10) } : {}),
@@ -495,7 +584,13 @@ export function normalizeFreeLayout(raw: any, docType?: string): FreeLayout | un
   const defaults = defaultFreeLayout().blocks;
   // (กล่องที่แยกเป็นช่องย่อยครบแล้วนับว่ามี)
   for (const k of requiredBlocksFor(docType)) if (!requiredSatisfied(k, blocks)) blocks.push(defaults.find((b) => b.kind === k)!);
-  return { enabled: !!raw.enabled, blocks, ...(raw.margin !== undefined && raw.margin !== null ? { margin: num(raw.margin, 0, 80, 32) } : {}) };
+  return {
+    enabled: !!raw.enabled, blocks,
+    ...(raw.margin !== undefined && raw.margin !== null ? { margin: num(raw.margin, 0, 80, 32) } : {}),
+    ...(Array.isArray(raw.margins) && raw.margins.length === 4 ? { margins: raw.margins.map((v: any) => num(v, 0, 120, 32)) as Margins } : {}),
+    ...(raw.paper && raw.paper !== "A4" && raw.paper in PAPERS ? { paper: raw.paper as PaperSize } : {}),
+    ...(raw.landscape ? { landscape: true } : {}),
+  };
 }
 
 export function normalizeLetterhead(raw: any, index = 0): Letterhead | null {

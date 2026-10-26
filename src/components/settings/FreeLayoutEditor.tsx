@@ -8,7 +8,7 @@ import {
   Bold, Type, Stamp as StampIcon, MoreHorizontal, Image as ImageIcon, TextCursorInput, BringToFront, SendToBack, ChevronLeft, PanelBottom,
   Circle, Triangle, RotateCcw, StretchHorizontal, StretchVertical,
   Italic, Underline, Strikethrough, AlignJustify, ChevronUp, ChevronDown, ChevronRight, PanelRightClose, PanelRightOpen,
-  ArrowUpToLine, ArrowDownToLine, BoxSelect, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Ruler as RulerIcon, Grid3x3, Paintbrush, ZoomIn,
+  ArrowUpToLine, ArrowDownToLine, BoxSelect, RectangleHorizontal, RectangleVertical, Scan, Move, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Ruler as RulerIcon, Grid3x3, Paintbrush, ZoomIn,
 } from "lucide-react";
 import { templateLayout } from "@/lib/documents/layout-templates";
 import { DataChecklist } from "./DataChecklist";
@@ -18,7 +18,7 @@ import { FloatingLayer } from "@/components/ui/FloatingLayer";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import type { DocumentModel } from "@/lib/documents/model";
 import {
-  A4, BLOCK_LABELS, BLOCK_PARTS, LABEL_KINDS, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
+  BLOCK_LABELS, BLOCK_PARTS, LABEL_KINDS, PAPERS, pageOf, marginsOf, refitBlocks, type Margins, type PaperSize, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
   type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, type Letterhead,
 } from "@/lib/documents/design";
 import { usePdfPageImage } from "./usePdfPageImage";
@@ -37,7 +37,6 @@ import { usePdfPageImage } from "./usePdfPageImage";
  *  - กล่องที่เอกสารภาษีต้องมี ย้าย/ปรับได้แต่ลบไม่ได้
  */
 const SNAP_PT = 4;
-const MARGIN = 32;
 const SINGLE: BlockKind[] = ["seller", "title", "meta", "party", "items", "totals", "words", "notes", "payment", "signatures"];
 const DEDUP: BlockKind[] = ["seller", "title", "meta", "party"];
 /** กล่องข้อมูลสำเร็จรูป (สร้างแล้วติ๊กเพิ่ม/ลด/เรียงหัวข้อเองได้) */
@@ -140,8 +139,8 @@ const RGroup = ({ label, children }: { label: string; children: React.ReactNode 
   </div>
 );
 /** ไม้บรรทัด (ซม.) ตามขนาดกระดาษบนจอ · hl = ช่วงของกล่องที่เลือก */
-function Ruler({ axis, S, hl }: { axis: "x" | "y"; S: number; hl?: [number, number] | null }) {
-  const mm = 72 / 25.4, len = axis === "x" ? A4.w : A4.h, n = Math.floor(len / mm);
+function Ruler({ axis, S, hl, P }: { axis: "x" | "y"; S: number; hl?: [number, number] | null; P: { w: number; h: number } }) {
+  const mm = 72 / 25.4, len = axis === "x" ? P.w : P.h, n = Math.floor(len / mm);
   const H = 18;
   return (
     <div className={cn("absolute bg-surface-2 border-white/10 overflow-hidden select-none", axis === "x" ? "border-b" : "border-r")}
@@ -185,18 +184,34 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   dataCtx: DataContext;
 }) {
   const font = theme.font;
+  // ขนาดหน้า (กระดาษ/แนวที่ตั้ง) · ขอบกระดาษแต่ละด้าน [บน ขวา ล่าง ซ้าย]
+  const P = pageOf(layout);
+  const M = marginsOf(layout);
   const [sel, setSel] = useState<string[]>([]);
   // พิมพ์ข้อความบนกระดาษ (ดับเบิลคลิกกล่องข้อความ)
   const [editing, setEditing] = useState<string | null>(null);
   // ริบบอน: แท็บที่เปิด · ย่อเหลือชื่อแท็บ · ไม้บรรทัด · แผงขวา (จำไว้ในเครื่อง)
   const [rtab, setRtab] = useState("insert");
-  const [ui, setUi] = useState({ ribbon: true, ruler: true, right: true });
+  const [ui, setUi] = useState({ ribbon: true, ruler: true, right: true, pin: false });
   useEffect(() => { try { const v = JSON.parse(localStorage.getItem("nexus.designer.ui") || "null"); if (v) setUi((u) => ({ ...u, ...v })); } catch { /* ค่าตั้งต้น */ } }, []);
+  // ปักหมุดแถบเครื่องมือ: ติดบนจอขณะเลื่อนหน้า (วัดความสูงไว้เว้นที่ให้กระดาษ/แผงขวา)
+  const ribbonRef = useRef<HTMLDivElement>(null);
+  const [ribbonH, setRibbonH] = useState(0);
+  useEffect(() => {
+    const el = ribbonRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setRibbonH(Math.round(e.contentRect.height)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const pinTop = 8; // จากขอบบนของพื้นที่เลื่อน (ใต้แถบบนของระบบ)
   const setUiPart = (patch: Partial<typeof ui>) => setUi((u) => { const n = { ...u, ...patch }; try { localStorage.setItem("nexus.designer.ui", JSON.stringify(n)); } catch { /* ไม่เป็นไร */ } return n; });
   // ลากคลุมบนพื้นกระดาษเพื่อเลือกหลายกล่อง (pt) · add = กด Ctrl/Shift ค้าง (เลือกเพิ่ม)
   const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number; add: boolean } | null>(null);
   // ระยะห่างระหว่างกล่องเมื่อเรียงต่อกัน (pt)
   const [gap, setGap] = useState(8);
+  // เปลี่ยนกระดาษ/แนว/ขอบ: ย้ายกล่องตามสัดส่วนของหน้าใหม่
+  const [refit, setRefit] = useState(true);
   // วางต่อจากกรอบหลัก: ด้านที่เลือกล่าสุด (แก้ระยะห่างแล้วขยับตามทันที) — ล้างเมื่อเปลี่ยนกล่องที่เลือก
   const [side, setSide] = useState<"top" | "bottom" | "left" | "right" | null>(null);
   useEffect(() => setSide(null), [sel.join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -212,10 +227,11 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setFitS(Math.round(Math.min(2.4, Math.max(0.8, (e.contentRect.width - 26) / A4.w)) * 20) / 20));
+    // พอดีความกว้างตามกระดาษ (เปลี่ยนแนว/ขนาดแล้วคำนวณใหม่)
+    const ro = new ResizeObserver(([e]) => setFitS(Math.round(Math.min(2.4, Math.max(0.6, (e.contentRect.width - 26) / P.w)) * 20) / 20));
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [P.w]);
   const S = zoom === "fit" ? fitS : zoom; // px ต่อ pt บนจอ
   const [snapOn, setSnapOn] = useState(true);
   const [guides, setGuides] = useState<Guides>({ x: [], y: [] });
@@ -224,7 +240,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const paperRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ mode: "move" | "size" | "head"; px: number; py: number; orig: Map<string, FreeBlock>; h: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const { image, busy, error } = usePdfPageImage(model, A4.w * S);
+  const { image, busy, error } = usePdfPageImage(model, P.w * S);
 
   // ---------- ย้อนกลับ/ทำซ้ำ: ประวัติอยู่ที่หน้าหลัก (รวมทุกการแก้ของการออกแบบ) ----------
   const commitLayout = onChange;
@@ -234,7 +250,6 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
 
   const bodyOn = !letterOnly && layout.enabled;
   /** ขอบกระดาษสำหรับจัดวาง (เส้นนำ/ดูดติด/จัดชิดขอบ) */
-  const margin = layout.margin ?? MARGIN;
   const headKinds = new Set((letterhead?.blocks || []).filter((b) => DEDUP.includes(b.kind)).map((b) => b.kind));
   const items: Item[] = [
     ...(letterhead?.blocks || []).map((b) => ({ key: `h:${b.id}`, zone: "head" as Zone, b })),
@@ -262,8 +277,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   }, [image, docType]);
 
   const clamp = (b: FreeBlock): FreeBlock => {
-    const w = Math.max(0.25, Math.min(A4.w, b.w)), h = Math.max(0.25, Math.min(A4.h, b.h));
-    return { ...b, w, h, x: Math.max(0, Math.min(A4.w - w, b.x)), y: Math.max(0, Math.min(A4.h - h, b.y)) };
+    const w = Math.max(0.25, Math.min(P.w, b.w)), h = Math.max(0.25, Math.min(P.h, b.h));
+    return { ...b, w, h, x: Math.max(0, Math.min(P.w - w, b.x)), y: Math.max(0, Math.min(P.h - h, b.y)) };
   };
   /** แก้หลายกล่องพร้อมกัน (null = ลบ) และเพิ่มกล่องใหม่ */
   const applyMany = (next: Map<string, FreeBlock | null>, adds: { zone: Zone; b: FreeBlock }[] = []) => {
@@ -352,7 +367,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
 
   // เส้นนำ: ขอบ/กึ่งกลางของกล่องที่ไม่ได้เลือก + ขอบกระดาษ/กึ่งกลางหน้า
   const targets = (exclude: Set<string>) => {
-    const xs = [margin, A4.w / 2, A4.w - margin], ys = [margin, A4.h / 2, A4.h - margin, ...(letterhead ? [letterhead.height] : [])];
+    const xs = [M[3], P.w / 2, P.w - M[1]], ys = [M[0], P.h / 2, P.h - M[2], ...(letterhead ? [letterhead.height] : [])];
     for (const i of items) if (!exclude.has(i.key)) { xs.push(i.b.x, i.b.x + i.b.w / 2, i.b.x + i.b.w); ys.push(i.b.y, i.b.y + i.b.h / 2, i.b.y + i.b.h); }
     return { xs, ys };
   };
@@ -432,7 +447,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     const x = (e.clientX - r.left) / S, y = (e.clientY - r.top) / S;
     const t = targets(new Set());
     const sx = snapOn ? nearest([x], t.xs) : null, sy = snapOn ? nearest([y], t.ys) : null;
-    return { x: Math.max(0, Math.min(A4.w, sx ? sx.at : toGrid(x))), y: Math.max(0, Math.min(A4.h, sy ? sy.at : toGrid(y))) };
+    return { x: Math.max(0, Math.min(P.w, sx ? sx.at : toGrid(x))), y: Math.max(0, Math.min(P.h, sy ? sy.at : toGrid(y))) };
   };
   const startDraw = (e: React.PointerEvent) => {
     if (tool === "select" || !canEdit || (!bodyOn && !letterhead)) return;
@@ -481,8 +496,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     if (!selected.length) return;
     const list = selected.map((i) => i.b);
     // กล่องเดียว: จัดเทียบหน้ากระดาษ (ระยะขอบ) · หลายกล่อง: จัดเทียบกรอบรวม
-    const L = multi ? Math.min(...list.map((b) => b.x)) : margin, R = multi ? Math.max(...list.map((b) => b.x + b.w)) : A4.w - margin;
-    const T0 = multi ? Math.min(...list.map((b) => b.y)) : 30, B0 = multi ? Math.max(...list.map((b) => b.y + b.h)) : A4.h - 30;
+    const L = multi ? Math.min(...list.map((b) => b.x)) : M[3], R = multi ? Math.max(...list.map((b) => b.x + b.w)) : P.w - M[1];
+    const T0 = multi ? Math.min(...list.map((b) => b.y)) : M[0], B0 = multi ? Math.max(...list.map((b) => b.y + b.h)) : P.h - M[2];
     applyMany(new Map(selected.map((i) => {
       const b = i.b;
       const pos = how === "left" ? { x: L } : how === "right" ? { x: R - b.w } : how === "hcenter" ? { x: (L + R) / 2 - b.w / 2 }
@@ -496,6 +511,15 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     const sorted = [...selected].sort((a, b) => a.b[axis] - b.b[axis]);
     let p = sorted[0].b[axis];
     applyMany(new Map(sorted.map((i) => { const n = { ...i.b, [axis]: p }; p += i.b[size] + gap; return [i.key, n]; })));
+  };
+  /** ตั้งค่าหน้ากระดาษ (ขนาด แนว ขอบ) — ขอบเท่ากันทุกด้านเก็บเป็นค่าเดียว */
+  const setPage = (patch: { paper?: PaperSize; landscape?: boolean; margins?: Margins }) => {
+    if (!canEdit || !bodyOn) return;
+    const next: FreeLayout = { ...layout };
+    if (patch.paper !== undefined) { if (patch.paper === "A4") delete next.paper; else next.paper = patch.paper; }
+    if (patch.landscape !== undefined) { if (patch.landscape) next.landscape = true; else delete next.landscape; }
+    if (patch.margins) { const m = patch.margins; delete next.margins; next.margin = m[0]; if (!m.every((v) => v === m[0])) next.margins = m; }
+    commitLayout({ ...next, blocks: refit ? refitBlocks(layout.blocks, P, M, pageOf(next), marginsOf(next)) : layout.blocks });
   };
   /** กรอบหลัก = กล่องแรกที่คลิก (รวมกลุ่มของมัน) · กล่องที่คลิกทีหลังขยับเข้าหา */
   const anchorKeys = multi && primary ? groupOf(primary).filter((k) => sel.includes(k)) : [];
@@ -549,15 +573,15 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     let b = newBlock("info", { fields, w: id === "doc" ? 200 : 260, h: Math.max(30, (fields.length || 2) * row + 8), ...(id === "seller" || id === "customer" ? { emphasizeFirst: true } : {}), ...(id === "doc" ? { labelWidth: 60 } : {}) });
     // วางกลางจอ (หรือจุดที่ลากมาปล่อย)
     const c = at || visibleCenter();
-    b = { ...b, x: Math.round(Math.max(0, Math.min(A4.w - b.w, c.x - b.w / 2))), y: Math.round(Math.max(0, Math.min(A4.h - b.h, c.y - b.h / 2))) };
+    b = { ...b, x: Math.round(Math.max(0, Math.min(P.w - b.w, c.x - b.w / 2))), y: Math.round(Math.max(0, Math.min(P.h - b.h, c.y - b.h / 2))) };
     applyMany(new Map(), [{ zone: addZone, b }]);
     setSel([`${addZone === "head" ? "h" : "d"}:${b.id}`]);
   };
   /** ตำแหน่ง (pt) ของจุดกึ่งกลางกระดาษที่มองเห็นบนจอ */
   const visibleCenter = () => {
     const r = paperRef.current?.getBoundingClientRect();
-    if (!r) return { x: A4.w / 2, y: 200 };
-    return { x: A4.w / 2, y: Math.max(40, Math.min(A4.h - 60, (window.innerHeight / 2 - r.top) / S)) };
+    if (!r) return { x: P.w / 2, y: 200 };
+    return { x: P.w / 2, y: Math.max(40, Math.min(P.h - 60, (window.innerHeight / 2 - r.top) / S)) };
   };
   /** เพิ่มกล่องให้กึ่งกลางอยู่ที่จุด (pt) */
   const addAt = (kind: string, at: { x: number; y: number }) => {
@@ -951,8 +975,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     }
     for (const it of textish) {
       const b = it.b;
-      if (b.x < 14 || b.y < 10 || b.x + b.w > A4.w - 14 || b.y + b.h > A4.h - 14) out.push({ text: `${nameOf(b)} ชิดขอบกระดาษเกินไป (เครื่องพิมพ์อาจตัดขอบ)`, keys: [it.key] });
-      else if (theme.showPageNumber && b.y + b.h > A4.h - 30) out.push({ text: `${nameOf(b)} ทับบรรทัดท้ายกระดาษ (เลขหน้า)`, keys: [it.key] });
+      if (b.x < 14 || b.y < 10 || b.x + b.w > P.w - 14 || b.y + b.h > P.h - 14) out.push({ text: `${nameOf(b)} ชิดขอบกระดาษเกินไป (เครื่องพิมพ์อาจตัดขอบ)`, keys: [it.key] });
+      else if (theme.showPageNumber && b.y + b.h > P.h - 30) out.push({ text: `${nameOf(b)} ทับบรรทัดท้ายกระดาษ (เลขหน้า)`, keys: [it.key] });
     }
     const tbl = items.find((i) => i.b.kind === "items");
     if (tbl && tbl.b.h < 120) out.push({ text: "ตารางรายการเตี้ย — รายการจะต่อหน้าถัดไปเร็ว ลองขยายความสูง", keys: [tbl.key] });
@@ -1035,7 +1059,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const pageCenter = (axis: "x" | "y" | "both") => {
     if (!selected.length) return;
     const L = Math.min(...selected.map((i) => i.b.x)), R = Math.max(...selected.map((i) => i.b.x + i.b.w)), T = Math.min(...selected.map((i) => i.b.y)), B = Math.max(...selected.map((i) => i.b.y + i.b.h));
-    const dx = axis === "y" ? 0 : (A4.w - (R - L)) / 2 - L, dy = axis === "x" ? 0 : (A4.h - (B - T)) / 2 - T;
+    const dx = axis === "y" ? 0 : (P.w - (R - L)) / 2 - L, dy = axis === "x" ? 0 : (P.h - (B - T)) / 2 - T;
     applyMany(new Map(selected.filter((i) => !i.b.locked).map((i) => [i.key, { ...i.b, x: i.b.x + dx, y: i.b.y + dy }])));
   };
   const SIZES = [7, 8, 9, 9.5, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 40];
@@ -1115,9 +1139,35 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       );
       case "layout": return (
         <>
-          <RGroup label={`ขอบกระดาษ ${margin} pt`}>
-            {([["ปกติ", 32], ["แคบ", 18], ["กว้าง", 48]] as const).map(([label, v]) => <RIcon key={label} title={`ขอบกระดาษ${label} (${v} pt)`} on={margin === v} disabled={!canEdit || !bodyOn} onClick={() => commitLayout({ ...layout, margin: v })}>{label}</RIcon>)}
-            <RNum min={0} max={80} value={margin} disabled={!canEdit || !bodyOn} title="ขอบกระดาษ (pt)" onChange={(e) => commitLayout({ ...layout, margin: Math.max(0, Math.min(80, Number(e.target.value) || 0)) })} />
+          <RGroup label="หน้ากระดาษ">
+            <div className="flex flex-col gap-1">
+              <RSelect width={170} title="ขนาดกระดาษ" value={layout.paper || "A4"} onChange={(v) => setPage({ paper: v as PaperSize })}>
+                {(Object.keys(PAPERS) as PaperSize[]).map((k) => <option key={k} value={k}>{PAPERS[k].label}</option>)}
+              </RSelect>
+              <div className="flex items-center gap-0.5">
+                <RIcon title="แนวตั้ง" on={!layout.landscape} disabled={!canEdit || !bodyOn} onClick={() => setPage({ landscape: false })}><RectangleVertical size={15} /><span className="pl-1">แนวตั้ง</span></RIcon>
+                <RIcon title="แนวนอน" on={!!layout.landscape} disabled={!canEdit || !bodyOn} onClick={() => setPage({ landscape: true })}><RectangleHorizontal size={15} /><span className="pl-1">แนวนอน</span></RIcon>
+              </div>
+            </div>
+          </RGroup>
+          <RGroup label={`ขอบกระดาษ ${M[0] === M[1] && M[1] === M[2] && M[2] === M[3] ? `${M[0]} pt` : "แยกแต่ละด้าน"}`}>
+            {([["ปกติ", 32], ["แคบ", 18], ["กว้าง", 48]] as const).map(([label, v]) => <RIcon key={label} title={`ขอบกระดาษ${label} (${v} pt ทุกด้าน)`} on={M.every((m) => m === v)} disabled={!canEdit || !bodyOn} onClick={() => setPage({ margins: [v, v, v, v] })}>{label}</RIcon>)}
+            <RMenu icon={<Scan size={18} />} label="กำหนดเอง" disabled={!canEdit || !bodyOn} width={230}>
+              {() => (
+                <div className="p-2 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["บน", "ขวา", "ล่าง", "ซ้าย"] as const).map((label, i) => (
+                      <label key={label} className="space-y-1 text-[11.5px] text-white/60">
+                        <span>{label} (pt)</span>
+                        <RNum width={90} min={0} max={120} value={M[i]} onChange={(e) => { const n = [...M] as Margins; n[i] = Math.max(0, Math.min(120, Number(e.target.value) || 0)); setPage({ margins: n }); }} />
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-white/45">1 ซม. ≈ 28 pt</p>
+                </div>
+              )}
+            </RMenu>
+            <RBtn icon={<Move size={18} />} label={refit ? "ขยับกล่องตาม" : "กล่องอยู่ที่เดิม"} on={refit} title="เปลี่ยนกระดาษ/แนว/ขอบแล้ว ย้ายกล่องตามสัดส่วนของหน้าใหม่ (ปิด = กล่องอยู่ตำแหน่งเดิม)" onClick={() => setRefit((v) => !v)} />
           </RGroup>
           <RGroup label="เส้นช่วยจัดวาง">
             <RBtn icon={<RulerIcon size={18} />} label="ไม้บรรทัด" on={ui.ruler} onClick={() => setUiPart({ ruler: !ui.ruler })} />
@@ -1302,18 +1352,23 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     }
   })();
   const ribbon = (
-    <GlassCard className="rounded-2xl hover:border-white/15">
+    <div ref={ribbonRef} className={cn(ui.pin && "sticky z-40")} style={ui.pin ? { top: pinTop } : undefined}>
+    <GlassCard className={cn("rounded-2xl hover:border-white/15", ui.pin && "shadow-[0_12px_30px_-10px_rgba(0,0,0,0.9)] bg-surface-2")}>
       <div className="flex items-center gap-1.5 px-2.5 py-2 border-b border-white/10">
         <RIcon title="ย้อนกลับ (Ctrl+Z)" disabled={!history.canUndo || !canEdit} onClick={undo}><Undo2 size={14} /></RIcon>
         <RIcon title="ทำซ้ำ (Ctrl+Y)" disabled={!history.canRedo || !canEdit} onClick={redo}><Redo2 size={14} /></RIcon>
         <span className="w-px h-5 bg-white/10 mx-0.5" />
         <PillTabs className="flex-1 min-w-0" tabs={tabs.map((t) => ({ id: t.id, label: t.label, icon: t.ctx ? <Paintbrush /> : undefined }))} activeTab={ui.ribbon ? rtab : ""} onTabChange={(id) => { setRtab(id); if (!ui.ribbon) setUiPart({ ribbon: true }); }} />
         <span className="ml-auto text-[11.5px] text-white/40 pr-1 hidden xl:inline">{selected.length ? `เลือก ${selected.length} กล่อง · Ctrl+คลิก เลือกเพิ่ม/ลด` : "คลิกกล่องเพื่อแก้ · ลากคลุมเพื่อเลือกหลายกล่อง"}</span>
+        <RIcon title={ui.pin ? "เลิกปักหมุดแถบเครื่องมือ (เลื่อนไปกับหน้า)" : "ปักหมุดแถบเครื่องมือ (ติดบนจอ ไม่เลื่อนตามหน้า)"} on={ui.pin} onClick={() => setUiPart({ pin: !ui.pin })}>{ui.pin ? <PinOff size={15} /> : <Pin size={15} />}</RIcon>
         <RIcon title={ui.ribbon ? "ย่อแถบเครื่องมือ (เหลือชื่อแท็บ)" : "ขยายแถบเครื่องมือ"} onClick={() => setUiPart({ ribbon: !ui.ribbon })}>{ui.ribbon ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</RIcon>
       </div>
       {ui.ribbon && <div className="flex items-stretch overflow-x-auto px-1 py-1.5">{ribbonBody || <p className="text-[12px] text-white/45 px-3 py-4">เลือกกล่องบนกระดาษก่อน</p>}</div>}
     </GlassCard>
+    </div>
   );
+  // ปักหมุดแล้ว: กระดาษและแผงขวาเริ่มใต้แถบเครื่องมือ
+  const below = ui.pin ? pinTop + ribbonH + 12 : 64;
 
   // ---------- แผงขวา: ไม่ได้เลือก = ทั้งหน้า · เลือก = ตั้งค่ากล่องนั้น ----------
   const problems = legal.filter((l) => !l.ok).length + issues.length;
@@ -1338,18 +1393,18 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
 
       <div className="flex flex-col lg:flex-row gap-3 items-start">
         {/* กระดาษ A4: ภาพหน้าจริง + กล่องที่ลากได้ */}
-        <div ref={wrapRef} className="flex-1 min-w-0 w-full overflow-auto max-h-[calc(100vh-96px)] rounded-lg pt-5">
-          <div className="relative" style={{ paddingLeft: ui.ruler ? 18 : 0, paddingTop: ui.ruler ? 18 : 0, width: A4.w * S + (ui.ruler ? 18 : 0) }}>
+        <div ref={wrapRef} className="flex-1 min-w-0 w-full overflow-auto rounded-lg pt-5" style={{ maxHeight: `calc(100vh - ${below + 32}px)` }}>
+          <div className="relative" style={{ paddingLeft: ui.ruler ? 18 : 0, paddingTop: ui.ruler ? 18 : 0, width: P.w * S + (ui.ruler ? 18 : 0) }}>
           {ui.ruler && (
             <>
               <div className="absolute left-0 top-0 w-[18px] h-[18px] bg-[#1b1b20] border-r border-b border-white/10" title="ไม้บรรทัด (ซม.)" />
-              <Ruler axis="x" S={S} hl={selected.length ? [Math.min(...selected.map((i) => i.b.x)), Math.max(...selected.map((i) => i.b.x + i.b.w))] : null} />
-              <Ruler axis="y" S={S} hl={selected.length ? [Math.min(...selected.map((i) => i.b.y)), Math.max(...selected.map((i) => i.b.y + i.b.h))] : null} />
+              <Ruler axis="x" P={P} S={S} hl={selected.length ? [Math.min(...selected.map((i) => i.b.x)), Math.max(...selected.map((i) => i.b.x + i.b.w))] : null} />
+              <Ruler axis="y" P={P} S={S} hl={selected.length ? [Math.min(...selected.map((i) => i.b.y)), Math.max(...selected.map((i) => i.b.y + i.b.h))] : null} />
             </>
           )}
-          <div className="relative" style={{ width: A4.w * S, height: A4.h * S }}>
+          <div className="relative" style={{ width: P.w * S, height: P.h * S }}>
           <div ref={paperRef} onDragOver={(e) => { if (e.dataTransfer.types.includes("text/nexus-kind")) e.preventDefault(); }} onDrop={dropAt}
-            className={cn("relative bg-white rounded-sm shadow-2xl overflow-hidden select-none", tool !== "select" && "cursor-crosshair")} style={{ width: A4.w * S, height: A4.h * S }}
+            className={cn("relative bg-white rounded-sm shadow-2xl overflow-hidden select-none", tool !== "select" && "cursor-crosshair")} style={{ width: P.w * S, height: P.h * S }}
             onPointerDown={(e) => {
               if (tool !== "select") startDraw(e);
               else if (!bodyOn && !letterOnly && canEdit) convertAt(e);
@@ -1365,7 +1420,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                 backgroundSize: `${gridPx}px ${gridPx}px, ${gridPx}px ${gridPx}px, ${gridPx * 5}px ${gridPx * 5}px, ${gridPx * 5}px ${gridPx * 5}px`,
               }} />
             )}
-            {(showGrid || moving) && <div className="absolute pointer-events-none z-[5] border border-dashed border-sky-400/40" style={{ left: margin * S, top: margin * S, right: margin * S, bottom: margin * S }} />}
+            {(showGrid || moving) && <div className="absolute pointer-events-none z-[5] border border-dashed border-sky-400/40" style={{ left: M[3] * S, top: M[0] * S, right: M[1] * S, bottom: M[2] * S }} />}
             {/* ตัวอย่างขณะวาด */}
             {draft && (tool === "line" ? (() => {
               const horiz = Math.abs(draft.x1 - draft.x0) >= Math.abs(draft.y1 - draft.y0);
@@ -1399,7 +1454,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                     ...(b.kind === "line"
                       ? (b.h > b.w ? { left: b.x * S - Math.max(0, (8 - b.w * S) / 2), top: b.y * S, width: Math.max(8, b.w * S), height: b.h * S } : { left: b.x * S, top: b.y * S - Math.max(0, (8 - b.h * S) / 2), width: b.w * S, height: Math.max(8, b.h * S) })
                       : { left: b.x * S, top: b.y * S, width: b.w * S, height: Math.max(2, b.h * S) }),
-                    ...(moved ? { backgroundImage: `url(${image!.url})`, backgroundSize: `${A4.w * S}px ${A4.h * S}px`, backgroundPosition: `${-o!.x * S}px ${-o!.y * S}px`, backgroundRepeat: "no-repeat" } : {}),
+                    ...(moved ? { backgroundImage: `url(${image!.url})`, backgroundSize: `${P.w * S}px ${P.h * S}px`, backgroundPosition: `${-o!.x * S}px ${-o!.y * S}px`, backgroundRepeat: "no-repeat" } : {}),
                   }}>
                   <span className={cn("absolute -top-[17px] left-0 px-1.5 rounded-t text-[10px] leading-[17px] whitespace-nowrap pointer-events-none",
                     it.zone === "head" ? "bg-purple-600 text-white" : "bg-[#0d9488] text-white", on && !multi ? "block" : "hidden group-hover:block", on && multi && anchorKeys.includes(it.key) && "!block bg-amber-500")}>
@@ -1442,11 +1497,12 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         {/* แผงขวา (รูปแบบ): ตั้งค่าของกล่องที่เลือก — ย่อเป็นแถบแคบได้ */}
         {!ui.right ? (
           <button type="button" onClick={() => setUiPart({ right: true })} title="ขยายแผงรูปแบบ"
-            className="flex-shrink-0 lg:sticky lg:top-16 w-full lg:w-[34px] h-10 lg:h-[160px] rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/10 flex lg:flex-col items-center justify-center gap-1.5 text-white/70">
+            style={{ top: below }} className="flex-shrink-0 lg:sticky w-full lg:w-[34px] h-10 lg:h-[160px] rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/10 flex lg:flex-col items-center justify-center gap-1.5 text-white/70">
             <PanelRightOpen size={15} /><span className="text-[11.5px] lg:[writing-mode:vertical-rl]">รูปแบบ{problems ? ` · ควรแก้ ${problems}` : ""}</span>
           </button>
         ) : (
-        <GlassCard className="p-3 w-full lg:w-[330px] flex-shrink-0 space-y-3 lg:sticky lg:top-16 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto lg:pb-14">
+        <div className="w-full lg:w-[330px] flex-shrink-0 lg:sticky" style={{ top: below, ["--below" as string]: `${below + 16}px` }}>
+        <GlassCard className="p-3 w-full space-y-3 lg:overflow-y-auto lg:pb-14 lg:max-h-[calc(100vh-var(--below))]">
           <div className="flex items-center gap-2 -mb-1">
             <p className="text-[13px] font-bold text-white flex items-center gap-1.5"><Paintbrush size={14} className="text-nexus-teal" /> รูปแบบ</p>
             <button type="button" onClick={() => setUiPart({ right: false })} title="ย่อแผงรูปแบบ" className="ml-auto h-7 w-7 rounded-md flex items-center justify-center text-white/55 hover:text-white hover:bg-white/10"><PanelRightClose size={15} /></button>
@@ -1465,6 +1521,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
               </div>
             ) : pagePanel}
         </GlassCard>
+        </div>
         )}
       </div>
 

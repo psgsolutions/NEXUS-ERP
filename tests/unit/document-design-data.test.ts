@@ -67,6 +67,25 @@ describe("design tools: shapes, corners, flow, margins, blank page, document rul
     expect(out.margin).toBe(80);
   });
 
+  it("paper size, orientation and margins: kept by normalize, boxes refit without overlap", async () => {
+    const { normalizeFreeLayout, pageOf, marginsOf, refitBlocks } = await import("@/lib/documents/design");
+    const { templateLayout } = await import("@/lib/documents/layout-templates");
+    const n = normalizeFreeLayout({ enabled: true, paper: "A5", landscape: true, margins: [10, 20, 30, 999], blocks: [{ id: "x", kind: "text", x: 700, y: 10, w: 100, h: 20, text: "a" }] }, "quotation")!;
+    expect(n).toMatchObject({ paper: "A5", landscape: true, margins: [10, 20, 30, 120] });
+    expect(n.blocks.find((b) => b.id === "x")!.x).toBe(700); // แนวนอนกว้างกว่า A4 ตั้ง
+    expect(pageOf(n)).toEqual({ w: 595.28, h: 419.53 });
+    expect(normalizeFreeLayout({ enabled: true, paper: "B9", blocks: [] }, "quotation")!.paper).toBeUndefined();
+    expect(marginsOf({ margin: 18 })).toEqual([18, 18, 18, 18]);
+    const l = templateLayout("standard", "quotation", theme);
+    const to = pageOf({ landscape: true }), out = refitBlocks(l.blocks, pageOf(null), marginsOf(l), to, marginsOf(l));
+    const content = out.filter((b) => !["rect", "shape", "line", "image"].includes(b.kind));
+    for (const b of out) expect(b.y + b.h).toBeLessThanOrEqual(to.h + 0.1);
+    const overlaps = content.flatMap((a, i) => content.slice(i + 1).filter((b) => Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > 2 && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > 2).map((b) => `${a.kind}/${b.kind}`));
+    const before = l.blocks.filter((b) => !["rect", "shape", "line", "image"].includes(b.kind));
+    const was = before.flatMap((a, i) => before.slice(i + 1).filter((b) => Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > 2 && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > 2).map((b) => `${a.kind}/${b.kind}`));
+    expect(overlaps).toEqual(was);
+  });
+
   it("keeps vertical alignment and label spacing within limits (label boxes only)", async () => {
     const { normalizeFreeLayout } = await import("@/lib/documents/design");
     const out = normalizeFreeLayout({ enabled: true, blocks: [

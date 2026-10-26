@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Copy, Eye, History, LayoutTemplate, ListChecks, Loader2, MousePointerClick, PanelTop, RotateCcw, Save, Trash2, Wand2, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Copy, Eye, History, LayoutTemplate, ListChecks, Loader2, MousePointerClick, PanelTop, RotateCcw, Save, Trash2, Wand2, X } from "lucide-react";
 import { GlassCard, PillButton, PillCheckbox, PillInput, PillSelect, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
@@ -204,6 +204,10 @@ export function DocumentDesigner() {
   const [modal, setModal] = useState<"" | "templates" | "versions" | "pdf">("");
   // อัตโนมัติ / ออกแบบเอง (จำไว้ในเครื่อง)
   const [mode, setModeState] = useState<"simple" | "canvas">("simple");
+  // ย่อแถบเลือกเอกสาร (ภาพย่อ → ปุ่มชื่อเอกสาร) ให้พื้นที่ออกแบบกว้างขึ้น — จำไว้ในเครื่อง
+  const [stripMini, setStripMini] = useState(false);
+  useEffect(() => { try { setStripMini(localStorage.getItem("nexus.designer.strip") === "mini"); } catch { /* ค่าตั้งต้น */ } }, []);
+  const toggleStrip = () => setStripMini((v) => { try { localStorage.setItem("nexus.designer.strip", v ? "full" : "mini"); } catch { /* ไม่เป็นไร */ } return !v; });
   useEffect(() => { try { if (localStorage.getItem("nexus.designer.mode") === "canvas") setModeState("canvas"); } catch { /* ใช้แบบง่าย */ } }, []);
   const setMode = (m: "simple" | "canvas") => { setModeState(m); try { localStorage.setItem("nexus.designer.mode", m); } catch { /* ไม่เป็นไร */ } };
   const [applied, setApplied] = useState("");
@@ -515,9 +519,18 @@ export function DocumentDesigner() {
     <div className="space-y-3">
       {/* แถบเอกสาร: ภาพย่อทุกชนิด กดสลับ · แบบง่าย/ลากวาง · ประวัติ · ดูด้วยเอกสารจริง */}
       <GlassCard className="p-2.5 space-y-2">
-        <div className="flex gap-1.5 overflow-x-auto pb-1">
-          {TARGETS.map((t) => <DocChip key={t.type} type={t.type} active={docType === t.type} design={stripDesign || shown} profile={profile} onClick={() => setDocType(t.type)} />)}
-        </div>
+        {stripMini ? (
+          <div className="flex flex-wrap gap-1.5">
+            {TARGETS.map((t) => (
+              <button key={t.type} type="button" onClick={() => setDocType(t.type)}
+                className={cn("h-8 px-3 rounded-full text-[12px] border transition-colors", docType === t.type ? "bg-nexus-teal/15 border-nexus-teal/30 text-nexus-teal font-bold" : "bg-white/5 border-transparent text-white/60 hover:text-white hover:bg-white/10")}>{SHORT[t.type] || t.title}</button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            {TARGETS.map((t) => <DocChip key={t.type} type={t.type} active={docType === t.type} design={stripDesign || shown} profile={profile} onClick={() => setDocType(t.type)} />)}
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2 px-1">
           <div className="flex rounded-full bg-white/5 p-1 border border-white/10">
             {([["simple", "อัตโนมัติ", ListChecks], ["canvas", "ออกแบบเอง", MousePointerClick]] as const).map(([m, label, I]) => (
@@ -535,6 +548,7 @@ export function DocumentDesigner() {
               </div>
             )}
             {canEdit && <PillButton variant="glass" className="h-8 px-3 text-xs" onClick={openVersions}><History size={13} /> ประวัติ</PillButton>}
+            <PillButton variant="ghost" className="h-8 px-3 text-xs" onClick={toggleStrip} title={stripMini ? "แสดงภาพย่อเอกสาร" : "ย่อตัวเลือกเอกสาร (เหลือชื่อเอกสาร)"}>{stripMini ? <ChevronDown size={13} /> : <ChevronUp size={13} />} {stripMini ? "ขยายภาพย่อ" : "ย่อตัวเลือก"}</PillButton>
           </div>
         </div>
       </GlassCard>

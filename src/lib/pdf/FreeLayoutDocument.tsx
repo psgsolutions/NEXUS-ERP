@@ -1,7 +1,7 @@
 import React from "react";
 import { Document, Page, View } from "@react-pdf/renderer";
 import type { CopyMode, DocumentModel } from "@/lib/documents/model";
-import { FONT_SCALE, docHasCopy, type FreeBlock } from "@/lib/documents/design";
+import { FONT_SCALE, docHasCopy, pageOf, type FreeBlock } from "@/lib/documents/design";
 import { BlockView, LetterheadBlocks, PageChrome, SectionItems, T, blockContext, documentContext } from "./StandardDocument";
 
 /**
@@ -43,6 +43,8 @@ export function FreeLayoutDocument({ doc, copy = "original" }: { doc: DocumentMo
     cap = Math.max(1, cap);
   }
   const rest = doc.lines.slice(cap);
+  // ขนาดกระดาษ/แนวตามที่ตั้งในผัง (ไม่ตั้ง = A4 แนวตั้ง)
+  const pg = pageOf(c.per.free);
   const firstItems = (
     <View>
       <SectionItems c={{ ...ic, doc: { ...doc, lines: doc.lines.slice(0, cap) } }} />
@@ -52,14 +54,14 @@ export function FreeLayoutDocument({ doc, copy = "original" }: { doc: DocumentMo
 
   return (
     <Document title={`${c.per.title || doc.title} ${doc.number}`} author={doc.seller.name} creator="NEXUS ERP">
-      <Page size="A4" style={[c.s.page, { padding: 0 }]}>
+      <Page size={[pg.w, pg.h]} style={[c.s.page, { padding: 0 }]}>
         <PageChrome c={c} />
         <LetterheadBlocks c={c} />
         {blocks.map((b) => <BlockView key={b.id} c={c} b={b} items={b.kind === "items" ? firstItems : undefined} />)}
         {copyMissing ? <T style={[c.s.copyBox, { position: "absolute", top: 4, right: 26 }]}>{copy === "copy" ? "สำเนา" : "ต้นฉบับ"}</T> : null}
       </Page>
       {rest.length ? (
-        <Page size="A4" style={c.s.page} wrap>
+        <Page size={[pg.w, pg.h]} style={c.s.page} wrap>
           <PageChrome c={c} />
           <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 10 }}>
             <T style={c.s.sellerName}>{doc.seller.name}</T>

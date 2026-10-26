@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
-  AlertTriangle, AlignVerticalDistributeCenter, ArrowDown, ArrowLeftRight, ArrowUp, ArrowUpDown, CheckCircle2, Copy, CopyPlus, Database, Eye, ImagePlus, Loader2, Lock, Magnet, Minus, MousePointer2,
+  AlertTriangle, AlignVerticalDistributeCenter, ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUp, Plus, ArrowUpDown, CheckCircle2, Copy, CopyPlus, Database, Eye, ImagePlus, Loader2, Lock, Magnet, Minus, MousePointer2,
   Group as GroupIcon, Pin, PinOff, Redo2, Split, Square, Trash2, Undo2, Ungroup, AlignLeft, AlignCenter, AlignRight, Wand2, X, Rows3,
   Bold, Type, Stamp as StampIcon, MoreHorizontal, Image as ImageIcon, TextCursorInput, BringToFront, SendToBack, ChevronLeft, PanelBottom,
   Circle, Triangle, RotateCcw, StretchHorizontal, StretchVertical,
@@ -197,6 +197,9 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number; add: boolean } | null>(null);
   // ระยะห่างระหว่างกล่องเมื่อเรียงต่อกัน (pt)
   const [gap, setGap] = useState(8);
+  // วางต่อจากกรอบหลัก: ด้านที่เลือกล่าสุด (แก้ระยะห่างแล้วขยับตามทันที) — ล้างเมื่อเปลี่ยนกล่องที่เลือก
+  const [side, setSide] = useState<"top" | "bottom" | "left" | "right" | null>(null);
+  useEffect(() => setSide(null), [sel.join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showPdf, setShowPdf] = useState(false);
   const [grid, setGrid] = useState(10);
   const [gridMode, setGridMode] = useState<"drag" | "always" | "off">("drag");
@@ -494,6 +497,20 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     let p = sorted[0].b[axis];
     applyMany(new Map(sorted.map((i) => { const n = { ...i.b, [axis]: p }; p += i.b[size] + gap; return [i.key, n]; })));
   };
+  /** กรอบหลัก = กล่องแรกที่คลิก (รวมกลุ่มของมัน) · กล่องที่คลิกทีหลังขยับเข้าหา */
+  const anchorKeys = multi && primary ? groupOf(primary).filter((k) => sel.includes(k)) : [];
+  /** วางกล่องที่คลิกทีหลังไว้ด้านบน/ล่าง/ซ้าย/ขวาของกรอบหลัก ห่าง g pt (ติดลบ = ซ้อนเข้าไป) · แนวอีกแกนคงเดิม */
+  const placeBy = (to: "top" | "bottom" | "left" | "right", g = gap) => {
+    const anchor = selected.filter((i) => anchorKeys.includes(i.key)), movers = selected.filter((i) => !anchorKeys.includes(i.key) && !i.b.locked);
+    if (!anchor.length || !movers.length) return;
+    const box = (l: Item[]) => ({ L: Math.min(...l.map((i) => i.b.x)), R: Math.max(...l.map((i) => i.b.x + i.b.w)), T: Math.min(...l.map((i) => i.b.y)), B: Math.max(...l.map((i) => i.b.y + i.b.h)) });
+    const a = box(anchor), m = box(movers);
+    const dx = to === "right" ? a.R + g - m.L : to === "left" ? a.L - g - m.R : 0;
+    const dy = to === "bottom" ? a.B + g - m.T : to === "top" ? a.T - g - m.B : 0;
+    setSide(to);
+    applyMany(new Map(movers.map((i) => [i.key, { ...i.b, x: i.b.x + dx, y: i.b.y + dy }])));
+  };
+  const setGapLive = (v: number) => { const g = Math.max(-200, Math.min(300, v)); setGap(g); if (side) placeBy(side, g); };
   const distribute = (axis: "x" | "y") => {
     if (selected.length < 3) return;
     const size = axis === "x" ? "w" : "h";
@@ -1127,23 +1144,30 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             <RIcon title="กึ่งกลางแนวตั้ง" disabled={!can} onClick={() => align("vcenter")}><AlignCenterHorizontal size={16} /></RIcon>
             <RIcon title="ชิดล่าง" disabled={!can} onClick={() => align("bottom")}><AlignEndHorizontal size={16} /></RIcon>
           </RGroup>
-          <RGroup label="กระจาย · เว้นระยะ">
+          <RGroup label="ห่างจากกรอบหลัก (คลิกก่อน)">
+            {([["top", "ไว้ด้านบนของกรอบหลัก", ArrowUp], ["bottom", "ไว้ด้านล่างของกรอบหลัก", ArrowDown], ["left", "ไว้ด้านซ้ายของกรอบหลัก", ArrowLeft], ["right", "ไว้ด้านขวาของกรอบหลัก", ArrowRight]] as const).map(([to, label, I]) => (
+              <RIcon key={to} title={`วางกรอบที่คลิกทีหลัง${label} ห่าง ${gap} pt`} on={side === to} disabled={selected.length < 2 || !anchorKeys.length || !canEdit} onClick={() => placeBy(to)}><I size={16} /></RIcon>
+            ))}
+            <span className="w-px h-5 bg-white/10 mx-0.5" />
+            <RIcon title="ขยับเข้าหากรอบหลัก 1 pt" disabled={!canEdit} onClick={() => setGapLive(gap - 1)}><Minus size={14} /></RIcon>
+            <RNum min={-200} max={300} value={gap} onChange={(e) => setGapLive(Number(e.target.value) || 0)} title="ระยะห่าง (pt) · ติดลบ = ซ้อนเข้าไป" />
+            <RIcon title="ขยับออกจากกรอบหลัก 1 pt" disabled={!canEdit} onClick={() => setGapLive(gap + 1)}><Plus size={14} /></RIcon>
+          </RGroup>
+          <RGroup label="กระจาย · เรียงต่อกัน">
             <RIcon title="กระจายแนวนอนเท่ากัน (3 กล่องขึ้นไป)" disabled={selected.length < 3 || !canEdit} onClick={() => distribute("x")}><AlignHorizontalDistributeCenter size={16} /></RIcon>
             <RIcon title="กระจายแนวตั้งเท่ากัน (3 กล่องขึ้นไป)" disabled={selected.length < 3 || !canEdit} onClick={() => distribute("y")}><AlignVerticalDistributeCenter size={16} /></RIcon>
-            <span className="text-[11px] text-white/50 pl-1">ห่าง</span>
-            <RNum min={0} max={200} value={gap} onChange={(e) => setGap(Math.max(0, Math.min(200, Number(e.target.value) || 0)))} title="ระยะห่างระหว่างกล่อง (pt)" />
-            <RIcon title="เรียงลงมาเว้นระยะ" disabled={selected.length < 2 || !canEdit} onClick={() => stack("y")}><StretchVertical size={16} /></RIcon>
-            <RIcon title="เรียงไปทางขวาเว้นระยะ" disabled={selected.length < 2 || !canEdit} onClick={() => stack("x")}><StretchHorizontal size={16} /></RIcon>
+            <RIcon title={`เรียงลงมา ห่าง ${gap} pt`} disabled={selected.length < 2 || !canEdit} onClick={() => stack("y")}><StretchVertical size={16} /></RIcon>
+            <RIcon title={`เรียงไปทางขวา ห่าง ${gap} pt`} disabled={selected.length < 2 || !canEdit} onClick={() => stack("x")}><StretchHorizontal size={16} /></RIcon>
           </RGroup>
           <RGroup label="ลำดับชั้น">
-            <RBtn icon={<ArrowUpToLine size={18} />} label="บนสุด" disabled={!primary || multi || !canEdit} onClick={() => primary && zEnd(primary, "front")} />
-            <RBtn icon={<BringToFront size={18} />} label="ขึ้นหนึ่งชั้น" disabled={!primary || multi || !canEdit} onClick={() => primary && reorder(primary, 1)} />
-            <RBtn icon={<SendToBack size={18} />} label="ลงหนึ่งชั้น" disabled={!primary || multi || !canEdit} onClick={() => primary && reorder(primary, -1)} />
-            <RBtn icon={<ArrowDownToLine size={18} />} label="ล่างสุด" disabled={!primary || multi || !canEdit} onClick={() => primary && zEnd(primary, "back")} />
+            <RIcon title="บนสุด" disabled={!primary || multi || !canEdit} onClick={() => primary && zEnd(primary, "front")}><ArrowUpToLine size={16} /></RIcon>
+            <RIcon title="ขึ้นหนึ่งชั้น" disabled={!primary || multi || !canEdit} onClick={() => primary && reorder(primary, 1)}><BringToFront size={16} /></RIcon>
+            <RIcon title="ลงหนึ่งชั้น" disabled={!primary || multi || !canEdit} onClick={() => primary && reorder(primary, -1)}><SendToBack size={16} /></RIcon>
+            <RIcon title="ล่างสุด" disabled={!primary || multi || !canEdit} onClick={() => primary && zEnd(primary, "back")}><ArrowDownToLine size={16} /></RIcon>
           </RGroup>
           <RGroup label="กลุ่ม">
-            <RBtn icon={<GroupIcon size={18} />} label="จัดกลุ่ม" title="จัดกลุ่ม (Ctrl+G)" disabled={selected.length < 2 || !canEdit} onClick={groupSelected} />
-            <RBtn icon={<Ungroup size={18} />} label="แยกกลุ่ม" title="แยกกลุ่ม (Ctrl+Shift+G)" disabled={!anyGrouped || !canEdit} onClick={ungroupSelected} />
+            <RIcon title="จัดกลุ่ม (Ctrl+G)" disabled={selected.length < 2 || !canEdit} onClick={groupSelected}><GroupIcon size={16} /></RIcon>
+            <RIcon title="แยกกลุ่ม (Ctrl+Shift+G)" disabled={!anyGrouped || !canEdit} onClick={ungroupSelected}><Ungroup size={16} /></RIcon>
           </RGroup>
         </>
       );
@@ -1336,7 +1360,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                 <div key={it.key} onPointerDown={(e) => start(e, it, "move")} onDoubleClick={(e) => { e.stopPropagation(); setSel([it.key]); if (b.kind === "text" && canEdit) setEditing(it.key); }}
                   className={cn("absolute group", canEdit ? "cursor-move" : "cursor-pointer",
                     // กรอบ/เส้น/รูป อยู่ชั้นล่างของการคลิก — คลิกข้อมูลที่อยู่ในกรอบได้ · กรอบเลือกที่ขอบ
-                    on ? "outline outline-2 outline-[#0d9488] z-20" : cn("outline outline-1 outline-dashed outline-transparent hover:outline-slate-400", ["rect", "shape", "line", "image"].includes(b.kind) ? "z-[8]" : "z-10"),
+                    on ? cn("outline outline-2 outline-[#0d9488] z-20", multi && anchorKeys.includes(it.key) && "outline-amber-400") : cn("outline outline-1 outline-dashed outline-transparent hover:outline-slate-400", ["rect", "shape", "line", "image"].includes(b.kind) ? "z-[8]" : "z-10"),
                     frame && "pointer-events-none",
                     fresh && !on && "outline-slate-300",
                     ghost && (b.kind === "line" ? "bg-[#0d9488]/70" : frame ? "border-2 border-dashed border-[#0d9488]" : "bg-[#0d9488]/10 border border-dashed border-[#0d9488]/70"))}
@@ -1348,7 +1372,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                     ...(moved ? { backgroundImage: `url(${image!.url})`, backgroundSize: `${A4.w * S}px ${A4.h * S}px`, backgroundPosition: `${-o!.x * S}px ${-o!.y * S}px`, backgroundRepeat: "no-repeat" } : {}),
                   }}>
                   <span className={cn("absolute -top-[17px] left-0 px-1.5 rounded-t text-[10px] leading-[17px] whitespace-nowrap pointer-events-none",
-                    it.zone === "head" ? "bg-purple-600 text-white" : "bg-[#0d9488] text-white", on && !multi ? "block" : "hidden group-hover:block")}>
+                    it.zone === "head" ? "bg-purple-600 text-white" : "bg-[#0d9488] text-white", on && !multi ? "block" : "hidden group-hover:block", on && multi && anchorKeys.includes(it.key) && "!block bg-amber-500")}>
+                    {on && multi && anchorKeys.includes(it.key) ? "กรอบหลัก · " : ""}
                     {BLOCK_LABELS[b.kind]}{b.kind === "field" ? ` · ${fieldOptions.find((f) => f.key === b.field)?.label || ""}` : b.kind === "info" && b.fields?.length ? ` · ${fieldLabel(b.fields[0])}` : ""}{isLocked(it) ? " 🔒" : ""}{it.zone === "head" ? " · หัวกระดาษ" : ""}
                   </span>
                   {fresh && b.kind === "text" && <div className="px-1 text-[10px] text-slate-500 pointer-events-none">{b.text}</div>}
@@ -1402,7 +1427,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
               <div className="pt-2">{checkPanel}</div>
             </details>
           )}
-          {multi ? <p className="text-[12.5px] text-white/70">เลือก {selected.length} กล่อง — ลากเพื่อย้ายพร้อมกัน · จัดแนว/เว้นระยะที่แท็บ จัดเรียง</p>
+          {multi ? <p className="text-[12.5px] text-white/70">เลือก {selected.length} กล่อง — กรอบที่คลิกก่อน (เส้นสีส้ม) เป็นกรอบหลัก · ตั้งระยะห่างให้กรอบที่คลิกทีหลังขยับเข้าหาได้ทุกด้านที่แท็บ จัดเรียง</p>
             : primary ? (
               <div className="space-y-2">
                 <button type="button" onClick={() => setSel([])} className="text-[12px] text-white/50 hover:text-white flex items-center gap-1"><ChevronLeft size={13} /> ทั้งหน้า</button>

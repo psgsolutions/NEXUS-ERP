@@ -179,7 +179,7 @@ function DocChip({ type, active, design, profile, onClick }: { type: string; act
 
 const Modal = ({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) => createPortal(
   <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-    <div className={cn("w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#141418] p-5 space-y-4", wide ? "max-w-6xl" : "max-w-lg")} onClick={(e) => e.stopPropagation()}>
+    <div className={cn("w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-surface-2 p-5 space-y-4", wide ? "max-w-6xl" : "max-w-lg")} onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center gap-2">
         <h3 className="text-[16px] font-bold text-white">{title}</h3>
         <button type="button" onClick={onClose} aria-label="ปิด" className="ml-auto w-8 h-8 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10"><X size={16} /></button>
@@ -583,7 +583,7 @@ export function DocumentDesigner() {
 
       {/* บันทึก: ลอยตามเมื่อมีการแก้ (Ctrl+S) */}
       {canEdit && dirty && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[150] flex items-center gap-2 rounded-full border border-warning/40 bg-[#18181d]/95 backdrop-blur px-3 py-2 shadow-2xl">
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[150] flex items-center gap-2 rounded-full border border-warning/40 bg-surface-2 px-3 py-2 shadow-2xl">
           <span className="text-[12.5px] text-warning px-1">ยังไม่บันทึก</span>
           <PillButton variant="ghost" className="h-8 px-3 text-xs" disabled={!hist.current.past.length} onClick={undo}>ย้อนกลับ</PillButton>
           <PillButton variant="ghost" className="h-8 px-3 text-xs" onClick={async () => { if (await showConfirm("ยกเลิกการแก้ทั้งหมดที่ยังไม่บันทึก?")) change(() => JSON.parse(savedJson)); }}>ยกเลิกการแก้</PillButton>

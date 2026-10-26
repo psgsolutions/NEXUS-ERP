@@ -99,6 +99,11 @@ export interface FreeBlock {
   /** กล่องข้อมูล: เน้นแถวแรก (เช่น ชื่อบริษัท/ลูกค้า ตัวหนาใหญ่) · ความกว้างป้าย (pt) */
   emphasizeFirst?: boolean;
   labelWidth?: number;
+  /** กล่องที่มีป้าย (ข้อมูล ช่องข้อมูล เลขที่/วันที่ ลูกค้า): ระยะป้าย→ข้อมูล · ระยะระหว่างแถว (pt) */
+  labelGap?: number;
+  rowGap?: number;
+  /** จัดแนวตั้งในกล่อง (ไม่ตั้ง = ชิดบน) */
+  valign?: "middle" | "bottom";
   /** กล่องข้อมูล: ชื่อหัวข้อที่ตั้งเอง ตามคีย์ข้อมูล (ว่าง = ชื่อตั้งต้น) */
   names?: Record<string, string>;
   /** ช่องลงนาม: ชื่อช่อง */
@@ -164,6 +169,8 @@ export function resolveColumns(b: { colSpec?: ColumnSpec[]; cols?: ItemColumn[] 
   return (b?.cols?.length ? b.cols : fallback).map((key) => ({ key }));
 }
 /** กล่องที่มีตัวอักษร (ปรับขนาด/ระยะบรรทัด/สีได้) */
+/** กล่องที่มีป้าย : ข้อมูล (ตั้งระยะข้อความได้) */
+export const LABEL_KINDS: BlockKind[] = ["info", "field", "meta", "party"];
 export const TEXT_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party", "info", "items", "totals", "words", "notes", "payment", "signatures", "field", "text"];
 /** กล่องที่วางในหัวกระดาษได้ */
 export const HEAD_KINDS: BlockKind[] = ["logo", "seller", "title", "meta", "info", "field", "text", "line", "rect", "shape", "image", "stamp"];
@@ -441,7 +448,10 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
       const names = Object.fromEntries(fields.map((k) => [k, str(b.names[k], 40)]).filter(([, v]) => v));
       return Object.keys(names).length ? { names } : {};
     })(),
-    ...(b.kind === "info" && b.labelWidth !== undefined && b.labelWidth !== null ? { labelWidth: num(b.labelWidth, 20, 300, 90) } : {}),
+    ...(LABEL_KINDS.includes(b.kind) && b.labelWidth !== undefined && b.labelWidth !== null ? { labelWidth: num(b.labelWidth, 20, 300, 90) } : {}),
+    ...(LABEL_KINDS.includes(b.kind) && b.labelGap !== undefined && b.labelGap !== null ? { labelGap: num(b.labelGap, 0, 60, 4) } : {}),
+    ...(LABEL_KINDS.includes(b.kind) && b.rowGap !== undefined && b.rowGap !== null ? { rowGap: num(b.rowGap, 0, 30, 1.5) } : {}),
+    ...(b.valign === "middle" || b.valign === "bottom" ? { valign: b.valign } : {}),
     ...(b.kind === "signatures" && b.gap !== undefined && b.gap !== null ? { gap: num(b.gap, 0, 300, 16) } : {}),
     ...(b.kind === "items" && b.fill ? { fill: true } : {}),
     ...(b.kind === "field" ? { field: FIELD_KEY.test(String(b.field || "")) ? String(b.field) : "number" } : {}),

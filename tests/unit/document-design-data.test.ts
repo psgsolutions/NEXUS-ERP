@@ -67,6 +67,20 @@ describe("design tools: shapes, corners, flow, margins, blank page, document rul
     expect(out.margin).toBe(80);
   });
 
+  it("keeps vertical alignment and label spacing within limits (label boxes only)", async () => {
+    const { normalizeFreeLayout } = await import("@/lib/documents/design");
+    const out = normalizeFreeLayout({ enabled: true, blocks: [
+      { id: "p", kind: "party", x: 10, y: 10, w: 300, h: 60, labelWidth: 5, labelGap: 99, rowGap: 4 },
+      { id: "t", kind: "text", x: 10, y: 80, w: 200, h: 40, text: "x", valign: "middle", labelGap: 10 },
+      { id: "u", kind: "text", x: 10, y: 130, w: 200, h: 40, text: "x", valign: "sideways" },
+    ] }, "quotation")!;
+    const get = (id: string) => out.blocks.find((b) => b.id === id)!;
+    expect(get("p")).toMatchObject({ labelWidth: 20, labelGap: 60, rowGap: 4 });
+    expect(get("t").valign).toBe("middle");
+    expect(get("t").labelGap).toBeUndefined();
+    expect(get("u").valign).toBeUndefined();
+  });
+
   it("blank page keeps only legally required data; original/copy only on documents that need it", async () => {
     const { blankLayout } = await import("@/lib/documents/design-data");
     const { templateLayout } = await import("@/lib/documents/layout-templates");

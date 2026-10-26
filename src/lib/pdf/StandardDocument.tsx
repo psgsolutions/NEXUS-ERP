@@ -103,6 +103,8 @@ export type Ctx = {
   stampPlaced?: boolean;
   /** การตั้งค่ากล่อง: รัศมีมุม · สีเส้น/ความหนาเส้นในตาราง/กรอบ · สีพื้นหัวตาราง */
   radius?: number; lineColor?: string; lineWidth?: number; headBg?: string;
+  /** ระยะข้อความของกล่องที่มีป้าย: ป้าย→ข้อมูล · ความกว้างป้าย · ระยะระหว่างแถว (pt) */
+  labelGap?: number; labelWidth?: number; rowGap?: number;
 };
 /** รัศมีมุม: ค่าของกล่องก่อน ไม่มีจึงตามธีม (มุมโค้ง/เหลี่ยม) */
 const rad = (c: Ctx, d = 4) => (c.radius !== undefined ? Math.min(c.radius, d * 6) : c.t.rounded ? d : 0);
@@ -165,9 +167,9 @@ function Lbl({ c, th, style, align, suffix = "" }: { c: Ctx; th: string; style?:
 /** แถว "ป้าย : ค่า" (รูปแบบฟอร์ม) */
 function FormRow({ c, th, value, labelWidth, bold = false }: { c: Ctx; th: string; value: React.ReactNode; labelWidth: number | string; bold?: boolean }) {
   return (
-    <View style={{ flexDirection: "row", marginTop: 1.5 }}>
+    <View style={{ flexDirection: "row", marginTop: c.rowGap ?? 1.5 }}>
       <View style={{ width: labelWidth }}><Lbl c={c} th={th} suffix=" :" style={{ fontWeight: "bold" }} /></View>
-      <T style={[{ flex: 1, paddingLeft: 4 }, bold ? { fontWeight: "bold" } : {}]}>{value}</T>
+      <T style={[{ flex: 1, paddingLeft: c.labelGap ?? 4 }, bold ? { fontWeight: "bold" } : {}]}>{value}</T>
     </View>
   );
 }
@@ -209,12 +211,12 @@ export function metaRows(c: Ctx): FieldRow[] {
 
 export function SectionMeta({ c, align = "right" }: { c: Ctx; align?: "left" | "center" | "right" }) {
   const rows = metaRows(c);
-  if (c.t.formStyle) return <View style={{ alignSelf: "stretch", minWidth: 190 }}>{rows.map((m) => <FormRow key={m.key} c={c} th={m.label} value={m.value || "-"} labelWidth="48%" />)}</View>;
+  if (c.t.formStyle) return <View style={{ alignSelf: "stretch", minWidth: 190 }}>{rows.map((m) => <FormRow key={m.key} c={c} th={m.label} value={m.value || "-"} labelWidth={c.labelWidth ?? "48%"} />)}</View>;
   return (
     <View>
       {rows.map((m) => (
-        <View key={m.key} style={[c.s.metaRow, { justifyContent: align === "right" ? "flex-end" : align === "center" ? "center" : "flex-start" }]}>
-          <View style={{ width: 70, marginRight: 6 }}><Lbl c={c} th={m.label} style={{ color: c.t.muted }} align="right" /></View>
+        <View key={m.key} style={[c.s.metaRow, { justifyContent: align === "right" ? "flex-end" : align === "center" ? "center" : "flex-start" }, c.rowGap !== undefined ? { marginTop: c.rowGap } : {}]}>
+          <View style={{ width: c.labelWidth ?? 70, marginRight: c.labelGap ?? 6 }}><Lbl c={c} th={m.label} style={{ color: c.t.muted }} align="right" /></View>
           <T style={c.s.metaValue}>{m.value || "-"}</T>
         </View>
       ))}
@@ -229,8 +231,8 @@ export function SectionField({ c, b }: { c: Ctx; b: FreeBlock }) {
   if (b.hideLabel) return <T style={{ textAlign: b.align, fontWeight: b.bold ? "bold" : undefined }}>{f.value || "-"}</T>;
   return (
     <View style={{ flexDirection: "row", justifyContent: b.align === "right" ? "flex-end" : b.align === "center" ? "center" : "flex-start" }}>
-      <Lbl c={c} th={f.label} suffix=" :" style={{ fontWeight: "bold" }} />
-      <T style={[{ paddingLeft: 4 }, b.bold ? { fontWeight: "bold" } : {}]}>{f.value || "-"}</T>
+      {b.labelWidth ? <View style={{ width: b.labelWidth }}><Lbl c={c} th={f.label} suffix=" :" style={{ fontWeight: "bold" }} /></View> : <Lbl c={c} th={f.label} suffix=" :" style={{ fontWeight: "bold" }} />}
+      <T style={[{ paddingLeft: b.labelGap ?? 4 }, b.bold ? { fontWeight: "bold" } : {}]}>{f.value || "-"}</T>
     </View>
   );
 }
@@ -247,11 +249,11 @@ export function SectionInfo({ c, b }: { c: Ctx; b: FreeBlock }) {
   if (b.flow === "row") {
     // เรียงเป็นแถวแนวนอน: ป้าย : ค่า ต่อกัน (ขึ้นบรรทัดใหม่เมื่อเต็ม)
     return (
-      <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: justify, columnGap: 14, rowGap: 2 }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: justify, columnGap: 14, rowGap: b.rowGap ?? 2 }}>
         {rows.map((r, i) => (
           <View key={r.key} style={{ flexDirection: "row" }}>
             {b.hideLabel || (i === 0 && b.emphasizeFirst) ? null : <Lbl c={c} th={b.names?.[r.key] || r.label} suffix=" :" style={{ fontWeight: "bold" }} />}
-            <T style={[{ paddingLeft: b.hideLabel ? 0 : 4 }, b.bold || (i === 0 && b.emphasizeFirst) ? { fontWeight: "bold" } : {}, i === 0 && b.emphasizeFirst ? { color: c.t.primary } : {}]}>{r.value}</T>
+            <T style={[{ paddingLeft: b.hideLabel ? 0 : b.labelGap ?? 4 }, b.bold || (i === 0 && b.emphasizeFirst) ? { fontWeight: "bold" } : {}, i === 0 && b.emphasizeFirst ? { color: c.t.primary } : {}]}>{r.value}</T>
           </View>
         ))}
       </View>
@@ -262,11 +264,11 @@ export function SectionInfo({ c, b }: { c: Ctx; b: FreeBlock }) {
       {rows.map((r, i) => {
         const label = b.names?.[r.key] || r.label;
         if (i === 0 && b.emphasizeFirst) return <T key={r.key} style={{ fontWeight: "bold", fontSize: c.s.page.fontSize * 1.25, lineHeight: 1.3, marginBottom: 2, color: c.t.primary, textAlign: b.align }}>{r.value}</T>;
-        if (b.hideLabel) return <T key={r.key} style={{ textAlign: b.align, fontWeight: b.bold ? "bold" : undefined }}>{r.value}</T>;
+        if (b.hideLabel) return <T key={r.key} style={{ textAlign: b.align, fontWeight: b.bold ? "bold" : undefined, marginTop: b.rowGap ?? 0 }}>{r.value}</T>;
         return (
-          <View key={r.key} style={{ flexDirection: "row", justifyContent: justify, marginTop: 1 }}>
+          <View key={r.key} style={{ flexDirection: "row", justifyContent: justify, marginTop: b.rowGap ?? 1 }}>
             <View style={{ width: lw }}><Lbl c={c} th={label} suffix=" :" style={{ fontWeight: "bold" }} /></View>
-            <T style={[{ flex: b.align === "left" || !b.align ? 1 : undefined, paddingLeft: 4 }, b.bold ? { fontWeight: "bold" } : {}]}>{r.value}</T>
+            <T style={[{ flex: b.align === "left" || !b.align ? 1 : undefined, paddingLeft: b.labelGap ?? 4 }, b.bold ? { fontWeight: "bold" } : {}]}>{r.value}</T>
           </View>
         );
       })}
@@ -289,15 +291,15 @@ export function SectionParty({ c }: { c: Ctx }) {
     return (
       <View style={[{ flexDirection: "row", gap: 10 }, box]}>
         <View style={{ flex: 1 }}>
-          <FormRow c={c} th={PARTY_NAME_LABEL[p.label] || p.label} value={p.name || "-"} labelWidth={110} bold />
-          {p.taxId ? <FormRow c={c} th="เลขประจำตัวผู้เสียภาษี" value={taxLine} labelWidth={110} /> : null}
-          {p.address ? <FormRow c={c} th="ที่อยู่" value={p.address} labelWidth={110} /> : null}
+          <FormRow c={c} th={PARTY_NAME_LABEL[p.label] || p.label} value={p.name || "-"} labelWidth={c.labelWidth ?? 110} bold />
+          {p.taxId ? <FormRow c={c} th="เลขประจำตัวผู้เสียภาษี" value={taxLine} labelWidth={c.labelWidth ?? 110} /> : null}
+          {p.address ? <FormRow c={c} th="ที่อยู่" value={p.address} labelWidth={c.labelWidth ?? 110} /> : null}
         </View>
         {showContact || showPhone || showEmail ? (
           <View style={{ width: "34%" }}>
-            {showContact ? <FormRow c={c} th={p.contactLabel || "ผู้ติดต่อ"} value={p.contact} labelWidth={58} /> : null}
-            {showPhone ? <FormRow c={c} th="โทร" value={p.phone} labelWidth={58} /> : null}
-            {showEmail ? <FormRow c={c} th="อีเมล" value={p.email} labelWidth={58} /> : null}
+            {showContact ? <FormRow c={c} th={p.contactLabel || "ผู้ติดต่อ"} value={p.contact} labelWidth={c.labelWidth ? Math.round(c.labelWidth * 0.53) : 58} /> : null}
+            {showPhone ? <FormRow c={c} th="โทร" value={p.phone} labelWidth={c.labelWidth ? Math.round(c.labelWidth * 0.53) : 58} /> : null}
+            {showEmail ? <FormRow c={c} th="อีเมล" value={p.email} labelWidth={c.labelWidth ? Math.round(c.labelWidth * 0.53) : 58} /> : null}
           </View>
         ) : null}
       </View>
@@ -536,7 +538,7 @@ export function blockContext(c: Ctx, raw: FreeBlock): Ctx {
   } : c.t;
   return {
     ...c, t, s: own ? themeStyles(t, b.lineHeight ?? 1.35, b.radius) : c.s, hide: new Set(b.hide || []), cols: b.cols, colSpec: b.colSpec, labels: b.labels, fields: b.fields, gap: b.gap, fill: b.fill, box: { w: b.w, h: b.h },
-    radius: b.radius, lineColor: b.lineColor, lineWidth: b.borderWidth, headBg: b.headBg,
+    radius: b.radius, lineColor: b.lineColor, lineWidth: b.borderWidth, headBg: b.headBg, labelGap: b.labelGap, labelWidth: b.labelWidth, rowGap: b.rowGap,
   };
 }
 
@@ -646,7 +648,7 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
     }}>
       {b.kind === "rect" ? null : b.kind === "image" || b.kind === "logo" || b.kind === "stamp"
         ? content
-        : <View style={{ position: "absolute", top: pad, left: pad, right: pad, ...(own ? { fontSize: bc.s.page.fontSize, lineHeight: bc.s.page.lineHeight, color: bc.t.text } : {}), ...(b.kind !== "text" ? textDeco(b) : {}) }}>{content}</View>}
+        : <View style={{ position: "absolute", top: pad, left: pad, right: pad, ...(b.valign ? { bottom: pad, justifyContent: b.valign === "middle" ? "center" : "flex-end" } : {}), ...(own ? { fontSize: bc.s.page.fontSize, lineHeight: bc.s.page.lineHeight, color: bc.t.text } : {}), ...(b.kind !== "text" ? textDeco(b) : {}) }}>{content}</View>}
     </View>
   );
 }

@@ -8,7 +8,7 @@ import {
   Bold, Type, Stamp as StampIcon, MoreHorizontal, Image as ImageIcon, TextCursorInput, BringToFront, SendToBack, ChevronLeft, PanelBottom,
   Circle, Triangle, RotateCcw, StretchHorizontal, StretchVertical,
   Italic, Underline, Strikethrough, AlignJustify, ChevronUp, ChevronDown, ChevronRight, PanelRightClose, PanelRightOpen,
-  ArrowUpToLine, ArrowDownToLine, BoxSelect, Ruler as RulerIcon, Grid3x3, Paintbrush, ZoomIn,
+  ArrowUpToLine, ArrowDownToLine, BoxSelect, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Ruler as RulerIcon, Grid3x3, Paintbrush, ZoomIn,
 } from "lucide-react";
 import { templateLayout } from "@/lib/documents/layout-templates";
 import { DataChecklist } from "./DataChecklist";
@@ -18,7 +18,7 @@ import { FloatingLayer } from "@/components/ui/FloatingLayer";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import type { DocumentModel } from "@/lib/documents/model";
 import {
-  A4, BLOCK_LABELS, BLOCK_PARTS, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
+  A4, BLOCK_LABELS, BLOCK_PARTS, LABEL_KINDS, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
   type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, type Letterhead,
 } from "@/lib/documents/design";
 import { usePdfPageImage } from "./usePdfPageImage";
@@ -510,7 +510,15 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     setSide(to);
     applyMany(new Map(movers.map((i) => [i.key, { ...i.b, x: i.b.x + dx, y: i.b.y + dy }])));
   };
-  const setGapLive = (v: number) => { const g = Math.max(-200, Math.min(300, v)); setGap(g); if (side) placeBy(side, g); };
+  /** ยังไม่ได้กดเลือกด้าน: เดาจากตำแหน่งตอนนี้ (กรอบที่คลิกทีหลังอยู่ด้านไหนของกรอบหลักมากที่สุด) */
+  const guessSide = (): "top" | "bottom" | "left" | "right" | null => {
+    const anchor = selected.filter((i) => anchorKeys.includes(i.key)), movers = selected.filter((i) => !anchorKeys.includes(i.key));
+    if (!anchor.length || !movers.length) return null;
+    const c = (l: Item[]) => { const L = Math.min(...l.map((i) => i.b.x)), R = Math.max(...l.map((i) => i.b.x + i.b.w)), T = Math.min(...l.map((i) => i.b.y)), B = Math.max(...l.map((i) => i.b.y + i.b.h)); return { x: (L + R) / 2, y: (T + B) / 2, w: R - L, h: B - T }; };
+    const a = c(anchor), m = c(movers), dx = (m.x - a.x) / Math.max(1, a.w + m.w), dy = (m.y - a.y) / Math.max(1, a.h + m.h);
+    return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy >= 0 ? "bottom" : "top";
+  };
+  const setGapLive = (v: number) => { const g = Math.max(-200, Math.min(300, v)); setGap(g); const to = side || guessSide(); if (to) placeBy(to, g); };
   const distribute = (axis: "x" | "y") => {
     if (selected.length < 3) return;
     const size = axis === "x" ? "w" : "h";
@@ -666,11 +674,6 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           <PillCheckbox label="ไม่แสดงป้าย" checked={!!b.hideLabel} onChange={(e) => update(it, { hideLabel: e.target.checked || undefined })} />
           <PillCheckbox label="ค่าตัวหนา" checked={!!b.bold} onChange={(e) => update(it, { bold: e.target.checked || undefined })} />
         </div>
-        {!b.hideLabel && (
-          <Field label={`ความกว้างป้าย ${b.labelWidth ?? 90} pt`}>
-            <input type="range" min={20} max={200} step={2} value={b.labelWidth ?? 90} onChange={(e) => update(it, { labelWidth: Number(e.target.value) })} className="w-full accent-[#0d9488] h-7" />
-          </Field>
-        )}
         <p className="text-[11.5px] font-bold text-white/70 pt-1">ติ๊กหัวข้อที่จะแสดง</p>
         {groups.map((g) => (
           <div key={g.title} className="space-y-0.5">
@@ -734,6 +737,28 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     );
   };
 
+  /** ระยะข้อความของกล่องที่มีป้าย: ป้าย→ข้อมูล · ความกว้างป้าย · ระยะระหว่างแถว */
+  const spacingEditor = (it: Item) => {
+    const b = it.b;
+    const defW = b.kind === "meta" ? 70 : b.kind === "party" ? 110 : 90, defGap = b.kind === "meta" ? 6 : 4, defRow = b.kind === "info" ? 1 : 1.5;
+    const slider = (key: "labelGap" | "labelWidth" | "rowGap", label: string, value: number, min: number, max: number, step: number, unit = "pt") => (
+      <Field label={`${label} ${value} ${unit}`}>
+        <div className="flex items-center gap-2">
+          <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => update(it, { [key]: Number(e.target.value) })} className="flex-1 accent-[#0d9488] h-7" />
+          {b[key] !== undefined && <button type="button" className="text-[11px] text-white/50 hover:text-white" onClick={() => unset(it, key)}>ค่าเดิม</button>}
+        </div>
+      </Field>
+    );
+    return (
+      <div className="space-y-1 rounded-xl border border-white/10 p-2.5">
+        <p className="text-[11.5px] font-bold text-white/70">ระยะข้อความ (ป้าย : ข้อมูล)</p>
+        {slider("labelGap", "ระยะห่างป้ายกับข้อมูล", b.labelGap ?? defGap, 0, 60, 1)}
+        {(b.kind !== "field" || b.labelWidth !== undefined) && slider("labelWidth", "ความกว้างช่องป้าย", b.labelWidth ?? defW, 20, 300, 2)}
+        {b.kind === "field" && b.labelWidth === undefined && <button type="button" className="text-[11.5px] text-sky-300/80 hover:text-sky-200" onClick={() => update(it, { labelWidth: 80 })}>+ กำหนดความกว้างป้าย (ให้ข้อมูลหลายช่องตรงกัน)</button>}
+        {b.kind !== "field" && slider("rowGap", "ระยะห่างระหว่างแถว", b.rowGap ?? defRow, 0, 30, 0.5)}
+      </div>
+    );
+  };
   const props = (it: Item) => {
     const b = it.b;
     const parts = BLOCK_PARTS[b.kind] || [];
@@ -764,6 +789,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         )}
 
         {b.kind === "info" && <div className="rounded-xl border border-white/10 p-2.5">{infoEditor(it)}</div>}
+        {LABEL_KINDS.includes(b.kind) && !b.hideLabel && (b.kind !== "party" || theme.formStyle) && spacingEditor(it)}
 
         {b.kind === "text" && (
           <div className="space-y-1.5">
@@ -1150,7 +1176,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             ))}
             <span className="w-px h-5 bg-white/10 mx-0.5" />
             <RIcon title="ขยับเข้าหากรอบหลัก 1 pt" disabled={!canEdit} onClick={() => setGapLive(gap - 1)}><Minus size={14} /></RIcon>
-            <RNum min={-200} max={300} value={gap} onChange={(e) => setGapLive(Number(e.target.value) || 0)} title="ระยะห่าง (pt) · ติดลบ = ซ้อนเข้าไป" />
+            <RNum min={-200} max={300} value={gap} onChange={(e) => setGapLive(Number(e.target.value) || 0)} onKeyDown={(e) => { if (e.key === "Enter") setGapLive(Number((e.target as HTMLInputElement).value) || 0); }} title="ระยะห่าง (pt) · ติดลบ = ซ้อนเข้าไป · ยังไม่เลือกด้าน = ขยับตามด้านที่กรอบอยู่ตอนนี้" />
             <RIcon title="ขยับออกจากกรอบหลัก 1 pt" disabled={!canEdit} onClick={() => setGapLive(gap + 1)}><Plus size={14} /></RIcon>
           </RGroup>
           <RGroup label="กระจาย · เรียงต่อกัน">
@@ -1201,6 +1227,10 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-0.5">
                 {(["left", "center", "right", "justify"] as const).map((a) => { const I = a === "justify" ? AlignJustify : ALIGN_ICON[a]; return <RIcon key={a} title={a === "left" ? "ชิดซ้าย" : a === "center" ? "กึ่งกลาง" : a === "right" ? "ชิดขวา" : "เต็มบรรทัด"} on={t0.align === a} onClick={() => patchSel(textSel, { align: a })}><I size={15} /></RIcon>; })}
+                <span className="w-px h-5 bg-white/10 mx-1" />
+                {([[undefined, "ชิดบนในกล่อง", AlignVerticalJustifyStart], ["middle", "กึ่งกลางแนวตั้งในกล่อง", AlignVerticalJustifyCenter], ["bottom", "ชิดล่างในกล่อง", AlignVerticalJustifyEnd]] as const).map(([v, label, I]) => (
+                  <RIcon key={label} title={label} on={t0.valign === v} onClick={() => patchSel(textSel, { valign: v })}><I size={15} /></RIcon>
+                ))}
               </div>
               <div className="flex items-center gap-1">
                 <RSelect width={112} title="ระยะบรรทัด" value={String(t0.lineHeight ?? 1.35)} onChange={(v) => patchSel(textSel, { lineHeight: Number(v) })}>

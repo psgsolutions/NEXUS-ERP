@@ -17,7 +17,7 @@ import { GlassCard, PillButton, PillCheckbox, PillInput, PillSelect, cn } from "
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import type { DocumentModel } from "@/lib/documents/model";
 import {
-  A4, BLOCK_LABELS, BLOCK_PARTS, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, FONT_LABELS, type FontFamily,
+  A4, BLOCK_LABELS, BLOCK_PARTS, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
   type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, type Letterhead,
 } from "@/lib/documents/design";
 import { usePdfPageImage } from "./usePdfPageImage";
@@ -285,6 +285,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       : b.kind === "title" ? [
         ["title", row(1.9), { hideLabel: true, bold: true, fontSize: Math.round((b.fontSize ?? theme.fontSize) * 1.8 * 10) / 10, color: b.color || "@primary" }],
         ...(hide.has("en") ? [] : [["titleEn", row(0.9), { hideLabel: true, fontSize: Math.round((b.fontSize ?? theme.fontSize) * 0.9 * 10) / 10 }] as [string, number, Partial<FreeBlock>]]),
+        // เอกสารที่ต้องมีต้นฉบับ/สำเนา: แยกเป็นช่องด้วย
+        ...(docHasCopy(docType) ? [["copy", row(1.1), { hideLabel: true, bold: true, color: b.color || "@primary", border: "@primary", radius: 3 }] as [string, number, Partial<FreeBlock>]] : []),
       ] : [];
     if (!rows.length) return;
     const group = newGroupId();
@@ -554,6 +556,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     { key: "number", label: "เลขที่" }, { key: "date", label: "วันที่" },
     ...docMeta.map((l) => ({ key: `m:${l}`, label: l })), ...docFields.map((f) => ({ key: `f:${f.key}`, label: f.label })),
     ...SUB_FIELDS,
+    ...(docHasCopy(docType) ? [{ key: "copy", label: "ต้นฉบับ/สำเนา" }] : []),
   ];
 
   /** เลือกสี: สีของธีม (เปลี่ยนชุดสีแล้วเปลี่ยนตาม — แนะนำ) หรือสีกำหนดเอง */
@@ -591,7 +594,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     const set = (fields: string[]) => update(it, { fields, names: Object.fromEntries(Object.entries(names).filter(([k]) => fields.includes(k))) });
     const move = (i: number, d: -1 | 1) => { const j = i + d; if (j < 0 || j >= f.length) return; const n = [...f]; [n[i], n[j]] = [n[j], n[i]]; set(n); };
     const groups: { title: string; keys: string[] }[] = [
-      { title: `ข้อมูล${docTitle}`, keys: ["number", "date", "title", "titleEn", ...docMeta.map((l) => `m:${l}`)] },
+      { title: `ข้อมูล${docTitle}`, keys: ["number", "date", "title", "titleEn", ...(docHasCopy(docType) ? ["copy"] : []), ...docMeta.map((l) => `m:${l}`)] },
       ...(docFields.length ? [{ title: "ข้อมูลเพิ่ม", keys: docFields.map((x) => `f:${x.key}`) }] : []),
       { title: "บริษัท (ผู้ขาย)", keys: SUB_FIELDS.filter((x) => x.key.startsWith("seller.")).map((x) => x.key) },
       { title: "ลูกค้า / คู่ค้า", keys: SUB_FIELDS.filter((x) => x.key.startsWith("customer.")).map((x) => x.key) },
@@ -763,7 +766,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         {parts.length > 0 && (
           <div className="space-y-1.5 rounded-xl border border-white/10 p-2.5">
             <p className="text-[11.5px] font-bold text-white/70">ข้อมูลที่แสดง</p>
-            {parts.filter((p) => !(b.kind === "items" && p.key === "detail" && resolveColumns(b, defaultColumns as ItemColumn[]).some((x) => x.key === "detail"))).map((p) => (
+            {parts.filter((p) => !(b.kind === "title" && p.key === "copy") && !(b.kind === "items" && p.key === "detail" && resolveColumns(b, defaultColumns as ItemColumn[]).some((x) => x.key === "detail"))).map((p) => (
               <PillCheckbox key={p.key} label={p.label} checked={!hide.has(p.key)} onChange={(e) => update(it, { hide: e.target.checked ? [...hide].filter((k) => k !== p.key) : [...hide, p.key] })} />
             ))}
             {(b.kind === "seller" || b.kind === "party") && <p className="text-[11px] text-white/40">ชื่อ ที่อยู่ เลขผู้เสียภาษี แสดงเสมอ (กฎหมายกำหนด)</p>}

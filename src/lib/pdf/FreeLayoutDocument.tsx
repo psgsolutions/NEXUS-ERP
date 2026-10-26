@@ -1,7 +1,7 @@
 import React from "react";
 import { Document, Page, View } from "@react-pdf/renderer";
 import type { CopyMode, DocumentModel } from "@/lib/documents/model";
-import { FONT_SCALE, type FreeBlock } from "@/lib/documents/design";
+import { FONT_SCALE, docHasCopy, type FreeBlock } from "@/lib/documents/design";
 import { BlockView, LetterheadBlocks, PageChrome, SectionItems, T, blockContext, documentContext } from "./StandardDocument";
 
 /**
@@ -21,6 +21,9 @@ export function FreeLayoutDocument({ doc, copy = "original" }: { doc: DocumentMo
   const c = { ...base, stampPlaced: placed.some((b) => b.kind === "stamp"), shown: new Set((doc.fields || []).filter((f) => placedKeys.has(`f:${f.key}`)).map((f) => f.label)) };
   const headKinds = new Set((c.lh?.blocks || []).filter((b) => DEDUP_KINDS.includes(b.kind)).map((b) => b.kind));
   const blocks: FreeBlock[] = (c.per.free?.blocks || []).filter((b) => !headKinds.has(b.kind));
+  // เอกสารที่ต้องมีต้นฉบับ/สำเนา แต่ผังไม่มีที่แสดง (กล่องชื่อเอกสารเล็ก/แยกช่อง): พิมพ์ป้ายมุมขวาบนของหน้าให้เสมอ
+  const allBlocks = [...(c.lh?.blocks || []), ...blocks];
+  const copyMissing = docHasCopy(doc.type) && !allBlocks.some((b) => (b.kind === "title" && !(b.hide || []).includes("copy")) || (b.kind === "field" && b.field === "copy") || (b.kind === "info" && (b.fields || []).includes("copy")));
   // ความจุของกล่องตาราง (ประมาณความสูงทีละแถว รวมบรรทัดที่ตัดขึ้นใหม่และรายละเอียด) — ส่วนที่เกินไปหน้าถัดไป
   const items = blocks.find((b) => b.kind === "items");
   const ic = items ? blockContext(c, items) : c;
@@ -53,6 +56,7 @@ export function FreeLayoutDocument({ doc, copy = "original" }: { doc: DocumentMo
         <PageChrome c={c} />
         <LetterheadBlocks c={c} />
         {blocks.map((b) => <BlockView key={b.id} c={c} b={b} items={b.kind === "items" ? firstItems : undefined} />)}
+        {copyMissing ? <T style={[c.s.copyBox, { position: "absolute", top: 4, right: 26 }]}>{copy === "copy" ? "สำเนา" : "ต้นฉบับ"}</T> : null}
       </Page>
       {rest.length ? (
         <Page size="A4" style={c.s.page} wrap>

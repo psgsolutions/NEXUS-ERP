@@ -67,15 +67,21 @@ describe("design tools: shapes, corners, flow, margins, blank page, document rul
     expect(out.margin).toBe(80);
   });
 
-  it("blank page keeps only legally required data, quotation has no original/copy label", async () => {
+  it("blank page keeps only legally required data; original/copy only on documents that need it", async () => {
     const { blankLayout } = await import("@/lib/documents/design-data");
     const { templateLayout } = await import("@/lib/documents/layout-templates");
     const blank = blankLayout("invoice", theme);
     expect(blank.blocks.map((b) => b.kind).sort()).toEqual(["items", "meta", "party", "seller", "signatures", "title", "totals"]);
     expect(blank.blocks.some((b) => ["rect", "line", "logo"].includes(b.kind))).toBe(false);
-    expect(blankLayout("quotation", theme).blocks.find((b) => b.kind === "title")!.hide).toContain("copy");
-    expect(templateLayout("banner", "quotation", theme).blocks.find((b) => b.kind === "title")!.hide).toContain("copy");
-    expect(templateLayout("banner", "invoice", theme).blocks.find((b) => b.kind === "title")!.hide || []).not.toContain("copy");
+    const { docHasCopy, normalizeFreeLayout } = await import("@/lib/documents/design");
+    expect(["invoice", "receipt", "billing_note", "delivery_note", "cndn"].every(docHasCopy)).toBe(true);
+    expect(["quotation", "sales_order", "purchase_order", "payment", "work_order", "letter"].some(docHasCopy)).toBe(false);
+    // รายการติ๊ก: เอกสารที่ต้องมี = ล็อกไว้ · เอกสารอื่นไม่มีตัวเลือก
+    const copyItem = (type: string) => dataGroups(ensureLayout(undefined, type, theme), { ...ctx, docType: type }).flatMap((g) => g.items).find((i) => i.key === "title:copy");
+    expect(copyItem("invoice")).toMatchObject({ on: true, locked: true });
+    expect(copyItem("quotation")).toBeUndefined();
+    // ช่องต้นฉบับ/สำเนาวางแยกได้
+    expect(normalizeFreeLayout({ enabled: true, blocks: [{ id: "c", kind: "field", field: "copy", x: 1, y: 1, w: 50, h: 14 }] }, "invoice")!.blocks.find((b) => b.id === "c")!.field).toBe("copy");
     expect(templateLayout("standard", "invoice", theme).blocks.find((b) => b.kind === "info")?.fields).toContain("m:ครบกำหนด");
     // ใบสั่งงาน (ไม่มีกล่องเฉพาะ) ยังมีหมายเหตุ
     expect(templateLayout("standard", "work_order", theme).blocks.some((b) => b.kind === "notes")).toBe(true);

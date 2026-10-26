@@ -2,7 +2,7 @@ import React from "react";
 import { Document, Ellipse, Font, Image, Page, Polygon, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import type { ColumnKey, CopyMode, DocumentModel } from "@/lib/documents/model";
 import { amountInWords, branchLabel, formatTaxId, money, qtyText, thaiDate } from "@/lib/documents/format";
-import { FONT_SCALE, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
+import { FONT_SCALE, docHasCopy, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
 
 /**
  * เทมเพลตเอกสาร A4 (ใช้ร่วมทุกประเภทเอกสาร) — หน้าตาตามธีมของบริษัท (ตั้งค่า › ออกแบบเอกสาร)
@@ -16,7 +16,9 @@ const thaiSeg = typeof Intl !== "undefined" && "Segmenter" in Intl ? new Intl.Se
 /** ลงทะเบียนฟอนต์ครั้งเดียวต่อ base URL (server ส่ง origin ของเว็บ, client ใช้ "") */
 export function registerDocumentFonts(base: string) {
   if (fontsReady === base) return;
-  const f = (name: string) => `${base}/fonts/${encodeURIComponent(name)}`;
+  // URL (เว็บ/origin) ต้องเข้ารหัสชื่อไฟล์ · พาธในเครื่อง (server อ่านไฟล์ตรง) ใช้ชื่อจริง (TH SarabunIT๙ มีอักษรไทยในชื่อ)
+  const isUrl = base === "" || /^https?:\/\//.test(base);
+  const f = (name: string) => `${base}/fonts/${isUrl ? encodeURIComponent(name) : name}`;
   // ตัวเอียง: TH Sarabun มีไฟล์เอียงจริง · Sarabun ไม่มีไฟล์เอียง ใช้ตัวตรงแทน (ไม่ให้พิมพ์ล้ม)
   Font.register({ family: "Sarabun", fonts: [{ src: f("Sarabun-Regular.ttf"), fontWeight: "normal" }, { src: f("Sarabun-Bold.ttf"), fontWeight: "bold" }, { src: f("Sarabun-Regular.ttf"), fontWeight: "normal", fontStyle: "italic" }, { src: f("Sarabun-Bold.ttf"), fontWeight: "bold", fontStyle: "italic" }] });
   Font.register({ family: "THSarabunNew", fonts: [{ src: f("THSarabun.ttf"), fontWeight: "normal" }, { src: f("THSarabun Bold.ttf"), fontWeight: "bold" }, { src: f("THSarabun Italic.ttf"), fontWeight: "normal", fontStyle: "italic" }, { src: f("THSarabun BoldItalic.ttf"), fontWeight: "bold", fontStyle: "italic" }] });
@@ -141,7 +143,7 @@ export function SectionTitle({ c, align = "right", inverse = false }: { c: Ctx; 
     <View style={{ alignItems: align === "center" ? "center" : align === "right" ? "flex-end" : "flex-start" }}>
       <T style={[c.s.title, { textAlign: align }, tone]}>{docTitle(c)}</T>
       {en && !c.hide.has("en") ? <T style={[c.s.small, { textAlign: align }, tone]}>{en}</T> : null}
-      {c.hide.has("copy") ? null : <T style={[c.s.copyBox, inverse ? { borderColor: "#ffffff", color: "#ffffff" } : {}]}>{c.copy === "copy" ? "สำเนา" : "ต้นฉบับ"}</T>}
+      {!docHasCopy(c.doc.type) || c.hide.has("copy") ? null : <T style={[c.s.copyBox, inverse ? { borderColor: "#ffffff", color: "#ffffff" } : {}]}>{c.copy === "copy" ? "สำเนา" : "ต้นฉบับ"}</T>}
     </View>
   );
 }
@@ -178,6 +180,7 @@ export function fieldValue(c: Ctx, key?: string): FieldRow | null {
   // ช่องย่อยจากกล่องผู้ขาย/ลูกค้า/ชื่อเอกสาร (แยกกล่องเพื่อจัดวางเอง)
   switch (key) {
     case "title": return { key, label: "ชื่อเอกสาร", value: docTitle(c) };
+    case "copy": return docHasCopy(c.doc.type) ? { key, label: "ต้นฉบับ/สำเนา", value: c.copy === "copy" ? "สำเนา" : "ต้นฉบับ" } : null;
     case "titleEn": return { key, label: "ชื่อภาษาอังกฤษ", value: docTitleEn(c) || "" };
     case "seller.name": return { key, label: "ชื่อบริษัท", value: s.name || "" };
     case "seller.nameEn": return { key, label: "ชื่อภาษาอังกฤษ", value: s.nameEn || "" };

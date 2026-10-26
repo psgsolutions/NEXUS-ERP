@@ -3,8 +3,8 @@
  * ติ๊ก = ข้อมูลนี้ปรากฏบนเอกสาร ไม่ว่าจะอยู่ในกล่องไหน (กล่องเลขที่ · กล่องข้อมูล · ช่องข้อมูลเดี่ยว)
  * เปิด: ใส่ในกล่องที่เหมาะที่สุดที่มีอยู่ · ปิด: เอาออกจากทุกกล่อง · ข้อมูลที่กฎหมายกำหนดล็อกไว้
  */
-import { A4, TEMPLATES, defaultFreeLayout, requiredColumnsFor, resolveColumns, type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, ITEM_COLUMNS } from "./design";
-import { DOC_PARTS, templateLayout } from "./layout-templates";
+import { A4, TEMPLATES, docHasCopy, defaultFreeLayout, requiredColumnsFor, resolveColumns, type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, ITEM_COLUMNS } from "./design";
+import { templateLayout } from "./layout-templates";
 
 export interface DataItem { key: string; label: string; on: boolean; locked?: boolean }
 export interface DataGroup { id: string; title: string; source: string; kinds: BlockKind[]; items: DataItem[] }
@@ -61,7 +61,8 @@ export function dataGroups(layout: FreeLayout, c: DataContext): DataGroup[] {
       ...c.meta.map((l) => ({ key: `doc:m:${l}`, label: l, on: fieldShown(blocks, `m:${l}`) })),
       ...c.fields.map((f) => ({ key: `doc:f:${f.key}`, label: f.label, on: fieldShown(blocks, `f:${f.key}`) })),
       { key: "title:en", label: "ชื่อเอกสารภาษาอังกฤษ", on: !!title && !(title.hide || []).includes("en") || fieldShown(blocks, "titleEn") },
-      { key: "title:copy", label: "ป้ายต้นฉบับ/สำเนา", on: !!title && !(title.hide || []).includes("copy") },
+      // ต้นฉบับ/สำเนา: เอกสารที่ต้องมี = แสดงเสมอ · เอกสารอื่นไม่มีตัวเลือกนี้
+      ...(docHasCopy(c.docType) ? [{ key: "title:copy", label: "ป้ายต้นฉบับ/สำเนา", on: true, locked: true }] : []),
     ] },
     { id: "seller", title: "บริษัท (ผู้ขาย)", source: "ดึงจาก ตั้งค่า › ข้อมูลนิติบุคคล", kinds: ["logo", "seller", "info", "field"], items: [
       { key: "block:logo", label: "โลโก้", on: has("logo") },
@@ -157,6 +158,6 @@ export function toggleData(layout: FreeLayout, key: string, on: boolean, c: Data
 export function blankLayout(docType: string, theme: DocTheme): FreeLayout {
   const keep: BlockKind[] = ["seller", "title", "meta", "party", "items", "totals", "signatures"];
   const blocks = defaultFreeLayout(docType, theme.font).blocks.filter((b) => keep.includes(b.kind))
-    .map((b) => (b.kind === "title" && DOC_PARTS[docType]?.noCopy ? { ...b, hide: ["copy"] } : b.kind === "party" ? { ...b, partyStyle: "none" as const } : b.kind === "items" ? { ...b, table: "lines" as const } : b.kind === "totals" ? { ...b, totalsStyle: "plain" as const } : b));
+    .map((b) => (b.kind === "party" ? { ...b, partyStyle: "none" as const } : b.kind === "items" ? { ...b, table: "lines" as const } : b.kind === "totals" ? { ...b, totalsStyle: "plain" as const } : b));
   return { enabled: true, blocks };
 }

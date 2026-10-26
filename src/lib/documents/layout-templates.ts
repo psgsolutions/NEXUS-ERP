@@ -8,7 +8,7 @@
  * ทุกแม่แบบปรับตามชนิดเอกสาร (tailor): กล่องข้อมูลเฉพาะ (เช่น ใบเสร็จ: รายละเอียดการชำระเงิน · ใบวางบิล: กำหนดชำระ)
  * และข้อความรับรองเหนือช่องลงนาม (เช่น ใบส่งของ: ได้รับสินค้าครบถ้วน) — หน้าตาตามธีมเดิม เนื้อหาตามเอกสารนั้น
  */
-import { A4, FONT_SCALE, defaultFreeLayout, docHasAmounts, tint, type DocTheme, type FreeBlock, type FreeLayout } from "./design";
+import { A4, FONT_SCALE, defaultFreeLayout, docHasAmounts, docHasCopy, tint, type DocTheme, type FreeBlock, type FreeLayout } from "./design";
 import { DESIGNABLE_DOCS } from "./build";
 
 export { tint };
@@ -194,29 +194,31 @@ const compact: Gen = (docType, t) => {
 
 /** ส่วนเฉพาะของเอกสารแต่ละชนิด: กล่องข้อมูล (แถวที่ย้ายออกจากกล่องเลขที่) · บัญชีรับเงิน · ข้อความรับรองเหนือช่องลงนาม */
 /** ack.slot = ช่องลงนามที่ข้อความนี้เป็นของ (ลำดับ · -1 = ช่องสุดท้าย) */
-export const DOC_PARTS: Record<string, { box?: string[]; payment?: boolean; ack?: { text: string; slot: number }; noCopy?: boolean }> = {
-  quotation: { noCopy: true, box: ["f:paymentTerms", "f:delivery"], payment: true, ack: { text: "ยืนยันการสั่งซื้อตามรายการและเงื่อนไขข้างต้น", slot: -1 } },
-  sales_order: { noCopy: true, box: ["m:เครดิต"], payment: true },
+export const DOC_PARTS: Record<string, { box?: string[]; payment?: boolean; ack?: { text: string; slot: number }}> = {
+  quotation: { box: ["f:paymentTerms", "f:delivery"], payment: true, ack: { text: "ยืนยันการสั่งซื้อตามรายการและเงื่อนไขข้างต้น", slot: -1 } },
+  sales_order: { box: ["m:เครดิต"], payment: true },
   // ใบกำกับภาษี/ใบแจ้งหนี้: เงื่อนไขชำระ (ครบกำหนด อ้างอิงใบสั่งซื้อ) + บัญชีรับเงิน ตามแบบใบแจ้งหนี้สากล
   invoice: { box: ["m:ครบกำหนด", "m:เลขที่ใบสั่งซื้อ", "m:ใบสั่งขาย"], payment: true, ack: { text: "ได้รับสินค้า/บริการตามรายการข้างต้นไว้ถูกต้องแล้ว", slot: 0 } },
   billing_note: { box: ["m:กำหนดชำระ", "m:เลขที่ใบสั่งซื้อ"], payment: true, ack: { text: "ได้รับใบวางบิลไว้ตรวจสอบแล้ว  นัดชำระ/รับเช็ค ......../......../........", slot: -1 } },
   receipt: { box: ["m:ชำระโดย", "m:บัญชี", "m:เช็คเลขที่", "m:อ้างอิง"] },
   delivery_note: { ack: { text: "ได้รับสินค้าตามรายการข้างต้นถูกต้องในสภาพเรียบร้อย", slot: 1 } },
   cndn: { box: ["m:อ้างอิงใบกำกับ", "m:ลงวันที่"] },
-  work_order: { noCopy: true },
-  // หนังสือ (ไม่ใช่แม่แบบเอกสารการค้า — ใช้กับปุ่มต้นฉบับ/สำเนาตอนพิมพ์)
-  letter: { noCopy: true },
-  service_ticket: { noCopy: true },
-  substitute_receipt: { noCopy: true },
-  purchase_order: { noCopy: true, box: ["m:กำหนดส่ง", "m:ส่งที่คลัง", "m:เงื่อนไขชำระ"], ack: { text: "ยืนยันรับคำสั่งซื้อตามรายการและเงื่อนไขข้างต้น", slot: -1 } },
-  payment: { noCopy: true, box: ["m:จ่ายโดย", "m:บัญชี", "m:เช็คเลขที่", "m:อ้างอิง"], ack: { text: "ได้รับเงินตามรายการข้างต้นถูกต้องแล้ว", slot: -1 } },
+  purchase_order: { box: ["m:กำหนดส่ง", "m:ส่งที่คลัง", "m:เงื่อนไขชำระ"], ack: { text: "ยืนยันรับคำสั่งซื้อตามรายการและเงื่อนไขข้างต้น", slot: -1 } },
+  payment: { box: ["m:จ่ายโดย", "m:บัญชี", "m:เช็คเลขที่", "m:อ้างอิง"], ack: { text: "ได้รับเงินตามรายการข้างต้นถูกต้องแล้ว", slot: -1 } },
 };
 
 /**
  * ปรับผังของแม่แบบให้เป็นเอกสารชนิดนั้น: วางกล่องข้อมูลเฉพาะในคอลัมน์ซ้ายใต้จำนวนเงินตัวอักษร (ต่อด้วยหมายเหตุ บัญชีรับเงิน)
  * ย้ายแถวที่อยู่ในกล่องออกจากกล่องเลขที่ · ข้อความรับรองเหนือช่องลงนาม
  */
-export function tailor(docType: string, t: DocTheme, blocks: FreeBlock[]): FreeBlock[] {
+export function tailor(docType: string, t: DocTheme, input: FreeBlock[]): FreeBlock[] {
+  let blocks = input;
+  // ต้นฉบับ/สำเนา: กล่องชื่อเอกสารของแม่แบบไม่มีที่วางป้าย → ป้ายไปอยู่มุมขวาบนของหน้า (ตอนพิมพ์) จึงเลื่อนข้อความที่ชิดมุมนั้นลงเล็กน้อย
+  const title = blocks.find((b) => b.kind === "title");
+  if (docHasCopy(docType) && title && (title.hide || []).includes("copy")) {
+    const TOP = 24;
+    blocks = blocks.map((b) => (b.y < TOP && b.x + b.w > A4.w - 150 && !["rect", "line", "shape", "image"].includes(b.kind) ? { ...b, y: TOP, h: Math.max(12, b.h - (TOP - b.y)) } : b));
+  }
   const part = DOC_PARTS[docType];
   if (!part) return blocks;
   const def = docDef(docType);
@@ -225,10 +227,9 @@ export function tailor(docType: string, t: DocTheme, blocks: FreeBlock[]): FreeB
   const sign = blocks.find((b) => b.kind === "signatures");
   const notes = blocks.find((b) => b.kind === "notes");
   const pay = blocks.find((b) => b.kind === "payment");
-  // เอกสารที่ไม่มีต้นฉบับ/สำเนา (ใบเสนอราคา ใบสั่งซื้อ ฯลฯ): ไม่แสดงป้าย
   // จัดคอลัมน์ซ้ายใหม่เฉพาะเอกสารที่มีกล่องข้อมูล/บัญชีรับเงิน (ที่เหลือคงหมายเหตุไว้ตามเดิม)
   const relayout = !!notes && (fields.length > 0 || !!part.payment || !!pay);
-  let out = blocks.filter((b) => !relayout || (b !== notes && b !== pay)).map((b) => (part.noCopy && b.kind === "title" ? { ...b, hide: [...new Set([...(b.hide || []), "copy"])] } : b));
+  let out = blocks.filter((b) => !relayout || (b !== notes && b !== pay));
   const extra: FreeBlock[] = [];
   const limit = sign ? sign.y - (part.ack ? 26 : 6) : A4.h - 40;
   if (relayout && notes) {

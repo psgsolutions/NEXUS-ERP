@@ -168,7 +168,14 @@ export const TEXT_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party", "in
 /** กล่องที่วางในหัวกระดาษได้ */
 export const HEAD_KINDS: BlockKind[] = ["logo", "seller", "title", "meta", "info", "field", "text", "line", "rect", "shape", "image", "stamp"];
 /** คีย์ช่องข้อมูล: เลขที่ วันที่ แถวข้อมูลของเอกสาร (m:ป้าย) ข้อมูลเพิ่ม (f:คีย์) */
-const FIELD_KEY = /^(number|date|title|titleEn|m:[^\n]{1,40}|f:[a-zA-Z]{1,30}|seller\.(name|nameEn|address|taxId|contact)|customer\.(name|address|taxId|contact|phone|email))$/;
+/**
+ * เอกสารที่ออกเป็นต้นฉบับ/สำเนา (ให้ลูกค้าต้นฉบับ เก็บสำเนา) — แสดงป้ายเสมอในทุกแม่แบบ ปิดไม่ได้
+ * เอกสารอื่น (ใบเสนอราคา ใบสั่งขาย ใบสั่งซื้อ ใบสำคัญจ่าย ฯลฯ) ไม่มีป้ายนี้และไม่มีตัวเลือก
+ */
+export const COPY_DOCS = ["invoice", "receipt", "billing_note", "delivery_note", "cndn", "pos"];
+export const docHasCopy = (type?: string) => !!type && COPY_DOCS.includes(type);
+
+const FIELD_KEY = /^(number|date|title|titleEn|copy|m:[^\n]{1,40}|f:[a-zA-Z]{1,30}|seller\.(name|nameEn|address|taxId|contact)|customer\.(name|address|taxId|contact|phone|email))$/;
 
 /**
  * กล่องที่แยกเป็นช่องข้อมูลย่อยได้ (จัดวางหัวข้อในกล่องเองอย่างอิสระ)

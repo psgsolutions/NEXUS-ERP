@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { DOC_PARTS } from "@/lib/documents/layout-templates";
+import { docHasCopy } from "@/lib/documents/design";
 import { createPortal } from "react-dom";
 import { Download, Loader2, Printer, Send, X } from "lucide-react";
 import { DocumentSharePanel } from "./DocumentSharePanel";
@@ -99,8 +99,8 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
   const print = () => frame.current?.contentWindow?.print();
   // 50 ทวิ: ฉบับที่ 1 แนบแบบยื่น / ฉบับที่ 2 ผู้ถูกหักเก็บไว้
   const formCopies = source?.type === "wht" || !!model?.wht50;
-  // ใบเสนอราคา ใบสั่งซื้อ ฯลฯ ไม่มีต้นฉบับ/สำเนา
-  const noCopy = !!DOC_PARTS[source?.type || model?.type || ""]?.noCopy;
+  // ต้นฉบับ/สำเนา เฉพาะเอกสารที่ต้องมี (ใบกำกับ ใบเสร็จ ใบวางบิล ใบส่งของ ใบลดหนี้) · 50 ทวิ มีฉบับที่ 1/2
+  const noCopy = !formCopies && !docHasCopy(source?.type || model?.type);
 
   return (
     <div className={cn("flex flex-col min-h-0", className)}>

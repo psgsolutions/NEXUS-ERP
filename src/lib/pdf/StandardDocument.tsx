@@ -105,6 +105,8 @@ export type Ctx = {
   radius?: number; lineColor?: string; lineWidth?: number; headBg?: string;
   /** ระยะข้อความของกล่องที่มีป้าย: ป้าย→ข้อมูล · ความกว้างป้าย · ระยะระหว่างแถว (pt) */
   labelGap?: number; labelWidth?: number; rowGap?: number;
+  /** ช่องลงนามที่วางกล่องลายเซ็นแยกไว้แล้ว (ช่องลงนามไม่พิมพ์รูปลายเซ็นซ้ำ) */
+  signPlaced?: Set<string>;
 };
 /** รัศมีมุม: ค่าของกล่องก่อน ไม่มีจึงตามธีม (มุมโค้ง/เหลี่ยม) */
 const rad = (c: Ctx, d = 4) => (c.radius !== undefined ? Math.min(c.radius, d * 6) : c.t.rounded ? d : 0);
@@ -476,7 +478,7 @@ export function SectionSignatures({ c }: { c: Ctx }) {
         return (
           <View key={label} style={[c.s.signBox, { position: "relative" }, boxed ? { borderWidth: 0.8, borderColor: c.t.formStyle ? c.t.primary : lineOf(c), borderRadius: rad(c), paddingVertical: 6 } : {}]}>
             {/* eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt */}
-            {sg?.image ? <Image src={sg.image} style={c.s.signImage} /> : <View style={c.s.signLine} />}
+            {sg?.image && !c.signPlaced?.has(label) && !c.signPlaced?.has(real) ? <Image src={sg.image} style={c.s.signImage} /> : <View style={c.s.signLine} />}
             {sg?.name ? <T style={{ marginTop: 3 }}>({sg.name})</T> : null}
             {sg?.title ? <T style={c.s.small}>{sg.title}</T> : null}
             {/* ตราประทับอิเล็กทรอนิกส์: ทับมุมขวาของลายเซ็น (เหมือนประทับจริง) */}
@@ -606,6 +608,20 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
       case "signatures": return <SectionSignatures c={bc} />;
       case "field": return <SectionField c={bc} b={b} />;
       case "info": return <SectionInfo c={bc} b={b} />;
+      case "sign": {
+        // ลายเซ็นอิเล็กทรอนิกส์ที่วางเอง: เฉพาะเอกสารที่มีลายเซ็นแล้ว (ออกจริง) · ชื่อ/ตำแหน่ง/วันที่ใต้ลายเซ็นเลือกแสดงได้
+        const sg = b.signer ? c.doc.signed?.[`@${b.signer}`] : b.slot ? c.doc.signed?.[b.slot] : undefined;
+        if (!sg?.image) return null;
+        const hide = new Set(b.hide || []), fs = (b.fontSize || c.t.fontSize) * FONT_SCALE[b.font || c.t.font];
+        const lines = [!hide.has("name") && sg.name ? `(${sg.name})` : "", !hide.has("title") ? sg.title || "" : "", !hide.has("date") && sg.date ? `วันที่ ${thaiDate(sg.date)}` : ""].filter(Boolean);
+        return (
+          <View style={{ width: b.w, height: b.h, alignItems: "center" }}>
+            {/* eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt */}
+            <Image src={sg.image} style={{ width: b.w, height: Math.max(10, b.h - lines.length * fs * 1.4), objectFit: "contain" }} />
+            {lines.map((l) => <T key={l} style={{ fontSize: fs, lineHeight: 1.3, color: b.color || c.t.text, textAlign: "center" }}>{l}</T>)}
+          </View>
+        );
+      }
       // ตราประทับ: พิมพ์เฉพาะเอกสารที่ใส่ตราอิเล็กทรอนิกส์ (ออกจริง และตั้งให้ประทับ)
       // eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt
       case "stamp": return c.doc.stamp ? <Image src={c.doc.stamp.image} style={{ width: b.w, height: b.h, objectFit: "contain", opacity: 0.92 }} /> : null;
@@ -646,7 +662,7 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
       ...(b.bg ? { backgroundColor: b.bg, ...corners } : {}),
       ...(b.border ? { borderWidth: b.borderWidth ?? 1, borderColor: b.border, ...corners, ...(b.dash && b.dash !== "solid" ? { borderStyle: b.dash } : {}) } : {}),
     }}>
-      {b.kind === "rect" ? null : b.kind === "image" || b.kind === "logo" || b.kind === "stamp"
+      {b.kind === "rect" ? null : b.kind === "image" || b.kind === "logo" || b.kind === "stamp" || b.kind === "sign"
         ? content
         : <View style={{ position: "absolute", top: pad, left: pad, right: pad, ...(b.valign ? { bottom: pad, justifyContent: b.valign === "middle" ? "center" : "flex-end" } : {}), ...(own ? { fontSize: bc.s.page.fontSize, lineHeight: bc.s.page.lineHeight, color: bc.t.text } : {}), ...(b.kind !== "text" ? textDeco(b) : {}) }}>{content}</View>}
     </View>

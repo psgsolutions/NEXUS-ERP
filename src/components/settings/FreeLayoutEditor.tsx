@@ -8,7 +8,7 @@ import {
   Bold, Type, Stamp as StampIcon, MoreHorizontal, Image as ImageIcon, TextCursorInput, BringToFront, SendToBack, ChevronLeft, PanelBottom,
   Circle, Triangle, RotateCcw, StretchHorizontal, StretchVertical,
   Italic, Underline, Strikethrough, AlignJustify, ChevronUp, ChevronDown, ChevronRight, PanelRightClose, PanelRightOpen,
-  ArrowUpToLine, ArrowDownToLine, BoxSelect, RectangleHorizontal, RectangleVertical, Scan, Move, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Ruler as RulerIcon, Grid3x3, Paintbrush, ZoomIn,
+  ArrowUpToLine, ArrowDownToLine, BoxSelect, PenLine, RectangleHorizontal, RectangleVertical, Scan, Move, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Ruler as RulerIcon, Grid3x3, Paintbrush, ZoomIn,
 } from "lucide-react";
 import { templateLayout } from "@/lib/documents/layout-templates";
 import { DataChecklist } from "./DataChecklist";
@@ -48,6 +48,12 @@ const ALIGN_ICON = { left: AlignLeft, center: AlignCenter, right: AlignRight } a
 type Zone = "head" | "doc";
 type Item = { key: string; zone: Zone; b: FreeBlock };
 type Guides = { x: number[]; y: number[] };
+/** ตำแหน่ง/เคอร์เซอร์ของจุดจับปรับขนาด */
+const HANDLE_POS: Record<string, string> = {
+  nw: "-left-1.5 -top-1.5 cursor-nwse-resize", n: "left-1/2 -translate-x-1/2 -top-1.5 cursor-ns-resize", ne: "-right-1.5 -top-1.5 cursor-nesw-resize",
+  e: "-right-1.5 top-1/2 -translate-y-1/2 cursor-ew-resize", se: "-right-1.5 -bottom-1.5 cursor-nwse-resize", s: "left-1/2 -translate-x-1/2 -bottom-1.5 cursor-ns-resize",
+  sw: "-left-1.5 -bottom-1.5 cursor-nesw-resize", w: "-left-1.5 top-1/2 -translate-y-1/2 cursor-ew-resize",
+};
 
 async function shrinkImage(file: File): Promise<string> {
   const url = URL.createObjectURL(file);
@@ -168,7 +174,7 @@ function nearest(values: number[], targets: number[]): { delta: number; at: numb
   return best;
 }
 
-export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead, onLetterheadChange, letterOnly, model, canEdit, docTitle, defaultColumns, defaultSignatures, docMeta, docFields, history, dataCtx }: {
+export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead, onLetterheadChange, letterOnly, model, canEdit, docTitle, defaultColumns, defaultSignatures, docMeta, docFields, history, dataCtx, signers = [] }: {
   docType: string; theme: DocTheme;
   layout: FreeLayout; onChange: (l: FreeLayout) => void;
   letterhead: Letterhead | null; onLetterheadChange: (l: Letterhead) => void;
@@ -182,6 +188,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   history: { undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean };
   /** รายการ "ข้อมูลที่แสดงในเอกสาร" ของเอกสารชนิดนี้ */
   dataCtx: DataContext;
+  /** ผู้ลงนามที่ตั้งไว้ (ลายเซ็น · ตราประทับ) — เลือกให้กล่องลายเซ็นใช้ลายเซ็นของคนนั้นเสมอ */
+  signers?: { id: string; name: string; position?: string }[];
 }) {
   const font = theme.font;
   // ขนาดหน้า (กระดาษ/แนวที่ตั้ง) · ขอบกระดาษแต่ละด้าน [บน ขวา ล่าง ซ้าย]
@@ -238,7 +246,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const [tool, setTool] = useState<"select" | "line" | "rect">("select");
   const [draft, setDraft] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   const paperRef = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ mode: "move" | "size" | "head"; px: number; py: number; orig: Map<string, FreeBlock>; h: number } | null>(null);
+  // size: edge = ด้าน/มุมที่จับ (n s e w ne nw se sw) — ปรับขนาดได้ทุกด้าน
+  const drag = useRef<{ mode: "move" | "size" | "head"; px: number; py: number; orig: Map<string, FreeBlock>; h: number; edge?: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { image, busy, error } = usePdfPageImage(model, P.w * S);
 
@@ -396,11 +405,25 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         applyMany(new Map([...d.orig].map(([k, b]) => [k, { ...b, x: b.x + dx, y: b.y + dy }])));
       } else {
         const [k, b] = [...d.orig][0];
-        let right = b.x + b.w + dx, bottom = b.y + b.h + dy;
-        const sx = free ? null : nearest([right], t.xs), sy = free ? null : nearest([bottom], t.ys);
-        if (sx) { right = sx.at; g.x.push(sx.at); } else right = toGrid(right, free);
-        if (sy) { bottom = sy.at; g.y.push(sy.at); } else bottom = toGrid(bottom, free);
-        applyMany(new Map([[k, { ...b, w: Math.max(4, right - b.x), h: Math.max(1, bottom - b.y) }]]));
+        const ed = d.edge || "se";
+        // ขอบที่จับเลื่อนตามเมาส์ (ดูดติดกริด/แนวกล่องอื่น) ขอบตรงข้ามอยู่กับที่
+        const snapX = (v: number) => { const sx = free ? null : nearest([v], t.xs); if (sx) { g.x.push(sx.at); return sx.at; } return toGrid(v, free); };
+        const snapY = (v: number) => { const sy = free ? null : nearest([v], t.ys); if (sy) { g.y.push(sy.at); return sy.at; } return toGrid(v, free); };
+        let L = b.x, R = b.x + b.w, Tp = b.y, B = b.y + b.h;
+        if (ed.includes("e")) R = snapX(R + dx);
+        if (ed.includes("w")) L = snapX(L + dx);
+        if (ed.includes("s")) B = snapY(B + dy);
+        if (ed.includes("n")) Tp = snapY(Tp + dy);
+        // มุม + Shift = คงสัดส่วนเดิม (โลโก้ ลายเซ็น ตรา รูป)
+        if (e.shiftKey && ed.length === 2 && b.w > 0 && b.h > 0) {
+          const w = R - L, h = w * (b.h / b.w);
+          if (ed.includes("n")) Tp = B - h; else B = Tp + h;
+        }
+        // ไม่เกินขอบกระดาษ (ขอบตรงข้ามอยู่กับที่)
+        L = Math.max(0, L); Tp = Math.max(0, Tp); R = Math.min(P.w, R); B = Math.min(P.h, B);
+        if (R - L < 4) { if (ed.includes("w")) L = R - 4; else R = L + 4; }
+        if (B - Tp < 1) { if (ed.includes("n")) Tp = B - 1; else B = Tp + 1; }
+        applyMany(new Map([[k, { ...b, x: L, y: Tp, w: R - L, h: B - Tp }]]));
       }
       setGuides(g);
     };
@@ -469,7 +492,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     setTool("select");
   };
 
-  const start = (e: React.PointerEvent, it: Item, mode: "move" | "size") => {
+  const start = (e: React.PointerEvent, it: Item, mode: "move" | "size", edge?: string) => {
     if (tool !== "select") return; // โหมดวาด: ให้กระดาษรับการลากแทน
     e.stopPropagation();
     let next = sel;
@@ -483,7 +506,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     if (!keys.length) return; // กล่องที่ล็อกไว้: เลือกได้แต่ไม่ขยับ
     e.preventDefault();
     setMoving(true);
-    drag.current = { mode, px: e.clientX, py: e.clientY, orig: new Map(keys.map((k) => [k, byKey.get(k)!.b])), h: 0 };
+    drag.current = { mode, px: e.clientX, py: e.clientY, orig: new Map(keys.map((k) => [k, byKey.get(k)!.b])), h: 0, edge };
   };
   const startHead = (e: React.PointerEvent) => {
     if (!canEdit || !letterhead) return;
@@ -559,8 +582,10 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const newBlock = (kind: BlockKind, extra: Partial<FreeBlock> = {}): FreeBlock => {
     const id = `${kind}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 4)}`;
     const def = defaultFreeLayout(docType, font).blocks.find((b) => b.kind === kind);
-    const size: Record<string, [number, number]> = { text: [200, 24], line: [300, 1.5], rect: [200, 80], image: [120, 80], logo: [64, 64], stamp: [72, 72], field: [180, 18] };
+    const size: Record<string, [number, number]> = { text: [200, 24], line: [300, 1.5], rect: [200, 80], image: [120, 80], logo: [64, 64], stamp: [72, 72], field: [180, 18], sign: [120, 46] };
     const [w, h] = def ? [def.w, def.h] : size[kind] || [200, 40];
+    // ลายเซ็น: เริ่มที่ช่องลงนามแรก แสดงเฉพาะรูปลายเซ็น (ชื่อ/วันที่อยู่ในช่องลงนามอยู่แล้ว)
+    if (kind === "sign") extra = { slot: defaultSignatures[0], hide: ["name", "title", "date"], ...extra };
     return { id, kind, x: def?.x ?? 60, y: def?.y ?? (addZone === "head" ? 30 : 160), w, h, ...(kind === "text" ? { text: "ข้อความ {{number}}", fontSize: 10 } : {}), ...(kind === "field" ? { field: "number" } : {}), ...extra };
   };
   const presetFields = (id: string) => id === "seller" ? ["seller.name", "seller.address", "seller.taxId", "seller.contact"]
@@ -884,6 +909,21 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           </>
         )}
 
+        {b.kind === "sign" && (
+          <div className="space-y-1.5 rounded-xl border border-white/10 p-2.5">
+            <Field label="ลายเซ็นของ">
+              <PillSelect value={b.signer ? `signer:${b.signer}` : `slot:${b.slot || ""}`} onChange={(e) => { const raw = String(e.target.value), i = raw.indexOf(":"), t = raw.slice(0, i), v = raw.slice(i + 1); update(it, t === "signer" ? { signer: v, slot: undefined } : { slot: v, signer: undefined }); }} className="h-8 w-full text-sm">
+                {defaultSignatures.map((l) => <option key={`slot:${l}`} value={`slot:${l}`}>ช่อง: {l}</option>)}
+                {signers.map((p) => <option key={`signer:${p.id}`} value={`signer:${p.id}`}>{p.name}{p.position ? ` (${p.position})` : ""} เสมอ</option>)}
+              </PillSelect>
+            </Field>
+            <p className="text-[11px] text-white/45 leading-relaxed">
+              {b.signer ? "ใช้ลายเซ็นของคนนี้ทุกเอกสารชนิดนี้ที่ออกจริง" : "ใช้ลายเซ็นของช่องนี้: ผู้ลงนามที่กำหนดในแท็บ \"ลายเซ็น · ตราประทับ\" หรือลายเซ็นจริง (เช่น ลูกค้าเซ็นบนมือถือ) — ช่องลงนามจะไม่พิมพ์รูปซ้ำ"}
+              {" "}· พิมพ์เฉพาะเอกสารที่ออกจริง (ฉบับร่าง/ยกเลิกไม่มีลายเซ็น) · ลากมุม + Shift = คงสัดส่วน
+            </p>
+            {!signers.length && <p className="text-[11px] text-warning/90">ยังไม่มีผู้ลงนาม — เพิ่มลายเซ็นที่แท็บ &quot;ลายเซ็น · ตราประทับ&quot;</p>}
+          </div>
+        )}
         {b.kind === "stamp" && <p className="text-[11px] text-white/45">รูปตราตั้งที่แท็บ &quot;ลายเซ็น · ตราประทับ&quot; · พิมพ์เฉพาะเอกสารที่ออกจริง (ฉบับร่าง/ยกเลิกไม่มีตรา) · ตอนพิมพ์เลือกไม่ใส่ได้</p>}
         {b.kind === "rect" && <p className="text-[11px] text-white/45">กรอบคลิกเลือกที่เส้นขอบ (ข้างในคลิกข้อมูลที่อยู่ในกรอบได้) หรือเลือกจากรายการชั้น</p>}
         {b.kind === "image" && (
@@ -899,8 +939,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         {/* สี เส้น ความหนา รูปทรง ขอบใน อยู่ที่แท็บรูปแบบบนแถบเครื่องมือ · ที่นี่เหลือมุมโค้ง (ปรับแยกแต่ละมุมได้) */}
         {!["line", "shape"].includes(b.kind) && (
           <div className="space-y-2 rounded-xl border border-white/10 p-2.5">
-            <p className="text-[11.5px] font-bold text-white/70">{["image", "logo", "stamp"].includes(b.kind) ? "กรอบ · พื้น · มุม" : "มุม"}</p>
-            {["image", "logo", "stamp"].includes(b.kind) && <>{colorRow(it, "พื้นหลัง", "bg")}{colorRow(it, "กรอบ", "border")}</>}
+            <p className="text-[11.5px] font-bold text-white/70">{["image", "logo", "stamp", "sign"].includes(b.kind) ? "กรอบ · พื้น · มุม" : "มุม"}</p>
+            {["image", "logo", "stamp", "sign"].includes(b.kind) && <>{colorRow(it, "พื้นหลัง", "bg")}{colorRow(it, "กรอบ", "border")}</>}
             {<>
             <Field label={`มุม ${b.radii ? "แยกแต่ละมุม" : b.radius === undefined ? "ตามแม่แบบ" : b.radius === 0 ? "เหลี่ยม" : `โค้ง ${b.radius} pt`}`}>
               <div className="flex items-center gap-2">
@@ -1041,7 +1081,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     addAt(kind === "info" ? "info:empty" : kind, { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S });
   };
   // ---------- ริบบอน ----------
-  const SHAPE_KINDS: BlockKind[] = ["rect", "shape", "line", "image", "logo", "stamp"];
+  const SHAPE_KINDS: BlockKind[] = ["rect", "shape", "line", "image", "logo", "stamp", "sign"];
   const textSel = selected.filter((i) => TEXT_BLOCKS.includes(i.b.kind));
   const shapeSel = selected.filter((i) => SHAPE_KINDS.includes(i.b.kind));
   const t0 = textSel[0]?.b, s0 = shapeSel[0]?.b;
@@ -1128,6 +1168,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           <RGroup label="ภาพ">
             <RBtn icon={<ImageIcon size={18} />} label="รูปภาพ" drag="image" disabled={!canEdit} onClick={() => addAt("image", visibleCenter())} />
             {addable.includes("logo") && <RBtn icon={<ImagePlus size={18} />} label="โลโก้" drag="logo" disabled={!canEdit} onClick={() => addAt("logo", visibleCenter())} />}
+            {addable.includes("sign") && <RBtn icon={<PenLine size={18} />} label="ลายเซ็น" drag="sign" disabled={!canEdit} onClick={() => addAt("sign", visibleCenter())} />}
             {addable.includes("stamp") && <RBtn icon={<StampIcon size={18} />} label="ตราประทับ" drag="stamp" disabled={!canEdit} onClick={() => addAt("stamp", visibleCenter())} />}
           </RGroup>
           {missing.length > 0 && (
@@ -1305,7 +1346,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       ) : null;
       case "fshape": return s0 ? (
         <>
-          {s0.kind !== "line" && !["image", "logo", "stamp"].includes(s0.kind) && (
+          {s0.kind !== "line" && !["image", "logo", "stamp", "sign"].includes(s0.kind) && (
             <RGroup label="สไตล์รูปทรง">
               {SHAPE_PRESETS.map((p) => {
                 const bg = resolveColor(p.style.bg, theme), bd = resolveColor(p.style.border, theme);
@@ -1314,7 +1355,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
               })}
             </RGroup>
           )}
-          {!["image", "logo", "stamp"].includes(s0.kind) && (
+          {!["image", "logo", "stamp", "sign"].includes(s0.kind) && (
             <RGroup label="สีและเส้น">
               <div className="flex flex-col gap-1">
                 {s0.kind !== "line" && <div className="flex items-center gap-1"><span className="text-[11px] text-white/50 w-8">พื้น</span>{colorChips(s0.bg, (v) => patchSel(shapeSel, { bg: v }), "ไม่มี")}</div>}
@@ -1461,12 +1502,21 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                     {on && multi && anchorKeys.includes(it.key) ? "กรอบหลัก · " : ""}
                     {BLOCK_LABELS[b.kind]}{b.kind === "field" ? ` · ${fieldOptions.find((f) => f.key === b.field)?.label || ""}` : b.kind === "info" && b.fields?.length ? ` · ${fieldLabel(b.fields[0])}` : ""}{isLocked(it) ? " 🔒" : ""}{it.zone === "head" ? " · หัวกระดาษ" : ""}
                   </span>
+                  {((b.kind === "sign" && !(b.signer ? model?.signed?.[`@${b.signer}`]?.image : model?.signed?.[b.slot || ""]?.image)) || (b.kind === "stamp" && !model?.stamp)) && (
+                    <div className="absolute inset-0 flex items-center justify-center border border-dashed border-slate-400/70 bg-slate-100/40 pointer-events-none">
+                      <span className="text-[10px] text-slate-500 text-center px-1 leading-tight">{b.kind === "stamp" ? "ตราประทับ" : `ลายเซ็น · ${b.signer ? signers.find((p) => p.id === b.signer)?.name || "ผู้ลงนาม" : b.slot || ""}`}</span>
+                    </div>
+                  )}
                   {fresh && b.kind === "text" && <div className="px-1 text-[10px] text-slate-500 pointer-events-none">{b.text}</div>}
                   {ghost && !frame && b.kind !== "line" && <div className="px-1 text-[10px] text-[#0f766e] pointer-events-none truncate">{nameOf(b)}</div>}
                   {frame && (["top-0 left-0 right-0 h-[6px] -mt-[3px]", "bottom-0 left-0 right-0 h-[6px] -mb-[3px]", "top-0 bottom-0 left-0 w-[6px] -ml-[3px]", "top-0 bottom-0 right-0 w-[6px] -mr-[3px]"] as const).map((pos) => (
                     <div key={pos} onPointerDown={(e) => start(e, it, "move")} className={cn("absolute pointer-events-auto", pos)} />
                   ))}
-                  {on && !multi && canEdit && <div onPointerDown={(e) => start(e, it, "size")} className="absolute -right-1 -bottom-1 w-3 h-3 rounded-sm bg-[#0d9488] cursor-se-resize pointer-events-auto" />}
+                  {/* จุดจับปรับขนาด: ทุกมุมและทุกด้าน (เส้นแนวนอน = ซ้าย/ขวา · แนวตั้ง = บน/ล่าง) */}
+                  {on && !multi && canEdit && !b.locked && (b.kind === "line" ? (b.h > b.w ? ["n", "s"] : ["e", "w"]) : ["nw", "n", "ne", "e", "se", "s", "sw", "w"]).map((ed) => (
+                    <div key={ed} onPointerDown={(e) => start(e, it, "size", ed)} title={ed.length === 2 ? "ลากปรับขนาด (Shift = คงสัดส่วน)" : "ลากปรับขนาดด้านนี้"}
+                      className={cn("absolute w-2.5 h-2.5 rounded-sm bg-white border-2 border-[#0d9488] pointer-events-auto z-30", HANDLE_POS[ed])} />
+                  ))}
                 </div>
               );
             })}

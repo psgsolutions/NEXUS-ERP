@@ -86,6 +86,26 @@ describe("design tools: shapes, corners, flow, margins, blank page, document rul
     expect(overlaps).toEqual(was);
   });
 
+  it("electronic signature box: slot or fixed signer, signed only on issued documents", async () => {
+    const { normalizeFreeLayout, normalizeDesign } = await import("@/lib/documents/design");
+    const { applySigning } = await import("@/lib/documents/esign");
+    const { sampleModelFor } = await import("@/lib/documents/build");
+    const n = normalizeFreeLayout({ enabled: true, blocks: [
+      { id: "a", kind: "sign", x: 10, y: 10, w: 120, h: 46, slot: "ผู้เสนอราคา", hide: ["date"] },
+      { id: "b", kind: "sign", x: 10, y: 60, w: 120, h: 46, signer: "p1", slot: "ผู้อนุมัติ" },
+    ] }, "quotation")!;
+    expect(n.blocks.find((b) => b.id === "a")).toMatchObject({ slot: "ผู้เสนอราคา", hide: ["date"] });
+    expect(n.blocks.find((b) => b.id === "b")).toMatchObject({ signer: "p1" });
+    expect(n.blocks.find((b) => b.id === "b")!.slot).toBeUndefined();
+    const image = "data:image/png;base64,AAAA";
+    const cfg = { stamp: "", stampSize: 72, signers: [{ id: "p1", name: "สมชาย", position: "ผู้จัดการ", image }], assign: {} };
+    const design = normalizeDesign({ perDoc: { quotation: { free: n } } });
+    const doc = applySigning(sampleModelFor("quotation", { name: "ทดสอบ", design } as any, "2026-10-26"), cfg, []);
+    expect(doc.signed?.["@p1"]).toMatchObject({ image, name: "สมชาย" });
+    const draft = applySigning({ ...sampleModelFor("quotation", { name: "ทดสอบ", design } as any, "2026-10-26"), watermark: "ฉบับร่าง" }, cfg, []);
+    expect(draft.signed?.["@p1"]).toBeUndefined();
+  });
+
   it("keeps vertical alignment and label spacing within limits (label boxes only)", async () => {
     const { normalizeFreeLayout } = await import("@/lib/documents/design");
     const out = normalizeFreeLayout({ enabled: true, blocks: [

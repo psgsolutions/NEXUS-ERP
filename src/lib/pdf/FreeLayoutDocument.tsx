@@ -18,7 +18,7 @@ export function FreeLayoutDocument({ doc, copy = "original" }: { doc: DocumentMo
   // ข้อมูลเพิ่มที่วางแล้ว (ในกล่องเลขที่/ช่องข้อมูล) — หมายเหตุไม่แสดงซ้ำ
   const placed = [...(base.lh?.blocks || []), ...(base.per.free?.blocks || [])];
   const placedKeys = new Set(placed.flatMap((b) => (b.kind === "meta" || b.kind === "info" ? b.fields || [] : b.kind === "field" && b.field ? [b.field] : [])));
-  const c = { ...base, stampPlaced: placed.some((b) => b.kind === "stamp"), shown: new Set((doc.fields || []).filter((f) => placedKeys.has(`f:${f.key}`)).map((f) => f.label)) };
+  const c = { ...base, stampPlaced: placed.some((b) => b.kind === "stamp"), signPlaced: new Set(placed.filter((b) => b.kind === "sign" && b.slot && !b.signer).map((b) => b.slot!)), shown: new Set((doc.fields || []).filter((f) => placedKeys.has(`f:${f.key}`)).map((f) => f.label)) };
   const headKinds = new Set((c.lh?.blocks || []).filter((b) => DEDUP_KINDS.includes(b.kind)).map((b) => b.kind));
   const blocks: FreeBlock[] = (c.per.free?.blocks || []).filter((b) => !headKinds.has(b.kind));
   // เอกสารที่ต้องมีต้นฉบับ/สำเนา แต่ผังไม่มีที่แสดง (กล่องชื่อเอกสารเล็ก/แยกช่อง): พิมพ์ป้ายมุมขวาบนของหน้าให้เสมอ

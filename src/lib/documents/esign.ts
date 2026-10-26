@@ -62,9 +62,13 @@ export function applySigning(doc: DocumentModel, cfg: SigningConfig, labels: str
   if (doc.watermark || doc.letter || doc.wht50) return doc;
   // วางกล่องตราประทับเองในหน้าออกแบบ = ต้องการประทับตราบนเอกสารชนิดนี้
   const r = resolveDesign(doc.seller.design, doc.type, doc.seller.brandColor);
-  const stampBlock = [...(r.letterhead?.blocks || []), ...(r.doc.free?.enabled ? r.doc.free.blocks : [])].some((b) => b.kind === "stamp");
-  if (!Object.keys(rules).length && !(stampBlock && cfg.stamp)) return doc;
+  const placed = [...(r.letterhead?.blocks || []), ...(r.doc.free?.enabled ? r.doc.free.blocks : [])];
+  const stampBlock = placed.some((b) => b.kind === "stamp");
+  // กล่องลายเซ็นที่ระบุผู้ลงนาม: ใส่ลายเซ็นของคนนั้น (คีย์ @id)
+  const fixed = [...new Set(placed.filter((b) => b.kind === "sign" && b.signer).map((b) => b.signer!))].map((id) => cfg.signers.find((s) => s.id === id)).filter((s): s is Signer => !!s?.image);
+  if (!Object.keys(rules).length && !(stampBlock && cfg.stamp) && !fixed.length) return doc;
   const signed = { ...(doc.signed || {}) };
+  for (const s of fixed) signed[`@${s.id}`] = { image: s.image, name: s.name, ...(s.position ? { title: s.position } : {}), date: doc.date };
   const slots: string[] = [];
   for (const [label, rule] of Object.entries(rules)) {
     const i = labels.indexOf(label);

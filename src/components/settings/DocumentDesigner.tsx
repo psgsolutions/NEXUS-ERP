@@ -592,6 +592,7 @@ export function DocumentDesigner() {
           docTitle={def.title}
           history={{ undo, redo, canUndo: hist.current.past.length > 0, canRedo: hist.current.future.length > 0 }}
           dataCtx={dataCtx}
+          signers={signing.signers.filter((p) => p.image).map((p) => ({ id: p.id, name: p.name, position: p.position }))}
         />
       )}
 

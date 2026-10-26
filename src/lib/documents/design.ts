@@ -59,7 +59,7 @@ export interface Letterhead { id: string; name: string; height: number; blocks: 
 export interface DocumentDesign { theme: DocTheme; perDoc: Record<string, PerDocDesign>; letterheads: Letterhead[] }
 
 // ---------- ผังลากวางอิสระ ----------
-export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "info" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "field" | "text" | "line" | "rect" | "shape" | "image" | "stamp";
+export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "info" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "field" | "text" | "line" | "rect" | "shape" | "image" | "stamp" | "sign";
 export type ItemColumn = "no" | "code" | "description" | "detail" | "qty" | "unit" | "qtyUnit" | "price" | "discount" | "discountText" | "gross" | "amount";
 /** คอลัมน์ตารางที่ตั้งเอง: ลำดับตามรายการ · หัวคอลัมน์ · จัดวาง · ความกว้าง (% ของตาราง ว่าง = อัตโนมัติ) */
 export interface ColumnSpec { key: ItemColumn; label?: string; align?: "left" | "center" | "right"; width?: number }
@@ -102,6 +102,9 @@ export interface FreeBlock {
   /** กล่องที่มีป้าย (ข้อมูล ช่องข้อมูล เลขที่/วันที่ ลูกค้า): ระยะป้าย→ข้อมูล · ระยะระหว่างแถว (pt) */
   labelGap?: number;
   rowGap?: number;
+  /** ลายเซ็นอิเล็กทรอนิกส์ (kind=sign): ลายเซ็นของช่องลงนามนี้ (ตามผู้ลงนามที่กำหนด/ลายเซ็นจริง) หรือของผู้ลงนามคนนี้เสมอ (id) */
+  slot?: string;
+  signer?: string;
   /** จัดแนวตั้งในกล่อง (ไม่ตั้ง = ชิดบน) */
   valign?: "middle" | "bottom";
   /** กล่องข้อมูล: ชื่อหัวข้อที่ตั้งเอง ตามคีย์ข้อมูล (ว่าง = ชื่อตั้งต้น) */
@@ -233,12 +236,13 @@ export const REQUIRED_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party",
 export const BLOCK_LABELS: Record<BlockKind, string> = {
   logo: "โลโก้", seller: "ข้อมูลผู้ขาย", title: "ชื่อเอกสาร", meta: "เลขที่/วันที่", party: "ข้อมูลลูกค้า/คู่ค้า", info: "กล่องข้อมูล", stamp: "ตราประทับ", shape: "รูปทรง", items: "ตารางรายการ",
   totals: "ยอดรวม", words: "จำนวนเงินตัวอักษร", notes: "หมายเหตุ", payment: "ข้อมูลการชำระเงิน", signatures: "ช่องลงนาม",
-  field: "ข้อมูลเดี่ยว", text: "ข้อความ", line: "เส้น", rect: "กรอบ/พื้นหลัง", image: "รูปภาพ",
+  field: "ข้อมูลเดี่ยว", text: "ข้อความ", line: "เส้น", rect: "กรอบ/พื้นหลัง", image: "รูปภาพ", sign: "ลายเซ็นอิเล็กทรอนิกส์",
 };
 /** ส่วนย่อยในกล่องที่เลือกซ่อนได้ (ชื่อ ที่อยู่ เลขผู้เสียภาษีของผู้ขาย/ผู้ซื้อ แสดงเสมอ ตามกฎหมาย) */
 export const BLOCK_PARTS: Partial<Record<BlockKind, { key: string; label: string }[]>> = {
   seller: [{ key: "nameEn", label: "ชื่อภาษาอังกฤษ" }, { key: "contact", label: "โทร · อีเมล · เว็บไซต์" }],
   title: [{ key: "en", label: "ชื่อภาษาอังกฤษ" }, { key: "copy", label: "ป้ายต้นฉบับ/สำเนา" }],
+  sign: [{ key: "name", label: "ชื่อผู้ลงนาม" }, { key: "title", label: "ตำแหน่ง" }, { key: "date", label: "วันที่ลงนาม" }],
   party: [{ key: "contact", label: "ชื่อผู้ติดต่อ" }, { key: "phone", label: "โทรศัพท์" }, { key: "email", label: "อีเมล" }],
   items: [{ key: "detail", label: "รายละเอียดใต้รายการ" }, { key: "heading", label: "หัวข้อหมวด" }],
   signatures: [{ key: "date", label: "บรรทัดวันที่" }],
@@ -297,7 +301,7 @@ export const docHasAmounts = (docType?: string) => !NO_AMOUNT_DOCS.includes(Stri
 export const requiredBlocksFor = (docType?: string): BlockKind[] => (docHasAmounts(docType) ? REQUIRED_BLOCKS : REQUIRED_BLOCKS.filter((k) => k !== "totals"));
 /** กล่องที่เพิ่มได้ในเอกสารชนิดนี้ */
 export const addableBlocksFor = (docType?: string): BlockKind[] =>
-  (["info", "text", "line", "rect", "shape", "image", "logo", "stamp", "field", "words", "notes", "payment", "signatures", "totals"] as BlockKind[]).filter((k) => docHasAmounts(docType) || (k !== "words" && k !== "totals"));
+  (["info", "text", "line", "rect", "shape", "image", "logo", "stamp", "sign", "field", "words", "notes", "payment", "signatures", "totals"] as BlockKind[]).filter((k) => docHasAmounts(docType) || (k !== "words" && k !== "totals"));
 /** คอลัมน์ที่ต้องแสดงเสมอ */
 export const requiredColumnsFor = (docType?: string): ItemColumn[] => (docHasAmounts(docType) ? ["description", "amount"] : ["description"]);
 
@@ -541,6 +545,7 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(LABEL_KINDS.includes(b.kind) && b.labelGap !== undefined && b.labelGap !== null ? { labelGap: num(b.labelGap, 0, 60, 4) } : {}),
     ...(LABEL_KINDS.includes(b.kind) && b.rowGap !== undefined && b.rowGap !== null ? { rowGap: num(b.rowGap, 0, 30, 1.5) } : {}),
     ...(b.valign === "middle" || b.valign === "bottom" ? { valign: b.valign } : {}),
+    ...(b.kind === "sign" && str(b.signer, 40) ? { signer: str(b.signer, 40) } : b.kind === "sign" && str(b.slot, 60) ? { slot: str(b.slot, 60) } : {}),
     ...(b.kind === "signatures" && b.gap !== undefined && b.gap !== null ? { gap: num(b.gap, 0, 300, 16) } : {}),
     ...(b.kind === "items" && b.fill ? { fill: true } : {}),
     ...(b.kind === "field" ? { field: FIELD_KEY.test(String(b.field || "")) ? String(b.field) : "number" } : {}),

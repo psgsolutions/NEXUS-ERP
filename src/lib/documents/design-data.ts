@@ -83,7 +83,7 @@ export function dataGroups(layout: FreeLayout, c: DataContext): DataGroup[] {
       { key: "total:vat", label: "ภาษีมูลค่าเพิ่ม · ยอดรวมทั้งสิ้น", on: true, locked: true },
       { key: "block:words", label: "จำนวนเงินตัวอักษร", on: has("words") },
     ] }] : []),
-    { id: "foot", title: "ท้ายเอกสาร", source: "หมายเหตุจากเอกสาร · บัญชีรับเงินจากข้อมูลนิติบุคคล", kinds: ["notes", "payment", "signatures", "stamp"], items: [
+    { id: "foot", title: "ท้ายเอกสาร", source: "หมายเหตุจากเอกสาร · บัญชีรับเงินจากข้อมูลนิติบุคคล", kinds: ["notes", "payment", "signatures", "stamp", "sign"], items: [
       { key: "block:notes", label: "หมายเหตุ", on: has("notes") },
       { key: "block:payment", label: "ข้อมูลการชำระเงิน (บัญชีธนาคาร)", on: has("payment") },
       { key: "block:signatures", label: "ช่องลงนาม", on: has("signatures") },

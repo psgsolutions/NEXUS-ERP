@@ -39,11 +39,12 @@ export async function printPdfActualSize(pdfUrl: string, dpi = 200): Promise<voi
   const { w, h } = pages[0];
   const frame = document.createElement("iframe");
   frame.setAttribute("aria-hidden", "true");
-  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  // กรอบพิมพ์ต้องกว้างเท่ากระดาษจริง (กรอบ 0×0 ทำให้ Chrome ย่อเนื้อหาเหลือ ~75% ชิดมุมซ้ายบน) — วางไว้นอกจอแทนการซ่อน
+  frame.style.cssText = `position:fixed;left:-20000px;top:0;width:${w}pt;height:${h}pt;border:0;opacity:0;pointer-events:none`;
   document.body.appendChild(frame);
   const d = frame.contentDocument!;
   d.open();
-  d.write(`<!doctype html><html><head><meta charset="utf-8"><style>@page{size:${w}pt ${h}pt;margin:0}html,body{margin:0;padding:0}img{display:block;width:${w}pt;height:${h}pt;page-break-after:always;break-after:page}img:last-child{page-break-after:auto;break-after:auto}</style></head><body>${pages.map((p) => `<img src="${p.src}" alt="">`).join("")}</body></html>`);
+  d.write(`<!doctype html><html><head><meta charset="utf-8"><style>@page{size:${w}pt ${h}pt;margin:0}html,body{margin:0;padding:0;width:${w}pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}img{display:block;width:${w}pt;height:${h}pt;page-break-after:always;break-after:page}img:last-child{page-break-after:auto;break-after:auto}</style></head><body>${pages.map((p) => `<img src="${p.src}" alt="">`).join("")}</body></html>`);
   d.close();
   await Promise.all([...d.images].map((im) => (im.complete ? Promise.resolve() : new Promise((ok) => { im.onload = ok; im.onerror = ok; }))));
   frame.contentWindow!.focus();

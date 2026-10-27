@@ -707,6 +707,18 @@ export function BlockView({ c, b: raw0, items, letter = false }: { c: Ctx; b: Fr
   const radius = b.radius ?? (c.t.rounded ? 4 : 0);
   // มุมโค้งแยกแต่ละมุม (บนซ้าย บนขวา ล่างขวา ล่างซ้าย)
   const corners = b.radii ? { borderTopLeftRadius: b.radii[0], borderTopRightRadius: b.radii[1], borderBottomRightRadius: b.radii[2], borderBottomLeftRadius: b.radii[3] } : { borderRadius: radius };
+  if (b.kind === "grid") {
+    // ตารางเส้นสำหรับจัดแบบฟอร์ม: กรอบนอก + เส้นแบ่งแถว/คอลัมน์เท่ากัน (วางข้อความ/ข้อมูลลงในช่องเอง)
+    const rows = b.rows || 3, cols = b.cols2 || 3, lw = b.borderWidth ?? 0.75, color = b.border || themeLine(c.t);
+    const dash = b.dash && b.dash !== "solid" ? { borderStyle: b.dash } : {};
+    return (
+      <View style={{ position: "absolute", left: b.x, top: b.y, width: b.w, height: b.h, borderWidth: lw, borderColor: color, ...corners, ...dash, ...(b.bg ? { backgroundColor: b.bg } : {}), ...(b.opacity ? { opacity: b.opacity } : {}) }}>
+        {b.headBg ? <View style={{ position: "absolute", left: 0, top: 0, right: 0, height: b.h / rows - lw, backgroundColor: b.headBg }} /> : null}
+        {Array.from({ length: rows - 1 }, (_, i) => <View key={`r${i}`} style={{ position: "absolute", left: 0, right: 0, top: ((i + 1) * b.h) / rows - lw, height: 0, borderTopWidth: lw, borderColor: color, ...dash }} />)}
+        {Array.from({ length: cols - 1 }, (_, j) => <View key={`c${j}`} style={{ position: "absolute", top: 0, bottom: 0, left: ((j + 1) * b.w) / cols - lw, width: 0, borderLeftWidth: lw, borderColor: color, ...dash }} />)}
+      </View>
+    );
+  }
   if (b.kind === "shape") {
     // รูปทรง: วงรี/วงกลม · สามเหลี่ยม (วาดเป็นเวกเตอร์)
     const sw = b.border ? b.borderWidth ?? 1 : 0, dash = b.dash === "dashed" ? `${sw * 4} ${sw * 2.5}` : b.dash === "dotted" ? `${sw} ${sw * 1.8}` : undefined;

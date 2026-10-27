@@ -59,7 +59,7 @@ export interface Letterhead { id: string; name: string; height: number; blocks: 
 export interface DocumentDesign { theme: DocTheme; perDoc: Record<string, PerDocDesign>; letterheads: Letterhead[] }
 
 // ---------- ผังลากวางอิสระ ----------
-export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "info" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "field" | "text" | "line" | "rect" | "shape" | "image" | "stamp" | "sign";
+export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "info" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "field" | "text" | "line" | "rect" | "shape" | "image" | "stamp" | "sign" | "grid";
 export type ItemColumn = "no" | "code" | "description" | "detail" | "qty" | "unit" | "qtyUnit" | "price" | "discount" | "discountText" | "gross" | "amount";
 /** คอลัมน์ตารางที่ตั้งเอง: ลำดับตามรายการ · หัวคอลัมน์ · จัดวาง · ความกว้าง (% ของตาราง ว่าง = อัตโนมัติ) */
 export interface ColumnSpec { key: ItemColumn; label?: string; align?: "left" | "center" | "right"; width?: number }
@@ -105,6 +105,9 @@ export interface FreeBlock {
   /** ลายเซ็นอิเล็กทรอนิกส์ (kind=sign): ลายเซ็นของช่องลงนามนี้ (ตามผู้ลงนามที่กำหนด/ลายเซ็นจริง) หรือของผู้ลงนามคนนี้เสมอ (id) */
   slot?: string;
   signer?: string;
+  /** ตารางเส้น (kind=grid): จำนวนแถว/คอลัมน์ (แบ่งเท่ากัน) · headBg = พื้นแถวหัว */
+  rows?: number;
+  cols2?: number;
   /** จัดแนวตั้งในกล่อง (ไม่ตั้ง = ชิดบน) */
   valign?: "middle" | "bottom";
   /** กล่องข้อมูล: ชื่อหัวข้อที่ตั้งเอง ตามคีย์ข้อมูล (ว่าง = ชื่อตั้งต้น) */
@@ -187,7 +190,7 @@ export function refitBlocks(blocks: FreeBlock[], from: { w: number; h: number },
     return { ...b, x: x1, w: Math.max(4, x2 - x1), y: y1, h: keepH ? b.h : Math.max(4, y2 - y1) };
   });
   // กล่องข้อความคงความสูง: กล่องที่เคยอยู่ใต้กันในแนวเดียวกันต้องไม่ทับกัน — ดันลงตามลำดับ (ตารางรายการหดรับแทน)
-  const DECO = ["rect", "shape", "line", "image"];
+  const DECO = ["rect", "shape", "line", "image", "grid"];
   const content = blocks.map((b, i) => i).filter((i) => !DECO.includes(blocks[i].kind)).sort((i, j) => blocks[i].y - blocks[j].y);
   const ry = (to.h - tm[0] - tm[2]) / Math.max(1, from.h - fm[0] - fm[2]);
   const xOverlap = (a: FreeBlock, b: FreeBlock) => Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > 2;
@@ -238,7 +241,7 @@ export const REQUIRED_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party",
 export const BLOCK_LABELS: Record<BlockKind, string> = {
   logo: "โลโก้", seller: "ข้อมูลผู้ขาย", title: "ชื่อเอกสาร", meta: "เลขที่/วันที่", party: "ข้อมูลลูกค้า/คู่ค้า", info: "กล่องข้อมูล", stamp: "ตราประทับ", shape: "รูปทรง", items: "ตารางรายการ",
   totals: "ยอดรวม", words: "จำนวนเงินตัวอักษร", notes: "หมายเหตุ", payment: "ข้อมูลการชำระเงิน", signatures: "ช่องลงนาม",
-  field: "ข้อมูลเดี่ยว", text: "ข้อความ", line: "เส้น", rect: "กรอบ/พื้นหลัง", image: "รูปภาพ", sign: "ลายเซ็นอิเล็กทรอนิกส์",
+  field: "ข้อมูลเดี่ยว", text: "ข้อความ", line: "เส้น", rect: "กรอบ/พื้นหลัง", image: "รูปภาพ", sign: "ลายเซ็นอิเล็กทรอนิกส์", grid: "ตาราง (เส้น)",
 };
 /** ส่วนย่อยในกล่องที่เลือกซ่อนได้ (ชื่อ ที่อยู่ เลขผู้เสียภาษีของผู้ขาย/ผู้ซื้อ แสดงเสมอ ตามกฎหมาย) */
 export const BLOCK_PARTS: Partial<Record<BlockKind, { key: string; label: string }[]>> = {
@@ -268,7 +271,7 @@ export function resolveColumns(b: { colSpec?: ColumnSpec[]; cols?: ItemColumn[] 
 export const LABEL_KINDS: BlockKind[] = ["info", "field", "meta", "party"];
 export const TEXT_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party", "info", "items", "totals", "words", "notes", "payment", "signatures", "field", "text"];
 /** กล่องที่วางในหัวกระดาษได้ */
-export const HEAD_KINDS: BlockKind[] = ["logo", "seller", "title", "meta", "info", "field", "text", "line", "rect", "shape", "image", "stamp"];
+export const HEAD_KINDS: BlockKind[] = ["logo", "seller", "title", "meta", "info", "field", "text", "line", "rect", "shape", "image", "stamp", "grid"];
 /** คีย์ช่องข้อมูล: เลขที่ วันที่ แถวข้อมูลของเอกสาร (m:ป้าย) ข้อมูลเพิ่ม (f:คีย์) */
 /**
  * เอกสารที่ออกเป็นต้นฉบับ/สำเนา (ให้ลูกค้าต้นฉบับ เก็บสำเนา) — แสดงป้ายเสมอในทุกแม่แบบ ปิดไม่ได้
@@ -303,7 +306,7 @@ export const docHasAmounts = (docType?: string) => !NO_AMOUNT_DOCS.includes(Stri
 export const requiredBlocksFor = (docType?: string): BlockKind[] => (docHasAmounts(docType) ? REQUIRED_BLOCKS : REQUIRED_BLOCKS.filter((k) => k !== "totals"));
 /** กล่องที่เพิ่มได้ในเอกสารชนิดนี้ */
 export const addableBlocksFor = (docType?: string): BlockKind[] =>
-  (["info", "text", "line", "rect", "shape", "image", "logo", "stamp", "sign", "field", "words", "notes", "payment", "signatures", "totals"] as BlockKind[]).filter((k) => docHasAmounts(docType) || (k !== "words" && k !== "totals"));
+  (["info", "text", "line", "rect", "shape", "image", "logo", "stamp", "sign", "grid", "field", "words", "notes", "payment", "signatures", "totals"] as BlockKind[]).filter((k) => docHasAmounts(docType) || (k !== "words" && k !== "totals"));
 /** คอลัมน์ที่ต้องแสดงเสมอ */
 export const requiredColumnsFor = (docType?: string): ItemColumn[] => (docHasAmounts(docType) ? ["description", "amount"] : ["description"]);
 
@@ -547,6 +550,7 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(LABEL_KINDS.includes(b.kind) && b.labelGap !== undefined && b.labelGap !== null ? { labelGap: num(b.labelGap, 0, 60, 4) } : {}),
     ...(LABEL_KINDS.includes(b.kind) && b.rowGap !== undefined && b.rowGap !== null ? { rowGap: num(b.rowGap, 0, 30, 1.5) } : {}),
     ...(b.valign === "middle" || b.valign === "bottom" ? { valign: b.valign } : {}),
+    ...(b.kind === "grid" ? { rows: Math.round(num(b.rows, 1, 40, 3)), cols2: Math.round(num(b.cols2, 1, 20, 3)) } : {}),
     ...(b.kind === "sign" && str(b.signer, 40) ? { signer: str(b.signer, 40) } : b.kind === "sign" && str(b.slot, 60) ? { slot: str(b.slot, 60) } : {}),
     ...(b.kind === "signatures" && b.gap !== undefined && b.gap !== null ? { gap: num(b.gap, 0, 300, 16) } : {}),
     ...(b.kind === "items" && b.fill ? { fill: true } : {}),

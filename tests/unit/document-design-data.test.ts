@@ -86,6 +86,16 @@ describe("design tools: shapes, corners, flow, margins, blank page, document rul
     expect(overlaps).toEqual(was);
   });
 
+  it("grid table block keeps rows/columns within limits", async () => {
+    const { normalizeFreeLayout } = await import("@/lib/documents/design");
+    const n = normalizeFreeLayout({ enabled: true, blocks: [
+      { id: "g", kind: "grid", x: 10, y: 10, w: 300, h: 90, rows: 99, cols2: 0, headBg: "#eeeeee" },
+      { id: "h", kind: "grid", x: 10, y: 120, w: 300, h: 90 },
+    ] }, "quotation")!;
+    expect(n.blocks.find((b) => b.id === "g")).toMatchObject({ rows: 40, cols2: 1, headBg: "#eeeeee" });
+    expect(n.blocks.find((b) => b.id === "h")).toMatchObject({ rows: 3, cols2: 3 });
+  });
+
   it("label-only pieces are kept but never count as showing the data (legal checks)", async () => {
     const { normalizeFreeLayout, legalFieldVisible } = await import("@/lib/documents/design");
     const n = normalizeFreeLayout({ enabled: true, blocks: [

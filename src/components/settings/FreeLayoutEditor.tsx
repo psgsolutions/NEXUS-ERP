@@ -243,7 +243,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const S = zoom === "fit" ? fitS : zoom; // px ต่อ pt บนจอ
   const [snapOn, setSnapOn] = useState(true);
   const [guides, setGuides] = useState<Guides>({ x: [], y: [] });
-  const [tool, setTool] = useState<"select" | "line" | "rect">("select");
+  // เครื่องมือวาด: ลากบนกระดาษเพื่อสร้างกล่องข้อความ กรอบ เส้น หรือตารางเส้น ตามขนาดที่ลาก
+  const [tool, setTool] = useState<"select" | "line" | "rect" | "text" | "grid">("select");
   const [draft, setDraft] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   const paperRef = useRef<HTMLDivElement>(null);
   // size: edge = ด้าน/มุมที่จับ (n s e w ne nw se sw) — ปรับขนาดได้ทุกด้าน
@@ -503,7 +504,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       const delta: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
       if (delta[e.key]) { e.preventDefault(); applyMany(new Map(selected.filter((i) => !i.b.locked).map((i) => [i.key, { ...i.b, x: i.b.x + delta[e.key][0], y: i.b.y + delta[e.key][1] }]))); }
       else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); remove(selected); }
-      else if (e.key === "Escape") setSel([]);
+      else if (e.key === "Escape") { setSel([]); setTool("select"); }
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
@@ -532,12 +533,18 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     const dx = d.x1 - d.x0, dy = d.y1 - d.y0;
     if (Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
     const x = Math.min(d.x0, d.x1), y = Math.min(d.y0, d.y1);
+    const w = Math.max(4, Math.abs(dx)), h = Math.max(4, Math.abs(dy));
     const b = tool === "line"
       ? (Math.abs(dx) >= Math.abs(dy) ? newBlock("line", { x, y: d.y0, w: Math.abs(dx), h: 1, color: "@primary" }) : newBlock("line", { x: d.x0, y, w: 1, h: Math.abs(dy), color: "@primary" }))
-      : newBlock("rect", { x, y, w: Math.max(4, Math.abs(dx)), h: Math.max(4, Math.abs(dy)), border: "@primary", radius: 0 });
+      : tool === "text" ? newBlock("text", { x, y, w: Math.max(20, w), h: Math.max(12, h), text: "ข้อความ" })
+      : tool === "grid" ? newBlock("grid", { x, y, w: Math.max(20, w), h: Math.max(12, h), rows: 3, cols2: 3 })
+      : newBlock("rect", { x, y, w, h, border: "@primary", radius: 0 });
+    const key = `${addZone === "head" ? "h" : "d"}:${b.id}`;
     applyMany(new Map(), [{ zone: addZone, b }]);
-    setSel([`${addZone === "head" ? "h" : "d"}:${b.id}`]);
+    setSel([key]);
     setTool("select");
+    // กล่องข้อความที่วาดใหม่: พิมพ์ได้ทันที
+    if (b.kind === "text") setEditing(key);
   };
 
   const start = (e: React.PointerEvent, it: Item, mode: "move" | "size", edge?: string) => {
@@ -632,9 +639,10 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const newBlock = (kind: BlockKind, extra: Partial<FreeBlock> = {}): FreeBlock => {
     const id = `${kind}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 4)}`;
     const def = defaultFreeLayout(docType, font).blocks.find((b) => b.kind === kind);
-    const size: Record<string, [number, number]> = { text: [200, 24], line: [300, 1.5], rect: [200, 80], image: [120, 80], logo: [64, 64], stamp: [72, 72], field: [180, 18], sign: [120, 46] };
+    const size: Record<string, [number, number]> = { text: [200, 24], line: [300, 1.5], rect: [200, 80], image: [120, 80], logo: [64, 64], stamp: [72, 72], field: [180, 18], sign: [120, 46], grid: [300, 90] };
     const [w, h] = def ? [def.w, def.h] : size[kind] || [200, 40];
     // ลายเซ็น: เริ่มที่ช่องลงนามแรก แสดงเฉพาะรูปลายเซ็น (ชื่อ/วันที่อยู่ในช่องลงนามอยู่แล้ว)
+    if (kind === "grid") extra = { rows: 3, cols2: 3, ...extra };
     if (kind === "sign") extra = { slot: defaultSignatures[0], hide: ["name", "title", "date"], ...extra };
     return { id, kind, x: def?.x ?? 60, y: def?.y ?? (addZone === "head" ? 30 : 160), w, h, ...(kind === "text" ? { text: "ข้อความ {{number}}", fontSize: 10 } : {}), ...(kind === "field" ? { field: "number" } : {}), ...extra };
   };
@@ -964,6 +972,17 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           </>
         )}
 
+        {b.kind === "grid" && (
+          <div className="space-y-2 rounded-xl border border-white/10 p-2.5">
+            <p className="text-[11.5px] font-bold text-white/70">ตาราง (เส้นแบ่งช่องเท่ากัน)</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="จำนวนแถว"><PillInput type="number" min={1} max={40} value={b.rows ?? 3} onChange={(e) => update(it, { rows: Math.max(1, Math.min(40, Math.round(Number(e.target.value) || 1))) })} className="h-8 w-full text-sm text-right" /></Field>
+              <Field label="จำนวนคอลัมน์"><PillInput type="number" min={1} max={20} value={b.cols2 ?? 3} onChange={(e) => update(it, { cols2: Math.max(1, Math.min(20, Math.round(Number(e.target.value) || 1))) })} className="h-8 w-full text-sm text-right" /></Field>
+            </div>
+            {colorRow(it, "พื้นแถวหัว", "headBg" as any)}
+            <p className="text-[11px] text-white/45">วางกล่องข้อความหรือข้อมูลลงในช่อง แล้วกด จัดกลุ่ม เพื่อให้ตารางกับข้อความลากไปด้วยกัน · สีเส้น/ความหนาที่แท็บ กรอบ · พื้น</p>
+          </div>
+        )}
         {b.kind === "sign" && (
           <div className="space-y-1.5 rounded-xl border border-white/10 p-2.5">
             <Field label="ลายเซ็นของ">
@@ -1122,7 +1141,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   // ---------- พิมพ์ข้อความบนกระดาษ ----------
   const editItem = editing ? byKey.get(editing) : null;
   const inlineEditor = editItem && (
-    <textarea autoFocus value={editItem.b.text || ""} onChange={(e) => update(editItem, { text: e.target.value })}
+    <textarea autoFocus onFocus={(e) => { if (e.target.value === "ข้อความ") e.target.select(); }} value={editItem.b.text || ""} onChange={(e) => update(editItem, { text: e.target.value })}
       onBlur={() => setEditing(null)} onKeyDown={(e) => { if (e.key === "Escape") (e.target as HTMLTextAreaElement).blur(); e.stopPropagation(); }} onPointerDown={(e) => e.stopPropagation()}
       className="absolute z-50 resize-none rounded border border-[#0d9488] bg-white/95 text-slate-900 p-0.5 outline-none shadow-lg"
       style={{ left: editItem.b.x * S, top: editItem.b.y * S, width: Math.max(140, editItem.b.w * S), minHeight: Math.max(40, editItem.b.h * S), fontSize: (editItem.b.fontSize || 10) * FONT_SCALE[font] * S, lineHeight: editItem.b.lineHeight ?? 1.35, textAlign: editItem.b.align, fontWeight: editItem.b.bold ? 700 : 400, color: resolveColor(editItem.b.color, theme) || "#111" }} />
@@ -1137,7 +1156,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     addAt(kind === "info" ? "info:empty" : kind, { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S });
   };
   // ---------- ริบบอน ----------
-  const SHAPE_KINDS: BlockKind[] = ["rect", "shape", "line", "image", "logo", "stamp", "sign"];
+  const SHAPE_KINDS: BlockKind[] = ["rect", "shape", "line", "image", "logo", "stamp", "sign", "grid"];
   const textSel = selected.filter((i) => TEXT_BLOCKS.includes(i.b.kind));
   const shapeSel = selected.filter((i) => SHAPE_KINDS.includes(i.b.kind));
   // แท็บกรอบ · พื้น ใช้กับทุกกล่องที่เลือก (ข้อความก็มีกรอบ/พื้นของตัวเอง แยกจากรูปแบบตัวอักษร)
@@ -1198,11 +1217,32 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     switch (rtab) {
       case "home": return (
         <>
+          {bodyOn && canEdit && (
+            <RGroup label="เริ่มใหม่">
+              <RMenu icon={<RotateCcw size={18} />} label="กระดาษเปล่า / แม่แบบ" width={260}>
+                {(close) => (
+                  <>
+                    <button type="button" onClick={() => { close(); commitLayout(blankLayout(docType, theme)); setSel([]); }} className={menuItem}>
+                      <p className="font-bold text-white">หน้ากระดาษเปล่า</p>
+                      <p className="text-[11px] text-white/50">เหลือเฉพาะข้อมูลที่กฎหมายกำหนด ไม่มีกรอบ/สี — ออกแบบใหม่ทั้งหมด</p>
+                    </button>
+                    <p className="px-3 pt-2 pb-1 text-[11px] text-white/40">ปรับแก้จากแม่แบบ</p>
+                    {ARCHETYPES.map((a) => <button key={a.id} type="button" onClick={() => { close(); commitLayout(templateLayout(a.id, docType, theme)); setSel([]); }} className={menuItem}>{a.name}</button>)}
+                    <p className="px-3 py-1.5 text-[11px] text-white/40">ไม่ถูกใจกด ย้อนกลับ (Ctrl+Z)</p>
+                  </>
+                )}
+              </RMenu>
+            </RGroup>
+          )}
           <RGroup label="กล่องที่เลือก">
             <RBtn icon={<BoxSelect size={18} />} label="เลือกทั้งหมด" title="เลือกทุกกล่อง (Ctrl+A)" onClick={() => setSel(items.map((i) => i.key))} />
             <RBtn icon={<CopyPlus size={18} />} label="ทำสำเนา" title="ทำสำเนา (Ctrl+D)" disabled={!canEdit || !selected.some((i) => !SINGLE.includes(i.b.kind))} onClick={duplicate} />
             <RBtn icon={allLocked && selected.length ? <PinOff size={18} /> : <Pin size={18} />} label={allLocked && selected.length ? "ปลดล็อก" : "ล็อก"} disabled={!can} onClick={toggleLock} />
             <RBtn icon={<Trash2 size={18} />} label="ลบ" title="ลบ (Delete)" disabled={!can || !selected.some((i) => !isLocked(i))} onClick={() => remove(selected)} />
+          </RGroup>
+          <RGroup label="ชุดเดียวกัน">
+            <RBtn icon={<GroupIcon size={18} />} label="จัดกลุ่ม" title="รวมข้อความ เส้น กรอบ ที่เลือกเป็นชุดเดียว ลากไปพร้อมกัน (Ctrl+G)" disabled={selected.length < 2 || !canEdit} onClick={groupSelected} />
+            <RBtn icon={<Ungroup size={18} />} label="แยกกลุ่ม" title="แยกกลุ่ม (Ctrl+Shift+G)" disabled={!anyGrouped || !canEdit} onClick={ungroupSelected} />
           </RGroup>
           <RGroup label="มุมมอง">
             <RSelect width={136} title="ขนาดกระดาษบนจอ" value={String(zoom)} onChange={(v) => setZoom(v === "fit" ? "fit" : Number(v))}>
@@ -1214,6 +1254,11 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       );
       case "insert": return (
         <>
+          <RGroup label="วาดเอง: ลากบนกระดาษ (Esc ยกเลิก)">
+            {([["select", "เลือก", MousePointer2], ["text", "กล่องข้อความ", Type], ["rect", "กรอบ", Square], ["line", "เส้น", Minus], ["grid", "ตาราง", Grid3x3]] as const).map(([t, label, I]) => (
+              <RBtn key={t} icon={<I size={18} />} label={label} on={tool === t} disabled={!canEdit && t !== "select"} title={t === "select" ? "เลือก/ย้ายกล่อง" : "วาด" + label + ": ลากบนกระดาษตามขนาดที่ต้องการ"} onClick={() => setTool(t)} />
+            ))}
+          </RGroup>
           <RGroup label="ข้อความและข้อมูล">
             <RBtn icon={<Type size={18} />} label="ข้อความ" drag="text" disabled={!canEdit} onClick={() => addAt("text", visibleCenter())} />
             {addable.includes("info") && (
@@ -1288,23 +1333,6 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
               </RSelect>
             </div>
           </RGroup>
-          {bodyOn && canEdit && (
-            <RGroup label="ผังหน้า">
-              <RMenu icon={<RotateCcw size={18} />} label="เริ่มผังใหม่" width={260}>
-                {(close) => (
-                  <>
-                    <button type="button" onClick={() => { close(); commitLayout(blankLayout(docType, theme)); setSel([]); }} className={menuItem}>
-                      <p className="font-bold text-white">หน้ากระดาษเปล่า</p>
-                      <p className="text-[11px] text-white/50">เหลือเฉพาะข้อมูลที่กฎหมายกำหนด ไม่มีกรอบ/สี — ออกแบบใหม่ทั้งหมด</p>
-                    </button>
-                    <p className="px-3 pt-2 pb-1 text-[11px] text-white/40">ปรับแก้จากแม่แบบ</p>
-                    {ARCHETYPES.map((a) => <button key={a.id} type="button" onClick={() => { close(); commitLayout(templateLayout(a.id, docType, theme)); setSel([]); }} className={menuItem}>{a.name}</button>)}
-                    <p className="px-3 py-1.5 text-[11px] text-white/40">ไม่ถูกใจกด ย้อนกลับ (Ctrl+Z)</p>
-                  </>
-                )}
-              </RMenu>
-            </RGroup>
-          )}
           {letterhead && (
             <RGroup label="ความสูงหัวกระดาษ (pt)">
               <RNum width={64} min={40} max={320} value={letterhead.height} disabled={!canEdit} onChange={(e) => commitHead({ ...letterhead, height: Math.max(40, Math.min(320, Number(e.target.value) || 40)) })} />
@@ -1347,10 +1375,6 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             <RIcon title="ขึ้นหนึ่งชั้น" disabled={!primary || multi || !canEdit} onClick={() => primary && reorder(primary, 1)}><BringToFront size={16} /></RIcon>
             <RIcon title="ลงหนึ่งชั้น" disabled={!primary || multi || !canEdit} onClick={() => primary && reorder(primary, -1)}><SendToBack size={16} /></RIcon>
             <RIcon title="ล่างสุด" disabled={!primary || multi || !canEdit} onClick={() => primary && zEnd(primary, "back")}><ArrowDownToLine size={16} /></RIcon>
-          </RGroup>
-          <RGroup label="กลุ่ม">
-            <RIcon title="จัดกลุ่ม (Ctrl+G)" disabled={selected.length < 2 || !canEdit} onClick={groupSelected}><GroupIcon size={16} /></RIcon>
-            <RIcon title="แยกกลุ่ม (Ctrl+Shift+G)" disabled={!anyGrouped || !canEdit} onClick={ungroupSelected}><Ungroup size={16} /></RIcon>
           </RGroup>
         </>
       );
@@ -1551,13 +1575,13 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
               const moved = shifted && croppable(it.key, o!) && o!.w === b.w && o!.h === b.h;
               // ย้ายกล่องที่ทับกล่องอื่น/กรอบ: แสดงเงาตำแหน่งใหม่ ไม่ตัดภาพ (กล่องด้านหลังอยู่ที่เดิม)
               const ghost = shifted && !moved;
-              const frame = b.kind === "rect";
+              const frame = b.kind === "rect" || b.kind === "grid";
               const fresh = !o;
               return (
                 <div key={it.key} onPointerDown={(e) => start(e, it, "move")} onDoubleClick={(e) => { e.stopPropagation(); setSel([it.key]); if (b.kind === "text" && canEdit) setEditing(it.key); }}
                   className={cn("absolute group", canEdit ? "cursor-move" : "cursor-pointer",
                     // กรอบ/เส้น/รูป อยู่ชั้นล่างของการคลิก — คลิกข้อมูลที่อยู่ในกรอบได้ · กรอบเลือกที่ขอบ
-                    on ? cn("outline outline-1 -outline-offset-1 outline-[#0d9488] z-20", multi && anchorKeys.includes(it.key) && "outline-amber-400") : cn("outline outline-1 -outline-offset-1 outline-dashed outline-transparent hover:outline-slate-400", ["rect", "shape", "line", "image"].includes(b.kind) ? "z-[8]" : "z-10"),
+                    on ? cn("outline outline-1 -outline-offset-1 outline-[#0d9488] z-20", multi && anchorKeys.includes(it.key) && "outline-amber-400") : cn("outline outline-1 -outline-offset-1 outline-dashed outline-transparent hover:outline-slate-400", ["rect", "shape", "line", "image", "grid"].includes(b.kind) ? "z-[8]" : "z-10"),
                     frame && "pointer-events-none",
                     fresh && !on && "outline-slate-300",
                     ghost && (b.kind === "line" ? "bg-[#0d9488]/70" : frame ? "border border-dashed border-[#0d9488]" : "bg-[#0d9488]/10 border border-dashed border-[#0d9488]/70"))}

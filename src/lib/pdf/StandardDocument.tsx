@@ -230,6 +230,8 @@ export function SectionField({ c, b }: { c: Ctx; b: FreeBlock }) {
   const f = fieldValue(c, b.field);
   // ไม่มีข้อมูล (เช่น ยังไม่ได้กรอกชื่อภาษาอังกฤษ/อีเมล) = ไม่พิมพ์อะไร
   if (!f || !f.value.trim()) return null;
+  // เฉพาะป้าย (หัวข้อ): วางแยกจากข้อมูลได้
+  if (b.show === "label") return <View style={{ flexDirection: "row", justifyContent: b.align === "right" ? "flex-end" : b.align === "center" ? "center" : "flex-start" }}><Lbl c={c} th={f.label} suffix=" :" style={{ fontWeight: "bold" }} align={b.align === "justify" ? "left" : b.align} /></View>;
   if (b.hideLabel) return <T style={{ textAlign: b.align, fontWeight: b.bold ? "bold" : undefined }}>{f.value || "-"}</T>;
   return (
     <View style={{ flexDirection: "row", justifyContent: b.align === "right" ? "flex-end" : b.align === "center" ? "center" : "flex-start" }}>

@@ -119,6 +119,8 @@ export interface FreeBlock {
   field?: string;
   /** ช่องข้อมูล: ไม่แสดงป้าย (แสดงเฉพาะค่า) */
   hideLabel?: boolean;
+  /** ช่องข้อมูล: แสดงเฉพาะป้าย (หัวข้อ) — แยกป้ายกับข้อมูลเป็นคนละกล่อง ลากวางแยกกันได้ */
+  show?: "label";
   /** กล่องเลขที่/วันที่: ข้อมูลเพิ่มที่แสดงเป็นแถว (f:<คีย์>) · กล่องข้อมูล (info): หัวข้อที่เลือกแสดง ตามลำดับ */
   fields?: string[];
   /** รัศมีมุม (pt) 0 = เหลี่ยม — กรอบ/พื้นของกล่อง และกรอบตาราง/ยอดรวม/ลูกค้าในกล่อง */
@@ -291,7 +293,7 @@ export const SPLIT_EQUIV: Partial<Record<BlockKind, string[]>> = {
 export function requiredSatisfied(kind: BlockKind, blocks: FreeBlock[]): boolean {
   if (blocks.some((b) => b.kind === kind)) return true;
   const eq = SPLIT_EQUIV[kind];
-  return !!eq && eq.every((f) => blocks.some((b) => (b.kind === "field" && b.field === f) || (b.kind === "info" && (b.fields || []).includes(f))));
+  return !!eq && eq.every((f) => blocks.some((b) => (b.kind === "field" && b.field === f && b.show !== "label") || (b.kind === "info" && (b.fields || []).includes(f))));
 }
 
 /** เอกสารที่ไม่มียอดเงิน (ไม่ต้องมีกล่องยอดรวม/จำนวนเงินตัวอักษร) */
@@ -550,6 +552,7 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(b.kind === "items" && b.fill ? { fill: true } : {}),
     ...(b.kind === "field" ? { field: FIELD_KEY.test(String(b.field || "")) ? String(b.field) : "number" } : {}),
     ...((b.kind === "field" || b.kind === "info") && b.hideLabel ? { hideLabel: true } : {}),
+    ...(b.kind === "field" && b.show === "label" && !b.hideLabel ? { show: "label" as const } : {}),
     ...(b.radius !== undefined && b.radius !== null ? { radius: num(b.radius, 0, 40, 4) } : {}),
     ...(b.borderWidth !== undefined && b.borderWidth !== null ? { borderWidth: num(b.borderWidth, 0.25, 8, 1) } : {}),
     ...(["dashed", "dotted"].includes(b.dash) ? { dash: b.dash } : {}),
@@ -569,7 +572,7 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
 
 /** เลขที่/วันที่ต้องปรากฏเสมอ (ม.86/4): ดูจากกล่องเลขที่ ช่องข้อมูล หรือข้อความที่มี {{number}}/{{date}} */
 export function legalFieldVisible(blocks: FreeBlock[], key: "number" | "date"): boolean {
-  return blocks.some((b) => (b.kind === "meta" && !(b.hide || []).includes(key)) || (b.kind === "field" && b.field === key) || (b.kind === "info" && (b.fields || []).includes(key)) || (b.kind === "text" && (b.text || "").includes(`{{${key}}}`)));
+  return blocks.some((b) => (b.kind === "meta" && !(b.hide || []).includes(key)) || (b.kind === "field" && b.field === key && b.show !== "label") || (b.kind === "info" && (b.fields || []).includes(key)) || (b.kind === "text" && (b.text || "").includes(`{{${key}}}`)));
 }
 /** คืนเลขที่/วันที่ที่ถูกซ่อนโดยไม่มีที่แสดงอื่น (แก้ในกล่องเลขที่ของผังเอกสารก่อน ไม่มีจึงแก้ในหัวกระดาษ) */
 function restoreLegalFields(free: FreeLayout | undefined, lh: Letterhead | undefined) {

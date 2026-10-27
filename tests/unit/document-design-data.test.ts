@@ -86,6 +86,18 @@ describe("design tools: shapes, corners, flow, margins, blank page, document rul
     expect(overlaps).toEqual(was);
   });
 
+  it("label-only pieces are kept but never count as showing the data (legal checks)", async () => {
+    const { normalizeFreeLayout, legalFieldVisible } = await import("@/lib/documents/design");
+    const n = normalizeFreeLayout({ enabled: true, blocks: [
+      { id: "l", kind: "field", field: "date", show: "label", x: 10, y: 10, w: 40, h: 14 },
+      { id: "v", kind: "field", field: "date", hideLabel: true, show: "label", x: 60, y: 10, w: 80, h: 14 },
+    ] }, "quotation")!;
+    expect(n.blocks.find((b) => b.id === "l")!.show).toBe("label");
+    expect(n.blocks.find((b) => b.id === "v")!.show).toBeUndefined(); // เฉพาะข้อมูล ชนะ
+    expect(legalFieldVisible([{ id: "l", kind: "field", field: "date", show: "label", x: 0, y: 0, w: 1, h: 1 }], "date")).toBe(false);
+    expect(legalFieldVisible(n.blocks.filter((b) => b.id !== "l"), "date")).toBe(true);
+  });
+
   it("electronic signature box: slot or fixed signer, signed only on issued documents", async () => {
     const { normalizeFreeLayout, normalizeDesign } = await import("@/lib/documents/design");
     const { applySigning } = await import("@/lib/documents/esign");

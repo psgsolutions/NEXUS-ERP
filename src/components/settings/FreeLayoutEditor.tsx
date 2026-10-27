@@ -204,6 +204,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const font = theme.font;
   // ขนาดหน้า (กระดาษ/แนวที่ตั้ง) · ขอบกระดาษแต่ละด้าน [บน ขวา ล่าง ซ้าย]
   const P = pageOf(layout);
+  // ทดสอบอัตโนมัติ (เฉพาะโหมดพัฒนา): ให้สคริปต์ตรวจปุ่มอ่านผังปัจจุบันได้
+  useEffect(() => { if (process.env.NODE_ENV !== "production") (window as any).__nexusDesigner = { layout, letterhead }; });
   const M = marginsOf(layout);
   const [sel, setSel] = useState<string[]>([]);
   // พิมพ์ข้อความบนกระดาษ (ดับเบิลคลิกกล่องข้อความ)
@@ -279,8 +281,9 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   // ---------- ย้อนกลับ/ทำซ้ำ: ประวัติอยู่ที่หน้าหลัก (รวมทุกการแก้ของการออกแบบ) ----------
   const commitLayout = onChange;
   const commitHead = onLetterheadChange;
-  const undo = () => { history.undo(); setSel([]); };
-  const redo = () => { history.redo(); setSel([]); };
+  // ย้อนกลับ/ทำซ้ำ: คงการเลือกไว้ (กล่องที่ไม่มีแล้วถูกกรองออกเอง) แบบ PowerPoint
+  const undo = () => history.undo();
+  const redo = () => history.redo();
 
   const bodyOn = !letterOnly && layout.enabled;
   /** ขอบกระดาษสำหรับจัดวาง (เส้นนำ/ดูดติด/จัดชิดขอบ) */
@@ -1534,7 +1537,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     }
   })();
   const ribbon = (
-    <div ref={ribbonRef} className={cn(ui.pin && "sticky z-40")} style={ui.pin ? { top: pinTop } : undefined}>
+    <div ref={ribbonRef} data-ribbon className={cn(ui.pin && "sticky z-40")} style={ui.pin ? { top: pinTop } : undefined}>
     <GlassCard className={cn("rounded-2xl hover:border-white/15", ui.pin && "shadow-[0_12px_30px_-10px_rgba(0,0,0,0.9)] bg-surface-2")}>
       <div className="flex items-center gap-1.5 px-2.5 py-2 border-b border-white/10">
         <RIcon title="ย้อนกลับ (Ctrl+Z)" disabled={!history.canUndo || !canEdit} onClick={undo}><Undo2 size={14} /></RIcon>

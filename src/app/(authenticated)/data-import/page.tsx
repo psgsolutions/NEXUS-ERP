@@ -48,7 +48,7 @@ const STATUS: Record<RowState["status"], [string, string]> = {
 const STEPS: Record<TabId, string> = {
   customers: "แถวที่ซ้ำกับข้อมูลในระบบจะถูกข้ามและแจ้งเหตุผล",
   suppliers: "ระบบสร้างผู้รับเหมารหัสเดียวกันให้ด้วย",
-  products: "ใส่จำนวนคงเหลือยกมาได้ (รับเข้าคลังเป็นยอดยกมา)",
+  products: "เว้นรหัสสินค้าว่างไว้ ระบบออกรหัสให้ตอนนำเข้า · ใส่จำนวนคงเหลือยกมาได้ (รับเข้าคลังเป็นยอดยกมา)",
   employees: "ระบบออกรหัสพนักงานให้ — เลขบัตรประชาชนซ้ำกับคนเดิมจะไม่ถูกเพิ่ม",
   tb: "ยอดคงเหลือทุกบัญชี ณ วันก่อนเริ่มใช้ระบบ เดบิตต้องเท่ากับเครดิต — ได้ใบสำคัญร่างรออนุมัติลงบัญชี",
   ar: "ใบแจ้งหนี้ที่ลูกค้ายังค้างชำระ — ไม่บันทึกบัญชีซ้ำ (ยอดรวมอยู่ในงบทดลองแล้ว) รับชำระต่อในระบบได้",
@@ -182,7 +182,10 @@ export default function DataImportPage() {
           continue;
         }
         if (entity === "products") {
-          await post("/api/master-data", { action: "create", entity, id: `PROD-${Date.now()}-${row.rowNo}`, ...req });
+          // รหัสสินค้าว่าง = ให้ server ออกรหัสให้ตอนบันทึก (ไม่ซ้ำในเครือ)
+          const res = await post("/api/master-data", { action: "create", entity, id: `PROD-${Date.now()}-${row.rowNo}`, autoSku: !row.values.sku, ...req });
+          update([row.rowNo], { status: "done", message: row.values.sku ? "" : `รหัส ${res.sku}` });
+          continue;
         } else if (entity === "suppliers") {
           // ผู้ขายและผู้รับเหมาใช้รหัสเดียวกัน (เหมือนฟอร์มเพิ่มผู้ขาย)
           const { id } = await post("/api/master-data", { action: "create", entity: "suppliers", ...req });

@@ -96,7 +96,7 @@ export const IMPORT_TEMPLATES: Record<ImportEntity, ImportTemplate> = {
     uniqueKeys: [["sku"], ["barcode"]],
     columns: [
       SYSTEM_ID,
-      { key: "sku", header: "รหัสสินค้า (SKU)", required: true, type: "text", example: "CAM-4MP-01", note: "ห้ามซ้ำ" },
+      { key: "sku", header: "รหัสสินค้า (SKU)", type: "text", example: "", note: "ว่าง = ระบบออกรหัสให้ตอนนำเข้า (PRD-ปปดด-001) · ใส่เองได้ถ้ามีรหัสเดิม (ห้ามซ้ำ) · แก้รายการเดิมแล้วเว้นว่าง = คงรหัสเดิม" },
       { key: "name", header: "ชื่อสินค้า", required: true, type: "text", example: "กล้อง IP 4MP" },
       { key: "itemType", header: "ประเภท", type: "choice", example: "สินค้า", note: "สินค้า / บริการ (บริการไม่มีสต็อก)", choices: { "สินค้า": "PRODUCT", "บริการ": "SERVICE", "ค่าแรง": "SERVICE" } },
       { key: "unit", header: "หน่วย", required: true, type: "text", example: "ตัว" },
@@ -328,7 +328,7 @@ export function toCreateRequest(entity: ImportEntity, v: Record<string, any>, op
   const pack = v.packageUnit || v.unit, rate = v.conversionRate || 1;
   return {
     data: {
-      sku: v.sku, productCode: v.sku, barcode: v.barcode || "", barcodes: v.barcode ? [v.barcode] : [],
+      ...(v.sku ? { sku: v.sku, productCode: v.sku } : {}), barcode: v.barcode || "", barcodes: v.barcode ? [v.barcode] : [],
       name: v.name, productName: v.name, itemType: service ? "SERVICE" : "PRODUCT", productType: service ? "SERVICE" : "PHYSICAL",
       category: v.category || "general", subCategory: v.subCategory || "", brand: v.brand || "", model: v.model || "", mainModel: v.model || "",
       description: v.description || "", technicalSpecs: v.description || "",

@@ -15,7 +15,7 @@ describe("excel import templates", () => {
     const m = mapHeaders(t, ["หน่วย", "ชื่อสินค้า*", "รหัสสินค้า (SKU)", "คอลัมน์อื่น"]);
     expect(m.index).toMatchObject({ unit: 0, name: 1, sku: 2 });
     expect(m.unknown).toEqual(["คอลัมน์อื่น"]);
-    expect(mapHeaders(t, ["ชื่อสินค้า"]).missing).toEqual(["รหัสสินค้า (SKU)", "หน่วย"]);
+    expect(mapHeaders(t, ["ชื่อสินค้า"]).missing).toEqual(["หน่วย"]);
   });
 
   it("validates rows, skips blank rows, detects duplicates in the file", () => {
@@ -31,6 +31,16 @@ describe("excel import templates", () => {
     expect(rows[0]).toMatchObject({ values: { name: "ลูกค้า A", taxId: "0105561234567", branchCode: "00000", email: "a@x.co", creditLimit: 1000 }, errors: [] });
     expect(rows[1].errors).toEqual(expect.arrayContaining(["ไม่มีชื่อลูกค้า", expect.stringContaining("13 หลัก"), expect.stringContaining("อีเมล"), expect.stringContaining("ไม่ติดลบ")]));
     expect(rows[2].errors[0]).toContain("ซ้ำกับแถว 2");
+  });
+
+  it("leaves the product code blank for the system to issue at import", () => {
+    const t = IMPORT_TEMPLATES.products;
+    const { index } = mapHeaders(t, ["รหัสสินค้า (SKU)", "ชื่อสินค้า", "หน่วย"]);
+    const rows = parseRows(t, [["", "กล้อง A", "ตัว"], ["", "กล้อง B", "ตัว"]], index);
+    expect(rows.map((r) => r.errors)).toEqual([[], []]);
+    const req = toCreateRequest("products", rows[0].values);
+    expect(req.data).not.toHaveProperty("sku");
+    expect(req.data).not.toHaveProperty("productCode");
   });
 
   it("restores leading zeros Excel drops from numeric cells", () => {

@@ -15,6 +15,7 @@ import { MASTER_SCHEMAS, isMasterEntity, mergeRecord, splitChanges, uniqueKeyDoc
  *  - { action: "context" }                                 เครือของบริษัท จำนวนบริษัท และสิทธิ์แก้ข้อมูลกลาง
  *  - { action: "checkDuplicate", entity, data }            มีรายการที่ SKU/บาร์โค้ด/เลขผู้เสียภาษี ซ้ำในเครือหรือไม่
  *  - { action: "create", entity, id?, data, openingStock? } สร้างใหม่ (ข้อมูลกลาง + ของบริษัท)
+ *      autoSku (สินค้า, ใช้ตอนนำเข้าไฟล์): SKU ว่าง = ระบบออกรหัส PRD-ปปดด-001 ให้ (ไม่ซ้ำในเครือ) คืนใน { sku }
  *      openingStock (สินค้า): { qty, unitCost, postJournal? } รับเข้าเป็นยอดยกมา ผ่าน stock engine + บันทึกบัญชีร่าง Dr สินค้าคงเหลือ / Cr กำไรสะสม
  *      (postJournal: false = ไม่บันทึกบัญชี — ใช้เมื่อยอดสินค้าคงเหลือรวมอยู่ในงบทดลองยกมาแล้ว)
  * สินค้าที่ยังอยู่ root products (ก่อนย้ายข้อมูล): get/update ทำงานกับเอกสารเดิม
@@ -128,6 +129,24 @@ async function legacyDoc(entity: MasterEntity, id: string, companyId: string) {
   return snap;
 }
 
+/** ออกรหัสสินค้า PRD-ปปดด-NNN (รูปแบบเดียวกับฟอร์มเพิ่มสินค้า) จากตัวนับของเครือ ข้ามรหัสที่มีคนใช้แล้ว */
+async function nextAutoSku(groupId: string, companyId: string): Promise<string> {
+  const th = new Date(Date.now() + 7 * 3600_000);
+  const prefix = `PRD-${String(th.getUTCFullYear()).slice(-2)}${String(th.getUTCMonth() + 1).padStart(2, "0")}-`;
+  const counterRef = adminDb.doc(`counters/${groupId}_${prefix.slice(0, -1)}`);
+  for (let tries = 0; tries < 50; tries++) {
+    const n = await adminDb.runTransaction(async (tx) => {
+      const seq = ((await tx.get(counterRef)).data()?.seq || 0) + 1;
+      tx.set(counterRef, { seq, currentValue: seq, type: "PRD", groupId, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      return seq;
+    });
+    const sku = `${prefix}${String(n).padStart(3, "0")}`;
+    const used = (await findDuplicates(null, groupId, "products", { sku })).length || (await legacyDuplicates("products", companyId, { sku })).length;
+    if (!used) return sku;
+  }
+  throw new ApiAuthError(409, "ออกรหัสสินค้าอัตโนมัติไม่สำเร็จ — ใส่รหัสสินค้าเองแล้วลองใหม่");
+}
+
 const historyEntry = (u: ApiUser, companyId: string, action: string, changes: Record<string, any>) => ({
   at: admin.firestore.FieldValue.serverTimestamp(), by: u.uid, byName: u.email || u.uid, companyId, action, changes,
 });
@@ -184,6 +203,7 @@ export async function POST(request: Request) {
     if (action === "create") {
       const data = normalizeParty(entity, clean(body.data || {}));
       if (!str(data.name)) throw new ApiAuthError(400, `กรุณาระบุชื่อ${schema.label}`);
+      if (entity === "products" && body.autoSku === true && !str(data.sku)) data.sku = data.productCode = await nextAutoSku(groupId, companyId);
       const id = str(body.id, 120) || masterCol.doc().id;
       if (!ID.test(id)) throw new ApiAuthError(400, "รหัสไม่ถูกต้อง");
       // สร้างรายการใหม่ = ค่าที่กรอกเป็นค่ากลาง (identity + shared) ส่วนที่เหลือเป็นของบริษัท
@@ -222,7 +242,7 @@ export async function POST(request: Request) {
           });
         });
       }
-      return NextResponse.json({ success: true, id, groupId, openingStock: opening.qty });
+      return NextResponse.json({ success: true, id, groupId, openingStock: opening.qty, ...(entity === "products" ? { sku: master.sku } : {}) });
     }
 
     const id = str(body.id, 120);

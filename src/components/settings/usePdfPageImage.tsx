@@ -37,19 +37,32 @@ export async function printPdfActualSize(pdfUrl: string, dpi = 200): Promise<voi
   } finally { await doc.loadingTask.destroy(); }
   if (!pages.length) return;
   const { w, h } = pages[0];
-  const frame = document.createElement("iframe");
-  frame.setAttribute("aria-hidden", "true");
-  // กรอบพิมพ์ต้องกว้างเท่ากระดาษจริง (กรอบ 0×0 ทำให้ Chrome ย่อเนื้อหาเหลือ ~75% ชิดมุมซ้ายบน) — วางไว้นอกจอแทนการซ่อน
-  frame.style.cssText = `position:fixed;left:-20000px;top:0;width:${w}pt;height:${h}pt;border:0;opacity:0;pointer-events:none`;
-  document.body.appendChild(frame);
-  const d = frame.contentDocument!;
-  d.open();
-  d.write(`<!doctype html><html><head><meta charset="utf-8"><style>@page{size:${w}pt ${h}pt;margin:0}html,body{margin:0;padding:0;width:${w}pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}img{display:block;width:${w}pt;height:${h}pt;page-break-after:always;break-after:page}img:last-child{page-break-after:auto;break-after:auto}</style></head><body>${pages.map((p) => `<img src="${p.src}" alt="">`).join("")}</body></html>`);
-  d.close();
-  await Promise.all([...d.images].map((im) => (im.complete ? Promise.resolve() : new Promise((ok) => { im.onload = ok; im.onerror = ok; }))));
-  frame.contentWindow!.focus();
-  frame.contentWindow!.print();
-  setTimeout(() => frame.remove(), 60_000);
+  // พิมพ์จากหน้าหลักโดยตรง (ไม่ใช้ iframe — Chrome ย่อหน้าพิมพ์ใน iframe เหลือ ~75%): ระหว่างพิมพ์ซ่อนทุกอย่าง แสดงเฉพาะหน้าเอกสาร
+  document.getElementById("nexus-pdf-print")?.remove();
+  document.getElementById("nexus-pdf-print-style")?.remove();
+  const root = document.createElement("div");
+  root.id = "nexus-pdf-print";
+  root.setAttribute("aria-hidden", "true");
+  root.innerHTML = pages.map((p) => `<img src="${p.src}" alt="">`).join("");
+  const style = document.createElement("style");
+  style.id = "nexus-pdf-print-style";
+  style.textContent = `#nexus-pdf-print{display:none}
+@media print{
+  @page{size:${w}pt ${h}pt;margin:0}
+  html,body{margin:0!important;padding:0!important;width:${w}pt!important;height:auto!important;min-height:0!important;overflow:visible!important;background:#fff!important;zoom:1!important;transform:none!important}
+  body>*:not(#nexus-pdf-print){display:none!important}
+  #nexus-pdf-print{display:block!important;position:static!important;visibility:visible!important;margin:0;padding:0}
+  #nexus-pdf-print img{display:block;visibility:visible!important;width:${w}pt;height:${h}pt;max-width:none;break-after:page;page-break-after:always;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #nexus-pdf-print img:last-child{break-after:auto;page-break-after:auto}
+}`;
+  document.head.appendChild(style);
+  document.body.appendChild(root);
+  await Promise.all([...root.querySelectorAll("img")].map((im) => (im.complete ? Promise.resolve() : new Promise((ok) => { im.onload = ok; im.onerror = ok; }))));
+  const cleanup = () => { root.remove(); style.remove(); window.removeEventListener("afterprint", cleanup); };
+  window.addEventListener("afterprint", cleanup);
+  window.print();
+  // บางเบราว์เซอร์ไม่ส่ง afterprint
+  setTimeout(cleanup, 120_000);
 }
 
 /**

@@ -105,6 +105,14 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
     catch { frame.current?.contentWindow?.print(); }
     finally { setPrinting(false); }
   };
+  // Ctrl+P ระหว่างดูเอกสาร = พิมพ์เต็มกระดาษแบบเดียวกับปุ่มพิมพ์ (ไม่ใช่พิมพ์หน้าเว็บ/ตัวแสดง PDF ที่ย่อหน้า)
+  const printRef = useRef(print);
+  printRef.current = print;
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "p") { e.preventDefault(); printRef.current(); } };
+    window.addEventListener("keydown", k, true);
+    return () => window.removeEventListener("keydown", k, true);
+  }, []);
   // 50 ทวิ: ฉบับที่ 1 แนบแบบยื่น / ฉบับที่ 2 ผู้ถูกหักเก็บไว้
   const formCopies = source?.type === "wht" || !!model?.wht50;
   // ต้นฉบับ/สำเนา เฉพาะเอกสารที่ต้องมี (ใบกำกับ ใบเสร็จ ใบวางบิล ใบส่งของ ใบลดหนี้) · 50 ทวิ มีฉบับที่ 1/2
@@ -145,7 +153,7 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
           {shareDoc && (
             <PillButton variant={shareOpen ? "confirm" : "glass"} className="h-9 px-4 text-xs" onClick={() => setShareOpen((v) => !v)}><Send size={14} /> ส่ง / แชร์</PillButton>
           )}
-          <PillButton variant="glass" className="h-9 px-4 text-xs" disabled={!url || loading || printing} onClick={print}>{printing ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />} พิมพ์</PillButton>
+          <PillButton variant="glass" className="h-9 px-4 text-xs" title="พิมพ์ขนาดจริง 100% — ในหน้าต่างพิมพ์เลือกกระดาษ A4 (ถ้าเลือก Letter เบราว์เซอร์จะย่อหน้าเอกสาร)" disabled={!url || loading || printing} onClick={print}>{printing ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />} พิมพ์</PillButton>
           <a href={url || undefined} download={fileName} className={cn("h-9 px-4 rounded-full text-xs font-bold flex items-center gap-2 bg-white/10 text-white border border-white/20 hover:bg-white/20", (!url || loading) && "pointer-events-none opacity-40")}>
             <Download size={14} /> ดาวน์โหลด PDF
           </a>
@@ -155,7 +163,8 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
         <div className="flex-1 min-w-0 relative bg-black/30">
           {loading && <div className="absolute inset-0 flex items-center justify-center gap-2 text-white/50 text-sm"><Loader2 size={16} className="animate-spin" /> กำลังสร้างเอกสาร…</div>}
           {error && !loading && <div className="absolute inset-0 flex items-center justify-center text-danger text-sm px-6 text-center">{error}</div>}
-          {url && <iframe ref={frame} src={url} title={fileName} className={cn("w-full h-full border-0", loading && "opacity-0")} />}
+          {/* ซ่อนแถบเครื่องมือของตัวแสดง PDF: ปุ่มพิมพ์ในนั้นพิมพ์แบบ "พอดีพื้นที่พิมพ์" หน้าเล็กกว่ากระดาษ — พิมพ์ด้วยปุ่มพิมพ์ด้านบน (100%) */}
+          {url && <iframe ref={frame} src={`${url}#toolbar=0&navpanes=0&view=FitH`} title={fileName} className={cn("w-full h-full border-0", loading && "opacity-0")} />}
         </div>
         {shareOpen && shareDoc && (
           <aside className="w-[340px] max-w-[85vw] shrink-0 border-l border-white/10 overflow-y-auto bg-surface-0">

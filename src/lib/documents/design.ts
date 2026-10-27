@@ -462,6 +462,8 @@ export function tint(hex: string, t: number): string {
 /**
  * สีอ้างอิงธีม — กล่องในผัง/แม่แบบเก็บเป็นคำอ้างอิง เปลี่ยนชุดสีแล้วทุกส่วน (แถบ กรอบ หัวตาราง เส้น) เปลี่ยนตามกันทั้งเอกสาร
  */
+/** ขนาดตัวอักษรของกล่องที่ตั้งได้ (pt) */
+export const FONT_MIN = 3, FONT_MAX = 56;
 export const COLOR_TOKENS: Record<string, string> = { "@primary": "สีหลัก", "@accent": "สีรอง", "@soft": "สีอ่อน", "@line": "สีเส้น", "@muted": "สีจาง" };
 /** สีเส้นตาราง/กรอบตั้งต้น: สีหลักแบบอ่อน (เดิมเป็นเทาคงที่ ไม่ตามธีม) */
 export const themeLine = (t: DocTheme) => tint(t.primary, 0.72);
@@ -542,7 +544,7 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     x: num(b.x, 0, PAGE_MAX - 4, 0), y: num(b.y, 0, PAGE_MAX - 1, 0), w, h,
     ...(b.text !== undefined ? { text: str(b.text, 1000) } : {}),
     ...(b.kind === "image" && /^data:image\/(png|jpeg);base64,/.test(String(b.src || "")) && String(b.src).length < 400_000 ? { src: String(b.src) } : {}),
-    ...(b.fontSize !== undefined && b.fontSize !== null ? { fontSize: num(b.fontSize, 6, 40, 10) } : {}),
+    ...(b.fontSize !== undefined && b.fontSize !== null ? { fontSize: num(b.fontSize, FONT_MIN, FONT_MAX, 10) } : {}),
     ...(b.lineHeight !== undefined && b.lineHeight !== null ? { lineHeight: num(b.lineHeight, 1, 2.5, 1.35) } : {}),
     ...(colorOk(b.color) ? { color: b.color } : {}),
     ...(colorOk(b.bg) ? { bg: b.bg } : {}),

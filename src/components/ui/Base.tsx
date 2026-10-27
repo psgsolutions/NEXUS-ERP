@@ -130,6 +130,11 @@ export function PillSelect({ className, children, value, onChange, placeholder =
 
   useEffect(() => {
     setHighlightedIndex(-1);
+    // เปิดเมนูแล้วเลื่อนไปที่ค่าที่เลือกอยู่ (รายการยาว เช่น ขนาดตัวอักษร)
+    if (!isOpen) return;
+    const i = options.findIndex((o: any) => String(o.value ?? "") === String(value ?? ""));
+    if (i >= 0) requestAnimationFrame(() => optionRefs.current[i]?.scrollIntoView({ block: "center" }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- เลื่อนเฉพาะตอนเปิด
   }, [isOpen]);
 
   useEffect(() => {
@@ -232,7 +237,7 @@ export function PillSelect({ className, children, value, onChange, placeholder =
         anchorRef={triggerRef}
         open={isOpen}
         maxHeight={300}
-        className="bg-surface-0/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9)] p-1.5"
+        className="bg-surface-2 border border-white/10 rounded-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9)] p-1.5"
       >
           {options.map((opt: any, idx: number) => (
             <div
@@ -243,13 +248,13 @@ export function PillSelect({ className, children, value, onChange, placeholder =
                 "w-full px-4 py-2.5 rounded-xl text-left text-[14px] font-medium transition-all cursor-pointer flex items-center justify-between group border",
                 highlightedIndex === idx
                   ? "bg-white/15 border-nexus-teal/60 text-white font-bold ring-1 ring-nexus-teal/40 shadow-neon-teal"
-                  : opt.value === value 
+                  : String(opt.value) === String(value ?? "")
                     ? "bg-nexus-teal/20 border-nexus-teal/30 text-nexus-teal font-black" 
                     : "border-transparent text-white/90 hover:bg-white/10 hover:text-white"
               )}
             >
               <span className="truncate pr-2">{opt.label}</span>
-              {opt.value === value && <div className="w-1.5 h-1.5 rounded-full bg-nexus-teal shadow-neon-teal shrink-0" />}
+              {String(opt.value) === String(value ?? "") && <div className="w-1.5 h-1.5 rounded-full bg-nexus-teal shadow-neon-teal shrink-0" />}
             </div>
           ))}
       </FloatingLayer>

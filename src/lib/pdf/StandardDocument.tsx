@@ -2,7 +2,7 @@ import React from "react";
 import { Document, Ellipse, Font, Image, Page, Polygon, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import type { ColumnKey, CopyMode, DocumentModel } from "@/lib/documents/model";
 import { amountInWords, branchLabel, formatTaxId, money, qtyText, thaiDate } from "@/lib/documents/format";
-import { FONT_SCALE, SIGN_SIZE, docHasCopy, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
+import { FONT_MAX, FONT_MIN, FONT_SCALE, SIGN_SIZE, docHasCopy, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
 
 /**
  * เทมเพลตเอกสาร A4 (ใช้ร่วมทุกประเภทเอกสาร) — หน้าตาตามธีมของบริษัท (ตั้งค่า › ออกแบบเอกสาร)
@@ -563,7 +563,7 @@ export function blockContext(c: Ctx, raw: FreeBlock): Ctx {
   const own = b.fontSize !== undefined || b.lineHeight !== undefined || !!b.color || b.radius !== undefined || !!b.table || !!b.totalsStyle || !!b.partyStyle;
   const t: DocTheme = own ? {
     ...c.t,
-    ...(b.fontSize !== undefined ? { fontSize: Math.min(40, Math.max(6, b.fontSize)) } : {}),
+    ...(b.fontSize !== undefined ? { fontSize: Math.min(FONT_MAX, Math.max(FONT_MIN, b.fontSize)) } : {}),
     ...(b.color ? { text: b.color, primary: b.color, muted: b.color } : {}),
     ...(b.table ? { table: b.table } : {}), ...(b.totalsStyle ? { totals: b.totalsStyle } : {}), ...(b.partyStyle ? { party: b.partyStyle } : {}),
     ...(b.radius !== undefined ? { rounded: b.radius > 0 } : {}),

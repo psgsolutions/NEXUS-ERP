@@ -171,7 +171,7 @@ export default function DashboardPage() {
             </PillButton>
 
             {isCreateMenuOpen && (
-              <div className="absolute top-full right-0 mt-3 w-56 bg-surface-0/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[99999]">
+              <div className="absolute top-full right-0 mt-3 w-56 bg-surface-2 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[99999]">
                 <div className="p-2 space-y-1">
                   {[
                     { href: "/projects/new", perm: "projects:edit" as Permission, label: "โครงการใหม่", icon: <FolderKanban size={16} className="group-hover:text-nexus-blue" /> },

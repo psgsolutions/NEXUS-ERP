@@ -18,7 +18,7 @@ import { FloatingLayer } from "@/components/ui/FloatingLayer";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import type { DocumentModel } from "@/lib/documents/model";
 import {
-  BLOCK_LABELS, BLOCK_PARTS, LABEL_KINDS, fixedBlockSize, PAPERS, pageOf, marginsOf, refitBlocks, type Margins, type PaperSize, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
+  BLOCK_LABELS, BLOCK_PARTS, LABEL_KINDS, FONT_MIN, FONT_MAX, fixedBlockSize, PAPERS, pageOf, marginsOf, refitBlocks, type Margins, type PaperSize, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
   type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, type Letterhead,
 } from "@/lib/documents/design";
 import { fileToPageImage, usePdfPageImage } from "./usePdfPageImage";
@@ -667,7 +667,9 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     const members = groupOf(it);
     if ((e.shiftKey || e.ctrlKey || e.metaKey) && mode === "move") next = sel.includes(it.key) ? sel.filter((k) => !members.includes(k)) : [...sel, ...members.filter((k) => !sel.includes(k))];
     else if (mode === "size") next = [it.key];
-    else if (!sel.includes(it.key)) next = members; // คลิกสมาชิกกลุ่ม = เลือกทั้งกลุ่ม (ดับเบิลคลิกเพื่อแก้กล่องเดียว)
+    // คลิกสมาชิกกลุ่ม = เลือกทั้งกลุ่ม (ดับเบิลคลิกเพื่อแก้กล่องเดียว) · กล่องที่คลิกอยู่แรก: แถบรูปแบบแสดงค่าของกล่องนี้
+    else if (!sel.includes(it.key)) next = [it.key, ...members.filter((k) => k !== it.key)];
+    else if (mode === "move") next = [it.key, ...sel.filter((k) => k !== it.key)]; // คลิกกล่องในชุดที่เลือกอยู่: กล่องนี้เป็นกล่องหลัก (แสดงค่าของกล่องนี้)
     // คลิก (ไม่กด Ctrl) กล่องที่อยู่ในกลุ่มที่เลือกไว้: ลาก = ย้ายทั้งชุด · ปล่อยโดยไม่ลาก = เลือกเฉพาะกล่องนี้ (แบบ PowerPoint)
     const pick = mode === "move" && !(e.shiftKey || e.ctrlKey || e.metaKey) && sel.includes(it.key) && next.length > members.length ? members : undefined;
     setSel(next);
@@ -1280,7 +1282,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const shapeSel = selected.filter((i) => SHAPE_KINDS.includes(i.b.kind));
   // แท็บกรอบ · พื้น ใช้กับทุกกล่องที่เลือก (ข้อความก็มีกรอบ/พื้นของตัวเอง แยกจากรูปแบบตัวอักษร)
   const boxSel = selected;
-  const t0 = textSel[0]?.b, s0 = boxSel[0]?.b;
+  // ค่าที่แสดงในแถบรูปแบบ = กล่องที่คลิก (ไม่ใช่ชิ้นแรกของกลุ่ม)
+  const t0 = (primary && TEXT_BLOCKS.includes(primary.b.kind) ? primary : textSel[0])?.b, s0 = boxSel[0]?.b;
   const patchSel = (list: Item[], patch: Partial<FreeBlock> | ((b: FreeBlock) => Partial<FreeBlock>)) => { if (canEdit && list.length) applyMany(new Map(list.map((i) => [i.key, { ...i.b, ...(typeof patch === "function" ? patch(i.b) : patch) }]))); };
   const ctxTab = textSel.length && !shapeSel.length ? "ftext" : shapeSel.length ? "fshape" : null;
   // เลือกข้อความ → แท็บรูปแบบข้อความ · เลือกรูปทรง/รูปภาพ → แท็บรูปแบบรูปทรง (เหมือนแท็บตามบริบทของ Office)
@@ -1288,7 +1291,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     // แท็บรูปแบบที่เปิดอยู่ยังใช้ได้กับกล่องที่เลือก = คงไว้ (จัดรูปแบบกลุ่มที่ลากคลุมต่อได้)
     setRtab((t) => {
       if ((t === "ftext" && textSel.length) || (t === "fshape" && boxSel.length)) return t;
-      if (multi) return "arrange";
+      // เลือกหลายกล่องที่เป็นข้อความทั้งหมด (เช่น หัวข้อ+ข้อมูลที่จับคู่) = แท็บรูปแบบข้อความ
+      if (multi && !(textSel.length === selected.length && !shapeSel.length)) return "arrange";
       return ctxTab || (t === "ftext" || t === "fshape" ? "insert" : t);
     });
   }, [ctxTab, sel.join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1305,7 +1309,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     const dx = axis === "y" ? 0 : (P.w - (R - L)) / 2 - L, dy = axis === "x" ? 0 : (P.h - (B - T)) / 2 - T;
     applyMany(new Map(selected.filter((i) => !i.b.locked).map((i) => [i.key, { ...i.b, x: i.b.x + dx, y: i.b.y + dy }])));
   };
-  const SIZES = [7, 8, 9, 9.5, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 40];
+  const SIZES = [3, 4, 5, 6, 7, 8, 9, 9.5, 10, 10.5, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 32, 36, 40, 44, 48, 56];
   const textSize = t0 ? t0.fontSize ?? theme.fontSize : theme.fontSize;
   const colorChips = (value: string | undefined, onPick: (v: string | undefined) => void, none?: string) => (
     <div className="flex items-center gap-1">
@@ -1533,10 +1537,10 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                   {(Object.keys(FONT_LABELS) as FontFamily[]).map((f) => <option key={f} value={f}>{FONT_LABELS[f].split(" (")[0]}</option>)}
                 </RSelect>
                 <RSelect width={72} title="ขนาดตัวอักษร (pt)" value={String(textSize)} onChange={(v) => patchSel(textSel, { fontSize: Number(v) })}>
-                  {[...new Set([...SIZES, textSize])].sort((a, b) => a - b).map((v) => <option key={v} value={String(v)}>{v}</option>)}
+                  {[...new Set([...SIZES, textSize])].sort((a, b) => a - b).map((v) => <option key={v} value={String(v)}>{Math.round(v * 100) / 100}</option>)}
                 </RSelect>
-                <RIcon title="ตัวใหญ่ขึ้น" onClick={() => patchSel(textSel, (b) => ({ fontSize: Math.min(40, (b.fontSize ?? theme.fontSize) + 1) }))}><span className="font-bold">A+</span></RIcon>
-                <RIcon title="ตัวเล็กลง" onClick={() => patchSel(textSel, (b) => ({ fontSize: Math.max(6, (b.fontSize ?? theme.fontSize) - 1) }))}><span className="font-bold">A−</span></RIcon>
+                <RIcon title="ตัวใหญ่ขึ้น" onClick={() => patchSel(textSel, (b) => ({ fontSize: Math.min(FONT_MAX, (b.fontSize ?? theme.fontSize) + 1) }))}><span className="font-bold">A+</span></RIcon>
+                <RIcon title="ตัวเล็กลง" onClick={() => patchSel(textSel, (b) => ({ fontSize: Math.max(FONT_MIN, (b.fontSize ?? theme.fontSize) - 1) }))}><span className="font-bold">A−</span></RIcon>
               </div>
               <div className="flex items-center gap-0.5">
                 <RIcon title="ตัวหนา" on={!!t0.bold} onClick={() => patchSel(textSel, { bold: !t0.bold || undefined })}><Bold size={15} /></RIcon>
@@ -1640,7 +1644,16 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         <RIcon title="ทำซ้ำ (Ctrl+Y)" disabled={!history.canRedo || !canEdit} onClick={redo}><Redo2 size={14} /></RIcon>
         <span className="w-px h-5 bg-white/10 mx-0.5" />
         <PillTabs className="flex-1 min-w-0" tabs={tabs.map((t) => ({ id: t.id, label: t.label, icon: t.ctx ? <Paintbrush /> : undefined }))} activeTab={ui.ribbon ? rtab : ""} onTabChange={(id) => { setRtab(id); if (!ui.ribbon) setUiPart({ ribbon: true }); }} />
-        <span className="ml-auto text-[11.5px] text-white/40 pr-1 hidden xl:inline">{selected.length ? `เลือก ${selected.length} กล่อง · Ctrl+คลิก เลือกเพิ่ม/ลด` : "คลิกกล่องเพื่อแก้ · ลากคลุมเพื่อเลือกหลายกล่อง"}</span>
+        {/* ค่าที่ตั้งไว้ของกล่องที่คลิก: ขนาดตัวอักษร ขนาด ตำแหน่ง (pt) — เห็นทันทีไม่ต้องเปิดแผง */}
+        {primary ? (
+          <span className="ml-auto pr-1 flex items-center gap-2 text-[11.5px] text-white/50 whitespace-nowrap" data-sel-info>
+            {multi && <span>เลือก {selected.length} กล่อง ·</span>}
+            <span className="text-white/75">{primary.b.kind === "field" ? (primary.b.show === "label" ? "หัวข้อ" : primary.b.hideLabel ? "ข้อมูล" : BLOCK_LABELS.field) : BLOCK_LABELS[primary.b.kind]}</span>
+            {TEXT_BLOCKS.includes(primary.b.kind) && <span>อักษร <b className="text-nexus-teal font-semibold">{Math.round((primary.b.fontSize ?? theme.fontSize) * 100) / 100}</b> pt</span>}
+            <span>กว้าง <b className="text-white/80 font-semibold">{Math.round(primary.b.w * 10) / 10}</b> × สูง <b className="text-white/80 font-semibold">{Math.round(primary.b.h * 10) / 10}</b></span>
+            <span className="hidden 2xl:inline">ซ้าย {Math.round(primary.b.x * 10) / 10} · บน {Math.round(primary.b.y * 10) / 10}</span>
+          </span>
+        ) : <span className="ml-auto text-[11.5px] text-white/40 pr-1 hidden xl:inline">คลิกกล่องเพื่อแก้ · ลากคลุมเพื่อเลือกหลายกล่อง</span>}
         <RIcon title={ui.pin ? "เลิกปักหมุดแถบเครื่องมือ (เลื่อนไปกับหน้า)" : "ปักหมุดแถบเครื่องมือ (ติดบนจอ ไม่เลื่อนตามหน้า)"} on={ui.pin} onClick={() => setUiPart({ pin: !ui.pin })}>{ui.pin ? <PinOff size={15} /> : <Pin size={15} />}</RIcon>
         <RIcon title={ui.ribbon ? "ย่อแถบเครื่องมือ (เหลือชื่อแท็บ)" : "ขยายแถบเครื่องมือ"} onClick={() => setUiPart({ ribbon: !ui.ribbon })}>{ui.ribbon ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</RIcon>
       </div>

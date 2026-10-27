@@ -143,6 +143,14 @@ export interface FreeBlock {
   locked?: boolean;
   /** กลุ่ม: กล่องที่มีรหัสกลุ่มเดียวกันเลือกและย้ายไปพร้อมกัน */
   group?: string;
+  /** ช่องหัวข้อ (field show "label"): plain = ตัวปกติไม่มี " :" (เช่น ป้ายเลขที่ หัวกล่องลูกค้า) · inline = ข้อความต่อบรรทัดเดียวกับข้อมูล ไม่มีป้ายอังกฤษ */
+  labelStyle?: "plain" | "inline";
+  /** ชิ้นที่แยกจากกล่องเดียวกัน (รหัสชุด) — รวมกลับเป็นกล่องเดิมได้ · origin/originAt = กล่องเดิมและตำแหน่งชิ้นนี้ตอนแยก (เก็บที่ชิ้นเดียว) */
+  split?: string;
+  origin?: FreeBlock;
+  originAt?: [number, number];
+  /** ซ่อนชิ้นนี้ (ติ๊กไม่แสดงในรายการหัวข้อของชุดที่แยก) — ไม่พิมพ์ ไม่นับเป็นข้อมูลที่แสดง */
+  off?: boolean;
 }
 export interface FreeLayout {
   enabled: boolean; blocks: FreeBlock[];
@@ -305,7 +313,7 @@ export const SPLIT_EQUIV: Partial<Record<BlockKind, string[]>> = {
 export function requiredSatisfied(kind: BlockKind, blocks: FreeBlock[]): boolean {
   if (blocks.some((b) => b.kind === kind)) return true;
   const eq = SPLIT_EQUIV[kind];
-  return !!eq && eq.every((f) => blocks.some((b) => (b.kind === "field" && b.field === f && b.show !== "label") || (b.kind === "info" && (b.fields || []).includes(f))));
+  return !!eq && eq.every((f) => blocks.some((b) => (b.kind === "field" && b.field === f && b.show !== "label" && !b.off) || (b.kind === "info" && (b.fields || []).includes(f))));
 }
 
 /** เอกสารที่ไม่มียอดเงิน (ไม่ต้องมีกล่องยอดรวม/จำนวนเงินตัวอักษร) */
@@ -454,7 +462,7 @@ export function tint(hex: string, t: number): string {
 /**
  * สีอ้างอิงธีม — กล่องในผัง/แม่แบบเก็บเป็นคำอ้างอิง เปลี่ยนชุดสีแล้วทุกส่วน (แถบ กรอบ หัวตาราง เส้น) เปลี่ยนตามกันทั้งเอกสาร
  */
-export const COLOR_TOKENS: Record<string, string> = { "@primary": "สีหลัก", "@accent": "สีรอง", "@soft": "สีอ่อน", "@line": "สีเส้น" };
+export const COLOR_TOKENS: Record<string, string> = { "@primary": "สีหลัก", "@accent": "สีรอง", "@soft": "สีอ่อน", "@line": "สีเส้น", "@muted": "สีจาง" };
 /** สีเส้นตาราง/กรอบตั้งต้น: สีหลักแบบอ่อน (เดิมเป็นเทาคงที่ ไม่ตามธีม) */
 export const themeLine = (t: DocTheme) => tint(t.primary, 0.72);
 export function resolveColor(v: string | undefined, t: DocTheme): string | undefined {
@@ -464,6 +472,7 @@ export function resolveColor(v: string | undefined, t: DocTheme): string | undef
     case "@accent": return t.accent;
     case "@soft": return tint(t.accent, 0.88);
     case "@line": return themeLine(t);
+    case "@muted": return t.muted;
     default: return v;
   }
 }
@@ -580,12 +589,22 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(colorOk(b.lineColor) ? { lineColor: b.lineColor } : {}),
     ...(b.locked ? { locked: true } : {}),
     ...(/^[a-z0-9-]{1,40}$/.test(String(b.group || "")) ? { group: String(b.group) } : {}),
+    ...(b.kind === "field" && (b.labelStyle === "plain" || b.labelStyle === "inline") ? { labelStyle: b.labelStyle } : {}),
+    ...(/^[a-z0-9-]{1,40}$/.test(String(b.split || "")) ? { split: String(b.split) } : {}),
+    ...(() => {
+      // กล่องเดิมของชุดที่แยก (ไม่ซ้อนชั้น)
+      if (!b.split || !b.origin || typeof b.origin !== "object" || b.origin.split || b.origin.origin) return {};
+      const o = normalizeBlock(b.origin, 0);
+      const at = Array.isArray(b.originAt) && b.originAt.length === 2 ? [num(b.originAt[0], -PAGE_MAX, PAGE_MAX, 0), num(b.originAt[1], -PAGE_MAX, PAGE_MAX, 0)] as [number, number] : null;
+      return o && at ? { origin: o, originAt: at } : {};
+    })(),
+    ...(b.off ? { off: true } : {}),
   };
 }
 
 /** เลขที่/วันที่ต้องปรากฏเสมอ (ม.86/4): ดูจากกล่องเลขที่ ช่องข้อมูล หรือข้อความที่มี {{number}}/{{date}} */
 export function legalFieldVisible(blocks: FreeBlock[], key: "number" | "date"): boolean {
-  return blocks.some((b) => (b.kind === "meta" && !(b.hide || []).includes(key)) || (b.kind === "field" && b.field === key && b.show !== "label") || (b.kind === "info" && (b.fields || []).includes(key)) || (b.kind === "text" && (b.text || "").includes(`{{${key}}}`)));
+  return blocks.some((b) => (b.kind === "meta" && !(b.hide || []).includes(key)) || (b.kind === "field" && b.field === key && b.show !== "label" && !b.off) || (b.kind === "info" && (b.fields || []).includes(key)) || (b.kind === "text" && (b.text || "").includes(`{{${key}}}`)));
 }
 /** คืนเลขที่/วันที่ที่ถูกซ่อนโดยไม่มีที่แสดงอื่น (แก้ในกล่องเลขที่ของผังเอกสารก่อน ไม่มีจึงแก้ในหัวกระดาษ) */
 function restoreLegalFields(free: FreeLayout | undefined, lh: Letterhead | undefined) {

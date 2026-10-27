@@ -9,7 +9,7 @@ import type { DocumentModel } from "@/lib/documents/model";
  * คืน model ที่ใช้วาดด้วย เพื่อรู้ตำแหน่งกล่อง ณ ตอนวาด (ใช้ตัดภาพกล่องที่กำลังลากให้เลื่อนตามเมาส์)
  */
 let pdfjsReady: Promise<typeof import("pdfjs-dist")> | null = null;
-const loadPdfjs = () => (pdfjsReady ||= import("pdfjs-dist").then((m) => {
+export const loadPdfjs = () => (pdfjsReady ||= import("pdfjs-dist").then((m) => {
   m.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
   return m;
 }));

@@ -8,7 +8,7 @@ import {
   Bold, Type, Stamp as StampIcon, MoreHorizontal, Image as ImageIcon, TextCursorInput, BringToFront, SendToBack, ChevronLeft, PanelBottom,
   Circle, Triangle, RotateCcw, StretchHorizontal, StretchVertical,
   Italic, Underline, Strikethrough, AlignJustify, ChevronUp, ChevronDown, ChevronRight, PanelRightClose, PanelRightOpen,
-  ArrowUpToLine, ArrowDownToLine, BoxSelect, Sigma, PenLine, RectangleHorizontal, RectangleVertical, Scan, Move, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Ruler as RulerIcon, Grid3x3, Paintbrush, ZoomIn,
+  ArrowUpToLine, ArrowDownToLine, BoxSelect, Sigma, PenLine, RectangleHorizontal, RectangleVertical, Scan, Move, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Ruler as RulerIcon, Grid3x3, Paintbrush, ZoomIn, Merge, ListChecks,
 } from "lucide-react";
 import { templateLayout } from "@/lib/documents/layout-templates";
 import { DataChecklist } from "./DataChecklist";
@@ -205,7 +205,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   // ขนาดหน้า (กระดาษ/แนวที่ตั้ง) · ขอบกระดาษแต่ละด้าน [บน ขวา ล่าง ซ้าย]
   const P = pageOf(layout);
   // ทดสอบอัตโนมัติ (เฉพาะโหมดพัฒนา): ให้สคริปต์ตรวจปุ่มอ่านผังปัจจุบันได้
-  useEffect(() => { if (process.env.NODE_ENV !== "production") (window as any).__nexusDesigner = { layout, letterhead }; });
+  useEffect(() => { if (process.env.NODE_ENV !== "production") (window as any).__nexusDesigner = { layout, letterhead, select: setSel }; }, [layout, letterhead]);
   const M = marginsOf(layout);
   const [sel, setSel] = useState<string[]>([]);
   // พิมพ์ข้อความบนกระดาษ (ดับเบิลคลิกกล่องข้อความ)
@@ -291,8 +291,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   // ตราประทับ/ลายเซ็น: ขนาดจริงเสมอ (ย่อ/ขยายไม่ได้)
   const sized = (b: FreeBlock): FreeBlock => { const f = fixedBlockSize(b, stampSize, theme.fontSize); return f ? { ...b, ...f } : b; };
   const items: Item[] = [
-    ...(letterhead?.blocks || []).map((b) => ({ key: `h:${b.id}`, zone: "head" as Zone, b: sized(b) })),
-    ...(bodyOn ? layout.blocks.filter((b) => !headKinds.has(b.kind)).map((b) => ({ key: `d:${b.id}`, zone: "doc" as Zone, b: sized(b) })) : []),
+    ...(letterhead?.blocks || []).filter((b) => !b.off).map((b) => ({ key: `h:${b.id}`, zone: "head" as Zone, b: sized(b) })),
+    ...(bodyOn ? layout.blocks.filter((b) => !headKinds.has(b.kind) && !b.off).map((b) => ({ key: `d:${b.id}`, zone: "doc" as Zone, b: sized(b) })) : []),
   ];
   const byKey = new Map(items.map((i) => [i.key, i]));
   const selected = sel.map((k) => byKey.get(k)).filter((x): x is Item => !!x);
@@ -320,9 +320,9 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     const w = Math.max(0.25, Math.min(P.w, b.w)), h = Math.max(0.25, Math.min(P.h, b.h));
     return { ...b, w, h, x: Math.max(0, Math.min(P.w - w, b.x)), y: Math.max(0, Math.min(P.h - h, b.y)) };
   };
-  /** แก้หลายกล่องพร้อมกัน (null = ลบ) และเพิ่มกล่องใหม่ */
-  const applyMany = (next: Map<string, FreeBlock | null>, adds: { zone: Zone; b: FreeBlock }[] = []) => {
-    const map = (prefix: string, list: FreeBlock[]) => list.flatMap((b) => { const k = `${prefix}:${b.id}`; if (!next.has(k)) return [b]; const n = next.get(k); return n ? [clamp(n)] : []; });
+  /** แก้หลายกล่องพร้อมกัน (null = ลบ · หลายกล่อง = แทนที่ตรงชั้นเดิม) และเพิ่มกล่องใหม่ */
+  const applyMany = (next: Map<string, FreeBlock | FreeBlock[] | null>, adds: { zone: Zone; b: FreeBlock }[] = []) => {
+    const map = (prefix: string, list: FreeBlock[]) => list.flatMap((b) => { const k = `${prefix}:${b.id}`; if (!next.has(k)) return [b]; const n = next.get(k); return Array.isArray(n) ? n.map(clamp) : n ? [clamp(n)] : []; });
     const headAdds = adds.filter((a) => a.zone === "head").map((a) => a.b), docAdds = adds.filter((a) => a.zone === "doc").map((a) => a.b);
     if (letterhead && ([...next.keys()].some((k) => k.startsWith("h:")) || headAdds.length)) commitHead({ ...letterhead, blocks: [...map("h", letterhead.blocks), ...headAdds] });
     if ([...next.keys()].some((k) => k.startsWith("d:")) || docAdds.length) commitLayout({ ...layout, blocks: [...map("d", layout.blocks), ...docAdds] });
@@ -393,7 +393,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
    * แยกป้ายกับข้อมูลเป็นกล่องอิสระ (เหมือนกล่องข้อความใน PowerPoint/Visio): หัวข้อ 1 กล่อง ข้อมูล 1 กล่อง ต่อแถว
    * ลากวางแยกกันได้ (หัวข้อบน ข้อมูลล่าง / เว้นระยะ) · กรอบ/พื้นหลังของกล่องเดิมแยกเป็นกรอบอีกชิ้น
    */
-  const explode = (it: Item) => {
+  const explodeApprox = (it: Item) => {
     const b = it.b, rows = splitRows(b);
     if (!rows.length) return;
     const fs = (b.fontSize ?? theme.fontSize) * FONT_SCALE[font];
@@ -427,6 +427,89 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     applyMany(new Map([[it.key, null]]), adds);
     setSel(adds.filter((a) => a.b.kind === "field").map((a) => `${a.zone === "head" ? "h" : "d"}:${a.b.id}`));
   };
+  /**
+   * แยกหัวข้อกับข้อมูลให้หน้าตาเหมือนเดิมทุกประการ (ขนาด/รูปแบบอักษร ลำดับ ตำแหน่ง) — วัดจาก PDF จริงของกล่อง (explodeExact)
+   * เก็บกล่องเดิมไว้ที่ชิ้นแรก: รวมกลับเป็นกล่องเดิมได้ · วัดไม่ได้ใช้แบบประมาณ
+   */
+  const [splitting, setSplitting] = useState(false);
+  const live = useRef({ applyMany, byKey });
+  live.current = { applyMany, byKey };
+  const explode = async (it: Item) => {
+    if (splitting) return;
+    setSplitting(true);
+    try {
+      const { explodeExact } = await import("./explodeExact");
+      const pieces = model ? await explodeExact(model, it.b, P).catch((e) => { console.warn("[explode]", e); return null; }) : null;
+      if (!live.current.byKey.has(it.key)) return;
+      if (!pieces?.length) { explodeApprox(it); return; }
+      const sid = newGroupId();
+      const { split: _s, origin: _o, originAt: _a, ...orig } = it.b; void _s; void _o; void _a;
+      const adds = pieces.map((b, i) => ({ zone: it.zone, b: { ...b, split: sid, ...(i === 0 ? { origin: orig, originAt: [b.x, b.y] as [number, number] } : {}) } }));
+      // ชิ้นอยู่ชั้นเดียวกับกล่องเดิม (ไม่ลอยขึ้นบนสุด)
+      live.current.applyMany(new Map([[it.key, adds.map((a) => a.b)]]));
+      setSel(adds.filter((a) => a.b.kind === "field").map((a) => `${a.zone === "head" ? "h" : "d"}:${a.b.id}`));
+    } finally { setSplitting(false); }
+  };
+  /** ทุกชิ้นของชุดที่แยกจากกล่องเดียวกัน (รวมชิ้นที่ซ่อน) */
+  const splitPieces = (sid: string) => [
+    ...(letterhead?.blocks || []).filter((b) => b.split === sid).map((b) => ({ key: `h:${b.id}`, zone: "head" as Zone, b })),
+    ...layout.blocks.filter((b) => b.split === sid).map((b) => ({ key: `d:${b.id}`, zone: "doc" as Zone, b })),
+  ];
+  const selSplits = [...new Set(selected.map((i) => i.b.split).filter((x): x is string => !!x))];
+  const canMerge = canEdit && selSplits.some((sid) => splitPieces(sid).some((p) => p.b.origin));
+  /** รวมชิ้นที่แยกกลับเป็นกล่องเดิม (ตามตำแหน่งที่ย้ายไปของชิ้นแรก) */
+  const mergeSplit = () => {
+    const next = new Map<string, FreeBlock | FreeBlock[] | null>(), merged: { zone: Zone; b: FreeBlock }[] = [];
+    for (const sid of selSplits) {
+      const all = splitPieces(sid), holder = all.find((p) => p.b.origin && p.b.originAt);
+      if (!holder) continue;
+      const o = holder.b.origin!, [ax, ay] = holder.b.originAt!;
+      all.forEach((p) => next.set(p.key, null));
+      // กล่องเดิมกลับไปที่ชั้นของชิ้นแรก (ชั้นเดิมก่อนแยก)
+      const nb: FreeBlock = { ...o, id: `${o.kind}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, x: o.x + holder.b.x - ax, y: o.y + holder.b.y - ay };
+      next.set(holder.key, nb);
+      merged.push({ zone: holder.zone, b: nb });
+    }
+    if (!merged.length) return;
+    applyMany(next);
+    setSel(merged.map((a) => `${a.zone === "head" ? "h" : "d"}:${a.b.id}`));
+  };
+  /** ข้อมูลที่กฎหมายบังคับต้องแสดง (ซ่อนข้อมูลไม่ได้ ซ่อนได้เฉพาะหัวข้อ) */
+  const LEGAL_KEYS = ["seller.name", "seller.address", "seller.taxId", "customer.name", "customer.address", "customer.taxId", "number", "date", "title", "copy"];
+  /** รายการหัวข้อในชุดที่แยก: ติ๊กแสดงหัวข้อ / ข้อมูล แต่ละแถว */
+  const splitChecklist = (sid: string) => {
+    const all = splitPieces(sid).filter((p) => p.b.kind === "field" && p.b.field);
+    const keys = [...new Set(all.slice().sort((a, b) => a.b.y - b.b.y || a.b.x - b.b.x).map((p) => p.b.field!))];
+    const setOff = (list: typeof all, off: boolean) => applyMany(new Map(list.map((p) => [p.key, { ...p.b, off: off || undefined }])));
+    return (
+      <div className="space-y-1">
+        <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 px-1 text-[10.5px] text-white/45"><span>หัวข้อในกล่อง</span><span>หัวข้อ</span><span>ข้อมูล</span></div>
+        {keys.map((k) => {
+          const labels = all.filter((p) => p.b.field === k && p.b.show === "label"), values = all.filter((p) => p.b.field === k && p.b.show !== "label");
+          // ชิ้นเดียวที่มีทั้งป้ายและข้อมูล (ข้อความต่อกันที่ตัดบรรทัด): ติ๊กหัวข้อ = แสดง/ซ่อนป้ายในชิ้นนั้น
+          const combined = values.filter((p) => p.b.labelStyle === "inline" || (!p.b.hideLabel && p.b.show !== "label"));
+          const addLabel = () => {
+            // ยังไม่มีหัวข้อ: วางหัวข้อหน้าข้อมูล แล้วเลื่อนข้อมูลไปทางขวา
+            const v = values[0];
+            if (!v) return;
+            const fs = (v.b.fontSize ?? theme.fontSize) * FONT_SCALE[font], lw = Math.round(Math.min(v.b.w * 0.6, Math.max(20, fieldLabel(k).length * fs * 0.55 + 6)));
+            const lb: FreeBlock = { id: `field-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, kind: "field", field: k, show: "label", split: sid, x: v.b.x, y: v.b.y, w: lw, h: v.b.h, ...(v.b.fontSize !== undefined ? { fontSize: v.b.fontSize } : {}), ...(v.b.lineHeight !== undefined ? { lineHeight: v.b.lineHeight } : {}), ...(v.b.color ? { color: v.b.color } : {}), ...(v.b.font ? { font: v.b.font } : {}), group: v.b.group || newGroupId() };
+            applyMany(new Map([[v.key, { ...v.b, group: lb.group, x: v.b.x + lw + 4, w: Math.max(20, v.b.w - lw - 4), align: v.b.align === "center" ? "left" : v.b.align }]]), [{ zone: v.zone, b: lb }]);
+          };
+          return (
+            <div key={k} className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 rounded-lg px-1 py-0.5 hover:bg-white/[0.04]">
+              <span className="text-[12px] text-white/80 truncate">{fieldLabel(k)}</span>
+              <input type="checkbox" aria-label={`แสดงหัวข้อ ${fieldLabel(k)}`} className="accent-[#0d9488] h-4 w-4" disabled={!canEdit} checked={labels.some((p) => !p.b.off) || combined.some((p) => !p.b.hideLabel)} onChange={(e) => (labels.length ? setOff(labels, !e.target.checked) : combined.length ? applyMany(new Map(combined.map((p) => [p.key, { ...p.b, hideLabel: e.target.checked ? undefined : true }]))) : e.target.checked && addLabel())} />
+              <input type="checkbox" aria-label={`แสดงข้อมูล ${fieldLabel(k)}`} title={LEGAL_KEYS.includes(k) ? "ข้อมูลนี้กฎหมายกำหนดให้แสดง (ซ่อนได้เฉพาะหัวข้อ)" : undefined} className="accent-[#0d9488] h-4 w-4" disabled={!canEdit || !values.length || LEGAL_KEYS.includes(k)} checked={values.some((p) => !p.b.off)} onChange={(e) => setOff(values, !e.target.checked)} />
+            </div>
+          );
+        })}
+        <p className="px-1 text-[10.5px] text-white/40 leading-relaxed">ไม่ติ๊ก = ไม่พิมพ์ (ตำแหน่งเดิมยังอยู่ ติ๊กกลับได้) · ข้อมูลที่กฎหมายกำหนดซ่อนได้เฉพาะหัวข้อ</p>
+      </div>
+    );
+  };
+  /** กล่องที่แยกหัวข้อกับข้อมูลได้ */
+  const explodable = (it: Item | null) => !!it && canEdit && !it.b.split && (SPLITTABLE.includes(it.b.kind) || it.b.kind === "info" || (it.b.kind === "field" && !it.b.hideLabel && it.b.show !== "label"));
   /** แปลงกล่องผู้ขาย/ลูกค้า/เลขที่ เป็นกล่องข้อมูล: หัวข้อเท่าที่แสดงอยู่ แล้วติ๊กเพิ่ม/ลด/เรียงเองได้ */
   const toInfo = (it: Item) => {
     const b = it.b, hide = new Set(b.hide || []);
@@ -442,7 +525,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
 
   /** ทำสำเนากล่องที่เลือก (กล่องที่มีได้ชุดเดียว เช่น ตาราง ยอดรวม ทำซ้ำไม่ได้) */
   const duplicate = () => {
-    const adds = selected.filter((i) => !SINGLE.includes(i.b.kind)).map((i) => ({ zone: i.zone, b: { ...i.b, id: `${i.b.kind}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, x: i.b.x + 10, y: i.b.y + 10, locked: undefined } }));
+    const adds = selected.filter((i) => !SINGLE.includes(i.b.kind)).map((i) => ({ zone: i.zone, b: { ...i.b, id: `${i.b.kind}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, x: i.b.x + 10, y: i.b.y + 10, locked: undefined, split: undefined, origin: undefined, originAt: undefined } }));
     if (!adds.length) return;
     applyMany(new Map(), adds);
     setSel(adds.map((a) => `${a.zone === "head" ? "h" : "d"}:${a.b.id}`));
@@ -926,7 +1009,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                 <option value="both">หัวข้อ : ข้อมูล</option><option value="label">เฉพาะหัวข้อ</option><option value="value">เฉพาะข้อมูล</option>
               </PillSelect>
             </Field>
-            {canEdit && !b.hideLabel && b.show !== "label" && <PillButton variant="glass" className="h-8 px-3 text-xs w-full" onClick={() => explode(it)}><Split size={13} /> แยกหัวข้อกับข้อมูล (ลากวางแยกกันได้)</PillButton>}
+            {canEdit && !b.hideLabel && b.show !== "label" && !b.split && <PillButton variant="glass" className="h-8 px-3 text-xs w-full" disabled={splitting} onClick={() => explode(it)}><Split size={13} /> แยกหัวข้อกับข้อมูล (ลากวางแยกกันได้)</PillButton>}
           </div>
         )}
 
@@ -1074,9 +1157,15 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         {canEdit && (SPLITTABLE.includes(b.kind) || b.kind === "info") && (
           <div className="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] p-2.5 space-y-1.5">
             <p className="text-[11.5px] text-white/65 leading-relaxed">จัดวางเอง: แยกหัวข้อกับข้อมูลเป็นคนละชิ้น (ข้อมูลยังดึงจากฐานข้อมูลเหมือนเดิม) · หัวข้อกับข้อมูลแถวเดียวกันจับคู่กัน: ลาก = ย้ายไปด้วยกัน · ดับเบิลคลิกแล้วลาก = ย้ายชิ้นเดียว · กรอบ/พื้นหลังแยกเป็นกรอบอีกชิ้น</p>
-            {b.kind !== "title" && <PillButton variant="primary" className="h-8 px-3 text-xs w-full" onClick={() => explode(it)}><Split size={13} /> แยกหัวข้อกับข้อมูลทุกแถว</PillButton>}
+            <PillButton variant="primary" className="h-8 px-3 text-xs w-full" disabled={splitting} onClick={() => explode(it)}><Split size={13} /> แยกหัวข้อกับข้อมูลทุกแถว (หน้าตาเหมือนเดิม)</PillButton>
             {b.kind !== "info" && <PillButton variant="glass" className="h-8 px-3 text-xs w-full" onClick={() => splitBlock(it)}><Split size={13} /> แยกเป็นแถว (หัวข้อ : ข้อมูล อยู่ด้วยกัน)</PillButton>}
             {b.kind !== "title" && b.kind !== "info" && <PillButton variant="glass" className="h-8 px-3 text-xs w-full" onClick={() => toInfo(it)}><Rows3 size={13} /> เปลี่ยนเป็นกล่องข้อมูล (ติ๊กเลือก/เรียงหัวข้อเอง)</PillButton>}
+          </div>
+        )}
+        {b.split && (
+          <div className="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] p-2.5 space-y-2">
+            {splitChecklist(b.split)}
+            {splitPieces(b.split).some((p) => p.b.origin) && <PillButton variant="glass" className="h-8 px-3 text-xs w-full" disabled={!canEdit} onClick={mergeSplit}><Merge size={13} /> รวมกลับเป็นกล่องเดิม</PillButton>}
           </div>
         )}
         {b.group && <p className="text-[11.5px] text-purple-200/80 flex items-center gap-1"><GroupIcon size={12} /> อยู่ในกลุ่ม — คลิกเลือกทั้งกลุ่ม · ดับเบิลคลิกแก้กล่องเดียว</p>}
@@ -1282,6 +1371,13 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           <RGroup label="ชุดเดียวกัน">
             <RBtn icon={<GroupIcon size={18} />} label="จัดกลุ่ม" title="รวมข้อความ เส้น กรอบ ที่เลือกเป็นชุดเดียว ลากไปพร้อมกัน (Ctrl+G)" disabled={selected.length < 2 || !canEdit} onClick={groupSelected} />
             <RBtn icon={<Ungroup size={18} />} label="แยกกลุ่ม" title="แยกกลุ่ม (Ctrl+Shift+G)" disabled={!anyGrouped || !canEdit} onClick={ungroupSelected} />
+          </RGroup>
+          <RGroup label="หัวข้อ : ข้อมูล">
+            <RBtn icon={splitting ? <Loader2 size={18} className="animate-spin" /> : <Split size={18} />} label="แยกหัวข้อ" title="แยกหัวข้อกับข้อมูลของกล่องที่เลือกเป็นชิ้นอิสระ — ขนาด รูปแบบอักษร และตำแหน่งเหมือนเดิมทุกประการ" disabled={splitting || !explodable(primary)} onClick={() => primary && explode(primary)} />
+            <RMenu icon={<ListChecks size={18} />} label="หัวข้อในกล่อง" width={260} disabled={!primary?.b.split}>
+              {() => (primary?.b.split ? splitChecklist(primary.b.split) : null)}
+            </RMenu>
+            <RBtn icon={<Merge size={18} />} label="รวมกล่อง" title="รวมชิ้นที่แยกกลับเป็นกล่องเดิม" disabled={!canMerge} onClick={mergeSplit} />
           </RGroup>
           <RGroup label="มุมมอง">
             <RSelect width={136} title="ขนาดกระดาษบนจอ" value={String(zoom)} onChange={(v) => setZoom(v === "fit" ? "fit" : Number(v))}>

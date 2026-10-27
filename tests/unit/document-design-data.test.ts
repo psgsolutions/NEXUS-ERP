@@ -170,3 +170,35 @@ describe("design tools: shapes, corners, flow, margins, blank page, document rul
     expect(templateLayout("standard", "work_order", theme).blocks.some((b) => b.kind === "notes")).toBe(true);
   });
 });
+
+describe("split pieces: label styles, hidden pieces, merge back", () => {
+  it("keeps the split set, the original box once, label styles and hidden flags", async () => {
+    const { normalizeFreeLayout } = await import("@/lib/documents/design");
+    const meta = { id: "m", kind: "meta", x: 300, y: 40, w: 240, h: 60, hide: ["m:อ้างอิง"] };
+    const out = normalizeFreeLayout({ enabled: true, blocks: [
+      { id: "a", kind: "field", field: "number", show: "label", labelStyle: "plain", split: "g-1", origin: meta, originAt: [310, 42], x: 310, y: 42, w: 70, h: 14 },
+      { id: "b", kind: "field", field: "number", hideLabel: true, split: "g-1", x: 386, y: 42, w: 90, h: 14, off: true },
+      { id: "c", kind: "field", field: "seller.taxId", labelStyle: "inline", split: "g-1", x: 10, y: 10, w: 200, h: 14 },
+      { id: "d", kind: "field", field: "date", labelStyle: "fancy", split: "BAD ID!", origin: { ...meta, split: "x" }, originAt: [1, 2], x: 1, y: 1, w: 50, h: 12 },
+    ] }, "quotation")!;
+    const [a, b, c, d] = out.blocks;
+    expect(a).toMatchObject({ labelStyle: "plain", split: "g-1", originAt: [310, 42], origin: { kind: "meta", x: 300, w: 240, hide: ["m:อ้างอิง"] } });
+    expect(a.origin).not.toHaveProperty("split");
+    expect(b).toMatchObject({ off: true, split: "g-1" });
+    expect(c).toMatchObject({ labelStyle: "inline" });
+    // รหัสชุดไม่ถูกต้อง / กล่องเดิมซ้อนชุด / รูปแบบป้ายไม่รู้จัก ถูกตัด
+    expect(d).not.toHaveProperty("split");
+    expect(d).not.toHaveProperty("origin");
+    expect(d).not.toHaveProperty("labelStyle");
+  });
+
+  it("hidden value pieces do not count as showing legal data", async () => {
+    const { legalFieldVisible, requiredSatisfied } = await import("@/lib/documents/design");
+    const num = { id: "n", kind: "field" as const, field: "number", hideLabel: true, x: 0, y: 0, w: 50, h: 12 };
+    expect(legalFieldVisible([num], "number")).toBe(true);
+    expect(legalFieldVisible([{ ...num, off: true }], "number")).toBe(false);
+    const seller = ["seller.name", "seller.address", "seller.taxId"].map((f, i) => ({ id: `s${i}`, kind: "field" as const, field: f, hideLabel: true, x: 0, y: 0, w: 50, h: 12 }));
+    expect(requiredSatisfied("seller", seller)).toBe(true);
+    expect(requiredSatisfied("seller", seller.map((b, i) => (i === 2 ? { ...b, off: true } : b)))).toBe(false);
+  });
+});

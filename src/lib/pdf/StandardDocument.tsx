@@ -169,7 +169,7 @@ function Lbl({ c, th, style, align, suffix = "" }: { c: Ctx; th: string; style?:
 /** ความยาวที่มองเห็นของข้อความ (ไม่นับสระบน/ล่าง วรรณยุกต์ไทย) */
 function vlen(s: string) { return s.replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, "").length; }
 /** กว้างพอสำหรับป้ายที่ยาวสุด (ป้ายชิดซ้ายเป็นแนวเดียว ข้อมูลเริ่มตรงกัน) */
-function autoLabelWidth(c: Ctx, labels: string[], max: number) {
+export function autoLabelWidth(c: Ctx, labels: string[], max: number) {
   const fs = c.s.page.fontSize as number;
   return Math.min(max, Math.ceil(Math.max(20, ...labels.map((l) => vlen(`${l} :`) * fs * 0.55)) + 4));
 }
@@ -251,9 +251,15 @@ export function SectionField({ c, b }: { c: Ctx; b: FreeBlock }) {
   const f = fieldValue(c, b.field);
   // ไม่มีข้อมูล (เช่น ยังไม่ได้กรอกชื่อภาษาอังกฤษ/อีเมล) = ไม่พิมพ์อะไร
   if (!f || !f.value.trim()) return null;
-  // เฉพาะป้าย (หัวข้อ): วางแยกจากข้อมูลได้
-  if (b.show === "label") return <View style={{ flexDirection: "row", justifyContent: b.align === "right" ? "flex-end" : b.align === "center" ? "center" : "flex-start" }}><Lbl c={c} th={f.label} suffix=" :" style={{ fontWeight: "bold" }} align={b.align === "justify" ? "left" : b.align} /></View>;
+  // เฉพาะป้าย (หัวข้อ): วางแยกจากข้อมูลได้ · ชื่อหัวข้อที่ตั้งเอง (text) · รูปแบบตามกล่องเดิมที่แยกมา (ตัวปกติ/ต่อบรรทัด)
+  if (b.show === "label") {
+    const th = b.text || f.label, a = b.align === "justify" ? "left" : b.align;
+    if (b.labelStyle === "inline") return <T style={{ textAlign: a }}>{th}</T>;
+    return <View style={{ flexDirection: "row", justifyContent: b.align === "right" ? "flex-end" : b.align === "center" ? "center" : "flex-start" }}><Lbl c={c} th={th} suffix={b.labelStyle === "plain" ? "" : " :"} style={b.labelStyle === "plain" ? { color: c.t.text } : { fontWeight: "bold" }} align={a} /></View>;
+  }
   if (b.hideLabel) return <T style={{ textAlign: b.align, fontWeight: b.bold ? "bold" : undefined }}>{f.value || "-"}</T>;
+  // ป้ายกับข้อมูลเป็นข้อความเดียวกัน (เช่น "เลขประจำตัวผู้เสียภาษี 0105…" ที่ตัดขึ้นบรรทัดใหม่) — แบบเดียวกับกล่องผู้ขาย/ลูกค้า
+  if (b.labelStyle === "inline") return <T style={{ textAlign: b.align === "justify" ? "left" : b.align, fontWeight: b.bold ? "bold" : undefined }}>{b.text || f.label} {f.value}</T>;
   return (
     <View style={{ flexDirection: "row", justifyContent: b.align === "right" ? "flex-end" : b.align === "center" ? "center" : "flex-start" }}>
       {b.labelWidth ? <View style={{ width: b.labelWidth }}><Lbl c={c} th={f.label} suffix=" :" style={{ fontWeight: "bold" }} /></View> : <Lbl c={c} th={f.label} suffix=" :" style={{ fontWeight: "bold" }} />}
@@ -557,7 +563,7 @@ export function blockContext(c: Ctx, raw: FreeBlock): Ctx {
   const own = b.fontSize !== undefined || b.lineHeight !== undefined || !!b.color || b.radius !== undefined || !!b.table || !!b.totalsStyle || !!b.partyStyle;
   const t: DocTheme = own ? {
     ...c.t,
-    ...(b.fontSize !== undefined ? { fontSize: Math.min(16, Math.max(6, b.fontSize)) } : {}),
+    ...(b.fontSize !== undefined ? { fontSize: Math.min(40, Math.max(6, b.fontSize)) } : {}),
     ...(b.color ? { text: b.color, primary: b.color, muted: b.color } : {}),
     ...(b.table ? { table: b.table } : {}), ...(b.totalsStyle ? { totals: b.totalsStyle } : {}), ...(b.partyStyle ? { party: b.partyStyle } : {}),
     ...(b.radius !== undefined ? { rounded: b.radius > 0 } : {}),
@@ -613,6 +619,8 @@ const fillVars = (text: string, doc: DocumentModel) => text.replace(/\{\{([^{}]{
 const CLIP_KINDS = ["text", "field", "info", "meta"];
 
 export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: FreeBlock; items?: React.ReactNode; letter?: boolean }) {
+  // ชิ้นที่ติ๊กไม่แสดง (ชุดที่แยกจากกล่องเดียวกัน)
+  if (raw.off) return null;
   const b = resolveBlockColors(raw, c.t);
   const bc = blockContext(c, b);
   const own = b.fontSize !== undefined || b.lineHeight !== undefined || !!b.color;

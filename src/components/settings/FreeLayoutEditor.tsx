@@ -386,8 +386,10 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       const h = Math.round((extra.hideLabel ? h0 : Math.max(h0, labelH)) * k * 10) / 10;
       if (extra.hideLabel) adds.push({ zone: it.zone, b: { id: id("field"), kind: "field", field, x: b.x + pad, y, w: b.w - pad * 2, h, ...style, ...extra } });
       else {
-        adds.push({ zone: it.zone, b: { id: id("field"), kind: "field", field, show: "label", x: b.x + pad, y, w: labelW, h, ...style } });
-        adds.push({ zone: it.zone, b: { id: id("field"), kind: "field", field, hideLabel: true, x: b.x + pad + labelW + 4, y, w: Math.max(20, b.w - pad * 2 - labelW - 4), h, ...style, ...extra } });
+        // หัวข้อกับข้อมูลแถวเดียวกันจับคู่ไว้: คลิก/ลาก = ย้ายไปด้วยกัน · ดับเบิลคลิกชิ้นใดชิ้นหนึ่ง = ลากแยกได้อิสระ
+        const pair = newGroupId();
+        adds.push({ zone: it.zone, b: { id: id("field"), kind: "field", field, show: "label", group: pair, x: b.x + pad, y, w: labelW, h, ...style } });
+        adds.push({ zone: it.zone, b: { id: id("field"), kind: "field", field, hideLabel: true, group: pair, x: b.x + pad + labelW + 4, y, w: Math.max(20, b.w - pad * 2 - labelW - 4), h, ...style, ...extra } });
       }
       y += h + k;
     }
@@ -1022,7 +1024,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         )}
         {canEdit && (SPLITTABLE.includes(b.kind) || b.kind === "info") && (
           <div className="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] p-2.5 space-y-1.5">
-            <p className="text-[11.5px] text-white/65 leading-relaxed">จัดวางเอง: แยกเป็นชิ้น แล้วลากแต่ละชิ้นได้อิสระ (ข้อมูลยังดึงจากฐานข้อมูลเหมือนเดิม) · กรอบ/พื้นหลังแยกเป็นกรอบอีกชิ้น</p>
+            <p className="text-[11.5px] text-white/65 leading-relaxed">จัดวางเอง: แยกหัวข้อกับข้อมูลเป็นคนละชิ้น (ข้อมูลยังดึงจากฐานข้อมูลเหมือนเดิม) · หัวข้อกับข้อมูลแถวเดียวกันจับคู่กัน: ลาก = ย้ายไปด้วยกัน · ดับเบิลคลิกแล้วลาก = ย้ายชิ้นเดียว · กรอบ/พื้นหลังแยกเป็นกรอบอีกชิ้น</p>
             {b.kind !== "title" && <PillButton variant="primary" className="h-8 px-3 text-xs w-full" onClick={() => explode(it)}><Split size={13} /> แยกหัวข้อกับข้อมูลทุกแถว</PillButton>}
             {b.kind !== "info" && <PillButton variant="glass" className="h-8 px-3 text-xs w-full" onClick={() => splitBlock(it)}><Split size={13} /> แยกเป็นแถว (หัวข้อ : ข้อมูล อยู่ด้วยกัน)</PillButton>}
             {b.kind !== "title" && b.kind !== "info" && <PillButton variant="glass" className="h-8 px-3 text-xs w-full" onClick={() => toInfo(it)}><Rows3 size={13} /> เปลี่ยนเป็นกล่องข้อมูล (ติ๊กเลือก/เรียงหัวข้อเอง)</PillButton>}
@@ -1122,7 +1124,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const inlineEditor = editItem && (
     <textarea autoFocus value={editItem.b.text || ""} onChange={(e) => update(editItem, { text: e.target.value })}
       onBlur={() => setEditing(null)} onKeyDown={(e) => { if (e.key === "Escape") (e.target as HTMLTextAreaElement).blur(); e.stopPropagation(); }} onPointerDown={(e) => e.stopPropagation()}
-      className="absolute z-50 resize-none rounded border-2 border-[#0d9488] bg-white/95 text-slate-900 p-0.5 outline-none shadow-lg"
+      className="absolute z-50 resize-none rounded border border-[#0d9488] bg-white/95 text-slate-900 p-0.5 outline-none shadow-lg"
       style={{ left: editItem.b.x * S, top: editItem.b.y * S, width: Math.max(140, editItem.b.w * S), minHeight: Math.max(40, editItem.b.h * S), fontSize: (editItem.b.fontSize || 10) * FONT_SCALE[font] * S, lineHeight: editItem.b.lineHeight ?? 1.35, textAlign: editItem.b.align, fontWeight: editItem.b.bold ? 700 : 400, color: resolveColor(editItem.b.color, theme) || "#111" }} />
   );
 
@@ -1535,9 +1537,9 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             {draft && (tool === "line" ? (() => {
               const horiz = Math.abs(draft.x1 - draft.x0) >= Math.abs(draft.y1 - draft.y0);
               return <div className="absolute z-30 pointer-events-none bg-[#0d9488]" style={horiz
-                ? { left: Math.min(draft.x0, draft.x1) * S, top: draft.y0 * S - 1, width: Math.abs(draft.x1 - draft.x0) * S, height: 2 }
-                : { left: draft.x0 * S - 1, top: Math.min(draft.y0, draft.y1) * S, width: 2, height: Math.abs(draft.y1 - draft.y0) * S }} />;
-            })() : <div className="absolute z-30 pointer-events-none border-2 border-[#0d9488] bg-[#0d9488]/5" style={{ left: Math.min(draft.x0, draft.x1) * S, top: Math.min(draft.y0, draft.y1) * S, width: Math.abs(draft.x1 - draft.x0) * S, height: Math.abs(draft.y1 - draft.y0) * S }} />)}
+                ? { left: Math.min(draft.x0, draft.x1) * S, top: draft.y0 * S, width: Math.abs(draft.x1 - draft.x0) * S, height: 1 }
+                : { left: draft.x0 * S, top: Math.min(draft.y0, draft.y1) * S, width: 1, height: Math.abs(draft.y1 - draft.y0) * S }} />;
+            })() : <div className="absolute z-30 pointer-events-none border border-[#0d9488] bg-[#0d9488]/5" style={{ left: Math.min(draft.x0, draft.x1) * S, top: Math.min(draft.y0, draft.y1) * S, width: Math.abs(draft.x1 - draft.x0) * S, height: Math.abs(draft.y1 - draft.y0) * S }} />)}
             {/* กล่องที่ถูกย้าย: ปิดตำแหน่งเดิมในภาพ */}
             {image && items.map((it) => {
               const o = shot.get(it.key);
@@ -1558,7 +1560,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                     on ? cn("outline outline-1 -outline-offset-1 outline-[#0d9488] z-20", multi && anchorKeys.includes(it.key) && "outline-amber-400") : cn("outline outline-1 -outline-offset-1 outline-dashed outline-transparent hover:outline-slate-400", ["rect", "shape", "line", "image"].includes(b.kind) ? "z-[8]" : "z-10"),
                     frame && "pointer-events-none",
                     fresh && !on && "outline-slate-300",
-                    ghost && (b.kind === "line" ? "bg-[#0d9488]/70" : frame ? "border-2 border-dashed border-[#0d9488]" : "bg-[#0d9488]/10 border border-dashed border-[#0d9488]/70"))}
+                    ghost && (b.kind === "line" ? "bg-[#0d9488]/70" : frame ? "border border-dashed border-[#0d9488]" : "bg-[#0d9488]/10 border border-dashed border-[#0d9488]/70"))}
                   style={{
                     // เส้นบาง: ขยายพื้นที่คลิกเป็นอย่างน้อย 8px รอบเส้น
                     ...(b.kind === "line"

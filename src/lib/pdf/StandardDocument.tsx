@@ -35,7 +35,7 @@ export function registerDocumentFonts(base: string) {
 export const fixThaiText = (v: any) => (typeof v === "string" ? v.replace(/([่-๋]?)ำ/g, "ํ$1า") : v);
 
 /** Text ที่แก้สระอำให้อัตโนมัติ (ใช้แทน Text ทุกที่ที่เป็นข้อความ) */
-export function T({ children, ...rest }: { children?: React.ReactNode; style?: any; fixed?: boolean; wrap?: boolean; render?: any }) {
+export function T({ children, ...rest }: { children?: React.ReactNode; style?: any; fixed?: boolean; wrap?: boolean; render?: any; maxLines?: number }) {
   return <Text {...rest}>{React.Children.map(children, fixThaiText)}</Text>;
 }
 
@@ -166,6 +166,14 @@ function Lbl({ c, th, style, align, suffix = "" }: { c: Ctx; th: string; style?:
   );
 }
 
+/** ความยาวที่มองเห็นของข้อความ (ไม่นับสระบน/ล่าง วรรณยุกต์ไทย) */
+function vlen(s: string) { return s.replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, "").length; }
+/** กว้างพอสำหรับป้ายที่ยาวสุด (ป้ายชิดซ้ายเป็นแนวเดียว ข้อมูลเริ่มตรงกัน) */
+function autoLabelWidth(c: Ctx, labels: string[], max: number) {
+  const fs = c.s.page.fontSize as number;
+  return Math.min(max, Math.ceil(Math.max(20, ...labels.map((l) => vlen(`${l} :`) * fs * 0.55)) + 4));
+}
+
 /** แถว "ป้าย : ค่า" (รูปแบบฟอร์ม) */
 function FormRow({ c, th, value, labelWidth, bold = false }: { c: Ctx; th: string; value: React.ReactNode; labelWidth: number | string; bold?: boolean }) {
   return (
@@ -214,6 +222,19 @@ export function metaRows(c: Ctx): FieldRow[] {
 export function SectionMeta({ c, align = "right" }: { c: Ctx; align?: "left" | "center" | "right" }) {
   const rows = metaRows(c);
   if (c.t.formStyle) return <View style={{ alignSelf: "stretch", minWidth: 190 }}>{rows.map((m) => <FormRow key={m.key} c={c} th={m.label} value={m.value || "-"} labelWidth={c.labelWidth ?? "48%"} />)}</View>;
+  if (align === "left") {
+    const lw = c.labelWidth ?? autoLabelWidth(c, rows.map((m) => m.label), (c.box?.w ?? 240) * 0.55);
+    return (
+      <View>
+        {rows.map((m) => (
+          <View key={m.key} style={[c.s.metaRow, c.rowGap !== undefined ? { marginTop: c.rowGap } : {}]}>
+            <View style={{ width: lw }}><Lbl c={c} th={m.label} suffix=" :" style={{ fontWeight: "bold" }} /></View>
+            <T style={{ flex: 1, paddingLeft: c.labelGap ?? 4 }}>{m.value || "-"}</T>
+          </View>
+        ))}
+      </View>
+    );
+  }
   return (
     <View>
       {rows.map((m) => (
@@ -232,11 +253,14 @@ export function SectionField({ c, b }: { c: Ctx; b: FreeBlock }) {
   if (!f || !f.value.trim()) return null;
   // เฉพาะป้าย (หัวข้อ): วางแยกจากข้อมูลได้
   if (b.show === "label") return <View style={{ flexDirection: "row", justifyContent: b.align === "right" ? "flex-end" : b.align === "center" ? "center" : "flex-start" }}><Lbl c={c} th={f.label} suffix=" :" style={{ fontWeight: "bold" }} align={b.align === "justify" ? "left" : b.align} /></View>;
-  if (b.hideLabel) return <T style={{ textAlign: b.align, fontWeight: b.bold ? "bold" : undefined }}>{f.value || "-"}</T>;
+  // บรรทัดที่พอในกรอบ (เกินตัดท้ายด้วย …) — ข้อความไม่ล้นกรอบแม้ย่อกรอบเล็กกว่าเนื้อหา
+  const pad = b.pad ?? ((b.border || b.bg) ? 4 : 0);
+  const maxLines = Math.max(1, Math.floor((b.h - pad * 2 + 1.5) / ((c.s.page.fontSize as number) * ((c.s.page.lineHeight as number) || 1.35))));
+  if (b.hideLabel) return <T maxLines={maxLines} style={{ textAlign: b.align, fontWeight: b.bold ? "bold" : undefined, textOverflow: "ellipsis" }}>{f.value || "-"}</T>;
   return (
     <View style={{ flexDirection: "row", justifyContent: b.align === "right" ? "flex-end" : b.align === "center" ? "center" : "flex-start" }}>
       {b.labelWidth ? <View style={{ width: b.labelWidth }}><Lbl c={c} th={f.label} suffix=" :" style={{ fontWeight: "bold" }} /></View> : <Lbl c={c} th={f.label} suffix=" :" style={{ fontWeight: "bold" }} />}
-      <T style={[{ paddingLeft: b.labelGap ?? 4 }, b.bold ? { fontWeight: "bold" } : {}]}>{f.value || "-"}</T>
+      <View style={{ flexShrink: 1, paddingLeft: b.labelGap ?? 4 }}><T maxLines={maxLines} style={[{ textOverflow: "ellipsis" }, b.bold ? { fontWeight: "bold" } : {}]}>{f.value || "-"}</T></View>
     </View>
   );
 }
@@ -248,7 +272,8 @@ export function SectionField({ c, b }: { c: Ctx; b: FreeBlock }) {
 export function SectionInfo({ c, b }: { c: Ctx; b: FreeBlock }) {
   const rows = (b.fields || []).map((k) => fieldValue(c, k)).filter((r): r is FieldRow => !!r && !!r.value.trim());
   if (!rows.length) return null;
-  const lw = b.labelWidth ?? 90;
+  // ป้ายชิดซ้ายเป็นแนวเดียว: กว้างพอดีป้ายที่ยาวสุด (ตั้งเองได้)
+  const lw = b.labelWidth ?? autoLabelWidth(c, rows.filter((_, i) => !(i === 0 && b.emphasizeFirst)).map((r) => b.names?.[r.key] || r.label), b.w * 0.55);
   const justify = b.align === "right" ? "flex-end" : b.align === "center" ? "center" : "flex-start";
   if (b.flow === "row") {
     // เรียงเป็นแถวแนวนอน: ป้าย : ค่า ต่อกัน (ขึ้นบรรทัดใหม่เมื่อเต็ม)
@@ -587,7 +612,42 @@ const fillVars = (text: string, doc: DocumentModel) => text.replace(/\{\{([^{}]{
  * เนื้อหาวางในชั้นที่ไม่จำกัดความสูง — กล่องสูงตายตัวทำให้ react-pdf บีบบรรทัดซ้อนกันหรือทิ้งข้อความที่ไม่พอดี
  * items: เนื้อหาตารางที่ส่งมาเอง (FreeLayoutDocument ตัดรายการที่ล้นไปหน้าถัดไป) · letter: หนังสือไม่มีชื่อเอกสาร/เลขที่แบบเอกสารการค้า
  */
-export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: FreeBlock; items?: React.ReactNode; letter?: boolean }) {
+/** กล่องข้อความ/ข้อมูลที่ต้องไม่ล้นกรอบ: ย่อตัวอักษรให้พอดี (ไม่ต่ำกว่า 60%) แล้วตัดส่วนที่เกินขอบ */
+const FIT_KINDS = ["text", "field", "info", "meta"];
+/** ประมาณความสูงที่ข้อความในกล่องต้องใช้ (pt) ที่ขนาดตัวอักษร fs */
+function neededHeight(c: Ctx, b: FreeBlock, fs: number, innerW: number): number {
+  const lh = b.lineHeight ?? 1.35, cw = fs * 0.5;
+  const lines = (text: string, w: number) => text.split("\n").reduce((n, t) => n + Math.max(1, Math.ceil((vlen(t) * cw) / Math.max(10, w))), 0);
+  const en = (label: string) => (c.t.bilingual && enLabel(label) ? fs * 0.65 * 1.15 : 0);
+  if (b.kind === "text") return lines(fillVars(b.text || "", c.doc), innerW) * fs * lh;
+  if (b.kind === "field") {
+    const f = fieldValue(c, b.field);
+    if (!f) return 0;
+    if (b.show === "label") return lines(`${f.label} :`, innerW) * fs * lh + en(f.label);
+    if (b.hideLabel) return lines(f.value, innerW) * fs * lh;
+    const lw = b.labelWidth ?? vlen(`${f.label} :`) * cw;
+    return Math.max(fs * lh + en(f.label), lines(f.value, innerW - lw - 4) * fs * lh);
+  }
+  const rows = b.kind === "info" ? (b.fields || []).map((k) => fieldValue(c, k)).filter((r): r is FieldRow => !!r && !!r.value.trim()) : metaRows(blockContext(c, b));
+  const lw = b.labelWidth ?? Math.min(innerW * 0.55, Math.max(20, ...rows.map((r) => vlen(`${r.label} :`) * cw)) + 4);
+  return rows.reduce((h, r, i) => {
+    if (b.kind === "info" && i === 0 && b.emphasizeFirst) return h + lines(r.value, innerW) * fs * 1.25 * 1.3 + 2;
+    if (b.kind === "info" && b.hideLabel) return h + lines(r.value, innerW) * fs * lh;
+    return h + Math.max(fs * lh + en(r.label), lines(r.value, innerW - lw - 4) * fs * lh) + (b.rowGap ?? 1.5);
+  }, 0);
+}
+function fitBlock(c: Ctx, b: FreeBlock, pad: number): FreeBlock {
+  if (!FIT_KINDS.includes(b.kind)) return b;
+  const base = b.kind === "text" ? b.fontSize || 10 : b.fontSize ?? c.t.fontSize, scale = FONT_SCALE[b.font || c.t.font];
+  const innerW = b.w - pad * 2, innerH = b.h - pad * 2 + 1;
+  let k = 1;
+  while (k > 0.6 && neededHeight(c, b, base * k * scale, innerW) > innerH) k -= 0.05;
+  return k < 1 ? { ...b, fontSize: Math.round(base * k * 10) / 10 } : b;
+}
+
+export function BlockView({ c, b: raw0, items, letter = false }: { c: Ctx; b: FreeBlock; items?: React.ReactNode; letter?: boolean }) {
+  const pad0 = raw0.pad ?? (raw0.kind === "text" ? 2 : (raw0.border || raw0.bg) && raw0.kind !== "items" ? 4 : 0);
+  const raw = fitBlock(c, raw0, pad0);
   const b = resolveBlockColors(raw, c.t);
   const bc = blockContext(c, b);
   const own = b.fontSize !== undefined || b.lineHeight !== undefined || !!b.color;
@@ -627,7 +687,7 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
       // ตราประทับ: พิมพ์เฉพาะเอกสารที่ใส่ตราอิเล็กทรอนิกส์ (ออกจริง และตั้งให้ประทับ)
       // eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt
       case "stamp": return c.doc.stamp ? <Image src={c.doc.stamp.image} style={{ width: b.w, height: b.h, objectFit: "contain", opacity: 0.92 }} /> : null;
-      case "text": return <T style={{ fontSize: (b.fontSize || 10) * FONT_SCALE[b.font || c.t.font], lineHeight: b.lineHeight ?? 1.35, color: b.color || c.t.text, textAlign: b.align, fontWeight: b.bold ? "bold" : undefined, ...textDeco(b) }}>{fillVars(b.text || "", c.doc)}</T>;
+      case "text": return <T maxLines={Math.max(1, Math.floor((b.h - pad0 * 2 + 1.5) / ((b.fontSize || 10) * FONT_SCALE[b.font || c.t.font] * (b.lineHeight ?? 1.35))))} style={{ textOverflow: "ellipsis", fontSize: (b.fontSize || 10) * FONT_SCALE[b.font || c.t.font], lineHeight: b.lineHeight ?? 1.35, color: b.color || c.t.text, textAlign: b.align, fontWeight: b.bold ? "bold" : undefined, ...textDeco(b) }}>{fillVars(b.text || "", c.doc)}</T>;
       // eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt
       case "image": return b.src ? <Image src={b.src} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : null;
       default: return null;
@@ -635,6 +695,8 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
   })();
   // กล่องที่มีกรอบ/พื้นหลัง: เว้นขอบในให้เนื้อหาไม่ชิดเส้น
   const pad = b.pad ?? (b.kind === "text" ? 2 : (b.border || b.bg) && b.kind !== "items" ? 4 : 0);
+  // พื้นที่ตัดขอบสูงอย่างน้อยหนึ่งบรรทัด (กล่องเล็กกว่าบรรทัด: เห็นบรรทัดแรก แทนที่จะหายทั้งกล่อง)
+  const lineOne = (b.kind === "text" ? (b.fontSize || 10) * FONT_SCALE[b.font || c.t.font] : (bc.s.page.fontSize as number)) * (b.lineHeight ?? 1.35);
   if (b.kind === "line") {
     // เส้น: แนวนอนเมื่อกว้างกว่าสูง (ความหนา = สูง) · แนวตั้งเมื่อสูงกว่า (ความหนา = กว้าง) · เส้นประ/จุดวาดด้วยขอบ
     const vertical = b.h > b.w, thick = Math.max(0.25, vertical ? b.w : b.h), color = b.color || c.t.primary;
@@ -666,7 +728,7 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
     }}>
       {b.kind === "rect" ? null : b.kind === "image" || b.kind === "logo" || b.kind === "stamp" || b.kind === "sign"
         ? content
-        : <View style={{ position: "absolute", top: pad, left: pad, right: pad, ...(b.valign ? { bottom: pad, justifyContent: b.valign === "middle" ? "center" : "flex-end" } : {}), ...(own ? { fontSize: bc.s.page.fontSize, lineHeight: bc.s.page.lineHeight, color: bc.t.text } : {}), ...(b.kind !== "text" ? textDeco(b) : {}) }}>{content}</View>}
+        : <View style={{ position: "absolute", top: pad, left: pad, right: pad, ...(b.valign ? { bottom: pad, justifyContent: b.valign === "middle" ? "center" : "flex-end" } : {}), ...(FIT_KINDS.includes(b.kind) ? (b.valign && b.h - pad * 2 >= lineOne ? { overflow: "hidden" as const } : { bottom: undefined, height: Math.max(b.h - pad * 2 + 1.5, lineOne * 1.35 * (c.t.bilingual && b.kind !== "text" ? 1.6 : 1)), overflow: "hidden" as const }) : {}), ...(own ? { fontSize: bc.s.page.fontSize, lineHeight: bc.s.page.lineHeight, color: bc.t.text } : {}), ...(b.kind !== "text" ? textDeco(b) : {}) }}>{content}</View>}
     </View>
   );
 }

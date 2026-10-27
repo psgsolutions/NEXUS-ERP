@@ -591,6 +591,13 @@ export function DocumentDesigner() {
           canEdit={canEdit}
           docTitle={def.title}
           history={{ undo, redo, canUndo: hist.current.past.length > 0, canRedo: hist.current.future.length > 0 }}
+          stampSize={signing.stampSize}
+          aiLayout={async (image, landscape) => {
+            const res = await apiFetch("/api/ai/document-layout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, docType, image, landscape }) });
+            const d = await res.json().catch(() => ({}));
+            if (!res.ok || !d.success) throw new Error(d.error || "AI แปลงตัวอย่างไม่สำเร็จ");
+            return d.layout;
+          }}
           dataCtx={dataCtx}
           signers={signing.signers.filter((p) => p.image).map((p) => ({ id: p.id, name: p.name, position: p.position }))}
         />

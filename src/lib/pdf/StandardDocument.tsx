@@ -2,7 +2,7 @@ import React from "react";
 import { Document, Ellipse, Font, Image, Page, Polygon, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import type { ColumnKey, CopyMode, DocumentModel } from "@/lib/documents/model";
 import { amountInWords, branchLabel, formatTaxId, money, qtyText, thaiDate } from "@/lib/documents/format";
-import { FONT_SCALE, docHasCopy, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
+import { FONT_SCALE, SIGN_SIZE, docHasCopy, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
 
 /**
  * เทมเพลตเอกสาร A4 (ใช้ร่วมทุกประเภทเอกสาร) — หน้าตาตามธีมของบริษัท (ตั้งค่า › ออกแบบเอกสาร)
@@ -253,14 +253,11 @@ export function SectionField({ c, b }: { c: Ctx; b: FreeBlock }) {
   if (!f || !f.value.trim()) return null;
   // เฉพาะป้าย (หัวข้อ): วางแยกจากข้อมูลได้
   if (b.show === "label") return <View style={{ flexDirection: "row", justifyContent: b.align === "right" ? "flex-end" : b.align === "center" ? "center" : "flex-start" }}><Lbl c={c} th={f.label} suffix=" :" style={{ fontWeight: "bold" }} align={b.align === "justify" ? "left" : b.align} /></View>;
-  // บรรทัดที่พอในกรอบ (เกินตัดท้ายด้วย …) — ข้อความไม่ล้นกรอบแม้ย่อกรอบเล็กกว่าเนื้อหา
-  const pad = b.pad ?? ((b.border || b.bg) ? 4 : 0);
-  const maxLines = Math.max(1, Math.floor((b.h - pad * 2 + 1.5) / ((c.s.page.fontSize as number) * ((c.s.page.lineHeight as number) || 1.35))));
-  if (b.hideLabel) return <T maxLines={maxLines} style={{ textAlign: b.align, fontWeight: b.bold ? "bold" : undefined, textOverflow: "ellipsis" }}>{f.value || "-"}</T>;
+  if (b.hideLabel) return <T style={{ textAlign: b.align, fontWeight: b.bold ? "bold" : undefined }}>{f.value || "-"}</T>;
   return (
     <View style={{ flexDirection: "row", justifyContent: b.align === "right" ? "flex-end" : b.align === "center" ? "center" : "flex-start" }}>
       {b.labelWidth ? <View style={{ width: b.labelWidth }}><Lbl c={c} th={f.label} suffix=" :" style={{ fontWeight: "bold" }} /></View> : <Lbl c={c} th={f.label} suffix=" :" style={{ fontWeight: "bold" }} />}
-      <View style={{ flexShrink: 1, paddingLeft: b.labelGap ?? 4 }}><T maxLines={maxLines} style={[{ textOverflow: "ellipsis" }, b.bold ? { fontWeight: "bold" } : {}]}>{f.value || "-"}</T></View>
+      <View style={{ flexShrink: 1, paddingLeft: b.labelGap ?? 4 }}><T style={b.bold ? { fontWeight: "bold" } : {}}>{f.value || "-"}</T></View>
     </View>
   );
 }
@@ -612,42 +609,10 @@ const fillVars = (text: string, doc: DocumentModel) => text.replace(/\{\{([^{}]{
  * เนื้อหาวางในชั้นที่ไม่จำกัดความสูง — กล่องสูงตายตัวทำให้ react-pdf บีบบรรทัดซ้อนกันหรือทิ้งข้อความที่ไม่พอดี
  * items: เนื้อหาตารางที่ส่งมาเอง (FreeLayoutDocument ตัดรายการที่ล้นไปหน้าถัดไป) · letter: หนังสือไม่มีชื่อเอกสาร/เลขที่แบบเอกสารการค้า
  */
-/** กล่องข้อความ/ข้อมูลที่ต้องไม่ล้นกรอบ: ย่อตัวอักษรให้พอดี (ไม่ต่ำกว่า 60%) แล้วตัดส่วนที่เกินขอบ */
-const FIT_KINDS = ["text", "field", "info", "meta"];
-/** ประมาณความสูงที่ข้อความในกล่องต้องใช้ (pt) ที่ขนาดตัวอักษร fs */
-function neededHeight(c: Ctx, b: FreeBlock, fs: number, innerW: number): number {
-  const lh = b.lineHeight ?? 1.35, cw = fs * 0.5;
-  const lines = (text: string, w: number) => text.split("\n").reduce((n, t) => n + Math.max(1, Math.ceil((vlen(t) * cw) / Math.max(10, w))), 0);
-  const en = (label: string) => (c.t.bilingual && enLabel(label) ? fs * 0.65 * 1.15 : 0);
-  if (b.kind === "text") return lines(fillVars(b.text || "", c.doc), innerW) * fs * lh;
-  if (b.kind === "field") {
-    const f = fieldValue(c, b.field);
-    if (!f) return 0;
-    if (b.show === "label") return lines(`${f.label} :`, innerW) * fs * lh + en(f.label);
-    if (b.hideLabel) return lines(f.value, innerW) * fs * lh;
-    const lw = b.labelWidth ?? vlen(`${f.label} :`) * cw;
-    return Math.max(fs * lh + en(f.label), lines(f.value, innerW - lw - 4) * fs * lh);
-  }
-  const rows = b.kind === "info" ? (b.fields || []).map((k) => fieldValue(c, k)).filter((r): r is FieldRow => !!r && !!r.value.trim()) : metaRows(blockContext(c, b));
-  const lw = b.labelWidth ?? Math.min(innerW * 0.55, Math.max(20, ...rows.map((r) => vlen(`${r.label} :`) * cw)) + 4);
-  return rows.reduce((h, r, i) => {
-    if (b.kind === "info" && i === 0 && b.emphasizeFirst) return h + lines(r.value, innerW) * fs * 1.25 * 1.3 + 2;
-    if (b.kind === "info" && b.hideLabel) return h + lines(r.value, innerW) * fs * lh;
-    return h + Math.max(fs * lh + en(r.label), lines(r.value, innerW - lw - 4) * fs * lh) + (b.rowGap ?? 1.5);
-  }, 0);
-}
-function fitBlock(c: Ctx, b: FreeBlock, pad: number): FreeBlock {
-  if (!FIT_KINDS.includes(b.kind)) return b;
-  const base = b.kind === "text" ? b.fontSize || 10 : b.fontSize ?? c.t.fontSize, scale = FONT_SCALE[b.font || c.t.font];
-  const innerW = b.w - pad * 2, innerH = b.h - pad * 2 + 1;
-  let k = 1;
-  while (k > 0.6 && neededHeight(c, b, base * k * scale, innerW) > innerH) k -= 0.05;
-  return k < 1 ? { ...b, fontSize: Math.round(base * k * 10) / 10 } : b;
-}
+/** กล่องข้อความ/ข้อมูลที่ต้องไม่ล้นกรอบ: ตัวอักษรขนาดเดิม · ส่วนที่เกินกรอบถูกตัดตามขอบกรอบจริง (เห็นเท่าที่กรอบสูง) */
+const CLIP_KINDS = ["text", "field", "info", "meta"];
 
-export function BlockView({ c, b: raw0, items, letter = false }: { c: Ctx; b: FreeBlock; items?: React.ReactNode; letter?: boolean }) {
-  const pad0 = raw0.pad ?? (raw0.kind === "text" ? 2 : (raw0.border || raw0.bg) && raw0.kind !== "items" ? 4 : 0);
-  const raw = fitBlock(c, raw0, pad0);
+export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: FreeBlock; items?: React.ReactNode; letter?: boolean }) {
   const b = resolveBlockColors(raw, c.t);
   const bc = blockContext(c, b);
   const own = b.fontSize !== undefined || b.lineHeight !== undefined || !!b.color;
@@ -677,17 +642,17 @@ export function BlockView({ c, b: raw0, items, letter = false }: { c: Ctx; b: Fr
         const hide = new Set(b.hide || []), fs = (b.fontSize || c.t.fontSize) * FONT_SCALE[b.font || c.t.font];
         const lines = [!hide.has("name") && sg.name ? `(${sg.name})` : "", !hide.has("title") ? sg.title || "" : "", !hide.has("date") && sg.date ? `วันที่ ${thaiDate(sg.date)}` : ""].filter(Boolean);
         return (
-          <View style={{ width: b.w, height: b.h, alignItems: "center" }}>
+          <View style={{ width: SIGN_SIZE.w, alignItems: "center" }}>
             {/* eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt */}
-            <Image src={sg.image} style={{ width: b.w, height: Math.max(10, b.h - lines.length * fs * 1.4), objectFit: "contain" }} />
+            <Image src={sg.image} style={{ width: SIGN_SIZE.w, height: SIGN_SIZE.h, objectFit: "contain" }} />
             {lines.map((l) => <T key={l} style={{ fontSize: fs, lineHeight: 1.3, color: b.color || c.t.text, textAlign: "center" }}>{l}</T>)}
           </View>
         );
       }
       // ตราประทับ: พิมพ์เฉพาะเอกสารที่ใส่ตราอิเล็กทรอนิกส์ (ออกจริง และตั้งให้ประทับ)
       // eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt
-      case "stamp": return c.doc.stamp ? <Image src={c.doc.stamp.image} style={{ width: b.w, height: b.h, objectFit: "contain", opacity: 0.92 }} /> : null;
-      case "text": return <T maxLines={Math.max(1, Math.floor((b.h - pad0 * 2 + 1.5) / ((b.fontSize || 10) * FONT_SCALE[b.font || c.t.font] * (b.lineHeight ?? 1.35))))} style={{ textOverflow: "ellipsis", fontSize: (b.fontSize || 10) * FONT_SCALE[b.font || c.t.font], lineHeight: b.lineHeight ?? 1.35, color: b.color || c.t.text, textAlign: b.align, fontWeight: b.bold ? "bold" : undefined, ...textDeco(b) }}>{fillVars(b.text || "", c.doc)}</T>;
+      case "stamp": return c.doc.stamp ? <Image src={c.doc.stamp.image} style={{ width: c.doc.stamp.size, height: c.doc.stamp.size, objectFit: "contain", opacity: 0.92 }} /> : null;
+      case "text": return <T style={{ fontSize: (b.fontSize || 10) * FONT_SCALE[b.font || c.t.font], lineHeight: b.lineHeight ?? 1.35, color: b.color || c.t.text, textAlign: b.align, fontWeight: b.bold ? "bold" : undefined, ...textDeco(b) }}>{fillVars(b.text || "", c.doc)}</T>;
       // eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt
       case "image": return b.src ? <Image src={b.src} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : null;
       default: return null;
@@ -695,8 +660,6 @@ export function BlockView({ c, b: raw0, items, letter = false }: { c: Ctx; b: Fr
   })();
   // กล่องที่มีกรอบ/พื้นหลัง: เว้นขอบในให้เนื้อหาไม่ชิดเส้น
   const pad = b.pad ?? (b.kind === "text" ? 2 : (b.border || b.bg) && b.kind !== "items" ? 4 : 0);
-  // พื้นที่ตัดขอบสูงอย่างน้อยหนึ่งบรรทัด (กล่องเล็กกว่าบรรทัด: เห็นบรรทัดแรก แทนที่จะหายทั้งกล่อง)
-  const lineOne = (b.kind === "text" ? (b.fontSize || 10) * FONT_SCALE[b.font || c.t.font] : (bc.s.page.fontSize as number)) * (b.lineHeight ?? 1.35);
   if (b.kind === "line") {
     // เส้น: แนวนอนเมื่อกว้างกว่าสูง (ความหนา = สูง) · แนวตั้งเมื่อสูงกว่า (ความหนา = กว้าง) · เส้นประ/จุดวาดด้วยขอบ
     const vertical = b.h > b.w, thick = Math.max(0.25, vertical ? b.w : b.h), color = b.color || c.t.primary;
@@ -740,7 +703,13 @@ export function BlockView({ c, b: raw0, items, letter = false }: { c: Ctx; b: Fr
     }}>
       {b.kind === "rect" ? null : b.kind === "image" || b.kind === "logo" || b.kind === "stamp" || b.kind === "sign"
         ? content
-        : <View style={{ position: "absolute", top: pad, left: pad, right: pad, ...(b.valign ? { bottom: pad, justifyContent: b.valign === "middle" ? "center" : "flex-end" } : {}), ...(FIT_KINDS.includes(b.kind) ? (b.valign && b.h - pad * 2 >= lineOne ? { overflow: "hidden" as const } : { bottom: undefined, height: Math.max(b.h - pad * 2 + 1.5, lineOne * 1.35 * (c.t.bilingual && b.kind !== "text" ? 1.6 : 1)), overflow: "hidden" as const }) : {}), ...(own ? { fontSize: bc.s.page.fontSize, lineHeight: bc.s.page.lineHeight, color: bc.t.text } : {}), ...(b.kind !== "text" ? textDeco(b) : {}) }}>{content}</View>}
+        : CLIP_KINDS.includes(b.kind)
+          ? (
+            <View style={{ position: "absolute", top: pad, left: pad, right: pad, height: Math.max(0, b.h - pad * 2), overflow: "hidden" }}>
+              <View style={{ position: "absolute", left: 0, right: 0, ...(b.valign === "bottom" ? { bottom: 0 } : b.valign === "middle" ? { top: 0, bottom: 0, justifyContent: "center" } : { top: 0 }), ...(own ? { fontSize: bc.s.page.fontSize, lineHeight: bc.s.page.lineHeight, color: bc.t.text } : {}), ...(b.kind !== "text" ? textDeco(b) : {}) }}>{content}</View>
+            </View>
+          )
+          : <View style={{ position: "absolute", top: pad, left: pad, right: pad, ...(b.valign ? { bottom: pad, justifyContent: b.valign === "middle" ? "center" : "flex-end" } : {}), ...(own ? { fontSize: bc.s.page.fontSize, lineHeight: bc.s.page.lineHeight, color: bc.t.text } : {}), ...(b.kind !== "text" ? textDeco(b) : {}) }}>{content}</View>}
     </View>
   );
 }

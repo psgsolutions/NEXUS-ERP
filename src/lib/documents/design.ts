@@ -153,6 +153,15 @@ export interface FreeLayout {
 }
 
 export const A4 = { w: 595.28, h: 841.89 };
+/** ลายเซ็นอิเล็กทรอนิกส์พิมพ์ขนาดเดียวกันเสมอ (เท่าลายเซ็นในช่องลงนาม) — ย่อ/ขยายไม่ได้ */
+export const SIGN_SIZE = { w: 150, h: 46 };
+/** ขนาดคงที่ของตราประทับ (ตามที่ตั้งในหน้า ลายเซ็น · ตราประทับ) และลายเซ็น (+ บรรทัดชื่อ/ตำแหน่ง/วันที่ที่เลือกแสดง) */
+export function fixedBlockSize(b: Pick<FreeBlock, "kind" | "hide">, stampSize: number, fontSize = 9.5): { w: number; h: number } | null {
+  if (b.kind === "stamp") return { w: stampSize, h: stampSize };
+  if (b.kind !== "sign") return null;
+  const hide = new Set(b.hide || []), lines = ["name", "title", "date"].filter((k) => !hide.has(k)).length;
+  return { w: SIGN_SIZE.w, h: SIGN_SIZE.h + Math.round(lines * fontSize * 1.3) };
+}
 export type PaperSize = "A4" | "A5" | "Letter";
 export type Margins = [number, number, number, number];
 export const PAPERS: Record<PaperSize, { w: number; h: number; label: string }> = {

@@ -14,6 +14,76 @@ const loadPdfjs = () => (pdfjsReady ||= import("pdfjs-dist").then((m) => {
   return m;
 }));
 
+/**
+ * พิมพ์ PDF ขนาดเท่ากระดาษจริง (100%): ตัวแสดง PDF ของเบราว์เซอร์พิมพ์แบบ "พอดีพื้นที่พิมพ์" หน้าเอกสารจึงเล็กกว่ากระดาษ
+ * — วาดแต่ละหน้าเป็นรูปความละเอียด 200 dpi ลงหน้าพิมพ์ที่ตั้งขนาดกระดาษตรงกับเอกสาร ขอบ 0 แล้วสั่งพิมพ์
+ */
+export async function printPdfActualSize(pdfUrl: string, dpi = 200): Promise<void> {
+  const pdfjs = await loadPdfjs();
+  const doc = await pdfjs.getDocument({ url: pdfUrl }).promise;
+  const pages: { src: string; w: number; h: number }[] = [];
+  try {
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const v1 = page.getViewport({ scale: 1 });
+      const viewport = page.getViewport({ scale: dpi / 72 });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+      pages.push({ src: canvas.toDataURL("image/png"), w: v1.width, h: v1.height });
+    }
+  } finally { await doc.loadingTask.destroy(); }
+  if (!pages.length) return;
+  const { w, h } = pages[0];
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  document.body.appendChild(frame);
+  const d = frame.contentDocument!;
+  d.open();
+  d.write(`<!doctype html><html><head><meta charset="utf-8"><style>@page{size:${w}pt ${h}pt;margin:0}html,body{margin:0;padding:0}img{display:block;width:${w}pt;height:${h}pt;page-break-after:always;break-after:page}img:last-child{page-break-after:auto;break-after:auto}</style></head><body>${pages.map((p) => `<img src="${p.src}" alt="">`).join("")}</body></html>`);
+  d.close();
+  await Promise.all([...d.images].map((im) => (im.complete ? Promise.resolve() : new Promise((ok) => { im.onload = ok; im.onerror = ok; }))));
+  frame.contentWindow!.focus();
+  frame.contentWindow!.print();
+  setTimeout(() => frame.remove(), 60_000);
+}
+
+/**
+ * ไฟล์ตัวอย่างเอกสาร (รูป หรือ PDF หน้าแรก) → รูป JPEG ด้านยาวไม่เกิน 1600px สำหรับให้ AI อ่าน
+ * landscape = หน้ากว้างกว่าสูง
+ */
+export async function fileToPageImage(file: File): Promise<{ image: string; landscape: boolean }> {
+  const MAX = 1600;
+  const canvas = document.createElement("canvas");
+  if (file.type === "application/pdf") {
+    const pdfjs = await loadPdfjs();
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+    try {
+      const page = await doc.getPage(1);
+      const v1 = page.getViewport({ scale: 1 });
+      const viewport = page.getViewport({ scale: MAX / Math.max(v1.width, v1.height) });
+      canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+    } finally { await doc.loadingTask.destroy(); }
+  } else {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise<HTMLImageElement>((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = bad; i.src = url; });
+      const k = Math.min(1, MAX / Math.max(img.width, img.height));
+      canvas.width = Math.round(img.width * k); canvas.height = Math.round(img.height * k);
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    } finally { URL.revokeObjectURL(url); }
+  }
+  return { image: canvas.toDataURL("image/jpeg", 0.85), landscape: canvas.width > canvas.height };
+}
+
 /** วาดเอกสารเป็นรูป (สูงสุด maxPages หน้า) กว้าง widthPx */
 export async function renderPdfPages(model: DocumentModel, widthPx: number, maxPages = 1): Promise<string[]> {
   const [{ pdf }, { DocumentPdf, registerDocumentFonts }, pdfjs] = await Promise.all([import("@react-pdf/renderer"), import("@/lib/pdf/DocumentPdf"), loadPdfjs()]);

@@ -96,7 +96,15 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
   useEffect(() => { load(); }, [load]);
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
 
-  const print = () => frame.current?.contentWindow?.print();
+  // พิมพ์เต็มกระดาษ (100%) — ตัวแสดง PDF ของเบราว์เซอร์ย่อหน้าให้พอดีพื้นที่พิมพ์ (หน้าเล็กกว่ากระดาษ)
+  const [printing, setPrinting] = useState(false);
+  const print = async () => {
+    if (!url) return;
+    setPrinting(true);
+    try { await (await import("@/components/settings/usePdfPageImage")).printPdfActualSize(url); }
+    catch { frame.current?.contentWindow?.print(); }
+    finally { setPrinting(false); }
+  };
   // 50 ทวิ: ฉบับที่ 1 แนบแบบยื่น / ฉบับที่ 2 ผู้ถูกหักเก็บไว้
   const formCopies = source?.type === "wht" || !!model?.wht50;
   // ต้นฉบับ/สำเนา เฉพาะเอกสารที่ต้องมี (ใบกำกับ ใบเสร็จ ใบวางบิล ใบส่งของ ใบลดหนี้) · 50 ทวิ มีฉบับที่ 1/2
@@ -137,7 +145,7 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
           {shareDoc && (
             <PillButton variant={shareOpen ? "confirm" : "glass"} className="h-9 px-4 text-xs" onClick={() => setShareOpen((v) => !v)}><Send size={14} /> ส่ง / แชร์</PillButton>
           )}
-          <PillButton variant="glass" className="h-9 px-4 text-xs" disabled={!url || loading} onClick={print}><Printer size={14} /> พิมพ์</PillButton>
+          <PillButton variant="glass" className="h-9 px-4 text-xs" disabled={!url || loading || printing} onClick={print}>{printing ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />} พิมพ์</PillButton>
           <a href={url || undefined} download={fileName} className={cn("h-9 px-4 rounded-full text-xs font-bold flex items-center gap-2 bg-white/10 text-white border border-white/20 hover:bg-white/20", (!url || loading) && "pointer-events-none opacity-40")}>
             <Download size={14} /> ดาวน์โหลด PDF
           </a>

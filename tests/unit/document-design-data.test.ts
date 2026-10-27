@@ -86,6 +86,14 @@ describe("design tools: shapes, corners, flow, margins, blank page, document rul
     expect(overlaps).toEqual(was);
   });
 
+  it("stamp and signature print at a fixed real size (cannot be resized)", async () => {
+    const { fixedBlockSize, SIGN_SIZE } = await import("@/lib/documents/design");
+    expect(fixedBlockSize({ kind: "stamp" }, 80)).toEqual({ w: 80, h: 80 });
+    expect(fixedBlockSize({ kind: "sign", hide: ["name", "title", "date"] }, 80)).toEqual(SIGN_SIZE);
+    expect(fixedBlockSize({ kind: "sign", hide: ["title"] }, 80, 10)!.h).toBe(SIGN_SIZE.h + 26);
+    expect(fixedBlockSize({ kind: "text" }, 80)).toBeNull();
+  });
+
   it("grid table block keeps rows/columns within limits", async () => {
     const { normalizeFreeLayout } = await import("@/lib/documents/design");
     const n = normalizeFreeLayout({ enabled: true, blocks: [

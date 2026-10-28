@@ -107,6 +107,8 @@ export type Ctx = {
   labelGap?: number; labelWidth?: number; rowGap?: number;
   /** ช่องลงนามที่วางกล่องลายเซ็นแยกไว้แล้ว (ช่องลงนามไม่พิมพ์รูปลายเซ็นซ้ำ) */
   signPlaced?: Set<string>;
+  /** จำนวนหน้าจริงของเอกสาร (หน้าออกแบบวาดทีละกล่องหลายหน้า — เลขหน้าในส่วนท้ายใช้ค่านี้) */
+  pageTotal?: number;
 };
 /** รัศมีมุม: ค่าของกล่องก่อน ไม่มีจึงตามธีม (มุมโค้ง/เหลี่ยม) */
 const rad = (c: Ctx, d = 4) => (c.radius !== undefined ? Math.min(c.radius, d * 6) : c.t.rounded ? d : 0);
@@ -545,7 +547,7 @@ export function PageChrome({ c }: { c: Ctx }) {
       {mark ? <T style={[c.s.watermark, c.doc.watermark ? {} : { color: c.t.primary, opacity: 0.07 }]} fixed>{mark}</T> : null}
       <View style={{ position: "absolute", bottom: 18, left: c.t.margin, right: c.t.margin, flexDirection: "row", justifyContent: "space-between", fontSize: 7.5, color: c.t.muted }} fixed>
         <T style={{ maxWidth: "70%" }}>{c.doc.seller.footerNote || ""}</T>
-        {c.t.showPageNumber ? <Text render={({ pageNumber, totalPages }) => `${c.doc.number}  ·  หน้า ${pageNumber}/${totalPages}`} /> : null}
+        {c.t.showPageNumber ? (c.pageTotal ? <Text>{`${c.doc.number}  ·  หน้า 1/${c.pageTotal}`}</Text> : <Text render={({ pageNumber, totalPages }) => `${c.doc.number}  ·  หน้า ${pageNumber}/${totalPages}`} />) : null}
       </View>
     </>
   );

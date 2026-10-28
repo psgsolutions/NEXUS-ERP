@@ -2,7 +2,7 @@ import React from "react";
 import { Document, Page, View } from "@react-pdf/renderer";
 import type { CopyMode, DocumentModel } from "@/lib/documents/model";
 import { FONT_SCALE, docHasCopy, pageOf, type FreeBlock } from "@/lib/documents/design";
-import { BlockView, LetterheadBlocks, PageChrome, SectionItems, T, blockContext, documentContext } from "./StandardDocument";
+import { BlockView, PageChrome, SectionItems, T, blockContext, documentContext } from "./StandardDocument";
 
 /**
  * เอกสารตามผังลากวางอิสระ (ตั้งค่า › ออกแบบเอกสาร › โหมดลากวาง)
@@ -13,7 +13,12 @@ import { BlockView, LetterheadBlocks, PageChrome, SectionItems, T, blockContext,
 /** กล่องที่มีได้ชุดเดียวต่อหน้า: อยู่ในหัวกระดาษแล้วไม่วาดซ้ำจากผังเอกสาร */
 export const DEDUP_KINDS = ["seller", "title", "meta", "party"];
 
-export function FreeLayoutDocument({ doc, copy = "original" }: { doc: DocumentModel; copy?: CopyMode }) {
+/**
+ * ส่วนประกอบของหน้าแรก: บริบท ขนาดกระดาษ ส่วนหัว/ท้ายหน้า และกล่องทีละกล่อง (หัวกระดาษ h: · ผังเอกสาร d:)
+ * ใช้ทั้งพิมพ์ทั้งหน้า และหน้าออกแบบที่วาดทีละกล่อง (ลากย้ายได้ทันทีโดยไม่ต้องวาดใหม่)
+ * pageTotal: จำนวนหน้าจริง (หน้าออกแบบวาดหลายหน้าเพื่อแยกกล่อง เลขหน้าต้องเป็นของเอกสารจริง)
+ */
+export function freeLayoutParts(doc: DocumentModel, copy: CopyMode = "original") {
   const base = documentContext(doc, copy);
   // ข้อมูลเพิ่มที่วางแล้ว (ในกล่องเลขที่/ช่องข้อมูล) — หมายเหตุไม่แสดงซ้ำ
   const placed = [...(base.lh?.blocks || []), ...(base.per.free?.blocks || [])].filter((b) => !b.off);
@@ -51,14 +56,25 @@ export function FreeLayoutDocument({ doc, copy = "original" }: { doc: DocumentMo
       {rest.length ? <T style={[ic.s.small, { textAlign: "right", marginTop: 2 }]}>รายการต่อหน้าถัดไป ({rest.length} รายการ)</T> : null}
     </View>
   );
+  const pageTotal = rest.length ? 2 : 1;
+  const chrome = <PageChrome c={{ ...c, pageTotal }} />;
+  // ป้ายต้นฉบับ/สำเนาสำรอง วาดทับบนสุด
+  const copyLabel = copyMissing ? <T style={[c.s.copyBox, { position: "absolute", top: 4, right: 26 }]}>{copy === "copy" ? "สำเนา" : "ต้นฉบับ"}</T> : null;
+  const parts = [
+    ...(c.lh?.blocks || []).map((b) => ({ key: `h:${b.id}`, b, node: <BlockView key={`lh-${b.id}`} c={c} b={b} /> })),
+    ...blocks.map((b) => ({ key: `d:${b.id}`, b, node: <BlockView key={b.id} c={c} b={b} items={b.kind === "items" ? firstItems : undefined} /> })),
+  ];
+  return { c, ic, pg, rest, chrome, copyLabel, parts };
+}
 
+export function FreeLayoutDocument({ doc, copy = "original" }: { doc: DocumentModel; copy?: CopyMode }) {
+  const { c, ic, pg, rest, chrome, copyLabel, parts } = freeLayoutParts(doc, copy);
   return (
     <Document title={`${c.per.title || doc.title} ${doc.number}`} author={doc.seller.name} creator="NEXUS ERP">
       <Page size={[pg.w, pg.h]} style={[c.s.page, { padding: 0 }]}>
-        <PageChrome c={c} />
-        <LetterheadBlocks c={c} />
-        {blocks.map((b) => <BlockView key={b.id} c={c} b={b} items={b.kind === "items" ? firstItems : undefined} />)}
-        {copyMissing ? <T style={[c.s.copyBox, { position: "absolute", top: 4, right: 26 }]}>{copy === "copy" ? "สำเนา" : "ต้นฉบับ"}</T> : null}
+        {chrome}
+        {parts.map((p) => p.node)}
+        {copyLabel}
       </Page>
       {rest.length ? (
         <Page size={[pg.w, pg.h]} style={c.s.page} wrap>

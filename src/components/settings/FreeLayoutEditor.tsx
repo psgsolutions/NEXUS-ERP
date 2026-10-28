@@ -21,7 +21,8 @@ import {
   BLOCK_LABELS, BLOCK_PARTS, LABEL_KINDS, FONT_MIN, FONT_MAX, fixedBlockSize, PAPERS, pageOf, marginsOf, refitBlocks, type Margins, type PaperSize, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
   type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, type Letterhead,
 } from "@/lib/documents/design";
-import { fileToPageImage, usePdfPageImage } from "./usePdfPageImage";
+import { fileToPageImage } from "./usePdfPageImage";
+import { useLayerSprites } from "./useLayerSprites";
 
 /**
  * ผังลากวางอิสระ — แก้บนหน้าเอกสารจริง
@@ -255,7 +256,10 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const [moving, setMoving] = useState(false);
   const [freeMove, setFreeMove] = useState(false);
   // ขนาดกระดาษบนจอ: พอดีความกว้างพื้นที่ (ปัด 0.05 กันวาดภาพใหม่ถี่ตอนย่อขยายหน้าต่าง) หรือซูมคงที่
-  const [zoom, setZoom] = useState<"fit" | number>("fit");
+  // ค่าเริ่มต้น = ขนาดจริง (96 px ต่อนิ้ว เท่ากระดาษที่พิมพ์) · จำค่าที่เลือกไว้
+  const [zoom, setZoomState] = useState<"fit" | number>(1.333);
+  useEffect(() => { try { const v = localStorage.getItem("nexus.designer.zoom"); if (v) setZoomState(v === "fit" ? "fit" : Number(v) || 1.333); } catch { /* ค่าตั้งต้น */ } }, []);
+  const setZoom = (z: "fit" | number) => { setZoomState(z); try { localStorage.setItem("nexus.designer.zoom", String(z)); } catch { /* ไม่เป็นไร */ } };
   const [fitS, setFitS] = useState(1.25);
   const wrapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -274,9 +278,15 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const [draft, setDraft] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   const paperRef = useRef<HTMLDivElement>(null);
   // size: edge = ด้าน/มุมที่จับ (n s e w ne nw se sw) — ปรับขนาดได้ทุกด้าน
-  const drag = useRef<{ mode: "move" | "size" | "head"; px: number; py: number; orig: Map<string, FreeBlock>; h: number; edge?: string; pick?: string[]; moved?: boolean } | null>(null);
+  const drag = useRef<{ mode: "move" | "size" | "head"; px: number; py: number; orig: Map<string, FreeBlock>; h: number; edge?: string; pick?: string[]; moved?: boolean; edit?: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const { image, busy, error } = usePdfPageImage(model, P.w * S);
+  // ระหว่างลากย้าย/ปรับขนาด: ตำแหน่งชั่วคราวบนจอเท่านั้น (ภาพเลื่อนทันที) — บันทึกลงเอกสารครั้งเดียวตอนปล่อยเมาส์
+  const [over, setOverState] = useState<Map<string, FreeBlock> | null>(null);
+  const overRef = useRef<Map<string, FreeBlock> | null>(null);
+  const setOver = (m: Map<string, FreeBlock> | null) => { overRef.current = m; setOverState(m); };
+  // หน้ากระดาษแยกชั้นทีละกล่อง: ลากแล้วภาพตามทันที วาดใหม่เฉพาะกล่องที่เปลี่ยนเนื้อหา/ขนาด
+  const { base: layerBase, sprites, busy, error } = useLayerSprites(model, S);
+  const drawn = !!layerBase || sprites.size > 0;
 
   // ---------- ย้อนกลับ/ทำซ้ำ: ประวัติอยู่ที่หน้าหลัก (รวมทุกการแก้ของการออกแบบ) ----------
   const commitLayout = onChange;
@@ -291,8 +301,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   // ตราประทับ/ลายเซ็น: ขนาดจริงเสมอ (ย่อ/ขยายไม่ได้)
   const sized = (b: FreeBlock): FreeBlock => { const f = fixedBlockSize(b, stampSize, theme.fontSize); return f ? { ...b, ...f } : b; };
   const items: Item[] = [
-    ...(letterhead?.blocks || []).filter((b) => !b.off).map((b) => ({ key: `h:${b.id}`, zone: "head" as Zone, b: sized(b) })),
-    ...(bodyOn ? layout.blocks.filter((b) => !headKinds.has(b.kind) && !b.off).map((b) => ({ key: `d:${b.id}`, zone: "doc" as Zone, b: sized(b) })) : []),
+    ...(letterhead?.blocks || []).filter((b) => !b.off).map((b) => ({ key: `h:${b.id}`, zone: "head" as Zone, b: sized(over?.get(`h:${b.id}`) ?? b) })),
+    ...(bodyOn ? layout.blocks.filter((b) => !headKinds.has(b.kind) && !b.off).map((b) => ({ key: `d:${b.id}`, zone: "doc" as Zone, b: sized(over?.get(`d:${b.id}`) ?? b) })) : []),
   ];
   const byKey = new Map(items.map((i) => [i.key, i]));
   const selected = sel.map((k) => byKey.get(k)).filter((x): x is Item => !!x);
@@ -302,18 +312,6 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const isLocked = (it: Item) => !letterOnly && required.includes(it.b.kind) && items.filter((x) => x.b.kind === it.b.kind).length <= 1;
   const firstOf = (kind: BlockKind) => items.find((i) => i.b.kind === kind) || null;
 
-  /** ภาพของกล่องตัดย้ายได้เฉพาะกล่องที่ไม่ทับกล่องอื่น (ทับกัน = ภาพที่ตัดมีส่วนของกล่องอื่นติดมา และการปิดตำแหน่งเดิมลบกล่องด้านหลัง) */
-  const croppable = (key: string, o: FreeBlock) => o.kind !== "rect" && o.kind !== "shape" && o.kind !== "line" && o.kind !== "image"
-    && ![...shot.entries()].some(([k, p]) => k !== key && p.x < o.x + o.w && o.x < p.x + p.w && p.y < o.y + o.h && o.y < p.y + p.h);
-  // ตำแหน่งกล่อง ณ ตอนวาดภาพล่าสุด (ตัดภาพให้กล่องที่ถูกย้าย)
-  const shot = useMemo(() => {
-    const m = new Map<string, FreeBlock>();
-    if (!image) return m;
-    const r = resolveDesign(image.model.seller.design, docType, image.model.seller.brandColor);
-    for (const b of r.letterhead?.blocks || []) m.set(`h:${b.id}`, b);
-    if (r.doc.free?.enabled) for (const b of r.doc.free.blocks) m.set(`d:${b.id}`, b);
-    return m;
-  }, [image, docType]);
 
   const clamp = (b0: FreeBlock): FreeBlock => {
     const b = sized(b0);
@@ -564,7 +562,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         const sy = free ? null : nearest([Tp + dy, (Tp + B) / 2 + dy, B + dy], t.ys);
         if (sx) { dx += sx.delta; g.x.push(sx.at); } else dx = toGrid(L + dx, free) - L;
         if (sy) { dy += sy.delta; g.y.push(sy.at); } else dy = toGrid(Tp + dy, free) - Tp;
-        applyMany(new Map([...d.orig].map(([k, b]) => [k, { ...b, x: b.x + dx, y: b.y + dy }])));
+        setOver(new Map([...d.orig].map(([k, b]) => [k, { ...b, x: b.x + dx, y: b.y + dy }])));
       } else {
         const [k, b] = [...d.orig][0];
         const ed = d.edge || "se";
@@ -585,7 +583,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         L = Math.max(0, L); Tp = Math.max(0, Tp); R = Math.min(P.w, R); B = Math.min(P.h, B);
         if (R - L < 4) { if (ed.includes("w")) L = R - 4; else R = L + 4; }
         if (B - Tp < 1) { if (ed.includes("n")) Tp = B - 1; else B = Tp + 1; }
-        applyMany(new Map([[k, { ...b, x: L, y: Tp, w: R - L, h: B - Tp }]]));
+        setOver(new Map([[k, { ...b, x: L, y: Tp, w: R - L, h: B - Tp }]]));
       }
       setGuides(g);
     };
@@ -601,7 +599,13 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       setMoving(false);
       setFreeMove(false);
       if (draft) { finishDraw(draft); return; }
-      if (drag.current) { if (drag.current.pick && !drag.current.moved) setSel(drag.current.pick); drag.current = null; setGuides({ x: [], y: [] }); }
+      if (drag.current) {
+        if (overRef.current) applyMany(overRef.current);
+        setOver(null);
+        if (drag.current.pick && !drag.current.moved) setSel(drag.current.pick);
+        if (drag.current.edit && !drag.current.moved) setEditing(drag.current.edit);
+        drag.current = null; setGuides({ x: [], y: [] });
+      }
     };
     const key = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
@@ -678,7 +682,9 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     if (!keys.length) { if (pick) setSel(pick); return; } // กล่องที่ล็อกไว้: เลือกได้แต่ไม่ขยับ
     e.preventDefault();
     setMoving(true);
-    drag.current = { mode, px: e.clientX, py: e.clientY, orig: new Map(keys.map((k) => [k, byKey.get(k)!.b])), h: 0, edge, pick };
+    // คลิกกล่องข้อความที่เลือกอยู่แล้ว (ไม่ได้ลาก) = พิมพ์แก้บนหน้ากระดาษทันที
+    const edit = mode === "move" && !(e.shiftKey || e.ctrlKey || e.metaKey) && it.b.kind === "text" && sel.length === 1 && sel[0] === it.key ? it.key : undefined;
+    drag.current = { mode, px: e.clientX, py: e.clientY, orig: new Map(keys.map((k) => [k, byKey.get(k)!.b])), h: 0, edge, pick, edit };
   };
   const startHead = (e: React.PointerEvent) => {
     if (!canEdit || !letterhead) return;
@@ -1385,7 +1391,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           </RGroup>
           <RGroup label="มุมมอง">
             <RSelect width={136} title="ขนาดกระดาษบนจอ" value={String(zoom)} onChange={(v) => setZoom(v === "fit" ? "fit" : Number(v))}>
-              <option value="fit">พอดีความกว้าง</option><option value="1">ซูม 100%</option><option value="1.333">ขนาดจริง</option><option value="1.5">ซูม 150%</option><option value="2">ซูม 200%</option>
+              <option value="fit">พอดีความกว้าง</option><option value="1">75%</option><option value="1.333">ขนาดจริง 100%</option><option value="1.667">125%</option><option value="2">150%</option><option value="2.667">200%</option>
             </RSelect>
             <RBtn icon={<Eye size={18} />} label="ดู PDF" on={showPdf} onClick={() => setShowPdf((v) => !v)} />
           </RGroup>
@@ -1705,8 +1711,15 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
               else { const r = paperRef.current!.getBoundingClientRect(); const x = (e.clientX - r.left) / S, y = (e.clientY - r.top) / S; setMarquee({ x0: x, y0: y, x1: x, y1: y, add: e.ctrlKey || e.metaKey || e.shiftKey }); }
             }}>
             {marquee && <div className="absolute z-40 pointer-events-none border border-[#0d9488] bg-[#0d9488]/10" style={{ left: Math.min(marquee.x0, marquee.x1) * S, top: Math.min(marquee.y0, marquee.y1) * S, width: Math.abs(marquee.x1 - marquee.x0) * S, height: Math.abs(marquee.y1 - marquee.y0) * S }} />}
+            {/* ส่วนหัว/ท้ายหน้า (ลายน้ำ เลขหน้า) แล้วภาพของแต่ละกล่องตามลำดับชั้น ณ ตำแหน่งปัจจุบัน */}
             {/* eslint-disable-next-line @next/next/no-img-element -- ภาพหน้าเอกสารที่วาดในเบราว์เซอร์ (data URL) */}
-            {image && <img src={image.url} alt="" className="absolute inset-0 w-full h-full pointer-events-none" />}
+            {layerBase && <img src={layerBase.url} alt="" className="absolute pointer-events-none" style={{ left: layerBase.x * S, top: layerBase.y * S, width: layerBase.w * S, height: layerBase.h * S }} />}
+            {items.map((it) => {
+              const sp = sprites.get(it.key);
+              if (!sp) return null;
+              // eslint-disable-next-line @next/next/no-img-element -- ภาพกล่องที่วาดในเบราว์เซอร์ (blob URL)
+              return <img key={`s-${it.key}`} src={sp.url} alt="" draggable={false} className="absolute pointer-events-none select-none max-w-none" style={{ left: (it.b.x + sp.x - sp.bx) * S, top: (it.b.y + sp.y - sp.by) * S, width: sp.w * S, height: sp.h * S }} />;
+            })}
             {showGrid && (
               <div className="absolute inset-0 pointer-events-none z-[5]" style={{
                 // เส้นกริดบางและจาง (เส้นรองจางมาก ทุก 5 ช่องเข้มขึ้นเล็กน้อย) ไม่บังเนื้อเอกสาร
@@ -1722,33 +1735,23 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                 ? { left: Math.min(draft.x0, draft.x1) * S, top: draft.y0 * S, width: Math.abs(draft.x1 - draft.x0) * S, height: 1 }
                 : { left: draft.x0 * S, top: Math.min(draft.y0, draft.y1) * S, width: 1, height: Math.abs(draft.y1 - draft.y0) * S }} />;
             })() : <div className="absolute z-30 pointer-events-none border border-[#0d9488] bg-[#0d9488]/5" style={{ left: Math.min(draft.x0, draft.x1) * S, top: Math.min(draft.y0, draft.y1) * S, width: Math.abs(draft.x1 - draft.x0) * S, height: Math.abs(draft.y1 - draft.y0) * S }} />)}
-            {/* กล่องที่ถูกย้าย: ปิดตำแหน่งเดิมในภาพ */}
-            {image && items.map((it) => {
-              const o = shot.get(it.key);
-              return o && (o.x !== it.b.x || o.y !== it.b.y) && croppable(it.key, o) ? <div key={`m-${it.key}`} className="absolute bg-white pointer-events-none z-[6]" style={{ left: o.x * S, top: o.y * S, width: o.w * S, height: Math.max(1, o.h) * S }} /> : null;
-            })}
             {items.map((it) => {
-              const b = it.b, on = sel.includes(it.key), o = shot.get(it.key);
-              const shifted = !!(image && o && (o.x !== b.x || o.y !== b.y || o.w !== b.w || o.h !== b.h));
-              const moved = shifted && croppable(it.key, o!) && o!.w === b.w && o!.h === b.h;
-              // ย้ายกล่องที่ทับกล่องอื่น/กรอบ: แสดงเงาตำแหน่งใหม่ ไม่ตัดภาพ (กล่องด้านหลังอยู่ที่เดิม)
-              const ghost = shifted && !moved;
+              const b = it.b, on = sel.includes(it.key);
               const frame = b.kind === "rect" || b.kind === "grid";
-              const fresh = !o;
+              // กล่องใหม่ที่ยังวาดไม่เสร็จ: เส้นประให้เห็นตำแหน่ง
+              const fresh = drawn && !sprites.has(it.key);
               return (
                 <div key={it.key} onPointerDown={(e) => start(e, it, "move")} onDoubleClick={(e) => { e.stopPropagation(); setSel([it.key]); if (b.kind === "text" && canEdit) setEditing(it.key); }}
                   className={cn("absolute group", canEdit ? "cursor-move" : "cursor-pointer",
                     // กรอบ/เส้น/รูป อยู่ชั้นล่างของการคลิก — คลิกข้อมูลที่อยู่ในกรอบได้ · กรอบเลือกที่ขอบ
                     on ? cn("outline outline-1 -outline-offset-1 outline-[#0d9488] z-20", multi && anchorKeys.includes(it.key) && "outline-amber-400") : cn("outline outline-1 -outline-offset-1 outline-dashed outline-transparent hover:outline-slate-400", ["rect", "shape", "line", "image", "grid"].includes(b.kind) ? "z-[8]" : "z-10"),
                     frame && "pointer-events-none",
-                    fresh && !on && "outline-slate-300",
-                    ghost && (b.kind === "line" ? "bg-[#0d9488]/70" : frame ? "border border-dashed border-[#0d9488]" : "bg-[#0d9488]/10 border border-dashed border-[#0d9488]/70"))}
+                    fresh && !on && "outline-slate-300")}
                   style={{
                     // เส้นบาง: ขยายพื้นที่คลิกเป็นอย่างน้อย 8px รอบเส้น
                     ...(b.kind === "line"
                       ? (b.h > b.w ? { left: b.x * S - Math.max(0, (8 - b.w * S) / 2), top: b.y * S, width: Math.max(8, b.w * S), height: b.h * S } : { left: b.x * S, top: b.y * S - Math.max(0, (8 - b.h * S) / 2), width: b.w * S, height: Math.max(8, b.h * S) })
                       : { left: b.x * S, top: b.y * S, width: b.w * S, height: Math.max(2, b.h * S) }),
-                    ...(moved ? { backgroundImage: `url(${image!.url})`, backgroundSize: `${P.w * S}px ${P.h * S}px`, backgroundPosition: `${-o!.x * S}px ${-o!.y * S}px`, backgroundRepeat: "no-repeat" } : {}),
                   }}>
                   <span className={cn("absolute -top-[17px] left-0 px-1.5 rounded-t text-[10px] leading-[17px] whitespace-nowrap pointer-events-none",
                     it.zone === "head" ? "bg-purple-600 text-white" : "bg-[#0d9488] text-white", on && !multi ? "block" : "hidden group-hover:block", on && multi && anchorKeys.includes(it.key) && "!block bg-amber-500")}>
@@ -1761,7 +1764,6 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                     </div>
                   )}
                   {fresh && b.kind === "text" && <div className="px-1 text-[10px] text-slate-500 pointer-events-none">{b.text}</div>}
-                  {ghost && !frame && b.kind !== "line" && <div className="px-1 text-[10px] text-[#0f766e] pointer-events-none truncate">{nameOf(b)}</div>}
                   {frame && (["top-0 left-0 right-0 h-[6px] -mt-[3px]", "bottom-0 left-0 right-0 h-[6px] -mb-[3px]", "top-0 bottom-0 left-0 w-[6px] -ml-[3px]", "top-0 bottom-0 right-0 w-[6px] -mr-[3px]"] as const).map((pos) => (
                     <div key={pos} onPointerDown={(e) => start(e, it, "move")} className={cn("absolute pointer-events-auto", pos)} />
                   ))}
@@ -1789,7 +1791,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
               </div>
             )}
             {freeMove && moving && <span className="absolute top-2 left-2 z-40 text-[11px] px-2 py-1 rounded-full bg-amber-500/90 text-white">วางอิสระ (ไม่ดูดกริด)</span>}
-            {(busy || !image) && <span className="absolute top-2 right-2 z-40 flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-slate-800/80 text-white"><Loader2 size={11} className="animate-spin" /> กำลังอัปเดต</span>}
+            {(busy || !drawn) && <span className="absolute top-2 right-2 z-40 flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-slate-800/80 text-white"><Loader2 size={11} className="animate-spin" /> กำลังอัปเดต</span>}
             {error && <span className="absolute bottom-2 left-2 right-2 z-40 text-[11px] px-2 py-1 rounded bg-red-600/90 text-white">วาดตัวอย่างไม่สำเร็จ: {error}</span>}
           </div>
           {inlineEditor}

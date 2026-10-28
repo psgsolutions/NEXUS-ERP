@@ -5,6 +5,7 @@ import { docHasCopy } from "@/lib/documents/design";
 import { createPortal } from "react-dom";
 import { Download, Loader2, Printer, Send, X } from "lucide-react";
 import { DocumentSharePanel } from "./DocumentSharePanel";
+import { PdfPages } from "./PdfPages";
 import { PillButton, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api-client";
@@ -37,7 +38,6 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
   const [fileName, setFileName] = useState("document.pdf");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const frame = useRef<HTMLIFrameElement>(null);
   // ใบวางบิล/ใบส่งของ/ใบเสร็จ (ไม่ใช่ใบกำกับ): เลือกใส่/เว้นวันที่ตอนพิมพ์ และจำเป็นค่าของลูกค้าได้
   type DateOpt = { actual: string; profileUndated: boolean; customerId: string; docKind: "billingNote" | "deliveryNote" | "receipt"; undated: boolean };
   const [dateMode, setDateMode] = useState<"profile" | "dated" | "undated">("profile");
@@ -102,7 +102,7 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
     if (!url) return;
     setPrinting(true);
     try { await (await import("@/components/settings/usePdfPageImage")).printPdfActualSize(url); }
-    catch { frame.current?.contentWindow?.print(); }
+    catch { window.open(url, "_blank"); }
     finally { setPrinting(false); }
   };
   // Ctrl+P ระหว่างดูเอกสาร = พิมพ์เต็มกระดาษแบบเดียวกับปุ่มพิมพ์ (ไม่ใช่พิมพ์หน้าเว็บ/ตัวแสดง PDF ที่ย่อหน้า)
@@ -163,8 +163,8 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
         <div className="flex-1 min-w-0 relative bg-black/30">
           {loading && <div className="absolute inset-0 flex items-center justify-center gap-2 text-white/50 text-sm"><Loader2 size={16} className="animate-spin" /> กำลังสร้างเอกสาร…</div>}
           {error && !loading && <div className="absolute inset-0 flex items-center justify-center text-danger text-sm px-6 text-center">{error}</div>}
-          {/* ซ่อนแถบเครื่องมือของตัวแสดง PDF: ปุ่มพิมพ์ในนั้นพิมพ์แบบ "พอดีพื้นที่พิมพ์" หน้าเล็กกว่ากระดาษ — พิมพ์ด้วยปุ่มพิมพ์ด้านบน (100%) */}
-          {url && <iframe ref={frame} src={`${url}#toolbar=0&navpanes=0&view=FitH`} title={fileName} className={cn("w-full h-full border-0", loading && "opacity-0")} />}
+          {/* หน้าเอกสารขนาดจริง 100% (ไม่ใช้ตัวแสดง PDF ของเบราว์เซอร์ที่ย่อหน้าให้พอดีช่อง) · พิมพ์ด้วยปุ่มพิมพ์ด้านบน */}
+          {url && <PdfPages url={url} className={cn("absolute inset-0", loading && "opacity-0")} />}
         </div>
         {shareOpen && shareDoc && (
           <aside className="w-[340px] max-w-[85vw] shrink-0 border-l border-white/10 overflow-y-auto bg-surface-0">

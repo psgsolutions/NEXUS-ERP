@@ -274,7 +274,8 @@ export function DocumentDesigner() {
   const [preview, setPreview] = useState<DocumentDesign | null>(null);
   useEffect(() => { const t = setTimeout(() => setPreview(shown), 120); return () => clearTimeout(t); }, [shown]);
   const [stripDesign, setStripDesign] = useState<DocumentDesign | null>(null);
-  useEffect(() => { const t = setTimeout(() => setStripDesign(shown), 2500); return () => clearTimeout(t); }, [shown]);
+  // ภาพย่อแถบชนิดเอกสาร: อัปเดตเมื่อหยุดแก้สักพัก (วาด PDF ใช้เวลา — ไม่ให้แย่งจังหวะตอนกำลังจัดหน้า)
+  useEffect(() => { const t = setTimeout(() => setStripDesign(shown), 6000); return () => clearTimeout(t); }, [shown]);
 
   // ดูตัวอย่างด้วยเอกสารจริงล่าสุดของชนิดนี้
   useEffect(() => {

@@ -162,10 +162,11 @@ async function main() {
     ['company admin cannot edit other company user', () => assertFails(updateDoc(doc(adminA, 'users/userB'), { role: 'SALES' }))],
 
     // Append-only and server-only
-    ['member creates audit log', () => assertSucceeds(addDoc(collection(userA, 'companies/A/auditLogs'), { companyId: 'A' }))],
+    ['member cannot create company audit log (server only)', () => assertFails(addDoc(collection(userA, 'companies/A/auditLogs'), { companyId: 'A' }))],
     ['audit log cannot be edited', () => assertFails(updateDoc(doc(userA, 'companies/A/auditLogs/l1'), { companyId: 'A', x: 1 }))],
     ['audit log cannot be deleted', () => assertFails(deleteDoc(doc(userA, 'companies/A/auditLogs/l1')))],
-    ['member creates root log', () => assertSucceeds(addDoc(collection(userA, 'logs'), { companyId: 'A' }))],
+    ['member cannot create root log (server only, C-07)', () => assertFails(addDoc(collection(userA, 'logs'), { companyId: 'A', createdBy: 'adminA' }))],
+    ['member still reads own company logs', () => assertSucceeds(getDoc(doc(userA, 'logs/logA')))],
     ['root log cannot be edited', () => assertFails(updateDoc(doc(userA, 'logs/logA'), { x: 1 }))],
     ['counters are server-only', () => assertFails(setDoc(doc(userA, 'counters/A_QT-26'), { seq: 1 }))],
     ['period closings readable by company', () => assertSucceeds(byCompany(userA, 'periodClosings', 'A'))],
@@ -176,7 +177,7 @@ async function main() {
     ['member cannot create quotation as APPROVED', () => assertFails(setDoc(doc(userA, 'companies/A/quotations/qBad'), { companyId: 'A', status: 'Approved' }))],
     ['member cannot update a quotation directly', () => assertFails(updateDoc(doc(userA, 'companies/A/quotations/qDraft'), { grandTotal: 1 }))],
     ['member cannot edit a sent quotation', () => assertFails(updateDoc(doc(userA, 'companies/A/quotations/qSent'), { grandTotal: 1 }))],
-    ['member deletes draft quotation', () => assertSucceeds(deleteDoc(doc(userA, 'companies/A/quotations/qDraft')))],
+    ['member cannot hard-delete draft quotation (void via API, C-08)', () => assertFails(deleteDoc(doc(userA, 'companies/A/quotations/qDraft')))],
     ['member cannot delete sent quotation', () => assertFails(deleteDoc(doc(userA, 'companies/A/quotations/qSent')))],
     ['cannot create quotation + lines in a batch from client', async () => {
       const b = writeBatch(userA);
@@ -318,7 +319,7 @@ async function main() {
     ['member cannot create invoice directly', () => assertFails(setDoc(doc(userA, 'companies/A/invoices/inv2'), { companyId: 'A' }))],
     ['member cannot edit invoice balance', () => assertFails(updateDoc(doc(userA, 'companies/A/invoices/inv1'), { balance: 0 }))],
     ['member cannot delete real invoice', () => assertFails(deleteDoc(doc(userA, 'companies/A/invoices/inv1')))],
-    ['member deletes sample invoice', () => assertSucceeds(deleteDoc(doc(userA, 'companies/A/invoices/invSample')))],
+    ['member cannot delete sample invoice directly (API only)', () => assertFails(deleteDoc(doc(userA, 'companies/A/invoices/invSample')))],
     ['member cannot write credit note directly', () => assertFails(setDoc(doc(userA, 'companies/A/cndn/c1'), { companyId: 'A' }))],
     ['member cannot write billing note directly', () => assertFails(setDoc(doc(userA, 'companies/A/billing_notes/b1'), { companyId: 'A' }))],
 

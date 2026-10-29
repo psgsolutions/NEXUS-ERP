@@ -4,6 +4,7 @@ import { requireApiUser, authErrorResponse, ApiAuthError, type ApiUser } from "@
 import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { canEditMaster, companiesInGroup, groupIdOfCompany } from "@/lib/company-group.server";
+import { auditServer } from "@/services/audit.server";
 import { processStockMovements } from "@/lib/stock-service";
 import { LEGACY_ROOT } from "@/lib/master-store.server";
 import { normalizeDocProfile } from "@/lib/customer-doc-profile";
@@ -242,6 +243,7 @@ export async function POST(request: Request) {
           });
         });
       }
+      await auditServer.logCreate(apiUser.uid, companyId, `MASTER_${entity.toUpperCase()}`, id, { name: master.name ?? data.name, ...(entity === "products" ? { sku: master.sku } : {}), openingStock: opening.qty || undefined });
       return NextResponse.json({ success: true, id, groupId, openingStock: opening.qty, ...(entity === "products" ? { sku: master.sku } : {}) });
     }
 

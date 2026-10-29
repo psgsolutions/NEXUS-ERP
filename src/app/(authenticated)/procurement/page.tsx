@@ -42,7 +42,6 @@ import {
 } from "@/components/ui/Base";
 import { DocumentFlowStepper } from "@/components/ui/DocumentFlowStepper";
 import { useAuth } from "@/context/AuthContext";
-import { auditService } from "@/services/audit.service";
 
 
 import { doc, setDoc, query, collection, onSnapshot } from "firebase/firestore";
@@ -162,7 +161,8 @@ export default function ProcurementPage() {
     const qExp = query(collection(db, `companies/${companyId}/expenses`));
     const unsubExp = onSnapshot(qExp, (snap) => {
       const list: any[] = [];
-      snap.forEach(doc => list.push({ id: doc.id, ...doc.data(), _docId: doc.id }));
+      // รายการที่ถูกยกเลิก/ลบ (VOID) ไม่แสดง
+      snap.forEach(doc => { if (doc.data().isDeleted !== true) list.push({ id: doc.id, ...doc.data(), _docId: doc.id }); });
       setExpensesList(list);
     });
 

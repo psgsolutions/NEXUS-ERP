@@ -208,18 +208,17 @@ service cloud.firestore {
     }
 
     // ---------- Append-only audit logs ----------
+    // บันทึกการใช้งาน: เขียนจาก server เท่านั้น (ผู้ทำจาก token, IP, เบราว์เซอร์) — ปลอมชื่อผู้อื่นไม่ได้
     match /logs/{logId} {
       allow get: if isMember() && canGet();
       allow list: if isMember() && canList();
-      allow create: if isMember() && newDataInMyCompany();
-      allow update, delete: if false;
+      allow write: if false;
     }
 
     match /activity_logs/{logId} {
       allow get: if isMember() && canGet();
       allow list: if isMember() && canList();
-      allow create: if isMember() && newDataInMyCompany();
-      allow update, delete: if false;
+      allow write: if false;
     }
 
     // ---------- Tenant-scoped company tree ----------
@@ -284,8 +283,9 @@ service cloud.firestore {
       // receipts / payments / payrolls / serial_numbers: อ่านได้ตามกฎด้านบน เขียนผ่าน API เท่านั้น (ตรวจยอดค้าง กลับรายการบัญชี ออกเลขที่ในทรานแซกชัน)
       // ใบกำกับภาษี / ใบวางบิล / ใบลดหนี้-เพิ่มหนี้: ออกผ่าน /api/sales/* เท่านั้น (เลขต้องเรียงต่อเนื่อง)
       // ลบจากหน้าจอได้เฉพาะเอกสารตัวอย่าง
+      // ลบเอกสารตัวอย่างผ่าน /api/documents/delete (sample_invoice) เท่านั้น
       match /invoices/{invoiceId} {
-        allow delete: if inCompany(companyId) && resource.data.get('isSample', false) == true;
+        allow delete: if false;
       }
 
       // ใบเสนอราคา
@@ -297,7 +297,8 @@ service cloud.firestore {
         allow read: if inCompany(companyId);
         // สร้าง/แก้/อนุมัติ/ออกฉบับแก้ไข ผ่าน /api/quotations/* เท่านั้น (ออกเลขที่และตรวจ GP ฝั่งเซิร์ฟเวอร์)
         allow create, update: if false;
-        allow delete: if inCompany(companyId) && quotationEditable(resource.data);
+        // ลบ = ยกเลิก (VOID) ผ่าน /api/documents/delete เท่านั้น เลขที่ไม่หาย
+        allow delete: if false;
 
         match /{sub}/{subId} {
           allow read: if inCompany(companyId);
@@ -306,8 +307,7 @@ service cloud.firestore {
       }
 
       match /auditLogs/{logId} {
-        allow create: if inCompany(companyId);
-        allow update, delete: if false;
+        allow write: if false;
       }
 
       // เอกสารบัญชีที่ POSTED แล้วห้ามแก้/ลบ (แก้ผ่าน Reverse Entry เท่านั้น)

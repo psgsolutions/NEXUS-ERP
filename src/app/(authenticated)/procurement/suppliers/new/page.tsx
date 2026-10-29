@@ -21,7 +21,6 @@ import {
 import { SmartAddressPicker, ThaiAddress } from "@/components/ui/SmartAddressPicker";
 import { formatCurrency } from "@/lib/erp-logic";
 import { useSystemDialog } from "@/context/DialogContext";
-import { auditService } from "@/services/audit.service";
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
@@ -192,7 +191,7 @@ export default function NewSupplierPage() {
         }
       }
 
-      await auditService.logCreate(user.uid, currentCompanyId, "TECHNICIAN_CONTRACTOR", "NEW", payload);
+      // ประวัติการสร้างบันทึกที่ server (/api/master-data และ /api/procurement/subcontractor-rates)
       
       showAlert("บันทึกข้อมูลช่างและอัตราค่าแรงเรียบร้อยแล้ว", "แจ้งเตือน", "info");
       router.back();

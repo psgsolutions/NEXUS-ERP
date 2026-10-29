@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { ShieldCheck, CheckCircle2, ArrowLeft, RefreshCw, FileText } from "lucide-react";
 import { PillButton, PillInput, PillSelect, GlassCard } from "@/components/ui/Base";
 import { useSystemDialog } from "@/context/DialogContext";
-import { auditService } from "@/services/audit.service";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";

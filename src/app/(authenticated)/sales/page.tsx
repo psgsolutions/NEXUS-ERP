@@ -62,7 +62,6 @@ import { EmptyGuide } from "@/components/guide/Guidance";
 import { useAdvancedTabs } from "@/components/guide/Onboarding";
 import { useAuth } from "@/context/AuthContext";
 import { useCustomers } from "@/hooks/useCustomers";
-import { auditService } from "@/services/audit.service";
 import { db } from "@/lib/firebase-client";
 import { collection, query, where, onSnapshot, doc, setDoc } from "firebase/firestore";
 

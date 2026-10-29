@@ -65,6 +65,8 @@ export default function LogDetailPage() {
               {row("โมดูล", moduleLabel(log.module))}
               {row("เลขที่เอกสาร", <span className="font-mono">{log.targetId || "-"}</span>)}
               {row("ที่มา", log.userAgent === "SYSTEM" ? "เซิร์ฟเวอร์" : log.userAgent ? "เบราว์เซอร์" : "-")}
+              {log.ip ? row("IP ผู้ทำรายการ", log.ip) : null}
+              {log.userAgent && log.userAgent !== "SYSTEM" ? row("เบราว์เซอร์", log.userAgent) : null}
             </div>
           </GlassCard>
           <GlassCard className="p-5">

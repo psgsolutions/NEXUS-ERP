@@ -33,6 +33,7 @@ function shape(id: string, d: any, names: Map<string, string>) {
     createdAt: toIso(d.createdAt),
     changes: d.changes || null,
     userAgent: d.metadata?.userAgent || "",
+    ip: d.metadata?.ip || "",
   };
 }
 

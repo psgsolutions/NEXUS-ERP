@@ -10,13 +10,15 @@ import { can, type Permission } from "@/lib/permissions";
 /**
  * [API-SERVER] ลบเอกสารที่ยังไม่มีผลต่อเนื่อง (ฝ่ายบัญชี: เอกสารจัดซื้อ/ค่าใช้จ่าย, ฝ่ายขาย: ใบสั่งขายร่าง)
  * Endpoint: POST /api/documents/delete
- * body: { companyId, kind: "purchase_order" | "expense" | "wht" | "sales_order", id }
+ * body: { companyId, kind: "purchase_order" | "expense" | "wht" | "sales_order" | "quotation" | "sample_invoice", id, reason? }
  *
  * - ใบสั่งซื้อ: ยังไม่รับสินค้า ยังไม่ตั้งเบิก -> ลบ และคืนสถานะใบขอซื้อเป็นอนุมัติแล้ว
  * - รายการค่าใช้จ่าย: ยังไม่จ่าย ยังไม่บันทึกภาษีซื้อ/ตั้งหนี้ ยังไม่ออกหนังสือรับรอง -> ลบ และปลดล็อกใบสั่งซื้อ
  * - หนังสือรับรองหัก ณ ที่จ่าย: รายการยังไม่จ่าย และงวดภาษียังไม่ยื่น -> ยกเลิก (เก็บเอกสารไว้ เลขที่ไม่หาย) และปลดจากรายการค่าใช้จ่าย
  * - ใบสั่งขาย: ร่าง/ยกเลิก ยังไม่ออกใบกำกับ ไม่มีใบสั่งงานหรือค่าใช้จ่ายอ้างอิง -> ลบ
- * ตรวจและลบในทรานแซกชันเดียว เลขที่เอกสารไม่ถูกนำกลับมาใช้
+ * - ใบเสนอราคา: ร่าง/ไม่อนุมัติ เท่านั้น · ใบแจ้งหนี้ตัวอย่าง (isSample): ลบจริงได้ (ไม่ใช่เอกสารจริง)
+ * ตรวจในทรานแซกชันเดียว · เอกสารจริงไม่ถูกลบออกจากฐานข้อมูล: เปลี่ยนเป็น VOID + isDeleted (ซ่อนจากรายการ)
+ * พร้อมเหตุผล ผู้ทำ และเวลา เลขที่เอกสารจึงไม่หายและไม่ถูกนำกลับมาใช้
  */
 
 const str = (v: any, max = 300) => String(v ?? "").trim().slice(0, max);
@@ -25,6 +27,8 @@ const KINDS = {
   expense: { col: "expenses", label: "รายการค่าใช้จ่าย", audit: "EXPENSE" },
   wht: { col: "withholding_taxes", label: "หนังสือรับรองหัก ณ ที่จ่าย", audit: "WHT_CERTIFICATE" },
   sales_order: { col: "sales_orders", label: "ใบสั่งขาย", audit: "SALES_ORDER" },
+  quotation: { col: "quotations", label: "ใบเสนอราคา", audit: "QUOTATION" },
+  sample_invoice: { col: "invoices", label: "ใบแจ้งหนี้ตัวอย่าง", audit: "SAMPLE_INVOICE" },
 } as const;
 type Kind = keyof typeof KINDS;
 const DELETE_PERMISSION: Record<Kind, Permission> = {
@@ -32,6 +36,8 @@ const DELETE_PERMISSION: Record<Kind, Permission> = {
   expense: "finance:delete",
   wht: "finance:delete",
   sales_order: "sales:delete",
+  quotation: "sales:delete",
+  sample_invoice: "finance:delete",
 };
 
 export async function POST(request: Request) {
@@ -57,8 +63,11 @@ export async function POST(request: Request) {
       const snap = await tx.get(ref);
       if (!snap.exists) throw new ApiAuthError(404, `ไม่พบ${label} ${id}`);
       const d = snap.data()!;
-      const own = { purchase_order: d.poCode, expense: d.expenseId, wht: d.whtId, sales_order: d.soId }[kind];
+      if (d.isDeleted === true && kind !== "sample_invoice") throw new ApiAuthError(409, `${label} ${id} ถูกยกเลิกไปแล้ว`);
+      const own = { purchase_order: d.poCode, expense: d.expenseId, wht: d.whtId, sales_order: d.soId, quotation: d.documentNo || d.quotationNumber, sample_invoice: d.invoiceNo }[kind];
       const docNo = String(own || d.documentNo || id);
+      // ยกเลิกแทนการลบ: เก็บเอกสารไว้ตรวจสอบย้อนหลัง
+      const voidIt = () => tx.update(ref, { status: "VOID", statusBeforeVoid: d.status ?? null, isDeleted: true, voidReason: str(body.reason, 300) || "ลบโดยผู้ใช้", voidedBy: apiUser.uid, voidedAt: now, updatedAt: now, updatedBy: apiUser.uid });
 
       if (kind === "purchase_order") {
         const st = normalizePoStatus(d.status);
@@ -69,7 +78,7 @@ export async function POST(request: Request) {
         }
         const prRef = d.prRef ? adminDb.doc(`${base}/purchase_requests/${str(d.prRef, 120)}`) : null;
         const pr = prRef ? await tx.get(prRef) : null;
-        tx.delete(ref);
+        voidIt();
         if (prRef && pr?.exists && pr.data()!.status === "CONVERTED" && pr.data()!.poCode === docNo) {
           tx.update(prRef, { status: "APPROVED", poCode: admin.firestore.FieldValue.delete(), updatedAt: now, updatedBy: apiUser.uid });
         }
@@ -83,7 +92,7 @@ export async function POST(request: Request) {
         if (d.whtId || (Array.isArray(d.paymentWhtIds) && d.paymentWhtIds.length)) throw new ApiAuthError(409, `${docNo} ออกหนังสือรับรองหัก ณ ที่จ่ายแล้ว ลบหนังสือรับรองก่อน`);
         const poRef = d.poRef ? adminDb.doc(`${base}/purchase_orders/${str(d.poRef, 120)}`) : null;
         const po = poRef ? await tx.get(poRef) : null;
-        tx.delete(ref);
+        voidIt();
         if (poRef && po?.exists && po.data()!.expenseId === docNo) {
           tx.update(poRef, { expenseId: admin.firestore.FieldValue.delete(), updatedAt: now, updatedBy: apiUser.uid });
         }
@@ -111,6 +120,17 @@ export async function POST(request: Request) {
         if (d.invoiceNo || d.invoiceDocId) throw new ApiAuthError(409, `${docNo} ออกใบกำกับภาษีแล้ว ลบไม่ได้`);
         if (await exists("work_orders", "soId", id)) throw new ApiAuthError(409, `${docNo} มีใบสั่งงานอ้างอิง ลบไม่ได้`);
         if (await exists("expenses", "soId", id)) throw new ApiAuthError(409, `${docNo} มีรายการค่าใช้จ่ายอ้างอิง ลบไม่ได้`);
+        voidIt();
+      }
+
+      if (kind === "quotation") {
+        // ลบได้เฉพาะใบที่ยังไม่ส่งออกไปภายนอก (ร่าง/ไม่อนุมัติ) ตรงกับปุ่มลบในหน้างานขาย
+        if (!["DRAFT", "REJECTED"].includes(String(d.status || "DRAFT").toUpperCase())) throw new ApiAuthError(409, `${docNo} ส่งหรืออนุมัติแล้ว ลบไม่ได้`);
+        voidIt();
+      }
+
+      if (kind === "sample_invoice") {
+        if (d.isSample !== true) throw new ApiAuthError(409, "ลบได้เฉพาะเอกสารตัวอย่าง ใบกำกับภาษีจริงต้องออกใบลดหนี้");
         tx.delete(ref);
       }
       return d;

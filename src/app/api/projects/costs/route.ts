@@ -28,10 +28,12 @@ export async function POST(request: Request) {
     if (!p.exists) throw new ApiAuthError(404, "ไม่พบโครงการ");
 
     const byProject = (col: string) => adminDb.collection(`${base}/${col}`).where("projectId", "==", projectDocId).get();
+    // เอกสารที่ถูกยกเลิก/ลบ (VOID, isDeleted) ไม่นับเป็นต้นทุน
+    const live = (d: FirebaseFirestore.QueryDocumentSnapshot) => d.data().isDeleted !== true;
     const [expenses, pos, journals, sos] = await Promise.all([byProject("expenses"), byProject("purchase_orders"), byProject("journal_entries"), byProject("sales_orders")]);
 
     // ต้นทุนสินค้าที่เบิกจากคลังตามใบสั่งขายของโครงการ (รายการบัญชีอ้างอิงเลขใบสั่งขาย)
-    const stockIssueJournals = (await Promise.all(sos.docs.map(async (so) => {
+    const stockIssueJournals = (await Promise.all(sos.docs.filter(live).map(async (so) => {
       const q = await adminDb.collection(`${base}/journal_entries`).where("reference", "==", so.id).get();
       return q.docs.map((j) => ({ soNo: String(so.data().documentNo || so.id), journal: { ...j.data(), id: j.id } }));
     }))).flat();
@@ -40,8 +42,8 @@ export async function POST(request: Request) {
       .filter((j: any) => (j.items || []).some((l: any) => String(l.accountCode) === WIP_ACCOUNT && (Number(l.debit) || 0) > 0));
 
     const result = projectCostLines({
-      expenses: expenses.docs.map((d) => ({ ...d.data(), id: d.id })),
-      purchaseOrders: pos.docs.map((d) => ({ ...d.data(), id: d.id })),
+      expenses: expenses.docs.filter(live).map((d) => ({ ...d.data(), id: d.id })),
+      purchaseOrders: pos.docs.filter(live).map((d) => ({ ...d.data(), id: d.id })),
       siteJournals,
       stockIssueJournals,
     });

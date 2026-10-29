@@ -4,20 +4,17 @@ import React, { useState } from "react";
 import { AlertTriangle, Trash2, X, ShieldAlert } from "lucide-react";
 import { PillButton, PillInput, Modal, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
-import { auditService } from "@/services/audit.service";
-import { doc, deleteDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase-client";
 import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
 import { can, type Permission } from "@/lib/permissions";
 import { isMasterEntity, type MasterEntity } from "@/lib/master-data";
 
 /** เอกสารที่ต้องลบผ่าน server (ตรวจเอกสารอ้างอิงและคืนสถานะเอกสารต้นทางในทรานแซกชันเดียว) */
-export type ServerDeleteKind = "purchase_order" | "expense" | "wht" | "sales_order";
+export type ServerDeleteKind = "purchase_order" | "expense" | "wht" | "sales_order" | "quotation" | "sample_invoice";
 
 /** สิทธิ์ที่ต้องมีเพื่อลบเอกสาร (ตรงกับ /api/documents/delete) */
 function deletePermission(kind?: ServerDeleteKind, collectionName?: string): Permission {
-  if (kind) return kind === "sales_order" ? "sales:delete" : "finance:delete";
+  if (kind) return kind === "sales_order" || kind === "quotation" ? "sales:delete" : "finance:delete";
   const col = String(collectionName || "").split("/").pop() || "";
   if (["customers", "quotations", "sales_orders"].includes(col)) return "sales:delete";
   if (["invoices", "expenses", "withholding_taxes", "purchase_orders"].includes(col)) return "finance:delete";
@@ -77,11 +74,14 @@ export function SecureDeleteAction({
 
     setIsDeleting(true);
     try {
-      if (serverKind) {
+      // ใบเสนอราคา/ใบแจ้งหนี้ตัวอย่างที่ส่งมาเป็นชื่อ collection: ลบผ่าน server เช่นกัน (ยกเลิกแทนลบจริง เลขที่ไม่หาย)
+      const col = String(collectionName || "").split("/").pop() || "";
+      const kind: ServerDeleteKind | undefined = serverKind || (col === "quotations" ? "quotation" : col === "invoices" ? "sample_invoice" : undefined);
+      if (kind) {
         const res = await apiFetch("/api/documents/delete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ companyId, kind: serverKind, id: documentId }),
+          body: JSON.stringify({ companyId, kind, id: documentId }),
         });
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.error || "ลบไม่สำเร็จ");
@@ -95,11 +95,8 @@ export function SecureDeleteAction({
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.error || "ลบไม่สำเร็จ");
       } else {
-        if (!collectionName) throw new Error("ไม่พบตำแหน่งเอกสาร");
-        await deleteDoc(doc(db, collectionName, documentId));
-
-      // Audit Logging
-        await auditService.logDelete(user.uid, companyId, `DELETE_${collectionName.toUpperCase()}`, documentId);
+        // ไม่ลบเอกสารจากหน้าจอโดยตรง (rules ปิดไว้) — ทุกการลบผ่าน API ที่ตรวจสิทธิ์และบันทึกประวัติ
+        throw new Error("เอกสารประเภทนี้ลบจากหน้าจอนี้ไม่ได้");
       }
 
       setIsOpen(false);

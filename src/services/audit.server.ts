@@ -1,5 +1,6 @@
 import * as admin from "firebase-admin";
 import { adminDb } from "@/lib/firebase-admin";
+import { requestContext } from "@/lib/request-context.server";
 
 /**
  * [SERVER-ONLY] Audit Trail ผ่าน Admin SDK สำหรับ API routes
@@ -23,6 +24,7 @@ const cleanData = (obj: any): any => {
 async function log(action: "CREATE" | "UPDATE" | "DELETE", userId: string, companyId: string, module: string, targetId: string, before: any, after: any) {
   try {
     const now = admin.firestore.FieldValue.serverTimestamp();
+    const ctx = await requestContext();
     await adminDb.collection("logs").add(cleanData({
       action,
       module,
@@ -31,7 +33,8 @@ async function log(action: "CREATE" | "UPDATE" | "DELETE", userId: string, compa
       createdBy: userId,
       updatedBy: userId,
       changes: { before, after },
-      metadata: { userAgent: "SYSTEM" },
+      // IP และเบราว์เซอร์ของผู้เรียก (งานระบบ/cron ไม่มีคำขอของผู้ใช้ = SYSTEM)
+      metadata: { userAgent: ctx?.userAgent || "SYSTEM", ip: ctx?.ip || "" },
       createdAt: now,
       updatedAt: now,
       isDeleted: false,

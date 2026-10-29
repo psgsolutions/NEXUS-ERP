@@ -41,8 +41,32 @@ node scripts/restore-firestore.mjs <ไฟล์> --only=... --apply --overwrite
 ```
 - กู้คืนเอกสารบัญชี/ภาษีย้อนหลังอาจไม่ตรงกับเอกสารที่ออกหลังวันสำรอง — ใช้ `--only` ให้แคบที่สุดและตรวจ dry-run ก่อน
 
-### สำรองอัตโนมัติบน Google Cloud (ทางเลือก)
-ถ้าโปรเจกต์ Firebase เป็นแพ็กเกจ **Blaze** เปิด *Firestore → Disaster recovery → Backups* ตั้งรอบรายวันเก็บ 7 วันได้ (ค่าใช้จ่ายตามขนาดข้อมูล ตอนนี้ข้อมูลไม่ถึง 1 MB)
+### สำรองอัตโนมัติบน Google Cloud (ต้องทำก่อนใช้งานจริง)
+ค่าที่ตกลงไว้: **สำรองรายวัน เก็บ 14 วัน** + เปิดกู้ย้อนเวลา (PITR, ย้อนได้ทุกนาทีภายใน 7 วัน) + เปิดกันลบฐานข้อมูล
+ต้องเป็นแพ็กเกจ **Blaze** (ค่าใช้จ่ายตามขนาดข้อมูล ตอนนี้ข้อมูลเล็กมาก)
+
+**ทางหน้าเว็บ** (Google Cloud Console → Firestore → ฐาน `(default)`)
+1. *Disaster recovery* → *Point-in-time recovery* → เปิด
+2. *Disaster recovery* → *Backups* → *Create schedule* → รอบ **Daily** · เก็บ **14 days**
+3. หน้า *Database* → *Delete protection* → เปิด
+
+**หรือทางคำสั่ง** (Cloud Shell ของโปรเจกต์ `nexuserp-base`)
+```
+gcloud firestore databases update --database="(default)" --enable-pitr --delete-protection
+gcloud firestore backups schedules create --database="(default)" --recurrence=daily --retention=14d
+gcloud firestore backups schedules list --database="(default)"      # ตรวจว่ามีรอบรายวัน 14 วัน
+```
+
+**ซ้อมกู้คืน (ทำ 1 ครั้งก่อนใช้งานจริง แล้วทุก 3 เดือน)** — กู้ลงฐานใหม่ ไม่แตะฐานจริง
+```
+gcloud firestore backups list --format="table(name,database,snapshotTime)"
+gcloud firestore databases restore --source-backup=<name จากบรรทัดบน> --destination-database=restore-test
+# ตรวจข้อมูลใน restore-test (จำนวนเอกสาร/ยอดงบทดลอง) แล้วลบฐานทดสอบทิ้ง
+gcloud firestore databases delete --database=restore-test
+```
+- กู้จาก PITR (ย้อนไปเวลาที่ระบุภายใน 7 วัน): `gcloud firestore databases clone --source-database="projects/nexuserp-base/databases/(default)" --snapshot-time=<เวลา UTC เช่น 2026-11-01T03:00:00Z> --destination-database=restore-pitr`
+- ข้อมูลจริงอยู่ที่ `asia-southeast1` ฐานที่กู้จะอยู่ที่เดียวกัน
+- ไฟล์สำรองในเครื่อง (`npm run backup:firestore`) ยังใช้ต่อได้ก่อน deploy กฎหรือย้ายข้อมูล
 
 ## 3. ค่าที่ต้องตั้งใน Vercel (Environment Variables)
 

@@ -22,9 +22,7 @@ import { SmartAddressPicker, ThaiAddress } from "@/components/ui/SmartAddressPic
 import { formatCurrency } from "@/lib/erp-logic";
 import { useSystemDialog } from "@/context/DialogContext";
 import { auditService } from "@/services/audit.service";
-import { db } from "@/lib/firebase-client";
 import { apiFetch } from "@/lib/api-client";
-import { doc, collection, setDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 
@@ -157,19 +155,15 @@ export default function NewSupplierPage() {
             const itemCode = rate.itemCode || `SRV-${Math.floor(1000 + Math.random() * 9000)}`;
 
             // 1. Subcontractor Rate record
-            await addDoc(collection(db, `companies/${currentCompanyId}/subcontractor_rates`), {
-              companyId: currentCompanyId,
-              subcontractorId: supplierRef.id,
-              subcontractorName: form.name,
-              itemCode,
-              serviceType: rate.serviceType,
-              unit: rate.unit || "จุด",
-              ratePerUnit: costVal,
-              standardSellingPrice: sellVal,
-              remarks: rate.remarks || "",
-              isDeleted: false,
-              createdAt: serverTimestamp()
+            const rateRes = await apiFetch("/api/procurement/subcontractor-rates", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ companyId: currentCompanyId, action: "create", rate: {
+                subcontractorId: supplierRef.id, subcontractorName: form.name, itemCode, serviceType: rate.serviceType,
+                unit: rate.unit || "จุด", ratePerUnit: costVal, standardSellingPrice: sellVal, remarks: rate.remarks || "",
+              } }),
             });
+            const savedRate = await rateRes.json().catch(() => ({}));
+            if (!rateRes.ok || !savedRate.success) throw new Error(savedRate.error || `บันทึกอัตราค่าแรง ${rate.serviceType} ไม่สำเร็จ`);
 
             // 2. Service Item Catalog record in products (searchable in Quotation & Project BOQ)
             const productData = {

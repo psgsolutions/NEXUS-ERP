@@ -6,8 +6,6 @@ import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { apiFetch } from "@/lib/api-client";
 import { useProducts } from "@/hooks/useProducts";
-import { db } from "@/lib/firebase-client";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { cn, PillButton, PillInput, PillSelect } from "@/components/ui/Base";
 import { useSystemDialog } from "@/context/DialogContext";
 import { 
@@ -109,15 +107,16 @@ export function Warehouse3D({
     // คลังของเครือ (ใช้ร่วมกัน) แก้ผังได้ที่หน้า "ผังคลังและชั้นวาง" เท่านั้น
     if (wh.shared) return void showAlert("คลังนี้เป็นคลังของเครือ แก้ผังได้ที่หน้า ผังคลังและชั้นวาง");
     try {
-      await setDoc(doc(db, "warehouses", wh.docId), {
-        companyId,
-        code: wh.id,
-        name: wh.name,
-        gridCols: wh.gridCols,
-        gridRows: wh.gridRows,
-        racks: wh.racks.map(({ id, x, y, width, height, level, capacity }) => ({ id, x, y, width, height, level, capacity: capacity || 0 })),
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
+      // บันทึกผ่าน server (ตรวจสิทธิ์ inventory:edit และบริษัทเจ้าของคลัง)
+      const res = await apiFetch("/api/inventory/warehouses", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId, action: "save3d", docId: wh.docId, code: wh.id, name: wh.name, gridCols: wh.gridCols, gridRows: wh.gridRows,
+          racks: wh.racks.map(({ id, x, y, width, height, level, capacity }) => ({ id, x, y, width, height, level, capacity: capacity || 0 })),
+        }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.success) throw new Error(d.error || "บันทึกไม่สำเร็จ");
     } catch (err: any) {
       console.error("[WAREHOUSE_SAVE_ERROR]", err);
       showAlert(`บันทึกผังคลังไม่สำเร็จ: ${err.message}`);

@@ -34,6 +34,10 @@ async function main() {
     await setDoc(doc(db, 'users/pendA'), { companyId: 'A', role: 'SALES', status: 'PENDING' });
     await setDoc(doc(db, 'users/rejA'), { companyId: 'A', role: 'SALES', status: 'rejected' });
     await setDoc(doc(db, 'users/activeA'), { companyId: 'A', role: 'SALES', status: 'ACTIVE' });
+    await setDoc(doc(db, 'assets/asA'), { companyId: 'A', name: 'รถยนต์', cost: 800000 });
+    await setDoc(doc(db, 'warehouses/A_WH-01'), { companyId: 'A', code: 'WH-01' });
+    await setDoc(doc(db, 'kits/kA'), { companyId: 'A', name: 'ชุดกล้อง' });
+    await setDoc(doc(db, 'companies/A/subcontractor_rates/r1'), { companyId: 'A', ratePerUnit: 500 });
     await setDoc(doc(db, 'companies/A'), { name: 'Company A' });
     await setDoc(doc(db, 'companies/B'), { name: 'Company B', groupId: 'G1' });
     await setDoc(doc(db, 'companies/A/quotations/q1'), { companyId: 'A' });
@@ -110,7 +114,7 @@ async function main() {
     ['member cannot query products without company filter', () => assertFails(getDocs(collection(userA, 'products')))],
     ['member cannot query other company products', () => assertFails(byCompany(userA, 'products', 'B'))],
     ['member cannot create product directly (API only)', () => assertFails(addDoc(collection(userA, 'products'), { companyId: 'A' }))],
-    ['member creates own-company doc in generic root collection', () => assertSucceeds(addDoc(collection(userA, 'kits'), { companyId: 'A' }))],
+    ['member cannot create own-company doc in generic root collection (API only)', () => assertFails(addDoc(collection(userA, 'kits'), { companyId: 'A' }))],
     ['member cannot create kit for other company', () => assertFails(addDoc(collection(userA, 'kits'), { companyId: 'B' }))],
     ['member cannot edit own product directly', () => assertFails(updateDoc(doc(adminA, 'products/pA'), { name: 'x' }))],
     ['member cannot create root supplier directly', () => assertFails(addDoc(collection(adminA, 'suppliers'), { companyId: 'A' }))],
@@ -338,6 +342,19 @@ async function main() {
     ['pending user cannot create root log', () => assertFails(setDoc(doc(pendA, 'logs/lp'), { companyId: 'A' }))],
     ['rejected user (lowercase status) cannot read company data', () => assertFails(getDoc(doc(rejA, 'companies/A/quotations/q1')))],
     ['explicit ACTIVE user reads company data', () => assertSucceeds(getDoc(doc(activeA, 'companies/A/quotations/q1')))],
+
+    // ---------- C-03: root collection ที่ไม่มีกฎเฉพาะ เขียนจากหน้าจอไม่ได้ (อ่านในบริษัทได้ตามเดิม) ----------
+    ['sales cannot change fixed asset cost (root assets)', () => assertFails(updateDoc(doc(userA, 'assets/asA'), { cost: 1 }))],
+    ['admin cannot create root asset', () => assertFails(setDoc(doc(adminA, 'assets/asNew'), { companyId: 'A', cost: 1 }))],
+    ['admin cannot delete root asset', () => assertFails(deleteDoc(doc(adminA, 'assets/asA')))],
+    ['member reads own company asset', () => assertSucceeds(getDoc(doc(acctA, 'assets/asA')))],
+    ['admin cannot write root warehouses', () => assertFails(setDoc(doc(adminA, 'warehouses/A_WH-01'), { companyId: 'A', racks: [] }, { merge: true }))],
+    ['admin cannot create root kit', () => assertFails(setDoc(doc(adminA, 'kits/kNew'), { companyId: 'A', name: 'x' }))],
+    ['member cannot create root doc without companyId', () => assertFails(setDoc(doc(adminA, 'anything/x1'), { name: 'orphan' }))],
+    ['member cannot forge root stock movement', () => assertFails(setDoc(doc(adminA, 'stockMovements/m1'), { companyId: 'A', qty: 5 }))],
+    ['member lists own company kits', () => assertSucceeds(getDocs(query(collection(userA, 'kits'), where('companyId', '==', 'A'))))],
+    ['sales cannot write subcontractor rate', () => assertFails(setDoc(doc(userA, 'companies/A/subcontractor_rates/r2'), { companyId: 'A', ratePerUnit: 1 }))],
+    ['member reads subcontractor rates', () => assertSucceeds(getDoc(doc(userA, 'companies/A/subcontractor_rates/r1')))],
   ];
 
   let passed = 0;

@@ -58,11 +58,10 @@ import { EmptyGuide } from "@/components/guide/Guidance";
 import { useAdvancedTabs } from "@/components/guide/Onboarding";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase-client";
-import { collection, query, where, onSnapshot, orderBy, limit, doc, setDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, orderBy, limit } from "firebase/firestore";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { toMs as toSerialMs, warrantyState } from "@/lib/serials";
-import { saveToFirestore } from "@/lib/firebaseUtils";
-import { auditService } from "@/services/audit.service";
+import { apiFetch } from "@/lib/api-client";
 
 interface CreateKitModalProps {
   isOpen: boolean;
@@ -102,6 +101,7 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
       aggregateCost += cost * qty;
       aggregatePrice += price * qty;
       componentsList.push({
+        productId: prod.id,
         name: prod.name,
         qty: qty,
         type: prod.category || "hardware",
@@ -121,21 +121,11 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
   };
 
   const handleSave = async () => {
-    if (!name) return;
+    if (!name || componentsList.length === 0) return;
     setIsSaving(true);
     try {
-      await onSave({
-        id: `KIT-${Date.now().toString().slice(-4)}`,
-        name,
-        description,
-        components: componentsList.length > 0 ? componentsList : [
-          { name: "กล้อง CCTV High-Definition 4MP", qty: 4, type: "hardware", cost: 4500, price: 6500 },
-          { name: "งานติดตั้งและเดินสายสัญญาณพร้อม Calibrate", qty: 1, type: "service", cost: 15000, price: 25000 }
-        ],
-        aggregateCost: aggregateCost > 0 ? aggregateCost : 33000,
-        aggregatePrice: aggregatePrice > 0 ? aggregatePrice : 51000,
-        status: "active"
-      });
+      // ต้นทุน/ราคารวม server คำนวณจากรายการจริง (ไม่มีรายการตัวอย่างเติมให้)
+      await onSave({ name, description, components: componentsList });
       setName("");
       setDescription("");
       setSelectedItems({});
@@ -328,7 +318,7 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
           <PillButton variant="ghost" onClick={onClose} className="h-10 px-8 text-xs border-white/10 hover:">
             ยกเลิก
           </PillButton>
-          <PillButton onClick={handleSave} className="h-10 px-8 text-xs shadow-neon-teal" variant="primary">
+          <PillButton onClick={handleSave} disabled={!name || componentsList.length === 0 || isSaving} title={componentsList.length === 0 ? "เลือกสินค้าอย่างน้อย 1 รายการ" : undefined} className="h-10 px-8 text-xs shadow-neon-teal" variant="primary">
             สร้างสูตรจัดชุด
           </PillButton>
         </div>
@@ -1310,18 +1300,10 @@ export default function InventoryPage() {
         products={products}
         onSave={async (newKit) => {
           try {
-            const saveOp = async () => {
-              const kitRef = doc(collection(db, "kits"));
-              await setDoc(kitRef, {
-                ...newKit,
-                id: kitRef.id,
-                companyId,
-                createdAt: new Date()
-              });
-              await auditService.logCreate(user?.uid || "system", companyId || "UNKNOWN", "INVENTORY_KIT", "NEW", newKit);
-            };
-            
-            await saveToFirestore(saveOp());
+            // บันทึกผ่าน server (ตรวจสิทธิ์ inventory:edit และบันทึกประวัติ)
+            const res = await apiFetch("/api/inventory/kits", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "create", kit: newKit }) });
+            const d = await res.json().catch(() => ({}));
+            if (!res.ok || !d.success) throw new Error(d.error || "บันทึกไม่สำเร็จ");
             
             setIsAddKitOpen(false);
             setToast({

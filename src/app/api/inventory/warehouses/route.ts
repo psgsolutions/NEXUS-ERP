@@ -14,6 +14,7 @@ import { isValidPartCode, listLocations, MAX_BINS, MAX_LEVELS, type WarehouseDoc
  *  - { companyId, action: "list" }                                  -> คลัง + ตำแหน่ง (พร้อมเจ้าของช่อง) + ยอดคงเหลือตามตำแหน่งของบริษัท + บริษัทในเครือ
  *  - { companyId, action: "create", code, name }                    -> เพิ่มคลังของเครือ groups/{g}/warehouses/{code} (เจ้าของเริ่มต้น = บริษัทที่สร้าง)
  *  - { companyId, action: "saveLayout", warehouseId, name?, zones } -> บันทึกผัง โซน › ชั้นวาง (ชั้น × ช่อง) และเจ้าของช่อง
+ *  - { companyId, action: "save3d", docId, code, name, gridCols, gridRows, racks } -> ผังคลังแบบ 3 มิติรุ่นเดิม (root warehouses ของบริษัทนี้เท่านั้น)
  * - คลังของเครือใช้ร่วมกันได้ แต่ละช่องมีเจ้าของได้บริษัทเดียว (zone.owner / rack.owner / rack.binOwners)
  * - บันทึกผังไม่ได้ถ้าตำแหน่งที่ถูกลบ หรือช่องที่เปลี่ยนเจ้าของ ยังมีสินค้าคงเหลืออยู่ (ของบริษัทใดก็ตามในเครือ)
  * - คลังรุ่นเก่า root warehouses/{companyId}_{code} ยังใช้ได้จนกว่าจะย้ายข้อมูล
@@ -130,6 +131,22 @@ export async function POST(request: Request) {
       });
       await auditServer.logCreate(apiUser.uid, companyId, "WAREHOUSE", ref.path, { code, name, groupId });
       return NextResponse.json({ success: true, id: GROUP_PREFIX + code });
+    }
+
+    if (action === "save3d") {
+      // ผังคลังแบบ 3 มิติ (root warehouses/{docId}) — เดิมหน้าจอเขียนตรง ตอนนี้ rules ปิดแล้ว
+      const docId = str(body.docId, 120);
+      if (!/^[A-Za-z0-9_.-]{1,120}$/.test(docId)) throw new ApiAuthError(400, "รหัสคลังไม่ถูกต้อง");
+      const ref = adminDb.doc(`warehouses/${docId}`);
+      const snap = await ref.get();
+      if (snap.exists && snap.data()!.companyId !== companyId) throw new ApiAuthError(403, "คลังนี้เป็นของบริษัทอื่น");
+      const n = (v: any, max: number) => Math.max(0, Math.min(max, Number(v) || 0));
+      const racks = (Array.isArray(body.racks) ? body.racks : []).slice(0, 500).map((r: any) => ({
+        id: str(r?.id, 40), x: n(r?.x, 1000), y: n(r?.y, 1000), width: n(r?.width, 1000), height: n(r?.height, 1000), level: n(r?.level, 50), capacity: n(r?.capacity, 1_000_000),
+      })).filter((r: any) => r.id);
+      await ref.set({ companyId, code: str(body.code, 40), name: str(body.name, 80), gridCols: n(body.gridCols, 200), gridRows: n(body.gridRows, 200), racks, updatedBy: apiUser.uid, updatedAt: now }, { merge: true });
+      await auditServer.logUpdate(apiUser.uid, companyId, "WAREHOUSE_3D", ref.path, null, { racks: racks.length });
+      return NextResponse.json({ success: true });
     }
 
     if (action === "saveLayout") {

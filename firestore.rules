@@ -106,9 +106,8 @@ service cloud.firestore {
     match /{collectionName}/{documentId} {
       allow get: if isMember() && !isSpecialRoot(collectionName) && canGet();
       allow list: if isMember() && !isSpecialRoot(collectionName) && canList();
-      allow create: if isMember() && !isSpecialRoot(collectionName) && newDataInMyCompany();
-      allow update: if isMember() && !isSpecialRoot(collectionName) && existingInMyCompany() && newDataInMyCompany();
-      allow delete: if isMember() && !isSpecialRoot(collectionName) && existingInMyCompany();
+      // เขียน root collection จากหน้าจอไม่ได้ (assets, warehouses, kits, stockMovements ฯลฯ) — บันทึกผ่าน API ที่ตรวจตำแหน่ง
+      allow write: if false;
     }
 
     // ---------- Users (profile = สิทธิ์และบริษัท ห้ามแก้ของตัวเอง) ----------
@@ -254,7 +253,9 @@ service cloud.firestore {
           // คำขอแจ้งซ่อมจากลูกค้า: รับผ่าน /api/portal/repair และรับเรื่องผ่าน /api/service/tickets
           'portal_requests',
           // ข้อมูลหลักส่วนของบริษัท (ราคา สต็อก วงเงิน ชื่อเฉพาะบริษัท): /api/master-data และ stock engine
-          'products', 'customers', 'suppliers', 'contractors'];
+          'products', 'customers', 'suppliers', 'contractors',
+          // อัตราค่าแรงผู้รับเหมา: /api/procurement/subcontractor-rates (ฝ่ายจัดซื้อ)
+          'subcontractor_rates'];
       }
       // ข้อมูลการเงินอ่านได้เฉพาะตำแหน่งที่เกี่ยวข้อง (ส่วนอื่นอ่านได้ทุกคนในบริษัท)
       function restrictedRead(collection) {

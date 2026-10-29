@@ -29,6 +29,11 @@ async function main() {
     await setDoc(doc(db, 'users/buyerA'), { companyId: 'A', role: 'PURCHASING', roles: ['PURCHASING'] });
     await setDoc(doc(db, 'users/legacyAcct'), { companyId: 'A', role: 'accountant' });
     await setDoc(doc(db, 'users/userB'), { companyId: 'B', role: 'ADMIN' });
+    // บัญชีที่ถูกระงับ / รออนุมัติ / ถูกปฏิเสธ (ยังมีโปรไฟล์และ companyId เดิม)
+    await setDoc(doc(db, 'users/suspA'), { companyId: 'A', role: 'ADMIN', roles: ['ADMIN', 'ACCOUNTANT'], status: 'SUSPENDED' });
+    await setDoc(doc(db, 'users/pendA'), { companyId: 'A', role: 'SALES', status: 'PENDING' });
+    await setDoc(doc(db, 'users/rejA'), { companyId: 'A', role: 'SALES', status: 'rejected' });
+    await setDoc(doc(db, 'users/activeA'), { companyId: 'A', role: 'SALES', status: 'ACTIVE' });
     await setDoc(doc(db, 'companies/A'), { name: 'Company A' });
     await setDoc(doc(db, 'companies/B'), { name: 'Company B', groupId: 'G1' });
     await setDoc(doc(db, 'companies/A/quotations/q1'), { companyId: 'A' });
@@ -82,6 +87,10 @@ async function main() {
   const legacyAcct = testEnv.authenticatedContext('legacyAcct', { email: 'legacy@a.com' }).firestore();
   const userB = testEnv.authenticatedContext('userB', { email: 'b@b.com' }).firestore();
   const superUid = testEnv.authenticatedContext(SUPERADMIN_UID, {}).firestore();
+  const suspA = testEnv.authenticatedContext('suspA', { email: 'susp@a.com' }).firestore();
+  const pendA = testEnv.authenticatedContext('pendA', { email: 'pend@a.com' }).firestore();
+  const rejA = testEnv.authenticatedContext('rejA', { email: 'rej@a.com' }).firestore();
+  const activeA = testEnv.authenticatedContext('activeA', { email: 'active@a.com' }).firestore();
   const superEmail = testEnv.authenticatedContext('other-uid', { email: 'sadmin@admin.com' }).firestore();
 
   const byCompany = (db, col, c) => getDocs(query(collection(db, col), where('companyId', '==', c)));
@@ -315,6 +324,20 @@ async function main() {
     ['superadmin (uid) queries products without filter', () => assertSucceeds(getDocs(collection(superUid, 'products')))],
     ['superadmin (email) reads other company product', () => assertSucceeds(getDoc(doc(superEmail, 'products/pB')))],
     ['superadmin creates user with any role', () => assertSucceeds(setDoc(doc(superUid, 'users/boss'), { companyId: 'B', role: 'SUPERADMIN' }))],
+
+    // ---------- C-02: บัญชีที่ถูกระงับ/รออนุมัติ/ถูกปฏิเสธ เข้าข้อมูลบริษัทไม่ได้ (แม้ยังมี companyId และ token เดิม) ----------
+    ['suspended admin cannot read own company quotation', () => assertFails(getDoc(doc(suspA, 'companies/A/quotations/q1')))],
+    ['suspended admin cannot read company profile', () => assertFails(getDoc(doc(suspA, 'companies/A')))],
+    ['suspended admin cannot list own company products', () => assertFails(getDocs(query(collection(suspA, 'products'), where('companyId', '==', 'A'))))],
+    ['suspended admin cannot write project', () => assertFails(setDoc(doc(suspA, 'companies/A/projects/PX'), { companyId: 'A', name: 'x' }))],
+    ['suspended accountant cannot read journals', () => assertFails(getDoc(doc(suspA, 'companies/A/journal_entries/J1')))],
+    ['suspended admin cannot read colleagues', () => assertFails(getDoc(doc(suspA, 'users/userA')))],
+    ['suspended admin cannot update colleague', () => assertFails(updateDoc(doc(suspA, 'users/userA'), { phone: '1' }))],
+    ['suspended user still reads own profile (shows the suspended message)', () => assertSucceeds(getDoc(doc(suspA, 'users/suspA')))],
+    ['pending user cannot read company data', () => assertFails(getDoc(doc(pendA, 'companies/A/projects/P1')))],
+    ['pending user cannot create root log', () => assertFails(setDoc(doc(pendA, 'logs/lp'), { companyId: 'A' }))],
+    ['rejected user (lowercase status) cannot read company data', () => assertFails(getDoc(doc(rejA, 'companies/A/quotations/q1')))],
+    ['explicit ACTIVE user reads company data', () => assertSucceeds(getDoc(doc(activeA, 'companies/A/quotations/q1')))],
   ];
 
   let passed = 0;

@@ -27,8 +27,11 @@ service cloud.firestore {
       return /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
+    // มีโปรไฟล์และบัญชีใช้งานได้: บัญชีที่ถูกระงับ/รออนุมัติ/ถูกปฏิเสธ เข้าข้อมูลบริษัทไม่ได้ แม้ token เดิมยังไม่หมดอายุ
+    // (ตรงกับ inactiveReason ใน src/lib/user-status.ts · ไม่มี status = บัญชีเดิมที่ใช้งานได้ · อ่านโปรไฟล์ตัวเองได้เสมอผ่านกฎ users)
     function hasProfile() {
-      return signedIn() && exists(profilePath());
+      return signedIn() && exists(profilePath()) &&
+        !(string(get(profilePath()).data.get('status', 'ACTIVE')).upper() in ['PENDING', 'SUSPENDED', 'REJECTED']);
     }
 
     function profile() {

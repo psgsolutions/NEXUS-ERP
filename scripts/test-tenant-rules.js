@@ -92,6 +92,8 @@ async function main() {
   const userB = testEnv.authenticatedContext('userB', { email: 'b@b.com' }).firestore();
   const superUid = testEnv.authenticatedContext(SUPERADMIN_UID, {}).firestore();
   const suspA = testEnv.authenticatedContext('suspA', { email: 'susp@a.com' }).firestore();
+  const claimSuper = testEnv.authenticatedContext('newboss', { email: 'boss@nexus.co', superadmin: true }).firestore();
+  const fakeClaim = testEnv.authenticatedContext('faker', { email: 'faker@a.com', superadmin: 'true' }).firestore();
   const pendA = testEnv.authenticatedContext('pendA', { email: 'pend@a.com' }).firestore();
   const rejA = testEnv.authenticatedContext('rejA', { email: 'rej@a.com' }).firestore();
   const activeA = testEnv.authenticatedContext('activeA', { email: 'active@a.com' }).firestore();
@@ -356,6 +358,11 @@ async function main() {
     ['member lists own company kits', () => assertSucceeds(getDocs(query(collection(userA, 'kits'), where('companyId', '==', 'A'))))],
     ['sales cannot write subcontractor rate', () => assertFails(setDoc(doc(userA, 'companies/A/subcontractor_rates/r2'), { companyId: 'A', ratePerUnit: 1 }))],
     ['member reads subcontractor rates', () => assertSucceeds(getDoc(doc(userA, 'companies/A/subcontractor_rates/r1')))],
+
+    // ---------- C-17: SUPERADMIN ด้วย custom claim (ไม่ต้องเป็น uid/อีเมลที่เขียนตายตัว) ----------
+    ['superadmin claim reads any company', () => assertSucceeds(getDoc(doc(claimSuper, 'companies/B/quotations/q2')))],
+    ['superadmin claim creates user', () => assertSucceeds(setDoc(doc(claimSuper, 'users/viaClaim'), { companyId: 'B', role: 'SALES' }))],
+    ['string "true" claim is not superadmin', () => assertFails(getDoc(doc(fakeClaim, 'companies/B/quotations/q2')))],
   ];
 
   let passed = 0;

@@ -16,8 +16,10 @@ service cloud.firestore {
     }
 
     // ให้ตรงกับ SUPERADMIN ใน AuthContext / api-auth.ts
+    // custom claim superadmin (scripts/set-superadmin-claim.mjs) · uid/อีเมลเดิมใช้ชั่วคราวจนตั้ง claim ให้บัญชีจริงแล้ว
     function isSuperAdmin() {
       return signedIn() && (
+        request.auth.token.get('superadmin', false) == true ||
         request.auth.uid == 'fgIglIug2dh4aNMMeachaugIyFM2' ||
         request.auth.token.email == 'sadmin@admin.com'
       );

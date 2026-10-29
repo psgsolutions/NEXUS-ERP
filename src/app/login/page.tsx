@@ -59,7 +59,7 @@ export default function LoginPage() {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
       const { user } = await signInWithEmailAndPassword(auth, email.trim(), password);
 
-      if (isSuperAdminAccount(user.uid, user.email)) {
+      if (isSuperAdminAccount(user.uid, user.email, (await user.getIdTokenResult()).claims)) {
         router.push("/settings/users");
         router.refresh();
         return;

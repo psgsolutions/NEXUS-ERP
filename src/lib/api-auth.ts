@@ -46,7 +46,7 @@ export async function requireApiUser(request: Request, companyId?: string | null
   const profile = (await adminDb.collection("users").doc(decoded.uid).get()).data() || {};
   const userCompanyId: string | null = (decoded.companyId as string) || profile.companyId || null;
   let roles: string[] = resolveRoles({ role: decoded.role || profile.role, roles: profile.roles });
-  if (isSuperAdminAccount(decoded.uid, decoded.email) || roles.includes("SUPERADMIN")) {
+  if (isSuperAdminAccount(decoded.uid, decoded.email, decoded) || roles.includes("SUPERADMIN")) {
     roles = ["SUPERADMIN"];
   }
   const role = primaryRole(roles);

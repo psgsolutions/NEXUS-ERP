@@ -92,7 +92,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUser(user);
-        const superAdmin = isSuperAdminAccount(user.uid, user.email);
+        const claims = (await user.getIdTokenResult().catch(() => null))?.claims || null;
+        const superAdmin = isSuperAdminAccount(user.uid, user.email, claims);
         // [1] แสดงผลทันทีจากโปรไฟล์ล่าสุดของผู้ใช้คนเดิม (ถ้ามี) — ไม่สมมติสิทธิ์ ADMIN หรือบริษัทใด ๆ ให้
         const cached = readProfileCache(user.uid);
         if (cached) {

@@ -9,11 +9,15 @@ export type UserStatus = "ACTIVE" | "PENDING" | "SUSPENDED" | "REJECTED";
 
 export const PENDING_TTL_MS = 24 * 3600 * 1000;
 
+/**
+ * SUPERADMIN: custom claim `superadmin: true` บน Firebase Auth (ตั้งด้วย scripts/set-superadmin-claim.mjs)
+ * uid/อีเมลเดิมด้านล่างใช้ชั่วคราวระหว่างย้ายไปใช้ claim — ลบออกหลังตั้ง claim ให้บัญชีจริงแล้ว (แผนงาน C-17)
+ */
 export const SUPERADMIN_UIDS = ["fgIglIug2dh4aNMMeachaugIyFM2"];
 export const SUPERADMIN_EMAILS = ["sadmin@admin.com"];
 
-export function isSuperAdminAccount(uid?: string | null, email?: string | null): boolean {
-  return (!!uid && SUPERADMIN_UIDS.includes(uid)) || (!!email && SUPERADMIN_EMAILS.includes(email));
+export function isSuperAdminAccount(uid?: string | null, email?: string | null, claims?: Record<string, unknown> | null): boolean {
+  return claims?.superadmin === true || (!!uid && SUPERADMIN_UIDS.includes(uid)) || (!!email && SUPERADMIN_EMAILS.includes(email));
 }
 
 export function normalizeUserStatus(status: unknown): UserStatus {

@@ -49,7 +49,8 @@ describe("document design — block settings, per-document blocks, letterheads",
     expect(requiredBlocksFor("delivery_note")).not.toContain("totals");
     expect(defaultFreeLayout("delivery_note").blocks.some((b) => b.kind === "totals" || b.kind === "words")).toBe(false);
     expect(addableBlocksFor("work_order")).not.toContain("words");
-    expect(requiredColumnsFor("invoice")).toEqual(["description", "amount"]);
+    expect(requiredColumnsFor("invoice")).toEqual(["description", "qty", "amount"]); // ใบกำกับภาษี ม.86/4 (5) ต้องมีปริมาณ
+    expect(requiredColumnsFor("quotation")).toEqual(["description", "amount"]);
     const f = normalizeFreeLayout({ enabled: true, blocks: [] }, "delivery_note")!;
     expect(f.blocks.some((b) => b.kind === "totals")).toBe(false);
   });

@@ -332,8 +332,20 @@ export const requiredBlocksFor = (docType?: string): BlockKind[] => (docHasAmoun
 /** กล่องที่เพิ่มได้ในเอกสารชนิดนี้ */
 export const addableBlocksFor = (docType?: string): BlockKind[] =>
   (["info", "text", "line", "rect", "shape", "image", "logo", "stamp", "sign", "grid", "field", "words", "notes", "payment", "signatures", "totals"] as BlockKind[]).filter((k) => docHasAmounts(docType) || (k !== "words" && k !== "totals"));
+/** ใบกำกับภาษีเต็มรูป: ม.86/4 (5) ต้องแสดง ชื่อ ชนิด ปริมาณ และมูลค่าของสินค้า/บริการ — คอลัมน์จำนวนเอาออกไม่ได้ */
+const TAX_INVOICE_DOCS = ["invoice"];
 /** คอลัมน์ที่ต้องแสดงเสมอ */
-export const requiredColumnsFor = (docType?: string): ItemColumn[] => (docHasAmounts(docType) ? ["description", "amount"] : ["description"]);
+export const requiredColumnsFor = (docType?: string): ItemColumn[] =>
+  TAX_INVOICE_DOCS.includes(String(docType)) ? ["description", "qty", "amount"] : docHasAmounts(docType) ? ["description", "amount"] : ["description"];
+/** ใบกำกับภาษีที่ผังเดิมไม่มีคอลัมน์จำนวน (ทั้ง "จำนวน" และ "จำนวน+หน่วย"): เติมคอลัมน์จำนวนก่อนจำนวนเงิน */
+function ensureQtyColumn(b: FreeBlock, docType?: string): FreeBlock {
+  if (b.kind !== "items" || !TAX_INVOICE_DOCS.includes(String(docType))) return b;
+  const has = (keys: ItemColumn[]) => keys.includes("qty") || keys.includes("qtyUnit");
+  const before = (keys: ItemColumn[]) => { const i = keys.indexOf("amount"); return i < 0 ? keys.length : i; };
+  if (b.colSpec?.length && !has(b.colSpec.map((x) => x.key))) { const s = [...b.colSpec]; s.splice(before(s.map((x) => x.key)), 0, { key: "qty" }); return { ...b, colSpec: s }; }
+  if (!b.colSpec?.length && b.cols?.length && !has(b.cols)) { const s = [...b.cols]; s.splice(before(s), 0, "qty"); return { ...b, cols: s }; }
+  return b;
+}
 
 export const FONT_LABELS: Record<FontFamily, string> = { Sarabun: "Sarabun (ทันสมัย)", THSarabunNew: "TH Sarabun New", THSarabunIT9: "TH SarabunIT๙ (หนังสือราชการ)" };
 /** ฟอนต์ TH Sarabun ตัวเล็กกว่า Sarabun ที่ขนาดเดียวกัน — ขยายให้ขนาดที่ตั้งดูเท่ากัน */
@@ -658,7 +670,7 @@ function restoreLegalFields(free: FreeLayout | undefined, lh: Letterhead | undef
 export function normalizeFreeLayout(raw: any, docType?: string): FreeLayout | undefined {
   if (!raw || typeof raw !== "object" || !Array.isArray(raw.blocks)) return undefined;
   const blocks: FreeBlock[] = [];
-  for (const b of raw.blocks.slice(0, 60)) { const n = normalizeBlock(b, blocks.length); if (n) blocks.push(n); }
+  for (const b of raw.blocks.slice(0, 60)) { const n = normalizeBlock(b, blocks.length); if (n) blocks.push(ensureQtyColumn(n, docType)); }
   // กล่องที่กฎหมายบังคับต้องอยู่ครบ: ขาดตัวไหนเติมกลับจากผังมาตรฐาน
   const defaults = defaultFreeLayout().blocks;
   // (กล่องที่แยกเป็นช่องย่อยครบแล้วนับว่ามี)

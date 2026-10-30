@@ -129,12 +129,34 @@ export function SectionLogo({ c }: { c: Ctx }) {
   return c.doc.seller.logo ? <Image src={c.doc.seller.logo} style={c.s.logo} /> : null;
 }
 
-export function SectionSeller({ c, align = "left", inverse = false }: { c: Ctx; align?: "left" | "center" | "right"; inverse?: boolean }) {
+/**
+ * ข้อมูลที่กฎหมายบังคับ (ม.86/4: ชื่อ ที่อยู่ เลขผู้เสียภาษีของผู้ขาย/ผู้ซื้อ) ต้องไม่ถูกตัดตามกรอบที่ออกแบบ
+ * ประมาณจำนวนบรรทัดที่ตัดขึ้นใหม่ตามความกว้างกล่อง — เกินความสูงกล่อง = ย่อตัวอักษรของกล่องนี้ให้พอดี (ไม่ต่ำกว่า 50%) ผังไม่ขยับ
+ */
+function shrinkToFit(c: Ctx, lines: { text: string; k?: number; indent?: number }[], width?: number): Ctx {
+  if (!c.box) return c;
+  const fs = c.s.page.fontSize as number, lh = (c.s.page.lineHeight as number) || 1.35;
+  const W = Math.max(20, (width ?? c.box.w) - 8), H = (c.box.h - 8) * 0.96;
+  const need = (s: number) => lines.filter((l) => l.text).reduce((a, l) => {
+    const size = fs * (l.k || 1) * s, room = Math.max(10, W - (l.indent || 0));
+    return a + Math.max(1, Math.ceil((vlen(l.text) * size * 0.55) / room)) * size * lh;
+  }, 0);
+  if (need(1) <= H) return c;
+  let s = 1;
+  while (s > 0.5 && need(s) > H) s -= 0.04;
+  const t = { ...c.t, fontSize: c.t.fontSize * Math.max(0.5, s) };
+  return { ...c, t, s: themeStyles(t, lh) };
+}
+
+export function SectionSeller({ c: c0, align = "left", inverse = false }: { c: Ctx; align?: "left" | "center" | "right"; inverse?: boolean }) {
+  const s0 = c0.doc.seller;
+  const c = shrinkToFit(c0, [{ text: s0.name, k: 1.37 }, { text: !c0.hide.has("nameEn") ? s0.nameEn || "" : "", k: 0.9 }, { text: s0.address || "" },
+    { text: `เลขประจำตัวผู้เสียภาษี ${s0.taxId || "-"} ${branchLabel(s0.branchCode, s0.branchName)}` }, { text: !c0.hide.has("contact") ? [s0.phone, s0.email, s0.website].filter(Boolean).join(" · ") : "", k: 0.9 }]);
   const seller = c.doc.seller;
   const contact = [seller.phone && `โทร ${seller.phone}`, seller.email, seller.website].filter(Boolean).join("  ·  ");
   const tone = inverse ? { color: "#ffffff" } : {};
   return (
-    <View style={{ alignItems: align === "center" ? "center" : align === "right" ? "flex-end" : "flex-start" }}>
+    <View style={{ alignItems: align === "center" ? "center" : align === "right" ? "flex-end" : "flex-start", ...(c !== c0 ? { fontSize: c.s.page.fontSize, lineHeight: c.s.page.lineHeight } : {}) }}>
       <T style={[c.s.sellerName, { textAlign: align }, tone]}>{seller.name || "(ยังไม่ได้ตั้งชื่อบริษัท)"}</T>
       {seller.nameEn && !c.hide.has("nameEn") ? <T style={[c.s.small, { textAlign: align }, tone]}>{seller.nameEn}</T> : null}
       {seller.address ? <T style={[{ textAlign: align }, tone]}>{seller.address}</T> : null}
@@ -317,18 +339,24 @@ export function SectionInfo({ c, b }: { c: Ctx; b: FreeBlock }) {
 
 const PARTY_NAME_LABEL: Record<string, string> = { "ลูกค้า": "ชื่อลูกค้า", "เสนอราคาให้": "ชื่อลูกค้า" };
 
-export function SectionParty({ c }: { c: Ctx }) {
-  const p = c.doc.party;
-  if (!p) return null;
+export function SectionParty({ c: c0 }: { c: Ctx }) {
+  const p0 = c0.doc.party;
+  if (!p0) return null;
+  // ชื่อ ที่อยู่ เลขผู้เสียภาษีของผู้ซื้อต้องอยู่ครบในกรอบ (ม.86/4) — ยาวเกินกรอบ ย่อตัวอักษรแทนการตัด
+  const lw0 = c0.t.formStyle ? c0.labelWidth ?? 110 : 0, contactCol = !c0.hide.has("contact") || !c0.hide.has("phone") || !c0.hide.has("email");
+  const c = shrinkToFit(c0, [{ text: c0.t.formStyle ? "" : p0.label }, { text: p0.name || "-", indent: lw0 }, { text: `${p0.taxId || ""} ${branchLabel(p0.branchCode, p0.branchName)}`, indent: lw0 || 90 }, { text: p0.address || " ", indent: lw0 }],
+    c0.box ? c0.box.w * (contactCol ? 0.64 : 1) : undefined);
+  const p = p0;
   const t = c.t;
   const box = t.party === "boxed" ? { borderWidth: 1, borderColor: lineOf(c), borderRadius: rad(c), padding: 8 }
     : t.party === "accent-bar" ? { borderWidth: 1, borderColor: lineOf(c), borderLeftWidth: 3, borderLeftColor: t.primary, borderRadius: rad(c), padding: 8 }
     : t.party === "none" ? {} : { borderBottomWidth: 0.8, borderColor: lineOf(c), paddingVertical: 6 };
   const showContact = !c.hide.has("contact"), showPhone = !c.hide.has("phone"), showEmail = !c.hide.has("email");
   const taxLine = p.taxId ? `${formatTaxId(p.taxId)}  ${branchLabel(p.branchCode, p.branchName)}` : "";
+  const fz = c !== c0 ? { fontSize: c.s.page.fontSize, lineHeight: c.s.page.lineHeight } : {};
   if (t.formStyle) {
     return (
-      <View style={[{ flexDirection: "row", gap: 10 }, box]}>
+      <View style={[{ flexDirection: "row", gap: 10 }, box, fz]}>
         <View style={{ flex: 1 }}>
           <FormRow c={c} th={PARTY_NAME_LABEL[p.label] || p.label} value={p.name || "-"} labelWidth={c.labelWidth ?? 110} bold />
           <FormRow c={c} th="เลขประจำตัวผู้เสียภาษี" value={taxLine} labelWidth={c.labelWidth ?? 110} />
@@ -346,7 +374,7 @@ export function SectionParty({ c }: { c: Ctx }) {
     );
   }
   return (
-    <View style={[{ flexDirection: "row", gap: 10 }, box]}>
+    <View style={[{ flexDirection: "row", gap: 10 }, box, fz]}>
       <View style={{ flex: 1 }}>
         <Lbl c={c} th={p.label} style={c.s.partyLabel} />
         <T style={{ fontWeight: "bold" }}>{p.name || "-"}</T>
@@ -465,7 +493,7 @@ export function SectionPayment({ c, align }: { c: Ctx; align?: "left" | "center"
 
 /**
  * ยอดรวมต้องพอดีกรอบที่ออกแบบไว้ (ผังคงที่ — ข้อมูลจริงมีแถวมากกว่าตัวอย่าง เช่น มีส่วนลด/หัก ณ ที่จ่าย)
- * ประมาณความสูงที่ต้องใช้: เกินกรอบ = ลดระยะบน-ล่างของแถว ยังเกินจึงย่อตัวอักษร (ไม่ต่ำกว่า 60%) — ภาษีและยอดรวมทั้งสิ้นไม่ถูกตัดหาย
+ * ประมาณความสูงที่ต้องใช้: เกินกรอบ = ลดระยะบน-ล่างของแถว ยังเกินจึงย่อตัวอักษร (ไม่ต่ำกว่า 50%) — ภาษีและยอดรวมทั้งสิ้นไม่ถูกตัดหาย
  */
 function fitTotals(c: Ctx, rows: { label: string; strong?: boolean }[]): { c: Ctx } {
   if (!c.box || !rows.length) return { c };
@@ -477,7 +505,7 @@ function fitTotals(c: Ctx, rows: { label: string; strong?: boolean }[]): { c: Ct
   let pad = c.rowPad ?? 2.5;
   if (text + extra + 2 * n * pad <= avail) return { c };
   pad = Math.max(0.5, (avail - text - extra) / (2 * n));
-  const scale = text + extra + 2 * n * pad <= avail ? 1 : Math.max(0.6, (avail - extra - 2 * n * pad) / text);
+  const scale = text + extra + 2 * n * pad <= avail ? 1 : Math.max(0.5, (avail - extra - 2 * n * pad) / text);
   if (scale >= 1) return { c: { ...c, rowPad: pad } };
   const t = { ...c.t, fontSize: c.t.fontSize * scale };
   return { c: { ...c, rowPad: pad, t, s: themeStyles(t, lh) } };
@@ -492,11 +520,13 @@ export function SectionTotals({ c: c0 }: { c: Ctx }) {
   const c = fit.c;
   const { t, doc, s } = c;
   const kept = kept0;
+  // ย่อแล้ว: ขนาดและระยะบรรทัดของตัวอักษรในกล่องตามขนาดใหม่ (ระยะบรรทัดของหน้าเป็นค่าคงที่ ไม่ย่อตาม)
+  const fz = c !== c0 ? { fontSize: c.s.page.fontSize, lineHeight: c.s.page.lineHeight } : {};
   // ซ่อนแถวเน้น (เช่น ยอดชำระสุทธิ) = แถวยอดรวมทั้งสิ้นเป็นแถวเน้นแทน
   const rows = kept.some((r) => r.strong) || !kept.length ? kept : kept.map((r) => (r.label === "จำนวนเงินรวมทั้งสิ้น" ? { ...r, strong: true } : r));
   if (t.totals === "grid") {
     return (
-      <View style={{ borderWidth: 1, borderColor: t.primary, borderRadius: rad(c) }}>
+      <View style={{ borderWidth: 1, borderColor: t.primary, borderRadius: rad(c), ...fz }}>
         {rows.map((row, i) => (
           <View key={row.label} style={{ flexDirection: "row", borderTopWidth: i ? 0.6 : 0, borderColor: t.primary }}>
             <View style={{ flex: 1, backgroundColor: `${t.accent}${row.strong ? "cc" : "88"}`, paddingVertical: c.rowPad ?? 2.5, paddingHorizontal: 6 }}>
@@ -511,7 +541,7 @@ export function SectionTotals({ c: c0 }: { c: Ctx }) {
     );
   }
   return (
-    <View>
+    <View style={fz}>
       {rows.map((row) => {
         const strong = row.strong;
         const box = !strong ? {} : t.totals === "solid" ? { backgroundColor: t.primary, borderRadius: rad(c, 3), marginTop: 2 }

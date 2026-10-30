@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CORE_TOTALS, OPTIONAL_TOTALS, columnWidthsPt, gridSizes, normalizeFreeLayout, BLOCK_PARTS } from "@/lib/documents/design";
+import { CORE_TOTALS, OPTIONAL_TOTALS, columnWidthsPt, gridSizes, normalizeFreeLayout, requiredColumnsFor, BLOCK_PARTS } from "@/lib/documents/design";
 import { applySigning, EMPTY_SIGNING } from "@/lib/documents/esign";
 import { dataGroups } from "@/lib/documents/design-data";
 import { sampleModelFor } from "@/lib/documents/build";
@@ -50,5 +50,16 @@ describe("designer: fixed form, totals, rows/columns, stamp choice", () => {
     expect(noSign.stamp).toBeTruthy(); expect(noSign.signed?.["ผู้เสนอราคา"]?.image).toBeFalsy();
     const none = applySigning({ ...base, noSign: true, noStamp: true }, cfg, ["ผู้เสนอราคา"]);
     expect(none.stamp).toBeUndefined(); expect(none.signed?.["ผู้เสนอราคา"]?.image).toBeFalsy();
+  });
+});
+
+describe("tax invoice quantity column (ม.86/4 (5))", () => {
+  it("cannot be removed and is restored on old layouts", () => {
+    expect(requiredColumnsFor("invoice")).toContain("qty");
+    expect(requiredColumnsFor("quotation")).not.toContain("qty");
+    const out = normalizeFreeLayout({ enabled: true, blocks: [{ id: "i", kind: "items", x: 32, y: 200, w: 530, h: 300, colSpec: [{ key: "no" }, { key: "description" }, { key: "amount" }] }] }, "invoice")!;
+    expect(out.blocks.find((b) => b.id === "i")!.colSpec!.map((x) => x.key)).toEqual(["no", "description", "qty", "amount"]);
+    const unit = normalizeFreeLayout({ enabled: true, blocks: [{ id: "i", kind: "items", x: 32, y: 200, w: 530, h: 300, colSpec: [{ key: "description" }, { key: "qtyUnit" }, { key: "amount" }] }] }, "invoice")!;
+    expect(unit.blocks.find((b) => b.id === "i")!.colSpec!.map((x) => x.key)).toEqual(["description", "qtyUnit", "amount"]);
   });
 });

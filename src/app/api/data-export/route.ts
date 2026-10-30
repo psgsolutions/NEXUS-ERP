@@ -4,6 +4,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { listRecords } from "@/lib/master-store.server";
 import { MASTER_SCHEMAS } from "@/lib/master-data";
+import { auditServer } from "@/services/audit.server";
 
 /**
  * [API-SERVER] ส่งออกข้อมูลหลักเป็นแถวสำหรับ Excel — POST /api/data-export { companyId, entity }
@@ -25,6 +26,8 @@ export async function POST(request: Request) {
       if (!can(apiUser.roles, "hr:edit")) throw new ApiAuthError(403, "ส่งออกข้อมูลพนักงานได้เฉพาะผู้ดูแลงานบุคคล");
       const snap = await adminDb.collection("employees").where("companyId", "==", companyId).limit(MAX).get();
       const records = snap.docs.filter((d) => d.get("isDeleted") !== true).map((d) => ({ ...d.data(), id: d.id }));
+      // ข้อมูลส่วนบุคคล (เงินเดือน เลขบัตร บัญชีธนาคาร): บันทึกว่าใครส่งออกเมื่อไร (PDPA)
+      await auditServer.logExport(apiUser.uid, companyId, "EMPLOYEES", "employees", { count: records.length });
       return NextResponse.json({ success: true, records });
     }
     if (entity !== "customers" && entity !== "suppliers" && entity !== "products") throw new ApiAuthError(400, "ประเภทข้อมูลไม่ถูกต้อง");
@@ -32,6 +35,8 @@ export async function POST(request: Request) {
     if (!can(apiUser.roles, perm) && !can(apiUser.roles, perm.replace(":edit", ":view") as any)) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
     // ตัดข้อมูลใหญ่ที่ไม่ได้ใช้ในไฟล์ (รูป · ประวัติ)
     const records = (await listRecords(entity, companyId)).slice(0, MAX).map(({ images: _i, imageUrl: _u, history: _h, ...r }) => r);
+    // รายชื่อลูกค้า/ผู้ขาย (ชื่อ เบอร์ อีเมล ที่อยู่) เป็นข้อมูลส่วนบุคคล: บันทึกการส่งออก
+    if (entity !== "products") await auditServer.logExport(apiUser.uid, companyId, entity === "customers" ? "CUSTOMERS" : "SUPPLIERS", entity, { count: records.length });
     return NextResponse.json({ success: true, records });
   } catch (err: any) {
     const authRes = authErrorResponse(err);

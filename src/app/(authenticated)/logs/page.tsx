@@ -11,7 +11,7 @@ import { ACTION_TH, moduleLabel } from "@/lib/log-labels";
 interface LogRow { id: string; action: string; module: string; targetId: string; actor: string; createdAt: string | null }
 
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString("th-TH", { day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" }) : "-");
-const ACTION_TONE: Record<string, string> = { CREATE: "text-nexus-teal", UPDATE: "text-nexus-blue", DELETE: "text-danger" };
+const ACTION_TONE: Record<string, string> = { CREATE: "text-nexus-teal", UPDATE: "text-nexus-blue", DELETE: "text-danger", EXPORT: "text-warning" };
 
 export default function LogsPage() {
   const router = useRouter();

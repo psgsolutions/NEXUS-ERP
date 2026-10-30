@@ -30,7 +30,7 @@ const COLLECTION_TH: Record<string, string> = {
   SUPPLIERS: "ผู้จำหน่าย",
 };
 
-export const ACTION_TH: Record<string, string> = { CREATE: "สร้าง", UPDATE: "แก้ไข", DELETE: "ลบ" };
+export const ACTION_TH: Record<string, string> = { CREATE: "สร้าง", UPDATE: "แก้ไข", DELETE: "ลบ", EXPORT: "ส่งออกข้อมูล" };
 
 export function moduleLabel(module: string): string {
   const m = String(module || "").toUpperCase();

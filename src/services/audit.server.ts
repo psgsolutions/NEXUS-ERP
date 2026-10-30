@@ -21,7 +21,7 @@ const cleanData = (obj: any): any => {
   return cleaned;
 };
 
-async function log(action: "CREATE" | "UPDATE" | "DELETE", userId: string, companyId: string, module: string, targetId: string, before: any, after: any) {
+async function log(action: "CREATE" | "UPDATE" | "DELETE" | "EXPORT", userId: string, companyId: string, module: string, targetId: string, before: any, after: any) {
   try {
     const now = admin.firestore.FieldValue.serverTimestamp();
     const ctx = await requestContext();
@@ -51,4 +51,7 @@ export const auditServer = {
     log("UPDATE", userId, companyId, module, targetId, before, after),
   logDelete: (userId: string, companyId: string, module: string, targetId: string) =>
     log("DELETE", userId, companyId, module, targetId, null, null),
+  /** ส่งออกข้อมูลออกจากระบบ (เช่น ข้อมูลพนักงาน/ลูกค้าที่เป็นข้อมูลส่วนบุคคล — PDPA ต้องตรวจย้อนได้ว่าใครนำออกเมื่อไร) */
+  logExport: (userId: string, companyId: string, module: string, targetId: string, data: any) =>
+    log("EXPORT", userId, companyId, module, targetId, null, data),
 };

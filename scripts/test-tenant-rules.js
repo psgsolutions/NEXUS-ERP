@@ -248,6 +248,9 @@ async function main() {
     ['admin cannot read signatures directly', () => assertFails(getDoc(doc(adminA, 'companies/A/document_assets/signing')))],
     ['member cannot read signatures', () => assertFails(getDoc(doc(userA, 'companies/A/document_assets/signing')))],
     ['admin cannot write signatures directly', () => assertFails(setDoc(doc(adminA, 'companies/A/document_assets/signing'), { stamp: '' }))],
+    // รหัสคำขอกันบันทึกซ้ำ: server เท่านั้น
+    ['admin cannot read request keys', () => assertFails(getDoc(doc(adminA, 'companies/A/request_keys/quotation_abc')))],
+    ['member cannot forge a request key', () => assertFails(setDoc(doc(userA, 'companies/A/request_keys/quotation_abc'), { result: { id: 'x' } }))],
     ['member cannot reset rate limits', () => assertFails(setDoc(doc(userA, 'rate_limits/portal_ip_h_x_1'), { count: 0 }))],
     // ข้อมูลกลางของเครือ
     ['member reads own implicit group master', () => assertSucceeds(getDoc(doc(userA, 'groups/A/products/P1')))],

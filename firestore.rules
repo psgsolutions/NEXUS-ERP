@@ -256,14 +256,16 @@ service cloud.firestore {
           // ข้อมูลหลักส่วนของบริษัท (ราคา สต็อก วงเงิน ชื่อเฉพาะบริษัท): /api/master-data และ stock engine
           'products', 'customers', 'suppliers', 'contractors',
           // อัตราค่าแรงผู้รับเหมา: /api/procurement/subcontractor-rates (ฝ่ายจัดซื้อ)
-          'subcontractor_rates'];
+          'subcontractor_rates',
+          // รหัสคำขอกันบันทึกซ้ำ (เน็ตหลุดแล้วกดซ้ำ): server เท่านั้น
+          'request_keys'];
       }
       // ข้อมูลการเงินอ่านได้เฉพาะตำแหน่งที่เกี่ยวข้อง (ส่วนอื่นอ่านได้ทุกคนในบริษัท)
       function restrictedRead(collection) {
         return collection in ['journal_entries', 'payments', 'financialLedgers', 'tax_filing_locks', 'customer_refunds', 'payrolls', 'expenses', 'withholding_taxes', 'cheques', 'bank_reconciliations'];
       }
       function canReadCollection(collection) {
-        return !(collection in ['document_assets', 'attachments']) && (!restrictedRead(collection) || (
+        return !(collection in ['document_assets', 'attachments', 'request_keys']) && (!restrictedRead(collection) || (
           collection == 'payrolls' ? hasRole(['ACCOUNTANT', 'EXECUTIVE', 'HR'])
           : collection in ['expenses', 'withholding_taxes'] ? hasRole(['ACCOUNTANT', 'EXECUTIVE', 'PURCHASING', 'WAREHOUSE', 'HR'])
           : financeReader()

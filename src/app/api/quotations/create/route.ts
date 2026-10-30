@@ -5,6 +5,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { prepareSequence } from "@/lib/sequence-server";
 import { auditServer } from "@/services/audit.server";
+import { priorResult, rememberResult, requestKeyOf } from "@/lib/idempotency.server";
 import {
   auditEntry, cleanHeader, companyGpThreshold, createCustomerInTx, grossProfitPercent, normalizeLines, quotationTotals,
   notifyPendingApproval, overQuoteLimit, quoteLimitAmount, str, submitStatus, writeProductWritebacks,
@@ -38,9 +39,14 @@ export async function POST(request: Request) {
     const now = admin.firestore.FieldValue.serverTimestamp();
     const submit = body.submit === true;
     const requiresApproval = body.requiresApproval === true;
+    const requestKey = requestKeyOf(body.requestKey);
+    type Created = { id: string; docNo: string; status: string; gp: number | null; customerId: string; replayed?: boolean };
 
-    const result = await adminDb.runTransaction(async (tx) => {
+    const result = await adminDb.runTransaction(async (tx): Promise<Created> => {
       // ---- อ่าน ----
+      // กดบันทึกซ้ำหลังเน็ตหลุด (คีย์เดิม): คืนใบที่สร้างไว้แล้ว ไม่ออกเลขใหม่
+      const prior = await priorResult<Created>(tx, companyId, "quotation", requestKey);
+      if (prior) return { ...prior, replayed: true };
       const seq = await take(tx);
       const threshold = submit ? await companyGpThreshold(tx, companyId) : 0;
 
@@ -78,11 +84,14 @@ export async function POST(request: Request) {
       writeProductWritebacks(tx, companyId, apiUser.roles, body.productWritebacks);
       tx.set(ref.collection("audit_logs").doc(), auditEntry(apiUser.uid, apiUser.email || apiUser.uid, submit, status, body.sendChannel, gp, requiresApproval, true));
       if (status === "PENDING_APPROVAL") notifyPendingApproval(tx, companyId, ref.id, docNo, header.customerName, header.grandTotal, gp, apiUser.uid);
-      return { docNo, status, gp, customerId: String(header.customerId || "") };
+      const created = { id: ref.id, docNo, status, gp, customerId: String(header.customerId || "") };
+      rememberResult(tx, companyId, "quotation", requestKey, apiUser.uid, created);
+      return created;
     });
+    if (result.replayed) return NextResponse.json({ success: true, ...result });
 
     await auditServer.logCreate(apiUser.uid, companyId, "SALES_QUOTATION", result.docNo, { status: result.status, grandTotal: header.grandTotal, customerName: header.customerName });
-    return NextResponse.json({ success: true, id: ref.id, ...result });
+    return NextResponse.json({ success: true, ...result });
   } catch (error: any) {
     const authRes = authErrorResponse(error);
     if (authRes) return authRes;

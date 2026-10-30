@@ -1,7 +1,7 @@
 "use client";
 
 import { useSystemDialog } from "@/context/DialogContext";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, Send, Building2, Calendar, Plus, Info, AlertTriangle, Search, Trash2, FileText, Mail, MessageSquare, Download, Edit3, ChevronDown, CheckCircle2, Lock, Share2 } from 'lucide-react';
 import { PillButton, PillCheckbox, cn, NexusDatePicker, GlassCard, Modal } from "@/components/ui/Base";
@@ -87,6 +87,7 @@ export default function QuotationCreationPage() {
   const [referenceNo, setReferenceNo] = useState("");
   // ใส่ลายเซ็น/ตราประทับอิเล็กทรอนิกส์ในใบเสนอราคาฉบับนี้หรือไม่ (ค่าเริ่มต้น = ใส่ตามที่ตั้งไว้)
   const [useStamp, setUseStamp] = useState(true);
+  const createKey = useRef("");
   const [useSignature, setUseSignature] = useState(true);
 
   useEffect(() => {
@@ -664,6 +665,8 @@ export default function QuotationCreationPage() {
         .filter((item) => item.saveToProductMaster && item.productId)
         .map((item) => ({ productId: item.productId, technicalSpecs: item.details || "", datasheetUrl: item.datasheetUrl || "" }));
 
+      // รหัสคำขอของการสร้างใบนี้ (คงเดิมจนสร้างสำเร็จ) — เน็ตหลุดแล้วกดบันทึกซ้ำ เซิร์ฟเวอร์คืนใบเดิม ไม่สร้างซ้ำ
+      if (!createKey.current) createKey.current = crypto.randomUUID();
       // บันทึกผ่านเซิร์ฟเวอร์: ครั้งแรกสร้างใบใหม่ (ออกเลขที่จริง) ครั้งถัดไปบนหน้าเดิมเป็นการแก้ไขใบเดิม
       const endpoint = savedQuotationId ? `/api/quotations/${encodeURIComponent(savedQuotationId)}/save` : "/api/quotations/create";
       const res = await apiFetch(endpoint, {
@@ -678,6 +681,7 @@ export default function QuotationCreationPage() {
           lines: linesPayload,
           newCustomer,
           productWritebacks,
+          ...(savedQuotationId ? {} : { requestKey: createKey.current }),
         }),
       });
       const saved = await res.json();

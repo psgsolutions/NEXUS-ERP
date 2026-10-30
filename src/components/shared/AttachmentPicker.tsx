@@ -45,7 +45,7 @@ export function AttachmentPicker({ pending, onPending, ownerType, ownerId, disab
     return d;
   }, [companyId]);
   const reload = useCallback(async () => { if (live && companyId) setSaved((await post({ action: "list", ownerType, ownerId })).files); }, [live, companyId, post, ownerType, ownerId]);
-  useEffect(() => { reload().catch(() => {}); }, [reload]);
+  useEffect(() => { reload().catch((e: any) => setError(`โหลดไฟล์แนบไม่สำเร็จ: ${e.message}`)); }, [reload]);
 
   const add = async (list: FileList | null) => {
     if (!list?.length) return;
@@ -57,7 +57,7 @@ export function AttachmentPicker({ pending, onPending, ownerType, ownerId, disab
     }
     if (live && companyId) {
       try { await uploadAttachments(companyId, ownerType!, ownerId!, prepared, (n) => setBusy(`กำลังอัปโหลด ${n}/${prepared.length}…`)); } catch (e: any) { setError(e.message); }
-      await reload().catch(() => {});
+      await reload().catch((e: any) => setError(`โหลดไฟล์แนบไม่สำเร็จ: ${e.message}`));
     } else onPending?.([...(pending || []), ...prepared]);
     setBusy("");
   };

@@ -251,7 +251,7 @@ export default function NewProductPage() {
       try {
         const customOnly = updated.filter(c => !INITIAL_CATEGORIES.some(ic => ic.value === c.value)).map(c => c.value);
         localStorage.setItem("nexus_custom_categories", JSON.stringify(customOnly));
-      } catch (e) {}
+      } catch { /* เก็บตัวเลือกในเครื่องไม่ได้ (โหมดส่วนตัว/พื้นที่เต็ม) — ยังใช้ได้ในหน้านี้ */ }
       return updated;
     });
     setFormData(prev => ({ ...prev, category: catVal }));
@@ -266,7 +266,7 @@ export default function NewProductPage() {
       try {
         const customOnly = updated.filter(b => !INITIAL_BRANDS.some(ib => ib.value === b.value)).map(b => b.value);
         localStorage.setItem("nexus_custom_brands", JSON.stringify(customOnly));
-      } catch (e) {}
+      } catch { /* เก็บตัวเลือกในเครื่องไม่ได้ (โหมดส่วนตัว/พื้นที่เต็ม) — ยังใช้ได้ในหน้านี้ */ }
       return updated;
     });
     setFormData(prev => ({ ...prev, brand: brandVal }));
@@ -281,7 +281,7 @@ export default function NewProductPage() {
       try {
         const customOnly = updated.filter(u => !INITIAL_UOMS.some(iu => iu.value === u.value)).map(u => u.value);
         localStorage.setItem("nexus_custom_uoms", JSON.stringify(customOnly));
-      } catch (e) {}
+      } catch { /* เก็บตัวเลือกในเครื่องไม่ได้ (โหมดส่วนตัว/พื้นที่เต็ม) — ยังใช้ได้ในหน้านี้ */ }
       return updated;
     });
   };

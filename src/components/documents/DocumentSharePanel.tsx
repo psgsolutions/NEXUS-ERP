@@ -52,7 +52,9 @@ export function DocumentSharePanel({ type, id, title, defaultTo = "" }: { type: 
 
   const copyLink = () => run("link", async () => {
     const d = await call({ action: "link", channel: "link" });
-    await navigator.clipboard.writeText(d.url).catch(() => {});
+    // เบราว์เซอร์ไม่ให้คัดลอก (ไม่ใช่ HTTPS/ไม่อนุญาต) = แสดงลิงก์ให้คัดลอกเอง ไม่บอกว่าคัดลอกแล้ว
+    const copiedOk = await navigator.clipboard.writeText(d.url).then(() => true, () => false);
+    if (!copiedOk) { setMsg({ text: `คัดลอกอัตโนมัติไม่ได้ — คัดลอกลิงก์นี้เอง: ${d.url}` }); return; }
     setCopied(true); setTimeout(() => setCopied(false), 2000);
     setMsg({ text: "คัดลอกลิงก์แล้ว นำไปวางส่งให้ลูกค้าได้เลย" });
   });

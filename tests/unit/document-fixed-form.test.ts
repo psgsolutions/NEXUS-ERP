@@ -63,3 +63,18 @@ describe("tax invoice quantity column (ม.86/4 (5))", () => {
     expect(unit.blocks.find((b) => b.id === "i")!.colSpec!.map((x) => x.key)).toEqual(["description", "qtyUnit", "amount"]);
   });
 });
+
+describe("amount in words is its own box", () => {
+  it("is not part of the totals group (ticking totals rows never removes it)", () => {
+    const layout = { enabled: true, blocks: [
+      { id: "t", kind: "totals" as const, x: 300, y: 590, w: 230, h: 80 },
+      { id: "w", kind: "words" as const, x: 32, y: 590, w: 260, h: 22 },
+    ] };
+    const groups = dataGroups(layout, { docType: "quotation", docTitle: "ใบเสนอราคา", meta: [], fields: [], columns: [], totals: OPTIONAL_TOTALS });
+    const totals = groups.find((g) => g.id === "totals")!, words = groups.find((g) => g.id === "words")!;
+    expect(totals.kinds).toEqual(["totals"]);
+    expect(totals.items.some((i) => i.key === "block:words")).toBe(false);
+    expect(words.items).toEqual([{ key: "block:words", label: "แสดงจำนวนเงินตัวอักษร", on: true }]);
+    expect(dataGroups(layout, { docType: "delivery_note", docTitle: "ใบส่งของ", meta: [], fields: [], columns: [], totals: [] }).some((g) => g.id === "words")).toBe(false);
+  });
+});

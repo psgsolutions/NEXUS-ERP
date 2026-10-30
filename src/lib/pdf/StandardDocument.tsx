@@ -78,7 +78,8 @@ export function themeStyles(t: DocTheme, lh = 1.35, radius?: number) {
     en: { fontSize: fz(6), color: t.muted, lineHeight: 1.15 },
     thText: { fontSize: fz(8.5), fontWeight: "bold", paddingHorizontal: 4 },
     td: { paddingHorizontal: 4 },
-    words: { borderWidth: 1, borderColor: themeLine(t), borderRadius: r, padding: 6, fontWeight: "bold", textAlign: "center", backgroundColor: `${t.accent}10` },
+    // จำนวนเงินตัวอักษร: ข้อความล้วน ไม่มีกรอบ/พื้น (ต้องการกรอบ วาดกรอบเองในหน้าออกแบบ)
+    words: { fontWeight: "bold", textAlign: "center" },
     totalRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 2.5, paddingHorizontal: 6 },
     signBox: { flex: 1, alignItems: "center" },
     signLine: { width: "85%", borderBottomWidth: 0.8, borderColor: "#888888", height: 28 },

@@ -141,7 +141,6 @@ function RMenu({ icon, label, disabled, width = 220, children }: { icon: React.R
 const READY_TABLES: { kind: BlockKind; label: string; hint: string; icon: React.ReactNode }[] = [
   { kind: "items", label: "ตารางสินค้า", hint: "ลำดับ รายการ จำนวน หน่วย ราคา ส่วนลด จำนวนเงิน", icon: <Rows3 size={18} /> },
   { kind: "totals", label: "ตารางยอดรวม", hint: "รวมเป็นเงิน ส่วนลด ภาษีมูลค่าเพิ่ม รวมทั้งสิ้น", icon: <Sigma size={18} /> },
-  { kind: "words", label: "จำนวนเงินตัวอักษร", hint: "ยอดรวมทั้งสิ้นเป็นตัวอักษร", icon: <Type size={18} /> },
 ];
 const menuItem = "w-full text-left px-3 py-2 rounded-xl text-[12.5px] text-white/85 hover:bg-white/10 hover:text-white";
 /** กลุ่มในริบบอน (ป้ายชื่อกลุ่มด้านล่าง เหมือน Office) */
@@ -1216,7 +1215,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                 ))}
               </div>
             )}
-            {["items", "totals", "party", "words"].includes(b.kind) && <p className="text-[11px] text-white/40">มุมใช้กับกรอบตาราง/ยอดรวม/ลูกค้าภายในกล่องด้วย</p>}
+            {["items", "totals", "party"].includes(b.kind) && <p className="text-[11px] text-white/40">มุมใช้กับกรอบตาราง/ยอดรวม/ลูกค้าภายในกล่องด้วย</p>}
             </>}
           </div>
         )}
@@ -1477,6 +1476,12 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
               </RMenu>
             )}
             {addable.includes("field") && <RBtn icon={<TextCursorInput size={18} />} label="ข้อมูลเดี่ยว" drag="field" disabled={!canEdit} onClick={() => addAt("field", visibleCenter())} />}
+            {/* จำนวนเงินตัวอักษร: กล่องข้อความแยกจากตารางยอดรวม ไม่มีกรอบ (ต้องการกรอบ วาดกรอบเองจากรูปทรง) */}
+            {bodyOn && docHasAmounts(docType) && (() => { const has = firstOf("words"); return (
+              <RBtn icon={<Type size={18} />} label="เงินตัวอักษร" drag={has ? undefined : "words"} disabled={!canEdit}
+                title={has ? "จำนวนเงินตัวอักษรมีอยู่แล้ว — คลิกเพื่อเลือก" : "จำนวนเงินตัวอักษร: ยอดรวมทั้งสิ้นเป็นตัวอักษร — คลิกหรือลากไปวาง"}
+                onClick={() => { if (has) setSel([has.key]); else addAt("words", visibleCenter()); }} />
+            ); })()}
           </RGroup>
           <RGroup label="รูปทรง">
             <RBtn icon={<Square size={18} />} label="สี่เหลี่ยม" drag="rect" disabled={!canEdit} onClick={() => addAt("rect", visibleCenter())} />

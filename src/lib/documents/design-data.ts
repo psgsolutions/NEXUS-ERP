@@ -3,7 +3,7 @@
  * ติ๊ก = ข้อมูลนี้ปรากฏบนเอกสาร ไม่ว่าจะอยู่ในกล่องไหน (กล่องเลขที่ · กล่องข้อมูล · ช่องข้อมูลเดี่ยว)
  * เปิด: ใส่ในกล่องที่เหมาะที่สุดที่มีอยู่ · ปิด: เอาออกจากทุกกล่อง · ข้อมูลที่กฎหมายกำหนดล็อกไว้
  */
-import { A4, CORE_TOTALS, TEMPLATES, docHasCopy, defaultFreeLayout, requiredColumnsFor, resolveColumns, type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, ITEM_COLUMNS } from "./design";
+import { A4, CORE_TOTALS, TEMPLATES, docHasAmounts, docHasCopy, defaultFreeLayout, requiredColumnsFor, resolveColumns, type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, ITEM_COLUMNS } from "./design";
 import { templateLayout } from "./layout-templates";
 
 export interface DataItem { key: string; label: string; on: boolean; locked?: boolean }
@@ -78,11 +78,14 @@ export function dataGroups(layout: FreeLayout, c: DataContext): DataGroup[] {
       ...(!cols.includes("detail") ? [{ key: "items:detail", label: "รายละเอียดใต้รายการ", on: !(items.hide || []).includes("detail") }] : []),
       { key: "items:heading", label: "หัวข้อหมวด", on: !(items.hide || []).includes("heading") },
     ] }] : []),
-    ...(totals ? [{ id: "totals", title: "ยอดเงิน", source: "คำนวณจากรายการ ส่วนลด และภาษี", kinds: ["totals", "words"] as BlockKind[], items: [
+    ...(totals ? [{ id: "totals", title: "ยอดเงิน", source: "คำนวณจากรายการ ส่วนลด และภาษี", kinds: ["totals"] as BlockKind[], items: [
       // ข้อมูลหลัก แสดงเสมอ (ไม่มีช่องติ๊ก) · แถวอื่นติ๊กเพิ่มตามฟอร์มที่บริษัทต้องการ
       ...CORE_TOTALS.map((l) => ({ key: `total-core:${l}`, label: l, on: true, locked: true })),
       ...c.totals.map((l) => ({ key: `total:${l}`, label: l, on: !(totals.hide || []).includes(`t:${l}`) })),
-      { key: "block:words", label: "จำนวนเงินตัวอักษร", on: has("words") },
+    ] }] : []),
+    // จำนวนเงินตัวอักษร: กล่องแยกจากตารางยอดรวม (วาง/ซ่อนเองได้ ไม่ผูกกับยอดรวม)
+    ...(docHasAmounts(c.docType) ? [{ id: "words", title: "จำนวนเงินตัวอักษร", source: "ยอดรวมทั้งสิ้นเป็นตัวอักษร (คำนวณจากรายการ)", kinds: ["words"] as BlockKind[], items: [
+      { key: "block:words", label: "แสดงจำนวนเงินตัวอักษร", on: has("words") },
     ] }] : []),
     { id: "foot", title: "ท้ายเอกสาร", source: "หมายเหตุจากเอกสาร · บัญชีรับเงินจากข้อมูลนิติบุคคล", kinds: ["notes", "payment", "signatures", "stamp", "sign"], items: [
       { key: "block:notes", label: "หมายเหตุ", on: has("notes") },

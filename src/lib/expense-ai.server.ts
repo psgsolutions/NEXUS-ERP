@@ -1,16 +1,14 @@
 import * as admin from "firebase-admin";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { adminDb } from "@/lib/firebase-admin";
 import { EXPENSE_ACCOUNTS } from "@/lib/payables";
 import { normalizeInboxData, type InboxData } from "@/lib/expense-inbox";
+import { aiErrorInfo, geminiConfigured, geminiModel, parseAiJson } from "@/lib/gemini.server";
 
 /**
  * อ่านรูปบิล/ใบเสร็จด้วย Gemini → ข้อมูลรายจ่าย (ผู้ใช้ตรวจ/แก้ และผู้มีสิทธิ์ยืนยันก่อนเป็นรายจ่ายเสมอ)
  * ไม่มีคีย์ AI = คืนข้อมูลว่างให้กรอกเอง
  */
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-
-export const aiReady = () => !!process.env.GEMINI_API_KEY;
+export const aiReady = geminiConfigured;
 
 export async function readReceiptImages(images: { mime: string; data: string }[]): Promise<{ data: InboxData; error?: string }> {
   if (!aiReady()) return { data: normalizeInboxData({}), error: "ยังไม่ได้ตั้งค่า AI (GEMINI_API_KEY) — กรอกข้อมูลเอง" };
@@ -25,12 +23,12 @@ export async function readReceiptImages(images: { mime: string; data: string }[]
 - วันที่ พ.ศ. ให้แปลงเป็น ค.ศ. (ลบ 543) · ตัวเลขไม่มีเครื่องหมายจุลภาค · ไม่แน่ใจให้เว้นว่างและบอกใน note
 - suggestedAccount เลือกจาก: ${accounts}`;
   try {
-    const model = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!).getGenerativeModel({ model: MODEL, generationConfig: { responseMimeType: "application/json", temperature: 0.1 } });
-    const res = await model.generateContent([prompt, ...parts]);
-    const text = res.response.text().replace(/^```(?:json)?|```$/g, "").trim();
-    return { data: normalizeInboxData(JSON.parse(text)) };
+    const res = await geminiModel({ generationConfig: { responseMimeType: "application/json", temperature: 0.1 } }).generateContent([prompt, ...parts]);
+    return { data: normalizeInboxData(parseAiJson(res.response.text())) };
   } catch (e: any) {
-    return { data: normalizeInboxData({}), error: `AI อ่านรูปไม่สำเร็จ (${String(e?.message || e).slice(0, 120)}) — กรอกข้อมูลเอง` };
+    const info = aiErrorInfo(e);
+    if (info.status >= 500) console.error("[EXPENSE_AI_ERROR]", e);
+    return { data: normalizeInboxData({}), error: `${info.message} — กรอกข้อมูลเอง` };
   }
 }
 

@@ -1,43 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser, authErrorResponse } from "@/lib/api-auth";
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const apiKey = process.env.GEMINI_API_KEY;
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+import { AiError, aiErrorInfo, geminiModel, limitAi, parseAiJson } from "@/lib/gemini.server";
 
 /**
- * [NEXUS-AI] PO Scanner Endpoint
- * Real-time Gemini 1.5 Flash Vision Document Extraction
+ * [NEXUS-AI] อ่านใบสั่งซื้อของลูกค้าจากไฟล์ (รูป/PDF) — ผลเป็นร่างให้ผู้ใช้ตรวจก่อนบันทึกเสมอ (status: VERIFIED/NEEDS_REVIEW)
+ * รุ่น/timeout/จำกัดการเรียก/ข้อความ error ใช้ตัวกลาง gemini.server.ts
  */
-export async function POST(request: NextRequest) {
-  try {
-    await requireApiUser(request);
-    if (!genAI) {
-      console.error('[AI_SCAN_PO_ERROR]: GEMINI_API_KEY missing in environment');
-      return NextResponse.json(
-        { success: false, status: 'NEEDS_REVIEW', error: 'GEMINI_API_KEY missing in environment' },
-        { status: 500 }
-      );
-    }
+const MAX_BYTES = 10 * 1024 * 1024;
 
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-    
-    if (!file) {
-      console.error('[AI_SCAN_PO_ERROR]: No file provided in payload');
-      return NextResponse.json(
-        { success: false, status: 'NEEDS_REVIEW', error: 'No file provided' },
-        { status: 400 }
-      );
-    }
-
-    const buffer = await file.arrayBuffer();
-    const base64Data = Buffer.from(buffer).toString('base64');
-    const mimeType = file.type || 'image/jpeg';
-
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-    const prompt = `
+const PROMPT = `
 You are an expert purchase order scanner for NEXUS ERP (Intelligence OS). Extract the PO details from this document and return ONLY a valid JSON object.
 Keys:
 {
@@ -53,47 +24,28 @@ Keys:
       "price": number
     }
   ]
-}
-DO NOT wrap in markdown code blocks. Return raw JSON text only.`;
+}`;
 
-    const result = await model.generateContent([
-      prompt,
-      { inlineData: { data: base64Data, mimeType } }
-    ]);
-    const response = await result.response;
-    const text = response.text();
+export async function POST(request: NextRequest) {
+  try {
+    const apiUser = await requireApiUser(request);
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+    if (!file) throw new AiError(400, "ไม่พบไฟล์ใบสั่งซื้อ");
+    if (file.size > MAX_BYTES) throw new AiError(413, "ไฟล์ใหญ่เกิน 10 MB กรุณาลดขนาดไฟล์");
+    await limitAi(apiUser.uid, "scan_po");
 
-    if (!text || text.trim().length === 0) {
-      console.error('[AI_SCAN_PO_EXTRACTION_FAILED]: Gemini response empty');
-      return NextResponse.json(
-        { success: false, status: 'NEEDS_REVIEW', error: 'Gemini extraction returned empty text' },
-        { status: 422 }
-      );
-    }
-
-    let jsonString = text.trim();
-    if (jsonString.startsWith('```json')) jsonString = jsonString.substring(7, jsonString.length - 3);
-    else if (jsonString.startsWith('```')) jsonString = jsonString.substring(3, jsonString.length - 3);
-
-    let extractedData;
-    try {
-      extractedData = JSON.parse(jsonString.trim());
-    } catch (e: any) {
-      console.error('[AI_SCAN_PO_EXTRACTION_FAILED]: JSON parse error:', jsonString, e);
-      return NextResponse.json(
-        { success: false, status: 'NEEDS_REVIEW', error: 'Failed to parse AI output', raw: jsonString },
-        { status: 422 }
-      );
-    }
-
-    return NextResponse.json({ success: true, status: 'VERIFIED', data: extractedData });
+    const base64Data = Buffer.from(await file.arrayBuffer()).toString('base64');
+    const result = await geminiModel({ generationConfig: { responseMimeType: "application/json" } })
+      .generateContent([PROMPT, { inlineData: { data: base64Data, mimeType: file.type || 'image/jpeg' } }]);
+    const text = result.response.text();
+    if (!text.trim()) throw new AiError(422, "AI อ่านเอกสารนี้ไม่ได้ กรุณาใช้ไฟล์ที่ชัดขึ้น หรือกรอกเอง");
+    return NextResponse.json({ success: true, status: 'VERIFIED', data: parseAiJson(text) });
   } catch (error: any) {
     const authRes = authErrorResponse(error);
     if (authRes) return authRes;
-    console.error('[AI_SCAN_PO_EXCEPTION]:', error);
-    return NextResponse.json(
-      { success: false, status: 'NEEDS_REVIEW', error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
+    const { status, message } = aiErrorInfo(error);
+    if (status >= 500) console.error('[AI_SCAN_PO_ERROR]', error);
+    return NextResponse.json({ success: false, status: 'NEEDS_REVIEW', error: message }, { status });
   }
 }

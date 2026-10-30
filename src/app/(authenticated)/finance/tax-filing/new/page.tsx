@@ -189,19 +189,26 @@ export default function NewTaxFilingPage() {
             {wht.length === 0 ? (
               <p className="text-[12px] text-white/40">ไม่มีหนังสือรับรองหัก ณ ที่จ่ายประเภทนี้ในงวด {periodLabel(period)}</p>
             ) : (
+              <>
+              {wht.some((r) => r.missingTaxId) && (
+                <p className="text-[12px] text-amber-200/90">
+                  {wht.filter((r) => r.missingTaxId).length} รายการไม่มีเลขประจำตัวผู้เสียภาษี 13 หลัก — แก้ที่ข้อมูลคู่ค้าก่อนยื่น (ในไฟล์ส่งออกเว้นว่างและมีหมายเหตุ)
+                </p>
+              )}
               <NexusTable headers={["เลขที่", "วันที่", "ผู้ถูกหัก", "เลขผู้เสียภาษี", "เงินได้", "อัตรา", "ภาษีที่หัก"]}>
                 {wht.map((r) => (
                   <NexusTableRow key={r.id}>
                     <NexusTableCell className="whitespace-nowrap text-amber-300" mono>{r.docNo}</NexusTableCell>
                     <NexusTableCell className="whitespace-nowrap" mono>{r.date}</NexusTableCell>
                     <NexusTableCell className="text-white">{r.vendorName}</NexusTableCell>
-                    <NexusTableCell mono>{r.taxId}</NexusTableCell>
+                    <NexusTableCell className={r.missingTaxId ? "text-amber-300" : undefined} mono>{r.missingTaxId ? "ไม่มีเลข" : r.taxId}</NexusTableCell>
                     <NexusTableCell className="text-right" mono>{formatCurrency(r.baseAmount)}</NexusTableCell>
                     <NexusTableCell className="text-right" mono>{r.whtRate}%</NexusTableCell>
                     <NexusTableCell className="text-right text-white" mono>{formatCurrency(r.whtAmount)}</NexusTableCell>
                   </NexusTableRow>
                 ))}
               </NexusTable>
+              </>
             )}
           </div>
         )}

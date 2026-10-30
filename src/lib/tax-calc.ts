@@ -27,6 +27,11 @@ export interface WHTTaxRecord {
   baseAmount: number;
   whtRate: number;
   whtAmount: number;
+  /** ผู้ถูกหัก ณ วันที่ออกหนังสือรับรอง (RD Prep ต้องใช้สาขาและที่อยู่) */
+  branchCode?: string;
+  address?: string;
+  /** ไม่มีเลขผู้เสียภาษีของผู้ถูกหัก — ต้องแก้ก่อนยื่น */
+  missingTaxId?: boolean;
 }
 
 // รหัสบัญชีภาษีขาย/ภาษีซื้อ (ผังบัญชี 6 หลัก และรูปแบบ XXXX-XX)
@@ -113,6 +118,10 @@ export function buildWhtRecords(docs: { id: string; data: any }[], supplierTaxId
       baseAmount: Number(data.baseAmount || 0),
       whtRate: Number(data.whtRate || 3),
       whtAmount: Number(data.whtAmount ?? data.taxAmount ?? 0),
+      branchCode: String(data.payee?.branchCode || ""),
+      address: String(data.payee?.address || ""),
+      // ไม่มีเลขจริง (ว่าง/เลขสมมุติ 0000000000000) = ต้องแก้ก่อนยื่น
+      ...(/^(?!0{13}$)\d{13}$/.test(taxId.replace(/\D/g, "")) ? {} : { missingTaxId: true }),
     });
   }
   return out;

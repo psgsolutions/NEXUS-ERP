@@ -1,6 +1,6 @@
 import * as admin from "firebase-admin";
 import { adminDb } from "@/lib/firebase-admin";
-import { canWriteBackToProductMaster } from "@/lib/erp-logic";
+import { calculateERPDocument, canWriteBackToProductMaster, type VatTypeV3 } from "@/lib/erp-logic";
 import { notifyInTx } from "@/lib/notifications.server";
 import { ENGINEER_QUOTATION_LIMIT, quotationApprovalLimit } from "@/lib/permissions";
 
@@ -81,6 +81,28 @@ export async function companyGpThreshold(tx: admin.firestore.Transaction, compan
 
 export function submitStatus(gp: number, threshold: number, requiresApproval: boolean, overLimit = false): "PENDING_APPROVAL" | "SENT" {
   return requiresApproval || overLimit || gp < threshold ? "PENDING_APPROVAL" : "SENT";
+}
+
+/**
+ * ยอดเงินหัวเอกสารคำนวณใหม่จากรายการที่ server ด้วยสูตรเดียวกับหน้าจอ (calculateERPDocument) — ไม่เชื่อยอดที่หน้าจอส่งมา
+ * ยอดใน PDF/ใบสั่งขาย/รายงานจึงตรงกับรายการเสมอ แม้หน้าจอคำนวณผิดหรือถูกแก้ค่า
+ * หัก ณ ที่จ่าย: อัตรารายบรรทัดอยู่ที่หน้าจอ — ใช้ยอดที่ส่งมาแต่ไม่เกิน 15% ของยอดก่อนภาษี แล้วคิดยอดชำระสุทธิใหม่
+ */
+export function quotationTotals(header: Record<string, any>, lines: Record<string, any>[]) {
+  const tax = String(header.taxType || "EXCLUSIVE").toUpperCase();
+  const vatType: VatTypeV3 = (["INCLUSIVE", "INCLUSIVE_AUTO", "EXCLUSIVE", "NON_VAT"] as const).find((v) => v === tax) || (tax === "NONE" || tax === "EXEMPT" ? "NON_VAT" : "EXCLUSIVE");
+  const docDiscountType = header.docDiscountType === "PERCENT" ? "PERCENT" : "AMOUNT";
+  const docDiscountValue = num(header.docDiscountValue ?? header.docDiscountAmount);
+  const r = calculateERPDocument(
+    lines.map((l, i) => ({ id: String(i), qty: num(l.qty), costPrice: num(l.costPrice), projectPrice: num(l.unitPrice), retailPrice: num(l.unitPrice), whtRate: 0,
+      itemType: l.itemType, discountType: l.discountType, discountValue: num(l.discountValue), isGroupHeader: l.itemType === "GROUP_HEADER" })),
+    vatType, true, 0, 7, docDiscountType, docDiscountValue,
+  );
+  const wht = r2(Math.min(Math.max(0, num(header.whtAmount)), r.subTotal * 0.15));
+  return {
+    subTotal: r2(r.subTotal), netTotal: r2(r.subTotal), docDiscountAmount: r2(r.docDiscountAmount), discountTotal: r2(r.docDiscountAmount),
+    vatAmount: r2(r.vatAmount), grandTotal: r2(r.grandTotal), whtAmount: wht, netPayable: r2(r.grandTotal - wht),
+  };
 }
 
 /**

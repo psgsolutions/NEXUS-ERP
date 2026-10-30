@@ -6,7 +6,7 @@ import { can } from "@/lib/permissions";
 import { prepareSequence } from "@/lib/sequence-server";
 import { auditServer } from "@/services/audit.server";
 import {
-  auditEntry, cleanHeader, companyGpThreshold, createCustomerInTx, grossProfitPercent, normalizeLines,
+  auditEntry, cleanHeader, companyGpThreshold, createCustomerInTx, grossProfitPercent, normalizeLines, quotationTotals,
   notifyPendingApproval, overQuoteLimit, quoteLimitAmount, str, submitStatus, writeProductWritebacks,
 } from "@/lib/quotation.server";
 
@@ -28,6 +28,8 @@ export async function POST(request: Request) {
 
     const header = cleanHeader(body.header);
     const lines = normalizeLines(body.lines);
+    // ยอดเงินหัวเอกสารคำนวณจากรายการที่ server (ไม่เชื่อยอดจากหน้าจอ)
+    Object.assign(header, quotationTotals(header, lines));
     if (!lines.some((l) => l.itemType !== "GROUP_HEADER")) throw new ApiAuthError(400, "กรุณาเพิ่มรายการสินค้าหรือบริการอย่างน้อย 1 รายการ");
     if (!header.customerId && !str(body.newCustomer?.name).trim() && !str(header.customerName).trim()) throw new ApiAuthError(400, "กรุณาระบุลูกค้า");
 

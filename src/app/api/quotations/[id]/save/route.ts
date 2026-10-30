@@ -6,7 +6,7 @@ import { can } from "@/lib/permissions";
 import { auditServer } from "@/services/audit.server";
 import { isStaleVersion, STALE_MESSAGE } from "@/lib/doc-version";
 import {
-  auditEntry, cleanHeader, companyGpThreshold, createCustomerInTx, grossProfitPercent, normalizeLines,
+  auditEntry, cleanHeader, companyGpThreshold, createCustomerInTx, grossProfitPercent, normalizeLines, quotationTotals,
   notifyPendingApproval, overQuoteLimit, quoteLimitAmount, str, submitStatus, writeProductWritebacks,
 } from "@/lib/quotation.server";
 
@@ -36,6 +36,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     const header = cleanHeader(body.header);
     const lines = normalizeLines(body.lines);
+    // ยอดเงินหัวเอกสารคำนวณจากรายการที่ server (ไม่เชื่อยอดจากหน้าจอ)
+    Object.assign(header, quotationTotals(header, lines));
     const submit = body.submit === true;
     const requiresApproval = body.requiresApproval === true;
     const ref = adminDb.doc(`companies/${companyId}/quotations/${id}`);

@@ -35,7 +35,7 @@ export function freeLayoutParts(doc: DocumentModel, copy: CopyMode = "original")
   const lineH = ic.t.fontSize * FONT_SCALE[ic.t.font] * (items?.lineHeight ?? 1.35);
   const charsPerLine = items ? Math.max(10, (items.w * 0.5) / (ic.t.fontSize * FONT_SCALE[ic.t.font] * 0.42)) : 1;
   const rowHeight = (l: DocumentModel["lines"][number]) =>
-    7 + lineH * Math.max(1, Math.ceil((l.description || "").length / charsPerLine)) + (l.detail && !ic.hide.has("detail") ? lineH * 0.85 : 0);
+    2 * (items?.rowPad ?? 3.5) + lineH * Math.max(1, Math.ceil((l.description || "").length / charsPerLine)) + (l.detail && !ic.hide.has("detail") ? lineH * 0.85 : 0);
   let cap = doc.lines.length;
   if (items) {
     let used = lineH + 12; // หัวตาราง + บรรทัด "รายการต่อหน้าถัดไป"

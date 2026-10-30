@@ -13,7 +13,7 @@ import { EMPTY_SIGNING, applySigning, normalizeSigning, type SigningConfig } fro
 import { toDateStr } from "@/lib/documents/format";
 import type { DocumentModel, DocumentProfile } from "@/lib/documents/model";
 import {
-  ARCHETYPES, FONT_LABELS, LETTERHEAD_TEMPLATES, PALETTES, TEMPLATES, letterheadTemplate, normalizeDesign, applyLayoutToAll,
+  ARCHETYPES, FONT_LABELS, LETTERHEAD_TEMPLATES, OPTIONAL_TOTALS, PALETTES, TEMPLATES, letterheadTemplate, normalizeDesign, applyLayoutToAll,
   type DocTheme, type DocumentDesign, type FontFamily, type ItemColumn, type Letterhead, type PerDocDesign,
 } from "@/lib/documents/design";
 import { templateLayout } from "@/lib/documents/layout-templates";
@@ -319,7 +319,7 @@ export function DocumentDesigner() {
   const curLayout = ensureLayout(per.free, docType, theme);
   const dataCtx: DataContext = {
     docType, docTitle: def.title, meta: def.meta || [], fields: def.fields || [], columns: defaultColumns,
-    totals: ["ส่วนลดท้ายบิล", "ยอดหลังหักส่วนลด", "หัก ณ ที่จ่าย", "ยอดชำระสุทธิ"],
+    totals: OPTIONAL_TOTALS,
   };
   const groups = isLetter ? [] : dataGroups(curLayout, { ...dataCtx, head: letterhead?.blocks });
   const toggle = (key: string, on: boolean) => setPer({ free: toggleData(curLayout, key, on, { ...dataCtx, head: letterhead?.blocks }) });

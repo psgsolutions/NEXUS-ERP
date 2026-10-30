@@ -4,7 +4,7 @@ import { useSystemDialog } from "@/context/DialogContext";
 import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, Send, Building2, Calendar, Plus, Info, AlertTriangle, Search, Trash2, FileText, Mail, MessageSquare, Download, Edit3, ChevronDown, CheckCircle2, Lock, Share2 } from 'lucide-react';
-import { PillButton, cn, NexusDatePicker, GlassCard, Modal } from "@/components/ui/Base";
+import { PillButton, PillCheckbox, cn, NexusDatePicker, GlassCard, Modal } from "@/components/ui/Base";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { DocumentAttachmentsCard } from "@/components/commerce/DocumentAttachmentsCard";
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
@@ -85,6 +85,9 @@ export default function QuotationCreationPage() {
   const [validUntil, setValidUntil] = useState(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [paymentTerms, setPaymentTerms] = useState("เงินสด");
   const [referenceNo, setReferenceNo] = useState("");
+  // ใส่ลายเซ็น/ตราประทับอิเล็กทรอนิกส์ในใบเสนอราคาฉบับนี้หรือไม่ (ค่าเริ่มต้น = ใส่ตามที่ตั้งไว้)
+  const [useStamp, setUseStamp] = useState(true);
+  const [useSignature, setUseSignature] = useState(true);
 
   useEffect(() => {
     if (docDate && validDays !== undefined) {
@@ -480,8 +483,9 @@ export default function QuotationCreationPage() {
       lineTotal: summary.subTotal + summary.docDiscountAmount, billDiscount: summary.docDiscountAmount, net: summary.subTotal,
       vat: summary.vatAmount, grand: summary.grandTotal, taxType, wht: summary.whtAmount, payable: summary.netPayable,
       paymentTerms, deliveryDays: expectedDeliveryDays, terms: termsAndConditions, remark, projectName,
+      noStamp: !useStamp, noSign: !useSignature,
     });
-  }, [quotationNumber, docDate, validUntil, companyDocs, effectiveCompanyId, selectedCustomer, customerSearchTerm, customerBranch, customerTaxId, addrLine1, addrLine2, subDistrict, district, province, postalCode, contactPerson, contactPhone, contactEmail, items, summary, taxType, paymentTerms, expectedDeliveryDays, termsAndConditions, remark, projectName]);
+  }, [quotationNumber, docDate, validUntil, companyDocs, effectiveCompanyId, selectedCustomer, customerSearchTerm, customerBranch, customerTaxId, addrLine1, addrLine2, subDistrict, district, province, postalCode, contactPerson, contactPhone, contactEmail, items, summary, taxType, paymentTerms, expectedDeliveryDays, termsAndConditions, remark, projectName, useStamp, useSignature]);
 
   // Handle Save with Multi-channel Audit Trail (Patch 11 & 12)
   const handleSave = async (isSubmit: boolean = false, sendChannel?: 'EMAIL' | 'LINE' | 'DOWNLOAD' | 'SYSTEM') => {
@@ -564,6 +568,8 @@ export default function QuotationCreationPage() {
         paymentTerms,
         referenceNo,
         customerPoNo: referenceNo,
+        useStamp,
+        useSignature,
         customerId: finalCustomerId,
         customerName: finalCustomerName,
         customerTaxId: customerTaxId,
@@ -1283,6 +1289,13 @@ export default function QuotationCreationPage() {
                 placeholder="PR-2026-001"
                 className="w-full h-8 bg-black/20 border border-white/10 rounded-full px-2 text-[13px] font-bold text-nexus-teal font-mono text-center"
               />
+            </div>
+            <div className="flex flex-col gap-1.5 col-span-full">
+              <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">ลายเซ็น · ตราประทับในเอกสาร</label>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1 min-h-8" title="ใส่ลายเซ็น/ตราประทับอิเล็กทรอนิกส์ตามที่ตั้งไว้ที่ ตั้งค่า › ลายเซ็น · ตราประทับ — ไม่ติ๊ก = เว้นช่องไว้เซ็น/ประทับด้วยมือ">
+                <PillCheckbox label="ใส่ตราประทับ" checked={useStamp} onChange={(e) => setUseStamp(e.target.checked)} className="text-[13px] text-white/80" />
+                <PillCheckbox label="ใส่ลายเซ็น" checked={useSignature} onChange={(e) => setUseSignature(e.target.checked)} className="text-[13px] text-white/80" />
+              </div>
             </div>
           </div>
         </div>

@@ -2,7 +2,7 @@ import React from "react";
 import { Document, Ellipse, Font, Image, Page, Polygon, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import type { ColumnKey, CopyMode, DocumentModel } from "@/lib/documents/model";
 import { amountInWords, branchLabel, formatTaxId, money, qtyText, thaiDate } from "@/lib/documents/format";
-import { FONT_MAX, FONT_MIN, FONT_SCALE, SIGN_SIZE, docHasCopy, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
+import { OPTIONAL_TOTALS, gridSizes, FONT_MAX, FONT_MIN, FONT_SCALE, SIGN_SIZE, docHasCopy, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
 
 /**
  * เทมเพลตเอกสาร A4 (ใช้ร่วมทุกประเภทเอกสาร) — หน้าตาตามธีมของบริษัท (ตั้งค่า › ออกแบบเอกสาร)
@@ -105,6 +105,8 @@ export type Ctx = {
   radius?: number; lineColor?: string; lineWidth?: number; headBg?: string;
   /** ระยะข้อความของกล่องที่มีป้าย: ป้าย→ข้อมูล · ความกว้างป้าย · ระยะระหว่างแถว (pt) */
   labelGap?: number; labelWidth?: number; rowGap?: number;
+  /** ตาราง/ยอดรวม: ระยะบน-ล่างในแถว (pt) */
+  rowPad?: number;
   /** ช่องลงนามที่วางกล่องลายเซ็นแยกไว้แล้ว (ช่องลงนามไม่พิมพ์รูปลายเซ็นซ้ำ) */
   signPlaced?: Set<string>;
   /** จำนวนหน้าจริงของเอกสาร (หน้าออกแบบวาดทีละกล่องหลายหน้า — เลขหน้าในส่วนท้ายใช้ค่านี้) */
@@ -156,7 +158,8 @@ export function SectionTitle({ c, align = "right", inverse = false }: { c: Ctx; 
 
 /** ป้ายกำกับ (โหมดสองภาษา: ไทย + อังกฤษตัวเล็กใต้ป้าย) */
 function Lbl({ c, th, style, align, suffix = "" }: { c: Ctx; th: string; style?: any; align?: "left" | "center" | "right"; suffix?: string }) {
-  const en = c.t.bilingual ? enLabel(th) : "";
+  // ติ๊กเอาภาษาอังกฤษใต้หัวข้อออกได้ทีละกล่อง (ส่วนย่อย "en")
+  const en = c.t.bilingual && !c.hide.has("en") ? enLabel(th) : "";
   if (!en) return <T style={[style, align ? { textAlign: align } : {}]}>{th}{suffix}</T>;
   // ป้ายอังกฤษใช้สีเดียวกับป้ายไทยเมื่อป้ายมีสีเฉพาะ (เช่น ตัวขาวบนแถบยอดรวมสีทึบ)
   const tone = style && !Array.isArray(style) && style.color ? { color: style.color, opacity: 0.85 } : {};
@@ -251,21 +254,22 @@ export function SectionMeta({ c, align = "right" }: { c: Ctx; align?: "left" | "
 
 export function SectionField({ c, b }: { c: Ctx; b: FreeBlock }) {
   const f = fieldValue(c, b.field);
-  // ไม่มีข้อมูล (เช่น ยังไม่ได้กรอกชื่อภาษาอังกฤษ/อีเมล) = ไม่พิมพ์อะไร
-  if (!f || !f.value.trim()) return null;
+  if (!f) return null;
+  // หัวข้อแสดงเสมอแม้ไม่มีข้อมูล (ผังคงที่ อ่านแบบฟอร์มได้) · กล่องที่แสดงเฉพาะค่า: ไม่มีข้อมูล = ว่าง
+  if (!f.value.trim() && b.hideLabel) return null;
   // เฉพาะป้าย (หัวข้อ): วางแยกจากข้อมูลได้ · ชื่อหัวข้อที่ตั้งเอง (text) · รูปแบบตามกล่องเดิมที่แยกมา (ตัวปกติ/ต่อบรรทัด)
   if (b.show === "label") {
     const th = b.text || f.label, a = b.align === "justify" ? "left" : b.align;
     if (b.labelStyle === "inline") return <T style={{ textAlign: a }}>{th}</T>;
     return <View style={{ flexDirection: "row", justifyContent: b.align === "right" ? "flex-end" : b.align === "center" ? "center" : "flex-start" }}><Lbl c={c} th={th} suffix={b.labelStyle === "plain" ? "" : " :"} style={b.labelStyle === "plain" ? { color: c.t.text } : { fontWeight: "bold" }} align={a} /></View>;
   }
-  if (b.hideLabel) return <T style={{ textAlign: b.align, fontWeight: b.bold ? "bold" : undefined }}>{f.value || "-"}</T>;
+  if (b.hideLabel) return <T style={{ textAlign: b.align, fontWeight: b.bold ? "bold" : undefined }}>{f.value}</T>;
   // ป้ายกับข้อมูลเป็นข้อความเดียวกัน (เช่น "เลขประจำตัวผู้เสียภาษี 0105…" ที่ตัดขึ้นบรรทัดใหม่) — แบบเดียวกับกล่องผู้ขาย/ลูกค้า
   if (b.labelStyle === "inline") return <T style={{ textAlign: b.align === "justify" ? "left" : b.align, fontWeight: b.bold ? "bold" : undefined }}>{b.text || f.label} {f.value}</T>;
   return (
     <View style={{ flexDirection: "row", justifyContent: b.align === "right" ? "flex-end" : b.align === "center" ? "center" : "flex-start" }}>
       {b.labelWidth ? <View style={{ width: b.labelWidth }}><Lbl c={c} th={f.label} suffix=" :" style={{ fontWeight: "bold" }} /></View> : <Lbl c={c} th={f.label} suffix=" :" style={{ fontWeight: "bold" }} />}
-      <View style={{ flexShrink: 1, paddingLeft: b.labelGap ?? 4 }}><T style={b.bold ? { fontWeight: "bold" } : {}}>{f.value || "-"}</T></View>
+      <View style={{ flexShrink: 1, paddingLeft: b.labelGap ?? 4 }}><T style={b.bold ? { fontWeight: "bold" } : {}}>{f.value}</T></View>
     </View>
   );
 }
@@ -273,9 +277,10 @@ export function SectionField({ c, b }: { c: Ctx; b: FreeBlock }) {
 /**
  * กล่องข้อมูล: หัวข้อที่เลือกเอง ตามลำดับ (ข้อมูลใดก็ได้ของเอกสาร) · ข้อมูลว่างไม่พิมพ์แถว
  * เน้นแถวแรก = ชื่อบริษัท/ลูกค้าตัวหนาใหญ่ ไม่มีป้าย · ซ่อนป้าย = แสดงเฉพาะค่า
+ * หัวข้อแสดงเสมอแม้ข้อมูลว่าง (แถวไม่ขยับตามข้อมูล) — ยกเว้นแบบซ่อนป้ายที่ไม่มีอะไรให้แสดง
  */
 export function SectionInfo({ c, b }: { c: Ctx; b: FreeBlock }) {
-  const rows = (b.fields || []).map((k) => fieldValue(c, k)).filter((r): r is FieldRow => !!r && !!r.value.trim());
+  const rows = (b.fields || []).map((k) => fieldValue(c, k)).filter((r): r is FieldRow => !!r && (!b.hideLabel || !!r.value.trim()));
   if (!rows.length) return null;
   // ป้ายชิดซ้ายเป็นแนวเดียว: กว้างพอดีป้ายที่ยาวสุด (ตั้งเองได้)
   const lw = b.labelWidth ?? autoLabelWidth(c, rows.filter((_, i) => !(i === 0 && b.emphasizeFirst)).map((r) => b.names?.[r.key] || r.label), b.w * 0.55);
@@ -319,21 +324,22 @@ export function SectionParty({ c }: { c: Ctx }) {
   const box = t.party === "boxed" ? { borderWidth: 1, borderColor: lineOf(c), borderRadius: rad(c), padding: 8 }
     : t.party === "accent-bar" ? { borderWidth: 1, borderColor: lineOf(c), borderLeftWidth: 3, borderLeftColor: t.primary, borderRadius: rad(c), padding: 8 }
     : t.party === "none" ? {} : { borderBottomWidth: 0.8, borderColor: lineOf(c), paddingVertical: 6 };
-  const showContact = !c.hide.has("contact") && !!p.contact, showPhone = !c.hide.has("phone") && !!p.phone, showEmail = !c.hide.has("email") && !!p.email;
+  const showContact = !c.hide.has("contact"), showPhone = !c.hide.has("phone"), showEmail = !c.hide.has("email");
   const taxLine = p.taxId ? `${formatTaxId(p.taxId)}  ${branchLabel(p.branchCode, p.branchName)}` : "";
   if (t.formStyle) {
     return (
       <View style={[{ flexDirection: "row", gap: 10 }, box]}>
         <View style={{ flex: 1 }}>
           <FormRow c={c} th={PARTY_NAME_LABEL[p.label] || p.label} value={p.name || "-"} labelWidth={c.labelWidth ?? 110} bold />
-          {p.taxId ? <FormRow c={c} th="เลขประจำตัวผู้เสียภาษี" value={taxLine} labelWidth={c.labelWidth ?? 110} /> : null}
-          {p.address ? <FormRow c={c} th="ที่อยู่" value={p.address} labelWidth={c.labelWidth ?? 110} /> : null}
+          <FormRow c={c} th="เลขประจำตัวผู้เสียภาษี" value={taxLine} labelWidth={c.labelWidth ?? 110} />
+          <FormRow c={c} th="ที่อยู่" value={p.address || ""} labelWidth={c.labelWidth ?? 110} />
         </View>
+        {/* หัวข้อผู้ติดต่อ/โทร/อีเมล แสดงเสมอแม้ไม่มีข้อมูล (ซ่อนได้ทีละหัวข้อ) */}
         {showContact || showPhone || showEmail ? (
           <View style={{ width: "34%" }}>
-            {showContact ? <FormRow c={c} th={p.contactLabel || "ผู้ติดต่อ"} value={p.contact} labelWidth={c.labelWidth ? Math.round(c.labelWidth * 0.53) : 58} /> : null}
-            {showPhone ? <FormRow c={c} th="โทร" value={p.phone} labelWidth={c.labelWidth ? Math.round(c.labelWidth * 0.53) : 58} /> : null}
-            {showEmail ? <FormRow c={c} th="อีเมล" value={p.email} labelWidth={c.labelWidth ? Math.round(c.labelWidth * 0.53) : 58} /> : null}
+            {showContact ? <FormRow c={c} th={p.contactLabel || "ผู้ติดต่อ"} value={p.contact || ""} labelWidth={c.labelWidth ? Math.round(c.labelWidth * 0.53) : 58} /> : null}
+            {showPhone ? <FormRow c={c} th="โทร" value={p.phone || ""} labelWidth={c.labelWidth ? Math.round(c.labelWidth * 0.53) : 58} /> : null}
+            {showEmail ? <FormRow c={c} th="อีเมล" value={p.email || ""} labelWidth={c.labelWidth ? Math.round(c.labelWidth * 0.53) : 58} /> : null}
           </View>
         ) : null}
       </View>
@@ -345,14 +351,14 @@ export function SectionParty({ c }: { c: Ctx }) {
         <Lbl c={c} th={p.label} style={c.s.partyLabel} />
         <T style={{ fontWeight: "bold" }}>{p.name || "-"}</T>
         {p.address ? <T>{p.address}</T> : null}
-        {p.taxId ? <T>เลขประจำตัวผู้เสียภาษี {taxLine}</T> : null}
+        <T>เลขประจำตัวผู้เสียภาษี {taxLine}</T>
       </View>
       {showContact || showPhone || showEmail ? (
         <View style={{ width: "34%" }}>
           <Lbl c={c} th={p.contactLabel || "ผู้ติดต่อ"} style={c.s.partyLabel} />
-          {showContact ? <T>{p.contact}</T> : null}
+          {showContact ? <T>{p.contact || " "}</T> : null}
           {showPhone ? <T>โทร {p.phone}</T> : null}
-          {showEmail ? <T>{p.email}</T> : null}
+          {showEmail ? <T>อีเมล {p.email}</T> : null}
         </View>
       ) : null}
     </View>
@@ -395,7 +401,7 @@ export function SectionItems({ c }: { c: Ctx }) {
   return (
     <View style={[outer, fill ? { height: c.box!.h, position: "relative" } : {}]}>
       {fill ? xs.map((x, i) => <View key={`v${i}`} style={{ position: "absolute", left: x, top: 0, bottom: 0, borderLeftWidth: 0.6, borderColor: t.primary }} />) : null}
-      <View style={[{ flexDirection: "row", borderBottomWidth: 1, borderColor: fill ? t.primary : lineOf(c), paddingVertical: 4 }, head]} fixed>
+      <View style={[{ flexDirection: "row", borderBottomWidth: 1, borderColor: fill ? t.primary : lineOf(c), paddingVertical: c.rowPad ?? 4 }, head]} fixed>
         {cols.map((k, i) => (
           <View key={k} style={[cell(k), grid && i ? { borderLeftWidth: 0.5, borderColor: lineOf(c) } : {}]}>
             <Lbl c={c} th={labelOf(i)} style={[s.thText, headText]} align={t.bilingual ? "center" : alignOf(i)} />
@@ -405,7 +411,7 @@ export function SectionItems({ c }: { c: Ctx }) {
       {doc.lines.length === 0 ? <T style={[s.td, { paddingVertical: 8, color: t.muted, textAlign: "center" }]}>ไม่มีรายการ</T> : null}
       {doc.lines.map((l, i) => {
         const zebra = t.table === "zebra" && i % 2 === 1 ? { backgroundColor: `${t.accent}0d` } : {};
-        const rowStyle = [{ flexDirection: "row" as const, borderBottomWidth: fill ? 0 : 0.5, borderColor: grid ? lineOf(c) : c.lineColor || tint(c.t.primary, 0.9), paddingVertical: 3.5 }, zebra];
+        const rowStyle = [{ flexDirection: "row" as const, borderBottomWidth: fill ? 0 : 0.5, borderColor: grid ? lineOf(c) : c.lineColor || tint(c.t.primary, 0.9), paddingVertical: c.rowPad ?? 3.5 }, zebra];
         if (l.heading) {
           if (c.hide.has("heading")) return null;
           // ตารางยืดเต็มกล่อง: หัวข้อหมวดอยู่ในช่องรายการ ไม่ทับเส้นคอลัมน์
@@ -446,7 +452,8 @@ export function SectionNotes({ c, align }: { c: Ctx; align?: "left" | "center" |
   // ข้อมูลที่วางแยกแล้ว (เช่น เงื่อนไขการชำระเงินในกล่องเลขที่) ไม่แสดงซ้ำในหมายเหตุ
   const shown = [...(c.shown || [])];
   const notes = [...(c.doc.notes || []), c.per.extraNote || ""].filter(Boolean).filter((n) => !shown.some((l) => n.startsWith(`${l}:`)));
-  if (!notes.length) return null;
+  // แบบฟอร์ม: หัวข้อ "หมายเหตุ" แสดงเสมอแม้ไม่มีหมายเหตุ
+  if (!notes.length && !c.t.formStyle) return null;
   const list = <View style={{ gap: 2, flex: c.t.formStyle ? 1 : undefined }}>{notes.map((t, i) => <T key={i} style={[c.t.formStyle ? {} : c.s.small, align ? { textAlign: align } : {}]}>{t}</T>)}</View>;
   if (!c.t.formStyle) return list;
   return <View style={{ flexDirection: "row", gap: 6 }}><Lbl c={c} th="หมายเหตุ" suffix=" :" style={{ fontWeight: "bold" }} />{list}</View>;
@@ -456,21 +463,46 @@ export function SectionPayment({ c, align }: { c: Ctx; align?: "left" | "center"
   return c.doc.seller.paymentInfo ? <T style={[c.s.small, align ? { textAlign: align } : {}]}>การชำระเงิน: {c.doc.seller.paymentInfo}</T> : null;
 }
 
-/** ภาษีและยอดรวมทั้งสิ้นซ่อนไม่ได้ (เอกสารภาษี) */
-const lockedTotal = (row: { label: string; strong?: boolean }) => !!row.strong || row.label.startsWith("ภาษีมูลค่าเพิ่ม") || row.label === "จำนวนเงินรวมทั้งสิ้น";
+/**
+ * ยอดรวมต้องพอดีกรอบที่ออกแบบไว้ (ผังคงที่ — ข้อมูลจริงมีแถวมากกว่าตัวอย่าง เช่น มีส่วนลด/หัก ณ ที่จ่าย)
+ * ประมาณความสูงที่ต้องใช้: เกินกรอบ = ลดระยะบน-ล่างของแถว ยังเกินจึงย่อตัวอักษร (ไม่ต่ำกว่า 60%) — ภาษีและยอดรวมทั้งสิ้นไม่ถูกตัดหาย
+ */
+function fitTotals(c: Ctx, rows: { label: string; strong?: boolean }[]): { c: Ctx } {
+  if (!c.box || !rows.length) return { c };
+  const fs = c.s.page.fontSize as number, lh = (c.s.page.lineHeight as number) || 1.35;
+  const enH = c.t.bilingual && !c.hide.has("en") ? ((c.s.en.fontSize as number) || fs * 0.63) * 1.15 : 0;
+  const text = rows.reduce((a, r) => a + fs * lh + (enH && enLabel(r.label) ? enH : 0), 0);
+  const extra = rows.filter((r) => r.strong).length * 2 + 2;
+  const avail = (c.box.h - 4) * 0.97, n = rows.length;
+  let pad = c.rowPad ?? 2.5;
+  if (text + extra + 2 * n * pad <= avail) return { c };
+  pad = Math.max(0.5, (avail - text - extra) / (2 * n));
+  const scale = text + extra + 2 * n * pad <= avail ? 1 : Math.max(0.6, (avail - extra - 2 * n * pad) / text);
+  if (scale >= 1) return { c: { ...c, rowPad: pad } };
+  const t = { ...c.t, fontSize: c.t.fontSize * scale };
+  return { c: { ...c, rowPad: pad, t, s: themeStyles(t, lh) } };
+}
 
-export function SectionTotals({ c }: { c: Ctx }) {
+/** แถวยอดเงินที่ซ่อนได้ตามฟอร์มของบริษัท (OPTIONAL_TOTALS) — แถวหลัก (รวมเงิน ภาษี รวมทั้งสิ้น) แสดงเสมอ */
+const lockedTotal = (row: { label: string }) => !OPTIONAL_TOTALS.includes(row.label);
+
+export function SectionTotals({ c: c0 }: { c: Ctx }) {
+  const kept0 = c0.doc.totals.filter((row) => lockedTotal(row) || !c0.hide.has(`t:${row.label}`));
+  const fit = fitTotals(c0, kept0);
+  const c = fit.c;
   const { t, doc, s } = c;
-  const rows = doc.totals.filter((row) => lockedTotal(row) || !c.hide.has(`t:${row.label}`));
+  const kept = kept0;
+  // ซ่อนแถวเน้น (เช่น ยอดชำระสุทธิ) = แถวยอดรวมทั้งสิ้นเป็นแถวเน้นแทน
+  const rows = kept.some((r) => r.strong) || !kept.length ? kept : kept.map((r) => (r.label === "จำนวนเงินรวมทั้งสิ้น" ? { ...r, strong: true } : r));
   if (t.totals === "grid") {
     return (
       <View style={{ borderWidth: 1, borderColor: t.primary, borderRadius: rad(c) }}>
         {rows.map((row, i) => (
           <View key={row.label} style={{ flexDirection: "row", borderTopWidth: i ? 0.6 : 0, borderColor: t.primary }}>
-            <View style={{ flex: 1, backgroundColor: `${t.accent}${row.strong ? "cc" : "88"}`, paddingVertical: 2.5, paddingHorizontal: 6 }}>
+            <View style={{ flex: 1, backgroundColor: `${t.accent}${row.strong ? "cc" : "88"}`, paddingVertical: c.rowPad ?? 2.5, paddingHorizontal: 6 }}>
               <Lbl c={c} th={row.label} suffix=" :" align="right" style={row.strong ? { fontWeight: "bold" } : {}} />
             </View>
-            <View style={{ width: "44%", paddingVertical: 2.5, paddingHorizontal: 6, justifyContent: "center", borderLeftWidth: 0.6, borderColor: t.primary }}>
+            <View style={{ width: "44%", paddingVertical: c.rowPad ?? 2.5, paddingHorizontal: 6, justifyContent: "center", borderLeftWidth: 0.6, borderColor: t.primary }}>
               <T style={{ textAlign: "right", fontWeight: row.strong ? "bold" : undefined }}>{money(row.amount)}</T>
             </View>
           </View>
@@ -486,7 +518,7 @@ export function SectionTotals({ c }: { c: Ctx }) {
           : t.totals === "outline" ? { borderWidth: 1, borderColor: t.primary, borderRadius: rad(c, 3), marginTop: 2 } : { borderTopWidth: 1, borderColor: t.primary, marginTop: 2 };
         const text = strong && t.totals === "solid" ? { fontWeight: "bold" as const, color: "#ffffff" } : strong ? { fontWeight: "bold" as const, color: t.primary } : {};
         return (
-          <View key={row.label} style={[s.totalRow, box]}>
+          <View key={row.label} style={[s.totalRow, c.rowPad !== undefined ? { paddingVertical: c.rowPad } : {}, box]}>
             <Lbl c={c} th={row.label} style={text} />
             <T style={[{ fontWeight: "bold" as const }, text]}>{money(row.amount)}</T>
           </View>
@@ -572,7 +604,7 @@ export function blockContext(c: Ctx, raw: FreeBlock): Ctx {
   } : c.t;
   return {
     ...c, t, s: own ? themeStyles(t, b.lineHeight ?? 1.35, b.radius) : c.s, hide: new Set(b.hide || []), cols: b.cols, colSpec: b.colSpec, labels: b.labels, fields: b.fields, gap: b.gap, fill: b.fill, box: { w: b.w, h: b.h },
-    radius: b.radius, lineColor: b.lineColor, lineWidth: b.borderWidth, headBg: b.headBg, labelGap: b.labelGap, labelWidth: b.labelWidth, rowGap: b.rowGap,
+    radius: b.radius, lineColor: b.lineColor, lineWidth: b.borderWidth, headBg: b.headBg, labelGap: b.labelGap, labelWidth: b.labelWidth, rowGap: b.rowGap, rowPad: b.rowPad,
   };
 }
 
@@ -617,8 +649,12 @@ const fillVars = (text: string, doc: DocumentModel) => text.replace(/\{\{([^{}]{
  * เนื้อหาวางในชั้นที่ไม่จำกัดความสูง — กล่องสูงตายตัวทำให้ react-pdf บีบบรรทัดซ้อนกันหรือทิ้งข้อความที่ไม่พอดี
  * items: เนื้อหาตารางที่ส่งมาเอง (FreeLayoutDocument ตัดรายการที่ล้นไปหน้าถัดไป) · letter: หนังสือไม่มีชื่อเอกสาร/เลขที่แบบเอกสารการค้า
  */
-/** กล่องข้อความ/ข้อมูลที่ต้องไม่ล้นกรอบ: ตัวอักษรขนาดเดิม · ส่วนที่เกินกรอบถูกตัดตามขอบกรอบจริง (เห็นเท่าที่กรอบสูง) */
-const CLIP_KINDS = ["text", "field", "info", "meta"];
+/**
+ * ผังที่ออกแบบแล้วคงที่: ทุกกล่องอยู่ในกรอบของตัวเอง ข้อมูลจริงยาวแค่ไหนก็ไม่ดันหรือทับกล่องอื่น
+ * ตัวอักษรขนาดเดิม · ส่วนที่เกินกรอบถูกตัดตามขอบกรอบจริง (ยอดรวมย่อให้พอดีกรอบแทนการตัด)
+ * ยกเว้นตารางรายการ: รายการที่เกินกล่องไปต่อหน้าถัดไป (FreeLayoutDocument)
+ */
+const UNCLIPPED_KINDS = ["items"];
 
 export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: FreeBlock; items?: React.ReactNode; letter?: boolean }) {
   // ชิ้นที่ติ๊กไม่แสดง (ชุดที่แยกจากกล่องเดียวกัน)
@@ -684,11 +720,15 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
     // ตารางเส้นสำหรับจัดแบบฟอร์ม: กรอบนอก + เส้นแบ่งแถว/คอลัมน์เท่ากัน (วางข้อความ/ข้อมูลลงในช่องเอง)
     const rows = b.rows || 3, cols = b.cols2 || 3, lw = b.borderWidth ?? 0.75, color = b.border || themeLine(c.t);
     const dash = b.dash && b.dash !== "solid" ? { borderStyle: b.dash } : {};
+    // เส้นแบ่งตามสัดส่วนที่ลากปรับเอง (ไม่ตั้ง = เท่ากัน)
+    const rh = gridSizes(b.rowH, rows, b.h), cw = gridSizes(b.colW, cols, b.w);
+    const cum = (xs: number[]) => xs.slice(0, -1).map((_, i) => xs.slice(0, i + 1).reduce((a, v) => a + v, 0));
+    const ry = cum(rh), cx = cum(cw);
     return (
       <View style={{ position: "absolute", left: b.x, top: b.y, width: b.w, height: b.h, borderWidth: lw, borderColor: color, ...corners, ...dash, ...(b.bg ? { backgroundColor: b.bg } : {}), ...(b.opacity ? { opacity: b.opacity } : {}) }}>
-        {b.headBg ? <View style={{ position: "absolute", left: 0, top: 0, right: 0, height: b.h / rows - lw, backgroundColor: b.headBg }} /> : null}
-        {Array.from({ length: rows - 1 }, (_, i) => <View key={`r${i}`} style={{ position: "absolute", left: 0, right: 0, top: ((i + 1) * b.h) / rows - lw, height: 0, borderTopWidth: lw, borderColor: color, ...dash }} />)}
-        {Array.from({ length: cols - 1 }, (_, j) => <View key={`c${j}`} style={{ position: "absolute", top: 0, bottom: 0, left: ((j + 1) * b.w) / cols - lw, width: 0, borderLeftWidth: lw, borderColor: color, ...dash }} />)}
+        {b.headBg ? <View style={{ position: "absolute", left: 0, top: 0, right: 0, height: rh[0] - lw, backgroundColor: b.headBg }} /> : null}
+        {ry.map((y, i) => <View key={`r${i}`} style={{ position: "absolute", left: 0, right: 0, top: y - lw, height: 0, borderTopWidth: lw, borderColor: color, ...dash }} />)}
+        {cx.map((x, j) => <View key={`c${j}`} style={{ position: "absolute", top: 0, bottom: 0, left: x - lw, width: 0, borderLeftWidth: lw, borderColor: color, ...dash }} />)}
       </View>
     );
   }
@@ -713,7 +753,7 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
     }}>
       {b.kind === "rect" ? null : b.kind === "image" || b.kind === "logo" || b.kind === "stamp" || b.kind === "sign"
         ? content
-        : CLIP_KINDS.includes(b.kind)
+        : !UNCLIPPED_KINDS.includes(b.kind)
           ? (
             <View style={{ position: "absolute", top: pad, left: pad, right: pad, height: Math.max(0, b.h - pad * 2), overflow: "hidden" }}>
               <View style={{ position: "absolute", left: 0, right: 0, ...(b.valign === "bottom" ? { bottom: 0 } : b.valign === "middle" ? { top: 0, bottom: 0, justifyContent: "center" } : { top: 0 }), ...(own ? { fontSize: bc.s.page.fontSize, lineHeight: bc.s.page.lineHeight, color: bc.t.text } : {}), ...(b.kind !== "text" ? textDeco(b) : {}) }}>{content}</View>

@@ -57,6 +57,7 @@ const quotation: DocumentTypeDef = {
       taxType: str(q.taxType) || "EXCLUSIVE", wht: num(q.whtAmount), payable: num(q.netPayable),
       paymentTerms: str(q.paymentTerms), deliveryDays: str(q.expectedDeliveryDays), terms: str(q.termsAndConditions), remark: str(q.remark),
       customerPoNo: str(q.customerPoNo), projectName: str(q.projectName), salesperson: str(q.salespersonName),
+      noStamp: q.useStamp === false, noSign: q.useSignature === false,
     });
   },
 };

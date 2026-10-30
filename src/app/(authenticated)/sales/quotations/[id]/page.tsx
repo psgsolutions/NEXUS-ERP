@@ -4,7 +4,7 @@ import { useSystemDialog } from "@/context/DialogContext";
 import React, { useState, useMemo, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Save, Send, Building2, Calendar, Plus, Info, AlertTriangle, Search, Trash2, FileText, Mail, MessageSquare, Download, Edit3, ChevronDown, CheckCircle2, Lock, GitBranch, Copy, History, XCircle, FileSpreadsheet } from "lucide-react";
-import { PillButton, cn, NexusDatePicker, GlassCard, Modal } from "@/components/ui/Base";
+import { PillButton, PillCheckbox, cn, NexusDatePicker, GlassCard, Modal } from "@/components/ui/Base";
 import Link from "next/link";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { DocumentAttachmentsCard } from "@/components/commerce/DocumentAttachmentsCard";
@@ -87,6 +87,9 @@ export default function QuotationEditPage() {
   const [validUntil, setValidUntil] = useState(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [paymentTerms, setPaymentTerms] = useState("เครดิต 30 วัน");
   const [referenceNo, setReferenceNo] = useState("");
+  // ใส่ลายเซ็น/ตราประทับอิเล็กทรอนิกส์ในใบเสนอราคาฉบับนี้หรือไม่ (ค่าเริ่มต้น = ใส่ตามที่ตั้งไว้)
+  const [useStamp, setUseStamp] = useState(true);
+  const [useSignature, setUseSignature] = useState(true);
 
   // Customer State
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
@@ -433,6 +436,8 @@ export default function QuotationEditPage() {
           setValidUntil(data.validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
           setPaymentTerms(data.paymentTerms || "เครดิต 30 วัน");
           setReferenceNo(data.referenceNo || data.customerPoNo || "");
+          setUseStamp(data.useStamp !== false);
+          setUseSignature(data.useSignature !== false);
 
           setRevisionNumber(data.revisionNumber || 1);
           setParentQuotationId(data.parentQuotationId || null);
@@ -625,8 +630,9 @@ export default function QuotationEditPage() {
       lineTotal: summary.subTotal + summary.docDiscountAmount, billDiscount: summary.docDiscountAmount, net: summary.subTotal,
       vat: summary.vatAmount, grand: summary.grandTotal, taxType, wht: summary.whtAmount, payable: summary.netPayable,
       paymentTerms, deliveryDays: expectedDeliveryDays, terms: termsAndConditions, remark, projectName,
+      noStamp: !useStamp, noSign: !useSignature,
     });
-  }, [quotationNumber, docDate, validUntil, companyDocs, effectiveCompanyId, selectedCustomer, customerSearchTerm, customerBranch, customerTaxId, addrLine1, addrLine2, subDistrict, district, province, postalCode, contactPerson, contactPhone, contactEmail, items, summary, taxType, paymentTerms, expectedDeliveryDays, termsAndConditions, remark, projectName, status]);
+  }, [quotationNumber, docDate, validUntil, companyDocs, effectiveCompanyId, selectedCustomer, customerSearchTerm, customerBranch, customerTaxId, addrLine1, addrLine2, subDistrict, district, province, postalCode, contactPerson, contactPhone, contactEmail, items, summary, taxType, paymentTerms, expectedDeliveryDays, termsAndConditions, remark, projectName, status, useStamp, useSignature]);
 
   // แก้ไขบนใบเดิมได้เฉพาะก่อนส่งลูกค้า (ร่าง / รออนุมัติ / ตีกลับ)
   // ส่งลูกค้าแล้ว = ล็อก ต้องออกฉบับแก้ไข (Revision), ได้งาน/ถูกแทนที่ = อ่านอย่างเดียว
@@ -724,6 +730,8 @@ export default function QuotationEditPage() {
         paymentTerms,
         referenceNo,
         customerPoNo: referenceNo,
+        useStamp,
+        useSignature,
         customerId: finalCustomerId,
         customerName: finalCustomerName,
         customerTaxId: customerTaxId,
@@ -1337,6 +1345,13 @@ export default function QuotationEditPage() {
                   placeholder="PR-2026-001"
                   className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-2 py-0 leading-relaxed text-[13px] font-bold text-nexus-teal font-mono text-center focus:outline-none transition-all"
                 />
+              </div>
+              <div className="flex flex-col gap-1.5 col-span-full">
+                <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">ลายเซ็น · ตราประทับในเอกสาร</label>
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-1 min-h-8" title="ใส่ลายเซ็น/ตราประทับอิเล็กทรอนิกส์ตามที่ตั้งไว้ที่ ตั้งค่า › ลายเซ็น · ตราประทับ — ไม่ติ๊ก = เว้นช่องไว้เซ็น/ประทับด้วยมือ">
+                  <PillCheckbox label="ใส่ตราประทับ" checked={useStamp} onChange={(e) => setUseStamp(e.target.checked)} className="text-[13px] text-white/80" />
+                  <PillCheckbox label="ใส่ลายเซ็น" checked={useSignature} onChange={(e) => setUseSignature(e.target.checked)} className="text-[13px] text-white/80" />
+                </div>
               </div>
             </div>
           </div>

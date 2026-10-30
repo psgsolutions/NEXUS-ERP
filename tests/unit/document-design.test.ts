@@ -216,6 +216,6 @@ describe("document design — data boxes and table column spec", () => {
     const out = normalizeFreeLayout({ enabled: true, blocks: [{ id: "t", kind: "items", x: 40, y: 200, w: 515, h: 300,
       colSpec: [{ key: "code", align: "center", width: 200 }, { key: "detail", label: "รายละเอียดสินค้า" }, { key: "code" }, { key: "bogus" }, { key: "amount", align: "middle", width: "" }] }] }, "quotation")!;
     const t = out.blocks.find((b) => b.id === "t")!;
-    expect(t.colSpec).toEqual([{ key: "description" }, { key: "code", align: "center", width: 80 }, { key: "detail", label: "รายละเอียดสินค้า" }, { key: "amount" }]);
+    expect(t.colSpec).toEqual([{ key: "description" }, { key: "code", align: "center", width: 95 }, { key: "detail", label: "รายละเอียดสินค้า" }, { key: "amount" }]);
   });
 });

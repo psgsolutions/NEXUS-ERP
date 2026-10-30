@@ -43,6 +43,9 @@ export interface QuotationInput {
   deliveryDays?: string | number;
   terms?: string;
   remark?: string;
+  /** ไม่ใส่ตราประทับ / ลายเซ็นอิเล็กทรอนิกส์ (เลือกตอนสร้างใบเสนอราคา) */
+  noStamp?: boolean;
+  noSign?: boolean;
   customerPoNo?: string;
   projectName?: string;
   salesperson?: string;
@@ -53,6 +56,7 @@ export function quotationModel(q: QuotationInput): DocumentModel {
   return {
     type: "quotation", title: "ใบเสนอราคา", titleEn: "QUOTATION",
     number: q.number, date: q.date,
+    ...(q.noStamp ? { noStamp: true } : {}), ...(q.noSign ? { noSign: true } : {}),
     meta: [
       { label: "ยืนราคาถึง", value: q.validUntil ? thaiDate(q.validUntil) : "-" },
       ...(q.customerPoNo ? [{ label: "อ้างอิง", value: q.customerPoNo }] : []),

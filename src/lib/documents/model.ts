@@ -107,6 +107,9 @@ export interface DocumentModel {
   photos?: { label: string; src: string }[];
   /** ลายน้ำ เช่น "ยกเลิก" / "ฉบับร่าง" */
   watermark?: string;
+  /** เลือกไม่ใส่ตราประทับ/ลายเซ็นอิเล็กทรอนิกส์ในเอกสารฉบับนี้ (เช่น ใบเสนอราคาที่จะเซ็นด้วยมือ) */
+  noStamp?: boolean;
+  noSign?: boolean;
   /** แบบฟอร์มทางราชการที่ต้องพิมพ์ตามแบบ (แทนเทมเพลตมาตรฐาน) */
   wht50?: Wht50Form;
 }

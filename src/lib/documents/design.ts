@@ -151,6 +151,11 @@ export interface FreeBlock {
   originAt?: [number, number];
   /** ซ่อนชิ้นนี้ (ติ๊กไม่แสดงในรายการหัวข้อของชุดที่แยก) — ไม่พิมพ์ ไม่นับเป็นข้อมูลที่แสดง */
   off?: boolean;
+  /** ตารางรายการ/ยอดรวม: ระยะบน-ล่างในแถว (pt) — ความสูงแถว บีบให้แคบได้ถึง 0 */
+  rowPad?: number;
+  /** ตารางเส้น (kind=grid): สัดส่วนความกว้างแต่ละคอลัมน์ / ความสูงแต่ละแถว (ว่าง = เท่ากัน) — ลากเส้นแบ่งปรับเองได้ */
+  colW?: number[];
+  rowH?: number[];
 }
 export interface FreeLayout {
   enabled: boolean; blocks: FreeBlock[];
@@ -260,6 +265,7 @@ export const BLOCK_LABELS: Record<BlockKind, string> = {
   totals: "ยอดรวม", words: "จำนวนเงินตัวอักษร", notes: "หมายเหตุ", payment: "ข้อมูลการชำระเงิน", signatures: "ช่องลงนาม",
   field: "ข้อมูลเดี่ยว", text: "ข้อความ", line: "เส้น", rect: "กรอบ/พื้นหลัง", image: "รูปภาพ", sign: "ลายเซ็นอิเล็กทรอนิกส์", grid: "ตาราง (เส้น)",
 };
+const EN_PART = "ภาษาอังกฤษใต้หัวข้อ";
 /** ส่วนย่อยในกล่องที่เลือกซ่อนได้ (ชื่อ ที่อยู่ เลขผู้เสียภาษีของผู้ขาย/ผู้ซื้อ แสดงเสมอ ตามกฎหมาย) */
 export const BLOCK_PARTS: Partial<Record<BlockKind, { key: string; label: string }[]>> = {
   seller: [{ key: "nameEn", label: "ชื่อภาษาอังกฤษ" }, { key: "contact", label: "โทร · อีเมล · เว็บไซต์" }],
@@ -267,8 +273,10 @@ export const BLOCK_PARTS: Partial<Record<BlockKind, { key: string; label: string
   sign: [{ key: "name", label: "ชื่อผู้ลงนาม" }, { key: "title", label: "ตำแหน่ง" }, { key: "date", label: "วันที่ลงนาม" }],
   party: [{ key: "contact", label: "ชื่อผู้ติดต่อ" }, { key: "phone", label: "โทรศัพท์" }, { key: "email", label: "อีเมล" }],
   items: [{ key: "detail", label: "รายละเอียดใต้รายการ" }, { key: "heading", label: "หัวข้อหมวด" }],
-  signatures: [{ key: "date", label: "บรรทัดวันที่" }],
+  signatures: [{ key: "date", label: "บรรทัดวันที่" }, { key: "en", label: EN_PART }],
 };
+/** ส่วนย่อย "ภาษาอังกฤษใต้หัวข้อ" (แม่แบบสองภาษา) — ติ๊กออกได้ทีละกล่อง */
+for (const k of ["items", "totals", "meta", "party", "info", "field", "notes"] as BlockKind[]) BLOCK_PARTS[k] = [...(BLOCK_PARTS[k] || []), { key: "en", label: EN_PART }];
 export const ITEM_COLUMNS: { key: ItemColumn; label: string; align: "left" | "center" | "right"; width?: number; extra?: boolean }[] = [
   { key: "no", label: "ลำดับ", align: "center", width: 6 }, { key: "code", label: "รหัส", align: "left", width: 13 }, { key: "description", label: "รายการ", align: "left" },
   { key: "detail", label: "รายละเอียด", align: "left", extra: true },
@@ -348,6 +356,13 @@ export const EN_LABELS: Record<string, string> = {
   "ภาษีมูลค่าเพิ่ม 7% (รวมในราคา)": "VAT 7% (Included)", "จำนวนเงินรวมทั้งสิ้น": "Grand Total", "หัก ณ ที่จ่าย": "Withholding Tax", "ยอดชำระสุทธิ": "Net Payable",
 };
 export const enLabel = (th: string) => EN_LABELS[th] || "";
+
+/**
+ * แถวยอดเงินที่บริษัทเลือกแสดง/ซ่อนได้ตามฟอร์มของตัวเอง — แถวอื่นเป็นข้อมูลหลัก แสดงเสมอ ไม่มีช่องติ๊ก
+ * (รวมเป็นเงิน · มูลค่าก่อนภาษี · ภาษีมูลค่าเพิ่ม · จำนวนเงินรวมทั้งสิ้น · ยอดรวมของเอกสารอื่น เช่น รวมยอดวางบิล)
+ */
+export const OPTIONAL_TOTALS = ["ส่วนลดท้ายบิล", "ยอดหลังหักส่วนลด", "หัก ณ ที่จ่าย", "ยอดชำระสุทธิ"];
+export const CORE_TOTALS = ["รวมเป็นเงิน", "ภาษีมูลค่าเพิ่ม", "จำนวนเงินรวมทั้งสิ้น"];
 
 /**
  * ข้อมูลที่แทรกในกล่องข้อความได้ (ดึงจากฐานข้อมูลตอนพิมพ์) — {{คีย์}}
@@ -518,6 +533,25 @@ export function normalizeTheme(raw: any, brandColor?: string): DocTheme {
 const KINDS = Object.keys(BLOCK_LABELS) as BlockKind[];
 const COLUMN_KEYS = ITEM_COLUMNS.map((c) => c.key);
 
+/** สัดส่วนแถว/คอลัมน์ของตารางเส้น: จำนวนตรงกับแถว/คอลัมน์ รวมเป็น 1 */
+function sizes(v: any, n: number, key: "colW" | "rowH") {
+  if (!Array.isArray(v) || v.length !== n) return {};
+  const xs = v.map((x: any) => num(x, 0.001, 1000, 1 / n)), sum = xs.reduce((a: number, x: number) => a + x, 0) || 1;
+  return { [key]: xs.map((x: number) => Math.round((x / sum) * 10000) / 10000) };
+}
+/** ความกว้างคอลัมน์จริง (pt) แบบเดียวกับตัววาด PDF — ตั้งครบทุกคอลัมน์ = แบ่งตามสัดส่วน · มีคอลัมน์อัตโนมัติ = แบ่งพื้นที่ที่เหลือ */
+export function columnWidthsPt(spec: ColumnSpec[], W: number): number[] {
+  const pct = spec.map((x) => x.width ?? ITEM_COLUMNS.find((c) => c.key === x.key)?.width ?? 0);
+  if (pct.every((p) => p > 0)) { const sum = pct.reduce((a, p) => a + p, 0) || 1; return pct.map((p) => (p / sum) * W); }
+  const fixed = pct.map((p) => (p / 100) * W), autoN = pct.filter((p) => !p).length;
+  const auto = Math.max(0, W - fixed.reduce((a, p) => a + p, 0)) / autoN;
+  return pct.map((p, i) => (p ? fixed[i] : auto));
+}
+/** ตำแหน่งเส้นแบ่งของตารางเส้น (สัดส่วนที่ตั้ง หรือเท่ากัน) — คืนขนาดแต่ละช่อง */
+export function gridSizes(fr: number[] | undefined, n: number, L: number): number[] {
+  return fr && fr.length === n ? fr.map((f) => f * L) : Array.from({ length: n }, () => L / n);
+}
+
 function normalizeBlock(b: any, index: number): FreeBlock | null {
   if (!b || !KINDS.includes(b.kind)) return null;
   // เส้นแนวตั้ง/แนวนอนบางได้ถึง 0.25pt
@@ -534,7 +568,7 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
       key: x.key,
       ...(str(x.label, 30) ? { label: str(x.label, 30) } : {}),
       ...(["left", "center", "right"].includes(x.align) ? { align: x.align } : {}),
-      ...(x.width !== undefined && x.width !== null && x.width !== "" ? { width: num(x.width, 3, 80, 10) } : {}),
+      ...(x.width !== undefined && x.width !== null && x.width !== "" ? { width: num(x.width, 1, 95, 10) } : {}),
     })) : [];
   if (colSpec.length && !colSpec.some((x) => x.key === "description")) colSpec.unshift({ key: "description" });
   const cols = b.kind === "items" && Array.isArray(b.cols) ? COLUMN_KEYS.filter((k) => b.cols.includes(k)) : [];
@@ -601,6 +635,9 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
       return o && at ? { origin: o, originAt: at } : {};
     })(),
     ...(b.off ? { off: true } : {}),
+    ...((b.kind === "items" || b.kind === "totals") && b.rowPad !== undefined && b.rowPad !== null ? { rowPad: num(b.rowPad, 0, 20, 3) } : {}),
+    ...(b.kind === "grid" ? sizes(b.colW, Math.round(num(b.cols2, 1, 20, 3)), "colW") : {}),
+    ...(b.kind === "grid" ? sizes(b.rowH, Math.round(num(b.rows, 1, 40, 3)), "rowH") : {}),
   };
 }
 

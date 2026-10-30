@@ -58,14 +58,17 @@ export function normalizeSigning(raw: any): SigningConfig {
  * labels = ชื่อช่องลงนามที่ตั้งในหน้าตั้งค่า (ตามแบบของเอกสาร) — ถ้าเอกสารจริงใช้ชื่อช่องต่างไป ใช้ช่องลำดับเดียวกัน
  */
 export function applySigning(doc: DocumentModel, cfg: SigningConfig, labels: string[] = []): DocumentModel {
-  const rules = cfg.assign[doc.type] || {};
   if (doc.watermark || doc.letter || doc.wht50) return doc;
+  // เอกสารฉบับนี้เลือกไม่ใส่ลายเซ็น/ตรา (ตัวเลือกตอนสร้างเอกสาร)
+  if (doc.noSign && doc.noStamp) return doc;
+  if (doc.noStamp) cfg = { ...cfg, stamp: "" };
+  const rules = doc.noSign ? Object.fromEntries(Object.entries(cfg.assign[doc.type] || {}).filter(([, r]) => r.stamp).map(([l]) => [l, { stamp: true }])) as Record<string, SlotRule> : cfg.assign[doc.type] || {};
   // วางกล่องตราประทับเองในหน้าออกแบบ = ต้องการประทับตราบนเอกสารชนิดนี้
   const r = resolveDesign(doc.seller.design, doc.type, doc.seller.brandColor);
   const placed = [...(r.letterhead?.blocks || []), ...(r.doc.free?.enabled ? r.doc.free.blocks : [])];
   const stampBlock = placed.some((b) => b.kind === "stamp");
   // กล่องลายเซ็นที่ระบุผู้ลงนาม: ใส่ลายเซ็นของคนนั้น (คีย์ @id)
-  const fixed = [...new Set(placed.filter((b) => b.kind === "sign" && b.signer).map((b) => b.signer!))].map((id) => cfg.signers.find((s) => s.id === id)).filter((s): s is Signer => !!s?.image);
+  const fixed = doc.noSign ? [] : [...new Set(placed.filter((b) => b.kind === "sign" && b.signer).map((b) => b.signer!))].map((id) => cfg.signers.find((s) => s.id === id)).filter((s): s is Signer => !!s?.image);
   if (!Object.keys(rules).length && !(stampBlock && cfg.stamp) && !fixed.length) return doc;
   const signed = { ...(doc.signed || {}) };
   for (const s of fixed) signed[`@${s.id}`] = { image: s.image, name: s.name, ...(s.position ? { title: s.position } : {}), date: doc.date };

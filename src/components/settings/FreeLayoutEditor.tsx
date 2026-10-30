@@ -18,7 +18,7 @@ import { FloatingLayer } from "@/components/ui/FloatingLayer";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import type { DocumentModel } from "@/lib/documents/model";
 import {
-  BLOCK_LABELS, BLOCK_PARTS, LABEL_KINDS, FONT_MIN, FONT_MAX, fixedBlockSize, PAPERS, pageOf, marginsOf, refitBlocks, type Margins, type PaperSize, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
+  BLOCK_LABELS, BLOCK_PARTS, LABEL_KINDS, FONT_MIN, FONT_MAX, fixedBlockSize, PAPERS, pageOf, marginsOf, refitBlocks, type Margins, type PaperSize, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, columnWidthsPt, gridSizes, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
   type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, type Letterhead,
 } from "@/lib/documents/design";
 import { fileToPageImage } from "./usePdfPageImage";
@@ -251,22 +251,24 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const [side, setSide] = useState<"top" | "bottom" | "left" | "right" | null>(null);
   useEffect(() => setSide(null), [sel.join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showPdf, setShowPdf] = useState(false);
+  // ลากเส้นแบ่งคอลัมน์/แถวของตาราง: ขนาดชั่วคราวบนจอ (บันทึกตอนปล่อย)
+  const [divDrag, setDivDrag] = useState<{ key: string; axis: "x" | "y"; sizes: number[] } | null>(null);
   const [grid, setGrid] = useState(10);
   const [gridMode, setGridMode] = useState<"drag" | "always" | "off">("drag");
   const [moving, setMoving] = useState(false);
   const [freeMove, setFreeMove] = useState(false);
   // ขนาดกระดาษบนจอ: พอดีความกว้างพื้นที่ (ปัด 0.05 กันวาดภาพใหม่ถี่ตอนย่อขยายหน้าต่าง) หรือซูมคงที่
-  // ค่าเริ่มต้น = ขนาดจริง (96 px ต่อนิ้ว เท่ากระดาษที่พิมพ์) · จำค่าที่เลือกไว้
-  const [zoom, setZoomState] = useState<"fit" | number>(1.333);
-  useEffect(() => { try { const v = localStorage.getItem("nexus.designer.zoom"); if (v) setZoomState(v === "fit" ? "fit" : Number(v) || 1.333); } catch { /* ค่าตั้งต้น */ } }, []);
-  const setZoom = (z: "fit" | number) => { setZoomState(z); try { localStorage.setItem("nexus.designer.zoom", String(z)); } catch { /* ไม่เป็นไร */ } };
+  // ค่าเริ่มต้น = เต็มพื้นที่ว่าง (พอดีความกว้าง) · เลือกขนาดจริง 100% ได้ · จำค่าที่เลือกไว้ (คีย์ใหม่: ค่าเดิมที่จำเป็น 100% ไม่ทับค่าเริ่มต้นใหม่)
+  const [zoom, setZoomState] = useState<"fit" | number>("fit");
+  useEffect(() => { try { const v = localStorage.getItem("nexus.designer.zoom2"); if (v) setZoomState(v === "fit" ? "fit" : Number(v) || "fit"); } catch { /* ค่าตั้งต้น */ } }, []);
+  const setZoom = (z: "fit" | number) => { setZoomState(z); try { localStorage.setItem("nexus.designer.zoom2", String(z)); } catch { /* ไม่เป็นไร */ } };
   const [fitS, setFitS] = useState(1.25);
   const wrapRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
     // พอดีความกว้างตามกระดาษ (เปลี่ยนแนว/ขนาดแล้วคำนวณใหม่)
-    const ro = new ResizeObserver(([e]) => setFitS(Math.round(Math.min(2.4, Math.max(0.6, (e.contentRect.width - 26) / P.w)) * 20) / 20));
+    const ro = new ResizeObserver(([e]) => setFitS(Math.floor(Math.min(2.4, Math.max(0.6, (e.contentRect.width - 26) / P.w)) * 20) / 20));
     ro.observe(el);
     return () => ro.disconnect();
   }, [P.w]);
@@ -530,6 +532,9 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   };
   const allLocked = selected.length > 0 && selected.every((i) => i.b.locked);
   const toggleLock = () => applyMany(new Map(selected.map((i) => [i.key, { ...i.b, locked: allLocked ? undefined : true }])));
+  // ล็อกทั้งฟอร์ม: แบบฟอร์มที่จัดเสร็จแล้วห้ามขยับ (ลาก/ปรับขนาด/ลูกศรไม่มีผล) — ยังแก้ตัวอักษร/ข้อมูลที่แสดงได้ จนกว่าจะปลดล็อก
+  const formLocked = items.length > 0 && items.every((i) => i.b.locked);
+  const toggleFormLock = () => applyMany(new Map(items.map((i) => [i.key, { ...i.b, locked: formLocked ? undefined : true }])));
   const remove = (list: Item[]) => { applyMany(new Map(list.filter((i) => !isLocked(i)).map((i) => [i.key, null]))); setSel([]); };
 
   // เส้นนำ: ขอบ/กึ่งกลางของกล่องที่ไม่ได้เลือก + ขอบกระดาษ/กึ่งกลางหน้า
@@ -946,8 +951,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
               <div className="flex w-[66px] justify-center">
                 {(["left", "center", "right"] as const).map((a) => { const I = ALIGN_ICON[a]; return <button key={a} type="button" title={a === "left" ? "ชิดซ้าย" : a === "center" ? "กึ่งกลาง" : "ชิดขวา"} onClick={() => patch(i, { align: a })} className={cn("h-7 w-[22px] flex items-center justify-center rounded", align === a ? "bg-nexus-teal/20 text-nexus-teal" : "text-white/40 hover:text-white")}><I size={12} /></button>; })}
               </div>
-              <PillInput inputMode="decimal" value={x.width ?? ""} placeholder={def(x.key).width ? String(def(x.key).width) : "–"} title="ความกว้างเป็น % ของตาราง (ว่าง = ค่าตั้งต้น · – = แบ่งพื้นที่ที่เหลือ)"
-                onChange={(e) => { const v = e.target.value.replace(/[^d.]/g, ""); patch(i, { width: v === "" ? undefined : Math.max(3, Math.min(80, Number(v))) }); }} className="h-7 w-[40px] text-[11.5px] font-mono text-right px-1.5" />
+              <PillInput inputMode="decimal" value={x.width ?? ""} placeholder={def(x.key).width ? String(def(x.key).width) : "–"} title="ความกว้างเป็น % ของตาราง (ว่าง = ค่าตั้งต้น · – = แบ่งพื้นที่ที่เหลือ) · ลากเส้นแบ่งคอลัมน์บนกระดาษเพื่อปรับได้เลย"
+                onChange={(e) => { const v = e.target.value.replace(/[^\d.]/g, ""); patch(i, { width: v === "" ? undefined : Math.max(1, Math.min(95, Number(v))) }); }} className="h-7 w-[40px] text-[11.5px] font-mono text-right px-1.5" />
               <button type="button" title="เลื่อนไปซ้าย" disabled={i === 0} onClick={() => move(i, -1)} className="h-7 w-5 flex items-center justify-center text-white/50 hover:text-white disabled:opacity-20"><ArrowUp size={12} /></button>
               <button type="button" title="เลื่อนไปขวา" disabled={i === spec.length - 1} onClick={() => move(i, 1)} className="h-7 w-5 flex items-center justify-center text-white/50 hover:text-white disabled:opacity-20"><ArrowDown size={12} /></button>
               <button type="button" title={locked ? "ต้องแสดงเสมอ" : "เอาคอลัมน์ออก"} disabled={locked} onClick={() => setSpec(spec.filter((_y, j) => j !== i))} className="h-7 w-5 flex items-center justify-center text-white/40 hover:text-danger disabled:opacity-20">{locked ? <Lock size={11} /> : <X size={12} />}</button>
@@ -965,6 +970,60 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     );
   };
 
+  /** ความสูงแถวของตารางรายการ/ยอดรวม (ระยะบน-ล่างในแถว) — บีบให้แคบได้ถึง 0 */
+  const rowPadEditor = (it: Item, def: number) => (
+    <Field label={`ความสูงแถว: ระยะบน-ล่าง ${it.b.rowPad ?? def} pt`}>
+      <div className="flex items-center gap-2">
+        <input type="range" min={0} max={20} step={0.5} value={it.b.rowPad ?? def} onChange={(e) => update(it, { rowPad: Number(e.target.value) })} className="flex-1 accent-[#0d9488] h-7" />
+        {it.b.rowPad !== undefined && <button type="button" className="text-[11px] text-white/50 hover:text-white" onClick={() => unset(it, "rowPad")}>ค่าเดิม</button>}
+      </div>
+    </Field>
+  );
+  /**
+   * เส้นแบ่งคอลัมน์ (ตารางรายการ/ตารางเส้น) และแถว (ตารางเส้น) ลากปรับได้บนกระดาษ — บีบให้แคบได้อิสระ
+   * ระหว่างลากเลื่อนเฉพาะเส้นบนจอ บันทึกครั้งเดียวตอนปล่อย (ตารางรายการเก็บเป็น % ทุกคอลัมน์ · ตารางเส้นเก็บสัดส่วน)
+   */
+  const dividerHandles = (it: Item) => {
+    const b = it.b;
+    const spec = b.kind === "items" ? resolveColumns(b, defaultColumns as ItemColumn[]) : [];
+    const baseX = b.kind === "items" ? columnWidthsPt(spec, b.w) : gridSizes(b.colW, b.cols2 || 3, b.w);
+    const baseY = b.kind === "grid" ? gridSizes(b.rowH, b.rows || 3, b.h) : [];
+    const live = divDrag?.key === it.key ? divDrag : null;
+    const xs = live?.axis === "x" ? live.sizes : baseX, ys = live?.axis === "y" ? live.sizes : baseY;
+    const commit = (axis: "x" | "y", sizes: number[]) => {
+      const total = sizes.reduce((a, v) => a + v, 0) || 1;
+      if (b.kind === "items") { const n: any = { ...b, colSpec: spec.map((x, j) => ({ ...x, width: Math.round((sizes[j] / total) * 1000) / 10 })) }; delete n.cols; applyMany(new Map([[it.key, n]])); }
+      else update(it, axis === "x" ? { colW: sizes.map((v) => v / total) } : { rowH: sizes.map((v) => v / total) });
+    };
+    const grab = (axis: "x" | "y", i: number, base: number[]) => (e: React.PointerEvent) => {
+      e.stopPropagation(); e.preventDefault();
+      const p0 = axis === "x" ? e.clientX : e.clientY, min = 3;
+      let cur = base;
+      const move = (ev: PointerEvent) => {
+        const d = ((axis === "x" ? ev.clientX : ev.clientY) - p0) / S, pair = base[i] + base[i + 1];
+        const a = Math.max(min, Math.min(pair - min, base[i] + d));
+        cur = base.map((v, j) => (j === i ? a : j === i + 1 ? pair - a : v));
+        setDivDrag({ key: it.key, axis, sizes: cur });
+      };
+      const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); setDivDrag(null); if (cur !== base) commit(axis, cur); };
+      window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+    };
+    const cum = (s: number[]) => s.slice(0, -1).map((_, i) => s.slice(0, i + 1).reduce((a, v) => a + v, 0));
+    return (
+      <>
+        {cum(xs).map((x, i) => (
+          <div key={`dx${i}`} onPointerDown={grab("x", i, baseX)} title="ลากปรับความกว้างคอลัมน์" className="absolute top-0 bottom-0 w-[9px] -ml-[4px] cursor-col-resize z-30 pointer-events-auto group/dv" style={{ left: x * S }}>
+            <div className={cn("mx-auto w-px h-full", live?.axis === "x" ? "bg-[#0d9488]" : "bg-[#0d9488]/35 group-hover/dv:bg-[#0d9488]")} />
+          </div>
+        ))}
+        {cum(ys).map((y, i) => (
+          <div key={`dy${i}`} onPointerDown={grab("y", i, baseY)} title="ลากปรับความสูงแถว" className="absolute left-0 right-0 h-[9px] -mt-[4px] cursor-row-resize z-30 pointer-events-auto group/dv flex items-center" style={{ top: y * S }}>
+            <div className={cn("w-full h-px", live?.axis === "y" ? "bg-[#0d9488]" : "bg-[#0d9488]/35 group-hover/dv:bg-[#0d9488]")} />
+          </div>
+        ))}
+      </>
+    );
+  };
   /** ระยะข้อความของกล่องที่มีป้าย: ป้าย→ข้อมูล · ความกว้างป้าย · ระยะระหว่างแถว */
   const spacingEditor = (it: Item) => {
     const b = it.b;
@@ -1042,7 +1101,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         {parts.length > 0 && (
           <div className="space-y-1.5 rounded-xl border border-white/10 p-2.5">
             <p className="text-[11.5px] font-bold text-white/70">ข้อมูลที่แสดง</p>
-            {parts.filter((p) => !(b.kind === "title" && p.key === "copy") && !(b.kind === "items" && p.key === "detail" && resolveColumns(b, defaultColumns as ItemColumn[]).some((x) => x.key === "detail"))).map((p) => (
+            {parts.filter((p) => !(b.kind === "title" && p.key === "copy") && !(p.key === "en" && b.kind !== "title" && !theme.bilingual) && !(b.kind === "items" && p.key === "detail" && resolveColumns(b, defaultColumns as ItemColumn[]).some((x) => x.key === "detail"))).map((p) => (
               <PillCheckbox key={p.key} label={p.label} checked={!hide.has(p.key)} onChange={(e) => update(it, { hide: e.target.checked ? [...hide].filter((k) => k !== p.key) : [...hide, p.key] })} />
             ))}
             {(b.kind === "seller" || b.kind === "party") && <p className="text-[11px] text-white/40">ชื่อ ที่อยู่ เลขผู้เสียภาษี แสดงเสมอ (กฎหมายกำหนด)</p>}
@@ -1057,6 +1116,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             <p className="text-[11.5px] font-bold text-white/70">คอลัมน์ในตาราง</p>
             {columnsEditor(it)}
             <PillCheckbox label="ยืดตารางเต็มกล่อง (เส้นคอลัมน์ถึงล่าง)" checked={!!b.fill} onChange={(e) => update(it, { fill: e.target.checked })} />
+            {rowPadEditor(it, 3.5)}
             <Field label="รูปแบบตาราง">
               <PillSelect value={b.table || ""} onChange={(e) => (e.target.value ? update(it, { table: e.target.value as any }) : unset(it, "table"))} className="h-8 w-full text-sm">
                 <option value="">ตามแม่แบบ</option><option value="tint">หัวตารางสีอ่อน</option><option value="solid">หัวตารางสีทึบ</option><option value="lines">เส้นบาง</option><option value="grid">เส้นครบ</option><option value="zebra">แถวสลับสี</option>
@@ -1069,6 +1129,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             </Field>
           </div>
         )}
+        {b.kind === "totals" && rowPadEditor(it, 2.5)}
         {b.kind === "totals" && (
           <Field label="รูปแบบยอดรวม">
             <PillSelect value={b.totalsStyle || ""} onChange={(e) => (e.target.value ? update(it, { totalsStyle: e.target.value as any }) : unset(it, "totalsStyle"))} className="h-8 w-full text-sm">
@@ -1095,13 +1156,14 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
 
         {b.kind === "grid" && (
           <div className="space-y-2 rounded-xl border border-white/10 p-2.5">
-            <p className="text-[11.5px] font-bold text-white/70">ตาราง (เส้นแบ่งช่องเท่ากัน)</p>
+            <p className="text-[11.5px] font-bold text-white/70">ตาราง (เส้น)</p>
             <div className="grid grid-cols-2 gap-2">
-              <Field label="จำนวนแถว"><PillInput type="number" min={1} max={40} value={b.rows ?? 3} onChange={(e) => update(it, { rows: Math.max(1, Math.min(40, Math.round(Number(e.target.value) || 1))) })} className="h-8 w-full text-sm text-right" /></Field>
-              <Field label="จำนวนคอลัมน์"><PillInput type="number" min={1} max={20} value={b.cols2 ?? 3} onChange={(e) => update(it, { cols2: Math.max(1, Math.min(20, Math.round(Number(e.target.value) || 1))) })} className="h-8 w-full text-sm text-right" /></Field>
+              <Field label="จำนวนแถว"><PillInput type="number" min={1} max={40} value={b.rows ?? 3} onChange={(e) => update(it, { rows: Math.max(1, Math.min(40, Math.round(Number(e.target.value) || 1))), rowH: undefined })} className="h-8 w-full text-sm text-right" /></Field>
+              <Field label="จำนวนคอลัมน์"><PillInput type="number" min={1} max={20} value={b.cols2 ?? 3} onChange={(e) => update(it, { cols2: Math.max(1, Math.min(20, Math.round(Number(e.target.value) || 1))), colW: undefined })} className="h-8 w-full text-sm text-right" /></Field>
             </div>
             {colorRow(it, "พื้นแถวหัว", "headBg" as any)}
-            <p className="text-[11px] text-white/45">วางกล่องข้อความหรือข้อมูลลงในช่อง แล้วกด จัดกลุ่ม เพื่อให้ตารางกับข้อความลากไปด้วยกัน · สีเส้น/ความหนาที่แท็บ กรอบ · พื้น</p>
+            {(b.colW || b.rowH) && <button type="button" className="text-[11px] text-white/50 hover:text-white" onClick={() => unset(it, "colW", "rowH")}>แบ่งช่องเท่ากัน</button>}
+            <p className="text-[11px] text-white/45">ลากเส้นแบ่งแถว/คอลัมน์บนกระดาษเพื่อปรับขนาดแต่ละช่อง · วางกล่องข้อความหรือข้อมูลลงในช่อง แล้วกด จัดกลุ่ม เพื่อให้ตารางกับข้อความลากไปด้วยกัน · สีเส้น/ความหนาที่แท็บ กรอบ · พื้น</p>
           </div>
         )}
         {b.kind === "sign" && (
@@ -1376,6 +1438,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             <RBtn icon={<BoxSelect size={18} />} label="เลือกทั้งหมด" title="เลือกทุกกล่อง (Ctrl+A)" onClick={() => setSel(items.map((i) => i.key))} />
             <RBtn icon={<CopyPlus size={18} />} label="ทำสำเนา" title="ทำสำเนา (Ctrl+D)" disabled={!canEdit || !selected.some((i) => !SINGLE.includes(i.b.kind))} onClick={duplicate} />
             <RBtn icon={allLocked && selected.length ? <PinOff size={18} /> : <Pin size={18} />} label={allLocked && selected.length ? "ปลดล็อก" : "ล็อก"} disabled={!can} onClick={toggleLock} />
+            <RBtn icon={<Lock size={18} />} label={formLocked ? "ปลดล็อกฟอร์ม" : "ล็อกทั้งฟอร์ม"} on={formLocked} title={formLocked ? "ปลดล็อกทุกกล่องให้ลากย้าย/ปรับขนาดได้" : "ฟิกผังที่จัดเสร็จแล้ว — ทุกกล่องห้ามขยับ (ข้อมูลจริงอยู่ในกรอบเดิมเสมอ)"} disabled={!canEdit || !items.length} onClick={toggleFormLock} />
             <RBtn icon={<Trash2 size={18} />} label="ลบ" title="ลบ (Delete)" disabled={!can || !selected.some((i) => !isLocked(i))} onClick={() => remove(selected)} />
           </RGroup>
           <RGroup label="ชุดเดียวกัน">
@@ -1391,7 +1454,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           </RGroup>
           <RGroup label="มุมมอง">
             <RSelect width={136} title="ขนาดกระดาษบนจอ" value={String(zoom)} onChange={(v) => setZoom(v === "fit" ? "fit" : Number(v))}>
-              <option value="fit">พอดีความกว้าง</option><option value="1">75%</option><option value="1.333">ขนาดจริง 100%</option><option value="1.667">125%</option><option value="2">150%</option><option value="2.667">200%</option>
+              <option value="fit">เต็มพื้นที่</option><option value="1">75%</option><option value="1.333">ขนาดจริง 100%</option><option value="1.667">125%</option><option value="2">150%</option><option value="2.667">200%</option>
             </RSelect>
             <RBtn icon={<Eye size={18} />} label="ดู PDF" on={showPdf} onClick={() => setShowPdf((v) => !v)} />
           </RGroup>
@@ -1767,6 +1830,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                   {frame && (["top-0 left-0 right-0 h-[6px] -mt-[3px]", "bottom-0 left-0 right-0 h-[6px] -mb-[3px]", "top-0 bottom-0 left-0 w-[6px] -ml-[3px]", "top-0 bottom-0 right-0 w-[6px] -mr-[3px]"] as const).map((pos) => (
                     <div key={pos} onPointerDown={(e) => start(e, it, "move")} className={cn("absolute pointer-events-auto", pos)} />
                   ))}
+                  {on && !multi && canEdit && !b.locked && (b.kind === "items" || b.kind === "grid") && dividerHandles(it)}
                   {/* จุดจับปรับขนาด: ทุกมุมและทุกด้าน (เส้นแนวนอน = ซ้าย/ขวา · แนวตั้ง = บน/ล่าง) */}
                   {on && !multi && canEdit && !b.locked && !fixedBlockSize(b, stampSize) && (b.kind === "line" ? (b.h > b.w ? ["n", "s"] : ["e", "w"]) : ["nw", "n", "ne", "e", "se", "s", "sw", "w"]).map((ed) => (
                     <div key={ed} onPointerDown={(e) => start(e, it, "size", ed)} title={ed.length === 2 ? "ลากปรับขนาด (Shift = คงสัดส่วน)" : "ลากปรับขนาดด้านนี้"}

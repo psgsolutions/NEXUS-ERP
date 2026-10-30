@@ -26,16 +26,16 @@ export async function POST(request: Request) {
     if (!can(apiUser.roles, "dashboard:executive")) throw new ApiAuthError(403, "แดชบอร์ดผู้บริหารเปิดได้เฉพาะผู้บริหาร");
 
     const col = (c: string) => adminDb.collection(`companies/${companyId}/${c}`).get().then((s) => s.docs.map((d) => ({ id: d.id, ...d.data() } as any)));
-    const [journals, legacyJournals, invoices, expenses, quotations, salesOrders, purchaseOrders] = await Promise.all([
+    // สมุดรายวันอยู่ใต้บริษัทที่เดียว (root journal_entries ว่างแล้ว ตรวจ 2026-10-30)
+    const [journals, invoices, expenses, quotations, salesOrders, purchaseOrders] = await Promise.all([
       col("journal_entries"),
-      adminDb.collection("journal_entries").where("companyId", "==", companyId).get().then((s) => s.docs.map((d) => d.data())),
       col("invoices"),
       col("expenses"),
       col("quotations"),
       col("sales_orders"),
       col("purchase_orders"),
     ]);
-    const allJournals = [...journals, ...legacyJournals];
+    const allJournals = journals;
     const now = Date.now();
 
     const profit = profitOverview(allJournals, now);

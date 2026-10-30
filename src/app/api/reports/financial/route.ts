@@ -36,10 +36,8 @@ export async function POST(request: Request) {
     if (from > to) throw new ApiAuthError(400, "ช่วงเวลาไม่ถูกต้อง (เดือนเริ่มต้องไม่เกินเดือนสิ้นสุด)");
     const fromDate = `${from}-01`, toDate = monthEnd(to);
     const col = (c: string) => adminDb.collection(`companies/${companyId}/${c}`).get().then((s) => s.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
-    const journals = async () => [
-      ...(await col("journal_entries")),
-      ...(await adminDb.collection("journal_entries").where("companyId", "==", companyId).get()).docs.map((d) => ({ id: d.id, ...(d.data() as any) })),
-    ];
+    // สมุดรายวันอยู่ใต้บริษัทที่เดียว (root journal_entries ว่างแล้ว ตรวจ 2026-10-30)
+    const journals = () => col("journal_entries");
     const base = { success: true, report, from, to, fromDate, toDate, generatedAt: new Date().toISOString() };
 
     if (report === "tb" || report === "gl" || report === "pl" || report === "bs") {

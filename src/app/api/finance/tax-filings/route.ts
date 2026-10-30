@@ -34,12 +34,12 @@ export async function POST(request: Request) {
     // ---- คำนวณจากข้อมูลจริง ----
     let base = 0, tax = 0, recordCount = 0;
     if (taxType === "VAT30") {
-      const [scoped, legacy, inv] = await Promise.all([
+      // สมุดรายวันอยู่ใต้บริษัทที่เดียว (root journal_entries ว่างแล้ว ตรวจ 2026-10-30)
+      const [scoped, inv] = await Promise.all([
         adminDb.collection(`companies/${companyId}/journal_entries`).get(),
-        adminDb.collection("journal_entries").where("companyId", "==", companyId).where("isDeleted", "==", false).get(),
         adminDb.collection(`companies/${companyId}/invoices`).where("companyId", "==", companyId).get(),
       ]);
-      const r = computePP30(companyId, period, [...scoped.docs, ...legacy.docs].map((d) => d.data()), inv.docs.map((d) => d.data()));
+      const r = computePP30(companyId, period, scoped.docs.map((d) => d.data()), inv.docs.map((d) => d.data()));
       base = r.salesBase; tax = r.netVatPayable; recordCount = r.journalCount;
     } else {
       const wht = await adminDb.collection(`companies/${companyId}/withholding_taxes`).where("companyId", "==", companyId).get();

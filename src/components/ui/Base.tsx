@@ -667,8 +667,9 @@ export function NexusTable({
     };
   }, [shrinkable]);
 
+  // จอมือถือ (< 768px): ตารางกว้างกว่าจอเลื่อนแนวนอนในกรอบได้ — ไม่เช่นนั้นคอลัมน์ขวาถูกตัดหายโดยเลื่อนดูไม่ได้ (จอ 13"-27" ยังพอดีพื้นที่แบบเดิม)
   return (
-    <div ref={wrapRef} className="nexus-table-wrap w-full rounded-2xl border border-white/5 bg-black/[0.15] backdrop-blur-md relative">
+    <div ref={wrapRef} className="nexus-table-wrap w-full rounded-2xl border border-white/5 bg-black/[0.15] backdrop-blur-md relative max-md:overflow-x-auto">
       <style dangerouslySetInnerHTML={{ __html: alignCss }} />
       <table ref={tableRef} data-nt={tableId} className={cn("nexus-table w-full table-auto border-collapse", className)}>
         <thead className="sticky top-0 z-20">

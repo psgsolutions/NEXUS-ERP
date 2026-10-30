@@ -115,8 +115,10 @@ export function sampleModel(seller: DocumentProfile, today: string): DocumentMod
       { description: "รายการตัวอย่างที่มีชื่อยาวเพื่อดูการตัดบรรทัดภาษาไทยภายในช่องรายการของตาราง", detail: "รายละเอียดเพิ่มเติม", qty: 2, unit: "ชุด", price: 1500, amount: 3000 },
       { description: "ค่าบริการติดตั้งและทดสอบระบบ", qty: 1, unit: "งาน", price: 2000, amount: 2000 },
     ],
-    totals: totalsRows({ lineTotal: 5000, billDiscount: 0, net: 5000, vat: 350, grand: 5350, taxType: "EXCLUSIVE" }),
-    amountInWords: 5350,
+    // ตัวอย่างมียอดครบทุกแถว (ส่วนลดท้ายบิล หัก ณ ที่จ่าย ยอดชำระสุทธิ) ให้เห็นและจัดวางได้ในหน้าออกแบบ
+    // เอกสารจริงแสดงเฉพาะแถวที่มียอด — แถวที่ไม่ต้องการ ติ๊กออกได้ที่ "แถวที่แสดง"
+    totals: totalsRows({ lineTotal: 5000, billDiscount: 200, net: 4800, vat: 336, grand: 5136, taxType: "EXCLUSIVE", wht: 144, payable: 4992 }),
+    amountInWords: 5136,
     notes: ["หมายเหตุตัวอย่าง"],
     signatures: ["ผู้จัดทำ", "ผู้มีอำนาจลงนาม"],
     watermark: "ตัวอย่าง",

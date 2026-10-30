@@ -202,3 +202,11 @@ describe("split pieces: label styles, hidden pieces, merge back", () => {
     expect(requiredSatisfied("seller", seller.map((b, i) => (i === 2 ? { ...b, off: true } : b)))).toBe(false);
   });
 });
+
+describe("designer sample totals", () => {
+  it("shows every optional totals row with a value so it can be designed", async () => {
+    const { sampleModelFor } = await import("@/lib/documents/build");
+    const labels = sampleModelFor("quotation", { name: "ทดสอบ" } as any, "2026-10-30").totals.map((r) => r.label);
+    expect(labels).toEqual(expect.arrayContaining(["รวมเป็นเงิน", "ส่วนลดท้ายบิล", "ยอดหลังหักส่วนลด", "ภาษีมูลค่าเพิ่ม 7%", "จำนวนเงินรวมทั้งสิ้น", "หัก ณ ที่จ่าย", "ยอดชำระสุทธิ"]));
+  });
+});

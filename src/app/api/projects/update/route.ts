@@ -8,6 +8,7 @@ import { buildProjectFields } from "@/lib/project.server";
 import { createCustomerInTx } from "@/lib/quotation.server";
 import { EDITABLE_STATUSES, approverRolesForStep, initialApprovals, normalizeProjectStatus } from "@/lib/project-status";
 import { notifyInTx } from "@/lib/notifications.server";
+import { isStaleVersion, STALE_MESSAGE } from "@/lib/doc-version";
 
 /**
  * [API-SERVER] แก้ไขโครงการที่ยังเป็นฉบับร่าง หรือถูกตีกลับ (Rejected)
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
       const snap = await tx.get(ref);
       if (!snap.exists) throw new ApiAuthError(404, "ไม่พบโครงการ");
       const cur = snap.data()!;
+      if (isStaleVersion(body.expectedVersion, cur.updatedAt)) throw new ApiAuthError(409, STALE_MESSAGE);
       const status = normalizeProjectStatus(cur.status);
       if (!EDITABLE_STATUSES.includes(status)) {
         throw new ApiAuthError(409, "แก้ไขได้เฉพาะโครงการฉบับร่างหรือที่ถูกตีกลับ");

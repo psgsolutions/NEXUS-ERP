@@ -53,6 +53,7 @@ import { ProjectTypeCode, PROJECT_TYPE_CONFIGS } from "@/types/database";
 import { apiFetch } from "@/lib/api-client";
 import { computeProjectBudget, linesToForm, normalizeItemLine, normalizeLaborLine } from "@/lib/project-budget";
 import { APPROVAL_STEPS, EDITABLE_STATUSES, normalizeProjectStatus } from "@/lib/project-status";
+import { versionOf } from "@/lib/doc-version";
 import {
   AI_DOC_KEYS, BUDGET_SOURCES, MAINTENANCE_LEVELS, PROCUREMENT_METHODS, PROJECT_STAGES, buildMaintenanceLabors,
   defaultExpenses, defaultTimeline, docSectionsFor, fiscalYearOf, generateAllSections, inferProjectType,
@@ -255,6 +256,8 @@ export default function NewProjectPage() {
   // ---------- แก้ไขฉบับร่าง / โครงการที่ถูกตีกลับ (?edit=<id เอกสารโครงการ>) ----------
   const editDocId = searchParams?.get("edit") || "";
   const [editLoaded, setEditLoaded] = useState(false);
+  // เวอร์ชันตอนเปิดแก้ไข — เซิร์ฟเวอร์ปฏิเสธถ้ามีคนอื่นบันทึกไปก่อน (C-13)
+  const [editVersion, setEditVersion] = useState(0);
   useEffect(() => {
     if (!editDocId || !currentCompanyId || editLoaded) return;
     (async () => {
@@ -264,6 +267,7 @@ export default function NewProjectPage() {
         return;
       }
       const d: any = snap.data();
+      setEditVersion(versionOf(d.updatedAt));
       if (!EDITABLE_STATUSES.includes(normalizeProjectStatus(d.status))) {
         showToast("โครงการนี้แก้ไขไม่ได้แล้ว (ส่งอนุมัติหรือเริ่มดำเนินการแล้ว)", true);
         setTimeout(() => router.push(`/projects/${encodeURIComponent(editDocId)}`), 1200);
@@ -641,7 +645,7 @@ export default function NewProjectPage() {
       const res = await apiFetch(editDocId ? "/api/projects/update" : "/api/projects/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editDocId ? { ...payload, projectDocId: editDocId } : payload)
+        body: JSON.stringify(editDocId ? { ...payload, projectDocId: editDocId, expectedVersion: editVersion } : payload)
       });
       const resData = await res.json();
       if (!res.ok || !resData.success) throw new Error(resData.error || "บันทึกโครงการไม่สำเร็จ");

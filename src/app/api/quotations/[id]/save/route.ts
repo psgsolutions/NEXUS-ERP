@@ -4,6 +4,7 @@ import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth"
 import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { auditServer } from "@/services/audit.server";
+import { isStaleVersion, STALE_MESSAGE } from "@/lib/doc-version";
 import {
   auditEntry, cleanHeader, companyGpThreshold, createCustomerInTx, grossProfitPercent, normalizeLines,
   notifyPendingApproval, overQuoteLimit, quoteLimitAmount, str, submitStatus, writeProductWritebacks,
@@ -39,6 +40,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const requiresApproval = body.requiresApproval === true;
     const ref = adminDb.doc(`companies/${companyId}/quotations/${id}`);
     const now = admin.firestore.FieldValue.serverTimestamp();
+    // เวลาจริง (ไม่ใช่ sentinel) เพื่อคืนเวอร์ชันใหม่ให้หน้าจอใช้บันทึกครั้งถัดไป
+    const stamp = admin.firestore.Timestamp.now();
 
     const result = await adminDb.runTransaction(async (tx) => {
       // ---- อ่าน ----
@@ -47,6 +50,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       const cur = snap.data()!;
       const docNo = cur.documentNo || cur.quotationNumber || cur.quoteId || id;
       const curStatus = String(cur.status || "DRAFT").toUpperCase();
+      if (isStaleVersion(body.expectedVersion, cur.updatedAt)) throw new ApiAuthError(409, STALE_MESSAGE);
       if (cur.isSample) throw new ApiAuthError(400, `${docNo} เป็นเอกสารตัวอย่าง`);
       if (!EDITABLE.includes(curStatus)) {
         const reason = curStatus === "SENT" || curStatus === "ACCEPTED"
@@ -70,7 +74,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         ...header,
         status: nextStatus,
         updatedBy: apiUser.uid,
-        updatedAt: now,
+        updatedAt: stamp,
         ...(nextStatus === "SENT" && curStatus !== "SENT" ? { sentAt: now, sentBy: apiUser.uid, sentChannel: str(body.sendChannel || "SYSTEM", 20) } : {}),
       });
       existingLines.forEach((d) => tx.delete(d.ref));
@@ -80,7 +84,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       if (nextStatus === "PENDING_APPROVAL" && curStatus !== "PENDING_APPROVAL") {
         notifyPendingApproval(tx, companyId, id, docNo, header.customerName || cur.customerName, header.grandTotal ?? cur.grandTotal, gp, apiUser.uid);
       }
-      return { docNo, status: nextStatus, gp, customerId: header.customerId || "" };
+      return { docNo, status: nextStatus, gp, customerId: header.customerId || "", version: stamp.toMillis() };
     });
 
     await auditServer.logUpdate(apiUser.uid, companyId, "SALES_QUOTATION", result.docNo, {}, { status: result.status, grandTotal: header.grandTotal });

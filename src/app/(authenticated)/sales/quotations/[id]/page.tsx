@@ -29,6 +29,7 @@ import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
+import { versionOf } from "@/lib/doc-version";
 import { useAuth } from "@/context/AuthContext";
 import { SmartSelect, StepperInput, SciFiDropdownPortal } from "@/components/ui/SmartComponents";
 import { db } from "@/lib/firebase-client";
@@ -408,6 +409,9 @@ export default function QuotationEditPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customers, customerSearchTerm, selectedCustomerId]);
 
+  // เวอร์ชันตอนเปิด (updatedAt) — เซิร์ฟเวอร์ปฏิเสธถ้ามีคนอื่นบันทึกไปก่อน (C-13)
+  const [version, setVersion] = useState(0);
+
   // Load existing data
   useEffect(() => {
     async function loadQuotation() {
@@ -418,6 +422,7 @@ export default function QuotationEditPage() {
 
         if (docSnap.exists()) {
           const data = docSnap.data();
+          setVersion(versionOf(data.updatedAt));
           // ใบเสนอราคารูปแบบเก่า: เลขที่อยู่ใน quoteId, วันที่ใน date, สถานะตัวพิมพ์เล็ก ("Draft"),
           // ชื่อลูกค้าเก็บใน customerId และรายการอยู่ใน items (ไม่มี subcollection lines)
           const normalizedStatus = String(data.status || "DRAFT").toUpperCase();
@@ -794,10 +799,12 @@ export default function QuotationEditPage() {
           lines: linesPayload,
           newCustomer,
           productWritebacks,
+          expectedVersion: version,
         }),
       });
       const saved = await res.json();
       if (!res.ok || !saved.success) throw new Error(saved.error || "บันทึกไม่สำเร็จ");
+      if (saved.version) setVersion(saved.version);
       setStatus(saved.status);
       if (saved.customerId && !selectedCustomerId) setSelectedCustomerId(saved.customerId);
 

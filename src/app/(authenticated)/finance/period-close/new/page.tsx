@@ -10,7 +10,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
-import { THAI_MONTHS } from "@/lib/period-close-service";
+import { THAI_MONTHS } from "@/lib/period";
 
 interface JournalRow { id: string; path: string; journalNo: string; date: string; description: string; amount: number; diff?: number }
 interface PeriodRow { id: string; year: number; month: number; status: string; closedAt: string | null; closedBy: string; reopenedAt: string | null; reopenedBy: string; reopenReason: string }

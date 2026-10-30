@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, Suspense } from "react";
+import UnsavedChangesGuard from "./UnsavedChangesGuard";
 import { createPortal } from "react-dom";
 import { 
   PieChart,
@@ -287,6 +288,7 @@ export default function AuthenticatedLayout({
           
           <div className="relative z-20">
             {pageAllowed ? children : <NoAccess />}
+            <Suspense fallback={null}><UnsavedChangesGuard /></Suspense>
           </div>
         </main>
 

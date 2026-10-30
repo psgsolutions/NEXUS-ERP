@@ -63,7 +63,7 @@ import { useAdvancedTabs } from "@/components/guide/Onboarding";
 import { useAuth } from "@/context/AuthContext";
 import { useCustomers } from "@/hooks/useCustomers";
 import { db } from "@/lib/firebase-client";
-import { collection, query, where, onSnapshot, doc, setDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, setDoc, orderBy, limit } from "firebase/firestore";
 
 export async function handleConvertSOApi(quoteId: string, companyId: string) {
   const res = await apiFetch("/api/sales/convert-so", {
@@ -197,6 +197,11 @@ export default function SalesPage() {
   // ลูกค้าของบริษัท (ข้อมูลกลางของเครือ + ของบริษัท)
   const { data: customersList } = useCustomers<any>();
   const [quotationsList, setQuotationsList] = useState<any[]>([]);
+  // รายการเอกสารโหลดล่าสุดทีละชุด (ไม่อ่านทั้ง collection ทุกครั้งที่เปิดหน้า) — ใบแจ้งหนี้โหลดครบ เพราะใช้นับยอดค้างชำระ
+  const PAGE = 300;
+  const [listLimit, setListLimit] = useState(PAGE);
+  const [truncated, setTruncated] = useState<Record<string, boolean>>({});
+  const [loadErrors, setLoadErrors] = useState<string[]>([]);
   const [ordersList, setOrdersList] = useState<any[]>([]);
   const [invoicesList, setInvoicesList] = useState<any[]>([]);
   const [billingList, setBillingList] = useState<any[]>([]);
@@ -232,14 +237,22 @@ export default function SalesPage() {
   useEffect(() => {
     if (!companyId) return;
 
-    const listen = (path: string, display: (d: any) => Record<string, any>, setter: (rows: any[]) => void) =>
-      onSnapshot(query(collection(db, `companies/${companyId}/${path}`)), (snap) => {
+    const LABEL: Record<string, string> = { quotations: "ใบเสนอราคา", sales_orders: "ใบสั่งขาย", invoices: "ใบแจ้งหนี้", receipts: "ใบเสร็จ", billing_notes: "ใบวางบิล", cndn: "ใบลดหนี้/เพิ่มหนี้" };
+    const listen = (path: string, display: (d: any) => Record<string, any>, setter: (rows: any[]) => void, all = false) => {
+      const col = collection(db, `companies/${companyId}/${path}`);
+      return onSnapshot(all ? query(col) : query(col, orderBy("createdAt", "desc"), limit(listLimit)), (snap) => {
         const rows: any[] = [];
         snap.forEach(docSnap => {
           if (docSnap.data().isDeleted !== true) rows.push(toRow(docSnap, display));
         });
         setter(rows);
-      }, (err) => console.error(`[SALES] โหลด ${path} ไม่สำเร็จ:`, err));
+        setTruncated((t) => ({ ...t, [path]: !all && snap.size >= listLimit }));
+        setLoadErrors((e) => e.filter((x) => x !== LABEL[path]));
+      }, (err) => {
+        console.error(`[SALES] โหลด ${path} ไม่สำเร็จ:`, err);
+        setLoadErrors((e) => (e.includes(LABEL[path]) ? e : [...e, LABEL[path]]));
+      });
+    };
 
     // Quotations
     const unsubQuote = listen("quotations", (d) => ({
@@ -271,7 +284,7 @@ export default function SalesPage() {
       isSample: !!d.isSample,
       refundDue: Number(d.refundDue) || 0,
       replacedByNo: d.replacedByNo || "",
-    }), setInvoicesList);
+    }), setInvoicesList, true);
 
     // Receipts
     const unsubRec = listen("receipts", (d) => ({
@@ -334,7 +347,7 @@ export default function SalesPage() {
       unsubCndn();
       unsubOpp();
     };
-  }, [companyId]);
+  }, [companyId, listLimit]);
 
   const filteredCustomers = customersList.filter(c =>
     (c.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -540,6 +553,18 @@ export default function SalesPage() {
           )}
         </div>
       </section>
+
+      {(loadErrors.length > 0 || Object.values(truncated).some(Boolean)) && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-[13px]">
+          {loadErrors.length > 0 && <span className="text-danger">โหลด{loadErrors.join(", ")}ไม่สำเร็จ — ตรวจการเชื่อมต่อแล้วรีเฟรชหน้า</span>}
+          {Object.values(truncated).some(Boolean) && (
+            <>
+              <span className="text-white/60">แสดงเอกสารล่าสุด {listLimit.toLocaleString()} รายการต่อประเภท (ใบแจ้งหนี้แสดงครบ)</span>
+              <PillButton variant="glass" className="h-8 px-4 text-xs" onClick={() => setListLimit((n) => n + PAGE)}>โหลดเพิ่ม {PAGE} รายการ</PillButton>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Main Content Scroll Area */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">

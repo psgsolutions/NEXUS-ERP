@@ -6,6 +6,7 @@ import { can } from "@/lib/permissions";
 import { prepareSequence } from "@/lib/sequence-server";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { auditServer } from "@/services/audit.server";
+import { priorResult, rememberResult, requestKeyOf } from "@/lib/idempotency.server";
 import { resolveBankTarget, writeCheque } from "@/lib/bank-cheque.server";
 import { vatPortionOfPayment } from "@/lib/project-billing";
 import { sellerSnapshot } from "@/lib/documents/seller.server";
@@ -69,7 +70,12 @@ export async function POST(request: Request) {
 
     const seller = await sellerSnapshot(companyId);
 
-    const result = await adminDb.runTransaction(async (tx) => {
+    // เน็ตหลุดแล้วกดบันทึกซ้ำ (รหัสคำขอเดิม): คืนใบเสร็จที่ออกไปแล้ว ไม่รับเงินซ้ำ
+    const requestKey = requestKeyOf(body.requestKey);
+    type Done = { receiptNo: string; totalApplied: number; totalWht: number; cashReceived: number; invoices: { invoiceNo: string; status: string }[]; replayed?: boolean };
+    const result = await adminDb.runTransaction(async (tx): Promise<Done> => {
+      const prior = await priorResult<Done>(tx, companyId, "receipt", requestKey);
+      if (prior) return { ...prior, replayed: true };
       const seq = await takeNumber(tx);
       const receiptNo = seq.number;
       const receiptRef = adminDb.doc(`companies/${companyId}/receipts/${receiptNo}`);
@@ -198,8 +204,11 @@ export async function POST(request: Request) {
         isDeleted: false,
       });
 
-      return { receiptNo, totalApplied, totalWht, cashReceived, invoices: lines.map((l) => ({ invoiceNo: l.line.invoiceNo, status: l.invUpdate.paymentStatus })) };
+      const done = { receiptNo, totalApplied, totalWht, cashReceived, invoices: lines.map((l) => ({ invoiceNo: String(l.line.invoiceNo), status: String(l.invUpdate.paymentStatus) })) };
+      rememberResult(tx, companyId, "receipt", requestKey, apiUser.uid, done);
+      return done;
     });
+    if (result.replayed) return NextResponse.json({ success: true, ...result });
 
     await auditServer.logCreate(apiUser.uid, companyId, "RECEIPT", result.receiptNo, { customerId, ...result });
 

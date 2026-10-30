@@ -6,6 +6,7 @@ import { can } from "@/lib/permissions";
 import { prepareSequence } from "@/lib/sequence-server";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { auditServer } from "@/services/audit.server";
+import { priorResult, rememberResult, requestKeyOf } from "@/lib/idempotency.server";
 import { resolveBankTarget, writeCheque } from "@/lib/bank-cheque.server";
 import { expenseAccountOf, payeeKeyOf } from "@/lib/payables";
 import { groupIdOfCompany } from "@/lib/company-group.server";
@@ -64,8 +65,12 @@ export async function POST(request: Request) {
     const journalRef = adminDb.collection(`companies/${companyId}/journal_entries`).doc();
     const now = admin.firestore.FieldValue.serverTimestamp();
 
+    // เน็ตหลุดแล้วกดบันทึกซ้ำ (รหัสคำขอเดิม): คืนใบสำคัญจ่ายที่ออกไปแล้ว ไม่จ่ายซ้ำ
+    const requestKey = requestKeyOf(body.requestKey);
     const result = await adminDb.runTransaction(async (tx) => {
       // ---- อ่าน ----
+      const prior = await priorResult<any>(tx, companyId, "payment", requestKey);
+      if (prior) return { ...prior, replayed: true };
       const pv = await takePv(tx);
       const ids = Array.from(new Set(rawLines.map((l) => str(l.expenseDocId, 120)).filter(Boolean)));
       if (ids.length !== rawLines.length) throw new ApiAuthError(400, "รายการซ้ำหรือไม่ครบ");
@@ -261,8 +266,11 @@ export async function POST(request: Request) {
         isDeleted: false,
       });
 
-      return { paymentNo: pv.number, totalAmount, totalWht, netPaid, whtCertificates: certs };
+      const done = { paymentNo: pv.number, totalAmount, totalWht, netPaid, whtCertificates: certs };
+      rememberResult(tx, companyId, "payment", requestKey, apiUser.uid, done);
+      return done;
     });
+    if ((result as any).replayed) return NextResponse.json({ success: true, ...result });
 
     await auditServer.logCreate(apiUser.uid, companyId, "PAYMENT", result.paymentNo, { payeeKey, ...result });
     return NextResponse.json({ success: true, ...result });

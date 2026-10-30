@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Banknote, FileText, Landmark, Loader2, ReceiptText, Wallet } from "lucide-react";
 import {
@@ -110,6 +110,8 @@ function ReceiptForm() {
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<Record<string, LineState>>({});
   const [saving, setSaving] = useState(false);
+  // รหัสคำขอของการบันทึกครั้งนี้ — เน็ตหลุดแล้วกดบันทึกซ้ำ เซิร์ฟเวอร์คืนเอกสารเดิม ไม่บันทึกเงินซ้ำ (ล้างเมื่อบันทึกสำเร็จ)
+  const requestKey = useRef("");
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
 
   // ?invoice=<docId> : เลือกลูกค้าและใบแจ้งหนี้ให้อัตโนมัติ
@@ -155,11 +157,12 @@ function ReceiptForm() {
     if (bankMsg) return setMessage({ text: bankMsg, error: true });
     setSaving(true);
     try {
+      if (!requestKey.current) requestKey.current = crypto.randomUUID();
       const res = await apiFetch("/api/finance/receipts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          companyId,
+          companyId, requestKey: requestKey.current,
           customerId,
           paymentDate,
           paymentMethod: method,
@@ -171,6 +174,7 @@ function ReceiptForm() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
+      requestKey.current = "";
       setMessage({ text: `บันทึกใบเสร็จ ${data.receiptNo} แล้ว รับเงิน ฿${baht(data.cashReceived)}` });
       setLines({});
       setCustomerId("");

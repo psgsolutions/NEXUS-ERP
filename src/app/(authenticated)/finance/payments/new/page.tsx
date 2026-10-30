@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Banknote, FileText, HandCoins, Landmark, Loader2, Wallet } from "lucide-react";
 import {
@@ -113,6 +113,8 @@ function PaymentForm() {
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<Record<string, LineState>>({});
   const [saving, setSaving] = useState(false);
+  // รหัสคำขอของการบันทึกครั้งนี้ — เน็ตหลุดแล้วกดบันทึกซ้ำ เซิร์ฟเวอร์คืนเอกสารเดิม ไม่บันทึกเงินซ้ำ (ล้างเมื่อบันทึกสำเร็จ)
+  const requestKey = useRef("");
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
 
   // ?expense=<docId> : เลือกผู้รับเงินและรายการให้อัตโนมัติ
@@ -169,16 +171,18 @@ function PaymentForm() {
     if (bankMsg) return setMessage({ text: bankMsg, error: true });
     setSaving(true);
     try {
+      if (!requestKey.current) requestKey.current = crypto.randomUUID();
       const res = await apiFetch("/api/finance/payments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          companyId, payeeKey, paymentDate, paymentMethod: method, ...bankPayload(method, bank), reference, note,
+          companyId, requestKey: requestKey.current, payeeKey, paymentDate, paymentMethod: method, ...bankPayload(method, bank), reference, note,
           lines: chosen.map((c) => ({ expenseDocId: c.p.docId, amount: c.amount, whtRate: c.l.whtRate })),
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
+      requestKey.current = "";
       const certs = (data.whtCertificates || []).length ? ` · ออกหนังสือรับรองหัก ณ ที่จ่าย ${data.whtCertificates.join(", ")}` : "";
       setMessage({ text: `บันทึกใบสำคัญจ่าย ${data.paymentNo} แล้ว จ่ายจริง ฿${baht(data.netPaid)}${certs}` });
       setLines({});

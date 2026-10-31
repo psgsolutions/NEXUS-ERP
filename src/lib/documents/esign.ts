@@ -1,14 +1,18 @@
 /**
  * ลายเซ็นและตราประทับอิเล็กทรอนิกส์ (ฟังก์ชันล้วน ใช้ทั้ง server และหน้าตั้งค่า)
  * เก็บที่ companies/{id}/document_assets/signing — อ่าน/เขียนผ่าน /api/settings/document-signing เท่านั้น (รูปลายเซ็นไม่เปิดให้อ่านจาก client)
- *  - signers: ผู้ลงนามที่ได้รับความยินยอมให้ใช้ลายเซ็น (ชื่อ ตำแหน่ง รูปลายเซ็น)
+ *  - signers: ลายเซ็นของผู้ใช้แต่ละคน ผูกกับรหัสผู้ใช้ (userId) — เจ้าของตั้งเอง หรือฝ่ายบุคคลตั้งให้
+ *  - stamp/stampSize/assign: ตราบริษัทและการเลือกว่าช่องลงนามไหนใช้ลายเซ็นใคร — ผู้ดูแลบริษัทตั้ง
  *  - assign[ชนิดเอกสาร][ชื่อช่องลงนาม] = { signer: id ผู้ลงนาม, stamp: ประทับตราทับช่องนี้ }
  * ใส่ให้เฉพาะเอกสารที่ออกจริง (ไม่ใช่ฉบับร่าง/รออนุมัติ/ยกเลิก — คือเอกสารที่ไม่มีลายน้ำ) และไม่ทับลายเซ็นจริงที่มีอยู่แล้ว
  */
 import type { DocumentModel } from "./model";
 import { resolveDesign } from "./design";
 
-export interface Signer { id: string; name: string; position: string; image: string; consentAt?: string; consentBy?: string }
+/** ผู้ลงนาม: id = "u-" + รหัสผู้ใช้ (รุ่นเก่าที่ยังไม่ผูก = รหัสสุ่ม ไม่มี userId) · ชื่อมาจากบัญชีผู้ใช้ */
+export interface Signer { id: string; userId?: string; name: string; position: string; image: string; consentAt?: string; consentBy?: string }
+/** รหัสผู้ลงนามของผู้ใช้คนนี้ */
+export const signerIdOf = (uid: string) => `u-${uid}`;
 export interface SlotRule { signer?: string; stamp?: boolean }
 export interface SigningConfig {
   /** ตราประทับบริษัท (PNG พื้นโปร่งใส) */
@@ -21,7 +25,7 @@ export interface SigningConfig {
 
 export const STAMP_MAX = 300_000;
 export const SIGN_MAX = 150_000;
-export const MAX_SIGNERS = 8;
+export const MAX_SIGNERS = 60;
 export const EMPTY_SIGNING: SigningConfig = { stamp: "", stampSize: 72, signers: [], assign: {} };
 
 const str = (v: any, max = 120) => String(v ?? "").trim().slice(0, max);
@@ -32,7 +36,8 @@ export function normalizeSigning(raw: any): SigningConfig {
   const r = raw && typeof raw === "object" ? raw : {};
   const signers: Signer[] = (Array.isArray(r.signers) ? r.signers : []).slice(0, MAX_SIGNERS)
     .map((x: any) => ({
-      id: /^[a-z0-9-]{1,40}$/.test(String(x?.id)) ? String(x.id) : "",
+      id: /^[A-Za-z0-9_-]{1,80}$/.test(String(x?.id)) ? String(x.id) : "",
+      ...(/^[A-Za-z0-9_-]{1,128}$/.test(String(x?.userId || "")) ? { userId: String(x.userId) } : {}),
       name: str(x?.name, 80), position: str(x?.position, 80), image: img(x?.image, SIGN_MAX),
       ...(x?.consentAt ? { consentAt: str(x.consentAt, 40) } : {}), ...(x?.consentBy ? { consentBy: str(x.consentBy, 80) } : {}),
     }))

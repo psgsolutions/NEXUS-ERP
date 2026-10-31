@@ -24,6 +24,7 @@ import {
   Plus,
   ChevronRight,
   UserCog,
+  PenLine,
   Activity,
   ShieldCheck,
   HardHat,
@@ -257,6 +258,11 @@ export default function AuthenticatedLayout({
                        </div>
                     </div>
 
+                    {/* ลายเซ็นอิเล็กทรอนิกส์ของผู้ใช้ (ทุกตำแหน่ง) */}
+                    <Link href="/my-signature" className="w-full h-9 flex items-center gap-3 px-4 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-all text-left group">
+                       <PenLine size={15} className="text-white/20 group-hover:text-nexus-teal transition-colors" />
+                       <span className="text-[11px] font-semibold uppercase tracking-wider">ลายเซ็นของฉัน</span>
+                    </Link>
                     <button className="w-full h-9 flex items-center gap-3 px-4 rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-all text-left group">
                        <UserCog size={15} className="text-white/20 group-hover:text-nexus-blue transition-colors" />
                        <span className="text-[11px] font-semibold uppercase tracking-wider">ตั้งค่าโปรไฟล์</span>

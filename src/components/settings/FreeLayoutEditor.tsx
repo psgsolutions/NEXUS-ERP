@@ -252,7 +252,10 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const [showPdf, setShowPdf] = useState(false);
   // ลากเส้นแบ่งคอลัมน์/แถวของตาราง: ขนาดชั่วคราวบนจอ (บันทึกตอนปล่อย)
   const [divDrag, setDivDrag] = useState<{ key: string; axis: "x" | "y"; sizes: number[] } | null>(null);
-  const [grid, setGrid] = useState(10);
+  // ระยะกริด (pt): ค่าเริ่มต้น 5 pt (ถี่ขึ้นจากเดิม 10) · จำค่าที่เลือกไว้ในเครื่อง
+  const [grid, setGridState] = useState(5);
+  useEffect(() => { try { const v = Number(localStorage.getItem("nexus.designer.grid")); if (v > 0) setGridState(v); } catch { /* ค่าตั้งต้น */ } }, []);
+  const setGrid = (g: number) => { setGridState(g); try { localStorage.setItem("nexus.designer.grid", String(g)); } catch { /* ไม่เป็นไร */ } };
   const [gridMode, setGridMode] = useState<"drag" | "always" | "off">("drag");
   const [moving, setMoving] = useState(false);
   const [freeMove, setFreeMove] = useState(false);
@@ -1583,7 +1586,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                 <option value="drag">กริด: ขณะลาก</option><option value="always">กริด: ตลอด</option><option value="off">กริด: ปิด</option>
               </RSelect>
               <RSelect width={132} title="ระยะกริด" value={String(grid)} onChange={(v) => setGrid(Number(v))}>
-                {[2, 5, 10, 20].map((g) => <option key={g} value={String(g)}>ระยะกริด {g} pt</option>)}
+                {[1, 2, 2.5, 5, 10, 20].map((g) => <option key={g} value={String(g)}>ระยะกริด {g} pt</option>)}
               </RSelect>
             </div>
           </RGroup>
@@ -1821,8 +1824,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             })}
             {showGrid && (
               <div className="absolute inset-0 pointer-events-none z-[5]" style={{
-                // เส้นกริดบางและจาง (เส้นรองจางมาก ทุก 5 ช่องเข้มขึ้นเล็กน้อย) ไม่บังเนื้อเอกสาร
-                backgroundImage: "linear-gradient(to right, rgba(100,116,139,0.035) 1px, transparent 1px), linear-gradient(to bottom, rgba(100,116,139,0.035) 1px, transparent 1px), linear-gradient(to right, rgba(100,116,139,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(100,116,139,0.08) 1px, transparent 1px)",
+                // เส้นกริดบาง (เส้นรองจาง ทุก 5 ช่องเข้มขึ้น) ไม่บังเนื้อเอกสาร
+                backgroundImage: "linear-gradient(to right, rgba(100,116,139,0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(100,116,139,0.07) 1px, transparent 1px), linear-gradient(to right, rgba(100,116,139,0.16) 1px, transparent 1px), linear-gradient(to bottom, rgba(100,116,139,0.16) 1px, transparent 1px)",
                 backgroundSize: `${gridPx}px ${gridPx}px, ${gridPx}px ${gridPx}px, ${gridPx * 5}px ${gridPx * 5}px, ${gridPx * 5}px ${gridPx * 5}px`,
               }} />
             )}

@@ -3,9 +3,9 @@
  * ติ๊ก = ข้อมูลนี้ปรากฏบนเอกสาร ไม่ว่าจะอยู่ในกล่องไหน (กล่องเลขที่ · กล่องข้อมูล · ช่องข้อมูลเดี่ยว)
  * เปิด: ใส่ในกล่องที่เหมาะที่สุดที่มีอยู่ · ปิด: เอาออกจากทุกกล่อง · ข้อมูลที่กฎหมายกำหนดล็อกไว้
  */
-import { A4, CORE_TOTALS, TEMPLATES, totalsBlockHeight, type DocumentDesign, docHasAmounts, docHasCopy, defaultFreeLayout, requiredColumnsFor, resolveColumns, type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, ITEM_COLUMNS } from "./design";
+import { A4, CORE_TOTALS, TEMPLATES, normalizeFreeLayout, totalsBlockHeight, type DocumentDesign, docHasAmounts, docHasCopy, defaultFreeLayout, requiredColumnsFor, resolveColumns, type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, ITEM_COLUMNS } from "./design";
 import { templateLayout } from "./layout-templates";
-import { sampleModelFor } from "./build";
+import { DESIGNABLE_DOCS, sampleModelFor } from "./build";
 
 export interface DataItem { key: string; label: string; on: boolean; locked?: boolean }
 export interface DataGroup { id: string; title: string; source: string; kinds: BlockKind[]; items: DataItem[] }
@@ -193,4 +193,102 @@ export function blankLayout(docType: string, theme: DocTheme): FreeLayout {
   const blocks = defaultFreeLayout(docType, theme.font).blocks.filter((b) => keep.includes(b.kind))
     .map((b) => (b.kind === "party" ? { ...b, partyStyle: "none" as const } : b.kind === "items" ? { ...b, table: "lines" as const } : b.kind === "totals" ? { ...b, totalsStyle: "plain" as const } : b));
   return { enabled: true, blocks };
+}
+
+type DocDef = (typeof DESIGNABLE_DOCS)[number];
+const DEFAULT_COLS: ItemColumn[] = ["no", "description", "qty", "unit", "price", "amount"];
+/** แถวข้อมูลของเอกสาร (เลขที่/วันที่ไม่นับ — มีทุกเอกสาร) */
+const docKeys = (d: DocDef) => [...d.meta.map((l) => `m:${l}`), ...(d.fields || []).map((f) => `f:${f.key}`)];
+
+/**
+ * ปรับฟอร์มต้นแบบให้เป็นของเอกสารปลายทาง: คงรูปแบบทั้งหมด (ตำแหน่ง ขนาด สี กรอบ เส้น ระยะ มุมโค้ง ตาราง กระดาษ ขอบ)
+ * แต่เนื้อหาเป็นของเอกสารปลายทาง
+ *  - แถวข้อมูล (เช่น ยืนราคาถึง → กำหนดชำระ): จับคู่ตามลำดับ — ชื่อเดียวกันใช้ของเดิม ที่เหลือแทนด้วยแถวของเอกสารปลายทางที่ยังไม่ใช้
+ *    ช่องที่ไม่มีแถวให้จับคู่ถูกเอาออก · แถวของปลายทางที่เกินจากต้นแบบซ่อนไว้ (ติ๊กแสดงเองได้)
+ *  - ตารางรายการ: คอลัมน์ของเอกสารปลายทาง (คงการจัดวาง/ความกว้างของคอลัมน์ที่มีในทั้งสองเอกสาร)
+ *  - ช่องลงนาม: ชื่อช่องของเอกสารปลายทาง · กล่องลายเซ็นของช่องที่ i ย้ายไปช่องที่ i ของปลายทาง
+ *  - ข้อความคงที่ที่เป็นชื่อเอกสารต้นแบบ (ไทย/อังกฤษ) หรือป้ายคู่ค้า เปลี่ยนเป็นของปลายทาง
+ *  - เอกสารที่ไม่มียอดเงิน ไม่รับกล่องยอดรวม/จำนวนเงินตัวอักษร
+ */
+export function adaptForm(free: FreeLayout, s: DocDef, t: DocDef): FreeLayout {
+  // ---- จับคู่แถวข้อมูล ----
+  const sKeys = docKeys(s), tKeys = docKeys(t);
+  const map = new Map<string, string | null>();
+  const free0 = tKeys.filter((k) => !sKeys.includes(k));
+  for (const k of sKeys) map.set(k, tKeys.includes(k) ? k : free0.shift() ?? null);
+  const mapKey = (k: string): string | null => (k.startsWith("m:") || k.startsWith("f:") ? (map.has(k) ? map.get(k)! : null) : k);
+  const labelOf = (d: DocDef, k: string) => (k.startsWith("m:") ? k.slice(2) : d.fields?.find((f) => `f:${f.key}` === k)?.label || "");
+  const replaceText = (text: string) => {
+    let out = text;
+    for (const [a, b] of [[s.title, t.title], [s.titleEn, t.titleEn]] as const) if (a && out.includes(a)) out = out.split(a).join(b);
+    const bare = out.trim().replace(/\s*:$/, "");
+    return bare === s.partyLabel ? out.replace(s.partyLabel, t.partyLabel) : out;
+  };
+  const tCols = (t.columns as ItemColumn[] | undefined) || DEFAULT_COLS;
+  const amounts = docHasAmounts(t.type);
+
+  const adapt = (b: FreeBlock): FreeBlock | null => {
+    if (!amounts && (b.kind === "totals" || b.kind === "words")) return null;
+    const n: FreeBlock = { ...b, ...(b.origin ? { origin: adapt(b.origin) || undefined } : {}) };
+    if (!n.origin) { delete n.origin; delete n.originAt; }
+    switch (b.kind) {
+      case "meta": {
+        // แถวที่แสดงในต้นแบบ → แถวคู่กันของปลายทาง · แถวอื่นของปลายทางซ่อน
+        const hide = new Set(b.hide || []);
+        const shown = new Set(sKeys.filter((k) => k.startsWith("m:") && !hide.has(k)).map(mapKey).filter(Boolean) as string[]);
+        n.hide = [...[...hide].filter((k) => k === "number" || k === "date"), ...t.meta.map((l) => `m:${l}`).filter((k) => !shown.has(k))];
+        if (b.fields) n.fields = b.fields.map(mapKey).filter((k): k is string => !!k && k.startsWith("f:"));
+        return n;
+      }
+      case "field": {
+        const k = b.field ? mapKey(b.field) : b.field;
+        if (k === null) return null;
+        n.field = k;
+        // ชื่อหัวข้อที่พิมพ์ตามชื่อแถวของต้นแบบ → ใช้ชื่อแถวของปลายทาง
+        if (b.text && k !== b.field && b.text.trim().replace(/\s*:$/, "") === labelOf(s, b.field!)) delete n.text;
+        return n;
+      }
+      case "info": {
+        const fields = (b.fields || []).map(mapKey).filter((k): k is string => !!k);
+        n.fields = fields;
+        if (b.names) { const names = Object.fromEntries(Object.entries(b.names).filter(([k]) => mapKey(k) === k)); if (Object.keys(names).length) n.names = names; else delete n.names; }
+        return n;
+      }
+      case "items": {
+        const spec = resolveColumns(b, (s.columns as ItemColumn[] | undefined) || DEFAULT_COLS);
+        n.colSpec = tCols.map((key) => { const x = spec.find((y) => y.key === key); return { key, ...(x?.align ? { align: x.align } : {}), ...(x?.width !== undefined ? { width: x.width } : {}) }; });
+        delete n.cols;
+        return n;
+      }
+      case "signatures": delete n.labels; return n;
+      case "sign": {
+        if (!b.slot) return n;
+        const i = s.signatures.indexOf(b.slot);
+        if (i < 0 || !t.signatures[i]) return null;
+        n.slot = t.signatures[i];
+        return n;
+      }
+      case "text": if (b.text) n.text = replaceText(b.text); return n;
+      default: return n;
+    }
+  };
+  const blocks = free.blocks.map(adapt).filter((b): b is FreeBlock => !!b);
+  const { blocks: _b, ...frame } = free; void _b;
+  return normalizeFreeLayout({ ...frame, enabled: true, blocks }, t.type) || { ...frame, enabled: true, blocks };
+}
+
+/**
+ * ใช้ฟอร์มที่ออกแบบเป็นต้นแบบของเอกสารทุกชนิด: รูปแบบ (ผัง กรอบ สี ระยะ มุม หัวกระดาษ กระดาษ) ลอกจากต้นแบบ
+ * เนื้อหาเป็นของแต่ละเอกสาร (adaptForm) — ชื่อเอกสาร/ข้อความท้ายที่ตั้งเฉพาะเอกสารไม่ถูกแทนที่
+ */
+export function applyFormToAll(design: DocumentDesign, sourceDoc: string, targets: string[]): DocumentDesign {
+  const src = design.perDoc[sourceDoc], s = DESIGNABLE_DOCS.find((d) => d.type === sourceDoc);
+  if (!src?.free || !s) return design;
+  const perDoc = { ...design.perDoc };
+  for (const type of targets) {
+    const t = DESIGNABLE_DOCS.find((d) => d.type === type);
+    if (type === sourceDoc || !t) continue;
+    perDoc[type] = { ...(perDoc[type] || {}), free: adaptForm(src.free, s, t), ...(src.letterhead ? { letterhead: src.letterhead } : {}) };
+  }
+  return { ...design, perDoc };
 }

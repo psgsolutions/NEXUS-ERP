@@ -13,11 +13,11 @@ import { EMPTY_SIGNING, applySigning, normalizeSigning, type SigningConfig } fro
 import { toDateStr } from "@/lib/documents/format";
 import type { DocumentModel, DocumentProfile } from "@/lib/documents/model";
 import {
-  ARCHETYPES, FONT_LABELS, LETTERHEAD_TEMPLATES, OPTIONAL_TOTALS, PALETTES, TEMPLATES, letterheadTemplate, normalizeDesign, applyLayoutToAll,
+  ARCHETYPES, FONT_LABELS, LETTERHEAD_TEMPLATES, OPTIONAL_TOTALS, PALETTES, TEMPLATES, letterheadTemplate, normalizeDesign,
   type DocTheme, type DocumentDesign, type FontFamily, type ItemColumn, type Letterhead, type PerDocDesign,
 } from "@/lib/documents/design";
 import { templateLayout } from "@/lib/documents/layout-templates";
-import { dataGroups, ensureLayout, fitTotalsBlocks, layoutIdFor, toggleData, type DataContext } from "@/lib/documents/design-data";
+import { applyFormToAll, dataGroups, ensureLayout, fitTotalsBlocks, layoutIdFor, toggleData, type DataContext } from "@/lib/documents/design-data";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import { FreeLayoutEditor } from "./FreeLayoutEditor";
 import { DataChecklist } from "./DataChecklist";
@@ -474,9 +474,14 @@ export function DocumentDesigner() {
               </PillSelect>
             </Row>
             <PillButton variant="ghost" className="h-8 px-3 text-xs w-full" onClick={async () => {
-              if (!(await showConfirm(`ใช้ผังของ "${def.title}" กับเอกสารทุกชนิด? (ผังเดิมของเอกสารอื่นจะถูกแทนที่ · ย้อนกลับได้)`))) return;
-              change((d) => applyLayoutToAll({ ...d, perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), free: curLayout } } }, docType, DESIGNABLE_DOCS.map((x) => x.type)));
-            }}><Copy size={13} /> ใช้ผังนี้กับทุกเอกสาร</PillButton>
+              if (!(await showConfirm(`ใช้ฟอร์ม "${def.title}" เป็นต้นแบบของเอกสารทุกชนิด?
+
+ลอกรูปแบบ: ผัง กรอบ ตาราง สี ระยะห่าง มุมโค้ง หัวกระดาษ ขนาดกระดาษ
+เนื้อหาเป็นของแต่ละเอกสาร: แถวข้อมูล คอลัมน์ ช่องลงนาม ชื่อเอกสาร
+
+ผังเดิมของเอกสารอื่นจะถูกแทนที่ (กดย้อนกลับได้)`))) return;
+              change((d) => applyFormToAll({ ...d, perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), free: curLayout } } }, docType, DESIGNABLE_DOCS.map((x) => x.type)));
+            }}><Copy size={13} /> ใช้ฟอร์มนี้เป็นต้นแบบทุกเอกสาร</PillButton>
           </Section>
         )}
         <Section title="หัวกระดาษ" doc={docName} open={!!letterhead || isLetter}>

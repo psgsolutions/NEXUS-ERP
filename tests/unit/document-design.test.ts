@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { DESIGNABLE_DOCS } from "@/lib/documents/build";
+import { applyFormToAll } from "@/lib/documents/design-data";
 import { templateLayout } from "@/lib/documents/layout-templates";
-import { legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveColor, tint, REQUIRED_BLOCKS, TEMPLATES, addableBlocksFor, applyLayoutToAll, defaultFreeLayout, docHasAmounts, letterheadTemplate, normalizeDesign, normalizeFreeLayout, normalizeTheme, requiredBlocksFor, requiredColumnsFor, resolveDesign } from "@/lib/documents/design";
+import { legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveColor, tint, REQUIRED_BLOCKS, TEMPLATES, addableBlocksFor, defaultFreeLayout, docHasAmounts, letterheadTemplate, normalizeDesign, normalizeFreeLayout, normalizeTheme, requiredBlocksFor, requiredColumnsFor, resolveDesign } from "@/lib/documents/design";
 
 describe("document design", () => {
   it("normalizes theme input and keeps brand color as default", () => {
@@ -25,7 +26,7 @@ describe("document design", () => {
     const d = normalizeDesign({ perDoc: { quotation: { title: "ใบเสนอราคา/QUOTATION", hideColumns: ["code", "taxId"], free: { ...defaultFreeLayout(), enabled: true } }, "BAD KEY": { title: "x" } } });
     expect(Object.keys(d.perDoc)).toEqual(["quotation"]);
     expect(d.perDoc.quotation.hideColumns).toEqual(["code"]);
-    const all = applyLayoutToAll(d, "quotation", ["quotation", "invoice", "receipt"]);
+    const all = applyFormToAll(d, "quotation", ["quotation", "invoice", "receipt"]);
     expect(all.perDoc.invoice.free?.enabled).toBe(true);
     expect(all.perDoc.receipt.free?.blocks.length).toBe(d.perDoc.quotation.free!.blocks.length);
     expect(all.perDoc.quotation.title).toBe("ใบเสนอราคา/QUOTATION");
@@ -75,7 +76,7 @@ describe("document design — block settings, per-document blocks, letterheads",
     const free = { ...defaultFreeLayout("quotation"), enabled: true };
     free.blocks = free.blocks.map((b) => (b.kind === "items" ? { ...b, cols: ["description", "price", "amount"] as any } : b));
     const d = normalizeDesign({ letterheads: [letterheadTemplate("trade", "lh-t")], perDoc: { quotation: { free, letterhead: "lh-t" } } });
-    const all = applyLayoutToAll(d, "quotation", ["delivery_note", "receipt"]);
+    const all = applyFormToAll(d, "quotation", ["delivery_note", "receipt"]);
     expect(all.perDoc.delivery_note.letterhead).toBe("lh-t");
     expect(all.perDoc.delivery_note.free!.blocks.some((b) => b.kind === "totals")).toBe(false);
     expect(all.perDoc.receipt.free!.blocks.find((b) => b.kind === "items")!.cols).toBeUndefined();

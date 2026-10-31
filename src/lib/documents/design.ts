@@ -833,23 +833,6 @@ export function letterheadTemplate(kind: "trade" | "letter" | "banner", id: stri
   return { id, name, height: t.partyY - 4, blocks: defaultFreeLayout(undefined, font).blocks.filter((b) => ["logo", "seller", "title", "meta"].includes(b.kind)).map((b) => ({ ...b })) };
 }
 
-/** ใช้ผังลากวางของเอกสารหนึ่งกับเอกสารอื่น (ตำแหน่ง/สไตล์กล่อง และหัวกระดาษเดียวกัน ข้อมูลเป็นของแต่ละเอกสาร) */
-export function applyLayoutToAll(design: DocumentDesign, sourceDoc: string, targets: string[]): DocumentDesign {
-  const srcDoc = design.perDoc[sourceDoc];
-  const src = srcDoc?.free;
-  if (!src) return design;
-  const perDoc = { ...design.perDoc };
-  for (const t of targets) {
-    if (t === sourceDoc) continue;
-    // คอลัมน์ตารางเป็นของแต่ละเอกสาร (ใบวางบิลไม่มีจำนวน/ราคา) — ไม่คัดลอก; เอกสารไม่มียอดเงินไม่รับกล่องยอดรวม
-    const blocks = src.blocks
-      .filter((b) => docHasAmounts(t) || (b.kind !== "totals" && b.kind !== "words"))
-      .map((b) => { const { cols: _cols, ...rest } = b; return b.kind === "items" ? rest : { ...b }; });
-    perDoc[t] = { ...(perDoc[t] || {}), free: { enabled: src.enabled, blocks }, ...(srcDoc.letterhead ? { letterhead: srcDoc.letterhead } : {}) };
-  }
-  return { ...design, perDoc };
-}
-
 /** ธีม + การปรับของเอกสารชนิดนี้ + หัวกระดาษที่เลือก (ใช้ตอนสร้าง PDF) */
 export function resolveDesign(design: DocumentDesign | undefined, docType: string, brandColor?: string): { theme: DocTheme; doc: PerDocDesign; letterhead?: Letterhead } {
   const d = design || normalizeDesign(null, brandColor);

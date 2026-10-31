@@ -6,18 +6,20 @@ import { balanceSheet, generalLedger, monthEnd, postingLines, profitAndLoss, tri
 import { inputVatRows, outputVatRows, vatTotals } from "@/lib/vat-reports";
 import { buildWhtRecords, computePP30 } from "@/lib/tax-calc";
 import { getRecords } from "@/lib/master-store.server";
+import { cashFlow, salesProfit } from "@/lib/management-reports";
 
 /**
  * [API-SERVER] รายงานบัญชีและภาษี (คำนวณที่ server จากข้อมูลจริง)
  * Endpoint: POST /api/reports/financial
  * body: { companyId, report, from?: "YYYY-MM", to?: "YYYY-MM", account? }
  *  report: "tb" งบทดลอง | "gl" บัญชีแยกประเภท | "pl" งบกำไรขาดทุน | "bs" งบแสดงฐานะการเงิน (ณ สิ้นเดือน to)
+ *          "cf" งบกระแสเงินสด | "sales-customer" / "sales-product" ยอดขายและกำไรขั้นต้น รายลูกค้า/รายสินค้า (ช่วงเดือน)
  *          "vat-out" รายงานภาษีขาย | "vat-in" รายงานภาษีซื้อ | "pnd3" / "pnd53" รายงานภาษีหัก ณ ที่จ่าย (เดือน to)
  * - เฉพาะผู้มีสิทธิ์ finance:view; งบการเงินใช้รายการที่ลงบัญชีแล้วเท่านั้น
  */
 
 const YM = /^\d{4}-(0[1-9]|1[0-2])$/;
-const REPORTS = ["tb", "gl", "pl", "bs", "vat-out", "vat-in", "pnd3", "pnd53"] as const;
+const REPORTS = ["tb", "gl", "pl", "bs", "cf", "sales-customer", "sales-product", "vat-out", "vat-in", "pnd3", "pnd53"] as const;
 type Report = (typeof REPORTS)[number];
 const thisMonth = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 7);
 
@@ -39,6 +41,15 @@ export async function POST(request: Request) {
     // สมุดรายวันอยู่ใต้บริษัทที่เดียว (root journal_entries ว่างแล้ว ตรวจ 2026-10-30)
     const journals = () => col("journal_entries");
     const base = { success: true, report, from, to, fromDate, toDate, generatedAt: new Date().toISOString() };
+
+    if (report === "cf") {
+      const { lines, draftCount, undatedCount } = postingLines(await journals());
+      return NextResponse.json({ ...base, draftCount, undatedCount, ...cashFlow(lines, fromDate, toDate) });
+    }
+    if (report === "sales-customer" || report === "sales-product") {
+      const [invoices, notes] = await Promise.all([col("invoices"), col("cndn")]);
+      return NextResponse.json({ ...base, ...salesProfit(invoices, notes, fromDate, toDate, report === "sales-customer" ? "customer" : "product") });
+    }
 
     if (report === "tb" || report === "gl" || report === "pl" || report === "bs") {
       const { lines, draftCount, undatedCount } = postingLines(await journals());

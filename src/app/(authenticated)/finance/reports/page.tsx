@@ -2,29 +2,33 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ArrowLeft, BookOpen, CheckCircle2, Download, FileSpreadsheet, Loader2, Percent, Scale, TrendingUp, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Banknote, BookOpen, CheckCircle2, Download, FileSpreadsheet, Loader2, Package, Percent, Scale, TrendingUp, Users, Wallet } from "lucide-react";
 import { GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillInput, PillSelect, PillTabs, cn } from "@/components/ui/Base";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api-client";
 
-type ReportId = "tb" | "gl" | "pl" | "bs" | "vat-out" | "vat-in" | "pnd3" | "pnd53";
+type ReportId = "tb" | "gl" | "pl" | "bs" | "cf" | "sales-customer" | "sales-product" | "vat-out" | "vat-in" | "pnd3" | "pnd53";
 const TABS: { id: ReportId; label: string; icon: React.ReactNode }[] = [
   { id: "tb", label: "งบทดลอง", icon: <Scale size={14} /> },
   { id: "gl", label: "บัญชีแยกประเภท", icon: <BookOpen size={14} /> },
   { id: "pl", label: "กำไรขาดทุน", icon: <TrendingUp size={14} /> },
   { id: "bs", label: "ฐานะการเงิน", icon: <Wallet size={14} /> },
+  { id: "cf", label: "กระแสเงินสด", icon: <Banknote size={14} /> },
+  { id: "sales-customer", label: "ขายรายลูกค้า", icon: <Users size={14} /> },
+  { id: "sales-product", label: "ขายรายสินค้า", icon: <Package size={14} /> },
   { id: "vat-out", label: "ภาษีขาย", icon: <Percent size={14} /> },
   { id: "vat-in", label: "ภาษีซื้อ", icon: <Percent size={14} /> },
   { id: "pnd3", label: "ภ.ง.ด.3", icon: <FileSpreadsheet size={14} /> },
   { id: "pnd53", label: "ภ.ง.ด.53", icon: <FileSpreadsheet size={14} /> },
 ];
 const TITLE: Record<ReportId, string> = {
-  tb: "งบทดลอง", gl: "บัญชีแยกประเภท", pl: "งบกำไรขาดทุน", bs: "งบแสดงฐานะการเงิน",
+  tb: "งบทดลอง", gl: "บัญชีแยกประเภท", pl: "งบกำไรขาดทุน", bs: "งบแสดงฐานะการเงิน", cf: "งบกระแสเงินสด (วิธีทางตรง)",
+  "sales-customer": "ยอดขายและกำไรขั้นต้น รายลูกค้า", "sales-product": "ยอดขายและกำไรขั้นต้น รายสินค้า",
   "vat-out": "รายงานภาษีขาย", "vat-in": "รายงานภาษีซื้อ", pnd3: "รายงานภาษีหัก ณ ที่จ่าย ภ.ง.ด.3", pnd53: "รายงานภาษีหัก ณ ที่จ่าย ภ.ง.ด.53",
 };
 // รายงานที่ใช้ช่วงเดือน (อื่น ๆ ใช้เดือนเดียว / ณ สิ้นเดือน)
-const RANGE: ReportId[] = ["tb", "gl", "pl"];
+const RANGE: ReportId[] = ["tb", "gl", "pl", "cf", "sales-customer", "sales-product"];
 const TH_MONTHS = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
 const monthLabel = (ym: string) => { const [y, m] = ym.split("-").map(Number); return `${TH_MONTHS[m - 1]} ${y + 543}`; };
 const dateTh = (d: string) => { const [y, m, dd] = d.split("-").map(Number); return `${String(dd).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y + 543}`; };
@@ -96,6 +100,14 @@ export default function FinancialReportsPage() {
         ...l.entries.map((e: any) => [dateTh(e.date), e.docNo, e.description, e.debit, e.credit, e.balance]), ["", "", "รวม", l.totalDebit, l.totalCredit, l.closing]];
     } else if (tab === "pl" || tab === "bs") {
       body = statementSections(tab, data).flatMap((s) => [[s.title], ...s.lines.map((x) => [x.code, x.name, x.amount]), ...(s.total !== undefined ? [["", s.totalLabel || `รวม${s.title}`, s.total]] : [])]);
+    } else if (tab === "cf") {
+      body = [["หมวด", "รหัสบัญชี", "รายการ", "เงินเข้า", "เงินออก", "สุทธิ"], ["", "", "เงินสดและเงินฝากต้นงวด", "", "", data.opening],
+        ...cashSections(data).flatMap((s) => [...s.rows.map((r: any) => [s.title, r.code, r.name, r.inflow, r.outflow, r.net]), [s.title, "", `รวม${s.title}`, "", "", s.total]]),
+        ["", "", "เงินสดเพิ่มขึ้น (ลดลง) สุทธิ", "", "", data.net], ["", "", "เงินสดและเงินฝากปลายงวด", "", "", data.closing]];
+    } else if (tab === "sales-customer" || tab === "sales-product") {
+      body = [[tab === "sales-customer" ? "ลูกค้า" : "สินค้า/บริการ", "จำนวนเอกสาร", "จำนวน", "ยอดขาย (ก่อน VAT)", "ต้นทุน", "กำไรขั้นต้น", "อัตรากำไร (%)"],
+        ...data.rows.map((r: any) => [r.name, r.docs, r.qty, r.revenue, r.cost, r.profit, r.margin ?? ""]),
+        ["รวม", "", "", data.totals.revenue, data.totals.cost, data.totals.profit, data.totals.margin ?? ""]];
     } else if (tab === "vat-out" || tab === "vat-in") {
       body = [["ลำดับ", "วันที่", "เลขที่ใบกำกับ", "อ้างอิง", tab === "vat-out" ? "ชื่อผู้ซื้อ" : "ชื่อผู้ขาย", "เลขประจำตัวผู้เสียภาษี", "สาขา", "มูลค่าสินค้า/บริการ", "ภาษีมูลค่าเพิ่ม", "ประเภท"],
         ...data.rows.map((r: any, i: number) => [i + 1, dateTh(r.date), r.docNo, r.refNo, r.name, r.taxId, r.branch, r.base, r.vat, r.kind]),
@@ -166,7 +178,7 @@ export default function FinancialReportsPage() {
         ) : !ready ? (
           <div className="py-16 text-center text-[13px] text-white/40">ไม่มีข้อมูล</div>
         ) : (
-          <ReportBody tab={tab} data={data} />
+          <ReportBody tab={tab} data={data} onAccount={(code) => { setAccount(code); setTab("gl"); }} />
         )}
       </GlassCard>
     </div>
@@ -177,8 +189,10 @@ export default function FinancialReportsPage() {
 
 function ReportNotices({ tab, data }: { tab: ReportId; data: any }) {
   const items: { ok: boolean; text: string }[] = [];
-  if (["tb", "gl", "pl", "bs"].includes(tab) && data.draftCount > 0) items.push({ ok: false, text: `มีรายการรอลงบัญชี ${data.draftCount} รายการ (ไม่รวมในรายงาน)` });
+  if (["tb", "gl", "pl", "bs", "cf"].includes(tab) && data.draftCount > 0) items.push({ ok: false, text: `มีรายการรอลงบัญชี ${data.draftCount} รายการ (ไม่รวมในรายงาน)` });
   if (tab === "tb") items.push(data.balanced ? { ok: true, text: "เดบิตเท่ากับเครดิต" } : { ok: false, text: "เดบิตไม่เท่ากับเครดิต กรุณาตรวจรายการบัญชี" });
+  if ((tab === "sales-customer" || tab === "sales-product") && data.costMissing) items.push({ ok: false, text: "บางรายการไม่มีต้นทุน (กำไรขั้นต้นสูงกว่าจริง)" });
+  if (tab === "cf" && data.unallocated) items.push({ ok: false, text: `เงินสดที่จัดหมวดไม่ได้ ${money(data.unallocated)} บาท` });
   if (tab === "bs") items.push(data.balanced ? { ok: true, text: "สินทรัพย์ = หนี้สิน + ส่วนของเจ้าของ" } : { ok: false, text: "งบไม่สมดุล กรุณาตรวจรายการบัญชี" });
   if ((tab === "vat-out" || tab === "vat-in") && data.rows.length + Math.abs(data.ledgerVat) > 0) {
     items.push(Math.abs(data.difference) < 0.01
@@ -226,13 +240,67 @@ function statementSections(tab: "pl" | "bs", d: any): Section[] {
   ];
 }
 
-function ReportBody({ tab, data }: { tab: ReportId; data: any }) {
+/** แถวที่คลิกได้: เปิดบัญชีแยกประเภทของบัญชีนั้น (ช่วงเวลาเดียวกัน) */
+const drill = (code: string, onAccount: (code: string) => void) => (code ? { onClick: () => onAccount(code), className: "cursor-pointer", title: `ดูบัญชีแยกประเภท ${code}` } : { className: "cursor-default" });
+
+const cashSections = (d: any) => [
+  { title: "กิจกรรมดำเนินงาน", ...d.operating },
+  { title: "กิจกรรมลงทุน", ...d.investing },
+  { title: "กิจกรรมจัดหาเงิน", ...d.financing },
+];
+
+function ReportBody({ tab, data, onAccount }: { tab: ReportId; data: any; onAccount: (code: string) => void }) {
+  if (tab === "cf") {
+    return (
+      <NexusTable headers={["รหัสบัญชี", "รายการ", "เงินเข้า", "เงินออก", "สุทธิ"]}>
+        <TotalRow cells={["", "เงินสดและเงินฝากต้นงวด", "", "", money(data.opening)]} />
+        {cashSections(data).map((s) => (
+          <React.Fragment key={s.title}>
+            <NexusTableRow className="cursor-default"><NexusTableCell colSpan={5} className="text-[13px] font-semibold text-nexus-teal pt-5">{s.title}</NexusTableCell></NexusTableRow>
+            {s.rows.length === 0 && <Empty cols={5} text="ไม่มีรายการ" />}
+            {s.rows.map((r: any) => (
+              <NexusTableRow key={`${s.title}-${r.code}`} {...drill(r.code, onAccount)}>
+                <NexusTableCell mono>{r.code}</NexusTableCell>
+                <NexusTableCell>{r.name}</NexusTableCell>
+                <NexusTableCell mono>{moneyOrDash(r.inflow)}</NexusTableCell>
+                <NexusTableCell mono>{moneyOrDash(r.outflow)}</NexusTableCell>
+                <NexusTableCell mono className={r.net < 0 ? "text-danger" : ""}>{money(r.net)}</NexusTableCell>
+              </NexusTableRow>
+            ))}
+            <TotalRow cells={["", `เงินสดสุทธิจาก${s.title}`, "", "", money(s.total)]} />
+          </React.Fragment>
+        ))}
+        <TotalRow cells={["", "เงินสดเพิ่มขึ้น (ลดลง) สุทธิ", "", "", money(data.net)]} />
+        <TotalRow cells={["", "เงินสดและเงินฝากปลายงวด", "", "", money(data.closing)]} />
+      </NexusTable>
+    );
+  }
+  if (tab === "sales-customer" || tab === "sales-product") {
+    const product = tab === "sales-product";
+    return (
+      <NexusTable headers={[product ? "สินค้า/บริการ" : "ลูกค้า", "จำนวนเอกสาร", ...(product ? ["จำนวน"] : []), "ยอดขาย (ก่อน VAT)", "ต้นทุน", "กำไรขั้นต้น", "อัตรากำไร"]} itemCount={data.rows.length}>
+        {data.rows.length === 0 && <Empty cols={product ? 7 : 6} text="ไม่มีใบกำกับภาษีในช่วงนี้" />}
+        {data.rows.map((r: any) => (
+          <NexusTableRow key={r.key} className="cursor-default">
+            <NexusTableCell title={r.name}>{r.name}</NexusTableCell>
+            <NexusTableCell mono>{r.docs}</NexusTableCell>
+            {product && <NexusTableCell mono>{r.qty ? r.qty.toLocaleString("th-TH") : "-"}</NexusTableCell>}
+            <NexusTableCell mono className={r.revenue < 0 ? "text-danger" : ""}>{money(r.revenue)}</NexusTableCell>
+            <NexusTableCell mono title={r.costMissing ? "บางรายการไม่มีต้นทุน" : undefined} className={r.costMissing ? "text-warning" : ""}>{moneyOrDash(r.cost)}</NexusTableCell>
+            <NexusTableCell mono className={r.profit < 0 ? "text-danger" : ""}>{money(r.profit)}</NexusTableCell>
+            <NexusTableCell mono>{r.margin === null ? "-" : `${r.margin.toFixed(1)}%`}</NexusTableCell>
+          </NexusTableRow>
+        ))}
+        {data.rows.length > 0 && <TotalRow cells={["รวม", "", ...(product ? [""] : []), money(data.totals.revenue), money(data.totals.cost), money(data.totals.profit), data.totals.margin === null ? "-" : `${data.totals.margin.toFixed(1)}%`]} />}
+      </NexusTable>
+    );
+  }
   if (tab === "tb") {
     return (
       <NexusTable headers={["รหัสบัญชี", "ชื่อบัญชี", "ยกมา เดบิต", "ยกมา เครดิต", "ระหว่างงวด เดบิต", "ระหว่างงวด เครดิต", "คงเหลือ เดบิต", "คงเหลือ เครดิต"]} itemCount={data.rows.length}>
         {data.rows.length === 0 && <Empty cols={8} text="ไม่มีรายการที่ลงบัญชีในช่วงนี้" />}
         {data.rows.map((r: any) => (
-          <NexusTableRow key={r.code} className="cursor-default">
+          <NexusTableRow key={r.code} {...drill(r.code, onAccount)}>
             <NexusTableCell mono>{r.code}</NexusTableCell>
             <NexusTableCell>{r.name}</NexusTableCell>
             <NexusTableCell mono>{moneyOrDash(r.openingDebit)}</NexusTableCell>
@@ -280,7 +348,7 @@ function ReportBody({ tab, data }: { tab: ReportId; data: any }) {
               </NexusTableRow>
             )}
             {s.lines.map((x) => (
-              <NexusTableRow key={`${s.title}-${x.code}-${x.name}`} className="cursor-default">
+              <NexusTableRow key={`${s.title}-${x.code}-${x.name}`} {...drill(x.code, onAccount)}>
                 <NexusTableCell mono>{x.code || "-"}</NexusTableCell>
                 <NexusTableCell>{x.name}</NexusTableCell>
                 <NexusTableCell mono className={x.amount < 0 ? "text-danger" : ""}>{money(x.amount)}</NexusTableCell>

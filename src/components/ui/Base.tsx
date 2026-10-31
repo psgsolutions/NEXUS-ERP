@@ -703,10 +703,11 @@ export function NexusTable({
   );
 }
 
-export function NexusTableRow({ children, onClick, className }: { children: React.ReactNode, onClick?: () => void, className?: string }) {
+export function NexusTableRow({ children, onClick, className, title }: { children: React.ReactNode, onClick?: () => void, className?: string, title?: string }) {
   return (
     <tr
       onClick={onClick}
+      title={title}
       className={cn(
         "group cursor-pointer transition-all duration-300 h-12 hover:bg-white/[0.03]",
         className

@@ -3,8 +3,9 @@
  * ติ๊ก = ข้อมูลนี้ปรากฏบนเอกสาร ไม่ว่าจะอยู่ในกล่องไหน (กล่องเลขที่ · กล่องข้อมูล · ช่องข้อมูลเดี่ยว)
  * เปิด: ใส่ในกล่องที่เหมาะที่สุดที่มีอยู่ · ปิด: เอาออกจากทุกกล่อง · ข้อมูลที่กฎหมายกำหนดล็อกไว้
  */
-import { A4, CORE_TOTALS, TEMPLATES, docHasAmounts, docHasCopy, defaultFreeLayout, requiredColumnsFor, resolveColumns, type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, ITEM_COLUMNS } from "./design";
+import { A4, CORE_TOTALS, TEMPLATES, totalsBlockHeight, type DocumentDesign, docHasAmounts, docHasCopy, defaultFreeLayout, requiredColumnsFor, resolveColumns, type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, ITEM_COLUMNS } from "./design";
 import { templateLayout } from "./layout-templates";
+import { sampleModelFor } from "./build";
 
 export interface DataItem { key: string; label: string; on: boolean; locked?: boolean }
 export interface DataGroup { id: string; title: string; source: string; kinds: BlockKind[]; items: DataItem[] }
@@ -156,6 +157,34 @@ export function toggleData(layout: FreeLayout, key: string, on: boolean, c: Data
     else if (!blocks.some((b) => b.kind === kind)) { const d = def(kind); blocks.push({ ...(d || { x: 32, y: 600, w: 300, h: 30 }), id: uid(kind), kind }); }
   }
   return { ...layout, enabled: true, blocks };
+}
+
+/** แถวยอดรวมของเอกสารตัวอย่าง (ครบทุกแถวที่เลือกแสดงได้) ตามชนิดเอกสาร */
+const sampleTotals = (docType: string) => sampleModelFor(docType, { name: "" } as any, "2026-01-01").totals;
+
+/**
+ * กรอบกล่องยอดรวมสูงพอดีตารางยอดรวมเสมอ (ไม่มีที่ว่างเหลือ) — ติ๊กแถวเพิ่ม/ลด เปลี่ยนตัวอักษร/ระยะแถว/รูปแบบ กรอบขยาย/หดตาม
+ * ใช้แถวของเอกสารตัวอย่าง (ครบทุกแถว) ตัดแถวที่ติ๊กออก · ไม่มีอะไรเปลี่ยน = คืนออบเจกต์เดิม
+ */
+export function fitTotalsBlocks(d: DocumentDesign): DocumentDesign {
+  let changed = false;
+  const perDoc = { ...d.perDoc };
+  for (const [type, per] of Object.entries(d.perDoc)) {
+    const free = per.free;
+    if (!free?.blocks.some((b) => b.kind === "totals")) continue;
+    const rows = sampleTotals(type);
+    if (!rows.length) continue;
+    let touched = false;
+    const blocks = free.blocks.map((b) => {
+      if (b.kind !== "totals") return b;
+      const h = totalsBlockHeight(b, d.theme, rows);
+      if (Math.abs(h - b.h) < 0.25) return b;
+      touched = true;
+      return { ...b, h };
+    });
+    if (touched) { changed = true; perDoc[type] = { ...per, free: { ...free, blocks } }; }
+  }
+  return changed ? { ...d, perDoc } : d;
 }
 
 /** หน้ากระดาษเปล่า: เหลือเฉพาะกล่องข้อมูลที่กฎหมายกำหนด (ไม่มีกรอบ สี เส้น) ให้ออกแบบใหม่ทั้งหมด */

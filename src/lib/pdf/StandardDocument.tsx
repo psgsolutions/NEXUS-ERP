@@ -2,7 +2,7 @@ import React from "react";
 import { Document, Ellipse, Font, Image, Page, Polygon, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import type { ColumnKey, CopyMode, DocumentModel } from "@/lib/documents/model";
 import { amountInWords, branchLabel, formatTaxId, money, qtyText, thaiDate } from "@/lib/documents/format";
-import { OPTIONAL_TOTALS, gridSizes, FONT_MAX, FONT_MIN, FONT_SCALE, SIGN_SIZE, docHasCopy, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
+import { gridSizes, totalsRowHeights, totalsTableHeight, visibleTotals, blockPad, FONT_MAX, FONT_MIN, FONT_SCALE, SIGN_SIZE, docHasCopy, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
 
 /**
  * เทมเพลตเอกสาร A4 (ใช้ร่วมทุกประเภทเอกสาร) — หน้าตาตามธีมของบริษัท (ตั้งค่า › ออกแบบเอกสาร)
@@ -106,8 +106,8 @@ export type Ctx = {
   radius?: number; lineColor?: string; lineWidth?: number; headBg?: string;
   /** ระยะข้อความของกล่องที่มีป้าย: ป้าย→ข้อมูล · ความกว้างป้าย · ระยะระหว่างแถว (pt) */
   labelGap?: number; labelWidth?: number; rowGap?: number;
-  /** ตาราง/ยอดรวม: ระยะบน-ล่างในแถว (pt) */
-  rowPad?: number;
+  /** ตาราง/ยอดรวม: ระยะบน-ล่างในแถว (pt) · ยอดรวม: ลำดับแถวที่จัดเอง · ระยะขอบในของกล่อง (pt) */
+  rowPad?: number; order?: string[]; boxPad?: number;
   /** ช่องลงนามที่วางกล่องลายเซ็นแยกไว้แล้ว (ช่องลงนามไม่พิมพ์รูปลายเซ็นซ้ำ) */
   signPlaced?: Set<string>;
   /** จำนวนหน้าจริงของเอกสาร (หน้าออกแบบวาดทีละกล่องหลายหน้า — เลขหน้าในส่วนท้ายใช้ค่านี้) */
@@ -493,47 +493,50 @@ export function SectionPayment({ c, align }: { c: Ctx; align?: "left" | "center"
 }
 
 /**
- * ยอดรวมต้องพอดีกรอบที่ออกแบบไว้ (ผังคงที่ — ข้อมูลจริงมีแถวมากกว่าตัวอย่าง เช่น มีส่วนลด/หัก ณ ที่จ่าย)
- * ประมาณความสูงที่ต้องใช้: เกินกรอบ = ลดระยะบน-ล่างของแถว ยังเกินจึงย่อตัวอักษร (ไม่ต่ำกว่า 50%) — ภาษีและยอดรวมทั้งสิ้นไม่ถูกตัดหาย
+ * ยอดรวมต้องพอดีกรอบที่ออกแบบไว้ (ผังคงที่ — ข้อมูลจริงอาจมีแถวมากกว่าตัวอย่าง เช่น มูลค่าก่อนภาษีของราคารวม VAT)
+ * ความสูงคำนวณตรงตามที่พิมพ์ (totalsTableHeight): เกินกรอบ = ลดระยะบน-ล่างของแถว ยังเกินจึงย่อตัวอักษร (ไม่ต่ำกว่า 50%)
+ * ภาษีและยอดรวมทั้งสิ้นจึงไม่ถูกตัดหาย
  */
-function fitTotals(c: Ctx, rows: { label: string; strong?: boolean }[]): { c: Ctx } {
-  if (!c.box || !rows.length) return { c };
-  const fs = c.s.page.fontSize as number, lh = (c.s.page.lineHeight as number) || 1.35;
-  const enH = c.t.bilingual && !c.hide.has("en") ? ((c.s.en.fontSize as number) || fs * 0.63) * 1.15 : 0;
-  const text = rows.reduce((a, r) => a + fs * lh + (enH && enLabel(r.label) ? enH : 0), 0);
-  const extra = rows.filter((r) => r.strong).length * 2 + 2;
-  const avail = (c.box.h - 4) * 0.97, n = rows.length;
+function totalsMetrics(c: Ctx, pad: number) {
+  return { fs: c.s.page.fontSize as number, enFs: c.s.en.fontSize as number, lh: (c.s.page.lineHeight as number) || 1.35, pad, style: c.t.totals, en: c.t.bilingual && !c.hide.has("en") };
+}
+function fitTotals(c: Ctx, rows: { label: string; strong?: boolean }[]): Ctx {
+  if (!c.box || !rows.length) return c;
+  const avail = c.box.h - (c.boxPad ?? 0) * 2 + 0.5;
   let pad = c.rowPad ?? 2.5;
-  if (text + extra + 2 * n * pad <= avail) return { c };
-  pad = Math.max(0.5, (avail - text - extra) / (2 * n));
-  const scale = text + extra + 2 * n * pad <= avail ? 1 : Math.max(0.5, (avail - extra - 2 * n * pad) / text);
-  if (scale >= 1) return { c: { ...c, rowPad: pad } };
-  const t = { ...c.t, fontSize: c.t.fontSize * scale };
-  return { c: { ...c, rowPad: pad, t, s: themeStyles(t, lh) } };
+  if (totalsTableHeight(rows, totalsMetrics(c, pad)) <= avail) return c;
+  const base = totalsTableHeight(rows, totalsMetrics(c, 0));
+  pad = Math.max(0.5, Math.min(pad, (avail - base) / (2 * rows.length)));
+  if (totalsTableHeight(rows, totalsMetrics(c, pad)) <= avail) return { ...c, rowPad: pad };
+  const lh = (c.s.page.lineHeight as number) || 1.35;
+  let small = c;
+  for (let k = 0.96; k >= 0.5; k -= 0.02) {
+    const t = { ...c.t, fontSize: c.t.fontSize * k };
+    small = { ...c, rowPad: pad, t, s: themeStyles(t, lh) };
+    if (totalsTableHeight(rows, totalsMetrics(small, pad)) <= avail) break;
+  }
+  return small;
 }
 
-/** แถวยอดเงินที่ซ่อนได้ตามฟอร์มของบริษัท (OPTIONAL_TOTALS) — แถวหลัก (รวมเงิน ภาษี รวมทั้งสิ้น) แสดงเสมอ */
-const lockedTotal = (row: { label: string }) => !OPTIONAL_TOTALS.includes(row.label);
-
 export function SectionTotals({ c: c0 }: { c: Ctx }) {
-  const kept0 = c0.doc.totals.filter((row) => lockedTotal(row) || !c0.hide.has(`t:${row.label}`));
-  const fit = fitTotals(c0, kept0);
-  const c = fit.c;
-  const { t, doc, s } = c;
-  const kept = kept0;
+  // แถวที่ติ๊กแสดง · ลำดับที่จัดเอง (ไม่ตั้ง = ลำดับมาตรฐาน)
+  const rows = visibleTotals(c0.doc.totals, c0.hide, c0.order);
+  const c = fitTotals(c0, rows);
+  const { t } = c;
+  // แต่ละแถวสูงตายตัว (สูตรเดียวกับกรอบในหน้าออกแบบ) — กรอบพอดีตารางเสมอ
+  const heights = totalsRowHeights(rows, totalsMetrics(c, c.rowPad ?? 2.5));
+  const pad = c.rowPad ?? 2.5;
   // ย่อแล้ว: ขนาดและระยะบรรทัดของตัวอักษรในกล่องตามขนาดใหม่ (ระยะบรรทัดของหน้าเป็นค่าคงที่ ไม่ย่อตาม)
   const fz = c !== c0 ? { fontSize: c.s.page.fontSize, lineHeight: c.s.page.lineHeight } : {};
-  // ซ่อนแถวเน้น (เช่น ยอดชำระสุทธิ) = แถวยอดรวมทั้งสิ้นเป็นแถวเน้นแทน
-  const rows = kept.some((r) => r.strong) || !kept.length ? kept : kept.map((r) => (r.label === "จำนวนเงินรวมทั้งสิ้น" ? { ...r, strong: true } : r));
   if (t.totals === "grid") {
     return (
       <View style={{ borderWidth: 1, borderColor: t.primary, borderRadius: rad(c), ...fz }}>
         {rows.map((row, i) => (
-          <View key={row.label} style={{ flexDirection: "row", borderTopWidth: i ? 0.6 : 0, borderColor: t.primary }}>
-            <View style={{ flex: 1, backgroundColor: `${t.accent}${row.strong ? "cc" : "88"}`, paddingVertical: c.rowPad ?? 2.5, paddingHorizontal: 6 }}>
+          <View key={row.label} style={{ flexDirection: "row", minHeight: heights[i], borderTopWidth: i ? 0.6 : 0, borderColor: t.primary }}>
+            <View style={{ flex: 1, backgroundColor: `${t.accent}${row.strong ? "cc" : "88"}`, paddingVertical: pad, paddingHorizontal: 6, justifyContent: "center" }}>
               <Lbl c={c} th={row.label} suffix=" :" align="right" style={row.strong ? { fontWeight: "bold" } : {}} />
             </View>
-            <View style={{ width: "44%", paddingVertical: c.rowPad ?? 2.5, paddingHorizontal: 6, justifyContent: "center", borderLeftWidth: 0.6, borderColor: t.primary }}>
+            <View style={{ width: "44%", paddingVertical: pad, paddingHorizontal: 6, justifyContent: "center", borderLeftWidth: 0.6, borderColor: t.primary }}>
               <T style={{ textAlign: "right", fontWeight: row.strong ? "bold" : undefined }}>{money(row.amount)}</T>
             </View>
           </View>
@@ -543,13 +546,13 @@ export function SectionTotals({ c: c0 }: { c: Ctx }) {
   }
   return (
     <View style={fz}>
-      {rows.map((row) => {
+      {rows.map((row, i) => {
         const strong = row.strong;
         const box = !strong ? {} : t.totals === "solid" ? { backgroundColor: t.primary, borderRadius: rad(c, 3), marginTop: 2 }
           : t.totals === "outline" ? { borderWidth: 1, borderColor: t.primary, borderRadius: rad(c, 3), marginTop: 2 } : { borderTopWidth: 1, borderColor: t.primary, marginTop: 2 };
         const text = strong && t.totals === "solid" ? { fontWeight: "bold" as const, color: "#ffffff" } : strong ? { fontWeight: "bold" as const, color: t.primary } : {};
         return (
-          <View key={row.label} style={[s.totalRow, c.rowPad !== undefined ? { paddingVertical: c.rowPad } : {}, box]}>
+          <View key={row.label} style={[c.s.totalRow, { paddingVertical: pad, minHeight: heights[i] - (strong ? 2 : 0), alignItems: "center" }, box]}>
             <Lbl c={c} th={row.label} style={text} />
             <T style={[{ fontWeight: "bold" as const }, text]}>{money(row.amount)}</T>
           </View>
@@ -635,7 +638,7 @@ export function blockContext(c: Ctx, raw: FreeBlock): Ctx {
   } : c.t;
   return {
     ...c, t, s: own ? themeStyles(t, b.lineHeight ?? 1.35, b.radius) : c.s, hide: new Set(b.hide || []), cols: b.cols, colSpec: b.colSpec, labels: b.labels, fields: b.fields, gap: b.gap, fill: b.fill, box: { w: b.w, h: b.h },
-    radius: b.radius, lineColor: b.lineColor, lineWidth: b.borderWidth, headBg: b.headBg, labelGap: b.labelGap, labelWidth: b.labelWidth, rowGap: b.rowGap, rowPad: b.rowPad,
+    radius: b.radius, lineColor: b.lineColor, lineWidth: b.borderWidth, headBg: b.headBg, labelGap: b.labelGap, labelWidth: b.labelWidth, rowGap: b.rowGap, rowPad: b.rowPad, order: b.order, boxPad: blockPad(b),
   };
 }
 
@@ -736,7 +739,7 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
     }
   })();
   // กล่องที่มีกรอบ/พื้นหลัง: เว้นขอบในให้เนื้อหาไม่ชิดเส้น
-  const pad = b.pad ?? (b.kind === "text" ? 2 : (b.border || b.bg) && b.kind !== "items" ? 4 : 0);
+  const pad = blockPad(b);
   if (b.kind === "line") {
     // เส้น: แนวนอนเมื่อกว้างกว่าสูง (ความหนา = สูง) · แนวตั้งเมื่อสูงกว่า (ความหนา = กว้าง) · เส้นประ/จุดวาดด้วยขอบ
     const vertical = b.h > b.w, thick = Math.max(0.25, vertical ? b.w : b.h), color = b.color || c.t.primary;

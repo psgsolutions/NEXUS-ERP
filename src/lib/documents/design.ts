@@ -153,6 +153,8 @@ export interface FreeBlock {
   off?: boolean;
   /** ตารางรายการ/ยอดรวม: ระยะบน-ล่างในแถว (pt) — ความสูงแถว บีบให้แคบได้ถึง 0 */
   rowPad?: number;
+  /** ตารางยอดรวม: ลำดับแถว (ชื่อแถว) ที่จัดเอง — ไม่ตั้ง = ลำดับมาตรฐาน */
+  order?: string[];
   /** ตารางเส้น (kind=grid): สัดส่วนความกว้างแต่ละคอลัมน์ / ความสูงแต่ละแถว (ว่าง = เท่ากัน) — ลากเส้นแบ่งปรับเองได้ */
   colW?: number[];
   rowH?: number[];
@@ -365,7 +367,7 @@ export const EN_LABELS: Record<string, string> = {
   "ผู้จ่ายเงิน": "Paid By", "ผู้วางบิล": "Billed By", "ผู้รับวางบิล": "Received By", "ผู้ส่งของ": "Delivered By", "ผู้รับของ": "Received By", "ผู้ตรวจรับ": "Inspected By",
   "ผู้รับสินค้า / บริการ": "Received By", "ผู้ส่งสินค้า": "Delivered By", "ช่างผู้ปฏิบัติงาน": "Technician",
   "รวมเป็นเงิน": "Total Amount", "ส่วนลดท้ายบิล": "Discount", "ยอดหลังหักส่วนลด": "Total After Discount", "มูลค่าก่อนภาษี": "Total Before VAT", "ภาษีมูลค่าเพิ่ม 7%": "VAT 7%",
-  "ภาษีมูลค่าเพิ่ม 7% (รวมในราคา)": "VAT 7% (Included)", "จำนวนเงินรวมทั้งสิ้น": "Grand Total", "หัก ณ ที่จ่าย": "Withholding Tax", "ยอดชำระสุทธิ": "Net Payable",
+  "ภาษีมูลค่าเพิ่ม 7% รวมในราคา": "VAT 7% Included", "จำนวนเงินรวมทั้งสิ้น": "Grand Total", "หัก ณ ที่จ่าย": "Withholding Tax", "ยอดชำระสุทธิ": "Net Payable",
 };
 export const enLabel = (th: string) => EN_LABELS[th] || "";
 
@@ -375,6 +377,49 @@ export const enLabel = (th: string) => EN_LABELS[th] || "";
  */
 export const OPTIONAL_TOTALS = ["ส่วนลดท้ายบิล", "ยอดหลังหักส่วนลด", "หัก ณ ที่จ่าย", "ยอดชำระสุทธิ"];
 export const CORE_TOTALS = ["รวมเป็นเงิน", "ภาษีมูลค่าเพิ่ม", "จำนวนเงินรวมทั้งสิ้น"];
+
+/**
+ * แถวยอดรวมที่พิมพ์จริง: ตัดแถวที่ติ๊กออก (เฉพาะแถวเลือกได้) · เรียงตามลำดับที่จัดเอง (แถวที่ไม่อยู่ในลำดับต่อท้ายตามลำดับมาตรฐาน)
+ * ซ่อนแถวเน้น (เช่น ยอดชำระสุทธิ) = จำนวนเงินรวมทั้งสิ้นเป็นแถวเน้นแทน
+ */
+export function visibleTotals<T extends { label: string; strong?: boolean }>(rows: T[], hide: Iterable<string> = [], order?: string[]): T[] {
+  const hidden = new Set(hide);
+  const kept = rows.filter((r) => !OPTIONAL_TOTALS.includes(r.label) || !hidden.has(`t:${r.label}`));
+  const rank = (r: T, i: number) => { const k = order?.indexOf(r.label) ?? -1; return k >= 0 ? k : (order?.length || 0) + i; };
+  const sorted = order?.length ? kept.map((r, i) => ({ r, k: rank(r, i) })).sort((a, b) => a.k - b.k).map((x) => x.r) : kept;
+  return sorted.some((r) => r.strong) || !sorted.length ? sorted : sorted.map((r) => (r.label === "จำนวนเงินรวมทั้งสิ้น" ? { ...r, strong: true } : r));
+}
+
+/**
+ * ความสูงตารางยอดรวม (pt) — แต่ละแถวพิมพ์สูงตายตัวตามสูตรนี้ (ตัวสร้าง PDF ใช้สูตรเดียวกัน)
+ * กรอบกล่องยอดรวมในหน้าออกแบบจึงพอดีตารางจริงเสมอ ติ๊กแถวเพิ่ม/ลด กรอบขยาย/หดตาม
+ * fs/enFs = ขนาดตัวอักษรเนื้อหา/ป้ายอังกฤษที่พิมพ์จริง · lh = ระยะบรรทัด · pad = ระยะบน-ล่างในแถว
+ */
+export function totalsRowHeights(rows: { label: string; strong?: boolean }[], m: { fs: number; enFs: number; lh: number; pad: number; style: TotalsStyle; en: boolean }): number[] {
+  return rows.map((r, i) => {
+    const text = m.fs * m.lh + (m.en && enLabel(r.label) ? m.enFs * 1.15 : 0) + m.pad * 2;
+    if (m.style === "grid") return text + (i ? 0.6 : 0);
+    if (!r.strong) return text;
+    return text + 2 + (m.style === "outline" ? 2 : m.style === "plain" ? 1 : 0);
+  });
+}
+export const totalsTableHeight = (rows: { label: string; strong?: boolean }[], m: Parameters<typeof totalsRowHeights>[1]) =>
+  totalsRowHeights(rows, m).reduce((a, h) => a + h, 0) + (m.style === "grid" && rows.length ? 2 : 0);
+
+/** ขนาดตัวอักษรที่พิมพ์จริงของกล่อง (แบบเดียวกับ themeStyles ของตัวสร้าง PDF) */
+export function blockFontMetrics(b: Pick<FreeBlock, "fontSize" | "lineHeight">, t: DocTheme) {
+  const size = b.fontSize !== undefined ? Math.min(FONT_MAX, Math.max(FONT_MIN, b.fontSize)) : t.fontSize;
+  const k = FONT_SCALE[t.font] * (size / 9.5), fz = (n: number) => Math.round(n * k * 10) / 10;
+  return { fs: fz(9.5), enFs: fz(6), lh: b.lineHeight ?? 1.35 };
+}
+/** ระยะขอบในของกล่อง (ตรงกับ BlockView) */
+export const blockPad = (b: Pick<FreeBlock, "kind" | "pad" | "border" | "bg">) => b.pad ?? (b.kind === "text" ? 2 : (b.border || b.bg) && b.kind !== "items" ? 4 : 0);
+/** ความสูงที่พอดีของกล่องยอดรวม ตามแถวที่แสดง */
+export function totalsBlockHeight(b: FreeBlock, t: DocTheme, rows: { label: string; strong?: boolean }[]): number {
+  const f = blockFontMetrics(b, t);
+  const h = totalsTableHeight(visibleTotals(rows, b.hide, b.order), { ...f, pad: b.rowPad ?? 2.5, style: b.totalsStyle || t.totals, en: t.bilingual && !(b.hide || []).includes("en") });
+  return Math.ceil((h + blockPad(b) * 2) * 2) / 2;
+}
 
 /**
  * ข้อมูลที่แทรกในกล่องข้อความได้ (ดึงจากฐานข้อมูลตอนพิมพ์) — {{คีย์}}
@@ -648,6 +693,7 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     })(),
     ...(b.off ? { off: true } : {}),
     ...((b.kind === "items" || b.kind === "totals") && b.rowPad !== undefined && b.rowPad !== null ? { rowPad: num(b.rowPad, 0, 20, 3) } : {}),
+    ...(b.kind === "totals" && Array.isArray(b.order) && b.order.length ? { order: [...new Set<string>(b.order.map((x: any) => str(x, 60)).filter(Boolean))].slice(0, 12) } : {}),
     ...(b.kind === "grid" ? sizes(b.colW, Math.round(num(b.cols2, 1, 20, 3)), "colW") : {}),
     ...(b.kind === "grid" ? sizes(b.rowH, Math.round(num(b.rows, 1, 40, 3)), "rowH") : {}),
   };

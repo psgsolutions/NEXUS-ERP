@@ -16,7 +16,7 @@ export function totalsRows(t: { lineTotal: number; billDiscount: number; net: nu
   const rows: DocumentTotalRow[] = [{ label: "รวมเป็นเงิน", amount: r2(t.lineTotal) }];
   if (t.billDiscount) rows.push({ label: "ส่วนลดท้ายบิล", amount: -r2(t.billDiscount) }, { label: "ยอดหลังหักส่วนลด", amount: r2(t.net) });
   const tax = String(t.taxType || "").toUpperCase();
-  if (tax === "INCLUSIVE") rows.push({ label: "มูลค่าก่อนภาษี", amount: r2(t.grand - t.vat) }, { label: "ภาษีมูลค่าเพิ่ม 7% (รวมในราคา)", amount: r2(t.vat) });
+  if (tax === "INCLUSIVE") rows.push({ label: "มูลค่าก่อนภาษี", amount: r2(t.grand - t.vat) }, { label: "ภาษีมูลค่าเพิ่ม 7% รวมในราคา", amount: r2(t.vat) });
   else if (tax !== "NONE" && tax !== "EXEMPT") rows.push({ label: "ภาษีมูลค่าเพิ่ม 7%", amount: r2(t.vat) });
   rows.push({ label: "จำนวนเงินรวมทั้งสิ้น", amount: r2(t.grand), strong: !t.wht });
   if (t.wht) rows.push({ label: "หัก ณ ที่จ่าย", amount: -r2(t.wht) }, { label: "ยอดชำระสุทธิ", amount: r2(t.payable ?? t.grand - t.wht), strong: true });

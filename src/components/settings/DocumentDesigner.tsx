@@ -17,7 +17,7 @@ import {
   type DocTheme, type DocumentDesign, type FontFamily, type ItemColumn, type Letterhead, type PerDocDesign,
 } from "@/lib/documents/design";
 import { templateLayout } from "@/lib/documents/layout-templates";
-import { dataGroups, ensureLayout, layoutIdFor, toggleData, type DataContext } from "@/lib/documents/design-data";
+import { dataGroups, ensureLayout, fitTotalsBlocks, layoutIdFor, toggleData, type DataContext } from "@/lib/documents/design-data";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import { FreeLayoutEditor } from "./FreeLayoutEditor";
 import { DataChecklist } from "./DataChecklist";
@@ -51,7 +51,7 @@ function withTemplate(d: DocumentDesign, t: (typeof TEMPLATES)[number]): Documen
 function withLayouts(d: DocumentDesign): DocumentDesign {
   const perDoc = { ...d.perDoc };
   for (const x of DESIGNABLE_DOCS) if (!perDoc[x.type]?.free?.enabled) perDoc[x.type] = { ...(perDoc[x.type] || {}), free: ensureLayout(perDoc[x.type]?.free, x.type, d.theme) };
-  return { ...d, perDoc };
+  return fitTotalsBlocks({ ...d, perDoc });
 }
 
 /** ตัวอย่างหน้าเอกสาร (หน้าแรกของ PDF จริง) ขนาดตามพื้นที่ */
@@ -229,7 +229,8 @@ export function DocumentDesigner() {
     const h = hist.current, now = Date.now();
     if (now - h.at > 600) { h.past.push(designRef.current); if (h.past.length > 100) h.past.shift(); h.future = []; bump((x) => x + 1); }
     h.at = now;
-    setDesign((d) => fn(d));
+    // กรอบยอดรวมพอดีตารางยอดรวมทุกครั้งที่แก้ (ติ๊กแถว ตัวอักษร ระยะแถว ธีม)
+    setDesign((d) => fitTotalsBlocks(fn(d)));
   }, []);
   const undo = useCallback(() => { const h = hist.current, prev = h.past.pop(); if (!prev) return; h.future.push(designRef.current); h.at = 0; setDesign(prev); bump((x) => x + 1); }, []);
   const redo = useCallback(() => { const h = hist.current, next = h.future.pop(); if (!next) return; h.past.push(designRef.current); h.at = 0; setDesign(next); bump((x) => x + 1); }, []);

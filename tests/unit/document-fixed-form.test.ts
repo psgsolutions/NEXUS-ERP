@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { CORE_TOTALS, OPTIONAL_TOTALS, columnWidthsPt, gridSizes, normalizeFreeLayout, requiredColumnsFor, BLOCK_PARTS } from "@/lib/documents/design";
+import { CORE_TOTALS, OPTIONAL_TOTALS, columnWidthsPt, gridSizes, normalizeDesign, normalizeFreeLayout, requiredColumnsFor, visibleTotals, BLOCK_PARTS } from "@/lib/documents/design";
 import { applySigning, EMPTY_SIGNING } from "@/lib/documents/esign";
-import { dataGroups } from "@/lib/documents/design-data";
-import { sampleModelFor } from "@/lib/documents/build";
+import { dataGroups, fitTotalsBlocks } from "@/lib/documents/design-data";
+import { sampleModelFor, totalsRows } from "@/lib/documents/build";
 
 describe("designer: fixed form, totals, rows/columns, stamp choice", () => {
   it("totals: only optional rows get a checkbox; VAT, sum and grand total are always shown", () => {
@@ -76,5 +76,33 @@ describe("amount in words is its own box", () => {
     expect(totals.items.some((i) => i.key === "block:words")).toBe(false);
     expect(words.items).toEqual([{ key: "block:words", label: "แสดงจำนวนเงินตัวอักษร", on: true }]);
     expect(dataGroups(layout, { docType: "delivery_note", docTitle: "ใบส่งของ", meta: [], fields: [], columns: [], totals: [] }).some((g) => g.id === "words")).toBe(false);
+  });
+});
+
+describe("totals box fits the totals table", () => {
+  const theme = normalizeDesign(null).theme;
+  const base = () => normalizeDesign({ perDoc: { quotation: { free: { enabled: true, blocks: [{ id: "t", kind: "totals", x: 300, y: 590, w: 230, h: 200 }] } } } });
+  const tb = (d: any) => d.perDoc.quotation.free.blocks.find((b: any) => b.kind === "totals");
+
+  it("height follows the ticked rows (no empty space, grows when a row is ticked)", () => {
+    const all = fitTotalsBlocks(base());
+    const rows = 7; // รวมเป็นเงิน ส่วนลด หลังหักส่วนลด VAT รวมทั้งสิ้น หัก ณ ที่จ่าย ยอดชำระสุทธิ
+    const fs = 9.5, lh = 1.35, pad = 2.5;
+    expect(tb(all).h).toBeCloseTo(Math.ceil((rows * (fs * lh + 2 * pad) + 2) * 2) / 2, 1);
+    const fewer = fitTotalsBlocks({ ...all, perDoc: { quotation: { free: { ...all.perDoc.quotation.free!, blocks: [{ ...tb(all), hide: ["t:หัก ณ ที่จ่าย", "t:ยอดชำระสุทธิ"] }] } } } });
+    expect(tb(fewer).h).toBeLessThan(tb(all).h);
+    expect(fitTotalsBlocks(all)).toBe(all); // ไม่เปลี่ยน = ออบเจกต์เดิม
+    void theme;
+  });
+
+  it("rows follow the custom order; default is the standard order", () => {
+    const rows = [{ label: "รวมเป็นเงิน" }, { label: "ภาษีมูลค่าเพิ่ม 7%" }, { label: "จำนวนเงินรวมทั้งสิ้น", strong: true }];
+    expect(visibleTotals(rows).map((r) => r.label)).toEqual(["รวมเป็นเงิน", "ภาษีมูลค่าเพิ่ม 7%", "จำนวนเงินรวมทั้งสิ้น"]);
+    expect(visibleTotals(rows, [], ["จำนวนเงินรวมทั้งสิ้น", "รวมเป็นเงิน"]).map((r) => r.label)).toEqual(["จำนวนเงินรวมทั้งสิ้น", "รวมเป็นเงิน", "ภาษีมูลค่าเพิ่ม 7%"]);
+  });
+
+  it("VAT row has no brackets", () => {
+    const labels = totalsRows({ lineTotal: 107, billDiscount: 0, net: 107, vat: 7, grand: 107, taxType: "INCLUSIVE" }).map((r) => r.label);
+    expect(labels.some((l) => /[()]/.test(l))).toBe(false);
   });
 });

@@ -18,7 +18,7 @@ import { FloatingLayer } from "@/components/ui/FloatingLayer";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import type { DocumentModel } from "@/lib/documents/model";
 import {
-  BLOCK_LABELS, BLOCK_PARTS, LABEL_KINDS, FONT_MIN, FONT_MAX, fixedBlockSize, PAPERS, pageOf, marginsOf, refitBlocks, type Margins, type PaperSize, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, columnWidthsPt, gridSizes, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
+  BLOCK_LABELS, BLOCK_PARTS, LABEL_KINDS, FONT_MIN, FONT_MAX, fixedBlockSize, PAPERS, pageOf, marginsOf, refitBlocks, type Margins, type PaperSize, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, columnWidthsPt, gridSizes, OPTIONAL_TOTALS, visibleTotals, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
   type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, type Letterhead,
 } from "@/lib/documents/design";
 import { fileToPageImage } from "./usePdfPageImage";
@@ -969,6 +969,36 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     );
   };
 
+  /**
+   * ลำดับแถวในตารางยอดรวม: เลื่อนขึ้น/ลงเองได้ · ค่าเริ่มต้น = ลำดับมาตรฐาน (รวมเป็นเงิน → ส่วนลด → ภาษี → รวมทั้งสิ้น → หัก ณ ที่จ่าย → ยอดชำระสุทธิ)
+   * แถวที่ติ๊กไม่แสดงยังอยู่ในรายการ (จาง) เพื่อจัดตำแหน่งไว้ก่อนได้
+   */
+  const totalsOrderEditor = (it: Item) => {
+    const b = it.b, all = model?.totals || [];
+    const labels = visibleTotals(all, [], b.order).map((r) => r.label);
+    const hidden = new Set(b.hide || []);
+    const move = (i: number, d: -1 | 1) => { const j = i + d; if (j < 0 || j >= labels.length) return; const n = [...labels]; [n[i], n[j]] = [n[j], n[i]]; update(it, { order: n }); };
+    if (!labels.length) return null;
+    return (
+      <div className="space-y-1 rounded-xl border border-white/10 p-2.5">
+        <div className="flex items-center gap-2">
+          <p className="text-[11.5px] font-bold text-white/70 flex-1">ลำดับแถว</p>
+          {b.order && <button type="button" className="text-[11px] text-white/50 hover:text-white" onClick={() => unset(it, "order")}>ลำดับมาตรฐาน</button>}
+        </div>
+        {labels.map((l, i) => {
+          const off = OPTIONAL_TOTALS.includes(l) && hidden.has(`t:${l}`);
+          return (
+            <div key={l} className={cn("flex items-center gap-1 min-h-7 text-[12px]", off ? "text-white/30" : "text-white/80")}>
+              <span className="flex-1 truncate" title={off ? `${l} (ไม่แสดง — ติ๊กที่ แถวที่แสดง)` : l}>{l}{off ? " · ไม่แสดง" : ""}</span>
+              <button type="button" title="เลื่อนขึ้น" disabled={i === 0} onClick={() => move(i, -1)} className="h-7 w-6 flex items-center justify-center text-white/50 hover:text-white disabled:opacity-20"><ArrowUp size={12} /></button>
+              <button type="button" title="เลื่อนลง" disabled={i === labels.length - 1} onClick={() => move(i, 1)} className="h-7 w-6 flex items-center justify-center text-white/50 hover:text-white disabled:opacity-20"><ArrowDown size={12} /></button>
+            </div>
+          );
+        })}
+        <p className="text-[11px] text-white/40">ความสูงกรอบปรับตามแถวที่แสดงอัตโนมัติ</p>
+      </div>
+    );
+  };
   /** ความสูงแถวของตารางรายการ/ยอดรวม (ระยะบน-ล่างในแถว) — บีบให้แคบได้ถึง 0 */
   const rowPadEditor = (it: Item, def: number) => (
     <Field label={`ความสูงแถว: ระยะบน-ล่าง ${it.b.rowPad ?? def} pt`}>
@@ -1128,6 +1158,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             </Field>
           </div>
         )}
+        {b.kind === "totals" && totalsOrderEditor(it)}
         {b.kind === "totals" && rowPadEditor(it, 2.5)}
         {b.kind === "totals" && (
           <Field label="รูปแบบยอดรวม">
@@ -1837,7 +1868,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                   ))}
                   {on && !multi && canEdit && !b.locked && (b.kind === "items" || b.kind === "grid") && dividerHandles(it)}
                   {/* จุดจับปรับขนาด: ทุกมุมและทุกด้าน (เส้นแนวนอน = ซ้าย/ขวา · แนวตั้ง = บน/ล่าง) */}
-                  {on && !multi && canEdit && !b.locked && !fixedBlockSize(b, stampSize) && (b.kind === "line" ? (b.h > b.w ? ["n", "s"] : ["e", "w"]) : ["nw", "n", "ne", "e", "se", "s", "sw", "w"]).map((ed) => (
+                  {on && !multi && canEdit && !b.locked && !fixedBlockSize(b, stampSize) && (b.kind === "line" ? (b.h > b.w ? ["n", "s"] : ["e", "w"]) : b.kind === "totals" ? ["e", "w"] : ["nw", "n", "ne", "e", "se", "s", "sw", "w"]).map((ed) => (
                     <div key={ed} onPointerDown={(e) => start(e, it, "size", ed)} title={ed.length === 2 ? "ลากปรับขนาด (Shift = คงสัดส่วน)" : "ลากปรับขนาดด้านนี้"}
                       className={cn("absolute w-2 h-2 bg-white border border-[#0d9488] pointer-events-auto z-30", HANDLE_POS[ed])} />
                   ))}

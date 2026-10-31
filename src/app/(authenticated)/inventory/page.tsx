@@ -12,7 +12,8 @@ import {
   Printer,
   ScanBarcode, 
   Layout, 
-  History, 
+  History,
+  ClipboardCheck, 
   Box, 
   TrendingUp, 
   BarChart3,
@@ -564,6 +565,13 @@ export default function InventoryPage() {
               onClick={() => router.push("/inventory/stock-card")}
             >
               <History size={14} /> บัญชีคุมสินค้า
+            </PillButton>
+            <PillButton
+              variant="glass"
+              className="gap-1.5"
+              onClick={() => router.push("/inventory/stock-count")}
+            >
+              <ClipboardCheck size={14} /> ตรวจนับสต็อก
             </PillButton>
             <PillButton 
               variant="confirm"

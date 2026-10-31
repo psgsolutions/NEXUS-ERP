@@ -32,6 +32,8 @@ export interface StockMovement {
   companyId: string;
   /** OUT ของสินค้าที่จองไว้แล้ว (เช่น ใบสั่งขายที่แปลงจากใบเสนอราคา): ลดยอดจอง ไม่ลดยอดพร้อมใช้ซ้ำ */
   fromReserved?: boolean;
+  /** ผู้เรียกบันทึกบัญชีเอง (เช่น ตรวจนับสต็อก: ผลต่างไม่ใช่ต้นทุนขาย) — OUT ไม่ลงต้นทุนขายอัตโนมัติ */
+  skipGl?: boolean;
 }
 
 /**
@@ -184,7 +186,7 @@ export async function processStockMovements(
 
       // 3.3 Automated Double-Entry GL Posting (stock issue -> COGS)
       //     ผังบัญชีเดียวกับ AccountingEngine / การรับสินค้า: Dr ต้นทุนขาย 5111-00 / Cr สินค้าคงเหลือ 1141-00
-      if (type === "OUT" && totalValue > 0) {
+      if (type === "OUT" && totalValue > 0 && !movement.skipGl) {
         const journalRef = adminDb.collection(`companies/${companyId}/journal_entries`).doc();
         const amount = Math.round(totalValue * 100) / 100;
         transaction.set(journalRef, {

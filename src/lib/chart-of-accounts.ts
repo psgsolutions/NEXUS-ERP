@@ -67,6 +67,8 @@ export const CHART_OF_ACCOUNTS: Account[] = [
   { code: "5305-00", name: "ค่าสาธารณูปโภค", type: "expense" },
   { code: "5306-00", name: "ค่าธรรมเนียมธนาคาร", type: "expense" },
   { code: "5310-00", name: "ค่าเสื่อมราคา", type: "expense" },
+  // ผลต่างจากการตรวจนับสต็อก: ขาด = เดบิต (ขาดทุน) · เกิน = เครดิต (ลดค่าใช้จ่าย)
+  { code: "5311-00", name: "ผลต่างจากการตรวจนับสินค้า", type: "expense" },
   { code: "5411-00", name: "ดอกเบี้ยจ่าย", type: "expense" },
   { code: "5511-00", name: "ภาษีเงินได้นิติบุคคล", type: "expense" },
 ];

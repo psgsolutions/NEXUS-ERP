@@ -258,7 +258,9 @@ service cloud.firestore {
           // อัตราค่าแรงผู้รับเหมา: /api/procurement/subcontractor-rates (ฝ่ายจัดซื้อ)
           'subcontractor_rates',
           // รหัสคำขอกันบันทึกซ้ำ (เน็ตหลุดแล้วกดซ้ำ): server เท่านั้น
-          'request_keys'];
+          'request_keys',
+          // ใบตรวจนับสต็อก: บันทึกผ่าน /api/inventory/stock-count (ปรับสต็อกและลงบัญชีพร้อมกัน)
+          'stock_counts'];
       }
       // ข้อมูลการเงินอ่านได้เฉพาะตำแหน่งที่เกี่ยวข้อง (ส่วนอื่นอ่านได้ทุกคนในบริษัท)
       function restrictedRead(collection) {

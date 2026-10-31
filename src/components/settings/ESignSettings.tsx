@@ -3,14 +3,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ImagePlus, Loader2, PenLine, Save, Stamp, Trash2 } from "lucide-react";
-import { GlassCard, PillButton, PillCheckbox, PillSelect, cn } from "@/components/ui/Base";
+import { GlassCard, PillButton, PillCheckbox, PillInput, PillSelect, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import { DESIGNABLE_DOCS, sampleModelFor } from "@/lib/documents/build";
-import { EMPTY_SIGNING, STAMP_MAX, applySigning, type SigningConfig } from "@/lib/documents/esign";
+import { EMPTY_SIGNING, SIGN_MM, SIGN_RATIO, STAMP_MAX, STAMP_MM, applySigning, mmToPt, ptToMm, type SigningConfig } from "@/lib/documents/esign";
 import { toDateStr } from "@/lib/documents/format";
 import type { DocumentProfile } from "@/lib/documents/model";
 import { CHECKER, prepareMark } from "./signature-tools";
@@ -20,6 +20,25 @@ import { CHECKER, prepareMark } from "./signature-tools";
  * ลายเซ็นเป็นของผู้ใช้แต่ละคน (ผูกกับรหัสผู้ใช้) ตั้งที่หน้า "ลายเซ็นของฉัน" — เจ้าของตั้งเอง หรือฝ่ายบุคคลตั้งให้
  * ระบบใส่ให้เฉพาะเอกสารที่ออกจริง (ไม่ใช่ฉบับร่าง/รออนุมัติ/ยกเลิก) · ตอนสร้างใบเสนอราคาเลือกไม่ใส่ได้
  */
+/** ขนาดเป็นมิลลิเมตร: ปุ่มขนาดมาตรฐาน + พิมพ์เอง */
+function MmSize({ label, value, lim, onChange }: { label: string; value: number; lim: { min: number; max: number; presets: number[] }; onChange: (mm: number) => void }) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => setText(String(value)), [value]);
+  const commit = (v: string) => { const n = Number(v); if (Number.isFinite(n) && n > 0) onChange(Math.min(lim.max, Math.max(lim.min, Math.round(n * 10) / 10))); else setText(String(value)); };
+  return (
+    <div className="space-y-1">
+      <p className="text-[11.5px] text-white/55">{label}</p>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {lim.presets.map((p) => (
+          <button key={p} type="button" onClick={() => onChange(p)} className={cn("h-7 px-2.5 rounded-full text-[12px] border", Math.abs(value - p) < 0.05 ? "border-nexus-teal/60 bg-nexus-teal/15 text-nexus-teal" : "border-white/10 text-white/65 hover:text-white")}>{p} มม.</button>
+        ))}
+        <PillInput inputMode="decimal" value={text} onChange={(e) => setText(e.target.value.replace(/[^\d.]/g, ""))} onBlur={(e) => commit(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") commit((e.target as HTMLInputElement).value); }} className="h-7 w-[70px] text-right font-mono text-[12px]" aria-label={`${label} (มม.)`} />
+        <span className="text-[11.5px] text-white/45">มม. ({lim.min}–{lim.max})</span>
+      </div>
+    </div>
+  );
+}
+
 export function ESignSettings() {
   const { companyId, roles } = useAuth();
   const { showAlert } = useSystemDialog();
@@ -63,7 +82,7 @@ export function ESignSettings() {
   const save = async () => {
     setSaving(true);
     try {
-      const res = await apiFetch("/api/settings/document-signing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "saveCompany", signing: { stamp: cfg.stamp, stampSize: cfg.stampSize, assign: cfg.assign } }) });
+      const res = await apiFetch("/api/settings/document-signing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "saveCompany", signing: { stamp: cfg.stamp, stampSize: cfg.stampSize, signWidth: cfg.signWidth, assign: cfg.assign } }) });
       const d = await res.json();
       if (!res.ok || !d.success) throw new Error(d.error || "บันทึกไม่สำเร็จ");
       setCfg(d.signing); setDirty(false);
@@ -100,14 +119,35 @@ export function ESignSettings() {
             <div className="space-y-2 flex-1 min-w-0">
               <p className="text-[13px] text-white/80 font-semibold">ตราประทับบริษัท</p>
               <p className="text-[11.5px] text-white/45 leading-snug">สแกน/ถ่ายรูปตราบนกระดาษขาว ระบบทำพื้นขาวเป็นโปร่งใสและตัดขอบให้ · ไฟล์ PNG พื้นโปร่งใสได้ผลดีที่สุด</p>
-              <label className="block text-[11.5px] text-white/55">ขนาดบนเอกสาร {cfg.stampSize} pt
-                <input type="range" min={40} max={140} step={2} value={cfg.stampSize} onChange={(e) => set({ stampSize: Number(e.target.value) })} className="w-full accent-[#0d9488] h-7" />
-              </label>
+              <MmSize label="ขนาดตราบนกระดาษ (ด้านยาว)" value={ptToMm(cfg.stampSize)} lim={STAMP_MM} onChange={(mm) => set({ stampSize: mmToPt(mm) })} />
               <div className="flex gap-2">
                 <PillButton variant="glass" className="h-8 px-3 text-xs" onClick={() => stampRef.current?.click()}><ImagePlus size={13} /> {cfg.stamp ? "เปลี่ยนรูปตรา" : "อัปโหลดตรา"}</PillButton>
                 {cfg.stamp && <PillButton variant="ghost" className="h-8 px-3 text-xs text-danger" onClick={() => set({ stamp: "" })}><Trash2 size={13} /> เอาตราออก</PillButton>}
               </div>
               <input ref={stampRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onStamp} />
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* ขนาดจริงบนกระดาษ (พิมพ์ 100% ไม่ย่อ/ขยาย) */}
+        <GlassCard className="p-5 space-y-3">
+          <div>
+            <p className="text-[14px] font-bold text-white">ขนาดจริงบนกระดาษ</p>
+            <p className="text-[12px] text-white/45">ตั้งเป็นมิลลิเมตร — ลายเซ็นและตราพิมพ์ขนาดนี้ทุกเอกสาร (เมื่อพิมพ์ที่ 100% ไม่ย่อ/ขยายตามหน้ากระดาษ) · กรอบด้านล่างแสดงขนาดโดยประมาณบนจอ</p>
+          </div>
+          <MmSize label="ความกว้างลายเซ็น" value={ptToMm(cfg.signWidth)} lim={SIGN_MM} onChange={(mm) => set({ signWidth: mmToPt(mm) })} />
+          <div className="flex items-end gap-4 flex-wrap rounded-xl bg-white p-3">
+            <div className="flex flex-col items-center gap-1">
+              <div className="border border-dashed border-slate-400 flex items-center justify-center overflow-hidden" style={{ width: `${ptToMm(cfg.signWidth)}mm`, height: `${ptToMm(cfg.signWidth) * SIGN_RATIO}mm` }}>
+                {cfg.signers[0]?.image ? <img src={cfg.signers[0].image} alt="ตัวอย่างลายเซ็น" className="max-w-full max-h-full object-contain" /> : <span className="text-[10px] text-slate-400">ลายเซ็น</span>}
+              </div>
+              <span className="text-[10.5px] text-slate-500">ลายเซ็น {ptToMm(cfg.signWidth)} × {Math.round(ptToMm(cfg.signWidth) * SIGN_RATIO * 10) / 10} มม.</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <div className="border border-dashed border-slate-400 flex items-center justify-center overflow-hidden" style={{ width: `${ptToMm(cfg.stampSize)}mm`, height: `${ptToMm(cfg.stampSize)}mm` }}>
+                {cfg.stamp ? <img src={cfg.stamp} alt="ตัวอย่างตรา" className="max-w-full max-h-full object-contain" /> : <span className="text-[10px] text-slate-400">ตรา</span>}
+              </div>
+              <span className="text-[10.5px] text-slate-500">ตรา {ptToMm(cfg.stampSize)} มม.</span>
             </div>
           </div>
         </GlassCard>

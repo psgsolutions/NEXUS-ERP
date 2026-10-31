@@ -17,8 +17,10 @@ export interface SlotRule { signer?: string; stamp?: boolean }
 export interface SigningConfig {
   /** ตราประทับบริษัท (PNG พื้นโปร่งใส) */
   stamp: string;
-  /** ขนาดตราบนเอกสาร (pt) */
+  /** ขนาดตราบนเอกสาร (pt — ตั้งเป็นมิลลิเมตรที่หน้าตั้งค่า): ด้านยาวของตรา */
   stampSize: number;
+  /** ความกว้างลายเซ็นบนเอกสาร (pt — ตั้งเป็นมิลลิเมตร) · ความสูง = กว้าง × SIGN_RATIO */
+  signWidth: number;
   signers: Signer[];
   assign: Record<string, Record<string, SlotRule>>;
 }
@@ -26,7 +28,18 @@ export interface SigningConfig {
 export const STAMP_MAX = 300_000;
 export const SIGN_MAX = 150_000;
 export const MAX_SIGNERS = 60;
-export const EMPTY_SIGNING: SigningConfig = { stamp: "", stampSize: 72, signers: [], assign: {} };
+/**
+ * ขนาดจริงบนกระดาษ: 1 มม. = 72/25.4 pt (พิมพ์ที่ 100% ไม่ย่อ/ขยาย)
+ * มาตรฐานที่ใช้บ่อย: ตราบริษัท 38–45 มม. · ลายเซ็นกว้าง 45–55 มม.
+ */
+export const mmToPt = (mm: number) => Math.round((mm * 72) / 25.4 * 100) / 100;
+export const ptToMm = (pt: number) => Math.round((pt * 25.4) / 72 * 10) / 10;
+export const STAMP_MM = { min: 20, max: 60, def: 40, presets: [35, 38, 40, 42, 45] };
+export const SIGN_MM = { min: 30, max: 80, def: 50, presets: [40, 45, 50, 55, 60] };
+/** สัดส่วนกรอบลายเซ็น สูง/กว้าง (ลายเซ็นถูกตัดขอบว่างแล้ว จัดให้พอดีกรอบโดยคงสัดส่วน) */
+export const SIGN_RATIO = 0.32;
+export const signBoxOf = (signWidth: number) => ({ w: signWidth, h: Math.round(signWidth * SIGN_RATIO * 100) / 100 });
+export const EMPTY_SIGNING: SigningConfig = { stamp: "", stampSize: mmToPt(STAMP_MM.def), signWidth: mmToPt(SIGN_MM.def), signers: [], assign: {} };
 
 const str = (v: any, max = 120) => String(v ?? "").trim().slice(0, max);
 const IMG = /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/;
@@ -54,8 +67,9 @@ export function normalizeSigning(raw: any): SigningConfig {
     }
     if (Object.keys(out).length) assign[type] = out;
   }
-  const size = Number(r.stampSize);
-  return { stamp: img(r.stamp, STAMP_MAX), stampSize: Number.isFinite(size) ? Math.min(140, Math.max(40, Math.round(size))) : 72, signers, assign };
+  const size = Number(r.stampSize), sw = Number(r.signWidth);
+  const clampPt = (v: number, lim: { min: number; max: number }, def: number) => (Number.isFinite(v) && v > 0 ? Math.min(mmToPt(lim.max), Math.max(mmToPt(lim.min), v)) : mmToPt(def));
+  return { stamp: img(r.stamp, STAMP_MAX), stampSize: clampPt(size, STAMP_MM, STAMP_MM.def), signWidth: clampPt(sw, SIGN_MM, SIGN_MM.def), signers, assign };
 }
 
 /**
@@ -87,5 +101,5 @@ export function applySigning(doc: DocumentModel, cfg: SigningConfig, labels: str
     if (signer && !signed[real]?.image) for (const k of keys) signed[k] = { ...signed[real], image: signer.image, name: signer.name, ...(signer.position ? { title: signer.position } : {}), date: signed[real]?.date || doc.date };
     if (rule.stamp && cfg.stamp) slots.push(...keys);
   }
-  return { ...doc, signed, ...(cfg.stamp && (slots.length || stampBlock) ? { stamp: { image: cfg.stamp, size: cfg.stampSize, slots } } : {}) };
+  return { ...doc, signed, signSize: signBoxOf(cfg.signWidth || mmToPt(SIGN_MM.def)), ...(cfg.stamp && (slots.length || stampBlock) ? { stamp: { image: cfg.stamp, size: cfg.stampSize, slots } } : {}) };
 }

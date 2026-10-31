@@ -18,7 +18,7 @@ import { FloatingLayer } from "@/components/ui/FloatingLayer";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import type { DocumentModel } from "@/lib/documents/model";
 import {
-  BLOCK_LABELS, BLOCK_PARTS, LABEL_KINDS, FONT_MIN, FONT_MAX, fixedBlockSize, PAPERS, pageOf, marginsOf, refitBlocks, type Margins, type PaperSize, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, columnWidthsPt, gridSizes, OPTIONAL_TOTALS, visibleTotals, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
+  BLOCK_LABELS, BLOCK_PARTS, LABEL_KINDS, FONT_MIN, FONT_MAX, fixedBlockSize, PAPERS, pageOf, marginsOf, refitBlocks, type Margins, type PaperSize, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, blockPad, themeLine, tint, columnWidthsPt, gridSizes, OPTIONAL_TOTALS, visibleTotals, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
   type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, type Letterhead,
 } from "@/lib/documents/design";
 import { fileToPageImage } from "./usePdfPageImage";
@@ -289,7 +289,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const overRef = useRef<Map<string, FreeBlock> | null>(null);
   const setOver = (m: Map<string, FreeBlock> | null) => { overRef.current = m; setOverState(m); };
   // หน้ากระดาษแยกชั้นทีละกล่อง: ลากแล้วภาพตามทันที วาดใหม่เฉพาะกล่องที่เปลี่ยนเนื้อหา/ขนาด
-  const { base: layerBase, sprites, busy, error } = useLayerSprites(model, S);
+  const { base: layerBase, sprites, blank, busy, error } = useLayerSprites(model, S);
   const drawn = !!layerBase || sprites.size > 0;
 
   // ---------- ย้อนกลับ/ทำซ้ำ: ประวัติอยู่ที่หน้าหลัก (รวมทุกการแก้ของการออกแบบ) ----------
@@ -303,7 +303,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   /** ขอบกระดาษสำหรับจัดวาง (เส้นนำ/ดูดติด/จัดชิดขอบ) */
   const headKinds = new Set((letterhead?.blocks || []).filter((b) => DEDUP.includes(b.kind)).map((b) => b.kind));
   // ตราประทับ/ลายเซ็น: ขนาดจริงเสมอ (ย่อ/ขยายไม่ได้)
-  const sized = (b: FreeBlock): FreeBlock => { const f = fixedBlockSize(b, stampSize, theme.fontSize); return f ? { ...b, ...f } : b; };
+  const sized = (b: FreeBlock): FreeBlock => { const f = fixedBlockSize(b, stampSize, theme.fontSize, model?.signSize); return f ? { ...b, ...f } : b; };
   const items: Item[] = [
     ...(letterhead?.blocks || []).filter((b) => !b.off).map((b) => ({ key: `h:${b.id}`, zone: "head" as Zone, b: sized(over?.get(`h:${b.id}`) ?? b) })),
     ...(bodyOn ? layout.blocks.filter((b) => !headKinds.has(b.kind) && !b.off).map((b) => ({ key: `d:${b.id}`, zone: "doc" as Zone, b: sized(over?.get(`d:${b.id}`) ?? b) })) : []),
@@ -845,11 +845,13 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   /** เลือกสี: สีของธีม (เปลี่ยนชุดสีแล้วเปลี่ยนตาม — แนะนำ) หรือสีกำหนดเอง */
   const colorRow = (it: Item, label: string, key: "color" | "bg" | "border" | "headBg" | "lineColor") => {
     const v = it.b[key];
+    // ไม่ได้ตั้งเอง: แสดงสีที่ใช้อยู่จริงตามแม่แบบ
+    const effective = resolveColor(v, theme) || (key === "color" ? theme.text : key === "lineColor" ? themeLine(theme) : key === "headBg" ? (theme.table === "solid" ? theme.primary : tint(theme.primary, 0.9)) : undefined);
     return (
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <span className="text-[12px] text-white/60 w-[64px]">{label}</span>
-          <input type="color" value={resolveColor(v, theme) || "#ffffff"} onChange={(e) => update(it, { [key]: e.target.value } as any)} className="w-8 h-8 rounded bg-transparent border border-white/10" aria-label={label} title="สีกำหนดเอง (ไม่เปลี่ยนตามชุดสี)" />
+          <input type="color" value={effective || "#ffffff"} onChange={(e) => update(it, { [key]: e.target.value } as any)} className="w-8 h-8 rounded bg-transparent border border-white/10" aria-label={label} title="สีกำหนดเอง (ไม่เปลี่ยนตามชุดสี)" />
           {v && <button type="button" className="text-[12px] text-white/50 hover:text-white" onClick={() => unset(it, key)}>{key === "color" || key === "headBg" || key === "lineColor" ? "ตามแม่แบบ" : "ไม่มี"}</button>}
         </div>
         <div className="flex flex-wrap gap-1 pl-[72px]">
@@ -1150,8 +1152,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             <PillCheckbox label="ยืดตารางเต็มกล่อง (เส้นคอลัมน์ถึงล่าง)" checked={!!b.fill} onChange={(e) => update(it, { fill: e.target.checked })} />
             {rowPadEditor(it, 3.5)}
             <Field label="รูปแบบตาราง">
-              <PillSelect value={b.table || ""} onChange={(e) => (e.target.value ? update(it, { table: e.target.value as any }) : unset(it, "table"))} className="h-8 w-full text-sm">
-                <option value="">ตามแม่แบบ</option><option value="tint">หัวตารางสีอ่อน</option><option value="solid">หัวตารางสีทึบ</option><option value="lines">เส้นบาง</option><option value="grid">เส้นครบ</option><option value="zebra">แถวสลับสี</option>
+              <PillSelect value={b.table || theme.table} onChange={(e) => (e.target.value === theme.table && !b.table ? undefined : update(it, { table: e.target.value as any }))} className="h-8 w-full text-sm">
+                {([["tint", "หัวตารางสีอ่อน"], ["solid", "หัวตารางสีทึบ"], ["lines", "เส้นบาง"], ["grid", "เส้นครบ"], ["zebra", "แถวสลับสี"]] as const).map(([v, l]) => <option key={v} value={v}>{l}{v === theme.table ? " (แม่แบบ)" : ""}</option>)}
               </PillSelect>
             </Field>
             {colorRow(it, "พื้นหัวตาราง", "headBg" as any)}
@@ -1165,15 +1167,15 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         {b.kind === "totals" && rowPadEditor(it, 2.5)}
         {b.kind === "totals" && (
           <Field label="รูปแบบยอดรวม">
-            <PillSelect value={b.totalsStyle || ""} onChange={(e) => (e.target.value ? update(it, { totalsStyle: e.target.value as any }) : unset(it, "totalsStyle"))} className="h-8 w-full text-sm">
-              <option value="">ตามแม่แบบ</option><option value="solid">พื้นสีเต็ม</option><option value="outline">กรอบสี</option><option value="plain">เส้นคั่น</option><option value="grid">ตารางป้าย/ยอด</option>
+            <PillSelect value={b.totalsStyle || theme.totals} onChange={(e) => (e.target.value === theme.totals && !b.totalsStyle ? undefined : update(it, { totalsStyle: e.target.value as any }))} className="h-8 w-full text-sm">
+              {([["solid", "พื้นสีเต็ม"], ["outline", "กรอบสี"], ["plain", "เส้นคั่น"], ["grid", "ตารางป้าย/ยอด"]] as const).map(([v, l]) => <option key={v} value={v}>{l}{v === theme.totals ? " (แม่แบบ)" : ""}</option>)}
             </PillSelect>
           </Field>
         )}
         {b.kind === "party" && (
           <Field label="กรอบข้อมูลลูกค้า">
-            <PillSelect value={b.partyStyle || ""} onChange={(e) => (e.target.value ? update(it, { partyStyle: e.target.value as any }) : unset(it, "partyStyle"))} className="h-8 w-full text-sm">
-              <option value="">ตามแม่แบบ</option><option value="accent-bar">แถบสีด้านซ้าย</option><option value="boxed">กรอบเต็ม</option><option value="plain">เส้นใต้</option><option value="none">ไม่มีกรอบ</option>
+            <PillSelect value={b.partyStyle || theme.party} onChange={(e) => (e.target.value === theme.party && !b.partyStyle ? undefined : update(it, { partyStyle: e.target.value as any }))} className="h-8 w-full text-sm">
+              {([["accent-bar", "แถบสีด้านซ้าย"], ["boxed", "กรอบเต็ม"], ["plain", "เส้นใต้"], ["none", "ไม่มีกรอบ"]] as const).map(([v, l]) => <option key={v} value={v}>{l}{v === theme.party ? " (แม่แบบ)" : ""}</option>)}
             </PillSelect>
           </Field>
         )}
@@ -1232,7 +1234,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             <p className="text-[11.5px] font-bold text-white/70">{["image", "logo", "stamp", "sign"].includes(b.kind) ? "กรอบ · พื้น · มุม" : "มุม"}</p>
             {["image", "logo", "stamp", "sign"].includes(b.kind) && <>{colorRow(it, "พื้นหลัง", "bg")}{colorRow(it, "กรอบ", "border")}</>}
             {<>
-            <Field label={`มุม ${b.radii ? "แยกแต่ละมุม" : b.radius === undefined ? "ตามแม่แบบ" : b.radius === 0 ? "เหลี่ยม" : `โค้ง ${b.radius} pt`}`}>
+            <Field label={`มุม ${b.radii ? "แยกแต่ละมุม" : (b.radius ?? (theme.rounded ? 4 : 0)) === 0 ? "เหลี่ยม" : `โค้ง ${b.radius ?? (theme.rounded ? 4 : 0)} pt`}${!b.radii && b.radius === undefined ? " (แม่แบบ)" : ""}`}>
               <div className="flex items-center gap-2">
                 <input type="range" min={0} max={30} step={1} value={b.radius ?? (theme.rounded ? 4 : 0)} onChange={(e) => update(it, { radius: Number(e.target.value) })} className="flex-1 accent-[#0d9488] h-8" />
                 <button type="button" className="text-[11px] text-white/50 hover:text-white" onClick={() => update(it, { radius: 0 })}>เหลี่ยม</button>
@@ -1412,11 +1414,14 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   };
   const SIZES = [3, 4, 5, 6, 7, 8, 9, 9.5, 10, 10.5, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 32, 36, 40, 44, 48, 56];
   const textSize = t0 ? t0.fontSize ?? theme.fontSize : theme.fontSize;
-  const colorChips = (value: string | undefined, onPick: (v: string | undefined) => void, none?: string) => (
+  /** มุมโค้งที่กล่องใช้อยู่เมื่อไม่ได้ตั้งเอง (ตรงกับตัวสร้าง PDF) */
+  const themeRadius = theme.rounded ? 4 : 0;
+  /** ชิปสี: ช่องแรกแสดงสีที่ใช้อยู่จริง (ไม่ได้ตั้ง = สีตามแม่แบบ fallback) */
+  const colorChips = (value: string | undefined, onPick: (v: string | undefined) => void, none?: string, fallback?: string) => (
     <div className="flex items-center gap-1">
-      <label title="เลือกสีเอง" className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-white/10 cursor-pointer">
-        <span className="w-5 h-5 rounded border border-white/30" style={{ background: resolveColor(value, theme) || "transparent" }} />
-        <input type="color" className="sr-only" value={resolveColor(value, theme) || "#000000"} onChange={(e) => onPick(e.target.value)} />
+      <label title={value ? "เลือกสีเอง" : fallback ? "สีตามแม่แบบ — คลิกเพื่อเลือกสีเอง" : "เลือกสีเอง"} className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-white/10 cursor-pointer">
+        <span className="w-5 h-5 rounded border border-white/30" style={{ background: resolveColor(value, theme) || fallback || "transparent" }} />
+        <input type="color" className="sr-only" value={resolveColor(value, theme) || fallback || "#000000"} onChange={(e) => onPick(e.target.value)} />
       </label>
       {Object.entries(COLOR_TOKENS).map(([tok, name]) => (
         <button key={tok} type="button" title={`${name}ของธีม`} onClick={() => onPick(tok)} className={cn("w-5 h-5 rounded-full border", value === tok ? "border-white" : "border-white/20")} style={{ background: resolveColor(tok, theme) }} />
@@ -1640,9 +1645,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           <RGroup label="แบบอักษร">
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-1">
-                <RSelect width={160} title="ฟอนต์" value={t0.font || ""} onChange={(v) => patchSel(textSel, { font: (v || undefined) as FontFamily | undefined })}>
-                  <option value="">ตามธีม ({FONT_LABELS[theme.font].split(" (")[0]})</option>
-                  {(Object.keys(FONT_LABELS) as FontFamily[]).map((f) => <option key={f} value={f}>{FONT_LABELS[f].split(" (")[0]}</option>)}
+                <RSelect width={160} title="ฟอนต์" value={t0.font || theme.font} onChange={(v) => patchSel(textSel, { font: (v === theme.font ? undefined : v) as FontFamily | undefined })}>
+                  {(Object.keys(FONT_LABELS) as FontFamily[]).map((f) => <option key={f} value={f}>{FONT_LABELS[f].split(" (")[0]}{f === theme.font ? " (ธีม)" : ""}</option>)}
                 </RSelect>
                 <RSelect width={72} title="ขนาดตัวอักษร (pt)" value={String(textSize)} onChange={(v) => patchSel(textSel, { fontSize: Number(v) })}>
                   {[...new Set([...SIZES, textSize])].sort((a, b) => a - b).map((v) => <option key={v} value={String(v)}>{Math.round(v * 100) / 100}</option>)}
@@ -1657,7 +1661,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                 <RIcon title="ขีดฆ่า" on={!!t0.strike} onClick={() => patchSel(textSel, { strike: !t0.strike || undefined })}><Strikethrough size={15} /></RIcon>
                 <span className="w-px h-5 bg-white/10 mx-1" />
                 <span className="text-[11px] text-white/50">สี</span>
-                {colorChips(t0.color, (v) => patchSel(textSel, { color: v }), "ตามแม่แบบ")}
+                {colorChips(t0.color, (v) => patchSel(textSel, { color: v }), "ตามแม่แบบ", theme.text)}
               </div>
             </div>
           </RGroup>
@@ -1724,14 +1728,13 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           )}
           {!["line", "shape", "rect"].includes(s0.kind) && (
             <RGroup label="มุม · ขอบใน">
-              <RSelect width={112} title="มุมโค้ง (ปรับแยกมุมที่แผงขวา)" value={String(s0.radii ? "x" : s0.radius ?? "")} onChange={(v) => { if (v !== "x") patchSel(boxSel, { radius: v === "" ? undefined : Number(v), radii: undefined }); }}>
+              <RSelect width={112} title="มุมโค้ง (ปรับแยกมุมที่แผงขวา)" value={String(s0.radii ? "x" : s0.radius ?? themeRadius)} onChange={(v) => { if (v !== "x") patchSel(boxSel, { radius: Number(v), radii: undefined }); }}>
                 {s0.radii && <option value="x">แยกแต่ละมุม</option>}
-                <option value="">มุมตามแม่แบบ</option>
-                {[...new Set([0, 2, 4, 8, 12, 20, 30, ...(s0.radius === undefined ? [] : [s0.radius])])].sort((a, b) => a - b).map((v) => <option key={v} value={String(v)}>{v ? `โค้ง ${v}` : "เหลี่ยม"}</option>)}
+                {[...new Set([0, 2, 4, 8, 12, 20, 30, s0.radius ?? themeRadius])].sort((a, b) => a - b).map((v) => <option key={v} value={String(v)}>{v ? `โค้ง ${v}` : "เหลี่ยม"}{s0.radius === undefined && v === themeRadius ? " (แม่แบบ)" : ""}</option>)}
               </RSelect>
               {TEXT_BLOCKS.includes(s0.kind) && s0.kind !== "items" && (
-                <RSelect width={120} title="ระยะห่างจากกรอบถึงข้อความ" value={String(s0.pad ?? "")} onChange={(v) => patchSel(boxSel, { pad: v === "" ? undefined : Number(v) })}>
-                  <option value="">ขอบใน อัตโนมัติ</option>{[...new Set([0, 2, 4, 6, 8, 12, 16, ...(s0.pad === undefined ? [] : [s0.pad])])].sort((a, b) => a - b).map((v) => <option key={v} value={String(v)}>ขอบใน {v}</option>)}
+                <RSelect width={120} title="ระยะห่างจากกรอบถึงข้อความ" value={String(s0.pad ?? blockPad(s0))} onChange={(v) => patchSel(boxSel, { pad: Number(v) })}>
+                  {[...new Set([0, 2, 4, 6, 8, 12, 16, s0.pad ?? blockPad(s0)])].sort((a, b) => a - b).map((v) => <option key={v} value={String(v)}>ขอบใน {v}{s0.pad === undefined && v === blockPad(s0) ? " (อัตโนมัติ)" : ""}</option>)}
                 </RSelect>
               )}
             </RGroup>
@@ -1841,7 +1844,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
               const b = it.b, on = sel.includes(it.key);
               const frame = b.kind === "rect" || b.kind === "grid";
               // กล่องใหม่ที่ยังวาดไม่เสร็จ: เส้นประให้เห็นตำแหน่ง
-              const fresh = drawn && !sprites.has(it.key);
+              // กล่องใหม่ที่ยังวาดไม่เสร็จ (ไม่ใช่กล่องที่ข้อมูลว่าง — กล่องว่างไม่มีกรอบบนกระดาษ เห็นเส้นจางเฉพาะตอนชี้)
+              const fresh = drawn && !sprites.has(it.key) && !blank.has(it.key);
               return (
                 <div key={it.key} onPointerDown={(e) => start(e, it, "move")} onDoubleClick={(e) => { e.stopPropagation(); setSel([it.key]); if (b.kind === "text" && canEdit) setEditing(it.key); }}
                   className={cn("absolute group", canEdit ? "cursor-move" : "cursor-pointer",

@@ -128,7 +128,7 @@ describe("design tools: shapes, corners, flow, margins, blank page, document rul
     expect(n.blocks.find((b) => b.id === "b")).toMatchObject({ signer: "p1" });
     expect(n.blocks.find((b) => b.id === "b")!.slot).toBeUndefined();
     const image = "data:image/png;base64,AAAA";
-    const cfg = { stamp: "", stampSize: 72, signers: [{ id: "p1", name: "สมชาย", position: "ผู้จัดการ", image }], assign: {} };
+    const cfg = { stamp: "", stampSize: 72, signWidth: 142, signers: [{ id: "p1", name: "สมชาย", position: "ผู้จัดการ", image }], assign: {} };
     const design = normalizeDesign({ perDoc: { quotation: { free: n } } });
     const doc = applySigning(sampleModelFor("quotation", { name: "ทดสอบ", design } as any, "2026-10-26"), cfg, []);
     expect(doc.signed?.["@p1"]).toMatchObject({ image, name: "สมชาย" });

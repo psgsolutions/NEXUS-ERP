@@ -79,7 +79,7 @@ export function themeStyles(t: DocTheme, lh = 1.35, radius?: number) {
     thText: { fontSize: fz(8.5), fontWeight: "bold", paddingHorizontal: 4 },
     td: { paddingHorizontal: 4 },
     // จำนวนเงินตัวอักษร: ข้อความล้วน ไม่มีกรอบ/พื้น (ต้องการกรอบ วาดกรอบเองในหน้าออกแบบ)
-    words: { fontWeight: "bold", textAlign: "center" },
+    words: { textAlign: "center" },
     totalRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 2.5, paddingHorizontal: 6 },
     signBox: { flex: 1, alignItems: "center" },
     signLine: { width: "85%", borderBottomWidth: 0.8, borderColor: "#888888", height: 28 },
@@ -474,7 +474,8 @@ export function SectionItems({ c }: { c: Ctx }) {
 }
 
 export function SectionWords({ c, align }: { c: Ctx; align?: "left" | "center" | "right" }) {
-  return c.doc.amountInWords !== undefined ? <T style={[c.s.words, align ? { textAlign: align } : {}]}>({amountInWords(c.doc.amountInWords)})</T> : null;
+  // จำนวนเงินตัวอักษร: ข้อความล้วน ไม่มีวงเล็บ/กรอบ (รูปแบบตัวอักษร กรอบ พื้น ตั้งที่กล่องเอง)
+  return c.doc.amountInWords !== undefined ? <T style={[c.s.words, align ? { textAlign: align } : {}]}>{amountInWords(c.doc.amountInWords)}</T> : null;
 }
 
 export function SectionNotes({ c, align }: { c: Ctx; align?: "left" | "center" | "right" }) {
@@ -576,7 +577,8 @@ export function SectionSignatures({ c }: { c: Ctx }) {
         return (
           <View key={label} style={[c.s.signBox, { position: "relative" }, boxed ? { borderWidth: 0.8, borderColor: c.t.formStyle ? c.t.primary : lineOf(c), borderRadius: rad(c), paddingVertical: 6 } : {}]}>
             {/* eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt */}
-            {sg?.image && !c.signPlaced?.has(label) && !c.signPlaced?.has(real) ? <Image src={sg.image} style={c.s.signImage} /> : <View style={c.s.signLine} />}
+            {/* ลายเซ็นขนาดจริงตามที่ตั้ง (มม.) — ช่องแคบกว่าลายเซ็นจึงย่อให้พอดีช่อง */}
+            {sg?.image && !c.signPlaced?.has(label) && !c.signPlaced?.has(real) ? <Image src={sg.image} style={[c.s.signImage, { width: (c.doc.signSize || SIGN_SIZE).w, height: (c.doc.signSize || SIGN_SIZE).h, maxWidth: "100%" }]} /> : <View style={c.s.signLine} />}
             {sg?.name ? <T style={{ marginTop: 3 }}>({sg.name})</T> : null}
             {sg?.title ? <T style={c.s.small}>{sg.title}</T> : null}
             {/* ตราประทับอิเล็กทรอนิกส์: ทับมุมขวาของลายเซ็น (เหมือนประทับจริง) */}
@@ -722,9 +724,9 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
         const hide = new Set(b.hide || []), fs = (b.fontSize || c.t.fontSize) * FONT_SCALE[b.font || c.t.font];
         const lines = [!hide.has("name") && sg.name ? `(${sg.name})` : "", !hide.has("title") ? sg.title || "" : "", !hide.has("date") && sg.date ? `วันที่ ${thaiDate(sg.date)}` : ""].filter(Boolean);
         return (
-          <View style={{ width: SIGN_SIZE.w, alignItems: "center" }}>
+          <View style={{ width: (c.doc.signSize || SIGN_SIZE).w, alignItems: "center" }}>
             {/* eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt */}
-            <Image src={sg.image} style={{ width: SIGN_SIZE.w, height: SIGN_SIZE.h, objectFit: "contain" }} />
+            <Image src={sg.image} style={{ width: (c.doc.signSize || SIGN_SIZE).w, height: (c.doc.signSize || SIGN_SIZE).h, objectFit: "contain" }} />
             {lines.map((l) => <T key={l} style={{ fontSize: fs, lineHeight: 1.3, color: b.color || c.t.text, textAlign: "center" }}>{l}</T>)}
           </View>
         );

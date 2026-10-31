@@ -467,6 +467,13 @@ export function DocumentDesigner() {
         </Section>
         {!isLetter && (
           <Section title="ผังของเอกสารนี้" doc={docName} open={false}>
+            <Row label="ใช้รูปแบบจากเอกสารที่ออกแบบแล้ว (เฉพาะเอกสารนี้)">
+              {/* ลอกรูปแบบ (ผัง กรอบ สี ระยะ มุม) จากเอกสารอื่น · ข้อมูลแสดงตามเอกสารนี้อัตโนมัติ */}
+              <PillSelect value="" onChange={(e) => { const src = String(e.target.value); if (src) change((d) => applyFormToAll(d, src, [docType])); }} className="h-9 w-full">
+                <option value="">เลือกเอกสารต้นแบบ…</option>
+                {DESIGNABLE_DOCS.filter((x) => x.type !== docType && shown.perDoc[x.type]?.free?.enabled).map((x) => <option key={x.type} value={x.type}>รูปแบบของ{x.title}</option>)}
+              </PillSelect>
+            </Row>
             <Row label="เริ่มผังใหม่จากแบบอื่น (เฉพาะเอกสารนี้)">
               <PillSelect value="" onChange={(e) => { const id = String(e.target.value); if (id) setPer({ free: templateLayout(id, docType, theme) }); }} className="h-9 w-full">
                 <option value="">เลือกผัง…</option>

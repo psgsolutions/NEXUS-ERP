@@ -101,6 +101,8 @@ export interface DocumentModel {
   signed?: Record<string, { image?: string; name?: string; title?: string; date?: string }>;
   /** ตราประทับอิเล็กทรอนิกส์ของบริษัท (ใส่ให้เฉพาะเอกสารที่ออกจริง) · slots = ช่องลงนามที่ประทับทับ */
   stamp?: { image: string; size: number; slots: string[] };
+  /** ขนาดลายเซ็นบนเอกสาร (pt) ตามที่ตั้ง — ไม่มี = ขนาดมาตรฐาน */
+  signSize?: { w: number; h: number };
   /** หัวคอลัมน์ของเอกสารชนิดนี้ (เช่น ใบวางบิล: รหัส = เลขที่ใบแจ้งหนี้) */
   columnLabels?: Partial<Record<ColumnKey, string>>;
   /** รูปประกอบ เช่น ก่อน/หลังทำงาน (data URL) */

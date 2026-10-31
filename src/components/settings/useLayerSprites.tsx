@@ -52,7 +52,8 @@ async function rasterize(pdfjs: Awaited<ReturnType<typeof loadPdfjs>>, data: Uin
 
 /** S = px ต่อ pt บนจอ · คืนภาพส่วนหัว/ท้ายหน้า (base) และภาพของแต่ละกล่องตามคีย์ h:/d: */
 export function useLayerSprites(model: DocumentModel | null, S: number) {
-  const [state, setState] = useState<{ base: Sprite | null; sprites: Map<string, Sprite> }>({ base: null, sprites: new Map() });
+  // blank = กล่องที่วาดแล้วไม่มีหมึก (เช่น ข้อมูลว่าง) — ต่างจากกล่องใหม่ที่ยังวาดไม่เสร็จ
+  const [state, setState] = useState<{ base: Sprite | null; sprites: Map<string, Sprite>; blank: Set<string> }>({ base: null, sprites: new Map(), blank: new Set() });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   // คีย์เนื้อหา -> ภาพ (ใช้ซ้ำเมื่อกล่องไม่เปลี่ยน) · กล่อง -> คีย์ที่แสดงอยู่
@@ -98,10 +99,10 @@ export function useLayerSprites(model: DocumentModel | null, S: number) {
           const keep = new Set(want.map((w) => w.key));
           for (const [k, s] of cache.current) if (!keep.has(k)) { if (s.url) URL.revokeObjectURL(s.url); cache.current.delete(k); }
           if (alive.current) {
-            const sprites = new Map<string, Sprite>();
-            want.slice(1).forEach((w) => { const s = cache.current.get(w.key); if (s?.url) sprites.set(w.part, s); });
+            const sprites = new Map<string, Sprite>(), blank = new Set<string>();
+            want.slice(1).forEach((w) => { const s = cache.current.get(w.key); if (s?.url) sprites.set(w.part, s); else if (s) blank.add(w.part); });
             const base = cache.current.get(baseKey);
-            setState({ base: base?.url ? base : null, sprites });
+            setState({ base: base?.url ? base : null, sprites, blank });
             setError("");
           }
         } catch (e: any) { if (alive.current) setError(String(e?.message || e)); }

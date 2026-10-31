@@ -12,7 +12,7 @@ import { loadSigning, signerImageRef, signingRef } from "@/lib/documents/esign.s
  * [API-SERVER] ลายเซ็นและตราประทับอิเล็กทรอนิกส์ — POST /api/settings/document-signing
  * ลายเซ็นผูกกับรหัสผู้ใช้เสมอ · ตราบริษัทและการเลือกช่องลงนามเป็นของผู้ดูแลบริษัท
  *  - get                                   ทุกคน: ลายเซ็นของตัวเอง · ผู้ดูแล/ฝ่ายบุคคล: ทั้งหมด + รายชื่อผู้ใช้ในบริษัท
- *  - saveCompany { stamp, stampSize, assign }   ผู้ดูแลบริษัท (settings:manage) — ตรา ขนาดตรา ช่องลงนาม
+ *  - saveCompany { stamp, stampSize, signWidth, assign }   ผู้ดูแลบริษัท (settings:manage) — ตรา ขนาดตรา ช่องลงนาม
  *  - saveSigner  { userId?, image, position, consent? }
  *        ตั้งลายเซ็นของตัวเอง (ไม่ส่ง userId) — เจ้าของยินยอมเอง
  *        ฝ่ายบุคคล (hr:edit) ตั้งให้ผู้ใช้คนอื่นในบริษัท — ต้องยืนยันว่าได้รับความยินยอมจากเจ้าของ
@@ -75,11 +75,11 @@ export async function POST(request: Request) {
       const result = await adminDb.runTransaction(async (tx) => {
         const cur = (await tx.get(ref)).data() || {};
         const ids = new Set(metaOf(cur).map((s) => s.id));
-        const norm = normalizeSigning({ stamp, stampSize: raw.stampSize, assign: raw.assign, signers: metaOf(cur).map((s) => ({ ...s, image: "data:image/png;base64,AA==" })) });
+        const norm = normalizeSigning({ stamp, stampSize: raw.stampSize, signWidth: raw.signWidth, assign: raw.assign, signers: metaOf(cur).map((s) => ({ ...s, image: "data:image/png;base64,AA==" })) });
         if (stamp && !norm.stamp) throw new ApiAuthError(400, "ตราประทับต้องเป็น PNG/JPG ไม่เกิน 300 KB");
         // ช่องลงนามอ้างได้เฉพาะลายเซ็นที่มีอยู่
         const assign = Object.fromEntries(Object.entries(norm.assign).map(([t, slots]) => [t, Object.fromEntries(Object.entries(slots).map(([l, r]) => [l, r.signer && !ids.has(r.signer) ? { ...(r.stamp ? { stamp: true } : {}) } : r]))]));
-        tx.set(ref, { ...cur, stamp: norm.stamp, stampSize: norm.stampSize, assign, updatedAt: admin.firestore.FieldValue.serverTimestamp(), updatedBy: apiUser.uid });
+        tx.set(ref, { ...cur, stamp: norm.stamp, stampSize: norm.stampSize, signWidth: norm.signWidth, assign, updatedAt: admin.firestore.FieldValue.serverTimestamp(), updatedBy: apiUser.uid });
         return { before: { stamp: !!cur.stamp, assign: cur.assign || {} }, after: { stamp: !!norm.stamp, assign } };
       });
       await auditServer.logUpdate(apiUser.uid, companyId, "DOCUMENT_SIGNING", "company-stamp", result.before, result.after);

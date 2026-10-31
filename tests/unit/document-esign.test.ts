@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DESIGNABLE_DOCS, sampleModelFor } from "@/lib/documents/build";
-import { applySigning, normalizeSigning } from "@/lib/documents/esign";
+import { STAMP_MM, applySigning, mmToPt, normalizeSigning, ptToMm, signBoxOf } from "@/lib/documents/esign";
 import { A4, TEMPLATES, normalizeDesign } from "@/lib/documents/design";
 import { DOC_PARTS, templateLayout } from "@/lib/documents/layout-templates";
 
@@ -15,7 +15,11 @@ const cfg = normalizeSigning({
 describe("electronic signature and stamp", () => {
   it("keeps only valid images, known signers and sane sizes", () => {
     expect(cfg.signers.map((s) => s.id)).toEqual(["md"]);
-    expect(cfg.stampSize).toBe(140);
+    // ขนาดจริง: ตราไม่เกิน 60 มม. · ลายเซ็นค่าเริ่มต้นกว้าง 50 มม. สูง 32% ของความกว้าง
+    expect(cfg.stampSize).toBe(mmToPt(STAMP_MM.max));
+    expect(ptToMm(cfg.stampSize)).toBe(60);
+    expect(ptToMm(cfg.signWidth)).toBe(50);
+    expect(signBoxOf(mmToPt(50))).toEqual({ w: 141.73, h: 45.35 });
     expect(cfg.assign).toEqual({ receipt: { "ผู้รับเงิน": { signer: "md", stamp: true } } });
   });
 

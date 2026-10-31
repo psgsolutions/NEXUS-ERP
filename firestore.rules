@@ -238,7 +238,7 @@ service cloud.firestore {
           // ลิงก์เอกสารและประวัติการส่ง: สร้าง/ส่งผ่าน /api/documents/share และ /api/documents/send
           'document_sends',
           // ตั้งค่าบริษัท (รูปแบบเลขที่เอกสาร ฯลฯ): /api/settings/company เท่านั้น · ประวัติการออกแบบเอกสาร: /api/settings/document-profile
-          'settings', 'design_versions',
+          'settings', 'design_versions', 'design_templates',
           // ลายเซ็น/ตราประทับอิเล็กทรอนิกส์: /api/settings/document-signing เท่านั้น (อ่านจาก client ไม่ได้)
           'document_assets',
           // หนังสือที่ออกแล้ว: บันทึกผ่าน /api/documents/letters (เลขที่ไม่ซ้ำ)

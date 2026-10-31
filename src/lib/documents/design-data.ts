@@ -292,3 +292,23 @@ export function applyFormToAll(design: DocumentDesign, sourceDoc: string, target
   }
   return { ...design, perDoc };
 }
+
+/**
+ * ใช้แม่แบบของบริษัท (ผังที่บันทึกจากเอกสารที่ออกแบบแล้ว) กับเอกสารที่เลือก
+ * - เอกสารชนิดเดียวกับต้นแบบ: ใช้ผังเดิมทั้งหมด · ชนิดอื่น: ลอกรูปแบบ ข้อมูลเป็นของเอกสารนั้น (adaptForm)
+ * - หัวกระดาษของแม่แบบ (ถ้ามี) ถูกเพิ่ม/แทนที่ในชุดหัวกระดาษ · withTheme = ใช้ชุดสี/ฟอนต์ของแม่แบบด้วย (ธีมใช้ร่วมทุกเอกสาร)
+ */
+export function applyCompanyTemplate(design: DocumentDesign, tpl: { sourceDoc: string; design: DocumentDesign }, targets: string[], withTheme: boolean): DocumentDesign {
+  const src = tpl.design.perDoc[tpl.sourceDoc], s = DESIGNABLE_DOCS.find((d) => d.type === tpl.sourceDoc);
+  if (!src?.free || !s) return design;
+  const lh = src.letterhead ? tpl.design.letterheads.find((l) => l.id === src.letterhead) : undefined;
+  const letterheads = lh ? [...design.letterheads.filter((l) => l.id !== lh.id), lh] : design.letterheads;
+  const perDoc = { ...design.perDoc };
+  for (const type of targets) {
+    const t = DESIGNABLE_DOCS.find((d) => d.type === type);
+    if (!t) continue;
+    const { letterhead: _old, ...rest } = perDoc[type] || {}; void _old;
+    perDoc[type] = { ...rest, free: type === tpl.sourceDoc ? { ...src.free, enabled: true } : adaptForm(src.free, s, t), ...(lh ? { letterhead: lh.id } : {}) };
+  }
+  return { ...design, perDoc, letterheads, ...(withTheme ? { theme: { ...tpl.design.theme } } : {}) };
+}

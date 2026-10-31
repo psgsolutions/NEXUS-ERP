@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DESIGNABLE_DOCS } from "@/lib/documents/build";
-import { applyFormToAll } from "@/lib/documents/design-data";
+import { applyCompanyTemplate, applyFormToAll } from "@/lib/documents/design-data";
 import { defaultFreeLayout, normalizeDesign, type FreeBlock } from "@/lib/documents/design";
 
 /** ฟอร์มใบเสนอราคาที่ออกแบบเอง: กรอบ/สี/มุม ข้อความชื่อเอกสาร แถวข้อมูลแยกช่อง ลายเซ็นในช่องลงนาม คอลัมน์ที่ตั้งเอง */
@@ -55,5 +55,32 @@ describe("custom form as the template for every document", () => {
     expect(all.perDoc.invoice.free!.blocks.find((b) => b.kind === "items")!.colSpec!.some((c) => c.key === "qty")).toBe(true);
     // ใบส่งของมีช่องลงนาม 3 ช่อง: ลายเซ็นช่องที่ 2 ของต้นแบบ → ช่องที่ 2 ของใบส่งของ
     expect(byId(all, "delivery_note", "sig").slot).toBe("ผู้รับของ");
+  });
+});
+
+describe("company templates", () => {
+  const tplDesign = normalizeDesign({
+    theme: { primary: "#aa0000", font: "THSarabunNew" },
+    letterheads: [{ id: "lh-tpl", name: "หัวบริษัท", height: 120, blocks: [{ id: "lg", kind: "logo", x: 30, y: 20, w: 60, h: 60 }] }],
+    perDoc: { quotation: { letterhead: "lh-tpl", free: { enabled: true, blocks: [...defaultFreeLayout("quotation").blocks, { id: "band", kind: "rect", x: 0, y: 0, w: 595, h: 20, bg: "@primary" }] } } },
+  });
+  const tp = { sourceDoc: "quotation", design: tplDesign };
+  const current = normalizeDesign({ theme: { primary: "#003366" }, perDoc: { receipt: { title: "ใบเสร็จพิเศษ" } } });
+
+  it("this document only: layout adapted, theme of the company unchanged, letterhead added", () => {
+    const d = applyCompanyTemplate(current, tp, ["receipt"], false);
+    expect(d.theme.primary).toBe("#003366");
+    expect(d.perDoc.receipt.title).toBe("ใบเสร็จพิเศษ");
+    expect(d.perDoc.receipt.letterhead).toBe("lh-tpl");
+    expect(d.letterheads.some((l) => l.id === "lh-tpl")).toBe(true);
+    expect(d.perDoc.receipt.free!.blocks.find((b) => b.id === "band")).toMatchObject({ bg: "@primary" });
+    expect(d.perDoc.receipt.free!.blocks.find((b) => b.kind === "items")!.colSpec!.map((c) => c.key)).toEqual(["no", "code", "description", "amount"]);
+    expect(d.perDoc.quotation).toBeUndefined();
+  });
+
+  it("all documents: also takes the template's colours and font", () => {
+    const d = applyCompanyTemplate(current, tp, DESIGNABLE_DOCS.map((x) => x.type), true);
+    expect(d.theme).toMatchObject({ primary: "#aa0000", font: "THSarabunNew" });
+    for (const x of DESIGNABLE_DOCS) expect(d.perDoc[x.type].free!.blocks.some((b) => b.id === "band"), x.type).toBe(true);
   });
 });

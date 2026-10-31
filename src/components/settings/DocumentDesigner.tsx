@@ -17,7 +17,7 @@ import {
   type DocTheme, type DocumentDesign, type FontFamily, type ItemColumn, type Letterhead, type PerDocDesign,
 } from "@/lib/documents/design";
 import { templateLayout } from "@/lib/documents/layout-templates";
-import { applyFormToAll, dataGroups, ensureLayout, fitTotalsBlocks, layoutIdFor, toggleData, type DataContext } from "@/lib/documents/design-data";
+import { applyCompanyTemplate, applyFormToAll, dataGroups, ensureLayout, fitTotalsBlocks, layoutIdFor, toggleData, type DataContext } from "@/lib/documents/design-data";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import { FreeLayoutEditor } from "./FreeLayoutEditor";
 import { DataChecklist } from "./DataChecklist";
@@ -161,6 +161,32 @@ function TemplateCard({ t, active, docType, profile, onPick, size = "sm" }: { t:
   );
 }
 
+type CompanyTemplate = { id: string; name: string; sourceDoc: string; savedByName: string; savedAt: string; design: DocumentDesign };
+/** แม่แบบของบริษัท: ภาพย่อเป็นเอกสารที่กำลังแก้ในรูปแบบของแม่แบบ · ใช้กับเอกสารนี้ / ทุกเอกสาร · ลบ */
+function CompanyTemplateCard({ tp, docType, profile, canEdit, onApply, onDelete }: { tp: CompanyTemplate; docType: string; profile: DocumentProfile; canEdit: boolean; onApply: (scope: "this" | "all") => void; onDelete: () => void }) {
+  const type = DESIGNABLE_DOCS.some((d) => d.type === docType) ? docType : tp.sourceDoc;
+  const url = useThumbnail(`ctpl:${tp.id}:${type}:${profile.logo?.length || 0}`, () => {
+    const design = applyCompanyTemplate({ ...tp.design, perDoc: {} }, tp, [type], true);
+    return sampleModelFor(type, { ...profile, design }, toDateStr(new Date()));
+  }, 150);
+  return (
+    <div className="rounded-xl border border-white/10 p-1.5 flex flex-col gap-1.5" title={`จากผัง${DESIGNABLE_DOCS.find((d) => d.type === tp.sourceDoc)?.title || ""}${tp.savedByName ? ` · ${tp.savedByName}` : ""}`}>
+      <div className="w-full aspect-[1/1.414] rounded bg-white overflow-hidden flex items-center justify-center">
+        {/* eslint-disable-next-line @next/next/no-img-element -- ภาพย่อที่วาดในเบราว์เซอร์ (data URL) */}
+        {url ? <img src={url} alt="" className="w-full h-full object-cover object-top" /> : <Loader2 size={14} className="animate-spin text-slate-400" />}
+      </div>
+      <p className="text-[11.5px] font-bold text-white leading-snug line-clamp-2 px-0.5">{tp.name}</p>
+      {canEdit && (
+        <div className="flex flex-col gap-1">
+          <button type="button" onClick={() => onApply("this")} className="h-7 rounded-full text-[11px] border border-white/10 text-white/75 hover:text-white hover:border-nexus-teal/50">ใช้กับเอกสารนี้</button>
+          <button type="button" onClick={() => onApply("all")} className="h-7 rounded-full text-[11px] border border-nexus-teal/40 text-nexus-teal hover:bg-nexus-teal/10">ใช้กับทุกเอกสาร</button>
+          <button type="button" onClick={onDelete} className="h-6 text-[10.5px] text-white/40 hover:text-danger">ลบแม่แบบ</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** ภาพย่อเอกสารในแถบสลับเอกสาร (อัปเดตเมื่อหยุดแก้สักครู่) */
 function DocChip({ type, active, design, profile, onClick }: { type: string; active: boolean; design: DocumentDesign; profile: DocumentProfile; onClick: () => void }) {
   const key = useMemo(() => `strip:${type}:${hash(JSON.stringify([design.theme, design.perDoc[type], design.letterheads]))}:${profile.logo?.length || 0}`, [type, design, profile.logo]);
@@ -192,7 +218,7 @@ const Modal = ({ title, onClose, children, wide }: { title: string; onClose: () 
 
 export function DocumentDesigner() {
   const { companyId, roles } = useAuth();
-  const { showAlert, showConfirm } = useSystemDialog();
+  const { showAlert, showConfirm, showPrompt } = useSystemDialog();
   const canEdit = can(roles, "settings:manage");
   const [profile, setProfile] = useState<DocumentProfile | null>(null);
   // ลายเซ็น/ตราที่ตั้งไว้ (แสดงบนตัวอย่างให้เห็นตำแหน่งจริง)
@@ -201,7 +227,7 @@ export function DocumentDesigner() {
   const [savedJson, setSavedJson] = useState("");
   const [docType, setDocType] = useState(DESIGNABLE_DOCS[0].type);
   const [saving, setSaving] = useState(false);
-  const [modal, setModal] = useState<"" | "templates" | "versions" | "pdf">("");
+  const [modal, setModal] = useState<"" | "templates" | "versions" | "pdf" | "company">("");
   // อัตโนมัติ / ออกแบบเอง (จำไว้ในเครื่อง)
   const [mode, setModeState] = useState<"simple" | "canvas">("simple");
   // ย่อแถบเลือกเอกสาร (ภาพย่อ → ปุ่มชื่อเอกสาร) ให้พื้นที่ออกแบบกว้างขึ้น — จำไว้ในเครื่อง
@@ -277,6 +303,37 @@ export function DocumentDesigner() {
   const [stripDesign, setStripDesign] = useState<DocumentDesign | null>(null);
   // ภาพย่อแถบชนิดเอกสาร: อัปเดตเมื่อหยุดแก้สักพัก (วาด PDF ใช้เวลา — ไม่ให้แย่งจังหวะตอนกำลังจัดหน้า)
   useEffect(() => { const t = setTimeout(() => setStripDesign(shown), 6000); return () => clearTimeout(t); }, [shown]);
+
+  // แม่แบบของบริษัท (ผังที่บันทึกจากเอกสารที่ออกแบบแล้ว)
+  const [companyTemplates, setCompanyTemplates] = useState<CompanyTemplate[]>([]);
+  const templateApi = useCallback(async (body: Record<string, any>) => {
+    const res = await apiFetch("/api/settings/document-profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, ...body }) });
+    const d = await res.json();
+    if (!res.ok || !d.success) throw new Error(d.error || "ไม่สำเร็จ");
+    return d;
+  }, [companyId]);
+  const loadTemplates = useCallback(() => { if (companyId && canEdit) templateApi({ action: "templates" }).then((d) => setCompanyTemplates(d.templates)).catch(() => setCompanyTemplates([])); }, [companyId, canEdit, templateApi]);
+  useEffect(() => { loadTemplates(); }, [loadTemplates]);
+  /** บันทึกผังของเอกสารที่เปิดอยู่ (ผัง สี ฟอนต์ หัวกระดาษ) เป็นแม่แบบของบริษัท */
+  const saveAsTemplate = async () => {
+    const name = (await showPrompt(`ตั้งชื่อแม่แบบจากผัง "${def.title}" (เก็บผัง สี ฟอนต์ และหัวกระดาษ ใช้ซ้ำกับเอกสารชนิดใดก็ได้)`, "บันทึกเป็นแม่แบบของบริษัท", `เช่น ฟอร์มบริษัท ${new Date().getFullYear() + 543}`))?.trim();
+    if (!name) return;
+    try {
+      await templateApi({ action: "saveTemplate", name, sourceDoc: docType, design: { theme, perDoc: { [docType]: { free: curLayout, ...(per.letterhead ? { letterhead: per.letterhead } : {}) } }, letterheads: letterhead ? [letterhead] : [] } });
+      showAlert(`บันทึกแม่แบบ "${name}" แล้ว`);
+      loadTemplates();
+    } catch (e: any) { showAlert(e.message, "บันทึกแม่แบบไม่สำเร็จ", "error"); }
+  };
+  const applyCompanyTpl = async (tp: CompanyTemplate, scope: "this" | "all") => {
+    const all = scope === "all";
+    if (!(await showConfirm(all ? `ใช้แม่แบบ "${tp.name}" กับเอกสารทุกชนิด รวมชุดสีและฟอนต์? (ผังเดิมถูกแทนที่ · กดย้อนกลับได้)` : `ใช้ผังของแม่แบบ "${tp.name}" กับ${def.title}? (ผังเดิมของเอกสารนี้ถูกแทนที่ · กดย้อนกลับได้)`))) return;
+    change((d) => applyCompanyTemplate(d, tp, all ? DESIGNABLE_DOCS.map((x) => x.type) : [docType], all));
+    setModal("");
+  };
+  const deleteCompanyTemplate = async (tp: CompanyTemplate) => {
+    if (!(await showConfirm(`ลบแม่แบบ "${tp.name}"? (เอกสารที่ใช้ผังนี้อยู่แล้วไม่เปลี่ยน)`))) return;
+    try { await templateApi({ action: "deleteTemplate", id: tp.id }); loadTemplates(); } catch (e: any) { showAlert(e.message, "ลบไม่สำเร็จ", "error"); }
+  };
 
   // ดูตัวอย่างด้วยเอกสารจริงล่าสุดของชนิดนี้
   useEffect(() => {
@@ -489,6 +546,7 @@ export function DocumentDesigner() {
 ผังเดิมของเอกสารอื่นจะถูกแทนที่ (กดย้อนกลับได้)`))) return;
               change((d) => applyFormToAll({ ...d, perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), free: curLayout } } }, docType, DESIGNABLE_DOCS.map((x) => x.type)));
             }}><Copy size={13} /> ใช้ฟอร์มนี้เป็นต้นแบบทุกเอกสาร</PillButton>
+            <PillButton variant="glass" className="h-8 px-3 text-xs w-full" onClick={() => saveAsTemplate()}><Save size={13} /> บันทึกเป็นแม่แบบของบริษัท</PillButton>
           </Section>
         )}
         <Section title="หัวกระดาษ" doc={docName} open={!!letterhead || isLetter}>
@@ -561,6 +619,7 @@ export function DocumentDesigner() {
                 </PillSelect>
               </div>
             )}
+            {canEdit && !isLetter && <PillButton variant="glass" className="h-8 px-3 text-xs" onClick={() => setModal("company")} title="บันทึกผังนี้เป็นแม่แบบ หรือใช้แม่แบบของบริษัทกับเอกสาร"><LayoutTemplate size={13} /> แม่แบบของบริษัท{companyTemplates.length ? ` (${companyTemplates.length})` : ""}</PillButton>}
             {canEdit && <PillButton variant="glass" className="h-8 px-3 text-xs" onClick={openVersions}><History size={13} /> ประวัติ</PillButton>}
             <PillButton variant="ghost" className="h-8 px-3 text-xs" onClick={toggleStrip} title={stripMini ? "แสดงภาพย่อเอกสาร" : "ย่อตัวเลือกเอกสาร (เหลือชื่อเอกสาร)"}>{stripMini ? <ChevronDown size={13} /> : <ChevronUp size={13} />} {stripMini ? "ขยายภาพย่อ" : "ย่อตัวเลือก"}</PillButton>
           </div>
@@ -630,6 +689,31 @@ export function DocumentDesigner() {
       {modal === "pdf" && model && (
         <Modal title={`ตัวอย่าง${def.title}`} onClose={() => setModal("")} wide>
           <div className="h-[75vh] flex flex-col"><DocumentPdfViewer model={model} className="flex-1" /></div>
+        </Modal>
+      )}
+      {modal === "company" && (
+        <Modal title="แม่แบบของบริษัท" onClose={() => setModal("")} wide>
+          <div className="space-y-4">
+            <div className="rounded-xl border border-white/10 p-3 space-y-2">
+              <p className="text-[13px] text-white/80">ผังของ <b className="text-white">{def.title}</b> ที่กำลังแก้</p>
+              <p className="text-[12px] text-white/45">แม่แบบเก็บรูปแบบ (ผัง กรอบ สี ฟอนต์ ระยะ มุม หัวกระดาษ) — ใช้กับเอกสารชนิดอื่นแล้ว ข้อมูล คอลัมน์ และช่องลงนามจัดตามเอกสารนั้นเอง</p>
+              <div className="flex flex-wrap gap-2">
+                <PillButton variant="confirm" className="h-9 px-4 text-xs font-bold" onClick={saveAsTemplate}><Save size={14} /> บันทึกเป็นแม่แบบของบริษัท</PillButton>
+                <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={async () => {
+                  if (!(await showConfirm(`ใช้ฟอร์ม "${def.title}" เป็นต้นแบบของเอกสารทุกชนิด? (ผังเดิมของเอกสารอื่นถูกแทนที่ · กดย้อนกลับได้)`))) return;
+                  change((d) => applyFormToAll({ ...d, perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), free: curLayout } } }, docType, DESIGNABLE_DOCS.map((x) => x.type)));
+                  setModal("");
+                }}><Copy size={14} /> ใช้ฟอร์มนี้กับทุกเอกสารเลย</PillButton>
+              </div>
+            </div>
+            {companyTemplates.length === 0 ? (
+              <p className="text-[13px] text-white/45 text-center py-6">ยังไม่มีแม่แบบของบริษัท — ออกแบบเอกสารให้เรียบร้อยแล้วกด &quot;บันทึกเป็นแม่แบบของบริษัท&quot;</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
+                {companyTemplates.map((tp) => <CompanyTemplateCard key={tp.id} tp={tp} docType={docType} profile={profile} canEdit={canEdit} onApply={(scope) => applyCompanyTpl(tp, scope)} onDelete={() => deleteCompanyTemplate(tp)} />)}
+              </div>
+            )}
+          </div>
         </Modal>
       )}
       {modal === "templates" && (

@@ -13,12 +13,15 @@ import { DOC_SOURCES } from "@/lib/documents/sources.server";
  * [API-SERVER] ข้อมูลนิติบุคคลและหัวเอกสาร — POST /api/settings/document-profile
  *  - { companyId, action: "get" }
  *  - { companyId, action: "saveDesign", design: { theme, perDoc } }   การออกแบบหน้าเอกสาร (ธีม/ปรับรายเอกสาร/ผังลากวาง) — ตรวจค่าที่ server
+ *  - { companyId, action: "templates" | "saveTemplate" { name, sourceDoc, design } | "deleteTemplate" { id } }
+ *      แม่แบบของบริษัท: ผัง+ธีมของเอกสารที่ออกแบบแล้ว บันทึกไว้ใช้ซ้ำกับเอกสารชนิดใดก็ได้ (companies/{id}/design_templates)
  *  - { companyId, action: "save", profile: { name, nameEn, address, taxId, branchCode, branchName, phone, email, website, logo, brandColor, footerNote, paymentInfo } }
  * ชื่อ/ที่อยู่/เลขผู้เสียภาษี/สาขา เก็บบน companies/{id} (ใช้ทุกเอกสาร), หน้าตาเอกสารเก็บที่ companies/{id}.documentProfile
  */
 const str = (v: any, max = 300) => String(v ?? "").trim().slice(0, max);
 
 const VERSION_KEEP = 20;
+const TEMPLATE_MAX = 30;
 
 export async function POST(request: Request) {
   try {
@@ -53,6 +56,36 @@ export async function POST(request: Request) {
       const docs = snap.docs.filter((d) => d.get("docKind") !== "opening" && String(d.get("status") || "").toUpperCase() !== "CANCELLED").slice(0, 8)
         .map((d) => ({ id: d.id, label: [src.no.map((k) => d.get(k)).find(Boolean) || d.id, src.party.map((k) => d.get(k)).find(Boolean) || ""].filter(Boolean).join(" · ") }));
       return NextResponse.json({ success: true, docs });
+    }
+    // ---------- แม่แบบของบริษัท (ผังที่ออกแบบแล้ว ใช้ซ้ำกับเอกสารชนิดใดก็ได้) ----------
+    if (body.action === "templates" || body.action === "saveTemplate" || body.action === "deleteTemplate") {
+      if (!can(apiUser.roles, "settings:manage")) throw new ApiAuthError(403, "แม่แบบเอกสารจัดการได้เฉพาะผู้ดูแลระบบ");
+      const col = ref.collection("design_templates");
+      if (body.action === "templates") {
+        const current = documentProfileOf((await ref.get()).data());
+        const snap = await col.orderBy("savedAt", "desc").limit(TEMPLATE_MAX).get();
+        return NextResponse.json({ success: true, templates: snap.docs.map((d) => ({
+          id: d.id, name: d.get("name") || "", sourceDoc: d.get("sourceDoc") || "", savedByName: d.get("savedByName") || "",
+          savedAt: d.get("savedAt")?.toDate?.()?.toISOString() || "", design: normalizeDesign(d.get("design"), current.brandColor),
+        })) });
+      }
+      if (body.action === "deleteTemplate") {
+        const id = str(body.id, 60);
+        if (!id || id.includes("/")) throw new ApiAuthError(400, "ไม่พบแม่แบบ");
+        await col.doc(id).delete();
+        await auditServer.logDelete(apiUser.uid, companyId, "DOCUMENT_TEMPLATE", id);
+        return NextResponse.json({ success: true });
+      }
+      const name = str(body.name, 60), sourceDoc = str(body.sourceDoc, 30);
+      if (!name) throw new ApiAuthError(400, "กรุณาตั้งชื่อแม่แบบ");
+      const current = documentProfileOf((await ref.get()).data());
+      const design = normalizeDesign(body.design, current.brandColor);
+      if (!design.perDoc[sourceDoc]?.free) throw new ApiAuthError(400, "เอกสารนี้ยังไม่มีผังที่ออกแบบ");
+      if (JSON.stringify(design).length > 900_000) throw new ApiAuthError(400, "แม่แบบมีรูปภาพใหญ่เกินที่เก็บได้ ลดขนาดรูปในผังก่อน");
+      if ((await col.count().get()).data().count >= TEMPLATE_MAX) throw new ApiAuthError(400, `แม่แบบของบริษัทเก็บได้ ${TEMPLATE_MAX} แบบ — ลบแบบที่ไม่ใช้ก่อน`);
+      const doc = await col.add({ name, sourceDoc, design, savedAt: admin.firestore.FieldValue.serverTimestamp(), savedBy: apiUser.uid, savedByName: str((apiUser as any).name || (apiUser as any).email || "", 80) });
+      await auditServer.logCreate(apiUser.uid, companyId, "DOCUMENT_TEMPLATE", doc.id, { name, sourceDoc });
+      return NextResponse.json({ success: true, id: doc.id });
     }
     if (body.action === "saveDesign") {
       if (!can(apiUser.roles, "settings:manage")) throw new ApiAuthError(403, "ออกแบบเอกสารได้เฉพาะผู้ดูแลระบบ");

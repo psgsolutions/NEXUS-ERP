@@ -27,6 +27,7 @@ const COLLECTION_TH: Record<string, string> = {
   EXPENSES: "ค่าใช้จ่าย",
   EMPLOYEES: "พนักงาน",
   CUSTOMERS: "ลูกค้า",
+  DOCUMENT_TEMPLATE: "แม่แบบเอกสาร",
   SUPPLIERS: "ผู้จำหน่าย",
 };
 

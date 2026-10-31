@@ -18,7 +18,7 @@ import { FloatingLayer } from "@/components/ui/FloatingLayer";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import type { DocumentModel } from "@/lib/documents/model";
 import {
-  BLOCK_LABELS, BLOCK_PARTS, LABEL_KINDS, FONT_MIN, FONT_MAX, fixedBlockSize, PAPERS, pageOf, marginsOf, refitBlocks, type Margins, type PaperSize, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, blockPad, themeLine, tint, columnWidthsPt, gridSizes, OPTIONAL_TOTALS, visibleTotals, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
+  BLOCK_LABELS, BLOCK_PARTS, LABEL_KINDS, FONT_MIN, FONT_MAX, LINE_HEIGHT, SUB_GAP, fixedBlockSize, PAPERS, pageOf, marginsOf, refitBlocks, type Margins, type PaperSize, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, blockPad, themeLine, tint, columnWidthsPt, gridSizes, OPTIONAL_TOTALS, visibleTotals, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
   type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, type Letterhead,
 } from "@/lib/documents/design";
 import { fileToPageImage } from "./usePdfPageImage";
@@ -114,6 +114,21 @@ const RSelect = ({ width, title, value, onChange, children }: { width: number; t
     <PillSelect value={value} onChange={(e) => onChange(String(e.target.value))} className="h-7 pl-3 pr-7 text-[12px] font-medium">{children}</PillSelect>
   </div>
 );
+/** ตัวเลขปรับละเอียด: − ค่า + (พิมพ์ค่าเองได้) */
+function Stepper({ label, title, value, step, min, max, onChange }: { label: string; title: string; value: number; step: number; min: number; max: number; onChange: (v: number) => void }) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => setText(String(value)), [value]);
+  const put = (v: number) => onChange(Math.round(Math.min(max, Math.max(min, v)) * 100) / 100);
+  const commit = (s: string) => { const n = Number(s); if (s.trim() !== "" && Number.isFinite(n)) put(n); else setText(String(value)); };
+  return (
+    <div title={title} className="flex items-center h-7 rounded-full border border-white/10 bg-white/[0.03] pl-2 pr-0.5 gap-0.5">
+      <span className="text-[11px] text-white/50 whitespace-nowrap">{label}</span>
+      <button type="button" aria-label={`ลด${label}`} onClick={() => put(value - step)} className="w-5 h-5 rounded-full text-white/60 hover:text-white hover:bg-white/10 flex items-center justify-center"><Minus size={11} /></button>
+      <input value={text} inputMode="decimal" aria-label={label} onChange={(e) => setText(e.target.value.replace(/[^\d.-]/g, ""))} onBlur={(e) => commit(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") commit((e.target as HTMLInputElement).value); }} className="w-9 bg-transparent text-center text-[12px] font-mono text-white outline-none" />
+      <button type="button" aria-label={`เพิ่ม${label}`} onClick={() => put(value + step)} className="w-5 h-5 rounded-full text-white/60 hover:text-white hover:bg-white/10 flex items-center justify-center"><Plus size={11} /></button>
+    </div>
+  );
+}
 /** ช่องตัวเลขในริบบอน */
 const RNum = ({ width = 56, ...p }: React.InputHTMLAttributes<HTMLInputElement> & { width?: number }) => (
   <PillInput type="number" {...p} style={{ width }} className="h-7 px-2 text-[12px] text-right" />
@@ -1058,6 +1073,25 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       </>
     );
   };
+  /** ระยะบรรทัด และระยะภายในหัวข้อ (บรรทัดไทย → อังกฤษ เมื่อเป็นแม่แบบสองภาษา) */
+  const lineSliders = (it: Item) => (
+    <>
+      <Field label={`ระยะบรรทัด ${it.b.lineHeight ?? 1.35} เท่า`}>
+        <div className="flex items-center gap-2">
+          <input type="range" min={LINE_HEIGHT.min} max={LINE_HEIGHT.max} step={0.05} value={it.b.lineHeight ?? 1.35} onChange={(e) => update(it, { lineHeight: Number(e.target.value) })} className="flex-1 accent-[#0d9488] h-7" />
+          {it.b.lineHeight !== undefined && <button type="button" className="text-[11px] text-white/50 hover:text-white" onClick={() => unset(it, "lineHeight")}>ค่าเดิม</button>}
+        </div>
+      </Field>
+      {theme.bilingual && (
+        <Field label={`ระยะภายในหัวข้อ (ไทย → อังกฤษ) ${it.b.subGap ?? 0} pt`}>
+          <div className="flex items-center gap-2">
+            <input type="range" min={SUB_GAP.min} max={SUB_GAP.max} step={0.5} value={it.b.subGap ?? 0} onChange={(e) => update(it, { subGap: Number(e.target.value) || undefined })} className="flex-1 accent-[#0d9488] h-7" />
+            {it.b.subGap !== undefined && <button type="button" className="text-[11px] text-white/50 hover:text-white" onClick={() => unset(it, "subGap")}>ค่าเดิม</button>}
+          </div>
+        </Field>
+      )}
+    </>
+  );
   /** ระยะข้อความของกล่องที่มีป้าย: ป้าย→ข้อมูล · ความกว้างป้าย · ระยะระหว่างแถว */
   const spacingEditor = (it: Item) => {
     const b = it.b;
@@ -1076,7 +1110,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         {slider("labelGap", "ระยะห่างป้ายกับข้อมูล", b.labelGap ?? defGap, 0, 60, 1)}
         {(b.kind !== "field" || b.labelWidth !== undefined) && slider("labelWidth", "ความกว้างช่องป้าย", b.labelWidth ?? defW, 20, 300, 2)}
         {b.kind === "field" && b.labelWidth === undefined && <button type="button" className="text-[11.5px] text-sky-300/80 hover:text-sky-200" onClick={() => update(it, { labelWidth: 80 })}>+ กำหนดความกว้างป้าย (ให้ข้อมูลหลายช่องตรงกัน)</button>}
-        {b.kind !== "field" && slider("rowGap", "ระยะห่างระหว่างแถว", b.rowGap ?? defRow, 0, 30, 0.5)}
+        {b.kind !== "field" && slider("rowGap", "ระยะห่างระหว่างหัวข้อ", b.rowGap ?? defRow, 0, 30, 0.5)}
+        {lineSliders(it)}
       </div>
     );
   };
@@ -1116,6 +1151,18 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
 
         {b.kind === "info" && <div className="rounded-xl border border-white/10 p-2.5">{infoEditor(it)}</div>}
         {LABEL_KINDS.includes(b.kind) && !b.hideLabel && (b.kind !== "party" || theme.formStyle) && spacingEditor(it)}
+        {/* กล่องข้อความอื่น: ระยะบรรทัด (และระยะระหว่างหัวข้อของกล่องลูกค้าแบบไม่ใช่ฟอร์ม) */}
+        {TEXT_BLOCKS.includes(b.kind) && !(LABEL_KINDS.includes(b.kind) && !b.hideLabel && (b.kind !== "party" || theme.formStyle)) && b.kind !== "items" && b.kind !== "totals" && (
+          <div className="space-y-1 rounded-xl border border-white/10 p-2.5">
+            <p className="text-[11.5px] font-bold text-white/70">ระยะบรรทัด</p>
+            {b.kind === "party" && (
+              <Field label={`ระยะห่างระหว่างหัวข้อ ${b.rowGap ?? 0} pt`}>
+                <input type="range" min={0} max={30} step={0.5} value={b.rowGap ?? 0} onChange={(e) => update(it, { rowGap: Number(e.target.value) })} className="w-full accent-[#0d9488] h-7" />
+              </Field>
+            )}
+            {lineSliders(it)}
+          </div>
+        )}
 
         {b.kind === "text" && (
           <div className="space-y-1.5">
@@ -1151,6 +1198,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             {columnsEditor(it)}
             <PillCheckbox label="ยืดตารางเต็มกล่อง (เส้นคอลัมน์ถึงล่าง)" checked={!!b.fill} onChange={(e) => update(it, { fill: e.target.checked })} />
             {rowPadEditor(it, 3.5)}
+            {lineSliders(it)}
             <Field label="รูปแบบตาราง">
               <PillSelect value={b.table || theme.table} onChange={(e) => (e.target.value === theme.table && !b.table ? undefined : update(it, { table: e.target.value as any }))} className="h-8 w-full text-sm">
                 {([["tint", "หัวตารางสีอ่อน"], ["solid", "หัวตารางสีทึบ"], ["lines", "เส้นบาง"], ["grid", "เส้นครบ"], ["zebra", "แถวสลับสี"]] as const).map(([v, l]) => <option key={v} value={v}>{l}{v === theme.table ? " (แม่แบบ)" : ""}</option>)}
@@ -1165,6 +1213,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         )}
         {b.kind === "totals" && totalsOrderEditor(it)}
         {b.kind === "totals" && rowPadEditor(it, 2.5)}
+        {b.kind === "totals" && lineSliders(it)}
         {b.kind === "totals" && (
           <Field label="รูปแบบยอดรวม">
             <PillSelect value={b.totalsStyle || theme.totals} onChange={(e) => (e.target.value === theme.totals && !b.totalsStyle ? undefined : update(it, { totalsStyle: e.target.value as any }))} className="h-8 w-full text-sm">
@@ -1414,6 +1463,9 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   };
   const SIZES = [3, 4, 5, 6, 7, 8, 9, 9.5, 10, 10.5, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 32, 36, 40, 44, 48, 56];
   const textSize = t0 ? t0.fontSize ?? theme.fontSize : theme.fontSize;
+  /** ระยะระหว่างหัวข้อของกล่อง: กล่องป้าย:ข้อมูล = ระยะระหว่างแถว · ตาราง/ยอดรวม = ระยะบน-ล่างในแถว · อื่น ๆ = ไม่มี */
+  const gapOf = (b: FreeBlock): number | null => (b.kind === "items" ? b.rowPad ?? 3.5 : b.kind === "totals" ? b.rowPad ?? 2.5 : LABEL_KINDS.includes(b.kind) && b.kind !== "field" ? b.rowGap ?? (b.kind === "info" ? 1 : b.kind === "party" && !theme.formStyle ? 0 : 1.5) : null);
+  const gapPatch = (b: FreeBlock, v: number): Partial<FreeBlock> => (b.kind === "items" || b.kind === "totals" ? { rowPad: v } : LABEL_KINDS.includes(b.kind) && b.kind !== "field" ? { rowGap: v } : {});
   /** มุมโค้งที่กล่องใช้อยู่เมื่อไม่ได้ตั้งเอง (ตรงกับตัวสร้าง PDF) */
   const themeRadius = theme.rounded ? 4 : 0;
   /** ชิปสี: ช่องแรกแสดงสีที่ใช้อยู่จริง (ไม่ได้ตั้ง = สีตามแม่แบบ fallback) */
@@ -1675,9 +1727,9 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                 ))}
               </div>
               <div className="flex items-center gap-1">
-                <RSelect width={112} title="ระยะบรรทัด" value={String(t0.lineHeight ?? 1.35)} onChange={(v) => patchSel(textSel, { lineHeight: Number(v) })}>
-                  {[...new Set([1, 1.15, 1.35, 1.5, 1.75, 2, t0.lineHeight ?? 1.35])].sort((a, b) => a - b).map((v) => <option key={v} value={String(v)}>บรรทัด {v}</option>)}
-                </RSelect>
+                <Stepper title="ระยะบรรทัด (เท่าของขนาดตัวอักษร) — บีบให้แถวเตี้ยลงได้ถึง 0.8" label="บรรทัด" value={t0.lineHeight ?? 1.35} step={0.05} min={LINE_HEIGHT.min} max={LINE_HEIGHT.max} onChange={(v) => patchSel(textSel, { lineHeight: v })} />
+                {gapOf(t0) !== null && <Stepper title="ระยะระหว่างหัวข้อกับหัวข้อ (pt) — ตาราง: ระยะบน-ล่างในแถว" label="หัวข้อ" value={gapOf(t0)!} step={0.5} min={0} max={30} onChange={(v) => patchSel(textSel, (b) => gapPatch(b, v))} />}
+                {theme.bilingual && <Stepper title="ระยะภายในหัวข้อ: บรรทัดไทย → บรรทัดอังกฤษ (pt, ติดลบ = บีบเข้า)" label="ไทย–อังกฤษ" value={t0.subGap ?? 0} step={0.5} min={SUB_GAP.min} max={SUB_GAP.max} onChange={(v) => patchSel(textSel, { subGap: v || undefined })} />}
                 <RSelect width={120} title="ระยะห่างตัวอักษร" value={String(t0.letterSpacing ?? 0)} onChange={(v) => patchSel(textSel, { letterSpacing: Number(v) || undefined })}>
                   {[...new Set([-0.5, 0, 0.5, 1, 2, 3, t0.letterSpacing ?? 0])].sort((a, b) => a - b).map((v) => <option key={v} value={String(v)}>ตัวอักษร {v > 0 ? "+" : ""}{v}</option>)}
                 </RSelect>

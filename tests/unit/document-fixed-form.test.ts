@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CORE_TOTALS, OPTIONAL_TOTALS, columnWidthsPt, gridSizes, normalizeDesign, normalizeFreeLayout, requiredColumnsFor, visibleTotals, BLOCK_PARTS } from "@/lib/documents/design";
+import { CORE_TOTALS, OPTIONAL_TOTALS, columnWidthsPt, gridSizes, normalizeDesign, normalizeFreeLayout, totalsBlockHeight, requiredColumnsFor, visibleTotals, BLOCK_PARTS } from "@/lib/documents/design";
 import { applySigning, EMPTY_SIGNING } from "@/lib/documents/esign";
 import { dataGroups, fitTotalsBlocks } from "@/lib/documents/design-data";
 import { sampleModelFor, totalsRows } from "@/lib/documents/build";
@@ -104,5 +104,22 @@ describe("totals box fits the totals table", () => {
   it("VAT row has no brackets", () => {
     const labels = totalsRows({ lineTotal: 107, billDiscount: 0, net: 107, vat: 7, grand: 107, taxType: "INCLUSIVE" }).map((r) => r.label);
     expect(labels.some((l) => /[()]/.test(l))).toBe(false);
+  });
+});
+
+describe("free line spacing", () => {
+  it("line height can be squeezed to 0.8, Thai→English gap is kept per box and counted in the totals height", () => {
+    const out = normalizeFreeLayout({ enabled: true, blocks: [
+      { id: "m", kind: "meta", x: 300, y: 100, w: 230, h: 60, lineHeight: 0.5, rowGap: 0, subGap: -3 },
+      { id: "t", kind: "totals", x: 300, y: 590, w: 230, h: 80, subGap: -2 },
+      { id: "r", kind: "rect", x: 0, y: 0, w: 10, h: 10, subGap: 4 },
+    ] }, "quotation")!;
+    const m = out.blocks.find((b) => b.id === "m")!;
+    expect(m).toMatchObject({ lineHeight: 0.8, rowGap: 0, subGap: -3 });
+    expect(out.blocks.find((b) => b.id === "r")!.subGap).toBeUndefined();
+    const theme = { ...normalizeDesign(null).theme, bilingual: true };
+    const rows = [{ label: "รวมเป็นเงิน" }, { label: "จำนวนเงินรวมทั้งสิ้น", strong: true }];
+    const t = out.blocks.find((b) => b.id === "t")!;
+    expect(totalsBlockHeight({ ...t, subGap: -2 }, theme, rows)).toBeLessThan(totalsBlockHeight({ ...t, subGap: undefined }, theme, rows));
   });
 });

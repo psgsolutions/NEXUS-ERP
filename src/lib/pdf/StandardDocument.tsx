@@ -108,6 +108,8 @@ export type Ctx = {
   labelGap?: number; labelWidth?: number; rowGap?: number;
   /** ตาราง/ยอดรวม: ระยะบน-ล่างในแถว (pt) · ยอดรวม: ลำดับแถวที่จัดเอง · ระยะขอบในของกล่อง (pt) */
   rowPad?: number; order?: string[]; boxPad?: number;
+  /** ระยะบรรทัดไทย→อังกฤษในหัวข้อ (pt) */
+  subGap?: number;
   /** ช่องลงนามที่วางกล่องลายเซ็นแยกไว้แล้ว (ช่องลงนามไม่พิมพ์รูปลายเซ็นซ้ำ) */
   signPlaced?: Set<string>;
   /** จำนวนหน้าจริงของเอกสาร (หน้าออกแบบวาดทีละกล่องหลายหน้า — เลขหน้าในส่วนท้ายใช้ค่านี้) */
@@ -189,7 +191,7 @@ function Lbl({ c, th, style, align, suffix = "" }: { c: Ctx; th: string; style?:
   return (
     <View>
       <T style={[style, align ? { textAlign: align } : {}]}>{th}{suffix}</T>
-      <T style={[c.s.en, tone, align ? { textAlign: align } : {}]}>{en}</T>
+      <T style={[c.s.en, tone, align ? { textAlign: align } : {}, c.subGap ? { marginTop: c.subGap } : {}]}>{en}</T>
     </View>
   );
 }
@@ -378,9 +380,9 @@ export function SectionParty({ c: c0 }: { c: Ctx }) {
     <View style={[{ flexDirection: "row", gap: 10 }, box, fz]}>
       <View style={{ flex: 1 }}>
         <Lbl c={c} th={p.label} style={c.s.partyLabel} />
-        <T style={{ fontWeight: "bold" }}>{p.name || "-"}</T>
-        {p.address ? <T>{p.address}</T> : null}
-        <T>เลขประจำตัวผู้เสียภาษี {taxLine}</T>
+        <T style={{ fontWeight: "bold", marginTop: c.rowGap ?? 0 }}>{p.name || "-"}</T>
+        {p.address ? <T style={{ marginTop: c.rowGap ?? 0 }}>{p.address}</T> : null}
+        <T style={{ marginTop: c.rowGap ?? 0 }}>เลขประจำตัวผู้เสียภาษี {taxLine}</T>
       </View>
       {showContact || showPhone || showEmail ? (
         <View style={{ width: "34%" }}>
@@ -499,7 +501,7 @@ export function SectionPayment({ c, align }: { c: Ctx; align?: "left" | "center"
  * ภาษีและยอดรวมทั้งสิ้นจึงไม่ถูกตัดหาย
  */
 function totalsMetrics(c: Ctx, pad: number) {
-  return { fs: c.s.page.fontSize as number, enFs: c.s.en.fontSize as number, lh: (c.s.page.lineHeight as number) || 1.35, pad, style: c.t.totals, en: c.t.bilingual && !c.hide.has("en") };
+  return { fs: c.s.page.fontSize as number, enFs: c.s.en.fontSize as number, lh: (c.s.page.lineHeight as number) || 1.35, pad, style: c.t.totals, en: c.t.bilingual && !c.hide.has("en"), subGap: c.subGap };
 }
 function fitTotals(c: Ctx, rows: { label: string; strong?: boolean }[]): Ctx {
   if (!c.box || !rows.length) return c;
@@ -640,7 +642,7 @@ export function blockContext(c: Ctx, raw: FreeBlock): Ctx {
   } : c.t;
   return {
     ...c, t, s: own ? themeStyles(t, b.lineHeight ?? 1.35, b.radius) : c.s, hide: new Set(b.hide || []), cols: b.cols, colSpec: b.colSpec, labels: b.labels, fields: b.fields, gap: b.gap, fill: b.fill, box: { w: b.w, h: b.h },
-    radius: b.radius, lineColor: b.lineColor, lineWidth: b.borderWidth, headBg: b.headBg, labelGap: b.labelGap, labelWidth: b.labelWidth, rowGap: b.rowGap, rowPad: b.rowPad, order: b.order, boxPad: blockPad(b),
+    radius: b.radius, lineColor: b.lineColor, lineWidth: b.borderWidth, headBg: b.headBg, labelGap: b.labelGap, labelWidth: b.labelWidth, rowGap: b.rowGap, rowPad: b.rowPad, order: b.order, boxPad: blockPad(b), subGap: b.subGap,
   };
 }
 

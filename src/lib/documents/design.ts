@@ -155,6 +155,8 @@ export interface FreeBlock {
   rowPad?: number;
   /** ตารางยอดรวม: ลำดับแถว (ชื่อแถว) ที่จัดเอง — ไม่ตั้ง = ลำดับมาตรฐาน */
   order?: string[];
+  /** ระยะภายในหัวข้อ: ระหว่างบรรทัดไทยกับบรรทัดอังกฤษใต้หัวข้อ (pt, ติดลบ = บีบเข้า) */
+  subGap?: number;
   /** ตารางเส้น (kind=grid): สัดส่วนความกว้างแต่ละคอลัมน์ / ความสูงแต่ละแถว (ว่าง = เท่ากัน) — ลากเส้นแบ่งปรับเองได้ */
   colW?: number[];
   rowH?: number[];
@@ -395,9 +397,9 @@ export function visibleTotals<T extends { label: string; strong?: boolean }>(row
  * กรอบกล่องยอดรวมในหน้าออกแบบจึงพอดีตารางจริงเสมอ ติ๊กแถวเพิ่ม/ลด กรอบขยาย/หดตาม
  * fs/enFs = ขนาดตัวอักษรเนื้อหา/ป้ายอังกฤษที่พิมพ์จริง · lh = ระยะบรรทัด · pad = ระยะบน-ล่างในแถว
  */
-export function totalsRowHeights(rows: { label: string; strong?: boolean }[], m: { fs: number; enFs: number; lh: number; pad: number; style: TotalsStyle; en: boolean }): number[] {
+export function totalsRowHeights(rows: { label: string; strong?: boolean }[], m: { fs: number; enFs: number; lh: number; pad: number; style: TotalsStyle; en: boolean; subGap?: number }): number[] {
   return rows.map((r, i) => {
-    const text = m.fs * m.lh + (m.en && enLabel(r.label) ? m.enFs * 1.15 : 0) + m.pad * 2;
+    const text = m.fs * m.lh + (m.en && enLabel(r.label) ? Math.max(0, m.enFs * 1.15 + (m.subGap || 0)) : 0) + m.pad * 2;
     if (m.style === "grid") return text + (i ? 0.6 : 0);
     if (!r.strong) return text;
     return text + 2 + (m.style === "outline" ? 2 : m.style === "plain" ? 1 : 0);
@@ -417,7 +419,7 @@ export const blockPad = (b: Pick<FreeBlock, "kind" | "pad" | "border" | "bg">) =
 /** ความสูงที่พอดีของกล่องยอดรวม ตามแถวที่แสดง */
 export function totalsBlockHeight(b: FreeBlock, t: DocTheme, rows: { label: string; strong?: boolean }[]): number {
   const f = blockFontMetrics(b, t);
-  const h = totalsTableHeight(visibleTotals(rows, b.hide, b.order), { ...f, pad: b.rowPad ?? 2.5, style: b.totalsStyle || t.totals, en: t.bilingual && !(b.hide || []).includes("en") });
+  const h = totalsTableHeight(visibleTotals(rows, b.hide, b.order), { ...f, pad: b.rowPad ?? 2.5, style: b.totalsStyle || t.totals, en: t.bilingual && !(b.hide || []).includes("en"), subGap: b.subGap });
   return Math.ceil((h + blockPad(b) * 2) * 2) / 2;
 }
 
@@ -536,6 +538,9 @@ export function tint(hex: string, t: number): string {
  */
 /** ขนาดตัวอักษรของกล่องที่ตั้งได้ (pt) */
 export const FONT_MIN = 3, FONT_MAX = 56;
+/** ระยะบรรทัด (เท่าของขนาดตัวอักษร) — บีบได้ถึง 0.8 · ระยะไทย–อังกฤษในหัวข้อ (pt) */
+export const LINE_HEIGHT = { min: 0.8, max: 2.5 };
+export const SUB_GAP = { min: -6, max: 12 };
 export const COLOR_TOKENS: Record<string, string> = { "@primary": "สีหลัก", "@accent": "สีรอง", "@soft": "สีอ่อน", "@line": "สีเส้น", "@muted": "สีจาง" };
 /** สีเส้นตาราง/กรอบตั้งต้น: สีหลักแบบอ่อน (เดิมเป็นเทาคงที่ ไม่ตามธีม) */
 export const themeLine = (t: DocTheme) => tint(t.primary, 0.72);
@@ -636,7 +641,8 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(b.text !== undefined ? { text: str(b.text, 1000) } : {}),
     ...(b.kind === "image" && /^data:image\/(png|jpeg);base64,/.test(String(b.src || "")) && String(b.src).length < 400_000 ? { src: String(b.src) } : {}),
     ...(b.fontSize !== undefined && b.fontSize !== null ? { fontSize: num(b.fontSize, FONT_MIN, FONT_MAX, 10) } : {}),
-    ...(b.lineHeight !== undefined && b.lineHeight !== null ? { lineHeight: num(b.lineHeight, 1, 2.5, 1.35) } : {}),
+    ...(b.lineHeight !== undefined && b.lineHeight !== null ? { lineHeight: num(b.lineHeight, LINE_HEIGHT.min, LINE_HEIGHT.max, 1.35) } : {}),
+    ...(TEXT_BLOCKS.includes(b.kind) && b.subGap !== undefined && b.subGap !== null && Number(b.subGap) !== 0 ? { subGap: num(b.subGap, SUB_GAP.min, SUB_GAP.max, 0) } : {}),
     ...(colorOk(b.color) ? { color: b.color } : {}),
     ...(colorOk(b.bg) ? { bg: b.bg } : {}),
     ...(colorOk(b.border) ? { border: b.border } : {}),

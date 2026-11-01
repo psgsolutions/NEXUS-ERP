@@ -95,7 +95,7 @@ export function SupplierPriceSelector({
               <Tag size={13} className="text-nexus-teal" />
               เปรียบเทียบราคาซัพพลายเออร์ล่าสุด
             </span>
-            <span className="text-[10px] text-white/40 font-mono">สูงสุด 3 ราย</span>
+            <span className="text-[11px] text-white/40 font-mono">สูงสุด 3 ราย</span>
           </div>
 
           <div className="space-y-1.5 max-h-56 overflow-y-auto custom-scrollbar">
@@ -113,7 +113,7 @@ export function SupplierPriceSelector({
                     {rec.supplierName}
                   </p>
                   {rec.poCode && (
-                    <p className="text-[10px] text-white/40 font-mono">
+                    <p className="text-[11px] text-white/40 font-mono">
                       {rec.poCode} {rec.date ? `(${rec.date})` : ""}
                     </p>
                   )}
@@ -123,7 +123,7 @@ export function SupplierPriceSelector({
                   <span className="text-[14px] font-black font-mono text-nexus-teal">
                     ฿{rec.price.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
-                  <p className="text-[10px] text-white/50 group-hover:text-nexus-teal font-bold flex items-center justify-end gap-0.5">
+                  <p className="text-[11px] text-white/50 group-hover:text-nexus-teal font-bold flex items-center justify-end gap-0.5">
                     <Check size={10} /> เลือกราคานี้
                   </p>
                 </div>

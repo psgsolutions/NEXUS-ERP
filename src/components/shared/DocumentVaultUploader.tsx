@@ -88,7 +88,7 @@ export function DocumentVaultUploader({
         >
           <FileText size={32} className="mx-auto text-white/20 group-hover:text-nexus-teal transition-colors" />
           <p className="text-xs text-white/40 font-bold group-hover:text-white transition-colors">ยังไม่มีเอกสารแนบในคลังดิจิทัล</p>
-          <p className="text-[10px] text-white/30">คลิกที่นี่ หรือกดปุ่ม "แนบไฟล์เอกสาร" เพื่ออัปโหลด Data Sheet, สเปก TOR หรือใบรับรองมาตรฐาน (PDF / Word / Excel)</p>
+          <p className="text-[11px] text-white/30">คลิกที่นี่ หรือกดปุ่ม "แนบไฟล์เอกสาร" เพื่ออัปโหลด Data Sheet, สเปก TOR หรือใบรับรองมาตรฐาน (PDF / Word / Excel)</p>
         </div>
       ) : (
         <div className="space-y-3">

@@ -152,7 +152,7 @@ function SequenceCard({ label, prefix, value, onChange }: { label: string; prefi
   return (
     <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all flex flex-col sm:flex-row items-center gap-4">
       <div className="flex items-center gap-3 w-full sm:w-[260px] shrink-0 min-w-0">
-        <div className="w-8 h-8 shrink-0 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 text-[10px] font-mono font-bold">{prefix}</div>
+        <div className="w-8 h-8 shrink-0 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 text-[11px] font-mono font-bold">{prefix}</div>
         <div className="min-w-0">
           <p className="text-[13px] font-medium text-white truncate" title={label}>{label}</p>
           <p className="text-[12px] text-white/40 font-mono truncate">ตัวอย่าง: {example}</p>

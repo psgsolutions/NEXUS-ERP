@@ -509,7 +509,7 @@ function GRRow({ id, po, supplier, date, warehouse, status, onClick, onPrint }: 
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
          <p className="font-mono text-sm text-nexus-teal font-medium tracking-tighter text-center w-full">{id}</p>
       </NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[10px] text-white/60 uppercase tracking-widest">{po}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[11px] text-white/60 uppercase tracking-widest">{po}</NexusTableCell>
       <NexusTableCell className="w-full font-bold text-white/80 group-hover:text-white transition-colors">{supplier}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-white/60 font-bold">{date}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-sm font-medium text-white/40 uppercase">{warehouse}</NexusTableCell>
@@ -563,7 +563,7 @@ function PORow({ id, docId, vendor, totalAmount, amount, approval, normalizedSta
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-end gap-2">
           {onExpenseCreate && isApproved && !isSample && (
-             <button onClick={onExpenseCreate} className="px-2 py-1 text-[10px] bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500 hover:text-white transition-colors">รับ+ตั้งหนี้</button>
+             <button onClick={onExpenseCreate} className="px-2 py-1 text-[11px] bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500 hover:text-white transition-colors">รับ+ตั้งหนี้</button>
           )}
           {normalizedStatus === "PENDING_APPROVAL" && (
             <SecureDeleteAction serverKind="purchase_order" documentId={docId} displayName={id} compact />

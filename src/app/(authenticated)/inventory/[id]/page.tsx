@@ -509,7 +509,7 @@ export default function ProductDetailPage() {
                   />
                 ) : (
                   <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm text-white/60 min-h-[80px]">
-                    {form.description || <span className="text-white/20 italic">ยังไม่มีคำอธิบาย</span>}
+                    {form.description || <span className="text-white/20">ยังไม่มีคำอธิบาย</span>}
                   </div>
                 )}
               </FormField>
@@ -576,7 +576,7 @@ export default function ProductDetailPage() {
               {/* Margin Indicator */}
               <div className="col-span-full flex flex-col md:flex-row gap-4">
                 <div className="flex-1 p-5 rounded-2xl bg-nexus-teal/5 border border-nexus-teal/15 flex flex-col items-center justify-center gap-2">
-                  <span className="text-[10px] font-normal text-nexus-teal uppercase tracking-widest">Project Margin</span>
+                  <span className="text-[11px] font-normal text-nexus-teal uppercase tracking-widest">Project Margin</span>
                   <div className={cn("text-3xl font-bold font-mono", margin >= 20 ? "text-nexus-teal" : margin >= 0 ? "text-warning" : "text-danger")}>
                     {margin}%
                   </div>
@@ -586,7 +586,7 @@ export default function ProductDetailPage() {
                 </div>
 
                 <div className="flex-1 p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col items-center justify-center gap-2">
-                  <span className="text-[10px] font-normal text-white/30 uppercase tracking-widest">มูลค่าคงคลังรวม</span>
+                  <span className="text-[11px] font-normal text-white/30 uppercase tracking-widest">มูลค่าคงคลังรวม</span>
                   <div className="text-2xl font-bold font-mono text-nexus-blue">
                     ฿{totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </div>
@@ -659,7 +659,7 @@ export default function ProductDetailPage() {
                 <p className={cn("text-[13px] font-medium uppercase tracking-widest", isOut ? "text-danger" : isLow ? "text-warning" : "text-nexus-teal")}>
                   {stockLabel}
                 </p>
-                <p className="text-[10px] text-white/40 font-bold mt-0.5">
+                <p className="text-[11px] text-white/40 font-bold mt-0.5">
                   {isOut ? "สินค้าหมดคลัง กรุณาดำเนินการสั่งซื้อทันที" :
                    isLow ? `ต่ำกว่าระดับขั้นต่ำ (${form.minStock} ${form.unit}) แนะนำเติมสต็อก` :
                    `อยู่ในระดับปลอดภัย (เกินขั้นต่ำ ${form.onHand - form.minStock} ${form.unit})`}
@@ -699,7 +699,7 @@ export default function ProductDetailPage() {
                       />
                     </NexusTableCell>
                     <NexusTableCell mono className="w-20 text-right">{move.quantity}</NexusTableCell>
-                    <NexusTableCell variant="text" className="font-mono text-[10px] text-white/40 uppercase">
+                    <NexusTableCell variant="text" className="font-mono text-[11px] text-white/40 uppercase">
                       {move.fromLocation || "EXTERNAL"} &rarr; {move.toLocation || "MAIN-WH"}
                     </NexusTableCell>
                     <NexusTableCell variant="text" className="text-xs font-semibold text-white/50">{move.userId || "System"}</NexusTableCell>

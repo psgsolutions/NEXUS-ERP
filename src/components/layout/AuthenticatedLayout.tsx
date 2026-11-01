@@ -225,7 +225,7 @@ export default function AuthenticatedLayout({
                      </p>
                      <div className="flex items-center justify-end gap-1.5 mt-1">
                         <div className="w-1.5 h-1.5 rounded-full bg-nexus-teal" />
-                        <span className="text-[10px] font-bold text-nexus-teal uppercase tracking-widest leading-none font-mono">ONLINE</span>
+                        <span className="text-[11px] font-bold text-nexus-teal uppercase tracking-widest leading-none font-mono">ONLINE</span>
                      </div>
                   </div>
                   
@@ -245,14 +245,14 @@ export default function AuthenticatedLayout({
                        <p className="text-[11px] font-semibold text-white/50 mb-1">บัญชีผู้ใช้</p>
                        <p className="text-[13px] font-black text-white truncate uppercase font-mono tracking-tight">{user?.email || 'admin@nexus.os'}</p>
                        
-                       <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2 text-[10px]">
+                       <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2 text-[11px]">
                           <span className="font-bold text-white/50">ตำแหน่ง</span>
                           <span className="font-semibold text-nexus-teal uppercase tracking-widest bg-nexus-teal/10 px-2 py-0.5 rounded border border-nexus-teal/20">
                              {roleText}
                           </span>
                        </div>
                        
-                       <div className="mt-2 flex items-center justify-between text-[9px] text-white/20 font-mono">
+                       <div className="mt-2 flex items-center justify-between text-[11px] text-white/20 font-mono">
                           <span>SECURE NODE:</span>
                           <span className="font-bold text-white/40">AES_256_ACTIVE</span>
                        </div>
@@ -382,7 +382,7 @@ function SideLink({ href, icon, label, active, title }: { href: string; icon: an
             transform: 'translateY(-50%)'
           }}
         >
-          <p className="text-[10px] font-mono text-cyan-100 uppercase tracking-widest leading-none drop-shadow-neon">{title}</p>
+          <p className="text-[11px] font-mono text-cyan-100 uppercase tracking-widest leading-none drop-shadow-neon">{title}</p>
         </div>,
         document.body
       )}

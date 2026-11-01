@@ -253,7 +253,7 @@ export default function LoginPage() {
                 สมัครสมาชิกใหม่
               </Link>
             </div>
-            <div className="text-[10px] text-white/20 font-medium tracking-widest uppercase">
+            <div className="text-[11px] text-white/20 font-medium tracking-widest uppercase">
               &copy; 2026 NEXUS ENTERPRISE ERP. ALL RIGHTS RESERVED.
             </div>
           </div>

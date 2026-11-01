@@ -93,7 +93,7 @@ export function ExpenseModal({ isOpen, onClose, onSave, initialData }: ExpenseMo
                ฿{((form.amount || 0) * (1 - (form.whtRate || 0)/100)).toLocaleString(undefined, {minimumFractionDigits: 2})}
              </span>
              {form.whtRate > 0 && (
-               <span className="text-[10px] text-warning mt-2 font-bold">
+               <span className="text-[11px] text-warning mt-2 font-bold">
                  * หักภาษี ณ ที่จ่าย {form.whtRate}% = ฿{((form.amount || 0) * ((form.whtRate || 0)/100)).toLocaleString(undefined, {minimumFractionDigits: 2})}
                </span>
              )}

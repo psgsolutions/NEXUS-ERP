@@ -226,13 +226,13 @@ function PickingScreen() {
               <p className="text-[12px] text-white truncate">{p?.name || productId}</p>
               <p className={cn("text-[12px] font-mono font-bold", inLines >= qty ? "text-emerald-400" : "text-warning")}>{inLines}/{qty}</p>
             </div>
-            <p className="text-[10px] text-white/40 font-mono">{p?.sku || productId}{p?.barcode ? ` • ${p.barcode}` : ""}</p>
+            <p className="text-[11px] text-white/40 font-mono">{p?.sku || productId}{p?.barcode ? ` • ${p.barcode}` : ""}</p>
             <div className="flex flex-wrap gap-1 pt-1">
               {spots.map((b: any) => (
-                <span key={b.id} className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-nexus-teal/10 text-nexus-teal">{b.location}: {b.quantity}</span>
+                <span key={b.id} className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-nexus-teal/10 text-nexus-teal">{b.location}: {b.quantity}</span>
               ))}
-              {free > 0 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/50">ไม่ระบุตำแหน่ง: {free}</span>}
-              {spots.length === 0 && free <= 0 && <span className="text-[10px] text-red-400">ไม่มีสต็อก</span>}
+              {free > 0 && <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/5 text-white/50">ไม่ระบุตำแหน่ง: {free}</span>}
+              {spots.length === 0 && free <= 0 && <span className="text-[11px] text-red-400">ไม่มีสต็อก</span>}
             </div>
           </div>
         );

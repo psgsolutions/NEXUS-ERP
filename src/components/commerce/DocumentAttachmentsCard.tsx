@@ -142,7 +142,7 @@ export function DocumentAttachmentsCard({
                 <p className="text-[13px] font-bold text-white truncate group-hover/file:text-nexus-teal transition-colors">
                   {file.filename}
                 </p>
-                <p className="text-[10px] font-mono text-white/40">
+                <p className="text-[11px] font-mono text-white/40">
                   {file.fileSize ? `${(file.fileSize / 1024).toFixed(0)} KB` : "ไม่ทราบขนาด"} • อัปโหลดเมื่อ {file.uploadedAt ? file.uploadedAt.split("T")[0] : "วันนี้"}
                 </p>
               </div>

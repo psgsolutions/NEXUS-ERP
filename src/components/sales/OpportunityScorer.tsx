@@ -56,8 +56,8 @@ export function OpportunityScorer({ leads }: { leads: Lead[] }) {
                             <div>
                                <h5 className="text-lg font-semibold text-white uppercase tracking-tight">{lead.customerName}</h5>
                                <div className="flex items-center gap-4 mt-1">
-                                  <span className="text-[10px] font-bold text-white/40">Value: ฿{lead.projectValue.toLocaleString()}</span>
-                                  <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-md", 
+                                  <span className="text-[11px] font-bold text-white/40">Value: ฿{lead.projectValue.toLocaleString()}</span>
+                                  <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-md", 
                                      lead.sentiment === "Positive" ? "bg-nexus-teal/10 text-nexus-teal" : "bg-warning/10 text-warning"
                                   )}>
                                      {lead.sentiment} Sentiment
@@ -67,9 +67,9 @@ export function OpportunityScorer({ leads }: { leads: Lead[] }) {
                          </div>
                          
                          <div className="text-right space-y-2">
-                            <p className="text-[10px] font-semibold text-nexus-teal uppercase tracking-widest">Recommended Action</p>
+                            <p className="text-[11px] font-semibold text-nexus-teal uppercase tracking-widest">Recommended Action</p>
                             <div className="flex items-center gap-3">
-                               <p className="text-xs font-bold text-white/60 italic">"{lead.nextStep}"</p>
+                               <p className="text-xs font-bold text-white/60">"{lead.nextStep}"</p>
                                <button className="p-2 rounded-lg bg-nexus-teal/10 text-nexus-teal border border-nexus-teal/20 hover:bg-nexus-teal hover:text-black transition-all">
                                   <ArrowUpRight size={16} />
                                 </button>
@@ -103,7 +103,7 @@ export function OpportunityScorer({ leads }: { leads: Lead[] }) {
              </div>
 
              <GlassCard className="p-6 border-white/10">
-                <h5 className="text-[10px] font-semibold text-white/20 uppercase tracking-widest mb-4">Pipeline Velocity</h5>
+                <h5 className="text-[11px] font-semibold text-white/20 uppercase tracking-widest mb-4">Pipeline Velocity</h5>
                 <div className="flex items-end gap-2 h-16">
                    <div className="flex-1 bg-nexus-teal/20 rounded-t-lg h-[40%]" />
                    <div className="flex-1 bg-nexus-teal/20 rounded-t-lg h-[60%]" />

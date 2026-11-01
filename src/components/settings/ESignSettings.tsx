@@ -27,13 +27,13 @@ function MmSize({ label, value, lim, onChange }: { label: string; value: number;
   const commit = (v: string) => { const n = Number(v); if (Number.isFinite(n) && n > 0) onChange(Math.min(lim.max, Math.max(lim.min, Math.round(n * 10) / 10))); else setText(String(value)); };
   return (
     <div className="space-y-1">
-      <p className="text-[11.5px] text-white/55">{label}</p>
+      <p className="text-[12px] text-white/55">{label}</p>
       <div className="flex items-center gap-1.5 flex-wrap">
         {lim.presets.map((p) => (
           <button key={p} type="button" onClick={() => onChange(p)} className={cn("h-7 px-2.5 rounded-full text-[12px] border", Math.abs(value - p) < 0.05 ? "border-nexus-teal/60 bg-nexus-teal/15 text-nexus-teal" : "border-white/10 text-white/65 hover:text-white")}>{p} มม.</button>
         ))}
         <PillInput inputMode="decimal" value={text} onChange={(e) => setText(e.target.value.replace(/[^\d.]/g, ""))} onBlur={(e) => commit(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") commit((e.target as HTMLInputElement).value); }} className="h-8 w-[70px] text-right font-mono text-[12px]" aria-label={`${label} (มม.)`} />
-        <span className="text-[11.5px] text-white/45">มม. ({lim.min}–{lim.max})</span>
+        <span className="text-[12px] text-white/45">มม. ({lim.min}–{lim.max})</span>
       </div>
     </div>
   );
@@ -118,7 +118,7 @@ export function ESignSettings() {
             </button>
             <div className="space-y-2 flex-1 min-w-0">
               <p className="text-[13px] text-white/80 font-semibold">ตราประทับบริษัท</p>
-              <p className="text-[11.5px] text-white/45 leading-snug">สแกน/ถ่ายรูปตราบนกระดาษขาว ระบบทำพื้นขาวเป็นโปร่งใสและตัดขอบให้ · ไฟล์ PNG พื้นโปร่งใสได้ผลดีที่สุด</p>
+              <p className="text-[12px] text-white/45 leading-snug">สแกน/ถ่ายรูปตราบนกระดาษขาว ระบบทำพื้นขาวเป็นโปร่งใสและตัดขอบให้ · ไฟล์ PNG พื้นโปร่งใสได้ผลดีที่สุด</p>
               <MmSize label="ขนาดตราบนกระดาษ (ด้านยาว)" value={ptToMm(cfg.stampSize)} lim={STAMP_MM} onChange={(mm) => set({ stampSize: mmToPt(mm) })} />
               <div className="flex gap-2">
                 <PillButton variant="glass" className="h-8 px-3 text-xs" onClick={() => stampRef.current?.click()}><ImagePlus size={13} /> {cfg.stamp ? "เปลี่ยนรูปตรา" : "อัปโหลดตรา"}</PillButton>
@@ -139,15 +139,15 @@ export function ESignSettings() {
           <div className="flex items-end gap-4 flex-wrap rounded-xl bg-white p-3">
             <div className="flex flex-col items-center gap-1">
               <div className="border border-dashed border-slate-400 flex items-center justify-center overflow-hidden" style={{ width: `${ptToMm(cfg.signWidth)}mm`, height: `${ptToMm(cfg.signWidth) * SIGN_RATIO}mm` }}>
-                {cfg.signers[0]?.image ? <img src={cfg.signers[0].image} alt="ตัวอย่างลายเซ็น" className="max-w-full max-h-full object-contain" /> : <span className="text-[10px] text-slate-400">ลายเซ็น</span>}
+                {cfg.signers[0]?.image ? <img src={cfg.signers[0].image} alt="ตัวอย่างลายเซ็น" className="max-w-full max-h-full object-contain" /> : <span className="text-[11px] text-slate-400">ลายเซ็น</span>}
               </div>
-              <span className="text-[10.5px] text-slate-500">ลายเซ็น {ptToMm(cfg.signWidth)} × {Math.round(ptToMm(cfg.signWidth) * SIGN_RATIO * 10) / 10} มม.</span>
+              <span className="text-[11px] text-slate-500">ลายเซ็น {ptToMm(cfg.signWidth)} × {Math.round(ptToMm(cfg.signWidth) * SIGN_RATIO * 10) / 10} มม.</span>
             </div>
             <div className="flex flex-col items-center gap-1">
               <div className="border border-dashed border-slate-400 flex items-center justify-center overflow-hidden" style={{ width: `${ptToMm(cfg.stampSize)}mm`, height: `${ptToMm(cfg.stampSize)}mm` }}>
-                {cfg.stamp ? <img src={cfg.stamp} alt="ตัวอย่างตรา" className="max-w-full max-h-full object-contain" /> : <span className="text-[10px] text-slate-400">ตรา</span>}
+                {cfg.stamp ? <img src={cfg.stamp} alt="ตัวอย่างตรา" className="max-w-full max-h-full object-contain" /> : <span className="text-[11px] text-slate-400">ตรา</span>}
               </div>
-              <span className="text-[10.5px] text-slate-500">ตรา {ptToMm(cfg.stampSize)} มม.</span>
+              <span className="text-[11px] text-slate-500">ตรา {ptToMm(cfg.stampSize)} มม.</span>
             </div>
           </div>
         </GlassCard>
@@ -159,13 +159,13 @@ export function ESignSettings() {
             <Link href="/my-signature" className="text-[12px] text-nexus-teal hover:underline flex items-center gap-1"><PenLine size={12} /> จัดการลายเซ็น</Link>
           </div>
           <p className="text-[12px] text-white/45">ลายเซ็นผูกกับบัญชีผู้ใช้ — เจ้าของตั้งเองที่ &quot;ลายเซ็นของฉัน&quot; หรือฝ่ายบุคคลตั้งให้</p>
-          {cfg.signers.length === 0 && <p className="text-[12.5px] text-white/45">ยังไม่มีลายเซ็นในบริษัท</p>}
+          {cfg.signers.length === 0 && <p className="text-[12px] text-white/45">ยังไม่มีลายเซ็นในบริษัท</p>}
           <div className="grid grid-cols-2 gap-2">
             {cfg.signers.map((s) => (
               <div key={s.id} className="rounded-xl border border-white/10 p-2 flex items-center gap-2">
                 <div className="w-20 h-9 rounded flex items-center justify-center overflow-hidden flex-shrink-0" style={CHECKER}><img src={s.image} alt={`ลายเซ็น ${s.name}`} className="max-w-full max-h-full object-contain" /></div>
                 <div className="min-w-0">
-                  <p className="text-[12.5px] text-white truncate">{s.name}</p>
+                  <p className="text-[12px] text-white truncate">{s.name}</p>
                   <p className={cn("text-[11px] truncate", s.userId ? "text-white/45" : "text-amber-200/80")}>{s.userId ? s.position || "-" : "ยังไม่ผูกกับผู้ใช้"}</p>
                 </div>
               </div>

@@ -14,12 +14,13 @@
     "check:thai-labels": "node scripts/check-thai-labels.js",
     "check:layout": "node scripts/run-layout-audit.js",
     "test:rules": "firebase emulators:exec --only firestore --project demo-nexus \"node scripts/test-tenant-rules.js\"",
-    "check:static": "npm run -s check:company-id && npm run -s check:hex-tokens && npm run -s check:thai-labels && npm run -s check:ui-primitives",
+    "check:static": "npm run -s check:company-id && npm run -s check:hex-tokens && npm run -s check:thai-labels && npm run -s check:ui-primitives && npm run -s check:typography",
     "postinstall": "patch-package",
     "test:e2e": "node tests/e2e/run.cjs",
     "check:data": "node tests/e2e/tools/checks.cjs",
     "backup:firestore": "node scripts/backup-firestore.mjs",
-    "check:ui-primitives": "node scripts/check-ui-primitives.js"
+    "check:ui-primitives": "node scripts/check-ui-primitives.js",
+    "check:typography": "node scripts/check-typography.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

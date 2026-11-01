@@ -223,7 +223,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
                              <PillInput 
                                value={item.unit}
                                onChange={(e) => updateItem(item.id, "unit", e.target.value)}
-                               className="w-full text-center text-[10px] font-black uppercase" 
+                               className="w-full text-center text-[11px] font-black uppercase" 
                              />
                           </div>
                           <div className="col-span-2">
@@ -329,7 +329,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
                  <label className="text-xs font-black text-white uppercase tracking-tight cursor-pointer" onClick={() => setAutoGenerate(!autoGenerate)}>
                    เปิดระบบอัตโนมัติ
                  </label>
-                 <p className="text-[9px] text-white/50 leading-relaxed">
+                 <p className="text-[11px] text-white/50 leading-relaxed">
                    เมื่อยืนยัน SO ระบบจะสร้างใบสั่งซื้อ แบบ Exclude VAT, ใบสั่งจ้าง และใบส่งของ ให้อัตโนมัติทันที
                  </p>
                </div>

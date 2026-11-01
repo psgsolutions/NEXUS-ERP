@@ -21,6 +21,9 @@ const darkHexPatterns = [
   /#0[cC]0[cC]0[eE]\b/
 ];
 
+/** พื้นหลังสีแบบ rgb()/rgba() ในคลาส (bg-/from-/via-/to-[rgba(...)]) หรือ style background(Color) */
+const NEAR_BLACK_RGB = /(?:(?:bg|from|via|to)-\[rgba?\(|background(?:Color)?:\s*["'`]rgba?\()\s*(\d+)[,_\s]+(\d+)[,_\s]+(\d+)(?:[,_\s/]+([\d.]+))?/g;
+
 function scanDirectory(dir, occurrences = []) {
   const files = fs.readdirSync(dir, { withFileTypes: true });
 
@@ -57,6 +60,14 @@ function scanDirectory(dir, occurrences = []) {
               });
               break;
             }
+          }
+        }
+        // C-22: พื้นเกือบดำแบบ rgb()/rgba() (ทุกช่องสี ≤ 32 และไม่โปร่งใสทั้งหมด) ต้องใช้ token เหมือน hex
+        for (const m of line.matchAll(NEAR_BLACK_RGB)) {
+          const [r, g, b] = [m[1], m[2], m[3]].map(Number), a = m[4] === undefined ? 1 : Number(m[4]);
+          if (Math.max(r, g, b) <= 32 && a > 0) {
+            occurrences.push({ file: relPath, line: index + 1, content: line.trim() });
+            break;
           }
         }
       });

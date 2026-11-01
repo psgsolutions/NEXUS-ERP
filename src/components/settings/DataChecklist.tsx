@@ -14,7 +14,7 @@ export function DataChecklist({ groups, onToggle, canEdit, compact }: { groups: 
           {!compact && (
             <div>
               <p className="text-[12px] font-bold text-white/80">{g.title}</p>
-              <p className="text-[10.5px] text-sky-300/70 flex items-center gap-1"><Database size={10} /> {g.source}</p>
+              <p className="text-[11px] text-sky-300/70 flex items-center gap-1"><Database size={10} /> {g.source}</p>
             </div>
           )}
           <div className="grid grid-cols-2 gap-x-2 gap-y-1">

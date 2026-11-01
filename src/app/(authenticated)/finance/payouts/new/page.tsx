@@ -226,7 +226,7 @@ export default function CreatePayoutPage() {
         <div className="flex justify-between items-center text-red-400">
           <span className="text-[11px] font-semibold uppercase tracking-widest flex flex-col gap-1">
             หัก ณ ที่จ่าย (WHT)
-            <span className="text-[9px] font-mono text-red-400/60 leading-none">3.00%</span>
+            <span className="text-[11px] font-mono text-red-400/60 leading-none">3.00%</span>
           </span>
           <span className="font-mono text-[13px] font-bold">-{whtAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
         </div>
@@ -285,7 +285,7 @@ function Field({ label, children, required }: { label: string, children: React.R
           {thaiText}
           {hasAsterisk && <span className="text-danger ml-1 font-bold">*</span>}
         </span>
-        {engText && <span className="text-white/40 font-normal uppercase tracking-widest text-[10px]">{engText}</span>}
+        {engText && <span className="text-white/40 font-normal uppercase tracking-widest text-[11px]">{engText}</span>}
       </label>
       {children}
     </div>

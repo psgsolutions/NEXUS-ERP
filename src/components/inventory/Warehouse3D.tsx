@@ -356,7 +356,7 @@ export function Warehouse3D({
                 {locatorQuery && (
                   <button 
                     onClick={() => setLocatorQuery("")} 
-                    className="absolute inset-y-0 right-3 flex items-center text-white/40 hover:text-white text-[10px] font-bold"
+                    className="absolute inset-y-0 right-3 flex items-center text-white/40 hover:text-white text-[11px] font-bold"
                   >
                     ล้าง
                   </button>
@@ -412,21 +412,21 @@ export function Warehouse3D({
                   <h4 className="text-lg font-semibold text-white uppercase tracking-tight">
                     {mode === "view" ? "ระบบจำลองคลังสินค้าคู่นวัตกรรม" : "เครื่องมือวางผังพิกัดคลัง"}
                   </h4>
-                  <p className="text-[10px] font-bold text-nexus-teal uppercase tracking-[0.25em] drop-shadow-neon-teal">
+                  <p className="text-[11px] font-bold text-nexus-teal uppercase tracking-[0.25em] drop-shadow-neon-teal">
                     {activeWh.name} • {activeWh.gridCols} x {activeWh.gridRows} แผนผังพิกัด
                   </p>
                </div>
                
                {/* Quick Info Badges */}
                <div className="flex gap-2 pointer-events-auto">
-                 <div className="px-3 py-1.5 rounded-full bg-black/50 border border-white/5 flex items-center gap-2 text-[10px] font-semibold text-white/50">
+                 <div className="px-3 py-1.5 rounded-full bg-black/50 border border-white/5 flex items-center gap-2 text-[11px] font-semibold text-white/50">
                     <span className="w-2.5 h-2.5 rounded-full bg-nexus-teal animate-pulse" /> ว่าง / พิกัดว่าง
                  </div>
-                 <div className="px-3 py-1.5 rounded-full bg-black/50 border border-white/5 flex items-center gap-2 text-[10px] font-semibold text-white/50">
+                 <div className="px-3 py-1.5 rounded-full bg-black/50 border border-white/5 flex items-center gap-2 text-[11px] font-semibold text-white/50">
                     <span className="w-2.5 h-2.5 rounded-full bg-warning animate-pulse" /> มีการจัดเก็บ
                  </div>
                  {locatorQuery && (
-                   <div className="px-3 py-1.5 rounded-full bg-nexus-teal/20 border border-nexus-teal/30 flex items-center gap-1.5 text-[10px] font-black text-nexus-teal">
+                   <div className="px-3 py-1.5 rounded-full bg-nexus-teal/20 border border-nexus-teal/30 flex items-center gap-1.5 text-[11px] font-black text-nexus-teal">
                       สแกนพิกัดพบ...
                    </div>
                  )}
@@ -483,7 +483,7 @@ export function Warehouse3D({
                              key={idx}
                              onClick={() => handleSelectGridCell(x, y)}
                              className={cn(
-                                "border transition-all duration-200 flex items-center justify-center text-[8px] font-mono font-bold rounded",
+                                "border transition-all duration-200 flex items-center justify-center text-[11px] font-mono font-bold rounded",
                                 mode === "edit" 
                                   ? "cursor-crosshair border-white/[0.03] hover:border-nexus-teal/30 hover:bg-nexus-teal/5 text-white/5" 
                                   : "border-transparent pointer-events-none text-transparent",
@@ -562,7 +562,7 @@ export function Warehouse3D({
                                        <div 
                                           key={shelfIdx} 
                                           className={cn(
-                                             "flex-1 min-h-[14px] rounded border transition-all flex items-center justify-between px-2 text-[9px] font-bold select-none",
+                                             "flex-1 min-h-[14px] rounded border transition-all flex items-center justify-between px-2 text-[11px] font-bold select-none",
                                              hasItem 
                                                ? isSelected 
                                                  ? "bg-nexus-teal/20 border-nexus-teal/40 text-nexus-teal"
@@ -584,7 +584,7 @@ export function Warehouse3D({
                               {/* Rack Metadata Badge Label */}
                               <div className="absolute top-2 left-2 text-[11px] font-semibold text-white/40 group-hover:text-white transition-colors z-20 flex items-center gap-1.5">
                                  <span>{rack.id}</span>
-                                 <span className={cn("text-[8px] px-1 rounded-full uppercase", 
+                                 <span className={cn("text-[11px] px-1 rounded-full uppercase", 
                                    rackColor === "danger" ? "bg-danger/20 text-danger" : 
                                    rackColor === "warning" ? "bg-warning/20 text-warning" : "bg-nexus-teal/20 text-nexus-teal"
                                  )}>
@@ -618,7 +618,7 @@ export function Warehouse3D({
                   <div className="relative z-10 space-y-6">
                      <div className="flex justify-between items-start">
                         <div className="space-y-0.5">
-                           <p className="text-[10px] font-semibold text-nexus-teal uppercase tracking-[0.2em] animate-pulse">Live Telemetry</p>
+                           <p className="text-[11px] font-semibold text-nexus-teal uppercase tracking-[0.2em] animate-pulse">Live Telemetry</p>
                            <h3 className="text-3xl font-semibold text-white tracking-tight uppercase">พิกัด RACK-{selectedRack.id}</h3>
                         </div>
                         <button 
@@ -632,13 +632,13 @@ export function Warehouse3D({
                      {/* Progress Space Utility Indicators */}
                      <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 rounded-2xl bg-nexus-teal/10 border border-nexus-teal/20 flex flex-col justify-between h-24">
-                           <p className="text-[9px] font-semibold text-white/40 uppercase tracking-widest">ความหนาแน่น</p>
+                           <p className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">ความหนาแน่น</p>
                            <p className={cn("text-3xl font-black", selectedRack.occupancy > 90 ? "text-danger animate-pulse" : "text-nexus-teal")}>
                              {selectedRack.occupancy}<span className="text-sm ml-0.5 font-bold">%</span>
                            </p>
                         </div>
                         <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex flex-col justify-between h-24">
-                           <p className="text-[9px] font-semibold text-white/40 uppercase tracking-widest">ชั้นจัดเก็บ</p>
+                           <p className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">ชั้นจัดเก็บ</p>
                            <p className="text-3xl font-black text-white">
                              {selectedRack.level}<span className="text-xs text-white/40 ml-1 font-bold">LEVELS</span>
                            </p>
@@ -647,7 +647,7 @@ export function Warehouse3D({
 
                      {/* Vertical Stack List representation */}
                      <div className="space-y-3">
-                        <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest">ตารางการจัดเก็บพัสดุรายชั้น</p>
+                        <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest">ตารางการจัดเก็บพัสดุรายชั้น</p>
                         <div className="space-y-2 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
                            {Array.from({ length: selectedRack.level }).map((_, idx) => {
                               const levelNum = selectedRack.level - idx; // Display top level first
@@ -658,10 +658,10 @@ export function Warehouse3D({
                                  <div key={levelNum} className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-2 hover:border-nexus-teal/20 transition-all">
                                     <div className="flex justify-between items-center pb-2 border-b border-white/5">
                                        <div className="flex items-center gap-2">
-                                          <div className="w-5 h-5 rounded bg-nexus-teal/20 text-nexus-teal flex items-center justify-center text-[10px] font-black">
+                                          <div className="w-5 h-5 rounded bg-nexus-teal/20 text-nexus-teal flex items-center justify-center text-[11px] font-black">
                                              L{levelNum}
                                           </div>
-                                          <span className="text-[10px] font-mono font-bold text-white/50 tracking-wider">
+                                          <span className="text-[11px] font-mono font-bold text-white/50 tracking-wider">
                                              {locationBarcode}
                                           </span>
                                        </div>
@@ -670,7 +670,7 @@ export function Warehouse3D({
                                              📍 เลือกพิกัดนี้
                                           </PillButton>
                                        ) : (
-                                          <button className="text-[9px] font-bold text-nexus-teal/70 hover:text-nexus-teal transition-colors">
+                                          <button className="text-[11px] font-bold text-nexus-teal/70 hover:text-nexus-teal transition-colors">
                                              พิมพ์บาร์โค้ด
                                           </button>
                                        )}
@@ -682,12 +682,12 @@ export function Warehouse3D({
                                              <Box size={12} className="text-nexus-teal shrink-0" />
                                              <span className="font-bold">{itemForThisLevel}</span>
                                           </div>
-                                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-nexus-teal/10 text-nexus-teal uppercase tracking-wider shrink-0">
+                                          <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-nexus-teal/10 text-nexus-teal uppercase tracking-wider shrink-0">
                                             มีพัสดุ
                                           </span>
                                        </div>
                                     ) : (
-                                       <div className="flex items-center gap-2 text-xs text-white/20 italic">
+                                       <div className="flex items-center gap-2 text-xs text-white/20">
                                           <Box size={12} className="text-white/10 shrink-0" />
                                           <span>ว่าง (พิกัดว่างพร้อมรับเข้า)</span>
                                        </div>
@@ -707,7 +707,7 @@ export function Warehouse3D({
                   <MapPin className="text-white/15 animate-bounce" size={40} />
                   <div className="space-y-1">
                      <p className="text-xs font-semibold text-white/50 uppercase tracking-widest">Digital Twin Telemetry</p>
-                     <p className="text-[10.5px] font-bold text-white/30 uppercase leading-relaxed">
+                     <p className="text-[11px] font-bold text-white/30 uppercase leading-relaxed">
                         คลิกเลือกชั้นวางบนแบบจำลอง 3D เพื่อสแกนบาร์โค้ด<br/>ตรวจสอบปริมาณความหนาแน่น และรายการสินค้า
                      </p>
                   </div>
@@ -726,7 +726,7 @@ export function Warehouse3D({
                      </div>
                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                           <label className="text-[9px] font-semibold text-white/40 uppercase">กว้าง</label>
+                           <label className="text-[11px] font-semibold text-white/40 uppercase">กว้าง</label>
                            <div className="flex items-center">
                               <button 
                                 onClick={() => handleUpdateWarehouseGrid(activeWh.gridCols - 1, activeWh.gridRows)}
@@ -740,7 +740,7 @@ export function Warehouse3D({
                            </div>
                         </div>
                         <div className="space-y-1.5">
-                           <label className="text-[9px] font-semibold text-white/40 uppercase">ลึก</label>
+                           <label className="text-[11px] font-semibold text-white/40 uppercase">ลึก</label>
                            <div className="flex items-center">
                               <button 
                                 onClick={() => handleUpdateWarehouseGrid(activeWh.gridCols, activeWh.gridRows - 1)}
@@ -763,7 +763,7 @@ export function Warehouse3D({
                         {!editingRack && (
                            <button 
                              onClick={() => setEditingRack({ id: `RACK-${Date.now().toString().slice(-3)}`, x: 1, y: 1, width: 1, height: 1, level: 4, occupancy: 0, items: [] })} 
-                             className="flex items-center gap-1 text-[10px] font-black text-nexus-teal bg-nexus-teal/10 px-3 py-1.5 rounded-full hover:bg-nexus-teal/20 transition-colors border border-nexus-teal/20"
+                             className="flex items-center gap-1 text-[11px] font-black text-nexus-teal bg-nexus-teal/10 px-3 py-1.5 rounded-full hover:bg-nexus-teal/20 transition-colors border border-nexus-teal/20"
                            >
                               <Plus size={12} /> เพิ่มพิกัดใหม่
                            </button>
@@ -773,7 +773,7 @@ export function Warehouse3D({
                      {editingRack ? (
                         <div className="space-y-5 animate-in zoom-in-95 duration-200">
                            <div className="space-y-1.5">
-                              <label className="text-[9px] font-semibold text-white/40 uppercase">รหัสตำแหน่งชั้นวาง</label>
+                              <label className="text-[11px] font-semibold text-white/40 uppercase">รหัสตำแหน่งชั้นวาง</label>
                               <input 
                                  type="text" 
                                  value={editingRack.id || ""} 
@@ -787,7 +787,7 @@ export function Warehouse3D({
                               
                               {/* Slide Position Controls */}
                               <div className="space-y-1.5">
-                                 <label className="text-[9px] font-semibold text-white/40 uppercase block text-center">เลื่อนพิกัดบนตาราง</label>
+                                 <label className="text-[11px] font-semibold text-white/40 uppercase block text-center">เลื่อนพิกัดบนตาราง</label>
                                  <div className="flex justify-center items-center gap-2">
                                     <button onClick={() => adjustRackPos(-1, 0)} className="h-8 w-8 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center text-white"><ChevronLeft size={16} /></button>
                                     <div className="flex flex-col gap-1">
@@ -796,7 +796,7 @@ export function Warehouse3D({
                                     </div>
                                     <button onClick={() => adjustRackPos(1, 0)} className="h-8 w-8 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center text-white"><ChevronRight size={16} /></button>
                                  </div>
-                                 <div className="text-[10px] text-center text-white/30 font-bold font-mono">
+                                 <div className="text-[11px] text-center text-white/30 font-bold font-mono">
                                    พิกัดเริ่มต้น (X: {editingRack.x}, Y: {editingRack.y})
                                  </div>
                               </div>
@@ -806,7 +806,7 @@ export function Warehouse3D({
                               {/* Visual Sizing Buttons */}
                               <div className="grid grid-cols-2 gap-3 text-xs">
                                  <div className="space-y-1">
-                                    <label className="text-[9px] font-semibold text-white/30 uppercase text-center block">ความกว้าง</label>
+                                    <label className="text-[11px] font-semibold text-white/30 uppercase text-center block">ความกว้าง</label>
                                     <div className="flex items-center justify-center bg-black/40 rounded border border-white/5">
                                        <button onClick={() => adjustRackSize(-1, 0)} className="w-8 h-8 font-bold text-white hover:bg-white/5 rounded-l">-</button>
                                        <span className="flex-1 text-center font-black text-nexus-teal">{editingRack.width}</span>
@@ -814,7 +814,7 @@ export function Warehouse3D({
                                     </div>
                                  </div>
                                  <div className="space-y-1">
-                                    <label className="text-[9px] font-semibold text-white/30 uppercase text-center block">ความลึก</label>
+                                    <label className="text-[11px] font-semibold text-white/30 uppercase text-center block">ความลึก</label>
                                     <div className="flex items-center justify-center bg-black/40 rounded border border-white/5">
                                        <button onClick={() => adjustRackSize(0, -1)} className="w-8 h-8 font-bold text-white hover:bg-white/5 rounded-l">-</button>
                                        <span className="flex-1 text-center font-black text-nexus-teal">{editingRack.height}</span>
@@ -826,7 +826,7 @@ export function Warehouse3D({
 
                            {/* Level modifier */}
                            <div className="space-y-1.5">
-                              <label className="text-[9px] font-semibold text-white/40 uppercase">จำนวนชั้นย่อยจัดเก็บ</label>
+                              <label className="text-[11px] font-semibold text-white/40 uppercase">จำนวนชั้นย่อยจัดเก็บ</label>
                               <div className="flex items-center bg-black/50 border border-white/10 rounded-xl overflow-hidden">
                                  <button onClick={() => adjustLevels(-1)} className="h-10 w-12 hover:bg-white/5 text-white font-bold">-</button>
                                  <div className="flex-1 text-center font-black text-white text-xs">{editingRack.level} ชั้น</div>
@@ -836,7 +836,7 @@ export function Warehouse3D({
 
                            {/* Capacity: ใช้คำนวณ % ความจุจากยอดสต็อกจริงในตำแหน่งนี้ */}
                            <div className="space-y-1.5">
-                              <label className="text-[9px] font-semibold text-white/40 uppercase">ความจุ (หน่วยสินค้าสูงสุด, 0 = ไม่กำหนด)</label>
+                              <label className="text-[11px] font-semibold text-white/40 uppercase">ความจุ (หน่วยสินค้าสูงสุด, 0 = ไม่กำหนด)</label>
                               <PillInput
                                  type="number"
                                  min={0}
@@ -871,7 +871,7 @@ export function Warehouse3D({
                            </div>
                         </div>
                      ) : (
-                        <div className="p-8 border border-dashed border-white/15 rounded-2xl text-center text-white/30 text-[10.5px] font-bold uppercase leading-relaxed">
+                        <div className="p-8 border border-dashed border-white/15 rounded-2xl text-center text-white/30 text-[11px] font-bold uppercase leading-relaxed">
                            คลิกเลือกพิกัดเซลล์ว่างบนตารางแผนผัง<br/>หรือกด "เพิ่มพิกัดใหม่" เพื่อปรับแต่งคลังสินค้า
                         </div>
                      )}

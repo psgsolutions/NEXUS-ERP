@@ -148,7 +148,7 @@ export default function ProductsPage() {
                         <NexusTableCell className="w-full">
                           <div className="font-bold text-white text-[13px]">{displayName}</div>
                           {p.salesBom?.length > 0 && (
-                            <div className="text-[10px] text-white/40 mt-1 flex items-center gap-1 font-semibold uppercase tracking-wider">
+                            <div className="text-[11px] text-white/40 mt-1 flex items-center gap-1 font-semibold uppercase tracking-wider">
                               <Box size={10} /> BOM: {p.salesBom.length} items
                             </div>
                           )}
@@ -156,14 +156,14 @@ export default function ProductsPage() {
                         
                         <NexusTableCell align="center" className="w-[1%] whitespace-nowrap">
                           <div className="flex items-center gap-2 justify-center">
-                            <span className={`text-[9px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest inline-flex items-center gap-1 ${
+                            <span className={`text-[11px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest inline-flex items-center gap-1 ${
                               isLabor ? 'bg-transparent border border-warning/20 text-warning' : 'bg-blue-500/10 border border-blue-500/20 text-blue-400'
                             }`}>
                               {isLabor ? <Wrench size={10} /> : <Box size={10} />}
                               {isLabor ? 'ค่าแรง' : 'สินค้า'}
                             </span>
                             {p.subjectToWHT && (
-                              <span className="text-[9px] px-2 py-1 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full font-semibold tracking-widest">
+                              <span className="text-[11px] px-2 py-1 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full font-semibold tracking-widest">
                                 WHT
                               </span>
                             )}
@@ -185,7 +185,7 @@ export default function ProductsPage() {
                         <NexusTableCell align="center" className="w-[1%] whitespace-nowrap">
                           <PillButton 
                              
-                            className="h-8 px-4 text-[10px] text-nexus-blue border-nexus-blue/20 hover:bg-transparent"
+                            className="h-8 px-4 text-[11px] text-nexus-blue border-nexus-blue/20 hover:bg-transparent"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedProduct(p);
@@ -214,11 +214,11 @@ export default function ProductsPage() {
           
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/15 rounded-2xl p-4 text-center border border-white/10">
-              <div className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1">รวมทุกรายการ</div>
+              <div className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1">รวมทุกรายการ</div>
               <div className="text-2xl font-mono text-white">{total}</div>
             </div>
             <div className="bg-transparent rounded-2xl p-4 text-center border border-nexus-teal/20">
-              <div className="text-[10px] font-semibold text-nexus-teal/60 uppercase tracking-widest mb-1">
+              <div className="text-[11px] font-semibold text-nexus-teal/60 uppercase tracking-widest mb-1">
                 มูลค่าต้นทุน
               </div>
               <div className="text-lg font-mono text-nexus-teal truncate" title={`฿${totalStockValue.toLocaleString('th-TH')}`}>

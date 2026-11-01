@@ -109,10 +109,10 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
                       {summary.topProducts.map((p, i) => (
                         <div key={i} className="flex items-center justify-between p-5 rounded-2xl bg-white/[0.02] border border-white/5 group hover:bg-white/[0.04] transition-all">
                            <div className="flex items-center gap-4">
-                              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/20 font-semibold text-[10px]">{i+1}</div>
+                              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/20 font-semibold text-[11px]">{i+1}</div>
                               <div>
                                  <p className="text-sm font-bold text-white">{p.name}</p>
-                                 <p className="text-[10px] text-white/30 font-black uppercase tracking-widest">จำนวน: {p.qty} หน่วย</p>
+                                 <p className="text-[11px] text-white/30 font-black uppercase tracking-widest">จำนวน: {p.qty} หน่วย</p>
                               </div>
                            </div>
                            <p className="text-sm font-black text-nexus-teal mono-numbers">฿{p.total.toLocaleString("th-TH", { minimumFractionDigits: 2 })}</p>
@@ -128,7 +128,7 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
         <div className="w-[380px] flex flex-col bg-surface-1 p-10 flex-shrink-0 overflow-y-auto custom-scrollbar">
           <div className="flex-1 space-y-8">
             <div className="space-y-1">
-              <p className="text-[10px] font-semibold text-white/20 uppercase tracking-[0.2em]">สถานะรอบการขาย</p>
+              <p className="text-[11px] font-semibold text-white/20 uppercase tracking-[0.2em]">สถานะรอบการขาย</p>
               <h5 className="text-sm font-semibold text-white uppercase tracking-tight">Intelligence Reporting</h5>
             </div>
 
@@ -159,7 +159,7 @@ function SummaryCard({ icon, label, value, color }: { icon: React.ReactNode, lab
     <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
        <div className="text-white/20">{icon}</div>
        <div>
-          <p className="text-[10px] font-semibold text-white/20 uppercase tracking-widest">{label}</p>
+          <p className="text-[11px] font-semibold text-white/20 uppercase tracking-widest">{label}</p>
           <p className={cn("text-xl font-black mt-1", color)}>{value}</p>
        </div>
     </div>

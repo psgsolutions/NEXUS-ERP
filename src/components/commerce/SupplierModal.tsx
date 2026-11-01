@@ -168,7 +168,7 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
               {activeTab === "profile" && (
                 <div className="space-y-10 animate-in fade-in slide-in-from-left-4">
                   <section className="space-y-6">
-                    <h3 className="text-[12px] font-semibold text-nexus-blue uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><Zap size={16} /> ข้อมูลทั่วไป</h3>
+                    <h3 className="text-[12px] font-semibold text-nexus-blue uppercase flex items-center gap-2 border-b border-white/5 pb-2"><Zap size={16} /> ข้อมูลทั่วไป</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <Field label="ชื่อคู่ค้า *">
                         <PillInput value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} placeholder="ระบุชื่อเต็ม..." className="w-full" />
@@ -188,7 +188,7 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
                   </section>
 
                   <section className="space-y-6 pt-6 border-t border-white/5">
-                    <h3 className="text-[12px] font-semibold text-white/40 uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><MapPin size={16} /> พิกัดและการติดต่อ</h3>
+                    <h3 className="text-[12px] font-semibold text-white/40 uppercase flex items-center gap-2 border-b border-white/5 pb-2"><MapPin size={16} /> พิกัดและการติดต่อ</h3>
                     <SmartAddressPicker onSelect={handleSmartAddress} />
                     <div className="grid grid-cols-2 gap-8 mt-6">
                       <Field label="จังหวัด">
@@ -221,7 +221,7 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
               {activeTab === "bank" && (
                 <div className="space-y-10 animate-in fade-in slide-in-from-right-4">
                   <section className="space-y-6">
-                    <h3 className="text-[12px] font-semibold text-warning uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><Landmark size={16} /> วิธีการชำระเงินและข้อมูลการเงิน</h3>
+                    <h3 className="text-[12px] font-semibold text-warning uppercase flex items-center gap-2 border-b border-white/5 pb-2"><Landmark size={16} /> วิธีการชำระเงินและข้อมูลการเงิน</h3>
                     <div className="grid grid-cols-1 gap-8">
                       <Field label="วิธีการรับเงิน / ชำระเงิน *">
                         <PillSelect value={form.payment_method} onChange={(e) => setForm({...form, payment_method: e.target.value})} className="w-full font-black text-nexus-teal">
@@ -290,7 +290,7 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
                       )}
 
                       {form.payment_method === "CASH" && (
-                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 text-center text-white/50 text-xs italic animate-in fade-in duration-300">
+                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 text-center text-white/50 text-xs animate-in fade-in duration-300">
                            ชำระเงินสดหน้าร้านหรือตามตกลง (ไม่ต้องระบุเอกสารเพิ่มเติม)
                         </div>
                       )}
@@ -327,7 +327,7 @@ export function SupplierModal({ isOpen, onClose, onSave, initialData }: Supplier
                   </PillSelect>
                 </Field>
                 <div className="p-5 bg-white/[0.02] rounded-[2rem] border border-white/5 flex flex-col items-center gap-2">
-                   <span className="text-[10px] font-semibold text-white/20 uppercase tracking-widest">Supplier Rating</span>
+                   <span className="text-[11px] font-semibold text-white/20 uppercase tracking-widest">Supplier Rating</span>
                    <div className="flex gap-1 text-warning">
                       {[1,2,3,4,5].map(i => <Star key={i} size={14} fill={i <= form.rating ? "currentColor" : "none"} />)}
                    </div>

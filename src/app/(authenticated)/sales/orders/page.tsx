@@ -164,7 +164,7 @@ export default function SalesOrderDashboardPage() {
                     <NexusTableCell>
                       <div className="font-bold text-white text-[13px]">{so.customerName || '-'}</div>
                       {so.poNumber && (
-                        <div className="text-[10px] text-white/40 mt-1 flex items-center gap-1 font-mono uppercase tracking-wider">
+                        <div className="text-[11px] text-white/40 mt-1 flex items-center gap-1 font-mono uppercase tracking-wider">
                           <Building2 size={10} /> PO: {so.poNumber}
                         </div>
                       )}
@@ -183,7 +183,7 @@ export default function SalesOrderDashboardPage() {
                     <NexusTableCell>
                       <div className="flex gap-2">
                         <PillButton 
-                          className="h-8 px-4 text-[10px] text-nexus-blue border-nexus-blue/20 hover:bg-transparent"
+                          className="h-8 px-4 text-[11px] text-nexus-blue border-nexus-blue/20 hover:bg-transparent"
                           onClick={() => router.push(`/sales/orders/${so.id}`)}
                         >
                           เปิดดู
@@ -191,7 +191,7 @@ export default function SalesOrderDashboardPage() {
                         {canBill && (so.status === 'DELIVERED' || so.status === 'delivered') && (
                           <PillButton 
                             variant="save"
-                            className="h-8 px-4 text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 backdrop-blur-md hover:bg-emerald-500/30"
+                            className="h-8 px-4 text-[11px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 backdrop-blur-md hover:bg-emerald-500/30"
                             onClick={async () => {
                               try {
                                 const result = await issueTaxInvoice(companyId || "", so.id);
@@ -223,13 +223,13 @@ export default function SalesOrderDashboardPage() {
           
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/15 rounded-2xl p-4 text-center border border-white/10">
-              <div className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
+              <div className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
                 <FileCheck size={10} /> ออเดอร์ทั้งหมด
               </div>
               <div className="text-2xl font-mono text-white">{total}</div>
             </div>
             <div className="bg-transparent rounded-2xl p-4 text-center border border-nexus-blue/20">
-              <div className="text-[10px] font-semibold text-nexus-blue/60 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
+              <div className="text-[11px] font-semibold text-nexus-blue/60 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
                 <Clock size={10} /> กำลังดำเนินการ
               </div>
               <div className="text-2xl font-mono text-nexus-blue">{openCount}</div>
@@ -237,14 +237,14 @@ export default function SalesOrderDashboardPage() {
           </div>
 
           <div className="bg-nexus-teal/5 rounded-2xl p-4 text-center border border-nexus-teal/10 mt-2">
-            <div className="text-[10px] font-semibold text-nexus-teal/60 uppercase tracking-widest mb-1">ยอดขายสุทธิทั้งหมด</div>
+            <div className="text-[11px] font-semibold text-nexus-teal/60 uppercase tracking-widest mb-1">ยอดขายสุทธิทั้งหมด</div>
             <div className="text-xl font-mono text-nexus-teal font-bold truncate">
               ฿{totalValue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
             </div>
           </div>
           
           <div className="bg-white/15 rounded-2xl p-4 text-center border border-white/5 mt-2">
-            <div className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">ยอดค้างดำเนินการ</div>
+            <div className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-1">ยอดค้างดำเนินการ</div>
             <div className="text-lg font-mono text-white/80 font-bold truncate">
               ฿{pendingValue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
             </div>

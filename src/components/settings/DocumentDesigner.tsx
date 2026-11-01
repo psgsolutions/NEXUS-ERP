@@ -110,12 +110,12 @@ async function logoColor(dataUrl: string): Promise<string | null> {
 
 /** ป้ายขอบเขต: ใช้กับทุกเอกสาร / เฉพาะเอกสารนี้ */
 const Scope = ({ doc }: { doc?: string }) => (
-  <span className={cn("text-[10.5px] px-1.5 py-0.5 rounded-full font-semibold whitespace-nowrap", doc ? "bg-purple-500/15 text-purple-200" : "bg-nexus-teal/15 text-nexus-teal")}>{doc ? `เฉพาะ${doc}` : "ทุกเอกสาร"}</span>
+  <span className={cn("text-[11px] px-1.5 py-0.5 rounded-full font-semibold whitespace-nowrap", doc ? "bg-purple-500/15 text-purple-200" : "bg-nexus-teal/15 text-nexus-teal")}>{doc ? `เฉพาะ${doc}` : "ทุกเอกสาร"}</span>
 );
 /** ส่วนในแผง (พับได้) พร้อมป้ายขอบเขต */
 const Section = ({ title, doc, all, open = true, children }: { title: string; doc?: string; all?: boolean; open?: boolean; children: React.ReactNode }) => (
   <details open={open} className="group rounded-xl border border-white/10 bg-white/[0.02]">
-    <summary className="list-none cursor-pointer select-none px-3 py-2 flex items-center gap-2 text-[12.5px] font-bold text-white/80">
+    <summary className="list-none cursor-pointer select-none px-3 py-2 flex items-center gap-2 text-[12px] font-bold text-white/80">
       <span className="text-white/35 group-open:rotate-90 transition-transform">›</span>{title}
       <span className="ml-auto">{all ? <Scope /> : doc ? <Scope doc={doc} /> : null}</span>
     </summary>
@@ -123,7 +123,7 @@ const Section = ({ title, doc, all, open = true, children }: { title: string; do
   </details>
 );
 const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className="space-y-1"><label className="text-[11.5px] font-semibold text-white/55 ml-1">{label}</label>{children}</div>
+  <div className="space-y-1"><label className="text-[12px] font-semibold text-white/55 ml-1">{label}</label>{children}</div>
 );
 const ColorField = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
   <div className="flex items-center gap-1.5">
@@ -155,7 +155,7 @@ function TemplateCard({ t, active, docType, profile, onPick, size = "sm" }: { t:
         {/* eslint-disable-next-line @next/next/no-img-element -- ภาพย่อที่วาดในเบราว์เซอร์ (data URL) */}
         {url ? <img src={url} alt="" className="w-full h-full object-cover object-top" /> : <Loader2 size={14} className="animate-spin text-slate-400" />}
       </div>
-      <p className={cn("font-bold text-white leading-snug px-0.5", size === "lg" ? "text-[12.5px]" : "text-[11px] line-clamp-2")}>{t.name}</p>
+      <p className={cn("font-bold text-white leading-snug px-0.5", size === "lg" ? "text-[12px]" : "text-[11px] line-clamp-2")}>{t.name}</p>
       {size === "lg" && <p className="text-[11px] text-white/50 leading-snug px-0.5 line-clamp-2">{t.description}</p>}
     </button>
   );
@@ -175,12 +175,12 @@ function CompanyTemplateCard({ tp, docType, profile, canEdit, onApply, onDelete 
         {/* eslint-disable-next-line @next/next/no-img-element -- ภาพย่อที่วาดในเบราว์เซอร์ (data URL) */}
         {url ? <img src={url} alt="" className="w-full h-full object-cover object-top" /> : <Loader2 size={14} className="animate-spin text-slate-400" />}
       </div>
-      <p className="text-[11.5px] font-bold text-white leading-snug line-clamp-2 px-0.5">{tp.name}</p>
+      <p className="text-[12px] font-bold text-white leading-snug line-clamp-2 px-0.5">{tp.name}</p>
       {canEdit && (
         <div className="flex flex-col gap-1">
           <button type="button" onClick={() => onApply("this")} className="h-7 rounded-full text-[11px] border border-white/10 text-white/75 hover:text-white hover:border-nexus-teal/50">ใช้กับเอกสารนี้</button>
           <button type="button" onClick={() => onApply("all")} className="h-7 rounded-full text-[11px] border border-nexus-teal/40 text-nexus-teal hover:bg-nexus-teal/10">ใช้กับทุกเอกสาร</button>
-          <button type="button" onClick={onDelete} className="h-6 text-[10.5px] text-white/40 hover:text-danger">ลบแม่แบบ</button>
+          <button type="button" onClick={onDelete} className="h-6 text-[11px] text-white/40 hover:text-danger">ลบแม่แบบ</button>
         </div>
       )}
     </div>
@@ -198,7 +198,7 @@ function DocChip({ type, active, design, profile, onClick }: { type: string; act
         {/* eslint-disable-next-line @next/next/no-img-element -- ภาพย่อที่วาดในเบราว์เซอร์ (data URL) */}
         {url ? <img src={url} alt="" className="w-full h-full object-cover object-top" /> : <Loader2 size={11} className="animate-spin text-slate-400" />}
       </div>
-      <span className={cn("text-[10.5px] leading-tight text-center", active ? "text-white font-bold" : "text-white/60")}>{SHORT[type] || type}</span>
+      <span className={cn("text-[11px] leading-tight text-center", active ? "text-white font-bold" : "text-white/60")}>{SHORT[type] || type}</span>
     </button>
   );
 }
@@ -499,7 +499,7 @@ export function DocumentDesigner() {
       </fieldset>
     </Step>
   ) : (
-    <GlassCard className="p-3.5 text-[12.5px] text-white/55 leading-relaxed">หนังสือ (ขอเข้าพื้นที่ · ส่งมอบงาน · ขอคืนหลักประกัน): แก้ได้เฉพาะหัวกระดาษ สี และฟอนต์ เนื้อหาเป็นรูปแบบหนังสือราชการ</GlassCard>
+    <GlassCard className="p-3.5 text-[12px] text-white/55 leading-relaxed">หนังสือ (ขอเข้าพื้นที่ · ส่งมอบงาน · ขอคืนหลักประกัน): แก้ได้เฉพาะหัวกระดาษ สี และฟอนต์ เนื้อหาเป็นรูปแบบหนังสือราชการ</GlassCard>
   );
 
   // ---------- ตั้งค่าเพิ่มเติม (พับไว้) ----------
@@ -566,11 +566,11 @@ export function DocumentDesigner() {
                 <PillInput value={letterhead.name} onChange={(e) => setLetterhead({ ...letterhead, name: e.target.value.slice(0, 40) })} className="h-8 flex-1 text-sm" aria-label="ชื่อหัวกระดาษ" />
                 <PillButton variant="ghost" className="h-8 px-2.5 text-xs text-danger" onClick={() => deleteLetterhead(letterhead)}><Trash2 size={13} /></PillButton>
               </div>
-              <p className="text-[11.5px] text-white/50">ใช้หัวนี้กับเอกสาร:</p>
+              <p className="text-[12px] text-white/50">ใช้หัวนี้กับเอกสาร:</p>
               <div className="flex flex-wrap gap-1">
                 {TARGETS.map((t) => {
                   const on = shown.perDoc[t.type]?.letterhead === letterhead.id;
-                  return <button key={t.type} type="button" onClick={() => assignLetterhead(t.type, on ? undefined : letterhead.id)} className={cn("h-7 px-2 rounded-full text-[11.5px] border", on ? "border-purple-400/60 bg-purple-500/15 text-purple-100" : "border-white/10 text-white/50 hover:text-white")}>{SHORT[t.type]}</button>;
+                  return <button key={t.type} type="button" onClick={() => assignLetterhead(t.type, on ? undefined : letterhead.id)} className={cn("h-7 px-2 rounded-full text-[12px] border", on ? "border-purple-400/60 bg-purple-500/15 text-purple-100" : "border-white/10 text-white/50 hover:text-white")}>{SHORT[t.type]}</button>;
                 })}
               </div>
               <p className="text-[11px] text-white/40">จัดตำแหน่งในหัวกระดาษได้ที่ &quot;ออกแบบเอง&quot; (กล่องสีม่วง)</p>
@@ -609,7 +609,7 @@ export function DocumentDesigner() {
               <button key={m} type="button" onClick={() => setMode(m)} className={cn("h-8 px-4 rounded-full text-[13px] flex items-center gap-1.5", mode === m ? "bg-nexus-teal/20 text-nexus-teal font-bold" : "text-white/55 hover:text-white")}><I size={14} /> {label}</button>
             ))}
           </div>
-          <span className="text-[12.5px] text-white/70">กำลังแก้: <b className="text-white">{def.title}</b></span>
+          <span className="text-[12px] text-white/70">กำลังแก้: <b className="text-white">{def.title}</b></span>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {realDocs.length > 0 && (
               <div className="w-[230px]" title="ดูตัวอย่างการออกแบบด้วยเอกสารจริง">
@@ -679,7 +679,7 @@ export function DocumentDesigner() {
       {/* บันทึก: ลอยตามเมื่อมีการแก้ (Ctrl+S) */}
       {canEdit && dirty && (
         <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[150] flex items-center gap-2 rounded-full border border-warning/40 bg-surface-2 px-3 py-2 shadow-2xl">
-          <span className="text-[12.5px] text-warning px-1">ยังไม่บันทึก</span>
+          <span className="text-[12px] text-warning px-1">ยังไม่บันทึก</span>
           <PillButton variant="ghost" className="h-8 px-3 text-xs" disabled={!hist.current.past.length} onClick={undo}>ย้อนกลับ</PillButton>
           <PillButton variant="ghost" className="h-8 px-3 text-xs" onClick={async () => { if (await showConfirm("ยกเลิกการแก้ทั้งหมดที่ยังไม่บันทึก?")) change(() => JSON.parse(savedJson)); }}>ยกเลิกการแก้</PillButton>
           <PillButton variant="confirm" className="h-8 px-4 text-xs" disabled={saving} onClick={save}>{saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} บันทึก (Ctrl+S)</PillButton>
@@ -741,7 +741,7 @@ export function DocumentDesigner() {
                   <div key={v.id} className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2">
                     <div className="min-w-0">
                       <p className="text-[13px] text-white">{v.savedAt ? new Date(v.savedAt).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" }) : "-"}{i === 0 && <span className="ml-2 text-[11px] text-nexus-teal">ล่าสุด</span>}</p>
-                      <p className="text-[11.5px] text-white/50 truncate">{TEMPLATES.find((t) => t.id === v.templateId)?.name || "กำหนดเอง"}{v.savedByName ? ` · ${v.savedByName}` : ""}</p>
+                      <p className="text-[12px] text-white/50 truncate">{TEMPLATES.find((t) => t.id === v.templateId)?.name || "กำหนดเอง"}{v.savedByName ? ` · ${v.savedByName}` : ""}</p>
                     </div>
                     <PillButton variant="glass" className="h-8 px-3 text-xs ml-auto" onClick={() => restoreVersion(v.id)}><PanelTop size={13} /> เปิดเวอร์ชันนี้</PillButton>
                   </div>

@@ -542,7 +542,7 @@ export default function FinancePage() {
         <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-7 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
            <GlassCard accentColor="blue" className="p-5">
               <h4 className="text-xs font-bold text-nexus-blue uppercase tracking-widest mb-4 flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full bg-nexus-blue/10 border border-nexus-blue/30 text-[10px] text-nexus-blue font-mono font-bold">01</span>
+                <span className="px-2 py-0.5 rounded-full bg-nexus-blue/10 border border-nexus-blue/30 text-[11px] text-nexus-blue font-mono font-bold">01</span>
                 ประมาณการกระแสเงินสด
               </h4>
               <div className="space-y-3">
@@ -566,7 +566,7 @@ export default function FinancePage() {
                    </ul>
                  </div>
               </div>
-              <p className="text-[10px] text-white/30 text-center mt-6 uppercase font-normal tracking-widest">
+              <p className="text-[11px] text-white/30 text-center mt-6 uppercase font-normal tracking-widest">
                 * พยากรณ์จากบัญชีลูกหนี้ และเจ้าหนี้ แบบ Real-time
               </p>
            </GlassCard>
@@ -621,7 +621,7 @@ function ARRow({ customer, inv, due, amount, status }: { customer: string, inv: 
   return (
     <NexusTableRow>
       <NexusTableCell className="w-full font-bold text-white">{customer}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[10px] text-nexus-teal tracking-tighter">{inv}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[11px] text-nexus-teal tracking-tighter">{inv}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-sm font-medium text-white/40 uppercase tracking-widest">{due}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white mono-numbers">{amount}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center"><StatusBadge status={status === "overdue" ? "danger" : "pending"} label={status === "pending" ? "รอชำระ" : "เกินกำหนด"} /></NexusTableCell>
@@ -633,7 +633,7 @@ function APRow({ supplier, po, payDate, amount, status }: { supplier: string, po
   return (
     <NexusTableRow>
       <NexusTableCell className="w-full font-bold text-white">{supplier}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[10px] text-nexus-blue tracking-tighter">{po}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[11px] text-nexus-blue tracking-tighter">{po}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-sm font-medium text-white/40 uppercase tracking-widest">{payDate}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right font-bold text-white mono-numbers">{amount}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center"><StatusBadge status="pending" label="รอจ่าย" /></NexusTableCell>

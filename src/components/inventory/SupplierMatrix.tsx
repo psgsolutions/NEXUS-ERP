@@ -77,7 +77,7 @@ export function SupplierMatrix({
       {supplierConfig.length === 0 ? (
         <div className="p-6 text-center border border-dashed border-white/10 rounded-xl space-y-1">
           <p className="text-xs text-white/40 font-bold">ยังไม่มีข้อมูลผู้จำหน่าย</p>
-          <p className="text-[10px] text-white/30">กดปุ่ม "เพิ่มผู้จำหน่ายสำรอง" เพื่อเปรียบเทียบราคาและระยะเวลารอคอยสินค้าจากซัพพลายเออร์หลายราย</p>
+          <p className="text-[11px] text-white/30">กดปุ่ม "เพิ่มผู้จำหน่ายสำรอง" เพื่อเปรียบเทียบราคาและระยะเวลารอคอยสินค้าจากซัพพลายเออร์หลายราย</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -94,7 +94,7 @@ export function SupplierMatrix({
                   <label className="text-[11px] font-bold text-white/60 mb-1 flex items-center justify-between">
                     <span>ผู้จำหน่าย</span>
                     {supplier.isPrimary && (
-                      <span className="text-[9px] font-black text-nexus-teal flex items-center gap-0.5">
+                      <span className="text-[11px] font-black text-nexus-teal flex items-center gap-0.5">
                         <Star size={10} className="fill-nexus-teal" /> หลัก
                       </span>
                     )}

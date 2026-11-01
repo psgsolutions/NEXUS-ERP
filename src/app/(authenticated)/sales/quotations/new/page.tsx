@@ -832,7 +832,7 @@ export default function QuotationCreationPage() {
             <div className="space-y-1">
               <label className="text-[12px] font-bold text-white/70 flex items-center justify-between">
                 <span>ค้นหาและเลือกลูกค้า <span className="text-danger">*</span></span>
-                {customersLoading && <span className="text-[10px] text-white/40">กำลังโหลด...</span>}
+                {customersLoading && <span className="text-[11px] text-white/40">กำลังโหลด...</span>}
               </label>
 
               {!selectedCustomerId ? (
@@ -1200,7 +1200,7 @@ export default function QuotationCreationPage() {
                 }
               >
                 <div className="max-h-[260px] overflow-y-auto custom-scrollbar p-1.5 bg-surface-1 border border-white/10 rounded-2xl shadow-2xl space-y-1">
-                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2 pb-1">ตัวเลือกแนะนำ</p>
+                  <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest px-2 pb-1">ตัวเลือกแนะนำ</p>
                   {["จัดส่งฟรี", "คิดค่าจัดส่งตามระยะทาง", "จัดส่งผ่านขนส่งเอกชน", "ลูกค้ารับสินค้าเอง"].map((term) => (
                     <button
                       key={term}
@@ -1226,7 +1226,7 @@ export default function QuotationCreationPage() {
                     const billingAdd = [addrLine1, addrLine2, subDistrict, district, province, postalCode].filter(Boolean).join(" ");
                     setDeliveryAddress(billingAdd);
                   }}
-                  className="text-[10px] text-nexus-teal/80 hover:text-nexus-teal font-bold bg-nexus-teal/10 hover:bg-nexus-teal/20 px-2 py-0.5 rounded transition-colors flex items-center gap-1"
+                  className="text-[11px] text-nexus-teal/80 hover:text-nexus-teal font-bold bg-nexus-teal/10 hover:bg-nexus-teal/20 px-2 py-0.5 rounded transition-colors flex items-center gap-1"
                 >
                   📍 ใช้ที่อยู่เดียวกับสำนักงานใหญ่
                 </button>
@@ -1350,7 +1350,7 @@ export default function QuotationCreationPage() {
                   { id: Date.now().toString(), name: `งวดที่ ${prev.length + 1}`, percent: 0, amount: 0 }
                 ]);
               }}
-              className="text-[10px] text-nexus-teal hover:text-white font-bold bg-nexus-teal/10 hover:bg-nexus-teal/20 px-2.5 py-1 rounded-full border border-nexus-teal/30 transition-all"
+              className="text-[11px] text-nexus-teal hover:text-white font-bold bg-nexus-teal/10 hover:bg-nexus-teal/20 px-2.5 py-1 rounded-full border border-nexus-teal/30 transition-all"
             >
               + เพิ่มงวดชำระ
             </button>
@@ -1467,8 +1467,8 @@ export default function QuotationCreationPage() {
               หมายเหตุ
             </h3>
             <div className="flex gap-2">
-              <button type="button" onClick={() => setRemark(prev => prev + (prev ? "\n" : "") + "- เงื่อนไขการรับประกันสินค้า 1 ปี")} className="text-[10px] bg-white/5 hover:bg-white/10 text-white/60 hover:text-white px-2 py-1 rounded transition-colors font-bold tracking-wider">รับประกัน</button>
-              <button type="button" onClick={() => setRemark(prev => prev + (prev ? "\n" : "") + "- บัญชีโอนเงิน: ธ.กสิกรไทย สาขาxxx เลขที่ 123-4-56789-0 บจก. เน็กซัส")} className="text-[10px] bg-white/5 hover:bg-white/10 text-white/60 hover:text-white px-2 py-1 rounded transition-colors font-bold tracking-wider">บัญชีโอนเงิน</button>
+              <button type="button" onClick={() => setRemark(prev => prev + (prev ? "\n" : "") + "- เงื่อนไขการรับประกันสินค้า 1 ปี")} className="text-[11px] bg-white/5 hover:bg-white/10 text-white/60 hover:text-white px-2 py-1 rounded transition-colors font-bold tracking-wider">รับประกัน</button>
+              <button type="button" onClick={() => setRemark(prev => prev + (prev ? "\n" : "") + "- บัญชีโอนเงิน: ธ.กสิกรไทย สาขาxxx เลขที่ 123-4-56789-0 บจก. เน็กซัส")} className="text-[11px] bg-white/5 hover:bg-white/10 text-white/60 hover:text-white px-2 py-1 rounded transition-colors font-bold tracking-wider">บัญชีโอนเงิน</button>
             </div>
           </div>
           <textarea
@@ -1483,7 +1483,7 @@ export default function QuotationCreationPage() {
                 key={tag}
                 type="button"
                 onClick={() => setRemark(prev => prev ? `${prev}\n${tag}` : tag)}
-                className="px-3 py-1 rounded-full bg-nexus-teal/10 text-nexus-teal border border-nexus-teal/20 text-[10px] font-bold hover:bg-nexus-teal/20 transition-colors cursor-pointer"
+                className="px-3 py-1 rounded-full bg-nexus-teal/10 text-nexus-teal border border-nexus-teal/20 text-[11px] font-bold hover:bg-nexus-teal/20 transition-colors cursor-pointer"
               >
                 + {tag}
               </button>

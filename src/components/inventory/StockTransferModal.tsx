@@ -159,12 +159,12 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                         </Field>
                         
                         <div className="space-y-3">
-                           <p className="text-[10px] font-semibold text-white/20 uppercase tracking-widest ml-1">รายละเอียดการโอน</p>
+                           <p className="text-[11px] font-semibold text-white/20 uppercase tracking-widest ml-1">รายละเอียดการโอน</p>
                            {selectedProduct && (
                              <div className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.03] border border-white/5 group hover:border-nexus-blue/30 transition-all">
                                 <div className="space-y-1">
                                    <p className="text-sm font-semibold text-white">{selectedProduct.name}</p>
-                                   <p className="text-[10px] text-white/20 uppercase font-semibold tracking-widest">คงเหลือในคลัง: {selectedProduct.stockStatus?.onHand || 0} หน่วย</p>
+                                   <p className="text-[11px] text-white/20 uppercase font-semibold tracking-widest">คงเหลือในคลัง: {selectedProduct.stockStatus?.onHand || 0} หน่วย</p>
                                 </div>
                                 <div className="flex items-center gap-4">
                                    <PillInput 

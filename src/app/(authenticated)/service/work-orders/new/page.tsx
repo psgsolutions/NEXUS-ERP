@@ -243,13 +243,13 @@ export default function CreateWorkOrderPage() {
           
           <div className="flex flex-col gap-1 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
             <span className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">จำนวนรายการที่ต้องทำ</span>
-            <span className="text-xl font-mono text-white font-bold">{items.length} <span className="text-[10px] font-normal font-sans">รายการ</span></span>
+            <span className="text-xl font-mono text-white font-bold">{items.length} <span className="text-[11px] font-normal font-sans">รายการ</span></span>
           </div>
         </div>
         
         <div className="pt-4 border-t border-white/5">
           <label className="block text-[12px] font-bold text-white/70 mb-2 not-italic">
-            หมายเหตุถึงทีมช่าง <span className="text-white/40 ml-1 font-normal uppercase tracking-widest text-[10px]">(Remarks)</span>
+            หมายเหตุถึงทีมช่าง <span className="text-white/40 ml-1 font-normal uppercase tracking-widest text-[11px]">(Remarks)</span>
           </label>
           <textarea
             value={formData.remarks}
@@ -285,7 +285,7 @@ function Field({ label, children, required }: { label: string, children: React.R
           {thaiText}
           {hasAsterisk && <span className="text-danger ml-1 font-bold">*</span>}
         </span>
-        {engText && <span className="text-white/40 font-normal uppercase tracking-widest text-[10px]">{engText}</span>}
+        {engText && <span className="text-white/40 font-normal uppercase tracking-widest text-[11px]">{engText}</span>}
       </label>
       {children}
     </div>

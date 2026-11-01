@@ -230,7 +230,7 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
                             {p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover p-0.5" /> : <Package size={14} className="text-nexus-blue" />}
                           </div>
                         </NexusTableCell>
-                        <NexusTableCell className="w-[20%] text-[10px] text-nexus-teal font-mono font-bold tracking-tighter">
+                        <NexusTableCell className="w-[20%] text-[11px] text-nexus-teal font-mono font-bold tracking-tighter">
                           {p.sku}
                         </NexusTableCell>
                         <NexusTableCell className="w-[35%] font-bold text-white/85 text-[11px] truncate max-w-[150px]">
@@ -260,7 +260,7 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
             <div className="w-full lg:w-[35%] flex flex-col bg-surface-1/40 border border-white/5 rounded-[2.5rem] shadow-inner min-h-0 relative">
               <div className="p-5 border-b border-white/5 shrink-0 flex items-center justify-between">
                 <h3 className="text-[13px] font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  พัสดุที่เลือก <span className="bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 px-2 py-0.5 rounded-full text-[10px]">{selectedProducts.length}</span>
+                  พัสดุที่เลือก <span className="bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 px-2 py-0.5 rounded-full text-[11px]">{selectedProducts.length}</span>
                 </h3>
               </div>
 
@@ -282,7 +282,7 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
                       
                       <div className="pr-6">
                         <div className="font-bold text-white/90 text-xs mb-1 line-clamp-2 leading-tight">{item.name}</div>
-                        <div className="text-[10px] text-nexus-blue font-mono">SKU: {item.sku}</div>
+                        <div className="text-[11px] text-nexus-blue font-mono">SKU: {item.sku}</div>
                       </div>
 
                       <div className="flex items-center justify-between pt-2 border-t border-white/5">

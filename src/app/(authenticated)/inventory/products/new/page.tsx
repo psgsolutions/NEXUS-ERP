@@ -736,13 +736,13 @@ export default function NewProductPage() {
                     <>
                       <img src={formData.imageUrl} alt="รูปสินค้า" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                        <span className="text-[10px] font-semibold uppercase text-white">เปลี่ยนรูป</span>
+                        <span className="text-[11px] font-semibold uppercase text-white">เปลี่ยนรูป</span>
                       </div>
                     </>
                   ) : (
                     <>
                       <Plus size={18} className="mb-0.5 text-nexus-teal" />
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-white/60">แนบรูป</span>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-white/60">แนบรูป</span>
                     </>
                   )}
                 </div>
@@ -839,7 +839,7 @@ export default function NewProductPage() {
                           className="group/btn relative w-8 h-8 rounded-full bg-white/[0.04] border border-white/10 hover:bg-nexus-teal/10 hover:border-nexus-teal/40 hover:text-nexus-teal text-white/60 transition-all flex items-center justify-center shrink-0"
                         >
                           <Plus size={14} />
-                          <span className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 hidden group-hover/btn:flex items-center bg-gray-900/95 text-white text-[10px] font-medium px-2 py-1 rounded-md shadow-xl border border-white/10 whitespace-nowrap z-50 pointer-events-none animate-in fade-in duration-150">
+                          <span className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 hidden group-hover/btn:flex items-center bg-gray-900/95 text-white text-[11px] font-medium px-2 py-1 rounded-md shadow-xl border border-white/10 whitespace-nowrap z-50 pointer-events-none animate-in fade-in duration-150">
                             เพิ่มหมวดหมู่ย่อย
                           </span>
                         </button>
@@ -1440,10 +1440,10 @@ export default function NewProductPage() {
                     </div>
                     <div className="flex-1">
                       <p className="text-xs font-semibold text-white uppercase">{item.name}</p>
-                      <p className="text-[10px] text-white/40 font-mono mt-0.5">{item.sku} • สั่งซื้อ: {item.qtyOrdered}</p>
+                      <p className="text-[11px] text-white/40 font-mono mt-0.5">{item.sku} • สั่งซื้อ: {item.qtyOrdered}</p>
                     </div>
                     <div className="w-24">
-                      <p className="text-[9px] font-semibold text-white/40 uppercase mb-1">รับจริง</p>
+                      <p className="text-[11px] font-semibold text-white/40 uppercase mb-1">รับจริง</p>
                       <StepperInput 
                         value={item.qtyReceived} 
                         onChange={(val) => updatePoItem(item.id, "qtyReceived", val)} 
@@ -1451,7 +1451,7 @@ export default function NewProductPage() {
                       />
                     </div>
                     <div className="w-28">
-                      <p className="text-[9px] font-semibold text-white/40 uppercase mb-1">ต้นทุน/หน่วย</p>
+                      <p className="text-[11px] font-semibold text-white/40 uppercase mb-1">ต้นทุน/หน่วย</p>
                       <StepperInput 
                         value={item.cost} 
                         onChange={(val) => updatePoItem(item.id, "cost", val)} 
@@ -1531,7 +1531,7 @@ export default function NewProductPage() {
                         <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
                         <span className="font-medium">{field.label}</span>
                       </span>
-                      <span className="text-[10px] text-nexus-teal opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 font-bold">
+                      <span className="text-[11px] text-nexus-teal opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 font-bold">
                         ไปยังช่อง <ArrowLeft size={10} className="rotate-180" />
                       </span>
                     </button>

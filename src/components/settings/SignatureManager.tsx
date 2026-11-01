@@ -44,7 +44,7 @@ function SignatureEditor({ name, signer, requireConsent, onSave, onRemove }: {
           {image ? <img src={image} alt={`ลายเซ็น ${name}`} className="max-w-full max-h-full object-contain" /> : <PenLine size={20} className="text-black/30" />}
         </div>
         <div className="flex-1 min-w-0 space-y-2">
-          <p className="text-[13.5px] font-semibold text-white truncate" title="ชื่อตามบัญชีผู้ใช้ (พิมพ์ใต้ลายเซ็น)">{name}</p>
+          <p className="text-[14px] font-semibold text-white truncate" title="ชื่อตามบัญชีผู้ใช้ (พิมพ์ใต้ลายเซ็น)">{name}</p>
           <PillInput value={position} onChange={(e) => setPosition(e.target.value.slice(0, 80))} placeholder="ตำแหน่ง เช่น กรรมการผู้จัดการ" className="h-9 w-full text-sm" />
         </div>
       </div>
@@ -93,7 +93,7 @@ export function SignatureManager() {
       <GlassCard accentColor="teal" className="p-5 space-y-3">
         <div>
           <h2 className="text-[18px] font-bold text-white">ลายเซ็นของฉัน</h2>
-          <p className="text-[12.5px] text-white/50">ลายเซ็นนี้ผูกกับบัญชีของคุณ ใช้บนเอกสารที่ผู้ดูแลบริษัทกำหนดให้ช่องลงนามใช้ลายเซ็นของคุณ — เฉพาะเอกสารที่ออกจริง</p>
+          <p className="text-[12px] text-white/50">ลายเซ็นนี้ผูกกับบัญชีของคุณ ใช้บนเอกสารที่ผู้ดูแลบริษัทกำหนดให้ช่องลงนามใช้ลายเซ็นของคุณ — เฉพาะเอกสารที่ออกจริง</p>
         </div>
         <SignatureEditor name={myName} signer={data.mine || null} requireConsent={false}
           onSave={async (image, position) => { setData({ ...data, ...(await call({ action: "saveSigner", image, position })) }); showAlert("บันทึกลายเซ็นของคุณแล้ว"); }}

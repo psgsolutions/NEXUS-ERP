@@ -244,7 +244,7 @@ export default function RegisterBusinessPage() {
                       )}
                     >
                       <h4 className={cn("text-[13px] font-bold", businessType === biz.id ? "text-nexus-teal" : "text-white/80")}>{biz.title}</h4>
-                      {biz.desc && <p className="text-[10px] text-white/40 mt-1">{biz.desc}</p>}
+                      {biz.desc && <p className="text-[11px] text-white/40 mt-1">{biz.desc}</p>}
                     </div>
                   ))}
                 </div>

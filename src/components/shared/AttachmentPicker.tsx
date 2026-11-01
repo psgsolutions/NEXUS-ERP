@@ -72,7 +72,7 @@ export function AttachmentPicker({ pending, onPending, ownerType, ownerId, disab
           <div key={f.id} className={tile} title={`${f.name}${f.uploadedByName ? ` · ${f.uploadedByName}` : ""}`}>
             <button type="button" onClick={() => open(f)} className="w-full h-full flex flex-col items-center justify-center gap-1 text-white/70 hover:text-white">
               {f.mime === "application/pdf" ? <FileText size={22} /> : <Paperclip size={20} />}
-              <span className="text-[10px] px-1 truncate max-w-full">{f.name}</span>
+              <span className="text-[11px] px-1 truncate max-w-full">{f.name}</span>
             </button>
             {!disabled && <button type="button" onClick={() => remove(f)} aria-label={`ลบ ${f.name}`} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center"><X size={12} /></button>}
           </div>
@@ -87,10 +87,10 @@ export function AttachmentPicker({ pending, onPending, ownerType, ownerId, disab
         {!disabled && (
           <>
             <button type="button" onClick={() => fileRef.current?.click()} className={cn(tile, "border-dashed hover:border-nexus-teal/50 flex-col gap-1 text-white/55 hover:text-white")}>
-              <ImagePlus size={20} /><span className="text-[10.5px]">เลือกหลายไฟล์</span>
+              <ImagePlus size={20} /><span className="text-[11px]">เลือกหลายไฟล์</span>
             </button>
             <button type="button" onClick={() => camRef.current?.click()} className={cn(tile, "border-dashed hover:border-nexus-teal/50 flex-col gap-1 text-white/55 hover:text-white")}>
-              <Camera size={20} /><span className="text-[10.5px]">ถ่ายรูป</span>
+              <Camera size={20} /><span className="text-[11px]">ถ่ายรูป</span>
             </button>
           </>
         )}
@@ -99,7 +99,7 @@ export function AttachmentPicker({ pending, onPending, ownerType, ownerId, disab
       <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { add(e.target.files); e.target.value = ""; }} />
       {busy && <p className="text-[12px] text-nexus-teal flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" /> {busy}</p>}
       {error && <p className="text-[12px] text-danger">{error}</p>}
-      {hint && !busy && <p className="text-[11.5px] text-white/40">{hint}</p>}
+      {hint && !busy && <p className="text-[12px] text-white/40">{hint}</p>}
       {view && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4" onClick={() => setView(null)}>
           <div className="absolute inset-0 bg-black/85" />

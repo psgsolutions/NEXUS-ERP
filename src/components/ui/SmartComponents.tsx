@@ -274,7 +274,7 @@ export function SmartSelect({
           {isCustomTyped && (
             <span 
               title={`จะสร้าง "${(isFocused ? searchQuery : (selectedOption ? selectedOption.label : (value || searchQuery || ""))).trim()}" เป็นรายการใหม่เมื่อกดบันทึก`}
-              className="text-[10px] px-2.5 py-0.5 rounded-full bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md font-semibold flex items-center gap-1 shrink-0"
+              className="text-[11px] px-2.5 py-0.5 rounded-full bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 backdrop-blur-md font-semibold flex items-center gap-1 shrink-0"
             >
               🆕 รายการใหม่
             </span>
@@ -355,7 +355,7 @@ export function SmartSelect({
                 >
                   <span className="font-bold flex items-center justify-between">
                     <span>{opt.label}</span>
-                    {value === opt.value && <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-nexus-teal/20 text-nexus-teal">เลือกอยู่</span>}
+                    {value === opt.value && <span className="text-[11px] uppercase font-mono px-2 py-0.5 rounded-full bg-nexus-teal/20 text-nexus-teal">เลือกอยู่</span>}
                   </span>
                   {opt.description && (
                     <span className="text-[11px] text-white/50 font-normal truncate font-mono">{opt.description}</span>

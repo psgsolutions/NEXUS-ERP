@@ -80,7 +80,7 @@ export function UomHierarchyBuilder({
       {conversions.length === 0 ? (
         <div className="p-6 text-center border border-dashed border-white/10 rounded-xl space-y-1">
           <p className="text-xs text-white/40 font-bold">ยังไม่มีบรรจุภัณฑ์ขั้นสูง (ใช้หน่วยนับหลัก {baseUnit || "ชิ้น"})</p>
-          <p className="text-[10px] text-white/30">กดปุ่ม "เพิ่มระดับบรรจุภัณฑ์" เพื่อกำหนดขนาดกล่อง ลัง หรือพาเลท พร้อมบาร์โค้ดแยกตามระดับ</p>
+          <p className="text-[11px] text-white/30">กดปุ่ม "เพิ่มระดับบรรจุภัณฑ์" เพื่อกำหนดขนาดกล่อง ลัง หรือพาเลท พร้อมบาร์โค้ดแยกตามระดับ</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -133,7 +133,7 @@ export function UomHierarchyBuilder({
               </div>
 
               <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                <span className="text-[10px] font-bold text-white/40">
+                <span className="text-[11px] font-bold text-white/40">
                   อัตราส่วนสุทธิ: <span className="text-nexus-teal font-mono">1 {tier.toUnit} = {tier.relativeRate} {baseUnit}</span>
                 </span>
                 <button

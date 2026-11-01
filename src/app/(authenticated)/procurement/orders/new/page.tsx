@@ -441,7 +441,7 @@ function NewPurchaseOrderScreen() {
         
         {form.currency !== "THB" && (
           <div className="flex justify-between items-center pt-4 border-t border-white/10 mt-4">
-            <span className="text-[10px] text-cyan-400/60 font-semibold uppercase tracking-widest">Equivalent (THB)</span>
+            <span className="text-[11px] text-cyan-400/60 font-semibold uppercase tracking-widest">Equivalent (THB)</span>
             <span className="text-[13px] font-mono font-bold text-cyan-400 text-right">{formatCurrency(financialsTHB.total)}</span>
           </div>
         )}
@@ -467,7 +467,7 @@ function Field({ label, children, required }: { label: string, children: React.R
         {cleanLabel.split(' (')[0]}
         {hasAsterisk && <span className="text-danger ml-1 font-bold">*</span>}
         {cleanLabel.includes(' (') && (
-          <span className="text-white/40 ml-1 font-normal uppercase tracking-widest text-[10px]">
+          <span className="text-white/40 ml-1 font-normal uppercase tracking-widest text-[11px]">
             ({cleanLabel.split(' (')[1]}
           </span>
         )}

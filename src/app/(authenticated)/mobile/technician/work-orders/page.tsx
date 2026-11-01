@@ -336,7 +336,7 @@ export default function FieldTechnicianApp() {
         ) : (
           <>
             <Camera size={24} className="mb-2" />
-            <span className="text-[10px] font-bold">{label}</span>
+            <span className="text-[11px] font-bold">{label}</span>
           </>
         )}
       </div>
@@ -391,7 +391,7 @@ export default function FieldTechnicianApp() {
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span className={cn(
-                      "text-[10px] font-semibold px-2 py-1 rounded-full",
+                      "text-[11px] font-semibold px-2 py-1 rounded-full",
                       w.status === 'IN_PROGRESS' ? "bg-warning/20 text-warning" : "bg-nexus-teal/20 text-nexus-teal"
                     )}>{STATUS_LABEL[w.status] || w.status}</span>
                     <span className="font-mono text-xs text-white/40">{w.woCode || w.id}</span>
@@ -411,7 +411,7 @@ export default function FieldTechnicianApp() {
               {/* WO Info Card */}
               <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 shadow-xl">
                 <div className="flex justify-between items-start mb-2">
-                  <span className="bg-nexus-teal/20 text-nexus-teal text-[10px] font-semibold px-2 py-1 rounded-full">{STATUS_LABEL[wo.status] || wo.status}</span>
+                  <span className="bg-nexus-teal/20 text-nexus-teal text-[11px] font-semibold px-2 py-1 rounded-full">{STATUS_LABEL[wo.status] || wo.status}</span>
                   <span className="font-mono text-xs text-white/40">{wo.soCode}</span>
                 </div>
                 <h2 className="text-base font-black text-white leading-tight mb-1">{wo.customerName || '-'}</h2>
@@ -461,7 +461,7 @@ export default function FieldTechnicianApp() {
                         href={`https://maps.google.com/?q=${wo.checkIn.gps.lat},${wo.checkIn.gps.lng}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-[10px] font-mono text-white/50 underline"
+                        className="text-[11px] font-mono text-white/50 underline"
                       >
                         ±{wo.checkIn.gps.accuracy}ม.
                       </a>
@@ -490,7 +490,7 @@ export default function FieldTechnicianApp() {
                       <div className="bg-white/[0.05] border border-white/10 rounded-xl p-2 relative">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={photo('signature')} alt="ลายเซ็นลูกค้า" className="w-full bg-white/15 rounded-lg" />
-                        <p className="text-center text-[10px] text-nexus-teal mt-2">บันทึกลายเซ็นแล้ว</p>
+                        <p className="text-center text-[11px] text-nexus-teal mt-2">บันทึกลายเซ็นแล้ว</p>
                       </div>
                     )}
                   </div>
@@ -499,7 +499,7 @@ export default function FieldTechnicianApp() {
                   <div className="space-y-3 pt-4 border-t border-white/10">
                     <div className="flex justify-between items-center">
                       <h3 className="text-xs font-semibold text-white/60 tracking-widest pl-1">เบิกค่าใช้จ่ายหน้างาน</h3>
-                      <span className="text-[10px] font-mono text-nexus-teal font-bold bg-nexus-teal/10 px-2 py-0.5 rounded-full">บัญชีงานระหว่างทำ</span>
+                      <span className="text-[11px] font-mono text-nexus-teal font-bold bg-nexus-teal/10 px-2 py-0.5 rounded-full">บัญชีงานระหว่างทำ</span>
                     </div>
 
                     {!wo.projectId ? (

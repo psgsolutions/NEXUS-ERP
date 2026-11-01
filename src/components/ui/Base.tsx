@@ -95,7 +95,7 @@ export function NexusSearchInput({
       />
       <div className="absolute right-5 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
         {kbd && (
-          <div className="px-2 py-0.5 rounded border border-white/10 bg-white/5 text-[9px] font-semibold text-white/20 uppercase tracking-tighter">
+          <div className="px-2 py-0.5 rounded border border-white/10 bg-white/5 text-[11px] font-semibold text-white/20 uppercase tracking-tighter">
             {kbd}
           </div>
         )}

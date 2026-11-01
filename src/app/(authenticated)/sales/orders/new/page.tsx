@@ -192,7 +192,7 @@ export default function SalesOrderPage() {
                         className="p-3 hover:bg-white/5 rounded-lg cursor-pointer transition-all"
                       >
                         <p className="text-[13px] font-bold text-white">{customerName(c)}</p>
-                        <p className="text-[10px] text-white/30 mt-1 font-mono">{c.taxId || "-"} • <span className="font-sans">{customerAddress(c) || "-"}</span></p>
+                        <p className="text-[11px] text-white/30 mt-1 font-mono">{c.taxId || "-"} • <span className="font-sans">{customerAddress(c) || "-"}</span></p>
                       </div>
                     ))}
                     <div
@@ -225,7 +225,7 @@ export default function SalesOrderPage() {
                   <label className="text-[11px] font-bold uppercase tracking-widest text-white/40 flex items-center gap-2">
                     <MapPin size={12} className="text-cyan-400" /> สถานที่ส่งมอบ / หน้างาน
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer text-[10px] text-cyan-400/80 hover:text-cyan-400">
+                  <label className="flex items-center gap-2 cursor-pointer text-[11px] text-cyan-400/80 hover:text-cyan-400">
                     <input
                       type="checkbox"
                       checked={isSameAsBilling}
@@ -299,11 +299,11 @@ export default function SalesOrderPage() {
               </Field>
               <div className="p-3 rounded-xl bg-black/30 border border-white/10 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">สกุลเงินเอกสาร</p>
+                  <p className="text-[11px] text-white/40 uppercase tracking-widest font-semibold">สกุลเงินเอกสาร</p>
                   <p className="text-[13px] text-white font-bold mt-1">THB - บาทไทย</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">อัตราแลกเปลี่ยน</p>
+                  <p className="text-[11px] text-white/40 uppercase tracking-widest font-semibold">อัตราแลกเปลี่ยน</p>
                   <p className="text-[13px] text-white font-mono mt-1">1.00000</p>
                 </div>
               </div>
@@ -349,11 +349,11 @@ export default function SalesOrderPage() {
         <div className="flex justify-between items-center pb-3 border-b border-white/5">
           <span className="text-[11px] font-black uppercase tracking-widest text-white/40">วงเงินเครดิต</span>
           {!customer ? null : isCreditExceeded ? (
-            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-red-400">
+            <span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-widest text-red-400">
               <AlertTriangle size={12} /> เกินวงเงิน
             </span>
           ) : (
-            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-emerald-400">
+            <span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-widest text-emerald-400">
               <ShieldCheck size={12} /> อนุมัติได้
             </span>
           )}
@@ -447,7 +447,7 @@ function Field({ label, children, required }: { label: string, children: React.R
           {thaiText}
           {hasAsterisk && <span className="text-danger ml-1 font-bold">*</span>}
         </span>
-        {engText && <span className="text-white/40 font-normal uppercase tracking-widest text-[10px]">{engText}</span>}
+        {engText && <span className="text-white/40 font-normal uppercase tracking-widest text-[11px]">{engText}</span>}
       </label>
       {children}
     </div>

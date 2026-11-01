@@ -365,7 +365,7 @@ function RackEditor({ zone, rack, whCode, stock, canEdit, ownerCtx, onChange, on
                       className={cn("h-12 rounded-lg border text-[11px] font-mono flex flex-col items-center justify-center min-w-0 px-1",
                         picked === code ? "border-nexus-teal bg-nexus-teal/15 text-nexus-teal" : s ? "border-white/20 bg-white/[0.08] text-white" : "border-white/10 bg-white/[0.02] text-white/40 hover:border-white/25")}>
                       <span className="truncate max-w-full">{rack.bins > 1 ? `B${String(b + 1).padStart(2, "0")}` : `L${l}`}</span>
-                      {s && <span className="text-[10px] text-white/60 truncate max-w-full">{s.items} รายการ</span>}
+                      {s && <span className="text-[11px] text-white/60 truncate max-w-full">{s.items} รายการ</span>}
                     </button>
                   );
                 })}

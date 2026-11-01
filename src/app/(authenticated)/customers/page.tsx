@@ -126,7 +126,7 @@ export default function CustomerDashboardPage() {
                   <NexusTableCell className="w-full">
                     <div className="font-bold text-white text-[13px]">{customer.customerName || customer.name || customer.companyName || "-"}</div>
                     {(customer.customerBranch || customer.branch) && (
-                      <div className="text-[10px] text-white/40 mt-1 flex items-center gap-1 font-semibold uppercase tracking-wider">
+                      <div className="text-[11px] text-white/40 mt-1 flex items-center gap-1 font-semibold uppercase tracking-wider">
                         <Building2 size={10} /> {customer.customerBranch || customer.branch}
                       </div>
                     )}
@@ -152,7 +152,7 @@ export default function CustomerDashboardPage() {
                   </NexusTableCell>
                   
                   <NexusTableCell className="w-[1%] whitespace-nowrap">
-                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest inline-flex items-center gap-1 ${
+                    <span className={`text-[11px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest inline-flex items-center gap-1 ${
                       customer.grade === 'VIP' ? 'bg-transparent border border-purple-500/20 text-purple-400' :
                       customer.grade === 'Government' ? 'bg-blue-500/10 border border-blue-500/20 text-blue-400' :
                       'bg-white/15 border border-white/10 text-white/60'
@@ -170,7 +170,7 @@ export default function CustomerDashboardPage() {
                   <NexusTableCell align="center" className="w-[1%] whitespace-nowrap">
                     <PillButton 
                        
-                      className="h-8 px-4 text-[10px] text-nexus-blue border-nexus-blue/20 hover:bg-transparent"
+                      className="h-8 px-4 text-[11px] text-nexus-blue border-nexus-blue/20 hover:bg-transparent"
                       onClick={() => router.push(`/customers/${encodeURIComponent(customer.id)}`)}
                     >
                       ดูข้อมูล
@@ -193,11 +193,11 @@ export default function CustomerDashboardPage() {
           
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/15 rounded-2xl p-4 text-center border border-white/10">
-              <div className="text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1">รวมทั้งหมด</div>
+              <div className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1">รวมทั้งหมด</div>
               <div className="text-2xl font-mono text-white">{total}</div>
             </div>
             <div className="bg-transparent rounded-2xl p-4 text-center border border-purple-500/20">
-              <div className="text-[10px] font-semibold text-purple-400/60 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
+              <div className="text-[11px] font-semibold text-purple-400/60 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
                 <Crown size={10} /> VIP
               </div>
               <div className="text-2xl font-mono text-purple-400">{vipCount}</div>

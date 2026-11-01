@@ -187,7 +187,7 @@ export function PaymentModal({ isOpen, onClose, onSave }: PaymentModalProps) {
                   </div>
 
                   <div className="space-y-3">
-                    <div className="grid grid-cols-12 gap-4 px-6 text-[10px] font-semibold text-white/20 uppercase tracking-widest">
+                    <div className="grid grid-cols-12 gap-4 px-6 text-[11px] font-semibold text-white/20 uppercase tracking-widest">
                        <div className="col-span-3">เลขที่ PO</div>
                        <div className="col-span-3 text-right">ยอดค้างจ่าย</div>
                        <div className="col-span-3 text-right">จ่ายชำระครั้งนี้</div>

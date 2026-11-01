@@ -108,14 +108,14 @@ export default function ExpensePhotosPage() {
             {busy && <p className="text-[13px] text-nexus-teal flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> {busy}</p>}
             <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-white/5">
               <PillButton variant="glass" className="h-8 px-3 text-xs" onClick={linkLine}><MessageCircle size={13} /> ส่งรูปผ่าน LINE</PillButton>
-              {lineCode && <span className="text-[12.5px] text-white/70">เพิ่มเพื่อน LINE ของบริษัท{lineCode.botName ? ` (${lineCode.botName})` : ""} แล้วพิมพ์ <b className="text-nexus-teal font-mono text-[14px]">เชื่อม {lineCode.code}</b> (ภายใน 10 นาที) — จากนั้นส่งรูปบิลในแชตได้เลย</span>}
+              {lineCode && <span className="text-[12px] text-white/70">เพิ่มเพื่อน LINE ของบริษัท{lineCode.botName ? ` (${lineCode.botName})` : ""} แล้วพิมพ์ <b className="text-nexus-teal font-mono text-[14px]">เชื่อม {lineCode.code}</b> (ภายใน 10 นาที) — จากนั้นส่งรูปบิลในแชตได้เลย</span>}
             </div>
           </GlassCard>
 
           <div className="flex flex-wrap items-center gap-2">
             <PillTabs className="flex-1 min-w-[260px]" tabs={[{ id: "open", label: `รอยืนยัน (${counts.open})` }, { id: "done", label: `ยืนยันแล้ว (${counts.done})` }, { id: "rejected", label: `ไม่อนุมัติ (${counts.rejected})` }]} activeTab={tab} onTabChange={(id: any) => setTab(id)} />
             {can(roles, "finance:view") && (
-              <div className="w-[170px]"><PillSelect value={scope} onChange={(e) => setScope(e.target.value as any)} className="h-9 w-full text-[12.5px]"><option value="all">ของทุกคน</option><option value="mine">ของฉัน</option></PillSelect></div>
+              <div className="w-[170px]"><PillSelect value={scope} onChange={(e) => setScope(e.target.value as any)} className="h-9 w-full text-[12px]"><option value="all">ของทุกคน</option><option value="mine">ของฉัน</option></PillSelect></div>
             )}
             <PillButton variant="ghost" className="h-9 px-3 text-xs" onClick={load}><RefreshCw size={13} /> โหลดใหม่</PillButton>
           </div>
@@ -188,8 +188,8 @@ function InboxCard({ item, canConfirm, mine, employees, projects, post, onDone, 
   return (
     <GlassCard className={cn("p-4 space-y-3", item.status === "CONFIRMED" && "opacity-90")}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className={cn("text-[11.5px] px-2 py-0.5 rounded-full font-bold", item.status === "CONFIRMED" ? "bg-nexus-teal/15 text-nexus-teal" : item.status === "REJECTED" ? "bg-danger/15 text-danger" : "bg-warning/15 text-warning")}>{INBOX_STATUS[item.status as InboxStatus] || "กำลังยืนยัน"}</span>
-        {item.source === "line" && <span className="text-[11.5px] px-2 py-0.5 rounded-full bg-green-500/15 text-green-300">ส่งทาง LINE</span>}
+        <span className={cn("text-[12px] px-2 py-0.5 rounded-full font-bold", item.status === "CONFIRMED" ? "bg-nexus-teal/15 text-nexus-teal" : item.status === "REJECTED" ? "bg-danger/15 text-danger" : "bg-warning/15 text-warning")}>{INBOX_STATUS[item.status as InboxStatus] || "กำลังยืนยัน"}</span>
+        {item.source === "line" && <span className="text-[12px] px-2 py-0.5 rounded-full bg-green-500/15 text-green-300">ส่งทาง LINE</span>}
         <span className="text-[12px] text-white/50">{item.createdByName} · {item.createdAt ? new Date(item.createdAt).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" }) : ""}</span>
         {item.expenseId && <span className="text-[12px] text-nexus-teal font-mono">ใบเบิก {item.expenseId}</span>}
         <span className="ml-auto text-[16px] font-bold text-white font-mono">{money(sum.total)}</span>
@@ -222,7 +222,7 @@ function InboxCard({ item, canConfirm, mine, employees, projects, post, onDone, 
             {editable && <button type="button" onClick={() => set({ items: [...d.items, { description: "", qty: 1, unitPrice: 0, amount: 0 }] })} className="text-[12px] text-nexus-teal hover:underline flex items-center gap-1"><Plus size={12} /> เพิ่มรายการ</button>}
           </div>
           {d.docType === "TAX_INVOICE" && (
-            <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-white/60">
+            <div className="flex flex-wrap items-center gap-2 text-[12px] text-white/60">
               ก่อน VAT <PillInput inputMode="decimal" value={d.subtotal} onChange={(e) => set({ subtotal: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 })} className="h-8 w-28 text-right font-mono text-[13px]" />
               VAT <PillInput inputMode="decimal" value={d.vat} onChange={(e) => set({ vat: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 })} className="h-8 w-24 text-right font-mono text-[13px]" />
             </div>
@@ -238,9 +238,9 @@ function InboxCard({ item, canConfirm, mine, employees, projects, post, onDone, 
         {busy && <span className="text-[12px] text-nexus-teal flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> {busy}</span>}
         {open && canConfirm && (
           <div className="w-full flex flex-wrap items-center gap-2 pt-1">
-            <div className="w-full sm:w-[210px]"><PillSelect value={emp} onChange={(e) => setEmp(String(e.target.value))} className="h-9 w-full text-[12.5px]"><option value="">ผู้จ่ายเงิน (ผู้เบิก)…</option>{employees.map((e) => <option key={e.id} value={e.id}>{empName(e)}</option>)}</PillSelect></div>
-            <div className="w-full sm:w-[230px]"><PillSelect value={acct} onChange={(e) => { acctTouched.current = true; setAcct(String(e.target.value)); }} className="h-9 w-full text-[12.5px]" title={acctHint || undefined}>{EXPENSE_ACCOUNTS.map((a) => <option key={a.code} value={a.code}>{a.code} {a.name}</option>)}</PillSelect></div>
-            <div className="w-full sm:w-[210px]"><PillSelect value={proj} onChange={(e) => setProj(String(e.target.value))} className="h-9 w-full text-[12.5px]"><option value="">ไม่เข้าโครงการ</option>{projects.map((p: any) => <option key={p.id} value={p.id}>{p.projectName || p.title || p.id}</option>)}</PillSelect></div>
+            <div className="w-full sm:w-[210px]"><PillSelect value={emp} onChange={(e) => setEmp(String(e.target.value))} className="h-9 w-full text-[12px]"><option value="">ผู้จ่ายเงิน (ผู้เบิก)…</option>{employees.map((e) => <option key={e.id} value={e.id}>{empName(e)}</option>)}</PillSelect></div>
+            <div className="w-full sm:w-[230px]"><PillSelect value={acct} onChange={(e) => { acctTouched.current = true; setAcct(String(e.target.value)); }} className="h-9 w-full text-[12px]" title={acctHint || undefined}>{EXPENSE_ACCOUNTS.map((a) => <option key={a.code} value={a.code}>{a.code} {a.name}</option>)}</PillSelect></div>
+            <div className="w-full sm:w-[210px]"><PillSelect value={proj} onChange={(e) => setProj(String(e.target.value))} className="h-9 w-full text-[12px]"><option value="">ไม่เข้าโครงการ</option>{projects.map((p: any) => <option key={p.id} value={p.id}>{p.projectName || p.title || p.id}</option>)}</PillSelect></div>
             <div className="ml-auto flex gap-2">
               {rejecting ? (
                 <>

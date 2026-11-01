@@ -195,7 +195,7 @@ export function PurchaseRequestModal({ isOpen, onClose, onSave }: PurchaseReques
                              <PillInput 
                                value={item.unit}
                                onChange={(e) => updateItem(item.id, "unit", e.target.value)}
-                               className="w-full text-center text-[10px] font-black uppercase" 
+                               className="w-full text-center text-[11px] font-black uppercase" 
                              />
                           </div>
                           <div className="col-span-2">

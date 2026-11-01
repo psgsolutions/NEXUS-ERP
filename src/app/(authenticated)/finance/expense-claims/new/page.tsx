@@ -199,7 +199,7 @@ export default function NewExpenseClaimPage() {
               <option key={a.code} value={a.code}>{a.code} - {a.name}</option>
             ))}
           </PillSelect>
-          {accountHint && <p className="text-[11.5px] text-nexus-teal/80 mt-1 ml-1">{accountHint}{accountTouched.current ? " — คุณเลือกบัญชีเองแล้ว" : ""}</p>}
+          {accountHint && <p className="text-[12px] text-nexus-teal/80 mt-1 ml-1">{accountHint}{accountTouched.current ? " — คุณเลือกบัญชีเองแล้ว" : ""}</p>}
         </Field>
 
         <Field label="โครงการ (ถ้าเป็นค่าใช้จ่ายของโครงการ)">
@@ -278,7 +278,7 @@ export default function NewExpenseClaimPage() {
       <div className="mt-6 pt-6 border-t border-white/5 space-y-4">
         <div className="flex justify-between items-end">
           <div>
-            <span className="block text-[10px] font-semibold text-white/40 uppercase tracking-widest mb-1">ยอดสุทธิที่ขอเบิก</span>
+            <span className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1">ยอดสุทธิที่ขอเบิก</span>
             <span className="block text-2xl font-mono text-cyan-400">
               {formatCurrency(grandTotal)}
             </span>
@@ -312,7 +312,7 @@ function Field({ label, children, required }: { label: string, children: React.R
           {thaiText}
           {hasAsterisk && <span className="text-danger ml-1 font-bold">*</span>}
         </span>
-        {engText && <span className="text-white/40 font-normal uppercase tracking-widest text-[10px]">{engText}</span>}
+        {engText && <span className="text-white/40 font-normal uppercase tracking-widest text-[11px]">{engText}</span>}
       </label>
       {children}
     </div>

@@ -114,7 +114,7 @@ export default function DocumentHistoryPage() {
             <div className="flex flex-wrap gap-1.5">
               {["", ...types].map((t) => (
                 <button key={t || "all"} type="button" onClick={() => setType(t)}
-                  className={cn("h-8 px-3 rounded-full text-[12.5px] border", type === t ? "border-nexus-teal/60 bg-nexus-teal/15 text-nexus-teal font-bold" : "border-white/10 text-white/60 hover:text-white")}>{t ? TYPE_LABEL[t] || t : "ทั้งหมด (ล่าสุด)"}</button>
+                  className={cn("h-8 px-3 rounded-full text-[12px] border", type === t ? "border-nexus-teal/60 bg-nexus-teal/15 text-nexus-teal font-bold" : "border-white/10 text-white/60 hover:text-white")}>{t ? TYPE_LABEL[t] || t : "ทั้งหมด (ล่าสุด)"}</button>
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -124,11 +124,11 @@ export default function DocumentHistoryPage() {
               </div>
               <div className="ml-auto flex rounded-full bg-white/5 p-1 border border-white/10">
                 {([["grid", "ภาพเอกสาร", LayoutGrid], ["list", "รายการ", List]] as const).map(([v, label, I]) => (
-                  <button key={v} type="button" onClick={() => setView(v)} className={cn("h-8 px-3 rounded-full text-[12.5px] flex items-center gap-1.5", view === v ? "bg-nexus-teal/20 text-nexus-teal font-bold" : "text-white/55 hover:text-white")}><I size={14} /> {label}</button>
+                  <button key={v} type="button" onClick={() => setView(v)} className={cn("h-8 px-3 rounded-full text-[12px] flex items-center gap-1.5", view === v ? "bg-nexus-teal/20 text-nexus-teal font-bold" : "text-white/55 hover:text-white")}><I size={14} /> {label}</button>
                 ))}
               </div>
             </div>
-            {!type && <p className="text-[11.5px] text-white/40">ทั้งหมด = ฉบับล่าสุดของแต่ละชนิด · เลือกชนิดเพื่อดูย้อนหลังทั้งหมด</p>}
+            {!type && <p className="text-[12px] text-white/40">ทั้งหมด = ฉบับล่าสุดของแต่ละชนิด · เลือกชนิดเพื่อดูย้อนหลังทั้งหมด</p>}
           </GlassCard>
 
           {error && <div className="p-3 rounded-xl text-xs font-bold border bg-danger/10 border-danger/20 text-danger">{error}</div>}
@@ -140,12 +140,12 @@ export default function DocumentHistoryPage() {
                 <button key={`${r.type}:${r.id}`} type="button" onClick={() => setOpen(r)} className="text-left rounded-xl border border-white/10 bg-white/[0.02] hover:border-nexus-teal/50 p-2 space-y-1.5 transition-colors">
                   <div className="relative">
                     {companyId && <Thumb row={r} companyId={companyId} />}
-                    {r.cancelled && <span className="absolute top-1.5 right-1.5 text-[10.5px] px-1.5 py-0.5 rounded bg-danger text-white font-bold">ยกเลิก</span>}
+                    {r.cancelled && <span className="absolute top-1.5 right-1.5 text-[11px] px-1.5 py-0.5 rounded bg-danger text-white font-bold">ยกเลิก</span>}
                   </div>
                   <p className="text-[11px] text-nexus-teal font-semibold truncate">{TYPE_LABEL[r.type] || r.type}</p>
                   <p className="text-[13px] text-white font-bold truncate font-mono">{r.number}</p>
                   <p className="text-[12px] text-white/60 truncate">{r.party || "-"}</p>
-                  <div className="flex items-center justify-between text-[11.5px] text-white/50">
+                  <div className="flex items-center justify-between text-[12px] text-white/50">
                     <span>{r.date ? thaiDate(r.date) : "-"}</span>
                     {r.amount !== null && <span className="font-mono text-white/75">{money(r.amount)}</span>}
                   </div>

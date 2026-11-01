@@ -244,7 +244,7 @@ export default function PutawayPage() {
           <div key={productId} className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
             <div className="flex-1 min-w-0">
               <p className="text-[12px] text-white truncate">{product.name}</p>
-              <p className="text-[10px] text-white/40 font-mono">{product.sku || productId} • {qty.toLocaleString()} {product.unit || ""}</p>
+              <p className="text-[11px] text-white/40 font-mono">{product.sku || productId} • {qty.toLocaleString()} {product.unit || ""}</p>
             </div>
             <button
               disabled={!target}

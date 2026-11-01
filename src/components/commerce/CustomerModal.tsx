@@ -139,7 +139,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
                 <div className="space-y-10 animate-in fade-in slide-in-from-left-4">
                   <section className="space-y-6">
                     <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                       <h3 className="text-[12px] font-semibold text-nexus-teal uppercase flex items-center gap-2 italic"><Zap size={16} /> 1. อัตลักษณ์ธุรกิจ</h3>
+                       <h3 className="text-[12px] font-semibold text-nexus-teal uppercase flex items-center gap-2"><Zap size={16} /> 1. อัตลักษณ์ธุรกิจ</h3>
                        {!isLocked && (
                          <SmartScanner 
                            type="business_card" 
@@ -187,7 +187,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
                   </section>
 
                   <section className="space-y-6 pt-6 border-t border-white/5">
-                    <h3 className="text-[12px] font-semibold text-white/40 uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic"><Wallet size={16} /> 2. นโยบายสินเชื่อและการเงิน</h3>
+                    <h3 className="text-[12px] font-semibold text-white/40 uppercase flex items-center gap-2 border-b border-white/5 pb-2"><Wallet size={16} /> 2. นโยบายสินเชื่อและการเงิน</h3>
                     <div className="grid grid-cols-2 gap-8 bg-white/[0.02] p-8 rounded-[2rem] border border-white/5">
                       <Field label="เครดิตเทอม (วัน)">
                         <NumberStepper value={form.credit_term_days} onChange={(v) => setForm({...form, credit_term_days: v})} unit="วัน" />
@@ -212,7 +212,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
               {activeTab === "geo" && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
                   <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                    <h3 className="text-[12px] font-semibold text-nexus-teal uppercase italic">พิกัดจัดส่งและไซต์งาน</h3>
+                    <h3 className="text-[12px] font-semibold text-nexus-teal uppercase">พิกัดจัดส่งและไซต์งาน</h3>
                     <PillButton variant="glass" size="sm" onClick={() => setForm({...form, addresses: [...form.addresses, { address_type: "ไซต์งาน", line1: "" }]})}>
                       <Plus size={14} /> เพิ่มพิกัด
                     </PillButton>
@@ -222,7 +222,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
                     {form.addresses.map((addr, idx) => (
                       <div key={idx} className="p-6 bg-white/[0.02] border border-white/5 rounded-[2rem] flex gap-6 items-end group">
                         <div className="w-48 space-y-2">
-                          <label className="text-[10px] font-semibold text-white/20 uppercase tracking-widest ml-1">ป้ายกำกับ</label>
+                          <label className="text-[11px] font-semibold text-white/20 uppercase tracking-widest ml-1">ป้ายกำกับ</label>
                           <PillInput className="w-full h-8" value={addr.address_type} onChange={(e) => {
                             const na = [...form.addresses];
                             na[idx].address_type = e.target.value;
@@ -230,7 +230,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
                           }} />
                         </div>
                         <div className="flex-1 space-y-2">
-                          <label className="text-[10px] font-semibold text-white/20 uppercase tracking-widest ml-1">ที่อยู่</label>
+                          <label className="text-[11px] font-semibold text-white/20 uppercase tracking-widest ml-1">ที่อยู่</label>
                           <PillInput className="w-full h-8" value={addr.line1} onChange={(e) => {
                             const na = [...form.addresses];
                             na[idx].line1 = e.target.value;
@@ -249,7 +249,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
               {activeTab === "contacts" && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
                   <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                    <h3 className="text-[12px] font-semibold text-nexus-teal uppercase italic">ทะเบียนผู้ติดต่อ</h3>
+                    <h3 className="text-[12px] font-semibold text-nexus-teal uppercase">ทะเบียนผู้ติดต่อ</h3>
                     <PillButton variant="glass" size="sm" onClick={() => setForm({...form, contacts: [...form.contacts, { name: "", position: "", phone: "" }]})}>
                       <Plus size={14} /> เพิ่มผู้ติดต่อ
                     </PillButton>
@@ -258,7 +258,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
                     {form.contacts.map((cont, idx) => (
                       <div key={idx} className="p-6 bg-white/[0.02] border border-white/5 rounded-[2rem] grid grid-cols-12 gap-6 items-end">
                         <div className="col-span-5 space-y-2">
-                          <label className="text-[10px] font-semibold text-white/20 uppercase tracking-widest ml-1">ชื่อ-นามสกุล</label>
+                          <label className="text-[11px] font-semibold text-white/20 uppercase tracking-widest ml-1">ชื่อ-นามสกุล</label>
                           <PillInput className="w-full h-8" value={cont.name} onChange={(e) => {
                             const nc = [...form.contacts];
                             nc[idx].name = e.target.value;
@@ -266,7 +266,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
                           }} />
                         </div>
                         <div className="col-span-3 space-y-2">
-                          <label className="text-[10px] font-semibold text-white/20 uppercase tracking-widest ml-1">ตำแหน่ง</label>
+                          <label className="text-[11px] font-semibold text-white/20 uppercase tracking-widest ml-1">ตำแหน่ง</label>
                           <PillInput className="w-full h-8" value={cont.position} onChange={(e) => {
                             const nc = [...form.contacts];
                             nc[idx].position = e.target.value;
@@ -274,7 +274,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
                           }} />
                         </div>
                         <div className="col-span-3 space-y-2">
-                          <label className="text-[10px] font-semibold text-white/20 uppercase tracking-widest ml-1">เบอร์โทรศัพท์</label>
+                          <label className="text-[11px] font-semibold text-white/20 uppercase tracking-widest ml-1">เบอร์โทรศัพท์</label>
                           <PillInput className="w-full h-8 font-mono" value={cont.phone} onChange={(e) => {
                             const nc = [...form.contacts];
                             nc[idx].phone = e.target.value;

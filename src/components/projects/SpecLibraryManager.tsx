@@ -114,7 +114,7 @@ export function SpecLibraryManager() {
                   className={cn("w-full text-left px-3 py-2 rounded-xl border text-[13px] flex items-center justify-between gap-2",
                     t.id === draft?.id ? "border-nexus-teal/40 bg-nexus-teal/10 text-nexus-teal font-bold" : "border-transparent text-white/75 hover:bg-white/5")}>
                   <span className="truncate">{t.name}</span>
-                  <span className="text-[10px] text-white/40 shrink-0">{t.variants.length} แบบ{overridden.has(t.id) && t.builtIn === undefined && DEFAULT_SPEC_TEMPLATES.some((d) => d.id === t.id) ? " · แก้ไข" : ""}</span>
+                  <span className="text-[11px] text-white/40 shrink-0">{t.variants.length} แบบ{overridden.has(t.id) && t.builtIn === undefined && DEFAULT_SPEC_TEMPLATES.some((d) => d.id === t.id) ? " · แก้ไข" : ""}</span>
                 </button>
               ))}
             </div>

@@ -108,7 +108,7 @@ export function ThaiAddressAutocomplete({
               <div className="text-[12px] font-bold text-white/90">
                 ต.{s.subDistrict} อ.{s.district} จ.{s.province}
               </div>
-              <div className="text-[10px] font-mono text-nexus-teal">
+              <div className="text-[11px] font-mono text-nexus-teal">
                 รหัสไปรษณีย์: {s.zipCode}
               </div>
             </button>

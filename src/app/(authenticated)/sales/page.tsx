@@ -52,7 +52,6 @@ import {
 import { DocumentFlowStepper } from "@/components/ui/DocumentFlowStepper";
 import { OpportunityScorer } from "@/components/sales/OpportunityScorer";
 import { CustomerModal } from "@/components/commerce/CustomerModal";
-import { QuotationModal } from "@/components/commerce/QuotationModal";
 import { SalesOrderModal } from "@/components/commerce/SalesOrderModal";
 import { BillingNoteModal } from "@/components/commerce/BillingNoteModal";
 import { CNDNModal } from "@/components/commerce/CNDNModal";

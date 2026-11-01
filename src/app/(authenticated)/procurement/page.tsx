@@ -58,7 +58,6 @@ import { can } from "@/lib/permissions";
 
 import { SupplierModal } from "@/components/commerce/SupplierModal";
 import { PurchaseRequestModal } from "@/components/commerce/PurchaseRequestModal";
-import { PurchaseOrderModal } from "@/components/commerce/PurchaseOrderModal";
 import { ExpenseModal } from "@/components/commerce/ExpenseModal";
 import { WHTModal } from "@/components/commerce/WHTModal";
 

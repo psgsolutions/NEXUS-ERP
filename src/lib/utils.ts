@@ -36,44 +36,6 @@ export function romanizeThai(text: string): string {
     .toUpperCase();
 }
 
-/**
- * Smart ID Engine V8.5 - Strategic Formatting (Automatic Only)
- * จัดรูปแบบ ID ตามมาตรฐาน: PREFIX-YY-[MNEMONIC]-XXXX
- */
-export function generateStockPilotId(type: IdType, context?: string, sequence?: number): string {
-  const now = new Date();
-  const yy = now.getFullYear().toString().slice(-2);
-  
-  const getMnemonic = (val: string) => {
-    const isThai = /[\u0E00-\u0E7F]/.test(val);
-    const processed = isThai ? romanizeThai(val) : val;
-    const clean = processed.replace(/[^A-Z0-9]/g, '');
-    return (clean.substring(0, 3) || 'GEN').toUpperCase();
-  };
-
-  const seqStr = sequence !== undefined ? sequence.toString().padStart(4, '0') : Math.floor(Math.random() * 9999).toString().padStart(4, '0');
-  const skuSeqStr = sequence !== undefined ? sequence.toString().padStart(5, '0') : Math.floor(Math.random() * 99999).toString().padStart(5, '0');
-
-  switch (type) {
-    case 'PRJ': case 'KIT':
-      const mnemonic = context ? getMnemonic(context) : 'GEN';
-      return `${type}-${yy}-${mnemonic}-${seqStr}`;
-
-    case 'SKU':
-      const catMnemonic = context ? getMnemonic(context) : 'GEN';
-      return `SKU-${catMnemonic}-${skuSeqStr}`;
-
-    case 'COMP':
-      return `COMP-${yy}-${seqStr}`;
-
-    case 'CUS': case 'CRM': case 'SUP': case 'SUB': case 'WHS':
-      const prefix = type === 'CRM' ? 'CUS' : type;
-      return `${prefix}-${yy}-${seqStr}`;
-
-    default:
-      return `${type}-${yy}-${seqStr}`;
-  }
-}
 
 /**
  * Client-side Image Resizer V1.0

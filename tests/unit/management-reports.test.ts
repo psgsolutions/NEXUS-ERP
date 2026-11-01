@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { postingLines, trialBalance } from "@/lib/financial-reports";
-import { cashActivityOf, cashFlow, salesProfit } from "@/lib/management-reports";
+import { cashActivityOf, cashFlow, salesProfit, stockAging } from "@/lib/management-reports";
 
 const j = (id: string, date: string, items: [string, number, number][]) => ({ id, date, status: "posted", items: items.map(([accountCode, debit, credit]) => ({ accountCode, debit, credit })) });
 
@@ -66,5 +66,48 @@ describe("sales and gross profit", () => {
     expect(p1).toMatchObject({ qty: 3, revenue: 840, cost: 600, profit: 240 });
     expect(r.rows.find((x) => x.key === "cn")!.revenue).toBe(-50);
     expect(r.rows.find((x) => x.key === "contract")!.revenue).toBe(5000);
+  });
+});
+
+describe("stock aging and slow-moving items", () => {
+  const ts = (d: string) => ({ toDate: () => new Date(`${d}T03:00:00Z`) });
+  const products = [
+    { id: "A", name: "ขายดี", stockStatus: { onHand: 10 }, pricing: { costWAC: 100 } },
+    { id: "B", name: "นิ่ง", stockStatus: { onHand: 4 }, pricing: { costWAC: 50 } },
+    { id: "C", name: "ไม่เคยเบิก", stockStatus: { onHand: 2 }, costPrice: 10 },
+    { id: "D", name: "หมดแล้ว", stockStatus: { onHand: 0 }, pricing: { costWAC: 1 } },
+  ];
+  const moves = [
+    { productId: "A", type: "IN", timestamp: ts("2026-01-01") }, { productId: "A", type: "OUT", timestamp: ts("2026-10-20") },
+    { productId: "B", type: "IN", timestamp: ts("2025-12-01") }, { productId: "B", type: "OUT", timestamp: ts("2026-05-01") },
+    { productId: "C", type: "IN", timestamp: ts("2025-06-01") },
+    { productId: "A", type: "OUT", timestamp: ts("2026-11-30") }, // หลังวันที่ดู ไม่นับ
+  ];
+  const r = stockAging(products, moves, "2026-10-31");
+
+  it("ages from the last issue, falls back to the last receipt, skips empty stock", () => {
+    expect(r.rows.map((x) => x.productId).sort()).toEqual(["A", "B", "C"]);
+    expect(r.rows.find((x) => x.productId === "A")).toMatchObject({ days: 11, bucket: "0-30", slow: false, value: 1000 });
+    expect(r.rows.find((x) => x.productId === "B")).toMatchObject({ lastOut: "2026-05-01", bucket: "181-365", slow: true, value: 200 });
+    expect(r.rows.find((x) => x.productId === "C")).toMatchObject({ lastOut: "", bucket: "365+", slow: true, value: 20 });
+    expect(r.total).toBe(1220);
+    expect(r.slowItems).toBe(2);
+    expect(r.slowValue).toBe(220);
+    expect(r.buckets.find((b) => b.key === "0-30")!.value).toBe(1000);
+  });
+});
+
+describe("sales by salesperson", () => {
+  it("groups invoice revenue/cost by salesperson and nets credit notes through the invoice", () => {
+    const invoices = [
+      { id: "i1", issueDate: "2026-10-05", subTotal: 1000, salesPersonId: "u1", salespersonName: "สมชาย", items: [{ qty: 2, price: 500, cost: 300 }] },
+      { id: "i2", issueDate: "2026-10-06", subTotal: 400, salesPersonId: "u2", salespersonName: "สมหญิง", items: [{ qty: 1, price: 400, cost: 100 }] },
+      { id: "i3", issueDate: "2026-10-07", subTotal: 50, items: [] },
+    ];
+    const notes = [{ id: "n", type: "CN", issueDate: "2026-10-09", invoiceDocId: "i1", amount: 100 }];
+    const r = salesProfit(invoices, notes, "2026-10-01", "2026-10-31", "salesperson");
+    expect(r.rows.find((x) => x.key === "u1")).toMatchObject({ name: "สมชาย", revenue: 900, cost: 600, profit: 300 });
+    expect(r.rows.find((x) => x.key === "u2")).toMatchObject({ revenue: 400, cost: 100 });
+    expect(r.rows.find((x) => x.key === "-")!.name).toBe("ไม่ระบุพนักงานขาย");
   });
 });

@@ -8,7 +8,7 @@ import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api-client";
 
-type ReportId = "tb" | "gl" | "pl" | "bs" | "cf" | "sales-customer" | "sales-product" | "vat-out" | "vat-in" | "pnd3" | "pnd53";
+type ReportId = "tb" | "gl" | "pl" | "bs" | "cf" | "sales-customer" | "sales-product" | "sales-salesperson" | "vat-out" | "vat-in" | "pnd3" | "pnd53";
 const TABS: { id: ReportId; label: string; icon: React.ReactNode }[] = [
   { id: "tb", label: "งบทดลอง", icon: <Scale size={14} /> },
   { id: "gl", label: "บัญชีแยกประเภท", icon: <BookOpen size={14} /> },
@@ -17,6 +17,7 @@ const TABS: { id: ReportId; label: string; icon: React.ReactNode }[] = [
   { id: "cf", label: "กระแสเงินสด", icon: <Banknote size={14} /> },
   { id: "sales-customer", label: "ขายรายลูกค้า", icon: <Users size={14} /> },
   { id: "sales-product", label: "ขายรายสินค้า", icon: <Package size={14} /> },
+  { id: "sales-salesperson", label: "ขายรายพนักงาน", icon: <Users size={14} /> },
   { id: "vat-out", label: "ภาษีขาย", icon: <Percent size={14} /> },
   { id: "vat-in", label: "ภาษีซื้อ", icon: <Percent size={14} /> },
   { id: "pnd3", label: "ภ.ง.ด.3", icon: <FileSpreadsheet size={14} /> },
@@ -24,11 +25,11 @@ const TABS: { id: ReportId; label: string; icon: React.ReactNode }[] = [
 ];
 const TITLE: Record<ReportId, string> = {
   tb: "งบทดลอง", gl: "บัญชีแยกประเภท", pl: "งบกำไรขาดทุน", bs: "งบแสดงฐานะการเงิน", cf: "งบกระแสเงินสด (วิธีทางตรง)",
-  "sales-customer": "ยอดขายและกำไรขั้นต้น รายลูกค้า", "sales-product": "ยอดขายและกำไรขั้นต้น รายสินค้า",
+  "sales-customer": "ยอดขายและกำไรขั้นต้น รายลูกค้า", "sales-product": "ยอดขายและกำไรขั้นต้น รายสินค้า", "sales-salesperson": "ยอดขายและกำไรขั้นต้น รายพนักงานขาย",
   "vat-out": "รายงานภาษีขาย", "vat-in": "รายงานภาษีซื้อ", pnd3: "รายงานภาษีหัก ณ ที่จ่าย ภ.ง.ด.3", pnd53: "รายงานภาษีหัก ณ ที่จ่าย ภ.ง.ด.53",
 };
 // รายงานที่ใช้ช่วงเดือน (อื่น ๆ ใช้เดือนเดียว / ณ สิ้นเดือน)
-const RANGE: ReportId[] = ["tb", "gl", "pl", "cf", "sales-customer", "sales-product"];
+const RANGE: ReportId[] = ["tb", "gl", "pl", "cf", "sales-customer", "sales-product", "sales-salesperson"];
 const TH_MONTHS = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
 const monthLabel = (ym: string) => { const [y, m] = ym.split("-").map(Number); return `${TH_MONTHS[m - 1]} ${y + 543}`; };
 const dateTh = (d: string) => { const [y, m, dd] = d.split("-").map(Number); return `${String(dd).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y + 543}`; };
@@ -104,8 +105,8 @@ export default function FinancialReportsPage() {
       body = [["หมวด", "รหัสบัญชี", "รายการ", "เงินเข้า", "เงินออก", "สุทธิ"], ["", "", "เงินสดและเงินฝากต้นงวด", "", "", data.opening],
         ...cashSections(data).flatMap((s) => [...s.rows.map((r: any) => [s.title, r.code, r.name, r.inflow, r.outflow, r.net]), [s.title, "", `รวม${s.title}`, "", "", s.total]]),
         ["", "", "เงินสดเพิ่มขึ้น (ลดลง) สุทธิ", "", "", data.net], ["", "", "เงินสดและเงินฝากปลายงวด", "", "", data.closing]];
-    } else if (tab === "sales-customer" || tab === "sales-product") {
-      body = [[tab === "sales-customer" ? "ลูกค้า" : "สินค้า/บริการ", "จำนวนเอกสาร", "จำนวน", "ยอดขาย (ก่อน VAT)", "ต้นทุน", "กำไรขั้นต้น", "อัตรากำไร (%)"],
+    } else if (tab === "sales-customer" || tab === "sales-product" || tab === "sales-salesperson") {
+      body = [[tab === "sales-customer" ? "ลูกค้า" : tab === "sales-salesperson" ? "พนักงานขาย" : "สินค้า/บริการ", "จำนวนเอกสาร", "จำนวน", "ยอดขาย (ก่อน VAT)", "ต้นทุน", "กำไรขั้นต้น", "อัตรากำไร (%)"],
         ...data.rows.map((r: any) => [r.name, r.docs, r.qty, r.revenue, r.cost, r.profit, r.margin ?? ""]),
         ["รวม", "", "", data.totals.revenue, data.totals.cost, data.totals.profit, data.totals.margin ?? ""]];
     } else if (tab === "vat-out" || tab === "vat-in") {
@@ -191,7 +192,7 @@ function ReportNotices({ tab, data }: { tab: ReportId; data: any }) {
   const items: { ok: boolean; text: string }[] = [];
   if (["tb", "gl", "pl", "bs", "cf"].includes(tab) && data.draftCount > 0) items.push({ ok: false, text: `มีรายการรอลงบัญชี ${data.draftCount} รายการ (ไม่รวมในรายงาน)` });
   if (tab === "tb") items.push(data.balanced ? { ok: true, text: "เดบิตเท่ากับเครดิต" } : { ok: false, text: "เดบิตไม่เท่ากับเครดิต กรุณาตรวจรายการบัญชี" });
-  if ((tab === "sales-customer" || tab === "sales-product") && data.costMissing) items.push({ ok: false, text: "บางรายการไม่มีต้นทุน (กำไรขั้นต้นสูงกว่าจริง)" });
+  if ((tab === "sales-customer" || tab === "sales-product" || tab === "sales-salesperson") && data.costMissing) items.push({ ok: false, text: "บางรายการไม่มีต้นทุน (กำไรขั้นต้นสูงกว่าจริง)" });
   if (tab === "cf" && data.unallocated) items.push({ ok: false, text: `เงินสดที่จัดหมวดไม่ได้ ${money(data.unallocated)} บาท` });
   if (tab === "bs") items.push(data.balanced ? { ok: true, text: "สินทรัพย์ = หนี้สิน + ส่วนของเจ้าของ" } : { ok: false, text: "งบไม่สมดุล กรุณาตรวจรายการบัญชี" });
   if ((tab === "vat-out" || tab === "vat-in") && data.rows.length + Math.abs(data.ledgerVat) > 0) {
@@ -275,10 +276,10 @@ function ReportBody({ tab, data, onAccount }: { tab: ReportId; data: any; onAcco
       </NexusTable>
     );
   }
-  if (tab === "sales-customer" || tab === "sales-product") {
+  if (tab === "sales-customer" || tab === "sales-product" || tab === "sales-salesperson") {
     const product = tab === "sales-product";
     return (
-      <NexusTable headers={[product ? "สินค้า/บริการ" : "ลูกค้า", "จำนวนเอกสาร", ...(product ? ["จำนวน"] : []), "ยอดขาย (ก่อน VAT)", "ต้นทุน", "กำไรขั้นต้น", "อัตรากำไร"]} itemCount={data.rows.length}>
+      <NexusTable headers={[product ? "สินค้า/บริการ" : tab === "sales-salesperson" ? "พนักงานขาย" : "ลูกค้า", "จำนวนเอกสาร", ...(product ? ["จำนวน"] : []), "ยอดขาย (ก่อน VAT)", "ต้นทุน", "กำไรขั้นต้น", "อัตรากำไร"]} itemCount={data.rows.length}>
         {data.rows.length === 0 && <Empty cols={product ? 7 : 6} text="ไม่มีใบกำกับภาษีในช่วงนี้" />}
         {data.rows.map((r: any) => (
           <NexusTableRow key={r.key} className="cursor-default">

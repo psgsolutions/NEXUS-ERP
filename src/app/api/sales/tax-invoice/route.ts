@@ -93,6 +93,8 @@ export async function POST(request: Request) {
         orderRefNo: soNo, salesOrderId: soId, ...ref,
         customerSnapshot: so.customerSnapshot || null, customerId: so.customerId || "", customerName,
         sellerSnapshot: seller,
+        // พนักงานขาย (จากใบเสนอราคา/ใบสั่งขาย) — รายงานกำไรรายพนักงานขาย
+        salesPersonId: String(so.salesPersonId || so.createdBy || ""), salespersonName: String(so.salespersonName || so.createdByEmail || ""),
         issueDate, dueDate,
         items: so.items || [],
         isVatRegistered, vatType,

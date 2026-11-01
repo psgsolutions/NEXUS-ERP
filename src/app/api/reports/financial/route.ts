@@ -19,7 +19,7 @@ import { cashFlow, salesProfit } from "@/lib/management-reports";
  */
 
 const YM = /^\d{4}-(0[1-9]|1[0-2])$/;
-const REPORTS = ["tb", "gl", "pl", "bs", "cf", "sales-customer", "sales-product", "vat-out", "vat-in", "pnd3", "pnd53"] as const;
+const REPORTS = ["tb", "gl", "pl", "bs", "cf", "sales-customer", "sales-product", "sales-salesperson", "vat-out", "vat-in", "pnd3", "pnd53"] as const;
 type Report = (typeof REPORTS)[number];
 const thisMonth = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 7);
 
@@ -46,9 +46,15 @@ export async function POST(request: Request) {
       const { lines, draftCount, undatedCount } = postingLines(await journals());
       return NextResponse.json({ ...base, draftCount, undatedCount, ...cashFlow(lines, fromDate, toDate) });
     }
-    if (report === "sales-customer" || report === "sales-product") {
+    if (report === "sales-customer" || report === "sales-product" || report === "sales-salesperson") {
       const [invoices, notes] = await Promise.all([col("invoices"), col("cndn")]);
-      return NextResponse.json({ ...base, ...salesProfit(invoices, notes, fromDate, toDate, report === "sales-customer" ? "customer" : "product") });
+      if (report === "sales-salesperson" && invoices.some((i) => !i.salesPersonId && i.salesOrderId)) {
+        // ใบกำกับรุ่นก่อนที่ไม่ได้เก็บพนักงานขาย: ดึงจากใบสั่งขายต้นทาง
+        const sos = new Map((await col("sales_orders")).map((s) => [String(s.id), s]));
+        for (const i of invoices) if (!i.salesPersonId && i.salesOrderId) { const s: any = sos.get(String(i.salesOrderId)); if (s) { i.salesPersonId = s.salesPersonId || s.createdBy || ""; i.salespersonName = s.salespersonName || s.createdByEmail || ""; } }
+      }
+      const by = report === "sales-customer" ? "customer" : report === "sales-product" ? "product" : "salesperson";
+      return NextResponse.json({ ...base, ...salesProfit(invoices, notes, fromDate, toDate, by) });
     }
 
     if (report === "tb" || report === "gl" || report === "pl" || report === "bs") {

@@ -83,7 +83,10 @@ const inRange = (d: string, from: string, to: string) => !!d && d >= from && d <
  * - ใบลดหนี้/ใบเพิ่มหนี้: ปรับยอดขายของลูกค้า (รายสินค้าแสดงเป็นแถว "ลดหนี้/เพิ่มหนี้")
  * - ใบแจ้งหนี้งานโครงการที่ไม่มีรายการ: ทั้งใบเป็นหนึ่งแถว "งานตามสัญญา/งวดงาน"
  */
-export function salesProfit(invoices: any[], notes: any[], from: string, to: string, by: "customer" | "product") {
+export function salesProfit(invoices: any[], notes: any[], from: string, to: string, by: "customer" | "product" | "salesperson") {
+  // พนักงานขายของใบ (ใบลดหนี้ใช้พนักงานขายของใบกำกับที่อ้างถึง)
+  const seller = (inv: any) => ({ key: String(inv?.salesPersonId || inv?.salespersonName || "-"), name: String(inv?.salespersonName || "ไม่ระบุพนักงานขาย") });
+  const invById = new Map(invoices.map((i) => [String(i.id), i]));
   const rows = new Map<string, SalesRow & { docSet: Set<string> }>();
   const add = (key: string, name: string, doc: string, qty: number, revenue: number, cost: number, costMissing: boolean) => {
     const cur = rows.get(key) || { key, name, docs: 0, qty: 0, revenue: 0, cost: 0, profit: 0, margin: null, costMissing: false, docSet: new Set<string>() };
@@ -98,6 +101,12 @@ export function salesProfit(invoices: any[], notes: any[], from: string, to: str
     const cust = { key: String(inv.customerId || inv.customerName || "-"), name: String(inv.customerName || inv.customerSnapshot?.name || "-") };
     const items: any[] = (Array.isArray(inv.items) ? inv.items : []).filter((it: any) => it && it.itemType !== "GROUP_HEADER" && !it.isOptional);
     const nets = items.map(lineNet), total = nets.reduce((s, n) => s + n, 0);
+    if (by === "salesperson") {
+      const sp = seller(inv);
+      const cost = items.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.cost ?? it.costPrice) || 0), 0);
+      add(sp.key, sp.name, doc, 0, base, cost, !items.length || items.some((it) => !(Number(it.cost ?? it.costPrice) > 0)));
+      continue;
+    }
     if (!items.length || total <= 0) {
       if (by === "customer") add(cust.key, cust.name, doc, 0, base, 0, true);
       else add("contract", "งานตามสัญญา / งวดงาน (ไม่มีรายการสินค้า)", doc, 0, base, 0, true);
@@ -116,7 +125,8 @@ export function salesProfit(invoices: any[], notes: any[], from: string, to: str
     if (!live(n) || !inRange(date, from, to)) continue;
     const amount = (Number(n.amount) || 0) * (n.type === "CN" ? -1 : 1);
     const doc = String(n.documentNo || n.id || "");
-    if (by === "customer") add(String(n.customerId || n.customerName || "-"), String(n.customerName || "-"), doc, 0, amount, 0, false);
+    if (by === "salesperson") { const sp = seller(invById.get(String(n.invoiceDocId))); add(sp.key, sp.name, doc, 0, amount, 0, false); }
+    else if (by === "customer") add(String(n.customerId || n.customerName || "-"), String(n.customerName || "-"), doc, 0, amount, 0, false);
     else add(n.type === "CN" ? "cn" : "dn", n.type === "CN" ? "ใบลดหนี้ (ลดยอดขาย)" : "ใบเพิ่มหนี้ (เพิ่มยอดขาย)", doc, 0, amount, 0, false);
   }
   const out: SalesRow[] = [...rows.values()].map(({ docSet, ...x }) => {
@@ -125,4 +135,51 @@ export function salesProfit(invoices: any[], notes: any[], from: string, to: str
   }).sort((a, b) => b.revenue - a.revenue);
   const totals = { revenue: r2(out.reduce((s, x) => s + x.revenue, 0)), cost: r2(out.reduce((s, x) => s + x.cost, 0)) };
   return { rows: out, totals: { ...totals, profit: r2(totals.revenue - totals.cost), margin: totals.revenue > 0 ? r2(((totals.revenue - totals.cost) / totals.revenue) * 100) : null }, costMissing: out.some((x) => x.costMissing) };
+}
+
+// ---------- สินค้าเคลื่อนไหวช้า / มูลค่าสต็อกตามอายุ ----------
+export const AGING_BUCKETS = [
+  { key: "0-30", label: "0–30 วัน", max: 30 }, { key: "31-90", label: "31–90 วัน", max: 90 },
+  { key: "91-180", label: "91–180 วัน", max: 180 }, { key: "181-365", label: "181–365 วัน", max: 365 },
+  { key: "365+", label: "เกิน 1 ปี", max: Infinity },
+] as const;
+export interface AgingRow { productId: string; sku: string; name: string; unit: string; onHand: number; unitCost: number; value: number; lastIn: string; lastOut: string; days: number | null; bucket: string; slow: boolean }
+const dayMs = 86_400_000;
+const isoDay = (v: any): string => {
+  const d = v?.toDate ? v.toDate() : v ? new Date(v) : null;
+  return d && !isNaN(d.getTime()) ? new Date(d.getTime() + 7 * 3600e3).toISOString().slice(0, 10) : "";
+};
+/**
+ * อายุสต็อก ณ วันที่ asOf: นับจากวันที่เบิกออกล่าสุด (ไม่เคยเบิก = นับจากรับเข้าล่าสุด/วันที่สร้างสินค้า)
+ * เคลื่อนไหวช้า = มีของคงเหลือและไม่มีการเบิกออกเกิน slowDays วัน · มูลค่า = คงเหลือ × ต้นทุนเฉลี่ย
+ */
+export function stockAging(products: any[], movements: any[], asOf: string, slowDays = 90) {
+  const last = new Map<string, { in: string; out: string }>();
+  for (const m of movements) {
+    if (m.isDeleted === true) continue;
+    const d = isoDay(m.timestamp || m.createdAt), id = String(m.productId || "");
+    if (!d || !id || d > asOf) continue;
+    const cur = last.get(id) || { in: "", out: "" };
+    if (m.type === "OUT" && d > cur.out) cur.out = d;
+    if (m.type === "IN" && d > cur.in) cur.in = d;
+    last.set(id, cur);
+  }
+  const ref = new Date(`${asOf}T00:00:00Z`).getTime();
+  const rows: AgingRow[] = [];
+  for (const p of products) {
+    if (p.isDeleted === true) continue;
+    const onHand = Number(p.stockStatus?.onHand ?? 0);
+    if (!(onHand > 0)) continue;
+    const id = String(p.id), l = last.get(id) || { in: "", out: "" };
+    const since = l.out || l.in || isoDay(p.createdAt);
+    const days = since ? Math.max(0, Math.floor((ref - new Date(`${since}T00:00:00Z`).getTime()) / dayMs)) : null;
+    const unitCost = Number(p.pricing?.costWAC ?? p.costPrice ?? 0) || 0;
+    const bucket = AGING_BUCKETS.find((b) => (days ?? Infinity) <= b.max)!.key;
+    rows.push({ productId: id, sku: String(p.sku || ""), name: String(p.name || "-"), unit: String(p.unit || p.uom || ""), onHand, unitCost, value: r2(onHand * unitCost), lastIn: l.in, lastOut: l.out, days, bucket, slow: days === null || days > slowDays });
+  }
+  rows.sort((a, b) => (b.days ?? 1e9) - (a.days ?? 1e9) || b.value - a.value);
+  const buckets = AGING_BUCKETS.map((b) => { const xs = rows.filter((r) => r.bucket === b.key); return { key: b.key, label: b.label, items: xs.length, value: r2(xs.reduce((s, r) => s + r.value, 0)) }; });
+  const total = r2(rows.reduce((s, r) => s + r.value, 0));
+  const slow = rows.filter((r) => r.slow);
+  return { rows, buckets, total, slowItems: slow.length, slowValue: r2(slow.reduce((s, r) => s + r.value, 0)), slowDays };
 }

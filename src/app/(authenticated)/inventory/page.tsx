@@ -13,7 +13,8 @@ import {
   ScanBarcode, 
   Layout, 
   History,
-  ClipboardCheck, 
+  ClipboardCheck,
+  Hourglass,
   Box, 
   TrendingUp, 
   BarChart3,
@@ -572,6 +573,13 @@ export default function InventoryPage() {
               onClick={() => router.push("/inventory/stock-count")}
             >
               <ClipboardCheck size={14} /> ตรวจนับสต็อก
+            </PillButton>
+            <PillButton
+              variant="glass"
+              className="gap-1.5"
+              onClick={() => router.push("/inventory/aging")}
+            >
+              <Hourglass size={14} /> สินค้าเคลื่อนไหวช้า
             </PillButton>
             <PillButton 
               variant="confirm"

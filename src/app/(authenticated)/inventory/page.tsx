@@ -15,6 +15,7 @@ import {
   History,
   ClipboardCheck,
   Hourglass,
+  PackagePlus,
   Box, 
   TrendingUp, 
   BarChart3,
@@ -580,6 +581,13 @@ export default function InventoryPage() {
               onClick={() => router.push("/inventory/aging")}
             >
               <Hourglass size={14} /> สินค้าเคลื่อนไหวช้า
+            </PillButton>
+            <PillButton
+              variant="glass"
+              className="gap-1.5"
+              onClick={() => router.push("/procurement/reorder")}
+            >
+              <PackagePlus size={14} /> สั่งซื้อตามจุดสั่งซื้อ
             </PillButton>
             <PillButton 
               variant="confirm"

@@ -6,12 +6,16 @@ import { can } from "@/lib/permissions";
 import { prepareSequence } from "@/lib/sequence-server";
 import { auditServer } from "@/services/audit.server";
 import { computeDocTotals, normalizeVatMode, sanitizeLines } from "@/lib/doc-totals";
+import { listProducts } from "@/lib/product-store.server";
+import { reorderSuggestions } from "@/lib/reorder";
 
 /**
  * [API-SERVER] ใบขอซื้อ (PR)
  * Endpoint: POST /api/procurement/purchase-requests
  *  - { companyId, action: "create", header: {...}, items: [...] }  -> เลข PR ออกในทรานแซกชัน (ไม่ข้าม) ยอดคำนวณที่ server
  *  - { companyId, action: "approve" | "reject" | "cancel", prId, note? }
+ *  - { companyId, action: "reorderPreview" }  สินค้าที่ถึงจุดสั่งซื้อ (หักที่กำลังขอซื้อ/สั่งซื้ออยู่แล้ว) พร้อมจำนวนที่ควรสั่ง
+ *  - { companyId, action: "reorderCreate", items: [{ productId, qty }] }  สร้างใบขอซื้อจากรายการที่เลือก (รออนุมัติตามปกติ)
  * ผู้ขอซื้ออนุมัติใบของตัวเองไม่ได้ (ยกเว้น SUPERADMIN)
  */
 
@@ -30,10 +34,39 @@ export async function POST(request: Request) {
     const now = admin.firestore.FieldValue.serverTimestamp();
     const role = apiUser.role;
 
-    if (action === "create") {
+    // ---------- จุดสั่งซื้อ → ใบขอซื้อ ----------
+    let reorder: { h: any; items: any[] } | null = null;
+    if (action === "reorderPreview" || action === "reorderCreate") {
       if (!EDIT.some((p) => can(apiUser.roles, p))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
-      const h = body.header || {};
-      const items = sanitizeLines(body.items);
+      const [products, prs, pos] = await Promise.all([
+        listProducts(companyId),
+        adminDb.collection(`companies/${companyId}/purchase_requests`).where("status", "in", ["PENDING_APPROVAL", "APPROVED"]).get(),
+        adminDb.collection(`companies/${companyId}/purchase_orders`).get(),
+      ]);
+      const lines = reorderSuggestions(products, prs.docs.map((d) => d.data()), pos.docs.map((d) => d.data()));
+      if (action === "reorderPreview") return NextResponse.json({ success: true, lines });
+      const pick = new Map<string, number>((Array.isArray(body.items) ? body.items : []).map((x: any) => [str(x?.productId, 120), Math.min(1_000_000, Math.max(0, Math.ceil(Number(x?.qty) || 0)))]));
+      const chosen = lines.filter((l) => (pick.get(l.productId) || 0) > 0);
+      if (!chosen.length) throw new ApiAuthError(400, "เลือกสินค้าที่ต้องการขอซื้ออย่างน้อย 1 รายการ (สินค้าต้องยังต่ำกว่าจุดสั่งซื้อ)");
+      const today = new Date(Date.now() + 7 * 3600e3);
+      const lead = Math.max(7, ...chosen.map((l) => l.leadTimeDays || 0));
+      const suppliers = [...new Set(chosen.map((l) => l.supplierId).filter(Boolean))];
+      reorder = {
+        h: {
+          requester: str((apiUser as any).name || apiUser.email || "", 120), department: "คลังสินค้า", priority: "ปกติ",
+          requestDate: today.toISOString().slice(0, 10), requiredDate: new Date(today.getTime() + lead * 86_400_000).toISOString().slice(0, 10),
+          reason: `สั่งซื้อตามจุดสั่งซื้อ: สินค้า ${chosen.length} รายการต่ำกว่าจุดสั่งซื้อ (สร้างจากรายการแนะนำของระบบ)`,
+          ...(suppliers.length === 1 ? { suggestedSupplierId: suppliers[0], suggestedSupplierName: chosen.find((l) => l.supplierId === suppliers[0])?.supplierName || "" } : {}),
+          vatMode: "exclusive",
+        },
+        items: chosen.map((l) => ({ productId: l.productId, sku: l.sku, name: l.name, qty: pick.get(l.productId), unit: l.unit, price: l.unitCost, cost: l.unitCost, itemType: "PRODUCT" })),
+      };
+    }
+
+    if (action === "create" || action === "reorderCreate") {
+      if (!EDIT.some((p) => can(apiUser.roles, p))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+      const h = reorder?.h || body.header || {};
+      const items = sanitizeLines(reorder?.items || body.items);
       if (!items.length) throw new ApiAuthError(400, "กรุณาเพิ่มรายการที่ต้องการขอซื้อ");
       if (!isDate(h.requiredDate)) throw new ApiAuthError(400, "กรุณาระบุวันที่ต้องการใช้งาน");
       if (!str(h.reason)) throw new ApiAuthError(400, "กรุณาระบุวัตถุประสงค์ / ความจำเป็น");

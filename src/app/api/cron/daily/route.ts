@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isCronRequest } from "@/lib/api-auth";
 import { runBillingReminders } from "@/lib/reminders.server";
+import { runReorderAlerts } from "@/lib/reorder.server";
 import { publicOrigin } from "@/lib/documents/share.server";
 import { GET as quotationExpiryCheck } from "../quotation-expiry-check/route";
 
@@ -11,6 +12,7 @@ export const maxDuration = 300;
  * [CRON] งานประจำวัน (Vercel Cron 08:00 น.) — รวมไว้ใน cron เดียว (แพ็กเกจ Hobby ใช้ cron ได้ 2 รายการ)
  *  1. ใบเสนอราคาใกล้หมดอายุ (/api/cron/quotation-expiry-check)
  *  2. ใบแจ้งหนี้ใกล้ครบ/เลยกำหนด + งวดงานที่ยังไม่เรียกเก็บ (แจ้งเตือนในระบบ + อีเมลสรุปถึงฝ่ายบัญชี)
+ *  3. สินค้าถึงจุดสั่งซื้อ (แจ้งฝ่ายจัดซื้อ/คลัง พร้อมลิงก์สร้างใบขอซื้อ)
  * ?company=<id> จำกัดบริษัท (ใช้ทดสอบ) — ต้องมี CRON_SECRET ทุกกรณี
  */
 export async function GET(request: Request) {
@@ -30,6 +32,8 @@ export async function GET(request: Request) {
       ...(company ? { companyIds: [company] } : {}),
       sendEmail: url.searchParams.get("email") !== "0",
     });
+    // 3. สินค้าถึงจุดสั่งซื้อ → แจ้งเตือนฝ่ายจัดซื้อ/คลัง
+    result.reorder = await runReorderAlerts({ today, ...(company ? { companyIds: [company] } : {}) });
     return NextResponse.json(result);
   } catch (error: any) {
     console.error("[CRON_DAILY]", error);

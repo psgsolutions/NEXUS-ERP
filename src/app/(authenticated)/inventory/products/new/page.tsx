@@ -731,7 +731,7 @@ export default function NewProductPage() {
 
   const headerContent = (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 min-w-0">
         <PillButton variant="glass" onClick={handleCancel} className="w-9 h-9 p-0 flex items-center justify-center">
           <ArrowLeft size={20} />
         </PillButton>
@@ -749,9 +749,30 @@ export default function NewProductPage() {
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+      <div className="flex flex-col items-end gap-2.5 w-full sm:w-auto shrink-0">
+        {/* ปุ่มคำสั่งอยู่บนขวา (มาตรฐานโมดูล) */}
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <PillButton variant="glass" onClick={handleCancel} disabled={submitting} className="h-9 px-5">
+            ยกเลิก
+          </PillButton>
+          {sourceMode === "manual" && (
+            <PillButton
+              variant="primary"
+              onClick={() => handleSubmit(true)}
+              disabled={submitting}
+              className="h-9 px-5"
+              title="บันทึกแล้วเริ่มสินค้าตัวถัดไป โดยคงหมวด ยี่ห้อ หน่วย ภาษี ผู้ขาย และคลังไว้"
+            >
+              {submitting ? "กำลังบันทึก..." : "บันทึกและเพิ่มตัวถัดไป"}
+            </PillButton>
+          )}
+          <PillButton variant="save" onClick={() => handleSubmit(false)} disabled={submitting} className="h-9 px-6 shadow-neon-teal">
+            <CheckCircle2 size={14} /> {submitting ? "กำลังบันทึก..." : "บันทึก"}
+          </PillButton>
+        </div>
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap xl:flex-nowrap">
         {sourceMode === "manual" && (
-          <div className="flex items-center gap-1.5 w-full sm:w-[280px]" title="คัดลอกหมวด ยี่ห้อ หน่วย ราคา ผู้ขาย และการตั้งค่าจากสินค้าเดิม (ไม่คัดลอกรหัส บาร์โค้ด รูป และยอดยกมา)">
+          <div className="flex items-center gap-1.5 w-full sm:w-[230px] shrink-0" title="คัดลอกหมวด ยี่ห้อ หน่วย ราคา ผู้ขาย และการตั้งค่าจากสินค้าเดิม (ไม่คัดลอกรหัส บาร์โค้ด รูป และยอดยกมา)">
             <Copy size={14} className="text-nexus-teal shrink-0" />
             <SmartSelect
               options={cloneOptions}
@@ -771,6 +792,7 @@ export default function NewProductPage() {
           activeTab={sourceMode} 
           onTabChange={(tab: string) => tab === "po" ? router.push("/inventory/in/new") : setSourceMode(tab)}
         />
+        </div>
       </div>
     </div>
   );
@@ -1770,40 +1792,6 @@ export default function NewProductPage() {
     </GlassCard>
   );
 
-  const footerContent = (
-    <div className="flex items-center justify-between gap-4 w-full">
-      <div className="flex items-center gap-2">
-        <PillButton 
-          variant="glass" 
-          onClick={handleCancel} 
-          disabled={submitting}
-          className="h-8 px-5 text-[14px]"
-        >
-          ยกเลิก
-        </PillButton>
-      </div>
-      <div className="flex items-center gap-3">
-        <PillButton 
-          variant="primary" 
-          onClick={() => handleSubmit(true)}
-          disabled={submitting}
-          className="h-8 px-5 text-[14px]"
-          title="บันทึกแล้วเริ่มสินค้าตัวถัดไป โดยคงหมวด ยี่ห้อ หน่วย ภาษี ผู้ขาย และคลังไว้"
-        >
-          {submitting ? "กำลังบันทึก..." : "บันทึกและเพิ่มตัวถัดไป"}
-        </PillButton>
-        <PillButton 
-          variant="save" 
-          onClick={() => handleSubmit(false)} 
-          disabled={submitting} 
-          className="h-8 px-6 text-[14px] font-bold shadow-neon-teal"
-        >
-          {submitting ? "กำลังบันทึก..." : "บันทึก"}
-        </PillButton>
-      </div>
-    </div>
-  );
-
   return (
     <>
       {/* จอใหญ่: สูงเท่ากรอบเนื้อหา (จอ − แถบบน h-16) ฟอร์มและแผงสรุปจึงเลื่อนแยกกัน — แถบลำดับขั้นและแผงสรุปอยู่บนจอตลอด */}
@@ -1812,7 +1800,6 @@ export default function NewProductPage() {
         header={headerContent}
         leftContent={leftContent}
         rightSidebar={rightSidebar}
-        footer={footerContent}
       />
       <Modal isOpen={show3DPicker} onClose={() => setShow3DPicker(false)} title="เครื่องมือเลือกพิกัด 3 มิติ" maxWidth="max-w-[1400px]">
         <div className="w-full h-[85vh] bg-surface-0 flex flex-col overflow-hidden p-6">

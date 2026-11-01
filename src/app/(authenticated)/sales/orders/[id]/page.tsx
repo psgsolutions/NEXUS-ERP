@@ -82,6 +82,32 @@ export default function SalesOrderDetailPage() {
     }
   };
 
+  /**
+   * ส่งมอบ + ออกใบกำกับภาษี/ใบวางบิล ในคลิกเดียว (ใบที่ไม่มีสินค้าต้องเบิกจากคลัง)
+   * ทำตามลำดับเดิม 2 ขั้นที่ server: บันทึกส่งมอบ (ออกใบส่งของ) แล้วออกใบกำกับ — ขั้นที่ 2 ไม่สำเร็จ ใบสั่งขายยังเป็น "ส่งมอบแล้ว" ออกใบกำกับต่อได้
+   */
+  const deliverAndInvoice = async () => {
+    if (!companyId || !so) return;
+    if (!(await showConfirm("บันทึกส่งมอบ (ออกใบส่งของ) และออกใบกำกับภาษี + ใบวางบิลทันที?\nระบบจะลงบัญชีรายได้และภาษีขาย"))) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const res = await apiFetch("/api/sales/orders/status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, soId: soDocId, action: "deliver" }) });
+      const d = await res.json();
+      if (!res.ok || !d.success) throw new Error(d.error || "บันทึกส่งมอบไม่สำเร็จ");
+      try {
+        const inv = await issueTaxInvoiceApi(companyId, soDocId);
+        setMessage({ type: "ok", text: `ส่งมอบแล้ว${d.deliveryNoteNo ? ` (ใบส่งของ ${d.deliveryNoteNo})` : ""} · ออกใบกำกับภาษี ${inv.taxInvoiceNo} และใบวางบิล ${inv.billingNoteNo} แล้ว` });
+      } catch (err: any) {
+        setMessage({ type: "error", text: `ส่งมอบแล้ว แต่ออกใบกำกับไม่สำเร็จ: ${err?.message || ""} — กด "ออกใบกำกับภาษี + ใบวางบิล" อีกครั้ง` });
+      }
+    } catch (err: any) {
+      setMessage({ type: "error", text: err?.message || "บันทึกส่งมอบไม่สำเร็จ" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const issueTaxInvoice = async () => {
     if (!companyId || !so) return;
     if (!(await showConfirm("ยืนยันออกใบกำกับภาษีและใบวางบิล? ระบบจะลงบัญชีรายได้และภาษีขายทันที"))) return;
@@ -152,8 +178,13 @@ export default function SalesOrderDetailPage() {
           </PillButton>
         )}
         {status === "CONFIRMED" && !needsPicking && (
-          <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={() => setStatus("deliver")}>
+          <PillButton variant={canBill ? "glass" : "confirm"} className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={() => setStatus("deliver")}>
             <Truck size={14} className="mr-1.5" /> บันทึกส่งมอบแล้ว
+          </PillButton>
+        )}
+        {status === "CONFIRMED" && !needsPicking && canBill && (
+          <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={deliverAndInvoice} title="บันทึกส่งมอบ (ใบส่งของ) แล้วออกใบกำกับภาษี + ใบวางบิลต่อทันที">
+            <FileText size={14} className="mr-1.5" /> ส่งมอบ + ออกใบกำกับ
           </PillButton>
         )}
         {status === "DELIVERED" && !canBill && (

@@ -212,7 +212,7 @@ function TicketForm({ initial, busy, call, onClose, onSave }: { initial: any; bu
       </div>
       <Field label="อาการ/เรื่องที่แจ้ง *"><textarea value={f.symptom || ""} onChange={(e) => set({ symptom: e.target.value })} rows={3} placeholder="เช่น กล้องตัวที่ 3 ภาพไม่ขึ้นตั้งแต่เมื่อวาน" className="w-full rounded-2xl bg-white/[0.03] border border-white/10 p-3 text-sm text-white leading-relaxed outline-none focus:border-nexus-teal/50" /></Field>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Field label="หมายเลขเครื่อง (Serial)">
+        <Field label="หมายเลขเครื่อง">
           <div className="flex gap-2">
             <PillInput value={f.serialNumber || ""} onChange={(e) => { set({ serialNumber: e.target.value }); setSerial(null); }} className="flex-1 h-10 text-sm font-mono" />
             <PillButton variant="glass" className="h-10 px-3 text-xs" onClick={check} disabled={checking || !f.serialNumber?.trim()}>{checking ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />} ตรวจประกัน</PillButton>

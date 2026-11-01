@@ -151,7 +151,7 @@ export default function PutawayPage() {
           <ArrowLeft size={20} />
         </PillButton>
         <div>
-          <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">จัดเก็บเข้าชั้นวาง (Put-away)</h1>
+          <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">จัดเก็บเข้าชั้นวาง</h1>
           <p className="text-sm text-white/60 font-medium mt-1">ยิงบาร์โค้ดชั้นวาง แล้วยิงสินค้าที่นำไปวาง (ยิงซ้ำ = +1) — โอนย้ายภายใน ไม่กระทบบัญชีและต้นทุน</p>
         </div>
       </div>

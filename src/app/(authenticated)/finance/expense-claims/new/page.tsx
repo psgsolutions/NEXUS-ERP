@@ -168,14 +168,14 @@ export default function NewExpenseClaimPage() {
     <div className="space-y-4">
       <GlassCard className="p-8 space-y-8 animate-in fade-in duration-500 border-white/5 bg-black/20">
         <div className="grid grid-cols-2 gap-6">
-          <Field label="เลขที่เอกสาร (CLAIM ID)">
+          <Field label="เลขที่เอกสาร">
             <PillInput
               value={formData.claimId}
               readOnly
               className="w-full text-white/50 bg-white/5 border-white/5 font-mono cursor-not-allowed"
             />
           </Field>
-          <Field label="พนักงานผู้เบิก (EMPLOYEE) *">
+          <Field label="พนักงานผู้เบิก *">
             <PillSelect
               value={formData.employeeId}
               onChange={e => setFormData({ ...formData, employeeId: e.target.value })}
@@ -189,7 +189,7 @@ export default function NewExpenseClaimPage() {
           </Field>
         </div>
 
-        <Field label="รหัสบัญชีค่าใช้จ่าย (EXPENSE ACCOUNT) *">
+        <Field label="รหัสบัญชีค่าใช้จ่าย *">
           <PillSelect
             value={formData.expenseAccountCode}
             onChange={e => { accountTouched.current = true; setFormData({ ...formData, expenseAccountCode: e.target.value }); }}
@@ -211,7 +211,7 @@ export default function NewExpenseClaimPage() {
           </PillSelect>
         </Field>
 
-        <Field label="รายละเอียดการเบิก (DESCRIPTION) *">
+        <Field label="รายละเอียดการเบิก *">
           <PillInput
             value={formData.description}
             onChange={e => setFormData({ ...formData, description: e.target.value })}
@@ -221,7 +221,7 @@ export default function NewExpenseClaimPage() {
         </Field>
 
         <div className="grid grid-cols-2 gap-6">
-          <Field label="ยอดเงินเบิกก่อนภาษี (SUBTOTAL) *">
+          <Field label="ยอดเงินเบิกก่อนภาษี *">
             <PillInput
               type="number"
               value={formData.subtotal || ''}
@@ -244,7 +244,7 @@ export default function NewExpenseClaimPage() {
         </div>
 
         <div className="pt-4 border-t border-white/5 space-y-2">
-          <Field label="แนบรูปถ่ายใบเสร็จ (RECEIPTS)">
+          <Field label="แนบรูปถ่ายใบเสร็จ">
             <div />
           </Field>
           <AttachmentPicker pending={files} onPending={setFiles} disabled={saving} hint="เลือกได้หลายไฟล์พร้อมกัน (รูป/PDF) หรือกดถ่ายรูปจากมือถือ · ระบบย่อรูปให้เอง · เก็บใบเสร็จตัวจริงไว้ด้วย" />

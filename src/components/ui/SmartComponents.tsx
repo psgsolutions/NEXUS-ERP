@@ -702,7 +702,7 @@ export function SmartTable<T extends Record<string, any>>({
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
           <input
             type="text"
-            placeholder="ค้นหาข้อมูล (Global Search)..."
+            placeholder="ค้นหาข้อมูล..."
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);

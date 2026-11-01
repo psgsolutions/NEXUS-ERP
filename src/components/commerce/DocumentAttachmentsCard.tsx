@@ -93,7 +93,7 @@ export function DocumentAttachmentsCard({
           </div>
           <h3 className="text-base font-bold text-white flex items-center gap-2">
             <Paperclip size={18} className="text-nexus-teal" />
-            เอกสารแนบในเอกสารนี้ (File Attachments)
+            เอกสารแนบในเอกสารนี้
           </h3>
         </div>
         <span className="text-[11px] font-mono text-white/50 bg-white/[0.04] px-2.5 py-1 rounded-full border border-white/10">

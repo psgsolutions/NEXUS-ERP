@@ -264,7 +264,7 @@ export default function NewPurchaseRequestPage() {
 
           {/* 2. Auto-Inference Pipeline (0-Click Data) */}
           <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5 space-y-6">
-            <h3 className="text-sm font-bold text-cyan-400 flex items-center gap-2 mb-4"><UploadCloud size={16} /> แนะนำผู้จำหน่าย (Suggested Vendor)</h3>
+            <h3 className="text-sm font-bold text-cyan-400 flex items-center gap-2 mb-4"><UploadCloud size={16} /> แนะนำผู้จำหน่าย</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Field label="ชื่อผู้จำหน่าย / คู่ค้า">
                 <SmartSelect 
@@ -323,7 +323,7 @@ export default function NewPurchaseRequestPage() {
           {/* 3. Attachments: ยังไม่มี Firebase Storage จึงยังแนบไฟล์จริงไม่ได้ */}
           <div className="space-y-2 pt-6">
             <h4 className="text-[12px] font-semibold text-white/60 uppercase tracking-widest flex items-center gap-2">
-              <FileUp size={16} /> คลังเอกสารแนบอ้างอิง (Attachments)
+              <FileUp size={16} /> คลังเอกสารแนบอ้างอิง
             </h4>
             <div className="border border-dashed border-white/10 bg-white/[0.01] rounded-3xl h-20 flex items-center justify-center text-[12px] text-white/40 font-bold">
               ยังไม่รองรับการแนบไฟล์ (รอตั้งค่าพื้นที่เก็บไฟล์ Firebase Storage)
@@ -389,13 +389,13 @@ export default function NewPurchaseRequestPage() {
 
       <div className="bg-black/40 p-6 rounded-2xl border border-white/5 space-y-3">
         <div className="flex justify-between items-center">
-          <span className="text-white/60 text-[13px]">รวมเป็นเงิน (Subtotal)</span>
+          <span className="text-white/60 text-[13px]">รวมเป็นเงิน</span>
           <span className="text-white font-mono text-[14px]">฿{subtotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
         </div>
         
         {discountTotal > 0 && (
           <div className="flex justify-between items-center text-cyan-400">
-            <span className="text-cyan-400/80 text-[13px]">หักส่วนลด (Discount)</span>
+            <span className="text-cyan-400/80 text-[13px]">หักส่วนลด</span>
             <span className="font-mono text-[14px]">-฿{discountTotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
           </div>
         )}
@@ -415,7 +415,7 @@ export default function NewPurchaseRequestPage() {
         )}
 
         <div className="pt-4 mt-4 border-t border-white/10 flex justify-between items-end">
-          <span className="text-white/80 text-[14px]">ยอดรวมสุทธิ (Grand Total)</span>
+          <span className="text-white/80 text-[14px]">ยอดรวมสุทธิ</span>
           <span className="text-cyan-400 font-mono text-2xl font-black">฿{grandTotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
         </div>
       </div>

@@ -148,10 +148,10 @@ export default function NewAssetDepreciationPage() {
         {step === 1 && (
           <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full max-w-4xl mx-auto">
             <div className="grid grid-cols-2 gap-8 p-10 rounded-[2.5rem] bg-white/[0.02] border border-white/5">
-               <Field label="งวดบัญชี * (Accounting Period)">
+               <Field label="งวดบัญชี *">
                   <PillInput type="month" value={period} onChange={(e) => setPeriod(e.target.value)} className="w-full px-6 h-9 rounded-full font-bold" />
                </Field>
-               <Field label="จำนวนสินทรัพย์ที่รอประมวลผล (Pending Assets)">
+               <Field label="จำนวนสินทรัพย์ที่รอประมวลผล">
                   <div className="h-9 px-6 rounded-full bg-white/5 border border-white/10 flex items-center text-sm font-bold text-white w-full">
                      {assetSummary.totalAssets} รายการ
                   </div>
@@ -159,7 +159,7 @@ export default function NewAssetDepreciationPage() {
             </div>
 
             <div className="space-y-8">
-               <h5 className="text-[14px] font-semibold text-white/40 uppercase tracking-widest ml-1">ประมาณการค่าเสื่อมราคา (Depreciation Estimate)</h5>
+               <h5 className="text-[14px] font-semibold text-white/40 uppercase tracking-widest ml-1">ประมาณการค่าเสื่อมราคา</h5>
                <div className="p-10 rounded-[3.5rem] bg-white/[0.02] border border-white/5 space-y-10">
                   <div className="flex justify-between items-end">
                      <div className="space-y-2">
@@ -173,7 +173,7 @@ export default function NewAssetDepreciationPage() {
                   </div>
                   
                   <div className="pt-10 border-t border-white/5 grid grid-cols-2 gap-6 text-[12px] font-bold text-white/50 uppercase tracking-widest">
-                     <div className="flex items-center gap-3"><CheckCircle2 className="text-cyan-400" size={18} /> คำนวณแบบเส้นตรง (Straight Line)</div>
+                     <div className="flex items-center gap-3"><CheckCircle2 className="text-cyan-400" size={18} /> คำนวณแบบเส้นตรง</div>
                      <div className="flex items-center gap-3"><CheckCircle2 className="text-cyan-400" size={18} /> บันทึกสมุดรายวัน JV อัตโนมัติ</div>
                   </div>
                </div>

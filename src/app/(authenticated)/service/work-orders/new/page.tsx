@@ -154,10 +154,10 @@ export default function CreateWorkOrderPage() {
       <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <h3 className="text-[13px] font-semibold text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
-            อ้างอิงเอกสาร (Reference)
+            อ้างอิงเอกสาร
           </h3>
           
-          <Field label="อ้างอิงใบสั่งขาย * (Select SO)">
+          <Field label="อ้างอิงใบสั่งขาย *">
             <PillSelect
               value={formData.soId}
               onChange={handleSoChange}
@@ -172,7 +172,7 @@ export default function CreateWorkOrderPage() {
             </PillSelect>
           </Field>
 
-          <Field label="ลูกค้า (Customer)">
+          <Field label="ลูกค้า">
             <PillInput 
               type="text"
               value={formData.customerName}
@@ -185,10 +185,10 @@ export default function CreateWorkOrderPage() {
 
         <div className="space-y-4">
           <h3 className="text-[13px] font-semibold text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
-            มอบหมายงาน (Assignment)
+            มอบหมายงาน
           </h3>
           
-          <Field label="ทีมช่างรับผิดชอบ * (Assign To)">
+          <Field label="ทีมช่างรับผิดชอบ *">
             <PillSelect
               value={formData.technicianUid}
               onChange={e => {
@@ -206,7 +206,7 @@ export default function CreateWorkOrderPage() {
             </PillSelect>
           </Field>
 
-          <Field label="กำหนดการเข้างาน (Schedule Date)">
+          <Field label="กำหนดการเข้างาน">
             <PillInput 
               type="date"
               value={formData.scheduleDate}
@@ -220,7 +220,7 @@ export default function CreateWorkOrderPage() {
       {/* Line Items */}
       <div className="flex-1 flex flex-col gap-4 bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl">
         <h3 className="text-[13px] font-semibold text-nexus-teal uppercase tracking-widest flex items-center gap-2">
-          รายการสินค้าและค่าแรง (Items from SO)
+          รายการสินค้าและค่าแรง
         </h3>
         <p className="text-[11px] text-white/40 not-italic mb-2 -mt-2 font-bold">ดึงรายการจากใบสั่งขายโดยอัตโนมัติ สามารถลบรายการที่ไม่เกี่ยวข้องกับงานช่างออกได้</p>
         <DocumentItemsTable items={items} onChange={setItems} />

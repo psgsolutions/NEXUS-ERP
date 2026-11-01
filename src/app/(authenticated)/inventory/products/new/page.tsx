@@ -287,16 +287,16 @@ export default function NewProductPage() {
   };
 
   const productTypeOptions = [
-    { value: "PHYSICAL", label: "สินค้าทั่วไป (Physical Item)" },
-    { value: "SERVICE", label: "งานบริการ (Service Item)" },
-    { value: "ASSET", label: "สินทรัพย์ (Asset Item)" },
-    { value: "BOM", label: "ชุดประกอบ (BOM Bundle)" },
+    { value: "PHYSICAL", label: "สินค้าทั่วไป" },
+    { value: "SERVICE", label: "งานบริการ" },
+    { value: "ASSET", label: "สินทรัพย์" },
+    { value: "BOM", label: "ชุดประกอบ" },
   ];
 
   const lifecycleStatusOptions = [
-    { value: "ACTIVE", label: "ใช้งานปกติ (Active)" },
-    { value: "DRAFT", label: "บันทึกร่าง (Draft)" },
-    { value: "PHASE_OUT", label: "ทยอยยกเลิก (Phase Out)" },
+    { value: "ACTIVE", label: "ใช้งานปกติ" },
+    { value: "DRAFT", label: "บันทึกร่าง" },
+    { value: "PHASE_OUT", label: "ทยอยยกเลิก" },
   ];
 
   const taxTypeOptions = [
@@ -849,10 +849,10 @@ export default function NewProductPage() {
                 </div>
               </div>
 
-              {/* BROW 3: ยี่ห้อ - รุ่นหลัก (Model) - รุ่นย่อย / ซีรีส์ */}
+              {/* BROW 3: ยี่ห้อ - รุ่นหลัก - รุ่นย่อย / ซีรีส์ */}
               <div className="flex flex-wrap gap-2 items-end">
                 <div className="flex-1 min-w-[130px]">
-                  <Field label="ยี่ห้อ (Brand)">
+                  <Field label="ยี่ห้อ">
                     <SmartSelect
                       options={brandOptions}
                       value={formData.brand}
@@ -864,7 +864,7 @@ export default function NewProductPage() {
                 </div>
 
                 <div className="flex-1 min-w-[120px]">
-                  <Field label="รุ่นหลัก (Model)">
+                  <Field label="รุ่นหลัก">
                     <PillInput
                       value={formData.model}
                       onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
@@ -920,9 +920,9 @@ export default function NewProductPage() {
                 </div>
               </div>
 
-              {/* BROW 5: การผูกผังบัญชี (GL Mapping) */}
+              {/* BROW 5: การผูกผังบัญชี */}
               <div className="pt-2 border-t border-white/5 space-y-2">
-                <h6 className="text-[11px] font-bold uppercase text-nexus-teal tracking-wider">การผูกผังบัญชี (GL Mapping)</h6>
+                <h6 className="text-[11px] font-bold uppercase text-nexus-teal tracking-wider">การผูกผังบัญชี</h6>
                 <div className="flex flex-wrap gap-2 bg-black/40 p-2.5 rounded-xl border border-white/5 items-end">
                   <div className="flex-1 min-w-[140px]">
                     <Field label="บัญชีรายได้">
@@ -995,7 +995,7 @@ export default function NewProductPage() {
                   </div>
                 </div>
 
-                {/* บรรทัดที่ 2: ราคาขายส่ง B2B - ราคาควบคุมขายต่ำสุด (MAP Guard) */}
+                {/* บรรทัดที่ 2: ราคาขายส่ง B2B - ราคาควบคุมขายต่ำสุด */}
                 <div className="flex flex-wrap gap-2 items-end">
                   <div className="flex-1 min-w-[130px]">
                     <Field label="ราคาขายส่ง B2B">
@@ -1008,7 +1008,7 @@ export default function NewProductPage() {
                   </div>
 
                   <div className="flex-1 min-w-[130px]">
-                    <Field label="ราคาควบคุมขายต่ำสุด (MAP Guard)">
+                    <Field label="ราคาควบคุมขายต่ำสุด">
                       <StepperInput 
                         value={formData.minimumFloorPrice} 
                         onChange={(val) => setFormData(prev => ({ ...prev, minimumFloorPrice: val }))} 

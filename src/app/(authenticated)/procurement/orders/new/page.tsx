@@ -266,7 +266,7 @@ function NewPurchaseOrderScreen() {
             </PillSelect>
           </Field>
 
-          <Field label="เลขอ้างอิง (REFERENCE NO.)">
+          <Field label="เลขอ้างอิง">
             <PillInput 
               value={form.reference} 
               onChange={(e) => setForm({...form, reference: e.target.value})} 
@@ -381,7 +381,7 @@ function NewPurchaseOrderScreen() {
           <FileText size={16} /> เงื่อนไขและภาษี
         </h3>
         <div className="grid grid-cols-2 gap-6">
-          <Field label="ประเภทภาษีมูลค่าเพิ่ม (VAT TYPE) *">
+          <Field label="ประเภทภาษีมูลค่าเพิ่ม *">
             <PillSelect 
               value={form.vat_type}
               onChange={(e) => setForm({...form, vat_type: e.target.value as VatType})}
@@ -389,7 +389,7 @@ function NewPurchaseOrderScreen() {
             >
               <option value="Exclusive">แยกภาษี (Exclusive - 7%)</option>
               <option value="Inclusive">รวมภาษี (Inclusive - 7%)</option>
-              <option value="Non-VAT">ไม่มีภาษี (Non-VAT)</option>
+              <option value="Non-VAT">ไม่มีภาษี</option>
             </PillSelect>
           </Field>
           <Field label="การชำระเงิน *">

@@ -63,7 +63,7 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
     <Modal 
       isOpen={isOpen} 
       onClose={onClose} 
-      title="สรุปยอดขายรายวัน (DAILY SALES SUMMARY)"
+      title="สรุปยอดขายรายวัน"
       maxWidth="max-w-[1600px]"
     >
       <div className="flex h-full divide-x divide-white/5 bg-surface-0">
@@ -72,7 +72,7 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
             <div className="flex justify-between items-end border-b border-white/5 pb-8">
               <div className="space-y-1">
                 <p className="text-[12px] font-semibold text-nexus-teal uppercase tracking-[0.2em]">โหมดสรุปผลการขาย (POS_REP_V3.0)</p>
-                <h4 className="text-xl font-semibold text-white uppercase tracking-tight">สรุปประจำวัน (Daily Briefing)</h4>
+                <h4 className="text-xl font-semibold text-white uppercase tracking-tight">สรุปประจำวัน</h4>
               </div>
               <div className="flex items-center gap-4 bg-white/[0.02] border border-white/5 p-2 rounded-2xl">
                  <button onClick={() => setActiveTab("sales")} className={cn("px-6 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all", activeTab === "sales" ? "bg-nexus-teal text-white shadow-neon-teal" : "text-white/20 hover:text-white/40")}>ยอดขาย</button>
@@ -90,12 +90,12 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
                   </div>
 
                   <div className="space-y-6">
-                    <h5 className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">สัดส่วนการชำระเงิน (Payment Breakdown)</h5>
+                    <h5 className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">สัดส่วนการชำระเงิน</h5>
                     <div className="grid grid-cols-1 gap-4">
-                       <PaymentRow icon={<Banknote size={16} />} label="เงินสด (Cash)" value={summary.payments.CASH} total={summary.revenue} color="bg-nexus-teal" />
+                       <PaymentRow icon={<Banknote size={16} />} label="เงินสด" value={summary.payments.CASH} total={summary.revenue} color="bg-nexus-teal" />
                        <PaymentRow icon={<ArrowRightLeft size={16} />} label="พร้อมเพย์ (QR)" value={summary.payments.PROMPTPAY} total={summary.revenue} color="bg-nexus-blue/60" />
-                       <PaymentRow icon={<CreditCard size={16} />} label="บัตรเครดิต (Credit Card)" value={summary.payments.CARD} total={summary.revenue} color="bg-nexus-blue" />
-                       <PaymentRow icon={<ArrowRightLeft size={16} />} label="เงินโอน (Transfer)" value={summary.payments.TRANSFER} total={summary.revenue} color="bg-white/20" />
+                       <PaymentRow icon={<CreditCard size={16} />} label="บัตรเครดิต" value={summary.payments.CARD} total={summary.revenue} color="bg-nexus-blue" />
+                       <PaymentRow icon={<ArrowRightLeft size={16} />} label="เงินโอน" value={summary.payments.TRANSFER} total={summary.revenue} color="bg-white/20" />
                     </div>
                   </div>
                 </div>
@@ -103,7 +103,7 @@ export function DailySummaryModal({ isOpen, onClose }: DailySummaryModalProps) {
 
               {activeTab === "products" && (
                 <div className="space-y-6">
-                   <h5 className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">สินค้าขายดี (Top Performing Items)</h5>
+                   <h5 className="text-[12px] font-semibold text-white/30 uppercase tracking-widest ml-1">สินค้าขายดี</h5>
                    <div className="space-y-3">
                       {summary.topProducts.length === 0 && <p className="text-[12px] text-white/40">ยังไม่มีการขายวันนี้</p>}
                       {summary.topProducts.map((p, i) => (

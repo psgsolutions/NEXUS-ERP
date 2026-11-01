@@ -61,7 +61,7 @@ export function DocumentVaultUploader({
       <div className="flex items-center justify-between border-b border-white/5 pb-3">
         <div className="flex items-center gap-2 text-nexus-teal">
           <FileCheck size={16} />
-          <h6 className="text-xs font-semibold uppercase tracking-widest text-white">ระบบคลังจัดเก็บเอกสารและไฟล์สเปกดิจิทัล (Digital Vault)</h6>
+          <h6 className="text-xs font-semibold uppercase tracking-widest text-white">ระบบคลังจัดเก็บเอกสารและไฟล์สเปกดิจิทัล</h6>
         </div>
         <PillButton
           variant="glass"

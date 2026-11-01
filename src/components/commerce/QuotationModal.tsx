@@ -123,7 +123,7 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
     <Modal 
       isOpen={isOpen} 
       onClose={onClose} 
-      title="ใบเสนอราคา (Quotation)"
+      title="ใบเสนอราคา"
       maxWidth="max-w-[1200px]"
     >
       <div className="flex flex-col h-full bg-surface-0 relative overflow-hidden">
@@ -159,7 +159,7 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
                  onClick={handleApprove}
                  disabled={isSubmitting}
                >
-                 <Zap size={16} /> อนุมัติ (Approve)
+                 <Zap size={16} /> อนุมัติ
                </PillButton>
              )}
           </div>
@@ -190,7 +190,7 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
             <div className="grid grid-cols-2 gap-8 bg-white/[0.01] p-6 rounded-3xl border border-white/5">
                 {/* Left: Customer Profile & Address */}
                 <div className="space-y-4">
-                    <Field label="ชื่อลูกค้า * (Customer Name)" required>
+                    <Field label="ชื่อลูกค้า *" required>
                       <PillSelect 
                         value={form.customer}
                         onChange={(e) => handleCustomerChange(e.target.value)}
@@ -202,7 +202,7 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
                         ))}
                       </PillSelect>
                     </Field>
-                    <Field label="เลขประจำตัวผู้เสียภาษี (Tax ID.)">
+                    <Field label="เลขประจำตัวผู้เสียภาษี">
                       <PillInput 
                         value={form.customerTaxId}
                         onChange={(e) => setForm({...form, customerTaxId: e.target.value})}
@@ -210,14 +210,14 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
                         placeholder="0000000000000"
                       />
                     </Field>
-                    <Field label="ที่อยู่ (Address)">
+                    <Field label="ที่อยู่">
                       <PillInput 
                         value={form.customerAddress}
                         onChange={(e) => setForm({...form, customerAddress: e.target.value})}
                         className="w-full bg-white/[0.02] text-[13px] h-9 rounded-full text-white" 
                       />
                     </Field>
-                    <Field label="ผู้ติดต่อ (Contact Name)">
+                    <Field label="ผู้ติดต่อ">
                       <PillInput 
                         value={form.customerContact}
                         onChange={(e) => setForm({...form, customerContact: e.target.value})}
@@ -228,27 +228,27 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
 
                 {/* Right: Document Info & Terms */}
                 <div className="space-y-4">
-                    <Field label="วันที่ (Date)">
+                    <Field label="วันที่">
                       <NexusDatePicker 
                         value={form.date}
                         onChange={(e) => setForm({...form, date: e.target.value})}
                         className="w-full bg-white/[0.02] h-9 rounded-full" 
                       />
                     </Field>
-                    <Field label="ยืนราคาถึงวันที่ (Price Validation)">
+                    <Field label="ยืนราคาถึงวันที่">
                       <NexusDatePicker 
                         value={form.validUntil}
                         onChange={(e) => setForm({...form, validUntil: e.target.value})}
                         className="w-full bg-white/[0.02] h-9 rounded-full" 
                       />
                     </Field>
-                    <Field label="เงื่อนไขการชำระเงิน (Terms of Payment)">
+                    <Field label="เงื่อนไขการชำระเงิน">
                       <PillSelect 
                         value={form.paymentTerms}
                         onChange={(e) => setForm({...form, paymentTerms: e.target.value})}
                         className="w-full bg-white/[0.02] h-9 rounded-full"
                       >
-                        <option value="Cash">เงินสด (Cash)</option>
+                        <option value="Cash">เงินสด</option>
                         <option value="30 Days">เครดิต 30 วัน</option>
                         <option value="45 Days">เครดิต 45 วัน</option>
                         <option value="60 Days">เครดิต 60 วัน</option>
@@ -271,7 +271,7 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
             {/* 3. PROJECT NAME */}
             <div className="bg-nexus-teal/5 p-6 rounded-3xl border border-nexus-teal/20 relative overflow-hidden group">
                 <div className="relative z-10">
-                    <Field label="หัวข้อโครงการ * (Project Name)" required>
+                    <Field label="หัวข้อโครงการ *" required>
                         <PillInput 
                             value={form.subject}
                             onChange={(e) => setForm({...form, subject: e.target.value})}
@@ -327,7 +327,7 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
             <div className="grid grid-cols-12 gap-8 pt-6 border-t border-white/5">
                 {/* Left: Remarks */}
                 <div className="col-span-7 space-y-4">
-                    <Field label="หมายเหตุ (Remarks)">
+                    <Field label="หมายเหตุ">
                         <textarea 
                             className="w-full h-32 rounded-2xl bg-white/[0.02] border border-white/10 text-white text-[14px] p-4 focus:outline-none focus:border-nexus-blue/40 transition-all shadow-inner"
                             value={form.terms}
@@ -349,15 +349,15 @@ export function QuotationModal({ isOpen, onClose, onSave, onApprove, initialData
                 <div className="col-span-5 bg-white/[0.03] border border-white/10 rounded-3xl p-6 space-y-4 shadow-2xl relative overflow-hidden">
                     <div className="relative z-10 space-y-4">
                         <div className="flex justify-between items-center text-white/80">
-                            <span className="text-[14px] font-bold">รวมเป็นเงิน (Total Amount)</span>
+                            <span className="text-[14px] font-bold">รวมเป็นเงิน</span>
                             <span className="font-mono text-[16px] tracking-tight text-right">{formatCurrency(financials.net)}</span>
                         </div>
                         <div className="flex justify-between items-center text-white/80">
-                            <span className="text-[14px] font-bold">ส่วนลด (Discount)</span>
+                            <span className="text-[14px] font-bold">ส่วนลด</span>
                             <span className="font-mono text-[16px] text-danger tracking-tight text-right">0.00</span>
                         </div>
                         <div className="flex justify-between items-center text-white/80">
-                            <span className="text-[14px] font-bold">ยอดรวมหลังหักส่วนลด (Net Total)</span>
+                            <span className="text-[14px] font-bold">ยอดรวมหลังหักส่วนลด</span>
                             <span className="font-mono text-[16px] tracking-tight text-right">{formatCurrency(financials.net)}</span>
                         </div>
                         <div className="flex justify-between items-center text-white/80 pb-6 border-b border-white/10">

@@ -137,7 +137,7 @@ export default function CustomerDataEntryPage() {
             <Building2 size={18} className="text-cyan-400" /> ข้อมูลนิติบุคคล
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Field label="ชื่อลูกค้า/บริษัท * (Customer Name)" required>
+            <Field label="ชื่อลูกค้า/บริษัท *" required>
               <PillInput 
                 value={formData.customerName}
                 onChange={e => setFormData({...formData, customerName: e.target.value})}
@@ -146,7 +146,7 @@ export default function CustomerDataEntryPage() {
               />
             </Field>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="เลขประจำตัวผู้เสียภาษี * (Tax ID)" required>
+              <Field label="เลขประจำตัวผู้เสียภาษี *" required>
                 <PillInput 
                   value={formData.taxId}
                   onChange={e => setFormData({...formData, taxId: e.target.value})}
@@ -155,7 +155,7 @@ export default function CustomerDataEntryPage() {
                   placeholder="13 หลัก"
                 />
               </Field>
-              <Field label="รหัสสาขา (Branch Code)">
+              <Field label="รหัสสาขา">
                 <PillInput 
                   value={formData.branchCode}
                   onChange={e => setFormData({...formData, branchCode: e.target.value})}
@@ -173,7 +173,7 @@ export default function CustomerDataEntryPage() {
             <Phone size={18} className="text-cyan-400" /> ข้อมูลการติดต่อ
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Field label="เบอร์โทรศัพท์ (Phone Number)">
+            <Field label="เบอร์โทรศัพท์">
               <PillInput 
                 value={formData.phoneNumber}
                 onChange={e => setFormData({...formData, phoneNumber: e.target.value})}
@@ -181,7 +181,7 @@ export default function CustomerDataEntryPage() {
                 placeholder="02-XXX-XXXX"
               />
             </Field>
-            <Field label="อีเมล (Email)">
+            <Field label="อีเมล">
               <PillInput 
                 type="email"
                 value={formData.email}
@@ -198,7 +198,7 @@ export default function CustomerDataEntryPage() {
             <MapPin size={18} className="text-cyan-400" /> ข้อมูลที่อยู่
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <Field label="บ้านเลขที่ (No.)">
+            <Field label="บ้านเลขที่">
                 <PillInput 
                   value={formData.addressNo}
                   onChange={e => setFormData({...formData, addressNo: e.target.value})}
@@ -206,21 +206,21 @@ export default function CustomerDataEntryPage() {
                   placeholder="99/9"
                 />
               </Field>
-              <Field label="อาคาร/หมู่บ้าน (Building)">
+              <Field label="อาคาร/หมู่บ้าน">
                 <PillInput 
                   value={formData.building}
                   onChange={e => setFormData({...formData, building: e.target.value})}
                   className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-bold"
                 />
               </Field>
-              <Field label="ซอย (Soi)">
+              <Field label="ซอย">
                 <PillInput 
                   value={formData.soi}
                   onChange={e => setFormData({...formData, soi: e.target.value})}
                   className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-bold"
                 />
               </Field>
-              <Field label="ถนน (Road)">
+              <Field label="ถนน">
                 <PillInput 
                   value={formData.road}
                   onChange={e => setFormData({...formData, road: e.target.value})}
@@ -228,28 +228,28 @@ export default function CustomerDataEntryPage() {
                 />
               </Field>
 
-              <Field label="ตำบล/แขวง (Sub-district)">
+              <Field label="ตำบล/แขวง">
                 <PillInput 
                   value={formData.subDistrict}
                   onChange={e => setFormData({...formData, subDistrict: e.target.value})}
                   className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-bold"
                 />
               </Field>
-              <Field label="อำเภอ/เขต (District)">
+              <Field label="อำเภอ/เขต">
                 <PillInput 
                   value={formData.district}
                   onChange={e => setFormData({...formData, district: e.target.value})}
                   className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-bold"
                 />
               </Field>
-              <Field label="จังหวัด (Province)">
+              <Field label="จังหวัด">
                 <PillInput 
                   value={formData.province}
                   onChange={e => setFormData({...formData, province: e.target.value})}
                   className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-bold"
                 />
               </Field>
-              <Field label="รหัสไปรษณีย์ (Zipcode)">
+              <Field label="รหัสไปรษณีย์">
                 <PillInput 
                   value={formData.zipCode}
                   onChange={e => setFormData({...formData, zipCode: e.target.value})}
@@ -267,7 +267,7 @@ export default function CustomerDataEntryPage() {
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
       <div className="space-y-1 border-b border-white/5 pb-4">
         <h5 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
-          สรุปข้อมูลลูกค้า (Customer Info)
+          สรุปข้อมูลลูกค้า
         </h5>
       </div>
       <div className="space-y-4">

@@ -244,7 +244,7 @@ export default function SalesOrderDashboardPage() {
           </div>
           
           <div className="bg-white/15 rounded-2xl p-4 text-center border border-white/5 mt-2">
-            <div className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">ยอดค้างดำเนินการ (Pending Value)</div>
+            <div className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">ยอดค้างดำเนินการ</div>
             <div className="text-lg font-mono text-white/80 font-bold truncate">
               ฿{pendingValue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
             </div>
@@ -253,19 +253,19 @@ export default function SalesOrderDashboardPage() {
           <div className="space-y-2 mt-4 pt-4 border-t border-white/5">
             <div className="flex justify-between items-center bg-white/[0.02] p-3 rounded-xl border border-white/5">
               <span className="text-[11px] font-semibold text-white/60 uppercase tracking-widest flex items-center gap-2">
-                <Clock size={12} className="text-white/40" /> รอส่งมอบ (Open)
+                <Clock size={12} className="text-white/40" /> รอส่งมอบ
               </span>
               <span className="font-mono text-white/60 text-sm">{openCount}</span>
             </div>
             <div className="flex justify-between items-center bg-warning/5 p-3 rounded-xl border border-warning/10">
               <span className="text-[11px] font-semibold text-warning/80 uppercase tracking-widest flex items-center gap-2">
-                <Truck size={12} /> ส่งมอบแล้ว (Delivered)
+                <Truck size={12} /> ส่งมอบแล้ว
               </span>
               <span className="font-mono text-warning text-sm">{deliveryCount}</span>
             </div>
             <div className="flex justify-between items-center bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/10">
               <span className="text-[11px] font-semibold text-emerald-400/80 uppercase tracking-widest flex items-center gap-2">
-                <PackageCheck size={12} /> ปิดจ๊อบ (Completed)
+                <PackageCheck size={12} /> ปิดจ๊อบ
               </span>
               <span className="font-mono text-emerald-400 text-sm">{completedCount}</span>
             </div>

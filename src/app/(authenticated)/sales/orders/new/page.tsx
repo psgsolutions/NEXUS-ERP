@@ -208,7 +208,7 @@ export default function SalesOrderPage() {
 
             <div className="grid grid-cols-2 gap-6 pt-2">
               <div className="space-y-3">
-                <Field label="ที่อยู่สำหรับออกบิล (Billing Address)">
+                <Field label="ที่อยู่สำหรับออกบิล">
                   <div className="flex items-center gap-2 mb-2">
                      <MapPin size={14} className="text-white/40" />
                      {customer && (
@@ -266,7 +266,7 @@ export default function SalesOrderPage() {
               <div className="grid grid-cols-2 gap-4">
                 <Field label="เงื่อนไขการชำระเงิน">
                   <PillSelect value={paymentTerm} onChange={(e) => setPaymentTerm(e.target.value)} className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[13px] font-bold">
-                    <option value="0">เงินสด (Cash)</option>
+                    <option value="0">เงินสด</option>
                     <option value="15">เครดิต 15 วัน</option>
                     <option value="30">เครดิต 30 วัน</option>
                     <option value="45">เครดิต 45 วัน</option>
@@ -292,8 +292,8 @@ export default function SalesOrderPage() {
             <div className="space-y-4">
               <Field label="ประเภทราคา *">
                 <PillSelect value={taxType} onChange={(e) => setTaxType(e.target.value as TaxType)} className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[13px] font-bold">
-                  <option value="exclusive">แยกภาษี (Exclusive)</option>
-                  <option value="inclusive">รวมภาษี (Inclusive)</option>
+                  <option value="exclusive">แยกภาษี</option>
+                  <option value="inclusive">รวมภาษี</option>
                   <option value="none">ไม่มีภาษี</option>
                 </PillSelect>
               </Field>
@@ -326,7 +326,7 @@ export default function SalesOrderPage() {
         {/* Attachments: ยังไม่มี Firebase Storage จึงยังแนบไฟล์จริงไม่ได้ */}
         <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-amber-500">
           <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
-            <Paperclip size={16} className="text-amber-400" /> เอกสารแนบ (Attachments)
+            <Paperclip size={16} className="text-amber-400" /> เอกสารแนบ
           </h3>
           <div className="w-full py-6 rounded-2xl border border-dashed border-white/10 flex flex-col items-center justify-center text-white/30 bg-black/30">
             <Paperclip size={20} className="mb-2 opacity-30" />
@@ -347,7 +347,7 @@ export default function SalesOrderPage() {
         isCreditExceeded ? "bg-red-500/10 border-red-500/30" : "bg-neutral-900/90"
       )}>
         <div className="flex justify-between items-center pb-3 border-b border-white/5">
-          <span className="text-[11px] font-black uppercase tracking-widest text-white/40">วงเงินเครดิต (Credit Limit)</span>
+          <span className="text-[11px] font-black uppercase tracking-widest text-white/40">วงเงินเครดิต</span>
           {!customer ? null : isCreditExceeded ? (
             <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-red-400">
               <AlertTriangle size={12} /> เกินวงเงิน
@@ -390,18 +390,18 @@ export default function SalesOrderPage() {
       {/* Summary Card */}
       <GlassCard className="p-6 border-white/5 rounded-3xl bg-surface-1 shadow-2xl space-y-4 w-full">
         <div className="flex justify-between items-center text-[13px]">
-          <span className="text-white/40 font-bold uppercase tracking-widest text-[11px]">มูลค่ารวม (Subtotal)</span>
+          <span className="text-white/40 font-bold uppercase tracking-widest text-[11px]">มูลค่ารวม</span>
           <span className="text-white font-mono font-bold">{formatCurrency(summary.subtotal)} บาท</span>
         </div>
         {summary.discount > 0 && (
           <div className="flex justify-between items-center text-[13px]">
-            <span className="text-cyan-400/70 font-bold uppercase tracking-widest text-[11px]">ส่วนลดรวม (Total Discount)</span>
+            <span className="text-cyan-400/70 font-bold uppercase tracking-widest text-[11px]">ส่วนลดรวม</span>
             <span className="text-cyan-400 font-mono font-bold">-{formatCurrency(summary.discount)} บาท</span>
           </div>
         )}
         {taxType !== "none" && (
           <div className="flex justify-between items-center text-[13px] border-t border-white/5 pt-4">
-            <span className="text-white/40 font-bold uppercase tracking-widest text-[11px]">มูลค่าก่อนภาษี (Pre-VAT)</span>
+            <span className="text-white/40 font-bold uppercase tracking-widest text-[11px]">มูลค่าก่อนภาษี</span>
             <span className="text-white font-mono font-bold">{formatCurrency(summary.preVat)} บาท</span>
           </div>
         )}

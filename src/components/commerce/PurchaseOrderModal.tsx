@@ -270,7 +270,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                     </div>
                     
                     <div className="grid grid-cols-2 gap-6">
-                      <Field label="เลขที่เอกสาร (DOCUMENT NO.) [AUTO]">
+                      <Field label="เลขที่เอกสาร [AUTO]">
                         <div className="relative">
                           <PillInput 
                             value={form.id} 
@@ -361,7 +361,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                     </div>
 
                     <div className="grid grid-cols-2 gap-6 pt-2">
-                      <Field label="เลขอ้างอิง (REFERENCE NO.)">
+                      <Field label="เลขอ้างอิง">
                         <PillInput 
                           value={form.reference} 
                           onChange={(e) => setForm({...form, reference: e.target.value})} 
@@ -380,7 +380,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                   {/* Currency Section */}
                   <div className="bg-white/[0.01] border border-white/5 p-6 rounded-[2.5rem] space-y-4 shadow-2xl">
                     <h3 className="text-[12px] font-semibold text-nexus-blue uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic">
-                      <Globe size={16} /> 2. สกุลเงินค้าระหว่างประเทศ (CURRENCY & EXCHANGE RATE)
+                      <Globe size={16} /> 2. สกุลเงินค้าระหว่างประเทศ
                     </h3>
                     
                     <div className="grid grid-cols-2 gap-6">
@@ -435,7 +435,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                   {/* Commercial Terms Section */}
                   <div className="bg-white/[0.01] border border-white/5 p-6 rounded-[2.5rem] space-y-4 shadow-2xl">
                     <h3 className="text-[12px] font-semibold text-nexus-blue uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic">
-                      <CreditCard size={16} /> 3. เงื่อนไขข้อตกลงและเครดิตสากล (COMMERCIAL TERMS & INCOTERMS)
+                      <CreditCard size={16} /> 3. เงื่อนไขข้อตกลงและเครดิตสากล
                     </h3>
                     
                     <div className="grid grid-cols-3 gap-6">
@@ -488,7 +488,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                   {/* Logistics Section */}
                   <div className="bg-white/[0.01] border border-white/5 p-6 rounded-[2.5rem] space-y-4 shadow-2xl">
                     <h3 className="text-[12px] font-semibold text-nexus-blue uppercase flex items-center gap-2 border-b border-white/5 pb-2 italic">
-                      <Truck size={16} /> 4. การจัดการขนส่งสากล (LOGISTICS & SHIPPING)
+                      <Truck size={16} /> 4. การจัดการขนส่งสากล
                     </h3>
                     
                     <div className="grid grid-cols-2 gap-6">
@@ -629,7 +629,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                   <div className="bg-white/[0.01] border border-white/5 p-6 rounded-[2.5rem] space-y-4 shadow-2xl">
                     <div className="flex justify-between items-center border-b border-white/5 pb-3">
                       <h3 className="text-[12px] font-semibold text-nexus-blue uppercase flex items-center gap-2 italic">
-                        <FileText size={16} /> 5. ข้อตกลงและเงื่อนไขสัญญาแนบท้าย (TERMS & CONDITIONS)
+                        <FileText size={16} /> 5. ข้อตกลงและเงื่อนไขสัญญาแนบท้าย
                       </h3>
                       
                       {/* Preset Buttons: Standardized to compact h-9 px-6 rounded-full */}
@@ -658,7 +658,7 @@ export function PurchaseOrderModal({ isOpen, onClose, onSave, initialData }: Pur
                       </div>
                     </div>
 
-                    <Field label="ระบุรายละเอียดข้อตกลง สัญญา หรือเงื่อนไขแนบท้าย (TERMS & CONDITIONS)">
+                    <Field label="ระบุรายละเอียดข้อตกลง สัญญา หรือเงื่อนไขแนบท้าย">
                       <textarea 
                         className="w-full h-48 rounded-[2rem] bg-white/[0.03] border border-white/10 text-white text-[14px] font-bold p-6 focus:outline-none focus:border-nexus-blue/40 transition-all leading-relaxed shadow-inner"
                         value={form.terms}

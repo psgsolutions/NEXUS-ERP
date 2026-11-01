@@ -125,7 +125,7 @@ function PickingScreen() {
           <ArrowLeft size={20} />
         </PillButton>
         <div>
-          <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">เบิกสินค้า / จัดของ (Picking)</h1>
+          <h1 className="text-2xl font-semibold text-white uppercase tracking-tight">เบิกสินค้า / จัดของ</h1>
           <p className="text-sm text-white/60 font-medium mt-1">
             {so ? `ใบสั่งขาย ${soNo(so)} • ${so.customerName || so.customerSnapshot?.name || "-"}` : "เลือกใบสั่งขายที่จะจัดของ"}
           </p>

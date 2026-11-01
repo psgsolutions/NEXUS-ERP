@@ -230,19 +230,19 @@ export default function ProductsPage() {
           <div className="space-y-2 mt-4">
             <div className="flex justify-between items-center bg-white/[0.02] p-3 rounded-xl border border-white/5">
               <span className="text-[11px] font-semibold text-white/60 uppercase tracking-widest flex items-center gap-2">
-                <Box size={14} className="text-blue-400" /> สินค้า (Product)
+                <Box size={14} className="text-blue-400" /> สินค้า
               </span>
               <span className="font-mono text-blue-400 text-sm">{productCount}</span>
             </div>
             <div className="flex justify-between items-center bg-white/[0.02] p-3 rounded-xl border border-warning/10">
               <span className="text-[11px] font-semibold text-white/60 uppercase tracking-widest flex items-center gap-2">
-                <Wrench size={14} className="text-warning" /> เธเนเธฒเนเธฃเธ (Labor)
+                <Wrench size={14} className="text-warning" /> ค่าแรง
               </span>
               <span className="font-mono text-warning text-sm">{laborCount}</span>
             </div>
             <div className="flex justify-between items-center bg-red-500/5 p-3 rounded-xl border border-red-500/10">
               <span className="text-[11px] font-semibold text-red-400/80 uppercase tracking-widest flex items-center gap-2">
-                <ShieldAlert size={12} /> เธฃเธฒเธขเธเธฒเธฃเธ•เธดเธ” WHT
+                <ShieldAlert size={12} /> รายการติด WHT
               </span>
               <span className="font-mono text-red-400 text-sm">{whtCount}</span>
             </div>

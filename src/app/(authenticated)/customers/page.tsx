@@ -206,12 +206,12 @@ export default function CustomerDashboardPage() {
 
           <div className="space-y-2 mt-4">
             <div className="flex justify-between items-center bg-white/[0.02] p-3 rounded-xl border border-white/5">
-              <span className="text-[11px] font-black text-white/60 uppercase tracking-widest">เอกชน (Private)</span>
+              <span className="text-[11px] font-black text-white/60 uppercase tracking-widest">เอกชน</span>
               <span className="font-mono text-nexus-teal text-sm">{privateCount}</span>
             </div>
             <div className="flex justify-between items-center bg-white/[0.02] p-3 rounded-xl border border-white/5">
               <span className="text-[11px] font-semibold text-white/60 uppercase tracking-widest flex items-center gap-1">
-                <ShieldCheck size={12} /> ราชการ (Gov)
+                <ShieldCheck size={12} /> ราชการ
               </span>
               <span className="font-mono text-blue-400 text-sm">{govCount}</span>
             </div>

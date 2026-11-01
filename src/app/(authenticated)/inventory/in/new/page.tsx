@@ -242,13 +242,13 @@ function NewInventoryInScreen() {
 
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-6">
-            <Field label="วันที่ทำรายการ (Date) *">
+            <Field label="วันที่ทำรายการ *">
               <NexusDatePicker value={header.date}
                 onChange={(e) => setHeader({...header, date: e.target.value})}
                 className="w-full h-9 rounded-full px-6"
               />
             </Field>
-            <Field label="ตำแหน่งรับเข้า (Location)">
+            <Field label="ตำแหน่งรับเข้า">
               <PillSelect
                 value={warehouseId}
                 onChange={(e) => setHeader({...header, warehouseId: e.target.value})}
@@ -263,7 +263,7 @@ function NewInventoryInScreen() {
 
           {activeTab === "po" ? (
             <div className="grid grid-cols-2 gap-6">
-              <Field label="อ้างอิงใบสั่งซื้อ (PO Reference) *">
+              <Field label="อ้างอิงใบสั่งซื้อ *">
                 <PillSelect
                   value={header.poDocPath}
                   onChange={(e) => selectPO(e.target.value)}
@@ -275,7 +275,7 @@ function NewInventoryInScreen() {
                   ))}
                 </PillSelect>
               </Field>
-              <Field label="ผู้จัดจำหน่าย (Supplier)">
+              <Field label="ผู้จัดจำหน่าย">
                 <PillInput
                   value={supplierName(header.supplierId) || "-- อ้างอิงจาก PO --"}
                   readOnly
@@ -285,7 +285,7 @@ function NewInventoryInScreen() {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-6">
-              <Field label="ผู้จัดจำหน่าย (Supplier) *">
+              <Field label="ผู้จัดจำหน่าย *">
                 <PillSelect
                   value={header.supplierId}
                   onChange={(e) => setHeader({...header, supplierId: e.target.value})}
@@ -297,7 +297,7 @@ function NewInventoryInScreen() {
                   ))}
                 </PillSelect>
               </Field>
-              <Field label="เอกสารอ้างอิง (Ref. No.)">
+              <Field label="เอกสารอ้างอิง">
                 <PillInput
                   value={header.reference}
                   onChange={(e) => setHeader({...header, reference: e.target.value})}
@@ -312,7 +312,7 @@ function NewInventoryInScreen() {
         <div className="space-y-4 pt-6 border-t border-white/5">
           <div className="flex items-center gap-2 mb-2">
             <Truck size={16} className="text-white/40" />
-            <h4 className="text-[13px] font-semibold text-white/60 uppercase tracking-widest">รายการสินค้า (Items)</h4>
+            <h4 className="text-[13px] font-semibold text-white/60 uppercase tracking-widest">รายการสินค้า</h4>
           </div>
           <p className="text-[11px] text-white/40">
             ช่อง &quot;ราคา&quot; ในตาราง = ต้นทุนต่อหน่วยที่รับเข้า (ค่าเริ่มต้นคือต้นทุนเฉลี่ยปัจจุบัน หรือราคาในใบสั่งซื้อ) ใช้คำนวณต้นทุนเฉลี่ยใหม่และลงบัญชีสินค้าคงเหลือ
@@ -324,7 +324,7 @@ function NewInventoryInScreen() {
         </div>
 
         <div className="space-y-6 pt-6 border-t border-white/5">
-          <Field label="หมายเหตุ (Remarks)">
+          <Field label="หมายเหตุ">
             <textarea
               className="w-full h-24 rounded-2xl bg-white/[0.03] border border-white/10 text-white text-[14px] p-4 focus:outline-none focus:border-cyan-400/40 transition-all custom-scrollbar"
               value={header.note}

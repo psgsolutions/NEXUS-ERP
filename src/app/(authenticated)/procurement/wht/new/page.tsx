@@ -121,10 +121,10 @@ export default function NewWHTPage() {
 
         <div className="space-y-8 max-w-3xl">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Field label="เลขที่เอกสาร 50 ทวิ (WHT Document Number)">
+            <Field label="เลขที่เอกสาร 50 ทวิ">
               <PillInput value="ออกเลขเมื่อบันทึก" disabled className="w-full h-9 px-6 rounded-full font-mono text-amber-500 border-amber-500/30 bg-white/[0.02]" />
             </Field>
-            <Field label="อ้างอิงใบสำคัญจ่าย * (Expense Reference)" required>
+            <Field label="อ้างอิงใบสำคัญจ่าย *" required>
               <PillSelect
                 value={form.expenseId}
                 onChange={(e) => selectExpense(e.target.value)}
@@ -139,7 +139,7 @@ export default function NewWHTPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Field label="จำนวนเงินได้ (บาท) * (Base Amount)" required>
+            <Field label="จำนวนเงินได้ (บาท) *" required>
               <PillInput 
                 type="number"
                 value={form.baseAmount} 
@@ -147,7 +147,7 @@ export default function NewWHTPage() {
                 className="w-full h-9 px-6 rounded-full font-mono font-bold tracking-tight text-right text-emerald-400 border-emerald-500/30 bg-white/[0.02]" 
               />
             </Field>
-            <Field label="อัตราภาษี (%) * (WHT Rate)" required>
+            <Field label="อัตราภาษี (%) *" required>
               <PillInput 
                 type="number"
                 value={form.whtRate} 
@@ -165,7 +165,7 @@ export default function NewWHTPage() {
     <GlassCard accentColor="amber" className="p-6 space-y-8 sticky top-0 relative overflow-hidden">
        <div className="space-y-1 border-b border-white/5 pb-4 relative z-10">
          <h5 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
-           สรุปยอดภาษี (Tax Summary)
+           สรุปยอดภาษี
          </h5>
        </div>
 

@@ -175,14 +175,14 @@ export default function SalesPage() {
   };
 
   const tabs = [
-    { id: "quotations", label: "ใบเสนอราคา (Quotations)", icon: <FileText size={14} /> },
-    { id: "orders", label: "ใบสั่งขาย (Sales Orders)", icon: <ClipboardList size={14} /> },
-    { id: "invoices", label: "ใบแจ้งหนี้ (Invoices)", icon: <Receipt size={14} /> },
-    { id: "billing", label: "ใบวางบิล (Billing Notes)", icon: <FileText size={14} /> },
-    { id: "receipts", label: "ใบเสร็จรับเงิน (Receipts)", icon: <Landmark size={14} /> },
+    { id: "quotations", label: "ใบเสนอราคา", icon: <FileText size={14} /> },
+    { id: "orders", label: "ใบสั่งขาย", icon: <ClipboardList size={14} /> },
+    { id: "invoices", label: "ใบแจ้งหนี้", icon: <Receipt size={14} /> },
+    { id: "billing", label: "ใบวางบิล", icon: <FileText size={14} /> },
+    { id: "receipts", label: "ใบเสร็จรับเงิน", icon: <Landmark size={14} /> },
     { id: "cndn", label: "ใบลดหนี้ / เพิ่มหนี้ (CN/DN)", icon: <Receipt size={14} /> },
     { id: "crm", label: "ข้อมูลลูกค้า", icon: <Users size={14} /> },
-    { id: "opportunities", label: "ติดตามงานขาย (Sales Pipeline)", icon: <Target size={14} /> },
+    { id: "opportunities", label: "ติดตามงานขาย", icon: <Target size={14} /> },
   ];
   const salesTabs = useAdvancedTabs(tabs, ["opportunities"], activeTab);
 
@@ -591,7 +591,7 @@ export default function SalesPage() {
                      </p>
                      <h2 className="text-xl font-bold text-white uppercase">
                         {activeTab === "crm" && "ข้อมูลลูกค้า"}
-                        {activeTab === "opportunities" && "ติดตามงานขาย (Sales Pipeline)"}
+                        {activeTab === "opportunities" && "ติดตามงานขาย"}
                         {activeTab === "quotations" && "ใบเสนอราคา"}
                         {activeTab === "orders" && "ใบสั่งขาย"}
                         {activeTab === "invoices" && "ใบแจ้งหนี้"}

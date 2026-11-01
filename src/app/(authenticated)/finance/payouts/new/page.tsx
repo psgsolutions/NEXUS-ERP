@@ -126,16 +126,16 @@ export default function CreatePayoutPage() {
       <GlassCard className="p-8 border-white/5 bg-black/20 grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="space-y-4">
           <h3 className="text-[12px] font-semibold text-cyan-400 uppercase tracking-widest border-b border-white/5 pb-2">
-            อ้างอิงเอกสาร (Reference)
+            อ้างอิงเอกสาร
           </h3>
           
-          <Field label="อ้างอิงใบสั่งขาย * (Select SO)" required>
+          <Field label="อ้างอิงใบสั่งขาย *" required>
             <select
               value={formData.soId}
               onChange={handleSoChange}
               className="h-10 px-5 rounded-full bg-black/50 border border-white/10 text-white text-[13px] font-bold focus:outline-none focus:border-cyan-400/40 w-full appearance-none transition-all"
             >
-              <option value="" className="bg-slate-900 text-white/40">-- เลือกใบสั่งขาย (Sales Order) --</option>
+              <option value="" className="bg-slate-900 text-white/40">-- เลือกใบสั่งขาย --</option>
               {salesOrders.map(so => (
                 <option key={so.id} value={so.id} className="bg-slate-900 text-white">
                   {so.soCode} : {so.customerName}
@@ -147,10 +147,10 @@ export default function CreatePayoutPage() {
 
         <div className="space-y-4">
           <h3 className="text-[12px] font-semibold text-cyan-400 uppercase tracking-widest border-b border-white/5 pb-2">
-            ผู้รับเงิน (Payee)
+            ผู้รับเงิน
           </h3>
           
-          <Field label="ชื่อช่างซับคอนแทรค * (Subcontractor Name)" required>
+          <Field label="ชื่อช่างซับคอนแทรค *" required>
             <PillInput 
               type="text"
               value={formData.subcontractorName}
@@ -160,7 +160,7 @@ export default function CreatePayoutPage() {
             />
           </Field>
 
-          <Field label="เลขประจำตัวผู้เสียภาษี (Tax ID)">
+          <Field label="เลขประจำตัวผู้เสียภาษี">
             <PillInput 
               type="text"
               value={formData.subcontractorTaxId}
@@ -176,23 +176,23 @@ export default function CreatePayoutPage() {
       {/* Line Items */}
       <div className="flex flex-col gap-3 pt-2">
         <h3 className="text-[12px] font-semibold text-cyan-400 uppercase tracking-widest flex items-center gap-2">
-          รายการค่าแรงที่ดึงมา (Extracted Labor Items)
+          รายการค่าแรงที่ดึงมา
         </h3>
         <p className="text-[11px] font-bold text-white/40 not-italic">ระบบจะดึงเฉพาะรายการสินค้าที่ตั้งค่าเป็น &ldquo;ค่าแรง&rdquo; จากใบสั่งขายเท่านั้น</p>
         
         <div className="border border-white/10 rounded-3xl overflow-hidden bg-white/[0.02] flex flex-col">
           <div className="flex gap-2 px-4 py-3 bg-white/[0.05] border-b border-white/10 text-[11px] font-semibold text-white/60 uppercase tracking-widest">
             <div className="w-8 text-center">No.</div>
-            <div className="flex-1">รายการ (Description)</div>
+            <div className="flex-1">รายการ</div>
             <div className="w-24 text-right">จำนวน</div>
-            <div className="w-32 text-right">ยอดเงิน (Amount)</div>
+            <div className="w-32 text-right">ยอดเงิน</div>
           </div>
           
           <div className="flex flex-col divide-y divide-white/5">
             {laborItems.length === 0 ? (
               <div className="py-16 text-center flex flex-col items-center justify-center gap-2">
                  <HardHat size={32} className="text-white/10" />
-                 <span className="text-white/40 text-sm font-bold tracking-widest uppercase">ไม่พบข้อมูลค่าแรงในระบบ (No Labor Data Found)</span>
+                 <span className="text-white/40 text-sm font-bold tracking-widest uppercase">ไม่พบข้อมูลค่าแรงในระบบ</span>
               </div>
             ) : (
               laborItems.map((item, index) => (
@@ -214,7 +214,7 @@ export default function CreatePayoutPage() {
   const rightSidebar = (
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
       <h3 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4 relative z-10">
-        <FileText size={16} className="text-cyan-400" /> สรุปยอดจ่าย (Summary)
+        <FileText size={16} className="text-cyan-400" /> สรุปยอดจ่าย
       </h3>
       
       <div className="space-y-4 relative z-10 bg-white/[0.03] p-5 rounded-2xl border border-white/5">
@@ -233,13 +233,13 @@ export default function CreatePayoutPage() {
       </div>
       
       <div className="pt-4 border-t border-white/5 text-right relative z-10">
-        <div className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1">ยอดจ่ายสุทธิ (Net Payout)</div>
+        <div className="text-[11px] font-semibold text-white/40 uppercase tracking-widest mb-1">ยอดจ่ายสุทธิ</div>
         <div className="text-2xl font-mono text-cyan-400 font-black tracking-tight">{netTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</div>
       </div>
 
       <div className="pt-4 border-t border-white/5 relative z-10 space-y-2">
         <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest not-italic">
-          หมายเหตุ (Remarks)
+          หมายเหตุ
         </label>
         <textarea
           value={formData.remarks}

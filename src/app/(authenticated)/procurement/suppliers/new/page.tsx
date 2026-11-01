@@ -30,8 +30,8 @@ interface LaborRateItem {
   itemCode?: string;
   serviceType: string;
   unit: string;
-  ratePerUnit: number;           // ต้นทุนจ่ายช่าง (Subcontractor Cost Rate)
-  standardSellingPrice?: number;  // ราคาเสนอขายลูกค้า (Selling Price to Client)
+  ratePerUnit: number;           // ต้นทุนจ่ายช่าง
+  standardSellingPrice?: number;  // ราคาเสนอขายลูกค้า
   remarks?: string;
 }
 
@@ -266,7 +266,7 @@ export default function NewSupplierPage() {
         </div>
 
         <div className="p-6 sm:p-8 space-y-8">
-          <Field label="ประเภทสถานประกอบการ / ช่าง * (Entity Category)">
+          <Field label="ประเภทสถานประกอบการ / ช่าง *">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
               <button
                 type="button"
@@ -308,10 +308,10 @@ export default function NewSupplierPage() {
           </Field>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Field label="ชื่อช่าง / บริษัท / ห้างร้าน * (Name)">
+            <Field label="ชื่อช่าง / บริษัท / ห้างร้าน *">
               <PillInput value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} placeholder="ระบุชื่อทีมช่าง หรือชื่อนิติบุคคลเต็ม..." className="w-full h-9 rounded-full bg-white/[0.02] px-6" />
             </Field>
-            <Field label={form.entity_category === "TEAM" ? "เลขประจำตัวประชาชน/ผู้เสียภาษี * (ID / Tax ID)" : "เลขประจำตัวผู้เสียภาษี * (Corporate Tax ID)"}>
+            <Field label={form.entity_category === "TEAM" ? "เลขประจำตัวประชาชน/ผู้เสียภาษี *" : "เลขประจำตัวผู้เสียภาษี *"}>
               <PillInput 
                 value={form.tax_id} 
                 onChange={(e) => {
@@ -330,15 +330,15 @@ export default function NewSupplierPage() {
             </h4>
             <SmartAddressPicker onSelect={handleSmartAddress} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
-              <Field label="จังหวัด (Province)">
+              <Field label="จังหวัด">
                 <PillInput value={form.province} readOnly className="w-full h-9 px-6 rounded-full opacity-60 bg-white/[0.01] border-white/5" />
               </Field>
-              <Field label="รหัสไปรษณีย์ (Zip Code)">
+              <Field label="รหัสไปรษณีย์">
                 <PillInput value={form.zipCode} readOnly className="w-full h-9 px-6 rounded-full opacity-60 bg-white/[0.01] border-white/5 font-mono" />
               </Field>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <Field label="เบอร์โทรศัพท์ * (Phone)">
+              <Field label="เบอร์โทรศัพท์ *">
                 <PillInput 
                   value={form.phone} 
                   onChange={(e) => {
@@ -349,7 +349,7 @@ export default function NewSupplierPage() {
                   className="w-full h-9 rounded-full font-mono text-cyan-400 bg-white/[0.02]" 
                 />
               </Field>
-              <Field label="อีเมล (Email)">
+              <Field label="อีเมล">
                 <PillInput value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} className="w-full h-9 rounded-full bg-white/[0.02]" placeholder="example@domain.com" />
               </Field>
             </div>
@@ -392,7 +392,7 @@ export default function NewSupplierPage() {
         <div className="p-6 sm:p-8 space-y-6">
           {/* Quick Presets Bar */}
           <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
-            <span className="text-[11px] font-bold text-white/40 uppercase tracking-widest">คำแนะนำรายการงานยอดนิยม (Quick Add Preset):</span>
+            <span className="text-[11px] font-bold text-white/40 uppercase tracking-widest">คำแนะนำรายการงานยอดนิยม:</span>
             <div className="flex flex-wrap gap-2 pt-1">
               {[
                 { name: "งานติดตั้งสายสัญญาณ LAN CAT6", unit: "จุด", rate: 350 },
@@ -476,7 +476,7 @@ export default function NewSupplierPage() {
                             }));
                           }}
                           placeholder="ต้นทุนจ่ายช่าง ฿"
-                          title="ต้นทุนจ่ายช่าง (Cost Price)"
+                          title="ต้นทุนจ่ายช่าง"
                           className="w-full h-8 text-xs font-bold font-mono text-right text-rose-400 bg-rose-500/5 border-rose-500/20"
                         />
                       </div>
@@ -492,7 +492,7 @@ export default function NewSupplierPage() {
                             }));
                           }}
                           placeholder="ราคาขายลูกค้า ฿"
-                          title="ราคาเสนอขายลูกค้า (Selling Price)"
+                          title="ราคาเสนอขายลูกค้า"
                           className="w-full h-8 text-xs font-bold font-mono text-right text-emerald-400 bg-emerald-500/5 border-emerald-500/20"
                         />
                       </div>
@@ -535,7 +535,7 @@ export default function NewSupplierPage() {
         </div>
 
         <div className="p-6 sm:p-8 space-y-8">
-          <Field label="วิธีการรับเงิน / ชำระเงิน * (Payment Method)">
+          <Field label="วิธีการรับเงิน / ชำระเงิน *">
             <PillSelect value={form.payment_method} onChange={(e) => setForm({...form, payment_method: e.target.value})} className="w-full h-9 px-6 rounded-full font-black text-purple-400 bg-white/[0.02] text-[13px]">
               <option value="TRANSFER">โอนเงินผ่านบัญชีธนาคาร</option>
               <option value="CHEQUE">รับด้วยเช็ค</option>
@@ -545,14 +545,14 @@ export default function NewSupplierPage() {
 
           {form.payment_method === "TRANSFER" && (
             <div className="space-y-6 bg-white/[0.02] p-6 rounded-3xl border border-white/5">
-              <Field label="ธนาคาร * (Bank)">
+              <Field label="ธนาคาร *">
                 <PillSelect value={form.bank_name} onChange={(e) => setForm({...form, bank_name: e.target.value})} className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-bold text-[13px]">
                   <option value="">เลือกธนาคาร...</option>
                   {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
                 </PillSelect>
               </Field>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <Field label="เลขที่บัญชี * (Account No.)">
+                <Field label="เลขที่บัญชี *">
                   <PillInput 
                     value={form.account_number} 
                     onChange={(e) => {
@@ -563,7 +563,7 @@ export default function NewSupplierPage() {
                     className="w-full h-9 px-6 rounded-full font-mono text-cyan-400 text-[16px] bg-white/[0.02]" 
                   />
                 </Field>
-                <Field label="ชื่อบัญชี * (Account Name)">
+                <Field label="ชื่อบัญชี *">
                   <PillInput value={form.account_name} onChange={(e) => setForm({...form, account_name: e.target.value})} placeholder="ระบุชื่อบัญชี..." className="w-full h-9 px-6 rounded-full bg-white/[0.02]" />
                 </Field>
               </div>
@@ -614,7 +614,7 @@ export default function NewSupplierPage() {
 
   const rightSidebar = (
     <div className="p-4 xl:p-6 space-y-7">
-      {/* 4. ตารางสรุป (Summary & Rating Panel Card) */}
+      {/* 4. ตารางสรุป */}
       <GlassCard accentColor="emerald" className="p-0 overflow-hidden">
         <div className="p-4 sm:p-5 flex items-center justify-between bg-white/[0.04] border-b border-white/10">
           <div className="flex items-center gap-3">
@@ -652,7 +652,7 @@ export default function NewSupplierPage() {
             </div>
           </div>
 
-          <Field label="เครดิตเทอม (Credit Term)">
+          <Field label="เครดิตเทอม">
             <PillSelect value={form.payment_term} onChange={(e) => setForm({...form, payment_term: e.target.value})} className="w-full h-9 px-6 rounded-full bg-white/[0.03] font-bold text-[12px]">
               <option>Cash</option>
               <option>7 Days</option>

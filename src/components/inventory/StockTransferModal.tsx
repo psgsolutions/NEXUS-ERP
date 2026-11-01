@@ -93,7 +93,7 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                   </div>
                   <div className="space-y-6">
                      <div className="grid grid-cols-2 gap-4">
-                        <Field label="คลังต้นทาง (From Warehouse)">
+                        <Field label="คลังต้นทาง">
                            <PillSelect 
                              value={formData.fromWarehouse}
                              onChange={(e) => setFormData({...formData, fromWarehouse: e.target.value})}
@@ -103,7 +103,7 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                               <option value="RAYONG">Site Warehouse (Rayong)</option>
                            </PillSelect>
                         </Field>
-                        <Field label="คลังปลายทาง (To Warehouse)">
+                        <Field label="คลังปลายทาง">
                            <PillSelect 
                              value={formData.toWarehouse}
                              onChange={(e) => setFormData({...formData, toWarehouse: e.target.value})}
@@ -114,7 +114,7 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                            </PillSelect>
                         </Field>
                      </div>
-                     <Field label="ผู้ทำรายการ (Requester)">
+                     <Field label="ผู้ทำรายการ">
                         <PillSelect 
                           value={formData.requester}
                           onChange={(e) => setFormData({...formData, requester: e.target.value})}
@@ -124,7 +124,7 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                            <option value="Somchai J.">Somchai J.</option>
                         </PillSelect>
                      </Field>
-                     <Field label="วัตถุประสงค์ (Reason)">
+                     <Field label="วัตถุประสงค์">
                         <PillSelect 
                           value={formData.reason}
                           onChange={(e) => setFormData({...formData, reason: e.target.value})}
@@ -145,7 +145,7 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                   </div>
                   <div className="space-y-6">
                      <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/5 space-y-6">
-                        <Field label="เลือกพัสดุ (Select Product)">
+                        <Field label="เลือกพัสดุ">
                            <PillSelect 
                              value={formData.productId}
                              onChange={(e) => setFormData({...formData, productId: e.target.value})}

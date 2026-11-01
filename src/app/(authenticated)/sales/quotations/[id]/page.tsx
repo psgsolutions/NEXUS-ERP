@@ -661,7 +661,7 @@ export default function QuotationEditPage() {
   // Handle Save with Multi-channel Audit Trail (Patch 11 & 12)
   const handleSave = async (isSubmit: boolean = false, sendChannel?: 'EMAIL' | 'LINE' | 'DOWNLOAD' | 'SYSTEM') => {
     if (isLocked) {
-      showAlert(canRevise ? "ใบเสนอราคานี้ส่งลูกค้าแล้ว แก้ไขได้โดยสร้างฉบับแก้ไข (Revision)" : "ใบเสนอราคานี้แก้ไขไม่ได้แล้ว");
+      showAlert(canRevise ? "ใบเสนอราคานี้ส่งลูกค้าแล้ว แก้ไขได้โดยสร้างฉบับแก้ไข" : "ใบเสนอราคานี้แก้ไขไม่ได้แล้ว");
       return;
     }
     if (!selectedCustomerId && !customerSearchTerm.trim()) {
@@ -898,7 +898,7 @@ export default function QuotationEditPage() {
             variant="glass"
             onClick={() => { setRevisionChangeSummary(""); setShowRevisionModal(true); }}
             className="h-8 px-4 text-xs font-bold text-purple-300 border-purple-500/30 hover:bg-purple-500/10"
-            title="สร้างฉบับแก้ไข (Revision) เพื่อปรับราคาหรือข้อเสนอโดยยังคงรักษาประวัติฉบับเดิมไว้"
+            title="สร้างฉบับแก้ไข เพื่อปรับราคาหรือข้อเสนอโดยยังคงรักษาประวัติฉบับเดิมไว้"
           >
             <FileSpreadsheet size={14} className="mr-1.5" /> สร้างฉบับแก้ไข
           </PillButton>
@@ -1392,7 +1392,7 @@ export default function QuotationEditPage() {
       {revisionHistory && revisionHistory.length > 0 && (
         <div className="bg-neutral-900/90 border border-white/15 rounded-3xl p-4 shadow-2xl space-y-4 border-l-4 border-l-purple-500">
           <h3 className="text-base font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-2">
-            <History size={16} className="text-purple-400" /> ประวัติการแก้ไข (Revision History)
+            <History size={16} className="text-purple-400" /> ประวัติการแก้ไข
           </h3>
           <div className="space-y-2">
             {revisionHistory.map((rev: any, idx: number) => (
@@ -1746,7 +1746,7 @@ export default function QuotationEditPage() {
       />
 
       {showRevisionModal && (
-        <Modal isOpen={showRevisionModal} onClose={() => setShowRevisionModal(false)} title="สร้างฉบับแก้ไข (New Revision)">
+        <Modal isOpen={showRevisionModal} onClose={() => setShowRevisionModal(false)} title="สร้างฉบับแก้ไข">
           <div className="space-y-4 p-2">
             <p className="text-[13px] text-white/70">
               ระบบจะสร้างใบเสนอราคาฉบับแก้ไข (เลขที่ต่อท้าย -R{revisionNumber + 1}) เป็นฉบับร่างให้แก้ไขต่อ และเปลี่ยนฉบับปัจจุบันเป็น &ldquo;ถูกแทนที่&rdquo; (อ่านอย่างเดียว)

@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { THAI_THEN_EN, redundantEnglish } = require('./thai-label-rules');
 
 /**
  * NEXUS ERP — Thai-Only UI Label Guard Script (Patch 5)
@@ -41,6 +42,12 @@ function scanDirectory(dir, occurrences = []) {
       const lines = content.split('\n');
 
       lines.forEach((line, index) => {
+        // C-19: ป้ายไทยห้ามต่อท้ายคำแปลอังกฤษในวงเล็บ (ยกเว้นตัวย่อ คีย์ลัด หน่วย — thai-label-rules.js)
+        if (!/^\s*(\/\/|\*|\/\*)/.test(line)) {
+          for (const m of line.matchAll(THAI_THEN_EN)) {
+            if (redundantEnglish(m[1])) occurrences.push({ file: relPath, line: index + 1, message: `Remove English translation "(${m[1]})" after the Thai label`, content: line.trim() });
+          }
+        }
         for (const item of forbiddenLabelPatterns) {
           if (item.pattern.test(line)) {
             occurrences.push({

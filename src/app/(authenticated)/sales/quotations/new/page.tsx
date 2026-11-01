@@ -1167,7 +1167,7 @@ export default function QuotationCreationPage() {
               )}
             </div>
             <div className="space-y-1 col-span-4">
-              <label className="text-[12px] font-bold text-white/70">ชื่อโครงการ (SmartSelect)</label>
+              <label className="text-[12px] font-bold text-white/70">ชื่อโครงการ</label>
               <SmartSelect
                 value={projectId}
                 onChange={(val) => {
@@ -1416,7 +1416,7 @@ export default function QuotationCreationPage() {
           </h3>
           <div className="space-y-2">
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-white/70">การรับประกัน (Warranty)</label>
+              <label className="text-[11px] font-bold text-white/70">การรับประกัน</label>
               <input
                 type="text"
                 value={warrantyTerms}
@@ -1426,7 +1426,7 @@ export default function QuotationCreationPage() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-white/70">ขอบเขตงาน (Scope of Work)</label>
+              <label className="text-[11px] font-bold text-white/70">ขอบเขตงาน</label>
               <input
                 type="text"
                 value={scopeOfWork}
@@ -1436,7 +1436,7 @@ export default function QuotationCreationPage() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-white/70">ข้อยกเว้น (Exclusions)</label>
+              <label className="text-[11px] font-bold text-white/70">ข้อยกเว้น</label>
               <input
                 type="text"
                 value={exclusions}

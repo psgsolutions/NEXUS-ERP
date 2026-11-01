@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { postingLines, trialBalance } from "@/lib/financial-reports";
-import { cashActivityOf, cashFlow, findAnomalies, salesProfit, stockAging } from "@/lib/management-reports";
+import { cashActivityOf, cashFlow, findAnomalies, monthSummaryText, salesProfit, stockAging } from "@/lib/management-reports";
 
 const j = (id: string, date: string, items: [string, number, number][]) => ({ id, date, status: "posted", items: items.map(([accountCode, debit, credit]) => ({ accountCode, debit, credit })) });
 
@@ -137,5 +137,21 @@ describe("anomaly checks", () => {
     expect(r.find((x) => x.kind === "ภาษีขายไม่ตรง 7%")!.amount).toBe(5);
     expect(r.filter((x) => x.kind === "รายการบัญชีรออนุมัติเกิน 30 วัน").map((x) => x.docNo)).toEqual(["J1"]);
     expect(r[0].severity).toBe("high");
+  });
+});
+
+describe("monthly summary (rule-based fallback)", () => {
+  it("states only the computed figures, in Thai", () => {
+    const t = monthSummaryText({
+      month: "2026-10", prevMonth: "2026-09", sales: 120000, salesPrev: 100000, invoices: 4, grossProfit: 30000, grossMargin: 25, costMissing: false,
+      postedRevenue: 110000, postedExpense: 90000, postedNet: 20000, drafts: 2, cashNet: -5000, cashClosing: 45000, arOverdue: 8000, arOverdueCount: 1,
+      topCustomers: [{ name: "ลูกค้า ก", revenue: 70000 }], topProducts: [{ name: "ตู้", revenue: 50000 }], anomaliesHigh: 1,
+    }, "เดือนตุลาคม 2569");
+    expect(t).toContain("ยอดขายเดือนตุลาคม 2569 120,000 บาท จากใบกำกับภาษี 4 ใบ เพิ่มขึ้น 20% จากเดือนก่อน");
+    expect(t).toContain("(25%)");
+    expect(t).toContain("รายการรออนุมัติ 2 รายการ");
+    expect(t).toContain("ลดลง 5,000 บาท");
+    expect(t).toContain("ลูกหนี้เกินกำหนด 1 ใบ รวม 8,000 บาท");
+    expect(t).toContain("รายการผิดปกติระดับสูง 1 รายการ");
   });
 });

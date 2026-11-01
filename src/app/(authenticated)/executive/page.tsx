@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Activity, Banknote, FileClock, HandCoins, Loader2, ReceiptText, RefreshCw, ShoppingBasket, TrendingUp, Wallet } from "lucide-react";
 import { GlassCard, MasterMetricCard, PillButton, cn } from "@/components/ui/Base";
 import { RevenueExpenseChart } from "@/components/dashboard/RevenueExpenseChart";
+import { MonthlySummaryCard } from "@/components/dashboard/MonthlySummaryCard";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api-client";
 import { compactBaht, fullBaht, type MonthlyPL } from "@/lib/dashboard-metrics";
@@ -90,6 +91,9 @@ export default function ExecutiveDashboardPage() {
       </div>
 
       {error && <div className="p-3 bg-danger/10 border border-danger/20 rounded-xl text-danger text-xs font-bold">{error}</div>}
+
+      {/* สรุปผลประกอบการรายเดือน (ภาษาไทย) */}
+      <MonthlySummaryCard />
 
       {/* ตัวเลขหลัก */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">

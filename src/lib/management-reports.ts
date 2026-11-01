@@ -238,3 +238,29 @@ export function findAnomalies(d: { invoices: any[]; expenses: any[]; payments: a
   }
   return out.sort((a, b) => (a.severity === b.severity ? b.date.localeCompare(a.date) : a.severity === "high" ? -1 : 1));
 }
+
+// ---------- สรุปผลประกอบการรายเดือน ----------
+export interface MonthFacts {
+  month: string; prevMonth: string;
+  sales: number; salesPrev: number; invoices: number; grossProfit: number; grossMargin: number | null; costMissing: boolean;
+  postedRevenue: number; postedExpense: number; postedNet: number; drafts: number;
+  cashNet: number; cashClosing: number; arOverdue: number; arOverdueCount: number;
+  topCustomers: { name: string; revenue: number }[]; topProducts: { name: string; revenue: number }[]; anomaliesHigh: number;
+}
+const pct = (a: number, b: number) => (b ? Math.round(((a - b) / Math.abs(b)) * 1000) / 10 : null);
+const bahtTh = (n: number) => `${(Math.round(n * 100) / 100).toLocaleString("th-TH", { maximumFractionDigits: 0 })} บาท`;
+/** สรุปเป็นข้อความไทยแบบกฎ (ใช้เมื่อไม่มี AI) — ทุกประโยคมาจากตัวเลขใน facts */
+export function monthSummaryText(f: MonthFacts, monthLabel: string): string {
+  const g = pct(f.sales, f.salesPrev);
+  const lines = [
+    `ยอดขาย${monthLabel} ${bahtTh(f.sales)} จากใบกำกับภาษี ${f.invoices} ใบ${g === null ? "" : ` ${g >= 0 ? "เพิ่มขึ้น" : "ลดลง"} ${Math.abs(g)}% จากเดือนก่อน`}`,
+    f.sales ? `กำไรขั้นต้นประมาณ ${bahtTh(f.grossProfit)}${f.grossMargin === null ? "" : ` (${f.grossMargin}%)`}${f.costMissing ? " — บางรายการไม่มีต้นทุน ตัวเลขจริงอาจต่ำกว่านี้" : ""}` : "",
+    `ตามบัญชีที่ลงแล้ว: รายได้ ${bahtTh(f.postedRevenue)} ค่าใช้จ่าย ${bahtTh(f.postedExpense)} กำไรสุทธิ ${bahtTh(f.postedNet)}${f.drafts ? ` (ยังมีรายการรออนุมัติ ${f.drafts} รายการ ไม่รวมในตัวเลขนี้)` : ""}`,
+    `เงินสดและเงินฝาก${f.cashNet >= 0 ? "เพิ่มขึ้น" : "ลดลง"} ${bahtTh(Math.abs(f.cashNet))} คงเหลือปลายเดือน ${bahtTh(f.cashClosing)}`,
+    f.arOverdueCount ? `ลูกหนี้เกินกำหนด ${f.arOverdueCount} ใบ รวม ${bahtTh(f.arOverdue)} ควรติดตาม` : "ไม่มีลูกหนี้เกินกำหนด",
+    f.topCustomers.length ? `ลูกค้าหลัก: ${f.topCustomers.map((c) => `${c.name} ${bahtTh(c.revenue)}`).join(", ")}` : "",
+    f.topProducts.length ? `สินค้า/บริการขายดี: ${f.topProducts.map((p) => p.name).join(", ")}` : "",
+    f.anomaliesHigh ? `มีรายการผิดปกติระดับสูง ${f.anomaliesHigh} รายการ — ดูที่ รายงาน › ตรวจความผิดปกติ` : "",
+  ].filter(Boolean);
+  return lines.map((l) => `• ${l}`).join("\n");
+}

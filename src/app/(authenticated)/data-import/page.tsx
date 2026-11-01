@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileDown, FileSpreadsheet, RefreshCw, Trash2, Upload } from "lucide-react";
-import { GlassCard, NexusDatePicker, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillCheckbox, PillTabs, cn } from "@/components/ui/Base";
+import { Download, FileDown, FileSpreadsheet, Files, RefreshCw, Trash2, Upload, X } from "lucide-react";
+import { GlassCard, NexusDatePicker, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillCheckbox, PillSelect, PillTabs, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
@@ -10,6 +10,7 @@ import { can } from "@/lib/permissions";
 import { CHART_OF_ACCOUNTS } from "@/lib/chart-of-accounts";
 import { IMPORT_TEMPLATES, mapHeaders, parseRows, toCreateRequest, toTemplateRow, type ImportEntity, type ImportTemplate, type ParsedRow } from "@/lib/import/templates";
 import { OPENING_TB_REF, OPENING_TEMPLATES, tbLines, type OpeningKind } from "@/lib/import/opening";
+import { detectEntity, sheetName } from "@/lib/import/detect";
 
 /**
  * นำเข้า/ส่งออกข้อมูลด้วย Excel
@@ -17,11 +18,20 @@ import { OPENING_TB_REF, OPENING_TEMPLATES, tbLines, type OpeningKind } from "@/
  *  - ส่งออก (/api/data-export) ได้ไฟล์หัวตารางเดียวกับแม่แบบ + "รหัสในระบบ" → แก้ใน Excel แล้วนำเข้ากลับ = แก้รายการเดิม
  *  - ยอดยกมาทางบัญชี (ฝ่ายบัญชี): งบทดลองยกมา -> ใบสำคัญ JV ร่าง (/api/finance/journal-entries),
  *    ลูกหนี้/เจ้าหนี้คงค้างรายใบ (/api/finance/opening-balances) + กระทบยอดกับบัญชีคุม
+ *  - หลายไฟล์/หลายชีตพร้อมกัน: แต่ละชีตระบุชนิดข้อมูลจากหัวตาราง (+ชื่อไฟล์/ชีต) เปลี่ยนเองได้
+ *    นำเข้าทั้งหมดตามลำดับ ลูกค้า → ผู้ขาย → สินค้า → พนักงาน → งบทดลอง → ลูกหนี้ → เจ้าหนี้
  * อ่านไฟล์ในเบราว์เซอร์ ตรวจทุกแถวก่อน (server ตรวจซ้ำอีกชั้น)
  */
 
 type TabId = ImportEntity | OpeningKind;
 type RowState = ParsedRow & { status: "ready" | "invalid" | "saving" | "done" | "failed"; message?: string };
+/** ชุดข้อมูลหนึ่งชีตของไฟล์ที่เลือก */
+interface Batch {
+  id: string; fileName: string; sheet: string; sheets: number;
+  entity: TabId | null; ambiguous: boolean;
+  aoa: any[][]; rows: RowState[];
+  notes: { missing: string[]; unknown: string[] }; error: string;
+}
 interface Status {
   tb: { id: string; journalNo: string; date: string; status: string; total: number }[];
   ar: { count: number; total: number; outstanding: number };
@@ -31,7 +41,7 @@ interface Status {
 
 const TEMPLATES: Record<TabId, ImportTemplate> = { ...IMPORT_TEMPLATES, ...OPENING_TEMPLATES };
 const TAB_ORDER: TabId[] = ["customers", "suppliers", "products", "employees", "tb", "ar", "ap"];
-const isOpening = (t: TabId): t is OpeningKind => t === "tb" || t === "ar" || t === "ap";
+const isOpening = (t: TabId | null): t is OpeningKind => t === "tb" || t === "ar" || t === "ap";
 const PREVIEW: Record<TabId, string[]> = {
   customers: ["name", "taxId", "phone", "creditTermDays"],
   suppliers: ["name", "taxId", "phone", "creditTermDays"],
@@ -54,29 +64,54 @@ const STEPS: Record<TabId, string> = {
   ar: "ใบแจ้งหนี้ที่ลูกค้ายังค้างชำระ — ไม่บันทึกบัญชีซ้ำ (ยอดรวมอยู่ในงบทดลองแล้ว) รับชำระต่อในระบบได้",
   ap: "ใบแจ้งหนี้ผู้ขายที่ยังค้างจ่าย — ไม่บันทึกบัญชีซ้ำ จ่ายชำระต่อในระบบได้ (ล้างเจ้าหนี้ 2111)",
 };
+/** ชีตประกอบในไฟล์แม่แบบ (ไม่ใช่ข้อมูล) */
+const AUX_SHEETS = ["คำอธิบาย", "ผังบัญชี"];
+const MAX_ROWS = 2000;
 
 const money = (n: number) => n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const loadXlsx = () => import("xlsx");
 const bkkToday = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
 const firstOfMonth = () => `${bkkToday().slice(0, 7)}-01`;
+const headerRow = (t: ImportTemplate) => t.columns.map((c) => (c.required ? `${c.header}*` : c.header));
+const colWidths = (t: ImportTemplate) => t.columns.map((c) => ({ wch: Math.max(14, c.header.length + 4) }));
+const countOf = (rows: RowState[]) => {
+  const c = { ready: 0, invalid: 0, saving: 0, done: 0, failed: 0 };
+  rows.forEach((r) => c[r.status]++);
+  return c;
+};
+
+/** แปลงตารางของชีตเป็นแถวที่ตรวจแล้ว ตามชนิดข้อมูล */
+function parseBatch(aoa: any[][], entity: TabId | null): Pick<Batch, "rows" | "notes" | "error"> {
+  const empty = { rows: [], notes: { missing: [], unknown: [] } };
+  if (!entity) return { ...empty, error: "ไม่รู้ว่าเป็นข้อมูลชนิดใด (หัวตารางไม่ตรงแม่แบบ) — เลือกชนิดข้อมูลเอง" };
+  if (!aoa.length) return { ...empty, error: "ไม่มีข้อมูล" };
+  const template = TEMPLATES[entity];
+  const { index, missing, unknown } = mapHeaders(template, aoa[0]);
+  if (missing.length) return { rows: [], notes: { missing, unknown }, error: "" };
+  const parsed = parseRows(template, aoa.slice(1), index);
+  if (!parsed.length) return { rows: [], notes: { missing, unknown }, error: "ไม่พบแถวข้อมูลใต้หัวตาราง" };
+  if (parsed.length > MAX_ROWS) return { rows: [], notes: { missing, unknown }, error: `มี ${parsed.length} แถว — แบ่งไฟล์ละไม่เกิน ${MAX_ROWS.toLocaleString("th-TH")} แถว` };
+  return { rows: parsed.map((r) => ({ ...r, status: r.errors.length ? "invalid" : "ready" })), notes: { missing, unknown }, error: "" };
+}
 
 export default function DataImportPage() {
   const { companyId, roles } = useAuth();
   const { showConfirm } = useSystemDialog();
   const allowed = TAB_ORDER.filter((t) => can(roles, TEMPLATES[t].permission));
   const [tab, setTab] = useState<TabId>(allowed[0] || "customers");
-  const [fileName, setFileName] = useState("");
-  const [rows, setRows] = useState<RowState[]>([]);
-  const [notes, setNotes] = useState<{ missing: string[]; unknown: string[] }>({ missing: [], unknown: [] });
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [selected, setSelected] = useState("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [postJournal, setPostJournal] = useState(true);
   const [tbDate, setTbDate] = useState(firstOfMonth());
   const [status, setStatus] = useState<Status | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const template = TEMPLATES[tab];
   const canFinance = can(roles, "finance:edit");
+  const batch = batches.find((b) => b.id === selected) || batches[0] || null;
 
   const loadStatus = useCallback(async () => {
     if (!companyId || !canFinance) return;
@@ -86,70 +121,98 @@ export default function DataImportPage() {
       if (res.ok && d.success) setStatus(d);
     } catch { /* แสดงเฉพาะเมื่อโหลดได้ */ }
   }, [companyId, canFinance]);
-  useEffect(() => { if (isOpening(tab)) loadStatus(); }, [tab, loadStatus]);
+  const wantsStatus = isOpening(tab) || batches.some((b) => isOpening(b.entity));
+  useEffect(() => { if (wantsStatus) loadStatus(); }, [wantsStatus, loadStatus]);
 
-  const reset = () => { setRows([]); setFileName(""); setNotes({ missing: [], unknown: [] }); setError(""); setInfo(""); };
-  const switchTab = (id: string) => { if (busy) return; setTab(id as TabId); reset(); };
+  const switchTab = (id: string) => { if (!busy) setTab(id as TabId); };
+  const clearAll = () => { if (busy) return; setBatches([]); setSelected(""); setError(""); setInfo(""); };
+  const removeBatch = (id: string) => { if (busy) return; setBatches((cur) => cur.filter((b) => b.id !== id)); };
 
-  const downloadTemplate = async () => {
+  /** สมุดแม่แบบ: หนึ่งชีตต่อชนิดข้อมูล + คำอธิบาย (+ผังบัญชีถ้ามีงบทดลอง) */
+  const downloadTemplates = async (types: TabId[]) => {
     const XLSX = await loadXlsx();
     const wb = XLSX.utils.book_new();
-    const data = XLSX.utils.aoa_to_sheet([template.columns.map((c) => (c.required ? `${c.header}*` : c.header))]);
-    data["!cols"] = template.columns.map((c) => ({ wch: Math.max(14, c.header.length + 4) }));
-    XLSX.utils.book_append_sheet(wb, data, "ข้อมูล");
+    const single = types.length === 1;
+    for (const t of types) {
+      const tp = TEMPLATES[t];
+      const data = XLSX.utils.aoa_to_sheet([headerRow(tp)]);
+      data["!cols"] = colWidths(tp);
+      XLSX.utils.book_append_sheet(wb, data, single ? "ข้อมูล" : sheetName(tp.label));
+    }
     const guide = XLSX.utils.aoa_to_sheet([
-      ["คอลัมน์", "จำเป็น", "ตัวอย่าง", "คำอธิบาย"],
-      ...template.columns.map((c) => [c.header, c.required ? "ต้องกรอก" : "", c.example, c.note || ""]),
+      [...(single ? [] : ["ชีต"]), "คอลัมน์", "จำเป็น", "ตัวอย่าง", "คำอธิบาย"],
+      ...types.flatMap((t) => TEMPLATES[t].columns.map((c) => [...(single ? [] : [sheetName(TEMPLATES[t].label)]), c.header, c.required ? "ต้องกรอก" : "", c.example, c.note || ""])),
       [],
-      ["กรอกข้อมูลในชีต \"ข้อมูล\" หนึ่งแถวต่อหนึ่งรายการ ลำดับคอลัมน์สลับได้ คอลัมน์ที่ไม่ใช้ลบออกได้ (ยกเว้นคอลัมน์ที่มี *)"],
+      [single ? "กรอกข้อมูลในชีต \"ข้อมูล\" หนึ่งแถวต่อหนึ่งรายการ ลำดับคอลัมน์สลับได้ คอลัมน์ที่ไม่ใช้ลบออกได้ (ยกเว้นคอลัมน์ที่มี *)" : "กรอกแต่ละชีตตามชนิดข้อมูล ชีตที่ไม่ใช้ปล่อยว่างหรือลบได้ · นำเข้าไฟล์นี้ไฟล์เดียว ระบบแยกชีตให้เอง"],
       ["เลขผู้เสียภาษี/เบอร์โทร: ตั้งรูปแบบเซลล์เป็นข้อความ หรือพิมพ์ตามปกติก็ได้ ระบบเติมเลข 0 นำหน้าให้"],
     ]);
-    guide["!cols"] = [{ wch: 30 }, { wch: 10 }, { wch: 24 }, { wch: 60 }];
+    guide["!cols"] = [...(single ? [] : [{ wch: 16 }]), { wch: 30 }, { wch: 10 }, { wch: 24 }, { wch: 60 }];
     XLSX.utils.book_append_sheet(wb, guide, "คำอธิบาย");
-    if (tab === "tb") {
+    if (types.includes("tb")) {
       const chart = XLSX.utils.aoa_to_sheet([["รหัสบัญชี", "ชื่อบัญชี"], ...CHART_OF_ACCOUNTS.map((a) => [a.code, a.name])]);
       chart["!cols"] = [{ wch: 12 }, { wch: 40 }];
       XLSX.utils.book_append_sheet(wb, chart, "ผังบัญชี");
     }
-    XLSX.writeFile(wb, `แม่แบบนำเข้า-${template.label.replace(/\//g, "-")}.xlsx`);
+    XLSX.writeFile(wb, single ? `แม่แบบนำเข้า-${template.label.replace(/\//g, "-")}.xlsx` : `แม่แบบนำเข้า-ทั้งหมด-${bkkToday()}.xlsx`);
   };
 
-  /** ส่งออกข้อมูลในระบบ — หัวตารางเดียวกับแม่แบบ แก้แล้วนำเข้ากลับได้ */
-  const exportData = async () => {
-    if (!companyId || isOpening(tab)) return;
+  /** ส่งออกข้อมูลในระบบ — หัวตารางเดียวกับแม่แบบ แก้แล้วนำเข้ากลับได้ · หลายชนิด = หนึ่งชีตต่อชนิด */
+  const exportData = async (types: ImportEntity[]) => {
+    if (!companyId || !types.length) return;
     setBusy(true); setError(""); setInfo("");
     try {
-      const d = await post("/api/data-export", { entity: tab });
       const XLSX = await loadXlsx();
       const wb = XLSX.utils.book_new();
-      const sheet = XLSX.utils.aoa_to_sheet([template.columns.map((c) => (c.required ? `${c.header}*` : c.header)), ...d.records.map((r: any) => toTemplateRow(tab as ImportEntity, r))]);
-      sheet["!cols"] = template.columns.map((c) => ({ wch: Math.max(14, c.header.length + 4) }));
-      XLSX.utils.book_append_sheet(wb, sheet, "ข้อมูล");
-      XLSX.writeFile(wb, `${template.label.replace(/\//g, "-")}-${bkkToday()}.xlsx`);
-      setInfo(`ส่งออก ${d.records.length} รายการแล้ว — แก้ในไฟล์แล้วนำเข้ากลับ: แถวที่มี "รหัสในระบบ" = แก้รายการเดิม · แถวที่ไม่มี = เพิ่มใหม่`);
+      const counts: string[] = [];
+      for (const t of types) {
+        const d = await post("/api/data-export", { entity: t });
+        const tp = TEMPLATES[t];
+        const sheet = XLSX.utils.aoa_to_sheet([headerRow(tp), ...d.records.map((r: any) => toTemplateRow(t, r))]);
+        sheet["!cols"] = colWidths(tp);
+        XLSX.utils.book_append_sheet(wb, sheet, types.length === 1 ? "ข้อมูล" : sheetName(tp.label));
+        counts.push(`${tp.label} ${d.records.length}`);
+      }
+      XLSX.writeFile(wb, `${types.length === 1 ? TEMPLATES[types[0]].label.replace(/\//g, "-") : "ข้อมูลหลัก"}-${bkkToday()}.xlsx`);
+      setInfo(`ส่งออกแล้ว (${counts.join(" · ")} รายการ) — แก้ในไฟล์แล้วนำเข้ากลับ: แถวที่มี "รหัสในระบบ" = แก้รายการเดิม · แถวที่ไม่มี = เพิ่มใหม่`);
     } catch (err: any) { setError(err.message); } finally { setBusy(false); }
   };
 
-  const readFile = async (file: File) => {
-    reset();
-    setFileName(file.name);
-    try {
-      const XLSX = await loadXlsx();
-      const wb = XLSX.read(await file.arrayBuffer());
-      const ws = wb.Sheets["ข้อมูล"] || wb.Sheets[wb.SheetNames[0]];
-      const aoa = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, raw: true, defval: "", blankrows: false });
-      if (!aoa.length) throw new Error("ไฟล์ไม่มีข้อมูล");
-      const { index, missing, unknown } = mapHeaders(template, aoa[0]);
-      setNotes({ missing, unknown });
-      if (missing.length) return;
-      const parsed = parseRows(template, aoa.slice(1), index);
-      if (!parsed.length) throw new Error("ไม่พบแถวข้อมูลใต้หัวตาราง");
-      if (parsed.length > 2000) throw new Error(`ไฟล์มี ${parsed.length} แถว — แบ่งไฟล์ละไม่เกิน 2,000 แถว`);
-      setRows(parsed.map((r) => ({ ...r, status: r.errors.length ? "invalid" : "ready" })));
-    } catch (err: any) {
-      setError(err.message || "อ่านไฟล์ไม่สำเร็จ");
+  /** อ่านหลายไฟล์: ทุกชีตที่หัวตารางตรงแม่แบบเป็นหนึ่งชุด · ไฟล์ที่ไม่มีชีตตรงเลย = หนึ่งชุดให้เลือกชนิดเอง */
+  const readFiles = async (files: File[]) => {
+    if (busy || !files.length) return;
+    setError(""); setInfo("");
+    const XLSX = await loadXlsx();
+    const added: Batch[] = [];
+    const candidates = allowed.map((t) => TEMPLATES[t]);
+    for (const file of files) {
+      try {
+        const wb = XLSX.read(await file.arrayBuffer());
+        const sheets = wb.SheetNames.filter((n) => !AUX_SHEETS.includes(n));
+        const found: Batch[] = [];
+        let firstAoa: any[][] = [];
+        for (const name of sheets) {
+          const aoa = XLSX.utils.sheet_to_json<any[]>(wb.Sheets[name], { header: 1, raw: true, defval: "", blankrows: false });
+          if (!aoa.length) continue;
+          if (!firstAoa.length) firstAoa = aoa;
+          const det = detectEntity(aoa[0], [file.name, name], candidates, tab);
+          if (!det.entity) continue;
+          const entity = det.entity as TabId;
+          // แม่แบบรวม: ชีตที่มีแค่หัวตาราง (ไม่ได้กรอก) ข้ามไป
+          if (sheets.length > 1 && aoa.length < 2) continue;
+          found.push({ id: `${file.name}:${name}:${Date.now()}:${Math.random().toString(36).slice(2, 6)}`, fileName: file.name, sheet: name, sheets: sheets.length, entity, ambiguous: det.ambiguous, aoa, ...parseBatch(aoa, entity) });
+        }
+        if (!found.length) {
+          found.push({ id: `${file.name}:${Date.now()}:${Math.random().toString(36).slice(2, 6)}`, fileName: file.name, sheet: sheets[0] || "", sheets: sheets.length, entity: null, ambiguous: false, aoa: firstAoa, ...parseBatch(firstAoa, null), ...(firstAoa.length ? {} : { error: "ไฟล์ไม่มีข้อมูล" }) });
+        }
+        added.push(...found);
+      } catch (err: any) {
+        added.push({ id: `${file.name}:${Date.now()}`, fileName: file.name, sheet: "", sheets: 0, entity: null, ambiguous: false, aoa: [], rows: [], notes: { missing: [], unknown: [] }, error: `อ่านไฟล์ไม่สำเร็จ: ${err.message || err}` });
+      }
     }
+    setBatches((cur) => [...cur, ...added]);
+    if (added[0]) setSelected(added[0].id);
   };
+  const setBatchEntity = (id: string, entity: TabId | null) => setBatches((cur) => cur.map((b) => (b.id === id ? { ...b, entity, ambiguous: false, ...parseBatch(b.aoa, entity) } : b)));
 
   const post = async (url: string, body: Record<string, any>) => {
     const res = await apiFetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, ...body }) });
@@ -157,18 +220,19 @@ export default function DataImportPage() {
     if (!res.ok || !d.success) throw new Error(d.error || `บันทึกไม่สำเร็จ (${res.status})`);
     return d;
   };
-  const update = (rowNos: number[], patch: Partial<RowState>) => setRows((cur) => cur.map((r) => (rowNos.includes(r.rowNo) ? { ...r, ...patch } : r)));
+  const update = (batchId: string, rowNos: number[], patch: Partial<RowState>) =>
+    setBatches((cur) => cur.map((b) => (b.id !== batchId ? b : { ...b, rows: b.rows.map((r) => (rowNos.includes(r.rowNo) ? { ...r, ...patch } : r)) })));
 
-  const importMaster = async (todo: RowState[]) => {
-    const entity = tab as ImportEntity;
+  const importMaster = async (b: Batch, todo: RowState[]) => {
+    const entity = b.entity as ImportEntity;
     for (const row of todo) {
-      update([row.rowNo], { status: "saving", message: "" });
+      update(b.id, [row.rowNo], { status: "saving", message: "" });
       try {
         const req = toCreateRequest(entity, row.values, { postOpeningJournal: postJournal });
         const id = String(row.values._id || "").trim();
         if (entity === "employees") {
           await post("/api/hr/employees", { ...req.data, ...(id ? { employeeDocId: id } : {}) });
-          update([row.rowNo], { status: "done", message: id ? "แก้ไขแล้ว" : "" });
+          update(b.id, [row.rowNo], { status: "done", message: id ? "แก้ไขแล้ว" : "" });
           continue;
         }
         if (id) {
@@ -178,13 +242,13 @@ export default function DataImportPage() {
           const save = (e: string, scope: "group" | "company") => post("/api/master-data", { action: "update", entity: e, id, changes, scope });
           await save(entity, "group").catch((err) => (/สิทธิ์|403/.test(err.message) ? save(entity, "company") : Promise.reject(err)));
           if (entity === "suppliers") await save("contractors", "group").catch(() => save("contractors", "company")).catch(() => undefined);
-          update([row.rowNo], { status: "done", message: "แก้ไขแล้ว" });
+          update(b.id, [row.rowNo], { status: "done", message: "แก้ไขแล้ว" });
           continue;
         }
         if (entity === "products") {
           // รหัสสินค้าว่าง = ให้ server ออกรหัสให้ตอนบันทึก (ไม่ซ้ำในเครือ)
           const res = await post("/api/master-data", { action: "create", entity, id: `PROD-${Date.now()}-${row.rowNo}`, autoSku: !row.values.sku, ...req });
-          update([row.rowNo], { status: "done", message: row.values.sku ? "" : `รหัส ${res.sku}` });
+          update(b.id, [row.rowNo], { status: "done", message: row.values.sku ? "" : `รหัส ${res.sku}` });
           continue;
         } else if (entity === "suppliers") {
           // ผู้ขายและผู้รับเหมาใช้รหัสเดียวกัน (เหมือนฟอร์มเพิ่มผู้ขาย)
@@ -193,55 +257,67 @@ export default function DataImportPage() {
         } else {
           await post("/api/master-data", { action: "create", entity, ...req });
         }
-        update([row.rowNo], { status: "done" });
+        update(b.id, [row.rowNo], { status: "done" });
       } catch (err: any) {
-        update([row.rowNo], { status: "failed", message: err.message });
+        update(b.id, [row.rowNo], { status: "failed", message: err.message });
       }
     }
   };
 
-  const importTb = async (todo: RowState[]) => {
+  const importTb = async (b: Batch, todo: RowState[]) => {
     const nos = todo.map((r) => r.rowNo);
-    update(nos, { status: "saving", message: "" });
+    update(b.id, nos, { status: "saving", message: "" });
     try {
       const { lines } = tbLines(todo.map((r) => r.values as any));
       const d = await post("/api/finance/journal-entries", { date: tbDate, bookType: "JV", description: `ยอดยกมา ณ วันที่ ${tbDate} (งบทดลองจากระบบเดิม)`, reference: OPENING_TB_REF, lines });
-      update(nos, { status: "done" });
+      update(b.id, nos, { status: "done" });
       setInfo(`สร้างใบสำคัญ ${d.journalNo} (ร่าง) แล้ว — อนุมัติลงบัญชีที่เมนูสมุดรายวันเพื่อให้ยอดเข้างบ`);
     } catch (err: any) {
-      update(nos, { status: "failed", message: err.message });
+      update(b.id, nos, { status: "failed", message: err.message });
     }
   };
 
-  const importOpenItems = async (todo: RowState[]) => {
+  const importOpenItems = async (b: Batch, todo: RowState[]) => {
     for (let i = 0; i < todo.length; i += 200) {
       const chunk = todo.slice(i, i + 200);
-      update(chunk.map((r) => r.rowNo), { status: "saving", message: "" });
+      update(b.id, chunk.map((r) => r.rowNo), { status: "saving", message: "" });
       try {
-        const d = await post("/api/finance/opening-balances", { action: tab, items: chunk.map((r) => r.values) });
-        setRows((cur) => cur.map((r) => {
-          const at = chunk.findIndex((c) => c.rowNo === r.rowNo);
-          if (at < 0) return r;
-          const res = d.results.find((x: any) => x.index === at);
-          return res?.ok ? { ...r, status: "done" } : { ...r, status: "failed", message: res?.error || "ไม่สำเร็จ" };
-        }));
+        const d = await post("/api/finance/opening-balances", { action: b.entity, items: chunk.map((r) => r.values) });
+        setBatches((cur) => cur.map((x) => (x.id !== b.id ? x : {
+          ...x,
+          rows: x.rows.map((r) => {
+            const at = chunk.findIndex((c) => c.rowNo === r.rowNo);
+            if (at < 0) return r;
+            const res = d.results.find((y: any) => y.index === at);
+            return res?.ok ? { ...r, status: "done" as const } : { ...r, status: "failed" as const, message: res?.error || "ไม่สำเร็จ" };
+          }),
+        })));
       } catch (err: any) {
-        update(chunk.map((r) => r.rowNo), { status: "failed", message: err.message });
+        update(b.id, chunk.map((r) => r.rowNo), { status: "failed", message: err.message });
       }
     }
   };
 
-  const runImport = async () => {
+  /** งบทดลองต้องนำเข้าทั้งชุด: ทุกแถวผ่าน และเดบิต = เครดิต */
+  const tbOf = (b: Batch) => (b.entity === "tb" ? tbLines(b.rows.filter((r) => r.status !== "invalid").map((r) => r.values as any)) : null);
+  const pendingOf = (b: Batch) => (b.entity && !b.error ? b.rows.filter((r) => r.status === "ready" || r.status === "failed") : []);
+  const blockedOf = (b: Batch) => !b.entity || !!b.error || b.notes.missing.length > 0 || (b.entity === "tb" && (countOf(b.rows).invalid > 0 || !tbOf(b)?.balanced));
+
+  const runBatch = async (b: Batch) => {
+    const todo = pendingOf(b);
+    if (!todo.length || blockedOf(b)) return;
+    if (b.entity === "tb") await importTb(b, todo);
+    else if (b.entity === "ar" || b.entity === "ap") await importOpenItems(b, todo);
+    else await importMaster(b, todo);
+  };
+  const runImport = async (only?: Batch) => {
     if (!companyId || busy) return;
-    setBusy(true);
-    setError("");
-    setInfo("");
-    const todo = rows.filter((r) => r.status === "ready" || r.status === "failed");
-    if (tab === "tb") await importTb(todo);
-    else if (tab === "ar" || tab === "ap") await importOpenItems(todo);
-    else await importMaster(todo);
+    setBusy(true); setError(""); setInfo("");
+    // ข้อมูลหลักก่อนยอดยกมา (ลูกหนี้/เจ้าหนี้อ้างชื่อลูกค้า/ผู้ขาย)
+    const list = only ? [only] : [...batches].sort((a, b) => TAB_ORDER.indexOf(a.entity!) - TAB_ORDER.indexOf(b.entity!));
+    for (const b of list) { setSelected(b.id); await runBatch(b); }
     setBusy(false);
-    if (isOpening(tab)) loadStatus();
+    if (list.some((b) => isOpening(b.entity))) loadStatus();
   };
 
   const clearOpening = async () => {
@@ -259,30 +335,42 @@ export default function DataImportPage() {
     }
   };
 
-  const count = useMemo(() => {
-    const c = { ready: 0, invalid: 0, saving: 0, done: 0, failed: 0 };
-    rows.forEach((r) => c[r.status]++);
-    return c;
-  }, [rows]);
-  const tb = useMemo(() => (tab === "tb" ? tbLines(rows.filter((r) => r.status !== "invalid").map((r) => r.values as any)) : null), [tab, rows]);
-  const previewCols = PREVIEW[tab].map((k) => template.columns.find((c) => c.key === k)!);
-  const hasOpeningStock = tab === "products" && rows.some((r) => r.values.openingQty > 0);
-  const pending = count.ready + count.failed;
-  // งบทดลองต้องนำเข้าทั้งชุด: ทุกแถวผ่าน และเดบิต = เครดิต
-  const tbBlocked = tab === "tb" && (count.invalid > 0 || !tb?.balanced);
-  const existingTb = tab === "tb" ? status?.tb || [] : [];
+  const count = useMemo(() => countOf(batch?.rows || []), [batch]);
+  const total = useMemo(() => {
+    const all = batches.flatMap((b) => (blockedOf(b) ? [] : pendingOf(b)));
+    return { pending: all.length, files: batches.filter((b) => !blockedOf(b) && pendingOf(b).length).length };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- คำนวณจากชุดข้อมูลทั้งหมด
+  }, [batches]);
+  const tb = batch ? tbOf(batch) : null;
+  const bTemplate = batch?.entity ? TEMPLATES[batch.entity] : null;
+  const previewCols = batch?.entity ? PREVIEW[batch.entity].map((k) => TEMPLATES[batch.entity!].columns.find((c) => c.key === k)!) : [];
+  const hasOpeningStock = batches.some((b) => b.entity === "products" && b.rows.some((r) => r.values.openingQty > 0));
+  const hasTb = batches.some((b) => b.entity === "tb");
+  const pending = batch ? pendingOf(batch).length : 0;
+  const existingTb = hasTb ? status?.tb || [] : [];
+  const exportable = allowed.filter((t): t is ImportEntity => !isOpening(t));
 
   if (!allowed.length) {
     return <div className="p-10 text-white/60">ไม่มีสิทธิ์นำเข้าข้อมูล (ต้องมีสิทธิ์แก้ไขลูกค้า ผู้ขาย สินค้า พนักงาน หรือบัญชี)</div>;
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
+    <div
+      className="flex-1 flex flex-col h-full overflow-hidden bg-transparent relative"
+      onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDragging(true); } }}
+      onDragLeave={(e) => { if (e.currentTarget === e.target) setDragging(false); }}
+      onDrop={(e) => { e.preventDefault(); setDragging(false); readFiles(Array.from(e.dataTransfer.files)); }}
+    >
+      {dragging && (
+        <div className="absolute inset-3 z-50 rounded-2xl border-2 border-dashed border-nexus-teal/60 bg-black/70 flex items-center justify-center pointer-events-none">
+          <p className="text-[16px] font-bold text-nexus-teal flex items-center gap-2"><Files size={20} /> วางไฟล์ Excel ที่นี่ (หลายไฟล์ได้)</p>
+        </div>
+      )}
       <header className="px-6 py-2.5 min-h-[60px] border-b border-white/5 flex items-center gap-3 bg-black/20 shrink-0">
         <div className="w-9 h-9 rounded-xl bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/10"><FileSpreadsheet size={20} /></div>
         <div>
           <h1 className="text-lg font-bold text-white tracking-tight leading-none">นำเข้า/ส่งออกข้อมูล Excel</h1>
-          <p className="text-xs font-semibold text-white/60 mt-1 leading-none">ย้ายข้อมูลหลักและยอดยกมาจากระบบเดิม · ส่งออกไปแก้แล้วนำเข้ากลับ</p>
+          <p className="text-xs font-semibold text-white/60 mt-1 leading-none">ย้ายข้อมูลหลักและยอดยกมาจากระบบเดิม · ส่งออกไปแก้แล้วนำเข้ากลับ · เลือกได้ทีละหลายไฟล์</p>
         </div>
       </header>
 
@@ -290,19 +378,21 @@ export default function DataImportPage() {
         <div className="p-5 max-w-[1800px] mx-auto space-y-3">
           <div className="flex flex-wrap items-center gap-3">
             <PillTabs className="flex-1 min-w-[240px]" tabs={allowed.map((t) => ({ id: t, label: TEMPLATES[t].label }))} activeTab={tab} onTabChange={switchTab} />
-            <div className="flex items-center gap-2">
-              <PillButton variant="glass" onClick={downloadTemplate} className="h-9 px-4 text-xs"><Download size={14} className="mr-1.5" /> ดาวน์โหลดแม่แบบ</PillButton>
-              {!isOpening(tab) && <PillButton variant="glass" onClick={exportData} disabled={busy} className="h-9 px-4 text-xs" title="ส่งออกข้อมูลในระบบเป็น Excel (แก้แล้วนำเข้ากลับได้)"><FileDown size={14} className="mr-1.5" /> ส่งออก Excel</PillButton>}
-              <PillButton variant="glass" onClick={() => fileRef.current?.click()} disabled={busy} className="h-9 px-4 text-xs"><Upload size={14} className="mr-1.5" /> เลือกไฟล์ Excel</PillButton>
-              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) readFile(f); }} />
+            <div className="flex flex-wrap items-center gap-2">
+              <PillButton variant="glass" onClick={() => downloadTemplates([tab])} className="h-9 px-4 text-xs"><Download size={14} className="mr-1.5" /> แม่แบบ{template.label}</PillButton>
+              {allowed.length > 1 && <PillButton variant="glass" onClick={() => downloadTemplates(allowed)} className="h-9 px-4 text-xs" title="ไฟล์เดียว หนึ่งชีตต่อชนิดข้อมูล — กรอกแล้วนำเข้าไฟล์นี้ไฟล์เดียว"><Files size={14} className="mr-1.5" /> แม่แบบทุกชนิด (ไฟล์เดียว)</PillButton>}
+              {!isOpening(tab) && <PillButton variant="glass" onClick={() => exportData([tab as ImportEntity])} disabled={busy} className="h-9 px-4 text-xs" title="ส่งออกข้อมูลในระบบเป็น Excel (แก้แล้วนำเข้ากลับได้)"><FileDown size={14} className="mr-1.5" /> ส่งออก{template.label}</PillButton>}
+              {exportable.length > 1 && <PillButton variant="glass" onClick={() => exportData(exportable)} disabled={busy} className="h-9 px-4 text-xs" title="ข้อมูลหลักทุกชนิดในไฟล์เดียว หนึ่งชีตต่อชนิด"><FileDown size={14} className="mr-1.5" /> ส่งออกทั้งหมด</PillButton>}
+              <PillButton variant="primary" onClick={() => fileRef.current?.click()} disabled={busy} className="h-9 px-4 text-xs"><Upload size={14} className="mr-1.5" /> เลือกไฟล์ Excel</PillButton>
+              <input ref={fileRef} type="file" multiple accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => { const f = Array.from(e.target.files || []); e.target.value = ""; readFiles(f); }} />
             </div>
           </div>
 
           <p className="text-[12px] text-white/50 px-1 leading-relaxed">
-            1. ดาวน์โหลดแม่แบบ{template.label} แล้วกรอกในชีต &quot;ข้อมูล&quot; (คัดลอกคอลัมน์จากไฟล์เดิมมาวางได้){!isOpening(tab) && <> หรือ &quot;ส่งออก Excel&quot; เพื่อแก้ข้อมูลเดิม</>} · 2. เลือกไฟล์ ระบบตรวจทุกแถวก่อน · 3. กดนำเข้า — {STEPS[tab]}
+            1. ดาวน์โหลดแม่แบบ (ทีละชนิด หรือทุกชนิดในไฟล์เดียว) แล้วกรอกข้อมูล{!isOpening(tab) && <> หรือส่งออกเพื่อแก้ข้อมูลเดิม</>} · 2. เลือกไฟล์หรือลากมาวาง ได้ทีละหลายไฟล์ ระบบแยกชนิดข้อมูลจากหัวตารางให้และตรวจทุกแถว · 3. กดนำเข้า — {STEPS[tab]}
           </p>
 
-          {isOpening(tab) && status && (
+          {wantsStatus && status && (
             <GlassCard accentColor="blue" className="p-2">
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-3 pt-2 pb-1 text-[12px] text-white/60">
                 <span className="font-bold text-white/80">กระทบยอดบัญชีคุมกับยอดรายตัว</span>
@@ -332,14 +422,76 @@ export default function DataImportPage() {
 
           {error && <div className="p-3 rounded-xl text-xs font-bold border bg-danger/10 border-danger/20 text-danger">{error}</div>}
           {info && <div className="p-3 rounded-xl text-xs font-bold border bg-nexus-teal/10 border-nexus-teal/20 text-nexus-teal">{info}</div>}
-          {notes.missing.length > 0 && <div className="p-3 rounded-xl text-xs font-bold border bg-danger/10 border-danger/20 text-danger">ไฟล์ไม่มีคอลัมน์ที่ต้องกรอก: {notes.missing.join(", ")} — ใช้หัวตารางตามแม่แบบ</div>}
-          {notes.unknown.length > 0 && <p className="text-[12px] text-white/40 px-1">ข้ามคอลัมน์ที่ไม่รู้จัก: {notes.unknown.join(", ")}</p>}
-          {existingTb.length > 0 && rows.length > 0 && count.done === 0 &&<div className="p-3 rounded-xl text-xs font-bold border bg-warning/10 border-warning/20 text-warning">มีใบสำคัญงบทดลองยกมาแล้ว ({existingTb.map((t) => t.journalNo).join(", ")}) — ถ้านำเข้าซ้ำ ให้ยกเลิกใบเดิมก่อน ยอดจะได้ไม่เบิ้ล</div>}
 
-          {rows.length > 0 && (
+          {!batches.length ? (
+            <div className="w-full rounded-2xl border-2 border-dashed border-white/15 py-10 flex flex-col items-center gap-2 text-white/55">
+              <Files size={28} className="text-nexus-teal/80" />
+              <span className="text-[14px] font-bold text-white/80">ลากไฟล์ Excel มาวางที่นี่</span>
+              <span className="text-[12px]">เลือกได้ทีละหลายไฟล์ · ไฟล์ที่มีหลายชีตแยกเป็นชุดให้เอง · ไม่เกิน {MAX_ROWS.toLocaleString("th-TH")} แถวต่อชีต</span>
+              <PillButton variant="glass" onClick={() => fileRef.current?.click()} disabled={busy} className="h-9 px-4 text-xs mt-1"><Upload size={14} className="mr-1.5" /> หรือเลือกไฟล์</PillButton>
+            </div>
+          ) : (
+            <GlassCard accentColor="blue" className="p-2">
+              <div className="flex flex-wrap items-center gap-2 px-3 pt-2 pb-1 text-[12px] text-white/60">
+                <span className="font-bold text-white/80">เลือกไว้ {new Set(batches.map((b) => b.fileName)).size} ไฟล์ · {batches.length} ชุดข้อมูล</span>
+                {hasTb && <span className="flex items-center gap-2">วันที่ยกมา (งบทดลอง) <NexusDatePicker value={tbDate} onChange={(e) => setTbDate(e.target.value)} disabled={busy} className="w-[160px]" /></span>}
+                {hasOpeningStock && (
+                  <span className="flex items-center gap-2" title="ไม่ต้องเลือก ถ้ายอดสินค้าคงเหลือรวมอยู่ในงบทดลองยกมาแล้ว (จะได้ไม่บันทึกซ้ำ)">
+                    <PillCheckbox label="ลงบัญชียอดยกมาสินค้า" checked={postJournal} onChange={(e) => setPostJournal(e.target.checked)} disabled={busy} />
+                  </span>
+                )}
+                <span className="ml-auto flex items-center gap-2">
+                  <PillButton variant="ghost" onClick={() => fileRef.current?.click()} disabled={busy} className="h-8 px-3 text-xs"><Upload size={13} className="mr-1.5" /> เพิ่มไฟล์</PillButton>
+                  <PillButton variant="ghost" onClick={clearAll} disabled={busy} className="h-8 px-3 text-xs"><X size={13} className="mr-1.5" /> ล้างรายการ</PillButton>
+                  <PillButton variant="primary" onClick={() => runImport()} disabled={busy || total.pending === 0} className="h-8 px-4 text-xs">
+                    {busy ? "กำลังนำเข้า…" : total.pending ? `นำเข้าทั้งหมด ${total.pending.toLocaleString("th-TH")} รายการ (${total.files} ชุด)` : "ไม่มีรายการรอนำเข้า"}
+                  </PillButton>
+                </span>
+              </div>
+              <NexusTable headers={["ไฟล์", "ชีต", "ชนิดข้อมูล", "แถว", "พร้อม", "ไม่ผ่าน", "นำเข้าแล้ว", "สถานะ", ""]}>
+                {batches.map((b) => {
+                  const c = countOf(b.rows), blocked = blockedOf(b);
+                  const state = b.error || (b.notes.missing.length ? `ขาดคอลัมน์ ${b.notes.missing.join(", ")}` : b.entity === "tb" && blocked ? "งบทดลองไม่สมดุล/มีแถวไม่ผ่าน" : c.saving ? "กำลังนำเข้า" : !pendingOf(b).length && c.done ? "นำเข้าเสร็จแล้ว" : b.ambiguous ? "ตรวจชนิดข้อมูล" : "พร้อมนำเข้า");
+                  const tone = b.error || b.notes.missing.length || (b.entity === "tb" && blocked) ? "text-danger" : b.ambiguous ? "text-warning" : "text-nexus-teal";
+                  return (
+                    <NexusTableRow key={b.id} onClick={() => setSelected(b.id)} className={cn("cursor-pointer", batch?.id === b.id && "bg-nexus-teal/10")}>
+                      <NexusTableCell className="text-white/85 max-w-[280px] truncate" title={b.fileName}>{b.fileName}</NexusTableCell>
+                      <NexusTableCell className="text-white/55">{b.sheets > 1 ? b.sheet : "-"}</NexusTableCell>
+                      <NexusTableCell>
+                        <div className="w-[170px]" onClick={(e) => e.stopPropagation()}>
+                          <PillSelect value={b.entity || ""} disabled={busy} onChange={(e) => setBatchEntity(b.id, (String(e.target.value) || null) as TabId | null)} className={cn("h-8 w-full text-[12px]", b.ambiguous && "border-warning/60")}>
+                            <option value="">เลือกชนิดข้อมูล…</option>
+                            {allowed.map((t) => <option key={t} value={t}>{TEMPLATES[t].label}</option>)}
+                          </PillSelect>
+                        </div>
+                      </NexusTableCell>
+                      <NexusTableCell className="font-mono text-right text-white/80">{b.rows.length.toLocaleString("th-TH")}</NexusTableCell>
+                      <NexusTableCell className="font-mono text-right text-nexus-teal">{c.ready.toLocaleString("th-TH")}</NexusTableCell>
+                      <NexusTableCell className={cn("font-mono text-right", c.invalid ? "text-danger" : "text-white/40")}>{c.invalid.toLocaleString("th-TH")}</NexusTableCell>
+                      <NexusTableCell className={cn("font-mono text-right", c.done ? "text-nexus-teal" : "text-white/40")}>{c.done.toLocaleString("th-TH")}{c.failed ? <span className="text-danger"> · ไม่สำเร็จ {c.failed}</span> : null}</NexusTableCell>
+                      <NexusTableCell className={cn("text-[12px] font-bold max-w-[260px] truncate", tone)} title={state}>{state}</NexusTableCell>
+                      <NexusTableCell>
+                        <PillButton variant="ghost" aria-label="เอาออกจากรายการ" title="เอาออกจากรายการ (ไม่ลบข้อมูลที่นำเข้าแล้ว)" disabled={busy} onClick={(e) => { e.stopPropagation(); removeBatch(b.id); }} className="h-8 w-8 p-0 text-white/40 hover:text-danger"><X size={14} /></PillButton>
+                      </NexusTableCell>
+                    </NexusTableRow>
+                  );
+                })}
+              </NexusTable>
+            </GlassCard>
+          )}
+
+          {batch && (
+            <>
+              {batch.notes.missing.length > 0 && <div className="p-3 rounded-xl text-xs font-bold border bg-danger/10 border-danger/20 text-danger">{batch.fileName}: ไม่มีคอลัมน์ที่ต้องกรอก {batch.notes.missing.join(", ")} — ใช้หัวตารางตามแม่แบบ{bTemplate?.label} หรือเปลี่ยนชนิดข้อมูล</div>}
+              {batch.notes.unknown.length > 0 && <p className="text-[12px] text-white/40 px-1">ข้ามคอลัมน์ที่ไม่รู้จัก: {batch.notes.unknown.join(", ")}</p>}
+              {batch.entity === "tb" && existingTb.length > 0 && count.done === 0 && <div className="p-3 rounded-xl text-xs font-bold border bg-warning/10 border-warning/20 text-warning">มีใบสำคัญงบทดลองยกมาแล้ว ({existingTb.map((t) => t.journalNo).join(", ")}) — ถ้านำเข้าซ้ำ ให้ยกเลิกใบเดิมก่อน ยอดจะได้ไม่เบิ้ล</div>}
+            </>
+          )}
+
+          {batch && batch.rows.length > 0 && bTemplate && (
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-white/60 px-1">
-              <span className="text-white/80">{fileName}</span>
-              <span>ทั้งหมด <span className="font-mono font-bold text-white">{rows.length}</span></span>
+              <span className="text-white/80 font-bold">{batch.fileName}{batch.sheets > 1 ? ` · ${batch.sheet}` : ""} — {bTemplate.label}</span>
+              <span>ทั้งหมด <span className="font-mono font-bold text-white">{batch.rows.length}</span></span>
               <span>พร้อมนำเข้า <span className="font-mono font-bold text-nexus-teal">{count.ready}</span></span>
               {count.invalid > 0 && <span>ไม่ผ่าน <span className="font-mono font-bold text-danger">{count.invalid}</span></span>}
               {count.done > 0 && <span>นำเข้าแล้ว <span className="font-mono font-bold text-nexus-teal">{count.done}</span></span>}
@@ -349,28 +501,21 @@ export default function DataImportPage() {
                   <span>เดบิต <span className="font-mono font-bold text-white">{money(tb.debit)}</span></span>
                   <span>เครดิต <span className="font-mono font-bold text-white">{money(tb.credit)}</span></span>
                   {!tb.balanced && <span className="font-bold text-danger">ไม่สมดุล ต่างกัน {money(Math.abs(tb.debit - tb.credit))}</span>}
-                  <span className="flex items-center gap-2">วันที่ยกมา <NexusDatePicker value={tbDate} onChange={(e) => setTbDate(e.target.value)} disabled={busy} className="w-[160px]" /></span>
                 </>
               )}
-              {hasOpeningStock && (
-                <span className="flex items-center gap-2" title="ไม่ต้องเลือก ถ้ายอดสินค้าคงเหลือรวมอยู่ในงบทดลองยกมาแล้ว (จะได้ไม่บันทึกซ้ำ)">
-                  <PillCheckbox label="ลงบัญชียอดยกมาสินค้า" checked={postJournal} onChange={(e) => setPostJournal(e.target.checked)} disabled={busy} />
-                  <span className="text-[12px] text-white/40">ไม่ต้องเลือกถ้ารวมในงบทดลองยกมาแล้ว</span>
-                </span>
-              )}
-              <PillButton variant="primary" onClick={runImport} disabled={busy || pending === 0 || tbBlocked} className="h-9 px-5 text-xs ml-auto">
-                {busy ? `กำลังนำเข้า ${count.done + count.failed}/${count.done + count.failed + count.ready + count.saving}` : pending === 0 && count.done > 0 ? "นำเข้าเสร็จแล้ว" : tab === "tb" ? `สร้างใบสำคัญยกมา (${pending} บัญชี)` : `นำเข้า ${pending} รายการ`}
+              <PillButton variant="glass" onClick={() => runImport(batch)} disabled={busy || pending === 0 || blockedOf(batch)} className="h-9 px-5 text-xs ml-auto">
+                {pending === 0 && count.done > 0 ? "ชุดนี้นำเข้าเสร็จแล้ว" : batch.entity === "tb" ? `สร้างใบสำคัญยกมา (${pending} บัญชี)` : `นำเข้าเฉพาะชุดนี้ ${pending} รายการ`}
               </PillButton>
             </div>
           )}
 
-          {rows.length > 0 && (
+          {batch && batch.rows.length > 0 && (
             <GlassCard accentColor="teal" className="p-2">
-              <NexusTable headers={["ลำดับ", ...(isOpening(tab) ? [] : ["การทำงาน"]), ...previewCols.map((c) => c.header), "สถานะ", "หมายเหตุ"]}>
-                {rows.map((r) => (
+              <NexusTable headers={["ลำดับ", ...(isOpening(batch.entity) ? [] : ["การทำงาน"]), ...previewCols.map((c) => c.header), "สถานะ", "หมายเหตุ"]}>
+                {batch.rows.map((r) => (
                   <NexusTableRow key={r.rowNo}>
                     <NexusTableCell className="font-mono text-white/50">{r.rowNo}</NexusTableCell>
-                    {!isOpening(tab) && <NexusTableCell className={cn("text-[12px] font-bold", r.values._id ? "text-warning" : "text-white/60")}>{r.values._id ? "แก้ไข" : "เพิ่มใหม่"}</NexusTableCell>}
+                    {!isOpening(batch.entity) && <NexusTableCell className={cn("text-[12px] font-bold", r.values._id ? "text-warning" : "text-white/60")}>{r.values._id ? "แก้ไข" : "เพิ่มใหม่"}</NexusTableCell>}
                     {previewCols.map((c) => (
                       <NexusTableCell key={c.key} className={cn(c.type === "number" || c.type === "int" ? "font-mono" : "", "text-white/80")}>
                         {r.values[c.key] === undefined ? "-" : c.type === "number" ? money(r.values[c.key]) : typeof r.values[c.key] === "number" ? r.values[c.key].toLocaleString("th-TH") : String(r.values[c.key])}

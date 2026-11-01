@@ -4,6 +4,8 @@ import { processStockMovements, StockMovement } from '@/lib/stock-service';
 import { prepareSequence } from '@/lib/sequence-server';
 import { sellerSnapshot } from '@/lib/documents/seller.server';
 import { getProduct } from '@/lib/product-store.server';
+import { isStockItem } from '@/lib/product-kind';
+import { assertPeriodOpen } from '@/lib/period-close-service';
 import { groupIdOfCompany } from '@/lib/company-group.server';
 
 /**
@@ -63,13 +65,13 @@ export async function processPOSBatchCheckout(payload: POSCheckoutPayload): Prom
   if (qtyById.size === 0) throw new Error('ไม่มีรายการสินค้า');
 
   // ราคาและชื่อจากฐานข้อมูล
-  const lines: Array<{ productId: string; sku: string; name: string; qty: number; price: number; amount: number }> = [];
+  const lines: Array<{ productId: string; sku: string; name: string; qty: number; price: number; amount: number; stocked: boolean }> = [];
   const groupId = await groupIdOfCompany(companyId);
   for (const [productId, qty] of Array.from(qtyById.entries())) {
     const p = (await getProduct(companyId, productId, groupId))?.data;
     if (!p) throw new Error(`ไม่พบสินค้า ${productId}`);
     const price = Number(p.pricing?.pricePOS ?? p.price ?? p.unitPrice ?? 0);
-    lines.push({ productId, sku: p.sku || productId, name: p.name || productId, qty, price, amount: round2(price * qty) });
+    lines.push({ productId, sku: p.sku || productId, name: p.name || productId, qty, price, amount: round2(price * qty), stocked: isStockItem(p) });
   }
 
   const subTotal = round2(lines.reduce((s, l) => s + l.amount, 0));
@@ -91,7 +93,8 @@ export async function processPOSBatchCheckout(payload: POSCheckoutPayload): Prom
   const now = admin.firestore.FieldValue.serverTimestamp();
   const account = RECEIPT_ACCOUNT[paymentMethod];
 
-  const movements: StockMovement[] = lines.map((l) => ({
+  // งานบริการ/ไลเซนส์ไม่ตัดสต็อก
+  const movements: StockMovement[] = lines.filter((l) => l.stocked).map((l) => ({
     companyId,
     productId: l.productId,
     type: 'OUT',
@@ -100,7 +103,7 @@ export async function processPOSBatchCheckout(payload: POSCheckoutPayload): Prom
     userId,
   }));
 
-  await processStockMovements(movements, (tx) => {
+  const writeSale = (tx: admin.firestore.Transaction) => {
     seqCommit?.();
     tx.set(adminDb.collection(`companies/${companyId}/sales_transactions`).doc(transactionNo), {
       companyId,
@@ -139,13 +142,20 @@ export async function processPOSBatchCheckout(payload: POSCheckoutPayload): Prom
       updatedAt: now,
       isDeleted: false,
     });
-  }, async (tx) => {
+  };
+  const readSale = async (tx: admin.firestore.Transaction) => {
     // อ่านตัวนับก่อนการเขียน — ทุกครั้งที่ทรานแซกชันลองใหม่จะได้เลขใหม่ที่ถูกต้อง
     const seq = await takeNo(tx);
     transactionNo = seq.number;
     seqCommit = seq.commit;
     movements.forEach((m) => { m.referenceId = transactionNo; });
-  });
+  };
+  if (movements.length) await processStockMovements(movements, writeSale, readSale);
+  else {
+    // ขายเฉพาะงานบริการ: ไม่มีการตัดสต็อก แต่ยังตรวจงวดบัญชีและบันทึกการขายในทรานแซกชันเดียว
+    await assertPeriodOpen(companyId);
+    await adminDb.runTransaction(async (tx) => { await readSale(tx); writeSale(tx); });
+  }
 
   return {
     success: true, transactionId: transactionNo, transactionNo, items: lines,

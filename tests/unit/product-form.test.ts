@@ -51,3 +51,14 @@ describe("new product form: create from an existing product / save and add next"
     expect(carryOver(INITIAL, saved)).toMatchObject({ name: "", sku: "", barcode: "", cost: 0, price: 0, category: "cctv", brand: "Dahua", baseUnit: "ตัว", supplierId: "s1", isSerialized: true });
   });
 });
+
+describe("service/licence items are not stock items", () => {
+  it("itemType first, then the form's productType", async () => {
+    const { isStockItem } = await import("@/lib/product-kind");
+    expect(isStockItem({ itemType: "SERVICE" })).toBe(false);
+    expect(isStockItem({ productType: "SERVICE" })).toBe(false);
+    expect(isStockItem({ itemType: "LABOR" })).toBe(false);
+    expect(isStockItem({ productType: "PHYSICAL" })).toBe(true);
+    expect(isStockItem({})).toBe(true);
+  });
+});

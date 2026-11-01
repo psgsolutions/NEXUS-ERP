@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import * as admin from "firebase-admin";
 import { PRODUCT_THUMB_MAX } from "@/lib/attachments";
+import { isStockItem } from "@/lib/product-kind";
 import { requireApiUser, authErrorResponse, ApiAuthError, type ApiUser } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
@@ -227,6 +228,7 @@ export async function POST(request: Request) {
       const opening = entity === "products" ? { qty: Math.floor(Number(body.openingStock?.qty) || 0), unitCost: Math.max(0, Number(body.openingStock?.unitCost) || 0) } : { qty: 0, unitCost: 0 };
       const postOpeningJournal = body.openingStock?.postJournal !== false;
       if (opening.qty < 0 || opening.qty > 10_000_000) throw new ApiAuthError(400, "จำนวนยกมาไม่ถูกต้อง");
+      if (opening.qty > 0 && !isStockItem(data)) throw new ApiAuthError(400, "งานบริการไม่มียอดสต็อกยกมา");
       // หมายเลขเครื่องของยอดยกมา (สินค้าคุม S/N): ต้องครบเท่าจำนวน ไม่ซ้ำ และยังไม่มีในระบบ
       const openingSerials = entity === "products" ? parseOpeningSerials(body.openingStock?.serials) : [];
       if (openingSerials.length) {

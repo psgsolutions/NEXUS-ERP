@@ -629,6 +629,8 @@ export default function NewProductPage() {
             mainModel: formData.model || "",
             subModel: formData.subModel || "",
             productType: formData.productType || "PHYSICAL",
+            // งานบริการ/ไลเซนส์ไม่นับสต็อก (ใบเสนอราคา เบิกของ POS และมูลค่าคงคลังดูจาก itemType)
+            itemType: formData.productType === "SERVICE" ? "SERVICE" : "PRODUCT",
             lifecycleStatus: formData.lifecycleStatus || "ACTIVE",
             taxType: formData.taxType || "VAT_7",
             vatType: formData.taxType || "VAT_7",

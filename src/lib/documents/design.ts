@@ -48,6 +48,14 @@ export interface PerDocDesign {
   free?: FreeLayout;
   /** หัวกระดาษที่ใช้ (id ใน letterheads) — ว่าง = หัวเอกสารตามธีม */
   letterhead?: string;
+  /**
+   * ตามเอกสารต้นแบบ (DocumentDesign.master): ผังถูกสร้างใหม่จากต้นแบบทุกครั้งที่ต้นแบบเปลี่ยน
+   * own = กล่องที่เอกสารนี้แก้เอง (id กล่อง · "@frame" กระดาษ/ขอบ · "@letterhead" หัวกระดาษ) ไม่ถูกต้นแบบทับ
+   * removed = กล่องของต้นแบบที่เอกสารนี้ลบออก · detached = เลิกตามต้นแบบ (ผังเป็นของเอกสารนี้ทั้งหมด)
+   */
+  own?: string[];
+  removed?: string[];
+  detached?: boolean;
 }
 
 /**
@@ -56,7 +64,8 @@ export interface PerDocDesign {
  */
 export interface Letterhead { id: string; name: string; height: number; blocks: FreeBlock[] }
 
-export interface DocumentDesign { theme: DocTheme; perDoc: Record<string, PerDocDesign>; letterheads: Letterhead[] }
+/** master = ชนิดเอกสารต้นแบบ: เอกสารอื่นใช้รูปแบบตามต้นแบบเสมอ (ยกเว้นส่วนที่แต่ละเอกสารแก้เอง) */
+export interface DocumentDesign { theme: DocTheme; perDoc: Record<string, PerDocDesign>; letterheads: Letterhead[]; master?: string }
 
 // ---------- ผังลากวางอิสระ ----------
 export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "info" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "field" | "text" | "line" | "rect" | "shape" | "image" | "stamp" | "sign" | "grid" | "copy";
@@ -812,9 +821,14 @@ export function normalizeDesign(raw: any, brandColor?: string): DocumentDesign {
     if (free) d.free = free;
     if (letterheads.some((l) => l.id === x.letterhead)) d.letterhead = x.letterhead;
     restoreLegalFields(d.free, letterheads.find((l) => l.id === d.letterhead));
+    const ids = (a: any) => (Array.isArray(a) ? [...new Set<string>(a.map((s: any) => str(s, 60)).filter(Boolean))].slice(0, 120) : []);
+    if (ids(x.own).length) d.own = ids(x.own);
+    if (ids(x.removed).length) d.removed = ids(x.removed);
+    if (x.detached === true) d.detached = true;
     if (Object.keys(d).length) perDoc[k] = d;
   }
-  return { theme: normalizeTheme(r.theme, brandColor), perDoc, letterheads };
+  const master = typeof r.master === "string" && perDoc[r.master]?.free ? r.master : undefined;
+  return { theme: normalizeTheme(r.theme, brandColor), perDoc, letterheads, ...(master ? { master } : {}) };
 }
 
 /** ตำแหน่งส่วนหัว/ลูกค้า/ตาราง ตามขนาดฟอนต์ (TH Sarabun ใหญ่กว่า 1.32 เท่า ต้องเว้นที่มากกว่า) */

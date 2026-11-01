@@ -14,10 +14,13 @@ import { toDateStr } from "@/lib/documents/format";
 import type { DocumentModel, DocumentProfile } from "@/lib/documents/model";
 import {
   ARCHETYPES, FONT_LABELS, LETTERHEAD_TEMPLATES, OPTIONAL_TOTALS, PALETTES, TEMPLATES, letterheadTemplate, normalizeDesign,
-  type DocTheme, type DocumentDesign, type FontFamily, type ItemColumn, type Letterhead, type PerDocDesign,
+  type DocTheme, type DocumentDesign, type FontFamily, type FreeLayout, type ItemColumn, type Letterhead, type PerDocDesign,
 } from "@/lib/documents/design";
 import { templateLayout } from "@/lib/documents/layout-templates";
-import { applyCompanyTemplate, applyFormToAll, dataGroups, ensureLayout, fitTotalsBlocks, layoutIdFor, toggleData, type DataContext } from "@/lib/documents/design-data";
+import {
+  applyCompanyTemplate, applyFormToAll, dataGroups, ensureLayout, fitTotalsBlocks, followsMaster, layoutIdFor, resetToMaster, setMaster, syncFollowers, toggleData, trackOwnEdits,
+  type DataContext,
+} from "@/lib/documents/design-data";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import { FreeLayoutEditor } from "./FreeLayoutEditor";
 import { DataChecklist } from "./DataChecklist";
@@ -41,11 +44,15 @@ const RECOMMENDED = ["modern", "psg-form", "banner-a", "minimalLine-d", "sidebar
 
 const hash = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
 
+/** ล้างส่วนที่แต่ละเอกสารแก้เองจากต้นแบบ (ใช้แม่แบบ/ฟอร์มใหม่กับทุกเอกสาร = ทุกเอกสารกลับมาตามต้นแบบทั้งหมด) */
+function clearOwn(d: DocumentDesign): DocumentDesign {
+  return { ...d, perDoc: Object.fromEntries(Object.entries(d.perDoc).map(([k, v]) => { const { own: _o, removed: _r, ...rest } = v; void _o; void _r; return [k, rest]; })) };
+}
 /** ใช้แม่แบบกับการออกแบบ: ธีม + ผังของแม่แบบทุกเอกสารการค้า */
 function withTemplate(d: DocumentDesign, t: (typeof TEMPLATES)[number]): DocumentDesign {
   const perDoc = { ...d.perDoc };
   for (const x of DESIGNABLE_DOCS) perDoc[x.type] = { ...(perDoc[x.type] || {}), free: templateLayout(layoutIdFor(t.id, t.theme), x.type, t.theme), letterhead: undefined };
-  return { ...d, theme: { ...t.theme }, perDoc };
+  return clearOwn({ ...d, theme: { ...t.theme }, perDoc });
 }
 /** เอกสารที่ยังไม่เคยจัดผัง: สร้างผังจากแม่แบบที่ใช้อยู่ (หน้าออกแบบแสดงและแก้แบบเดียวกันทุกเอกสาร) */
 function withLayouts(d: DocumentDesign): DocumentDesign {
@@ -255,8 +262,8 @@ export function DocumentDesigner() {
     const h = hist.current, now = Date.now();
     if (now - h.at > 600) { h.past.push(designRef.current); if (h.past.length > 100) h.past.shift(); h.future = []; bump((x) => x + 1); }
     h.at = now;
-    // กรอบยอดรวมพอดีตารางยอดรวมทุกครั้งที่แก้ (ติ๊กแถว ตัวอักษร ระยะแถว ธีม)
-    setDesign((d) => fitTotalsBlocks(fn(d)));
+    // เอกสารที่ตามต้นแบบปรับตามทันที · กรอบยอดรวมพอดีตารางยอดรวมทุกครั้งที่แก้ (ติ๊กแถว ตัวอักษร ระยะแถว ธีม)
+    setDesign((d) => fitTotalsBlocks(syncFollowers(fn(d))));
   }, []);
   const undo = useCallback(() => { const h = hist.current, prev = h.past.pop(); if (!prev) return; h.future.push(designRef.current); h.at = 0; setDesign(prev); bump((x) => x + 1); }, []);
   const redo = useCallback(() => { const h = hist.current, next = h.future.pop(); if (!next) return; h.past.push(designRef.current); h.at = 0; setDesign(next); bump((x) => x + 1); }, []);
@@ -327,7 +334,7 @@ export function DocumentDesigner() {
   const applyCompanyTpl = async (tp: CompanyTemplate, scope: "this" | "all") => {
     const all = scope === "all";
     if (!(await showConfirm(all ? `ใช้แม่แบบ "${tp.name}" กับเอกสารทุกชนิด รวมชุดสีและฟอนต์? (ผังเดิมถูกแทนที่ · กดย้อนกลับได้)` : `ใช้ผังของแม่แบบ "${tp.name}" กับ${def.title}? (ผังเดิมของเอกสารนี้ถูกแทนที่ · กดย้อนกลับได้)`))) return;
-    change((d) => applyCompanyTemplate(d, tp, all ? DESIGNABLE_DOCS.map((x) => x.type) : [docType], all));
+    change((d) => (all ? clearOwn(applyCompanyTemplate(d, tp, DESIGNABLE_DOCS.map((x) => x.type), true)) : applyCompanyTemplate(detachIfFollowing(d), tp, [docType], false)));
     setModal("");
   };
   const deleteCompanyTemplate = async (tp: CompanyTemplate) => {
@@ -361,8 +368,19 @@ export function DocumentDesigner() {
   const letterhead = shown.letterheads.find((l) => l.id === per.letterhead) || null;
   const setTheme = (patch: Partial<DocTheme>) => change((d) => ({ ...d, theme: { ...d.theme, ...patch } }));
   const setPer = (patch: Partial<PerDocDesign>) => change((d) => ({ ...d, perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), ...patch } } }));
+  /** แก้ผังของเอกสารนี้ · เอกสารที่ตามต้นแบบ: จำกล่องที่แก้เป็นของเอกสารนี้ (ต้นแบบเปลี่ยนภายหลังไม่ทับ) */
+  const setFree = (free: FreeLayout) => change((d) => {
+    const p = d.perDoc[docType] || {};
+    return { ...d, perDoc: { ...d.perDoc, [docType]: followsMaster(d, docType) ? trackOwnEdits(p, free) : { ...p, free } } };
+  });
+  /** เปลี่ยนผังทั้งหน้าของเอกสารนี้ (ผังจากเอกสารอื่น/แบบอื่น/แม่แบบ) — ถ้าตามต้นแบบอยู่ = เลิกตาม */
+  const detachIfFollowing = (d: DocumentDesign) => (followsMaster(d, docType) ? { ...d, perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), detached: true } } } : d);
   const setLetterhead = (lh: Letterhead) => change((d) => ({ ...d, letterheads: d.letterheads.map((l) => (l.id === lh.id ? lh : l)) }));
-  const assignLetterhead = (type: string, id: string | undefined) => change((d) => ({ ...d, perDoc: { ...d.perDoc, [type]: { ...(d.perDoc[type] || {}), letterhead: id } } }));
+  const assignLetterhead = (type: string, id: string | undefined) => change((d) => {
+    const p = d.perDoc[type] || {};
+    const own = followsMaster(d, type) ? { own: [...new Set([...(p.own || []), "@letterhead"])] } : {};
+    return { ...d, perDoc: { ...d.perDoc, [type]: { ...p, letterhead: id, ...own } } };
+  });
   const createLetterhead = (kind: "trade" | "letter" | "banner") => {
     const id = `lh-${Date.now().toString(36)}`;
     change((d) => ({ ...d, letterheads: [...d.letterheads, letterheadTemplate(kind, id, d.theme.primary, d.theme.font)], perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), letterhead: id } } }));
@@ -380,14 +398,75 @@ export function DocumentDesigner() {
     totals: OPTIONAL_TOTALS,
   };
   const groups = isLetter ? [] : dataGroups(curLayout, { ...dataCtx, head: letterhead?.blocks });
-  const toggle = (key: string, on: boolean) => setPer({ free: toggleData(curLayout, key, on, { ...dataCtx, head: letterhead?.blocks }) });
+  const toggle = (key: string, on: boolean) => setFree(toggleData(curLayout, key, on, { ...dataCtx, head: letterhead?.blocks }));
   const signBlock = curLayout.blocks.find((b) => b.kind === "signatures");
-  const setSignLabels = (labels: string[] | undefined) => setPer({ free: { ...curLayout, blocks: curLayout.blocks.map((b) => { if (b !== signBlock) return b; const n = { ...b, labels }; if (!labels) delete n.labels; return n; }) } });
+  const setSignLabels = (labels: string[] | undefined) => setFree({ ...curLayout, blocks: curLayout.blocks.map((b) => { if (b !== signBlock) return b; const n = { ...b, labels }; if (!labels) delete n.labels; return n; }) });
   const model = useMemo(() => {
     if (!profile || !preview) return null;
     if (realModel) return { ...realModel, seller: { ...realModel.seller, design: preview } };
     return applySigning(sampleModelFor(docType, { ...profile, design: preview }, toDateStr(new Date())), signing, def.signatures);
   }, [profile, preview, docType, realModel, signing, def.signatures]);
+
+  // ---------- เอกสารต้นแบบ: เอกสารอื่นใช้รูปแบบตามต้นแบบเสมอ แต่ละเอกสารยังแก้เองได้ (ส่วนที่แก้เองต้นแบบไม่ทับ) ----------
+  const master = shown.master;
+  const masterName = master ? SHORT[master] || DESIGNABLE_DOCS.find((x) => x.type === master)?.title || master : "";
+  const ownCount = (per.own?.length || 0) + (per.removed?.length || 0);
+  const makeMaster = async () => {
+    if (!(await showConfirm(`ตั้ง "${def.title}" เป็นเอกสารต้นแบบ?
+
+เอกสารอื่นทุกชนิดใช้รูปแบบเดียวกับต้นแบบ: ผัง กรอบ ตาราง ระยะห่าง มุมโค้ง หัวกระดาษ ขนาดกระดาษ
+เนื้อหาเป็นของแต่ละเอกสาร: แถวข้อมูล คอลัมน์ ช่องลงนาม ชื่อเอกสาร
+
+หลังจากนี้แก้ต้นแบบแล้วเอกสารอื่นเปลี่ยนตามทันที · แต่ละเอกสารยังแก้เองได้เสมอ และส่วนที่แก้เองต้นแบบจะไม่ทับ
+(ผังเดิมของเอกสารอื่นถูกแทนที่ · กดย้อนกลับได้)`))) return false;
+    change((d) => setMaster({ ...d, perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), free: curLayout } } }, docType));
+    return true;
+  };
+  const cancelMaster = async () => {
+    if (!(await showConfirm(`ยกเลิกต้นแบบ "${def.title}"? เอกสารอื่นคงรูปแบบปัจจุบันไว้ แต่จะไม่ปรับตามต้นแบบอีก`))) return;
+    change((d) => clearOwn(setMaster(d, undefined)));
+  };
+  const backToMaster = async () => {
+    if (!(await showConfirm(per.detached ? `ให้${docName}กลับมาตามต้นแบบ (${masterName})? ผังที่ออกแบบเองของเอกสารนี้ถูกแทนที่ (กดย้อนกลับได้)` : `คืนส่วนที่แก้เอง ${ownCount} ส่วนของ${docName}ให้ตามต้นแบบ (${masterName})? (กดย้อนกลับได้)`))) return;
+    change((d) => resetToMaster(d, docType));
+  };
+  const detach = async () => {
+    if (!(await showConfirm(`เลิกให้${docName}ตามต้นแบบ? ผังปัจจุบันเป็นของเอกสารนี้ทั้งหมด ต้นแบบเปลี่ยนแล้วไม่มีผล (กลับมาตามได้ภายหลัง)`))) return;
+    change((d) => ({ ...d, perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), detached: true } } }));
+  };
+  const badge = "h-6 px-2 rounded-full inline-flex items-center gap-1 font-bold whitespace-nowrap";
+  const masterBar = !isLetter && (
+    <div className="flex flex-wrap items-center gap-2 px-1 pt-2 border-t border-white/10 text-[12px]">
+      {!master ? (
+        <>
+          <span className="text-white/55">ยังไม่มีเอกสารต้นแบบ — ตั้งเอกสารที่ออกแบบเสร็จเป็นต้นแบบ เอกสารอื่นจะใช้รูปแบบเดียวกันและปรับตามเสมอ</span>
+          {canEdit && <PillButton variant="glass" className="h-8 px-3 text-xs ml-auto" onClick={makeMaster}><Copy size={13} /> ตั้ง{docName}เป็นต้นแบบ</PillButton>}
+        </>
+      ) : master === docType ? (
+        <>
+          <span className={cn(badge, "bg-nexus-teal/20 text-nexus-teal")}>เอกสารต้นแบบ</span>
+          <span className="text-white/60">แก้เอกสารนี้แล้วเอกสารอื่นปรับตามทันที · ส่วนที่เอกสารอื่นแก้เองไว้ไม่ถูกทับ</span>
+          {canEdit && <PillButton variant="ghost" className="h-8 px-3 text-xs ml-auto" onClick={cancelMaster}>ยกเลิกต้นแบบ</PillButton>}
+        </>
+      ) : per.detached ? (
+        <>
+          <span className={cn(badge, "bg-white/10 text-white/70")}>ไม่ตามต้นแบบ</span>
+          <span className="text-white/60">ผังเป็นของ{docName}เอง · ต้นแบบ ({masterName}) เปลี่ยนแล้วไม่มีผล</span>
+          {canEdit && <PillButton variant="glass" className="h-8 px-3 text-xs ml-auto" onClick={backToMaster}><RotateCcw size={13} /> กลับมาตาม{masterName}</PillButton>}
+        </>
+      ) : (
+        <>
+          <span className={cn(badge, "bg-purple-500/15 text-purple-200")}>ตามต้นแบบ: {masterName}</span>
+          <span className="text-white/60">{ownCount ? `แก้เองไว้ ${ownCount} ส่วน — ต้นแบบเปลี่ยนแล้วไม่ทับส่วนนี้` : "รูปแบบเหมือนต้นแบบ · แก้เอกสารนี้ได้เสมอ ส่วนที่แก้เองต้นแบบไม่ทับ"}</span>
+          <div className="ml-auto flex flex-wrap gap-2">
+            <PillButton variant="ghost" className="h-8 px-3 text-xs" onClick={() => setDocType(master)}>ไปที่ต้นแบบ</PillButton>
+            {canEdit && ownCount > 0 && <PillButton variant="ghost" className="h-8 px-3 text-xs" onClick={backToMaster}><RotateCcw size={13} /> คืนส่วนที่แก้เองให้ตามต้นแบบ</PillButton>}
+            {canEdit && <PillButton variant="ghost" className="h-8 px-3 text-xs" onClick={detach}>เลิกตามต้นแบบ</PillButton>}
+          </div>
+        </>
+      )}
+    </div>
+  );
 
   /** ใช้แม่แบบกับทุกเอกสารทันที (ย้อนกลับได้ด้วย Ctrl+Z / ปุ่มย้อนกลับ) */
   const applyTemplate = (t: (typeof TEMPLATES)[number]) => {
@@ -526,26 +605,18 @@ export function DocumentDesigner() {
           <Section title="ผังของเอกสารนี้" doc={docName} open={false}>
             <Row label="ใช้รูปแบบจากเอกสารที่ออกแบบแล้ว (เฉพาะเอกสารนี้)">
               {/* ลอกรูปแบบ (ผัง กรอบ สี ระยะ มุม) จากเอกสารอื่น · ข้อมูลแสดงตามเอกสารนี้อัตโนมัติ */}
-              <PillSelect value="" onChange={(e) => { const src = String(e.target.value); if (src) change((d) => applyFormToAll(d, src, [docType])); }} className="h-9 w-full">
+              <PillSelect value="" onChange={(e) => { const src = String(e.target.value); if (src) change((d) => applyFormToAll(detachIfFollowing(d), src, [docType])); }} className="h-9 w-full">
                 <option value="">เลือกเอกสารต้นแบบ…</option>
                 {DESIGNABLE_DOCS.filter((x) => x.type !== docType && shown.perDoc[x.type]?.free?.enabled).map((x) => <option key={x.type} value={x.type}>รูปแบบของ{x.title}</option>)}
               </PillSelect>
             </Row>
             <Row label="เริ่มผังใหม่จากแบบอื่น (เฉพาะเอกสารนี้)">
-              <PillSelect value="" onChange={(e) => { const id = String(e.target.value); if (id) setPer({ free: templateLayout(id, docType, theme) }); }} className="h-9 w-full">
+              <PillSelect value="" onChange={(e) => { const id = String(e.target.value); if (id) change((d) => { const x = detachIfFollowing(d); return { ...x, perDoc: { ...x.perDoc, [docType]: { ...(x.perDoc[docType] || {}), free: templateLayout(id, docType, theme) } } }; }); }} className="h-9 w-full">
                 <option value="">เลือกผัง…</option>
                 {ARCHETYPES.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </PillSelect>
             </Row>
-            <PillButton variant="ghost" className="h-8 px-3 text-xs w-full" onClick={async () => {
-              if (!(await showConfirm(`ใช้ฟอร์ม "${def.title}" เป็นต้นแบบของเอกสารทุกชนิด?
-
-ลอกรูปแบบ: ผัง กรอบ ตาราง สี ระยะห่าง มุมโค้ง หัวกระดาษ ขนาดกระดาษ
-เนื้อหาเป็นของแต่ละเอกสาร: แถวข้อมูล คอลัมน์ ช่องลงนาม ชื่อเอกสาร
-
-ผังเดิมของเอกสารอื่นจะถูกแทนที่ (กดย้อนกลับได้)`))) return;
-              change((d) => applyFormToAll({ ...d, perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), free: curLayout } } }, docType, DESIGNABLE_DOCS.map((x) => x.type)));
-            }}><Copy size={13} /> ใช้ฟอร์มนี้เป็นต้นแบบทุกเอกสาร</PillButton>
+            {shown.master !== docType && <PillButton variant="ghost" className="h-8 px-3 text-xs w-full" onClick={makeMaster}><Copy size={13} /> ตั้งฟอร์มนี้เป็นต้นแบบของทุกเอกสาร</PillButton>}
             <PillButton variant="glass" className="h-8 px-3 text-xs w-full" onClick={() => saveAsTemplate()}><Save size={13} /> บันทึกเป็นแม่แบบของบริษัท</PillButton>
           </Section>
         )}
@@ -595,7 +666,7 @@ export function DocumentDesigner() {
           <div className="flex flex-wrap gap-1.5">
             {TARGETS.map((t) => (
               <button key={t.type} type="button" onClick={() => setDocType(t.type)}
-                className={cn("h-8 px-3 rounded-full text-[12px] border transition-colors", docType === t.type ? "bg-nexus-teal/15 border-nexus-teal/30 text-nexus-teal font-bold" : "bg-white/5 border-transparent text-white/60 hover:text-white hover:bg-white/10")}>{SHORT[t.type] || t.title}</button>
+                className={cn("h-8 px-3 rounded-full text-[12px] border transition-colors", docType === t.type ? "bg-nexus-teal/15 border-nexus-teal/30 text-nexus-teal font-bold" : "bg-white/5 border-transparent text-white/60 hover:text-white hover:bg-white/10")}>{SHORT[t.type] || t.title}{shown.master === t.type ? " · ต้นแบบ" : ""}</button>
             ))}
           </div>
         ) : (
@@ -624,6 +695,7 @@ export function DocumentDesigner() {
             <PillButton variant="ghost" className="h-8 px-3 text-xs" onClick={toggleStrip} title={stripMini ? "แสดงภาพย่อเอกสาร" : "ย่อตัวเลือกเอกสาร (เหลือชื่อเอกสาร)"}>{stripMini ? <ChevronDown size={13} /> : <ChevronUp size={13} />} {stripMini ? "ขยายภาพย่อ" : "ย่อตัวเลือก"}</PillButton>
           </div>
         </div>
+        {masterBar}
       </GlassCard>
 
       {mode === "simple" ? (
@@ -654,7 +726,7 @@ export function DocumentDesigner() {
           docMeta={def.meta || []}
           docFields={def.fields || []}
           layout={curLayout}
-          onChange={(free) => setPer({ free })}
+          onChange={setFree}
           letterhead={letterhead}
           onLetterheadChange={setLetterhead}
           letterOnly={isLetter}
@@ -699,11 +771,7 @@ export function DocumentDesigner() {
               <p className="text-[12px] text-white/45">แม่แบบเก็บรูปแบบ (ผัง กรอบ สี ฟอนต์ ระยะ มุม หัวกระดาษ) — ใช้กับเอกสารชนิดอื่นแล้ว ข้อมูล คอลัมน์ และช่องลงนามจัดตามเอกสารนั้นเอง</p>
               <div className="flex flex-wrap gap-2">
                 <PillButton variant="confirm" className="h-9 px-4 text-xs font-bold" onClick={saveAsTemplate}><Save size={14} /> บันทึกเป็นแม่แบบของบริษัท</PillButton>
-                <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={async () => {
-                  if (!(await showConfirm(`ใช้ฟอร์ม "${def.title}" เป็นต้นแบบของเอกสารทุกชนิด? (ผังเดิมของเอกสารอื่นถูกแทนที่ · กดย้อนกลับได้)`))) return;
-                  change((d) => applyFormToAll({ ...d, perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), free: curLayout } } }, docType, DESIGNABLE_DOCS.map((x) => x.type)));
-                  setModal("");
-                }}><Copy size={14} /> ใช้ฟอร์มนี้กับทุกเอกสารเลย</PillButton>
+                {shown.master !== docType && <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={async () => { if (await makeMaster()) setModal(""); }}><Copy size={14} /> ตั้งฟอร์มนี้เป็นต้นแบบของทุกเอกสาร</PillButton>}
               </div>
             </div>
             {companyTemplates.length === 0 ? (

@@ -3,7 +3,7 @@
  * ติ๊ก = ข้อมูลนี้ปรากฏบนเอกสาร ไม่ว่าจะอยู่ในกล่องไหน (กล่องเลขที่ · กล่องข้อมูล · ช่องข้อมูลเดี่ยว)
  * เปิด: ใส่ในกล่องที่เหมาะที่สุดที่มีอยู่ · ปิด: เอาออกจากทุกกล่อง · ข้อมูลที่กฎหมายกำหนดล็อกไว้
  */
-import { A4, CORE_TOTALS, TEMPLATES, normalizeFreeLayout, totalsBlockHeight, type DocumentDesign, docHasAmounts, docHasCopy, defaultFreeLayout, requiredColumnsFor, resolveColumns, type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, ITEM_COLUMNS } from "./design";
+import { A4, CORE_TOTALS, TEMPLATES, normalizeFreeLayout, totalsBlockHeight, type DocumentDesign, type PerDocDesign, docHasAmounts, docHasCopy, defaultFreeLayout, requiredColumnsFor, resolveColumns, type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, ITEM_COLUMNS } from "./design";
 import { templateLayout } from "./layout-templates";
 import { DESIGNABLE_DOCS, sampleModelFor } from "./build";
 
@@ -291,6 +291,74 @@ export function applyFormToAll(design: DocumentDesign, sourceDoc: string, target
     perDoc[type] = { ...(perDoc[type] || {}), free: adaptForm(src.free, s, t), ...(src.letterhead ? { letterhead: src.letterhead } : {}) };
   }
   return { ...design, perDoc };
+}
+
+const FRAME_KEYS = ["margin", "margins", "paper", "landscape"] as const;
+const frameOf = (f?: FreeLayout) => JSON.stringify(FRAME_KEYS.map((k) => f?.[k] ?? null));
+
+/** เอกสารที่ตามต้นแบบอยู่ (ไม่ใช่ต้นแบบเอง ไม่ได้เลิกตาม) */
+export function followsMaster(design: DocumentDesign, docType: string): boolean {
+  return !!design.master && design.master !== docType && !design.perDoc[docType]?.detached && DESIGNABLE_DOCS.some((d) => d.type === docType);
+}
+
+/**
+ * จำส่วนที่เอกสารผู้ตามแก้เอง: เทียบผังก่อน/หลังแก้ทีละกล่อง (ตาม id)
+ * กล่องที่เปลี่ยนหรือเพิ่มใหม่ → own · กล่องที่หายไป → removed · กระดาษ/ขอบเปลี่ยน → "@frame"
+ */
+export function trackOwnEdits(per: PerDocDesign, next: FreeLayout): PerDocDesign {
+  const prev = new Map((per.free?.blocks || []).map((b) => [b.id, JSON.stringify(b)]));
+  const own = new Set(per.own || []), removed = new Set(per.removed || []);
+  for (const b of next.blocks) if (prev.get(b.id) !== JSON.stringify(b)) { own.add(b.id); removed.delete(b.id); }
+  const nextIds = new Set(next.blocks.map((b) => b.id));
+  for (const id of prev.keys()) if (!nextIds.has(id)) { removed.add(id); own.delete(id); }
+  if (frameOf(per.free) !== frameOf(next)) own.add("@frame");
+  return { ...per, free: next, own: [...own], removed: [...removed] };
+}
+
+/**
+ * สร้างผังของเอกสารที่ตามต้นแบบใหม่จากต้นแบบ (adaptForm) แล้วคงส่วนที่แต่ละเอกสารแก้เองไว้
+ *  - กล่องของต้นแบบ: ใช้แบบของต้นแบบ ยกเว้นกล่องที่เอกสารนี้แก้เอง (own) หรือลบออก (removed)
+ *  - กล่องที่เอกสารนี้เพิ่มเอง: คงไว้เสมอ · กล่องที่ต้นแบบลบแล้วและเอกสารนี้ไม่ได้แก้: เอาออก
+ *  - กระดาษ/ขอบ และหัวกระดาษ ตามต้นแบบ ยกเว้นตั้งเอง ("@frame" / "@letterhead")
+ */
+export function syncFollowers(design: DocumentDesign): DocumentDesign {
+  const m = design.master, src = m ? design.perDoc[m] : undefined, s = DESIGNABLE_DOCS.find((d) => d.type === m);
+  if (!src?.free || !s) return design;
+  let perDoc: Record<string, PerDocDesign> | null = null;
+  for (const t of DESIGNABLE_DOCS) {
+    if (!followsMaster(design, t.type)) continue;
+    const per = design.perDoc[t.type] || {};
+    const own = new Set(per.own || []), removed = new Set(per.removed || []);
+    const base = adaptForm(src.free, s, t);
+    const mine = new Map((per.free?.blocks || []).map((b) => [b.id, b]));
+    const baseIds = new Set(base.blocks.map((b) => b.id));
+    const blocks = base.blocks.filter((b) => !removed.has(b.id)).map((b) => (own.has(b.id) && mine.has(b.id) ? mine.get(b.id)! : b));
+    for (const b of per.free?.blocks || []) if (!baseIds.has(b.id) && own.has(b.id)) blocks.push(b);
+    const frame = own.has("@frame") && per.free ? Object.fromEntries(FRAME_KEYS.map((k) => [k, per.free![k]])) : Object.fromEntries(FRAME_KEYS.map((k) => [k, base[k]]));
+    const free = { ...base, ...frame, blocks } as FreeLayout;
+    for (const k of FRAME_KEYS) if (free[k] === undefined) delete free[k];
+    const letterhead = own.has("@letterhead") ? per.letterhead : src.letterhead;
+    const next: PerDocDesign = { ...per, free };
+    if (letterhead) next.letterhead = letterhead; else delete next.letterhead;
+    if (JSON.stringify(next) === JSON.stringify(per)) continue;
+    (perDoc ||= { ...design.perDoc })[t.type] = next;
+  }
+  return perDoc ? { ...design, perDoc } : design;
+}
+
+/** ตั้ง/ยกเลิกเอกสารต้นแบบ — ตั้งใหม่: ทุกเอกสารกลับมาตามต้นแบบทั้งหมด (ล้างส่วนที่แก้เองและการเลิกตาม) */
+export function setMaster(design: DocumentDesign, docType: string | undefined): DocumentDesign {
+  if (!docType) { const { master: _m, ...rest } = design; void _m; return rest; }
+  const perDoc = Object.fromEntries(Object.entries(design.perDoc).map(([k, v]) => { const { own: _o, removed: _r, detached: _d, ...rest } = v; void _o; void _r; void _d; return [k, rest]; }));
+  return syncFollowers({ ...design, perDoc, master: docType });
+}
+
+/** เอกสารผู้ตาม: กลับไปตามต้นแบบทั้งหมด (ล้างส่วนที่แก้เอง) */
+export function resetToMaster(design: DocumentDesign, docType: string): DocumentDesign {
+  const per = design.perDoc[docType];
+  if (!per) return design;
+  const { own: _o, removed: _r, detached: _d, ...rest } = per; void _o; void _r; void _d;
+  return syncFollowers({ ...design, perDoc: { ...design.perDoc, [docType]: rest } });
 }
 
 /**

@@ -3,7 +3,7 @@ import * as admin from "firebase-admin";
 import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
-import { ATTACHMENT_MAX, ATTACHMENT_OWNERS, ATTACHMENT_TYPES, type AttachmentOwner } from "@/lib/attachments";
+import { ATTACHMENT_MAX, ATTACHMENT_OWNERS, ATTACHMENT_TYPES, SHARED_ATTACHMENT_OWNERS, type AttachmentOwner } from "@/lib/attachments";
 
 /**
  * [API-SERVER] ไฟล์แนบ (รูปใบเสร็จ บิล เอกสารประกอบ) — POST /api/attachments
@@ -13,6 +13,7 @@ import { ATTACHMENT_MAX, ATTACHMENT_OWNERS, ATTACHMENT_TYPES, type AttachmentOwn
  *  - { companyId, action: "remove", id }                                               ลบ (ผู้อัปโหลด หรือฝ่ายบัญชี)
  * เก็บที่ companies/{id}/attachments (client อ่าน/เขียนตรงไม่ได้) — ย้ายไป Cloud Storage ได้ภายหลังโดยไม่ต้องแก้หน้าจอ
  * ดูได้: ผู้อัปโหลด และฝ่ายบัญชี/การเงิน (เอกสารประกอบการเบิก/จ่าย)
+ * ไฟล์ของสินค้า (product): ทุกคนที่ดูสินค้าได้เปิดดูได้ · แนบ/ลบได้เฉพาะผู้มีสิทธิ์แก้ไขคลังสินค้า
  */
 const str = (v: any, max = 200) => String(v ?? "").trim().slice(0, max);
 
@@ -24,11 +25,15 @@ export async function POST(request: Request) {
     const action = str(body.action, 20);
     const col = adminDb.collection(`companies/${companyId}/attachments`);
     const finance = can(apiUser.roles, "finance:view");
+    const isShared = (owner: unknown) => SHARED_ATTACHMENT_OWNERS.includes(owner as AttachmentOwner);
+    const canViewShared = can(apiUser.roles, "inventory:view") || can(apiUser.roles, "sales:view") || can(apiUser.roles, "procurement:view");
+    const canEditShared = can(apiUser.roles, "inventory:edit");
 
     if (action === "upload") {
       const ownerType = str(body.ownerType, 30) as AttachmentOwner;
       const ownerId = str(body.ownerId, 120);
       if (!ATTACHMENT_OWNERS.includes(ownerType) || !/^[A-Za-z0-9_.-]{1,120}$/.test(ownerId)) throw new ApiAuthError(400, "ไม่ระบุว่าแนบกับรายการไหน");
+      if (isShared(ownerType) && !canEditShared) throw new ApiAuthError(403, "แนบไฟล์สินค้าได้เฉพาะผู้มีสิทธิ์แก้ไขคลังสินค้า");
       const f = body.file || {};
       const mime = str(f.mime, 60), data = String(f.data || "");
       if (!ATTACHMENT_TYPES.includes(mime)) throw new ApiAuthError(400, "รองรับเฉพาะรูป JPG/PNG/WebP และ PDF");
@@ -45,7 +50,7 @@ export async function POST(request: Request) {
     if (action === "list") {
       const ownerType = str(body.ownerType, 30), ownerId = str(body.ownerId, 120);
       const snap = await col.where("ownerType", "==", ownerType).where("ownerId", "==", ownerId).limit(40).get();
-      const files = snap.docs.filter((d) => finance || d.get("uploadedBy") === apiUser.uid)
+      const files = snap.docs.filter((d) => (isShared(ownerType) ? canViewShared : finance) || d.get("uploadedBy") === apiUser.uid)
         .map((d) => ({ id: d.id, name: d.get("name"), mime: d.get("mime"), size: d.get("size"), uploadedByName: d.get("uploadedByName") || "", createdAt: d.get("createdAt")?.toDate?.()?.toISOString?.() || "" }));
       return NextResponse.json({ success: true, files });
     }
@@ -56,12 +61,13 @@ export async function POST(request: Request) {
     const snap = await ref.get();
     if (!snap.exists) throw new ApiAuthError(404, "ไม่พบไฟล์");
     const mine = snap.get("uploadedBy") === apiUser.uid;
+    const shared = isShared(snap.get("ownerType"));
     if (action === "get") {
-      if (!mine && !finance) throw new ApiAuthError(403, "ไม่มีสิทธิ์ดูไฟล์นี้");
+      if (!mine && !(shared ? canViewShared : finance)) throw new ApiAuthError(403, "ไม่มีสิทธิ์ดูไฟล์นี้");
       return NextResponse.json({ success: true, file: { id, name: snap.get("name"), mime: snap.get("mime"), data: snap.get("data") } });
     }
     if (action === "remove") {
-      if (!mine && !can(apiUser.roles, "finance:edit")) throw new ApiAuthError(403, "ลบได้เฉพาะผู้อัปโหลดหรือฝ่ายบัญชี");
+      if (!mine && !(shared ? canEditShared : can(apiUser.roles, "finance:edit"))) throw new ApiAuthError(403, "ลบได้เฉพาะผู้อัปโหลดหรือฝ่ายบัญชี");
       await ref.delete();
       return NextResponse.json({ success: true });
     }

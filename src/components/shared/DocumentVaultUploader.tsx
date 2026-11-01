@@ -12,6 +12,8 @@ export interface DigitalDocumentItem {
   fileUrl: string;
   fileName: string;
   uploadedAt: string;
+  /** ไฟล์ที่ยังไม่อัปโหลด — ฟอร์มส่งขึ้นระบบไฟล์แนบหลังบันทึกรายการ */
+  file?: File;
 }
 
 interface DocumentVaultUploaderProps {
@@ -34,18 +36,20 @@ export function DocumentVaultUploader({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const newDoc: DigitalDocumentItem = {
-        id: `DOC-${Date.now()}`,
+    const files = Array.from(e.target.files || []);
+    if (files.length) {
+      const added: DigitalDocumentItem[] = files.map((file, i) => ({
+        id: `DOC-${Date.now()}-${i}`,
         title: file.name.replace(/\.[^/.]+$/, ""),
         type: "DATA_SHEET",
         fileUrl: URL.createObjectURL(file),
         fileName: file.name,
-        uploadedAt: new Date().toISOString().split("T")[0]
-      };
-      onChange([...documents, newDoc]);
+        uploadedAt: new Date().toISOString().split("T")[0],
+        file,
+      }));
+      onChange([...documents, ...added]);
     }
+    e.target.value = "";
   };
 
   const handleRemoveDoc = (id: string) => {
@@ -76,7 +80,7 @@ export function DocumentVaultUploader({
           type="file" 
           ref={fileInputRef} 
           onChange={handleFileChange} 
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg" 
+          accept=".pdf,.png,.jpg,.jpeg,.webp" multiple 
           className="hidden" 
         />
       </div>
@@ -88,7 +92,7 @@ export function DocumentVaultUploader({
         >
           <FileText size={32} className="mx-auto text-white/20 group-hover:text-nexus-teal transition-colors" />
           <p className="text-xs text-white/40 font-bold group-hover:text-white transition-colors">ยังไม่มีเอกสารแนบในคลังดิจิทัล</p>
-          <p className="text-[11px] text-white/30">คลิกที่นี่ หรือกดปุ่ม "แนบไฟล์เอกสาร" เพื่ออัปโหลด Data Sheet, สเปก TOR หรือใบรับรองมาตรฐาน (PDF / Word / Excel)</p>
+          <p className="text-[11px] text-white/30">คลิกที่นี่ หรือกดปุ่ม "แนบไฟล์เอกสาร" เพื่ออัปโหลด Data Sheet, สเปก TOR หรือใบรับรองมาตรฐาน (PDF หรือรูปภาพ)</p>
         </div>
       ) : (
         <div className="space-y-3">

@@ -43,6 +43,7 @@ import {
   PillSelect,
   Toast
 } from "@/components/ui/Base";
+import { AttachmentPicker } from "@/components/shared/AttachmentPicker";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -744,6 +745,15 @@ export default function ProductDetailPage() {
             <span className="text-lg font-medium text-warning mt-1 block mono-numbers">{form.reserved}</span>
           </div>
         </div>
+      </GlassCard>
+
+      {/* เอกสารประกอบสินค้า (datasheet คู่มือ ใบรับรอง) — ทุกคนที่ดูสินค้าได้เปิดดูได้ แนบ/ลบโดยผู้มีสิทธิ์คลังสินค้า */}
+      <GlassCard className="p-4 border-white/5 space-y-3">
+        <div className="flex items-center gap-2">
+          <FileText size={14} className="text-nexus-teal" />
+          <h4 className="text-[12px] font-bold text-white/80 uppercase tracking-widest">เอกสารประกอบสินค้า</h4>
+        </div>
+        <AttachmentPicker ownerType="product" ownerId={productId} hint="Datasheet คู่มือ ใบรับรอง (PDF หรือรูป) · คลิกไฟล์เพื่อเปิดดู" />
       </GlassCard>
 
       {/* Actions Card */}

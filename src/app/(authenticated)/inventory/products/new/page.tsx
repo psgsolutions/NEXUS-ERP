@@ -51,6 +51,7 @@ import { ProductConversion, ProductSupplierInfo } from "@/types/inventory";
 import { getRequiredFieldsStatus, checkSkuDuplicate, findBarcodeConflict } from "@/lib/product-validation";
 import { carryOver, findSimilarProducts, marginOf, productToForm, type MarginLevel } from "@/lib/product-form";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
+import { makeThumbnail, prepareAttachment } from "@/lib/attachments";
 
 const INITIAL_FORM_DATA = {
   // 1. Identification & Classification
@@ -348,11 +349,16 @@ export default function NewProductPage() {
   const [showSubCategory, setShowSubCategory] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // รูปสินค้า: ย่อเป็นรูปจัตุรัสเล็ก (≤60KB) เก็บกับข้อมูลสินค้า — ไม่ใช้ลิงก์ชั่วคราวของเบราว์เซอร์ที่หายเมื่อเปิดใหม่
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setFormData(prev => ({ ...prev, imageUrl: url }));
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const thumb = await makeThumbnail(file);
+      setFormData(prev => ({ ...prev, imageUrl: thumb }));
+    } catch (err: any) {
+      showAlert(err?.message || "ใช้รูปนี้ไม่ได้", "แนบรูปไม่สำเร็จ", "error");
     }
   };
 
@@ -441,6 +447,9 @@ export default function NewProductPage() {
   const isSkuDuplicate = React.useMemo(() => {
     return checkSkuDuplicate(formData.sku, products || [], companyId || "");
   }, [formData.sku, products, companyId]);
+
+  // หมายเลขเครื่องของยอดยกมา (คั่นด้วยขึ้นบรรทัดหรือจุลภาค)
+  const serialList = React.useMemo(() => formData.sns.split(/[\n,;]+/).map((v) => v.trim()).filter(Boolean), [formData.sns]);
 
   const requiredStatus = React.useMemo(() => {
     return getRequiredFieldsStatus(formData);
@@ -540,6 +549,10 @@ export default function NewProductPage() {
       if (missing.key === "cost") newErrors.cost = "ราคาต้นทุนต้องมากกว่า 0";
       if (missing.key === "price") newErrors.price = "ราคาขายต้องมากกว่า 0";
       if (missing.key === "warehouseId") newErrors.warehouseId = "กรุณาระบุคลังสินค้าเมื่อมียอดยกมา";
+    }
+
+    if (formData.isSerialized && serialList.length && serialList.length !== (formData.qty || 0)) {
+      newErrors.sns = `หมายเลขเครื่อง ${serialList.length} รายการ ต้องเท่ากับจำนวนรับเริ่มต้น ${formData.qty || 0}`;
     }
 
     if (isSkuDuplicate) {
@@ -691,12 +704,30 @@ export default function NewProductPage() {
           const { stockStatus: _s, ...withoutStock } = productData as any; void _s;
           const res = await apiFetch("/api/master-data", {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ companyId, action: "create", entity: "products", id: prodId, data: withoutStock, openingStock: { qty: totalQty, unitCost: formData.cost || 0 } }),
+            body: JSON.stringify({ companyId, action: "create", entity: "products", id: prodId, data: withoutStock, openingStock: { qty: totalQty, unitCost: formData.cost || 0, ...(formData.isSerialized && serialList.length ? { serials: serialList } : {}) } }),
           });
           const d = await res.json();
           if (!res.ok || !d.success) throw new Error(d.error || "บันทึกสินค้าไม่สำเร็จ");
         };
         await saveToFirestore(saveOp());
+
+        // เอกสารประกอบ (datasheet คู่มือ ใบรับรอง): อัปโหลดหลังสินค้าถูกสร้าง — ไฟล์ที่ไม่ผ่านแจ้งชื่อไว้ สินค้ายังบันทึกแล้ว
+        const failedDocs: string[] = [];
+        for (const doc of formData.documents) {
+          if (!doc.file) continue;
+          try {
+            const file = await prepareAttachment(doc.file);
+            const up = await apiFetch("/api/attachments", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ companyId, action: "upload", ownerType: "product", ownerId: prodId, file: { ...file, name: doc.title ? `${doc.title}${file.name.slice(file.name.lastIndexOf("."))}` : file.name } }),
+            });
+            const u = await up.json();
+            if (!up.ok || !u.success) throw new Error(u.error);
+          } catch (err: any) {
+            failedDocs.push(`${doc.fileName}${err?.message ? ` (${err.message})` : ""}`);
+          }
+        }
+        if (failedDocs.length) await showAlert(`บันทึกสินค้าแล้ว แต่แนบไฟล์ไม่สำเร็จ ${failedDocs.length} ไฟล์: ${failedDocs.join(", ")} — แนบใหม่ได้ที่หน้ารายละเอียดสินค้า`, "แนบไฟล์ไม่ครบ", "warning");
         if (saveAndContinue) {
           // ตัวถัดไปคงหมวด ยี่ห้อ หน่วย ภาษี ผู้ขาย คลัง และการติดตามไว้ — ล้างเฉพาะตัวสินค้า
           const nextSku = computeNextSku(products, [savedSku]);
@@ -1525,11 +1556,11 @@ export default function NewProductPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                <Field label="หมายเลขซีเรียล">
+                <Field label={`หมายเลขซีเรียล${serialList.length ? ` (${serialList.length}/${formData.qty || 0})` : ""}`} error={errors.sns || (!formData.isSerialized && serialList.length ? "เลือก คุม S/N ก่อน หมายเลขจึงจะถูกบันทึก" : undefined)}>
                   <textarea 
                     value={formData.sns} 
                     onChange={(e) => setFormData(prev => ({ ...prev, sns: e.target.value }))} 
-                    placeholder="สแกนหรือระบุหมายเลขซีเรียล..." 
+                    placeholder="สแกนหรือพิมพ์หมายเลขเครื่องของยอดรับเริ่มต้น บรรทัดละ 1 เครื่อง..." 
                     className="w-full h-16 rounded-xl bg-black/40 border border-white/10 text-white text-[12px] font-mono p-2.5 focus:outline-none focus:ring-1 focus:ring-nexus-teal/50 custom-scrollbar" 
                   />
                 </Field>

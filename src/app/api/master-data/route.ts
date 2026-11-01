@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import * as admin from "firebase-admin";
+import { PRODUCT_THUMB_MAX } from "@/lib/attachments";
 import { requireApiUser, authErrorResponse, ApiAuthError, type ApiUser } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
@@ -38,11 +39,24 @@ const PROTECTED: Record<MasterEntity, string[]> = {
   contractors: ["apBalance", "outstanding", "balance"],
 };
 
+/** หมายเลขเครื่องจากช่องกรอก (คั่นด้วยขึ้นบรรทัด/จุลภาค) — ใช้เป็นรหัสเอกสาร จึงห้าม / และยาวไม่เกิน 60 */
+function parseOpeningSerials(raw: unknown): string[] {
+  const list = (Array.isArray(raw) ? raw : String(raw ?? "").split(/[\n,;]+/)).map((v) => String(v ?? "").trim()).filter(Boolean);
+  const bad = list.find((sn) => !/^[A-Za-z0-9._-]{1,60}$/.test(sn));
+  if (bad) throw new ApiAuthError(400, `หมายเลขเครื่องไม่ถูกต้อง: ${bad.slice(0, 40)} (ใช้ได้เฉพาะตัวอักษร ตัวเลข . _ -)`);
+  const seen = new Set<string>(), dup = list.find((sn) => (seen.has(sn.toUpperCase()) ? true : (seen.add(sn.toUpperCase()), false)));
+  if (dup) throw new ApiAuthError(400, `หมายเลขเครื่องซ้ำ: ${dup}`);
+  if (list.length > 2000) throw new ApiAuthError(400, "หมายเลขเครื่องเกิน 2,000 รายการ");
+  return list;
+}
+
 /** ตัดค่าที่ Firestore เก็บไม่ได้ และจำกัดขนาด */
 function clean(obj: Record<string, any>): Record<string, any> {
   const out: Record<string, any> = {};
   for (const [k, v] of Object.entries(obj || {})) {
     if (!/^[A-Za-z][A-Za-z0-9_]{0,60}$/.test(k) || v === undefined) continue;
+    // รูปสินค้าย่อ (JPEG data URL) ยาวได้ถึง PRODUCT_THUMB_MAX · ลิงก์ชั่วคราว blob: ของเบราว์เซอร์ไม่เก็บ
+    if (k === "imageUrl" && typeof v === "string") { out[k] = v.startsWith("data:image/jpeg;base64,") && v.length <= PRODUCT_THUMB_MAX ? v : v.startsWith("blob:") ? "" : v.slice(0, 2000); continue; }
     out[k] = typeof v === "string" ? v.slice(0, 5000) : v;
   }
   if (JSON.stringify(out).length > 200_000) throw new ApiAuthError(400, "ข้อมูลใหญ่เกินไป");
@@ -213,6 +227,14 @@ export async function POST(request: Request) {
       const opening = entity === "products" ? { qty: Math.floor(Number(body.openingStock?.qty) || 0), unitCost: Math.max(0, Number(body.openingStock?.unitCost) || 0) } : { qty: 0, unitCost: 0 };
       const postOpeningJournal = body.openingStock?.postJournal !== false;
       if (opening.qty < 0 || opening.qty > 10_000_000) throw new ApiAuthError(400, "จำนวนยกมาไม่ถูกต้อง");
+      // หมายเลขเครื่องของยอดยกมา (สินค้าคุม S/N): ต้องครบเท่าจำนวน ไม่ซ้ำ และยังไม่มีในระบบ
+      const openingSerials = entity === "products" ? parseOpeningSerials(body.openingStock?.serials) : [];
+      if (openingSerials.length) {
+        if (openingSerials.length !== opening.qty) throw new ApiAuthError(400, `หมายเลขเครื่อง ${openingSerials.length} รายการ ไม่เท่ากับจำนวนยกมา ${opening.qty}`);
+        const existing = await adminDb.getAll(...openingSerials.map((sn) => adminDb.doc(`companies/${companyId}/serial_numbers/${sn}`)));
+        const taken = existing.filter((d) => d.exists && d.get("isDeleted") !== true).map((d) => d.id);
+        if (taken.length) throw new ApiAuthError(409, `หมายเลขเครื่องมีในระบบแล้ว: ${taken.slice(0, 5).join(", ")}`);
+      }
       if (entity === "products") local.stockStatus = { onHand: 0, reserved: 0, available: 0 };
       const legacyHits = await legacyDuplicates(entity, companyId, master);
       if (legacyHits.length) throw new ApiAuthError(409, dupMessage(entity, legacyHits));
@@ -229,7 +251,7 @@ export async function POST(request: Request) {
       });
       if (opening.qty > 0) {
         const amount = Math.round(opening.qty * opening.unitCost * 100) / 100;
-        await processStockMovements([{ companyId, productId: id, type: "IN", quantity: opening.qty, unitCost: opening.unitCost, referenceId: `OPEN-${id}`, userId: apiUser.email || apiUser.uid }], (tx) => {
+        await processStockMovements([{ companyId, productId: id, type: "IN", quantity: opening.qty, unitCost: opening.unitCost, referenceId: `OPEN-${id}`, userId: apiUser.email || apiUser.uid, ...(openingSerials.length ? { snList: openingSerials } : {}) }], (tx) => {
           if (amount <= 0 || !postOpeningJournal) return;
           tx.set(adminDb.collection(`companies/${companyId}/journal_entries`).doc(), {
             companyId, date: now, bookType: "JV", status: "draft",

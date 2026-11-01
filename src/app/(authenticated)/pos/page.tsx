@@ -147,7 +147,7 @@ export default function POSPage() {
           <div className="relative flex-1 min-w-0 sm:min-w-[240px]">
             <PillInput ref={searchRef} autoFocus value={search} onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && search.trim()) { e.preventDefault(); e.stopPropagation(); const exact = findProductByScan(sellable, search); if (exact) onScan(search); else if (shown.length === 1) { add(shown[0]); setSearch(""); } } }}
-              placeholder="สแกนบาร์โค้ด หรือพิมพ์ชื่อ/รหัสสินค้า แล้วกด Enter" className="w-full h-11 pl-11 text-[15px]" />
+              placeholder="สแกนบาร์โค้ด หรือพิมพ์ชื่อ/รหัสสินค้า แล้วกด Enter" className="w-full h-9 pl-11 text-[15px]" />
             {/* ไอคอนอยู่หลังช่องค้นหาใน DOM เพื่อไม่ให้ถูก backdrop-blur ของช่องทับจนเบลอ */}
             <ScanLine size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
           </div>
@@ -343,7 +343,7 @@ function PaymentModal({ total, company, onClose, onPay }: { total: number; compa
 
       {method === "CASH" && (
         <div className="space-y-3">
-          <PillInput autoFocus value={cash} onChange={(e) => setCash(e.target.value.replace(/[^\d.]/g, ""))} onKeyDown={(e) => { if (e.key === "Enter" && canConfirm) confirm(); }} inputMode="decimal" placeholder="รับเงินมา (บาท)" className="w-full h-14 text-[24px] text-right font-mono" />
+          <PillInput autoFocus value={cash} onChange={(e) => setCash(e.target.value.replace(/[^\d.]/g, ""))} onKeyDown={(e) => { if (e.key === "Enter" && canConfirm) confirm(); }} inputMode="decimal" placeholder="รับเงินมา (บาท)" className="w-full h-12 text-[24px] text-right font-mono" />
           <div className="flex gap-2 flex-wrap">
             {quick.map((v, i) => <button key={v} type="button" onClick={() => setCash(String(v))} className="h-11 px-4 rounded-xl border border-white/10 text-[15px] font-mono text-white hover:bg-white/5">{i === 0 ? "พอดี" : `฿${v.toLocaleString("th-TH")}`}</button>)}
           </div>
@@ -359,7 +359,7 @@ function PaymentModal({ total, company, onClose, onPay }: { total: number; compa
             <div className="rounded-2xl bg-white p-3"><QrSvg value={promptPayPayload(ppId, total)} size={220} level="M" /></div>
             <p className="text-[14px] text-white">สแกนจ่าย ฿{baht(total)} · พร้อมเพย์ {String(ppId).replace(/\D/g, "").replace(/(\d{3})\d+(\d{4})/, "$1xxx$2")}</p>
             <p className="text-[12px] text-white/50">ตรวจยอดเงินเข้าในแอปธนาคารก่อนกดยืนยัน</p>
-            <PillInput value={ref} onChange={(e) => setRef(e.target.value)} placeholder="เลขอ้างอิงจากสลิป (ถ้ามี)" className="w-full h-10 text-sm" />
+            <PillInput value={ref} onChange={(e) => setRef(e.target.value)} placeholder="เลขอ้างอิงจากสลิป (ถ้ามี)" className="w-full h-9 text-sm" />
           </div>
         ) : <p className="text-[14px] text-warning">ยังไม่ได้ตั้งรหัสพร้อมเพย์ของร้าน ให้ผู้ดูแลระบบกดปุ่มตั้งค่า (รูปฟันเฟือง) เพื่อใส่เบอร์มือถือหรือเลขประจำตัวผู้เสียภาษี</p>
       )}
@@ -367,7 +367,7 @@ function PaymentModal({ total, company, onClose, onPay }: { total: number; compa
         <PillInput autoFocus value={ref} onChange={(e) => setRef(e.target.value)} placeholder={method === "CARD" ? "เลขที่สลิปบัตร / 4 หลักท้ายบัตร" : "เลขอ้างอิงการโอนจากสลิป"} className="w-full h-12 text-[15px]" />
       )}
       {err && <p className="text-[13px] text-danger font-bold">{err}</p>}
-      <PillButton variant="confirm" className="w-full h-14 text-[18px] font-bold" disabled={busy || !canConfirm} onClick={confirm}>
+      <PillButton variant="confirm" className="w-full h-12 text-[18px] font-bold" disabled={busy || !canConfirm} onClick={confirm}>
         {busy ? <Loader2 size={20} className="animate-spin mr-2" /> : <Check size={20} className="mr-2" />} {method === "CASH" ? "รับเงินและปิดบิล" : method === "PROMPTPAY" ? "ได้รับเงินแล้ว ปิดบิล" : "บันทึกการชำระ"}
       </PillButton>
     </Modal>
@@ -383,7 +383,7 @@ function SaleHistory({ companyId, onClose, onReprint, onA4 }: { companyId: strin
   const when = (v: any) => { const ms = v?.toMillis?.() ?? (v?.seconds ? v.seconds * 1000 : Date.parse(v)); return Number.isFinite(ms) ? new Date(ms).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "-"; };
   return (
     <Modal title="บิลย้อนหลัง" onClose={onClose} wide>
-      <PillInput autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหาเลขที่บิล ชื่อลูกค้า เลขอ้างอิง" className="w-full h-10 text-sm" />
+      <PillInput autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหาเลขที่บิล ชื่อลูกค้า เลขอ้างอิง" className="w-full h-9 text-sm" />
       {loading ? <p className="text-[14px] text-white/50 py-6 text-center"><Loader2 size={16} className="inline animate-spin mr-2" />กำลังโหลด…</p> : shown.length === 0 ? <p className="text-[14px] text-white/50 py-6 text-center">ยังไม่มีบิล</p> : (
         <div className="divide-y divide-white/[0.06]">
           {shown.map((t: any) => (
@@ -473,10 +473,10 @@ function PosSettings({ company, companyId, onClose, onSaved }: { company: any; c
   return (
     <Modal title="ตั้งค่าหน้าร้าน" onClose={onClose}>
       <label className="block text-[13px] text-white/70">รหัสพร้อมเพย์ของร้าน (เบอร์มือถือ 10 หลัก หรือเลขประจำตัวผู้เสียภาษี 13 หลัก)</label>
-      <PillInput value={pp} onChange={(e) => setPp(e.target.value)} placeholder={company?.taxId ? `เว้นว่าง = ใช้เลขผู้เสียภาษี ${company.taxId}` : "0812345678"} className={cn("w-full h-11 text-sm font-mono", !valid && "border-danger")} />
+      <PillInput value={pp} onChange={(e) => setPp(e.target.value)} placeholder={company?.taxId ? `เว้นว่าง = ใช้เลขผู้เสียภาษี ${company.taxId}` : "0812345678"} className={cn("w-full h-9 text-sm font-mono", !valid && "border-danger")} />
       {!valid && <p className="text-[12px] text-danger">รูปแบบไม่ถูกต้อง</p>}
       {error && <p className="text-[12px] text-danger">{error}</p>}
-      <div className="flex justify-end gap-2"><PillButton variant="ghost" className="h-10 px-5 text-xs" onClick={onClose}>ยกเลิก</PillButton><PillButton variant="confirm" className="h-10 px-5 text-xs font-bold" disabled={busy || !valid} onClick={save}>บันทึก</PillButton></div>
+      <div className="flex justify-end gap-2"><PillButton variant="ghost" className="h-9 px-5 text-xs" onClick={onClose}>ยกเลิก</PillButton><PillButton variant="confirm" className="h-9 px-5 text-xs font-bold" disabled={busy || !valid} onClick={save}>บันทึก</PillButton></div>
     </Modal>
   );
 }

@@ -219,7 +219,7 @@ export function ReceiptModal({ isOpen, onClose, onSave }: ReceiptModalProps) {
                                <PillSelect 
                                  value={inv.whtRate}
                                  onChange={(e) => updateInvoice(inv.id, "whtRate", e.target.value)}
-                                 className="w-full text-right px-4 h-10" 
+                                 className="w-full text-right px-4 h-9" 
                                >
                                   <option value="0">0%</option>
                                   <option value="1">1%</option>

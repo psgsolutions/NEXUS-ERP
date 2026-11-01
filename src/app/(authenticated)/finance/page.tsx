@@ -400,7 +400,7 @@ export default function FinancePage() {
                  kbd="F"
                />
                <div className="flex items-center gap-2 pr-1.5">
-                  <PillButton variant="glass" className="h-11 w-11 p-0 rounded-full border-white/5 hover:border-nexus-teal/30 hover:bg-nexus-teal/5">
+                  <PillButton variant="glass" className="h-9 w-9 p-0 rounded-full border-white/5 hover:border-nexus-teal/30 hover:bg-nexus-teal/5">
                     <Filter size={18} className="text-white/40" />
                   </PillButton>
                </div>

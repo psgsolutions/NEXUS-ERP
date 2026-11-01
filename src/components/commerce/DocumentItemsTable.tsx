@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useRef, useLayoutEffect } from "react";
 import { Plus, Trash2, Search, ChevronUp, ChevronDown, CornerDownRight, AlignLeft, Copy, AlertTriangle } from "lucide-react";
-import { PillButton, Modal, cn } from "@/components/ui/Base";
+import { PillButton, Modal, cn, PillInput } from "@/components/ui/Base";
 import { formatCurrency, calculateLineGP } from "@/lib/erp-logic";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { useProducts } from "@/hooks/useProducts";
@@ -58,7 +58,7 @@ export const ITEM_GRID = "grid items-center gap-x-1.5";
 const CompactVerticalStepperInput = ({ value, onChange, min = 0 }: { value: number, onChange: (val: number) => void, min?: number }) => {
   return (
     <div className="relative flex items-center bg-transparent border border-white/20 hover:border-white/30 rounded-full h-8 w-full group/stepper transition-colors focus-within:border-nexus-teal/50 focus-within:bg-white/[0.02]">
-      <input
+      <PillInput
         type="number"
         value={value === 0 ? "" : value}
         onChange={(e) => onChange(Math.max(min, Number(e.target.value) || 0))}
@@ -390,7 +390,7 @@ const InlineRow = ({
   );
 
   const renderUnit = () => !isLocked ? (
-    <input
+    <PillInput
       type="text"
       value={item.unit || ""}
       onChange={(e) => updateItem(item.id, "unit", e.target.value)}
@@ -403,7 +403,7 @@ const InlineRow = ({
   const priceText = item.price ? Number(item.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
   const renderPrice = () => !isLocked ? (
     isEditingPrice ? (
-      <input
+      <PillInput
         type="number"
         autoFocus
         value={item.price === 0 ? "" : item.price}
@@ -416,7 +416,7 @@ const InlineRow = ({
         )}
       />
     ) : (
-      <input
+      <PillInput
         type="text"
         readOnly
         value={priceText}
@@ -591,7 +591,7 @@ const InlineRow = ({
             <label className="text-[12px] text-nexus-teal font-semibold tracking-wider flex items-center gap-1">
               ลิงก์เอกสารอ้างอิง
             </label>
-            <input
+            <PillInput
               type="url"
               value={item.datasheetUrl || ""}
               onChange={(e) => updateItem(item.id, "datasheetUrl", e.target.value)}
@@ -931,7 +931,7 @@ export function DocumentItemsTable({
               <PillButton
                 variant="glass"
                 onClick={() => setIsConfirmingClear(false)}
-                className="px-6 h-10"
+                className="px-6 h-9"
               >
                 ยกเลิก
               </PillButton>
@@ -941,7 +941,7 @@ export function DocumentItemsTable({
                   onChange([]);
                   setIsConfirmingClear(false);
                 }}
-                className="px-6 h-10 bg-danger/20 text-danger border-danger/40 hover:bg-danger/30 font-bold"
+                className="px-6 h-9 bg-danger/20 text-danger border-danger/40 hover:bg-danger/30 font-bold"
               >
                 ยืนยันล้างทั้งหมด
               </PillButton>

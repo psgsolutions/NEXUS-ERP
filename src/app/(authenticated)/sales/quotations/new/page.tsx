@@ -4,7 +4,7 @@ import { useSystemDialog } from "@/context/DialogContext";
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, Send, Building2, Calendar, Plus, Info, AlertTriangle, Search, Trash2, FileText, Mail, MessageSquare, Download, Edit3, ChevronDown, CheckCircle2, Lock, Share2 } from 'lucide-react';
-import { PillButton, PillCheckbox, cn, NexusDatePicker, GlassCard, Modal } from "@/components/ui/Base";
+import { PillButton, PillCheckbox, cn, NexusDatePicker, GlassCard, Modal, PillInput } from "@/components/ui/Base";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { DocumentAttachmentsCard } from "@/components/commerce/DocumentAttachmentsCard";
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
@@ -710,7 +710,7 @@ export default function QuotationCreationPage() {
         <PillButton
           variant="glass"
           onClick={() => router.back()}
-          className="w-10 h-10 p-0 flex items-center justify-center rounded-full"
+          className="w-9 h-9 p-0 flex items-center justify-center rounded-full"
         >
           <ArrowLeft size={20} />
         </PillButton>
@@ -910,7 +910,7 @@ export default function QuotationCreationPage() {
                       </button>
                     )}
                   </div>
-                  <input
+                  <PillInput
                     type="text"
                     value={addrLine1}
                     onChange={(e) => setAddrLine1(e.target.value)}
@@ -918,35 +918,35 @@ export default function QuotationCreationPage() {
                     className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                   <div className="grid grid-cols-5 gap-2 pt-1">
-                    <input
+                    <PillInput
                       type="text"
                       value={addrLine2}
                       onChange={(e) => setAddrLine2(e.target.value)}
                       placeholder="ซอย / ถนน"
                       className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
-                    <input
+                    <PillInput
                       type="text"
                       value={subDistrict}
                       onChange={(e) => setSubDistrict(e.target.value)}
                       placeholder="แขวง / ตำบล"
                       className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
-                    <input
+                    <PillInput
                       type="text"
                       value={district}
                       onChange={(e) => setDistrict(e.target.value)}
                       placeholder="เขต / อำเภอ"
                       className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
-                    <input
+                    <PillInput
                       type="text"
                       value={province}
                       onChange={(e) => setProvince(e.target.value)}
                       placeholder="จังหวัด"
                       className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
-                    <input
+                    <PillInput
                       type="text"
                       value={postalCode}
                       onChange={(e) => setPostalCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
@@ -960,7 +960,7 @@ export default function QuotationCreationPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[12px] font-bold text-white/70">เลขผู้เสียภาษี (13 หลัก) <span className="text-danger">*</span></label>
-                  <input
+                  <PillInput
                     type="text"
                     value={customerTaxId}
                     onChange={(e) => setCustomerTaxId(e.target.value.replace(/\D/g, '').slice(0, 13))}
@@ -970,7 +970,7 @@ export default function QuotationCreationPage() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-[12px] font-bold text-white/70">สาขา</label>
-                  <input
+                  <PillInput
                     type="text"
                     value={customerBranch}
                     onChange={(e) => setCustomerBranch(e.target.value)}
@@ -983,21 +983,21 @@ export default function QuotationCreationPage() {
               <div className="space-y-1">
                 <label className="text-[12px] font-bold text-white/70">ข้อมูลผู้ติดต่อ <span className="text-danger">*</span></label>
                 <div className="grid grid-cols-3 gap-3">
-                  <input
+                  <PillInput
                     type="text"
                     value={contactPerson}
                     onChange={(e) => setContactPerson(e.target.value)}
                     placeholder="ชื่อผู้ติดต่อ (บังคับกรอก)"
                     className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
-                  <input
+                  <PillInput
                     type="text"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="เบอร์โทรศัพท์"
                     className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
-                  <input
+                  <PillInput
                     type="text"
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
@@ -1073,7 +1073,7 @@ export default function QuotationCreationPage() {
                     onClose={() => setIsSalespersonSearchActive(false)}
                     trigger={
                       <div className="relative w-full">
-                        <input
+                        <PillInput
                           type="text"
                           value={salespersonSearchTerm}
                           onChange={(e) => setSalespersonSearchTerm(e.target.value)}
@@ -1188,7 +1188,7 @@ export default function QuotationCreationPage() {
                 onClose={() => setIsShippingTermsActive(false)}
                 trigger={
                   <div className="relative w-full">
-                    <input
+                    <PillInput
                       type="text"
                       value={incoTerms}
                       onChange={(e) => setIncoTerms(e.target.value)}
@@ -1231,7 +1231,7 @@ export default function QuotationCreationPage() {
                   📍 ใช้ที่อยู่เดียวกับสำนักงานใหญ่
                 </button>
               </div>
-              <input
+              <PillInput
                 type="text"
                 value={deliveryAddress}
                 onChange={(e) => setDeliveryAddress(e.target.value)}
@@ -1275,7 +1275,7 @@ export default function QuotationCreationPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เงื่อนไขชำระ</label>
-                <input
+                <PillInput
                   type="text"
                   value={paymentTerms}
                   onChange={(e) => setPaymentTerms(e.target.value)}
@@ -1286,7 +1286,7 @@ export default function QuotationCreationPage() {
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เลขอ้างอิง</label>
-              <input
+              <PillInput
                 type="text"
                 value={referenceNo}
                 onChange={(e) => setReferenceNo(e.target.value)}
@@ -1361,7 +1361,7 @@ export default function QuotationCreationPage() {
               const calcAmt = summary.grandTotal * ((Number(sch.percent) || 0) / 100);
               return (
                 <div key={sch.id} className="grid grid-cols-12 gap-2 items-center bg-black/20 p-2 rounded-xl border border-white/5">
-                  <input
+                  <PillInput
                     type="text"
                     value={sch.name}
                     onChange={(e) => {
@@ -1417,7 +1417,7 @@ export default function QuotationCreationPage() {
           <div className="space-y-2">
             <div className="space-y-1">
               <label className="text-[11px] font-bold text-white/70">การรับประกัน</label>
-              <input
+              <PillInput
                 type="text"
                 value={warrantyTerms}
                 onChange={(e) => setWarrantyTerms(e.target.value)}
@@ -1427,7 +1427,7 @@ export default function QuotationCreationPage() {
             </div>
             <div className="space-y-1">
               <label className="text-[11px] font-bold text-white/70">ขอบเขตงาน</label>
-              <input
+              <PillInput
                 type="text"
                 value={scopeOfWork}
                 onChange={(e) => setScopeOfWork(e.target.value)}
@@ -1437,7 +1437,7 @@ export default function QuotationCreationPage() {
             </div>
             <div className="space-y-1">
               <label className="text-[11px] font-bold text-white/70">ข้อยกเว้น</label>
-              <input
+              <PillInput
                 type="text"
                 value={exclusions}
                 onChange={(e) => setExclusions(e.target.value)}
@@ -1677,7 +1677,7 @@ export default function QuotationCreationPage() {
               </button>
             </div>
           </div>
-          <input
+          <PillInput
             type="number"
             value={docDiscountValue === 0 ? '' : docDiscountValue}
             onChange={(e) => setDocDiscountValue(Math.max(0, Number(e.target.value) || 0))}

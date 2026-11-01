@@ -154,21 +154,21 @@ export function DocumentProfileSettings() {
         </div>
 
         <fieldset disabled={!canEdit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="ชื่อบริษัท (ตามหนังสือรับรอง) *" wide><PillInput value={form.name} onChange={(e) => set({ name: e.target.value })} className="h-10" /></Field>
-          <Field label="ชื่อภาษาอังกฤษ" wide><PillInput value={form.nameEn || ""} onChange={(e) => set({ nameEn: e.target.value })} className="h-10" /></Field>
-          <Field label="ที่อยู่ *" wide><PillInput value={form.address} onChange={(e) => set({ address: e.target.value })} placeholder="เลขที่ ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด รหัสไปรษณีย์" className="h-10" /></Field>
-          <Field label="เลขประจำตัวผู้เสียภาษี *"><PillInput value={form.taxId} onChange={(e) => set({ taxId: e.target.value.replace(/\D/g, "").slice(0, 13) })} inputMode="numeric" className="h-10 font-mono" /></Field>
+          <Field label="ชื่อบริษัท (ตามหนังสือรับรอง) *" wide><PillInput value={form.name} onChange={(e) => set({ name: e.target.value })} className="h-9" /></Field>
+          <Field label="ชื่อภาษาอังกฤษ" wide><PillInput value={form.nameEn || ""} onChange={(e) => set({ nameEn: e.target.value })} className="h-9" /></Field>
+          <Field label="ที่อยู่ *" wide><PillInput value={form.address} onChange={(e) => set({ address: e.target.value })} placeholder="เลขที่ ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด รหัสไปรษณีย์" className="h-9" /></Field>
+          <Field label="เลขประจำตัวผู้เสียภาษี *"><PillInput value={form.taxId} onChange={(e) => set({ taxId: e.target.value.replace(/\D/g, "").slice(0, 13) })} inputMode="numeric" className="h-9 font-mono" /></Field>
           <Field label="สาขา" hint="00000 = สำนักงานใหญ่">
             <div className="flex gap-2">
-              <PillInput value={form.branchCode} onChange={(e) => set({ branchCode: e.target.value.replace(/\D/g, "").slice(0, 5) })} inputMode="numeric" className="h-10 w-[100px] font-mono" />
-              <PillInput value={form.branchName || ""} onChange={(e) => set({ branchName: e.target.value })} placeholder="ชื่อสาขา (ถ้ามี)" className="h-10 flex-1" />
+              <PillInput value={form.branchCode} onChange={(e) => set({ branchCode: e.target.value.replace(/\D/g, "").slice(0, 5) })} inputMode="numeric" className="h-9 w-[100px] font-mono" />
+              <PillInput value={form.branchName || ""} onChange={(e) => set({ branchName: e.target.value })} placeholder="ชื่อสาขา (ถ้ามี)" className="h-9 flex-1" />
             </div>
           </Field>
-          <Field label="โทรศัพท์"><PillInput value={form.phone || ""} onChange={(e) => set({ phone: e.target.value })} className="h-10" /></Field>
-          <Field label="อีเมล"><PillInput value={form.email || ""} onChange={(e) => set({ email: e.target.value })} className="h-10" /></Field>
-          <Field label="เว็บไซต์" wide><PillInput value={form.website || ""} onChange={(e) => set({ website: e.target.value })} className="h-10" /></Field>
-          <Field label="ข้อมูลการชำระเงิน" hint="เช่น ธนาคาร เลขที่บัญชี ชื่อบัญชี (แสดงท้ายเอกสารขาย)" wide><PillInput value={form.paymentInfo || ""} onChange={(e) => set({ paymentInfo: e.target.value })} className="h-10" /></Field>
-          <Field label="ข้อความท้ายกระดาษ" wide><PillInput value={form.footerNote || ""} onChange={(e) => set({ footerNote: e.target.value })} placeholder="เช่น ขอบคุณที่ใช้บริการ" className="h-10" /></Field>
+          <Field label="โทรศัพท์"><PillInput value={form.phone || ""} onChange={(e) => set({ phone: e.target.value })} className="h-9" /></Field>
+          <Field label="อีเมล"><PillInput value={form.email || ""} onChange={(e) => set({ email: e.target.value })} className="h-9" /></Field>
+          <Field label="เว็บไซต์" wide><PillInput value={form.website || ""} onChange={(e) => set({ website: e.target.value })} className="h-9" /></Field>
+          <Field label="ข้อมูลการชำระเงิน" hint="เช่น ธนาคาร เลขที่บัญชี ชื่อบัญชี (แสดงท้ายเอกสารขาย)" wide><PillInput value={form.paymentInfo || ""} onChange={(e) => set({ paymentInfo: e.target.value })} className="h-9" /></Field>
+          <Field label="ข้อความท้ายกระดาษ" wide><PillInput value={form.footerNote || ""} onChange={(e) => set({ footerNote: e.target.value })} placeholder="เช่น ขอบคุณที่ใช้บริการ" className="h-9" /></Field>
         </fieldset>
       </GlassCard>
 

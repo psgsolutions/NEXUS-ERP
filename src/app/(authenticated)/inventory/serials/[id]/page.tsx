@@ -46,7 +46,7 @@ export default function SerialDetailPage() {
 
   const header = (
     <div className="flex items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-5 rounded-3xl backdrop-blur-xl">
-      <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center"><ArrowLeft size={20} /></PillButton>
+      <PillButton variant="glass" onClick={() => router.back()} className="w-9 h-9 p-0 flex items-center justify-center"><ArrowLeft size={20} /></PillButton>
       <div className="min-w-0">
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-2xl font-semibold text-white tracking-tight truncate">{product?.name || product?.productName || s?.productId || "-"}</h1>

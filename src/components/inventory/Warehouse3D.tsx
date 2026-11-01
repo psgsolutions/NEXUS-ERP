@@ -291,8 +291,8 @@ export function Warehouse3D({
         </p>
         {!warehousesLoading && !pickerMode && (
           <div className="flex items-center gap-2">
-            <PillInput value={newWhName} onChange={e => setNewWhName(e.target.value)} placeholder="ชื่อคลังสินค้า..." className="w-56 h-10 text-xs" />
-            <PillButton onClick={handleAddWarehouse} className="h-10 px-4 text-xs" variant="save">สร้างคลัง</PillButton>
+            <PillInput value={newWhName} onChange={e => setNewWhName(e.target.value)} placeholder="ชื่อคลังสินค้า..." className="w-56 h-9 text-xs" />
+            <PillButton onClick={handleAddWarehouse} className="h-9 px-4 text-xs" variant="save">สร้างคลัง</PillButton>
           </div>
         )}
       </div>
@@ -313,17 +313,17 @@ export function Warehouse3D({
                        value={newWhName} 
                        onChange={e => setNewWhName(e.target.value)} 
                        placeholder="ชื่อคลังสินค้าใหม่..." 
-                       className="w-56 h-10 text-xs" 
+                       className="w-56 h-9 text-xs" 
                      />
-                     <PillButton onClick={handleAddWarehouse} className="h-10 px-4 text-xs shadow-neon-teal" variant="save">บันทึก</PillButton>
-                     <PillButton variant="ghost" onClick={() => setShowNewWhForm(false)} className="h-10 px-3 text-xs text-white/50 hover:text-white">ยกเลิก</PillButton>
+                     <PillButton onClick={handleAddWarehouse} className="h-9 px-4 text-xs shadow-neon-teal" variant="save">บันทึก</PillButton>
+                     <PillButton variant="ghost" onClick={() => setShowNewWhForm(false)} className="h-9 px-3 text-xs text-white/50 hover:text-white">ยกเลิก</PillButton>
                   </div>
                ) : (
                   <>
                      <PillSelect 
                        value={activeWhId} 
                        onChange={(e) => { setActiveWhId(e.target.value); setSelectedRackId(null); setEditingRack(null); setSelectedGridCell(null); }} 
-                       className="w-56 h-10 text-xs font-black"
+                       className="w-56 h-9 text-xs font-black"
                      >
                         {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                      </PillSelect>
@@ -346,12 +346,12 @@ export function Warehouse3D({
                 <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                   <Search size={14} className="text-white/30" />
                 </span>
-                <input 
+                <PillInput 
                   type="text"
                   placeholder="พิมพ์เพื่อค้นหา..."
                   value={locatorQuery}
                   onChange={e => setLocatorQuery(e.target.value)}
-                  className="w-full pl-9 pr-8 h-10 rounded-full bg-black/40 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-nexus-teal transition-colors"
+                  className="w-full pl-9 pr-8 h-9 rounded-full bg-black/40 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-nexus-teal transition-colors"
                 />
                 {locatorQuery && (
                   <button 
@@ -666,7 +666,7 @@ export function Warehouse3D({
                                           </span>
                                        </div>
                                        {pickerMode ? (
-                                          <PillButton onClick={() => onSelectLocation?.(locationBarcode, activeWh.id)} className="h-6 px-3 text-[9px] font-black shadow-neon-blue">
+                                          <PillButton onClick={() => onSelectLocation?.(locationBarcode, activeWh.id)} className="h-8 px-3 text-[11px] font-black shadow-neon-blue">
                                              📍 เลือกพิกัดนี้
                                           </PillButton>
                                        ) : (
@@ -842,7 +842,7 @@ export function Warehouse3D({
                                  min={0}
                                  value={editingRack.capacity ?? 0}
                                  onChange={e => setEditingRack({ ...editingRack, capacity: Math.max(0, Number(e.target.value) || 0) })}
-                                 className="w-full h-10 text-xs font-mono"
+                                 className="w-full h-9 text-xs font-mono"
                               />
                            </div>
 

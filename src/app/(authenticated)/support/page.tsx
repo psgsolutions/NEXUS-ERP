@@ -203,29 +203,29 @@ function TicketForm({ initial, busy, call, onClose, onSave }: { initial: any; bu
   const valid = f.symptom?.trim() && (f.customerName?.trim() || f.phone?.trim());
   return (
     <Drawer title={f.portalId ? "รับเรื่องจากพอร์ทัลลูกค้า" : "รับแจ้งซ่อม/งานบริการ"} onClose={onClose}
-      footer={<><PillButton variant="ghost" className="h-10 px-5 text-xs" onClick={onClose}>ยกเลิก</PillButton><PillButton variant="confirm" className="h-10 px-6 text-xs font-bold" disabled={busy || !valid} onClick={() => onSave(f, f.portalId)}>{busy ? <Loader2 size={14} className="animate-spin mr-1" /> : <Check size={14} className="mr-1" />} บันทึกใบแจ้ง</PillButton></>}>
+      footer={<><PillButton variant="ghost" className="h-9 px-5 text-xs" onClick={onClose}>ยกเลิก</PillButton><PillButton variant="confirm" className="h-9 px-6 text-xs font-bold" disabled={busy || !valid} onClick={() => onSave(f, f.portalId)}>{busy ? <Loader2 size={14} className="animate-spin mr-1" /> : <Check size={14} className="mr-1" />} บันทึกใบแจ้ง</PillButton></>}>
       <Field label="ประเภทเรื่อง"><Chips options={TICKET_CATEGORIES} value={f.category} onChange={(v) => set({ category: v })} /></Field>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Field label="ชื่อลูกค้า"><PillInput value={f.customerName || ""} onChange={(e) => set({ customerName: e.target.value })} className="w-full h-10 text-sm" /></Field>
-        <Field label="เบอร์โทร"><PillInput value={f.phone || ""} onChange={(e) => set({ phone: e.target.value })} className="w-full h-10 text-sm font-mono" /></Field>
-        <Field label="ที่อยู่/สถานที่ซ่อม" className="sm:col-span-2"><PillInput value={f.address || ""} onChange={(e) => set({ address: e.target.value })} className="w-full h-10 text-sm" /></Field>
+        <Field label="ชื่อลูกค้า"><PillInput value={f.customerName || ""} onChange={(e) => set({ customerName: e.target.value })} className="w-full h-9 text-sm" /></Field>
+        <Field label="เบอร์โทร"><PillInput value={f.phone || ""} onChange={(e) => set({ phone: e.target.value })} className="w-full h-9 text-sm font-mono" /></Field>
+        <Field label="ที่อยู่/สถานที่ซ่อม" className="sm:col-span-2"><PillInput value={f.address || ""} onChange={(e) => set({ address: e.target.value })} className="w-full h-9 text-sm" /></Field>
       </div>
       <Field label="อาการ/เรื่องที่แจ้ง *"><textarea value={f.symptom || ""} onChange={(e) => set({ symptom: e.target.value })} rows={3} placeholder="เช่น กล้องตัวที่ 3 ภาพไม่ขึ้นตั้งแต่เมื่อวาน" className="w-full rounded-2xl bg-white/[0.03] border border-white/10 p-3 text-sm text-white leading-relaxed outline-none focus:border-nexus-teal/50" /></Field>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="หมายเลขเครื่อง">
           <div className="flex gap-2">
-            <PillInput value={f.serialNumber || ""} onChange={(e) => { set({ serialNumber: e.target.value }); setSerial(null); }} className="flex-1 h-10 text-sm font-mono" />
-            <PillButton variant="glass" className="h-10 px-3 text-xs" onClick={check} disabled={checking || !f.serialNumber?.trim()}>{checking ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />} ตรวจประกัน</PillButton>
+            <PillInput value={f.serialNumber || ""} onChange={(e) => { set({ serialNumber: e.target.value }); setSerial(null); }} className="flex-1 h-9 text-sm font-mono" />
+            <PillButton variant="glass" className="h-9 px-3 text-xs" onClick={check} disabled={checking || !f.serialNumber?.trim()}>{checking ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />} ตรวจประกัน</PillButton>
           </div>
           {serial && (serial.notFound ? <p className="text-[12px] text-white/50 ml-1">ไม่พบหมายเลขนี้ในระบบ</p>
             : <p className={cn("text-[12px] ml-1", serial.inWarranty ? "text-nexus-teal" : "text-warning")}>{serial.productName} · {serial.inWarranty ? `อยู่ในประกันถึง ${serial.warrantyEndDate}` : serial.warrantyEndDate ? `หมดประกัน ${serial.warrantyEndDate}` : "ไม่มีข้อมูลประกัน"}</p>)}
         </Field>
-        <Field label="สินค้า/อุปกรณ์"><PillInput value={f.productName || ""} onChange={(e) => set({ productName: e.target.value })} className="w-full h-10 text-sm" /></Field>
+        <Field label="สินค้า/อุปกรณ์"><PillInput value={f.productName || ""} onChange={(e) => set({ productName: e.target.value })} className="w-full h-9 text-sm" /></Field>
       </div>
       <Field label="ความเร่งด่วน (กำหนดเวลาแก้ไข)">
         <Chips options={(Object.keys(SLA_HOURS) as TicketPriority[]).reverse().map((k) => ({ value: k, label: TICKET_PRIORITY[k] }))} value={f.priority} onChange={(v) => set({ priority: v })} />
       </Field>
-      <Field label="ช่องทางที่แจ้ง"><PillSelect value={f.channel} onChange={(e) => set({ channel: e.target.value })} className="w-full sm:w-[240px] h-10 text-sm">{TICKET_CHANNELS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}</PillSelect></Field>
+      <Field label="ช่องทางที่แจ้ง"><PillSelect value={f.channel} onChange={(e) => set({ channel: e.target.value })} className="w-full sm:w-[240px] h-9 text-sm">{TICKET_CHANNELS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}</PillSelect></Field>
     </Drawer>
   );
 }
@@ -242,13 +242,13 @@ function TicketDrawer({ ticket: t, people, canEdit, busy, onClose, onAction }: {
   return (
     <Drawer title={`${t.ticketNo} · ${ticketCategoryLabel(t.category)}`} onClose={onClose}
       footer={<>
-        <PillButton variant="glass" className="h-10 px-4 text-xs" onClick={() => setDoc(true)} title="พิมพ์ หรือส่งใบเปิดเคสให้ลูกค้า (ลิงก์/อีเมล/LINE)"><FileText size={14} className="mr-1" /> ใบเปิดเคส</PillButton>
+        <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={() => setDoc(true)} title="พิมพ์ หรือส่งใบเปิดเคสให้ลูกค้า (ลิงก์/อีเมล/LINE)"><FileText size={14} className="mr-1" /> ใบเปิดเคส</PillButton>
         {canEdit && <>
-        {isOpen && mode !== "cancel" && <PillButton variant="ghost" className="h-10 px-4 text-xs text-danger" onClick={() => setMode("cancel")}>ยกเลิกเรื่อง</PillButton>}
-        {isOpen && <PillButton variant="glass" className="h-10 px-4 text-xs" disabled={busy} onClick={() => onAction("resolve", { note: "แก้ไขแล้ว (ไม่ต้องส่งช่าง)" })}><Check size={14} className="mr-1" /> แก้ไขแล้ว</PillButton>}
-        {t.status === "RESOLVED" && <PillButton variant="confirm" className="h-10 px-4 text-xs font-bold" disabled={busy} onClick={() => onAction("close")}>ปิดเรื่อง</PillButton>}
-        {["RESOLVED", "CLOSED"].includes(t.status) && <PillButton variant="glass" className="h-10 px-4 text-xs" disabled={busy} onClick={() => onAction("reopen")}>เปิดเรื่องอีกครั้ง</PillButton>}
-        {isOpen && mode !== "dispatch" && <PillButton variant="primary" className="h-10 px-5 text-xs font-bold" onClick={() => setMode("dispatch")}><Wrench size={14} className="mr-1" /> ส่งให้ช่าง</PillButton>}
+        {isOpen && mode !== "cancel" && <PillButton variant="ghost" className="h-9 px-4 text-xs text-danger" onClick={() => setMode("cancel")}>ยกเลิกเรื่อง</PillButton>}
+        {isOpen && <PillButton variant="glass" className="h-9 px-4 text-xs" disabled={busy} onClick={() => onAction("resolve", { note: "แก้ไขแล้ว (ไม่ต้องส่งช่าง)" })}><Check size={14} className="mr-1" /> แก้ไขแล้ว</PillButton>}
+        {t.status === "RESOLVED" && <PillButton variant="confirm" className="h-9 px-4 text-xs font-bold" disabled={busy} onClick={() => onAction("close")}>ปิดเรื่อง</PillButton>}
+        {["RESOLVED", "CLOSED"].includes(t.status) && <PillButton variant="glass" className="h-9 px-4 text-xs" disabled={busy} onClick={() => onAction("reopen")}>เปิดเรื่องอีกครั้ง</PillButton>}
+        {isOpen && mode !== "dispatch" && <PillButton variant="primary" className="h-9 px-5 text-xs font-bold" onClick={() => setMode("dispatch")}><Wrench size={14} className="mr-1" /> ส่งให้ช่าง</PillButton>}
         </>}
       </>}>
       <div className="space-y-2">
@@ -266,8 +266,8 @@ function TicketDrawer({ ticket: t, people, canEdit, busy, onClose, onAction }: {
         <GlassCard className="p-4 space-y-3 border-nexus-teal/30">
           <p className="text-[14px] font-semibold text-white">ส่งให้ช่าง (สร้างงานในศูนย์จ่ายงาน)</p>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="วันที่นัด"><PillInput type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full h-10 text-sm" /></Field>
-            <Field label="เวลา"><PillInput type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full h-10 text-sm" /></Field>
+            <Field label="วันที่นัด"><PillInput type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full h-9 text-sm" /></Field>
+            <Field label="เวลา"><PillInput type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full h-9 text-sm" /></Field>
           </div>
           <Field label="ผู้รับงาน (ไม่เลือก = ไปจ่ายในศูนย์จ่ายงาน)">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[220px] overflow-y-auto">
@@ -282,7 +282,7 @@ function TicketDrawer({ ticket: t, people, canEdit, busy, onClose, onAction }: {
               })}
             </div>
           </Field>
-          <Field label="หมายเหตุถึงช่าง"><PillInput value={note} onChange={(e) => setNote(e.target.value)} className="w-full h-10 text-sm" /></Field>
+          <Field label="หมายเหตุถึงช่าง"><PillInput value={note} onChange={(e) => setNote(e.target.value)} className="w-full h-9 text-sm" /></Field>
           <div className="flex justify-end gap-2">
             <PillButton variant="ghost" className="h-9 px-4 text-xs" onClick={() => setMode("")}>ยกเลิก</PillButton>
             <PillButton variant="confirm" className="h-9 px-5 text-xs font-bold" disabled={busy} onClick={async () => { const d = await onAction("toJob", { assignees, scheduledDate: date, scheduledTime: time, note, msg: "" }); if (d) { setMode(""); setNote(""); } }}>สร้างงาน{assignees.length ? "และจ่ายงาน" : ""}</PillButton>
@@ -291,7 +291,7 @@ function TicketDrawer({ ticket: t, people, canEdit, busy, onClose, onAction }: {
       )}
       {mode === "cancel" && (
         <GlassCard className="p-4 space-y-2 border-danger/30">
-          <Field label="เหตุผลที่ยกเลิก"><PillInput value={note} onChange={(e) => setNote(e.target.value)} className="w-full h-10 text-sm" /></Field>
+          <Field label="เหตุผลที่ยกเลิก"><PillInput value={note} onChange={(e) => setNote(e.target.value)} className="w-full h-9 text-sm" /></Field>
           <div className="flex justify-end gap-2">
             <PillButton variant="ghost" className="h-9 px-4 text-xs" onClick={() => setMode("")}>ไม่ยกเลิก</PillButton>
             <PillButton variant="ghost" className="h-9 px-4 text-xs text-danger border border-danger/30" disabled={busy || note.trim().length < 3} onClick={async () => { if (await onAction("cancel", { note })) { setMode(""); setNote(""); } }}>ยืนยันยกเลิก</PillButton>
@@ -314,8 +314,8 @@ function TicketDrawer({ ticket: t, people, canEdit, busy, onClose, onAction }: {
 
       {canEdit && mode === "" && (
         <div className="flex gap-2">
-          <PillInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="บันทึกการติดตาม เช่น โทรแจ้งลูกค้าแล้ว" className="flex-1 h-10 text-sm" />
-          <PillButton variant="glass" className="h-10 px-4 text-xs" disabled={busy || !note.trim()} onClick={async () => { if (await onAction("note", { note })) setNote(""); }}>บันทึก</PillButton>
+          <PillInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="บันทึกการติดตาม เช่น โทรแจ้งลูกค้าแล้ว" className="flex-1 h-9 text-sm" />
+          <PillButton variant="glass" className="h-9 px-4 text-xs" disabled={busy || !note.trim()} onClick={async () => { if (await onAction("note", { note })) setNote(""); }}>บันทึก</PillButton>
         </div>
       )}
       <div className="space-y-1.5">

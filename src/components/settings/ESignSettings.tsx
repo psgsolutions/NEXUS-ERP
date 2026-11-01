@@ -32,7 +32,7 @@ function MmSize({ label, value, lim, onChange }: { label: string; value: number;
         {lim.presets.map((p) => (
           <button key={p} type="button" onClick={() => onChange(p)} className={cn("h-7 px-2.5 rounded-full text-[12px] border", Math.abs(value - p) < 0.05 ? "border-nexus-teal/60 bg-nexus-teal/15 text-nexus-teal" : "border-white/10 text-white/65 hover:text-white")}>{p} มม.</button>
         ))}
-        <PillInput inputMode="decimal" value={text} onChange={(e) => setText(e.target.value.replace(/[^\d.]/g, ""))} onBlur={(e) => commit(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") commit((e.target as HTMLInputElement).value); }} className="h-7 w-[70px] text-right font-mono text-[12px]" aria-label={`${label} (มม.)`} />
+        <PillInput inputMode="decimal" value={text} onChange={(e) => setText(e.target.value.replace(/[^\d.]/g, ""))} onBlur={(e) => commit(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") commit((e.target as HTMLInputElement).value); }} className="h-8 w-[70px] text-right font-mono text-[12px]" aria-label={`${label} (มม.)`} />
         <span className="text-[11.5px] text-white/45">มม. ({lim.min}–{lim.max})</span>
       </div>
     </div>

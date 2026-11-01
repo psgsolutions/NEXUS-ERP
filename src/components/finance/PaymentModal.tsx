@@ -217,7 +217,7 @@ export function PaymentModal({ isOpen, onClose, onSave }: PaymentModalProps) {
                                <PillSelect 
                                  value={order.whtRate}
                                  onChange={(e) => updateOrder(order.id, "whtRate", e.target.value)}
-                                 className="w-full text-right px-4 h-10" 
+                                 className="w-full text-right px-4 h-9" 
                                >
                                   <option value="0">0%</option>
                                   <option value="1">1%</option>

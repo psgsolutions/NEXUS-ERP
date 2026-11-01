@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Ban } from "lucide-react";
-import { GlassCard, PillButton, StatusBadge, Toast } from "@/components/ui/Base";
+import { GlassCard, PillButton, StatusBadge, Toast, PillInput } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { apiFetch } from "@/lib/api-client";
@@ -51,7 +51,7 @@ export default function CustomerRefundPage() {
     <div className="p-4 sm:p-6 space-y-4 max-w-[960px]">
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white/[0.02] border border-white/5 p-4 sm:p-5 rounded-3xl">
         <div className="flex items-center gap-3 min-w-0">
-          <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center shrink-0"><ArrowLeft size={20} /></PillButton>
+          <PillButton variant="glass" onClick={() => router.back()} className="w-9 h-9 p-0 flex items-center justify-center shrink-0"><ArrowLeft size={20} /></PillButton>
           <div className="min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-semibold text-white">ใบคืนเงิน {refundNo}</h1>
@@ -69,7 +69,7 @@ export default function CustomerRefundPage() {
 
       {cancelling && (
         <div className="flex flex-wrap items-center gap-2 px-4 py-3 rounded-2xl border border-danger/25 bg-danger/[0.04]">
-          <input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} placeholder="เหตุผลการยกเลิก (จำเป็น)" className="h-9 flex-1 min-w-[240px] px-4 rounded-full bg-white/[0.03] border border-white/10 text-[13px] text-white focus:outline-none" />
+          <PillInput autoFocus value={reason} onChange={(e) => setReason(e.target.value)} placeholder="เหตุผลการยกเลิก (จำเป็น)" className="h-9 flex-1 min-w-[240px] px-4 rounded-full bg-white/[0.03] border border-white/10 text-[13px] text-white focus:outline-none" />
           <button type="button" disabled={busy || reason.trim().length < 3} onClick={doCancel} className="h-9 px-4 rounded-full border border-danger/40 text-danger text-[12px] font-bold disabled:opacity-40">{busy ? "กำลังยกเลิก..." : "ยืนยันยกเลิก"}</button>
           <button type="button" onClick={() => setCancelling(false)} className="h-9 px-4 rounded-full border border-white/10 text-white/60 text-[12px] font-bold">ปิด</button>
         </div>

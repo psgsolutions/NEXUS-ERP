@@ -44,7 +44,7 @@ export default function ProjectTorPrintPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white/[0.02] border border-white/5 p-4 rounded-3xl print:hidden">
         <div className="flex items-center gap-3 min-w-0">
-          <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center shrink-0"><ArrowLeft size={20} /></PillButton>
+          <PillButton variant="glass" onClick={() => router.back()} className="w-9 h-9 p-0 flex items-center justify-center shrink-0"><ArrowLeft size={20} /></PillButton>
           <div className="min-w-0">
             <h1 className="text-xl font-semibold text-white truncate">{gov ? "ร่างขอบเขตของงาน (TOR)" : "รายละเอียดโครงการ"}</h1>
             <p className="text-sm text-white/50 truncate">{p ? `${p.projectId || docId} · ${p.projectName || ""}` : "กำลังโหลด..."}</p>

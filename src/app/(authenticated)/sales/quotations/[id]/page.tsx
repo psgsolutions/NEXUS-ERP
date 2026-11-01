@@ -4,7 +4,7 @@ import { useSystemDialog } from "@/context/DialogContext";
 import React, { useState, useMemo, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Save, Send, Building2, Calendar, Plus, Info, AlertTriangle, Search, Trash2, FileText, Mail, MessageSquare, Download, Edit3, ChevronDown, CheckCircle2, Lock, GitBranch, Copy, History, XCircle, FileSpreadsheet } from "lucide-react";
-import { PillButton, PillCheckbox, cn, NexusDatePicker, GlassCard, Modal } from "@/components/ui/Base";
+import { PillButton, PillCheckbox, cn, NexusDatePicker, GlassCard, Modal, PillInput } from "@/components/ui/Base";
 import Link from "next/link";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { DocumentAttachmentsCard } from "@/components/commerce/DocumentAttachmentsCard";
@@ -834,7 +834,7 @@ export default function QuotationEditPage() {
   const headerContent = (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center rounded-full">
+        <PillButton variant="glass" onClick={() => router.back()} className="w-9 h-9 p-0 flex items-center justify-center rounded-full">
           <ArrowLeft size={20} />
         </PillButton>
         <div>
@@ -1014,14 +1014,14 @@ export default function QuotationEditPage() {
               ) : (
                 <div className="space-y-2 bg-black/30 p-3 rounded-2xl border border-white/10 transition-all">
                   <div className="grid grid-cols-2 gap-2">
-                    <input
+                    <PillInput
                       type="text"
                       value={addrLine1}
                       onChange={(e) => setAddrLine1(e.target.value)}
                       placeholder="บ้านเลขที่ / อาคาร / ชั้น"
                       className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
-                    <input
+                    <PillInput
                       type="text"
                       value={addrLine2}
                       onChange={(e) => setAddrLine2(e.target.value)}
@@ -1030,28 +1030,28 @@ export default function QuotationEditPage() {
                     />
                   </div>
                   <div className="grid grid-cols-4 gap-2">
-                    <input
+                    <PillInput
                       type="text"
                       value={subDistrict}
                       onChange={(e) => setSubDistrict(e.target.value)}
                       placeholder="ตำบล / แขวง"
                       className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
-                    <input
+                    <PillInput
                       type="text"
                       value={district}
                       onChange={(e) => setDistrict(e.target.value)}
                       placeholder="เขต / อำเภอ"
                       className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
-                    <input
+                    <PillInput
                       type="text"
                       value={province}
                       onChange={(e) => setProvince(e.target.value)}
                       placeholder="จังหวัด"
                       className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
-                    <input
+                    <PillInput
                       type="text"
                       value={postalCode}
                       onChange={(e) => setPostalCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
@@ -1065,7 +1065,7 @@ export default function QuotationEditPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[12px] font-bold text-white/70">เลขผู้เสียภาษี (13 หลัก) <span className="text-danger">*</span></label>
-                  <input
+                  <PillInput
                     type="text"
                     value={customerTaxId}
                     onChange={(e) => setCustomerTaxId(e.target.value.replace(/\D/g, '').slice(0, 13))}
@@ -1075,7 +1075,7 @@ export default function QuotationEditPage() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-[12px] font-bold text-white/70">สาขา</label>
-                  <input
+                  <PillInput
                     type="text"
                     value={customerBranch}
                     onChange={(e) => setCustomerBranch(e.target.value)}
@@ -1088,21 +1088,21 @@ export default function QuotationEditPage() {
               <div className="space-y-1">
                 <label className="text-[12px] font-bold text-white/70">ข้อมูลผู้ติดต่อ</label>
                 <div className="grid grid-cols-3 gap-3">
-                  <input
+                  <PillInput
                     type="text"
                     value={contactPerson}
                     onChange={(e) => setContactPerson(e.target.value)}
                     placeholder="ชื่อผู้ติดต่อ"
                     className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
-                  <input
+                  <PillInput
                     type="text"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="เบอร์โทรศัพท์"
                     className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
-                  <input
+                  <PillInput
                     type="text"
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
@@ -1179,7 +1179,7 @@ export default function QuotationEditPage() {
                     trigger={
                       <div className="relative w-full flex items-center">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-nexus-teal/50" />
-                        <input
+                        <PillInput
                           type="text"
                           autoFocus
                           placeholder="ค้นหาพนักงานขาย..."
@@ -1268,42 +1268,42 @@ export default function QuotationEditPage() {
             </div>
             <div className="space-y-1 col-span-3">
               <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">ชื่อโครงการ</label>
-              <input
+              <PillInput
                 type="text"
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="เช่น โครงการระบบเครือข่าย สนง.ใหญ่"
-                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 leading-relaxed text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all text-left"
+                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all text-left leading-relaxed"
               />
             </div>
             <div className="space-y-1 col-span-3">
               <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">แหล่งที่มา</label>
-              <input
+              <PillInput
                 type="text"
                 value={leadSource}
                 onChange={(e) => setLeadSource(e.target.value)}
                 placeholder="เช่น Website, งานสัมมนา, ลูกค้าแนะนำ"
-                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 leading-relaxed text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all text-left"
+                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all text-left leading-relaxed"
               />
             </div>
             <div className="space-y-1 col-span-6">
               <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เงื่อนไขการส่งมอบ</label>
-              <input
+              <PillInput
                 type="text"
                 value={incoTerms}
                 onChange={(e) => setIncoTerms(e.target.value)}
                 placeholder="เช่น FOB, EXW, ส่งมอบถึงสถานที่ติดตั้ง"
-                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 leading-relaxed text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all text-left"
+                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all text-left leading-relaxed"
               />
             </div>
             <div className="space-y-1 col-span-6">
               <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">สถานที่จัดส่ง</label>
-              <input
+              <PillInput
                 type="text"
                 value={shippingAddress}
                 onChange={(e) => setShippingAddress(e.target.value)}
                 placeholder="ระบุสถานที่จัดส่ง หรือเว้นว่างเพื่อใช้ที่อยู่ตามบิล"
-                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 leading-relaxed text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
+                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all leading-relaxed"
               />
             </div>
           </div>
@@ -1329,21 +1329,21 @@ export default function QuotationEditPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เงื่อนไขชำระ</label>
-                <input
+                <PillInput
                   type="text"
                   value={paymentTerms}
                   onChange={(e) => setPaymentTerms(e.target.value)}
-                  className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-2 py-0 leading-relaxed text-[13px] font-bold text-nexus-teal text-center focus:outline-none transition-all"
+                  className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-2 py-0 text-[13px] font-bold text-nexus-teal text-center focus:outline-none transition-all leading-relaxed"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เลขอ้างอิง</label>
-                <input
+                <PillInput
                   type="text"
                   value={referenceNo}
                   onChange={(e) => setReferenceNo(e.target.value)}
                   placeholder="PR-2026-001"
-                  className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-2 py-0 leading-relaxed text-[13px] font-bold text-nexus-teal font-mono text-center focus:outline-none transition-all"
+                  className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-2 py-0 text-[13px] font-bold text-nexus-teal font-mono text-center focus:outline-none transition-all leading-relaxed"
                 />
               </div>
               <div className="flex flex-col gap-1.5 col-span-full">
@@ -1654,7 +1654,7 @@ export default function QuotationEditPage() {
               </button>
             </div>
           </div>
-          <input
+          <PillInput
             type="number"
             value={docDiscountValue === 0 ? '' : docDiscountValue}
             onChange={(e) => setDocDiscountValue(Math.max(0, Number(e.target.value) || 0))}

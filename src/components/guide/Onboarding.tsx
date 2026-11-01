@@ -114,7 +114,7 @@ export function OnboardingHost({ children }: { children: React.ReactNode }) {
               <p>• ก่อนบันทึกเอกสารสำคัญ กล่อง <ListChecks size={14} className="inline -mt-0.5 text-nexus-blue" /> บอกว่าระบบจะทำอะไรบ้าง · ไอคอน ⓘ อธิบายช่องที่ต้องกรอก</p>
             </section>
             <div className="flex justify-end">
-              <PillButton variant="primary" onClick={closeWelcome} className="h-10 px-6 text-sm">เริ่มใช้งาน</PillButton>
+              <PillButton variant="primary" onClick={closeWelcome} className="h-9 px-6 text-sm">เริ่มใช้งาน</PillButton>
             </div>
           </div>
         </div>

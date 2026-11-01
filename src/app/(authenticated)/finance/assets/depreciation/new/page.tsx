@@ -93,7 +93,7 @@ export default function NewAssetDepreciationPage() {
   const headerContent = (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <PillButton variant="glass" onClick={handleBack} className="w-10 h-10 p-0 flex items-center justify-center">
+        <PillButton variant="glass" onClick={handleBack} className="w-9 h-9 p-0 flex items-center justify-center">
           <ArrowLeft size={20} />
         </PillButton>
         <div>
@@ -219,13 +219,13 @@ export default function NewAssetDepreciationPage() {
 
        <div className="space-y-4 pt-4 relative z-10">
           {step === 1 ? (
-             <PillButton className="w-full h-11 px-6 rounded-full shadow-[0_0_12px_rgba(6,182,212,0.15)] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-black uppercase tracking-[0.2em] text-[12px] hover:bg-cyan-500/20" onClick={() => setStep(2)}>
+             <PillButton className="w-full h-9 px-6 rounded-full shadow-[0_0_12px_rgba(6,182,212,0.15)] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-black uppercase tracking-[0.2em] text-[12px] hover:bg-cyan-500/20" onClick={() => setStep(2)}>
                 ดำเนินการต่อ <ArrowRight size={16} className="ml-2" />
              </PillButton>
           ) : (
              <div className="space-y-4">
                 <PillButton 
-                  className={cn("w-full h-11 px-6 rounded-full shadow-[0_0_12px_rgba(234,179,8,0.15)] bg-warning/20 hover:bg-warning/30 border border-warning/40 text-warning uppercase tracking-widest font-black text-[12px]", isSaving && "opacity-50 pointer-events-none grayscale")} 
+                  className={cn("w-full h-9 px-6 rounded-full shadow-[0_0_12px_rgba(234,179,8,0.15)] bg-warning/20 hover:bg-warning/30 border border-warning/40 text-warning uppercase tracking-widest font-black text-[12px]", isSaving && "opacity-50 pointer-events-none grayscale")} 
                   onClick={handleConfirm}
                   disabled={isSaving}
                 >
@@ -234,7 +234,7 @@ export default function NewAssetDepreciationPage() {
                 </PillButton>
                 <PillButton 
                   variant="glass" 
-                  className={cn("w-full h-11 px-6 rounded-full text-white/40 hover:text-white uppercase tracking-widest text-[11px]", isSaving && "opacity-50 pointer-events-none")} 
+                  className={cn("w-full h-9 px-6 rounded-full text-white/40 hover:text-white uppercase tracking-widest text-[11px]", isSaving && "opacity-50 pointer-events-none")} 
                   onClick={() => setStep(1)}
                   disabled={isSaving}
                 >

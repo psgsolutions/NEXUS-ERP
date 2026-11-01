@@ -17,7 +17,7 @@ export default function DocumentViewPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-72px)] px-4 py-3 gap-3 max-w-[1400px] mx-auto">
       <div className="flex items-center gap-3">
-        <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center" aria-label="ย้อนกลับ"><ArrowLeft size={18} /></PillButton>
+        <PillButton variant="glass" onClick={() => router.back()} className="w-9 h-9 p-0 flex items-center justify-center" aria-label="ย้อนกลับ"><ArrowLeft size={18} /></PillButton>
         <h1 className="text-[18px] font-semibold text-white">{TYPE_LABEL[type] || "เอกสาร"} {type !== "sample" ? id : ""}</h1>
       </div>
       <div className="flex-1 min-h-0 rounded-2xl border border-white/10 overflow-hidden bg-white/[0.02] flex flex-col">

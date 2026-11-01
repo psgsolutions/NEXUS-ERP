@@ -56,7 +56,7 @@ export default function ProductLabelsPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white/[0.02] border border-white/5 p-4 rounded-3xl print:hidden">
         <div className="flex items-center gap-3">
-          <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center">
+          <PillButton variant="glass" onClick={() => router.back()} className="w-9 h-9 p-0 flex items-center justify-center">
             <ArrowLeft size={20} />
           </PillButton>
           <div>

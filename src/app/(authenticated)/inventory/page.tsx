@@ -169,7 +169,7 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
                 placeholder="เช่น ชุดกล้องวงจรปิดพร้อมเครื่องบันทึก 8 จุด..." 
                 value={name}
                 onChange={e => setName(e.target.value)}
-                className="w-full h-10 bg-black/40 border-white/10 text-white focus:border-nexus-teal/50"
+                className="w-full h-9 bg-black/40 border-white/10 text-white focus:border-nexus-teal/50"
               />
             </div>
             <div className="flex-1 space-y-2">
@@ -178,7 +178,7 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
                 placeholder="รายละเอียดเพิ่มเติมสำหรับประมูลงานและติดตั้ง..." 
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                className="w-full h-10 bg-black/40 border-white/10 text-white focus:border-nexus-teal/50"
+                className="w-full h-9 bg-black/40 border-white/10 text-white focus:border-nexus-teal/50"
               />
             </div>
           </div>
@@ -318,10 +318,10 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
 
         {/* Bottom Bar */}
         <div className="p-5 border-t border-white/5 bg-black/80 flex items-center justify-end gap-4 shrink-0">
-          <PillButton variant="ghost" onClick={onClose} className="h-10 px-8 text-xs border-white/10 hover:">
+          <PillButton variant="ghost" onClick={onClose} className="h-9 px-8 text-xs border-white/10 hover:">
             ยกเลิก
           </PillButton>
-          <PillButton onClick={handleSave} disabled={!name || componentsList.length === 0 || isSaving} title={componentsList.length === 0 ? "เลือกสินค้าอย่างน้อย 1 รายการ" : undefined} className="h-10 px-8 text-xs shadow-neon-teal" variant="primary">
+          <PillButton onClick={handleSave} disabled={!name || componentsList.length === 0 || isSaving} title={componentsList.length === 0 ? "เลือกสินค้าอย่างน้อย 1 รายการ" : undefined} className="h-9 px-8 text-xs shadow-neon-teal" variant="primary">
             สร้างสูตรจัดชุด
           </PillButton>
         </div>

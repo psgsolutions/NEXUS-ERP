@@ -188,8 +188,8 @@ function JobForm({ initial, people, busy, onClose, onSave }: { initial: any; peo
   const valid = String(f.title || "").trim().length > 0;
   return (
     <Drawer title={isEdit ? `แก้ไขงาน ${f.jobNo}` : "สร้างงาน"} onClose={onClose}
-      footer={<><PillButton variant="ghost" className="h-10 px-5 text-xs" onClick={onClose}>ยกเลิก</PillButton>
-        <PillButton variant="confirm" className="h-10 px-6 text-xs font-bold" disabled={busy || !valid} onClick={() => onSave({ ...f, checklist: f.checklist.filter((c: string) => c.trim()) })}>{busy ? <Loader2 size={14} className="animate-spin mr-1" /> : <Check size={14} className="mr-1" />} {isEdit ? "บันทึก" : f.assignees.length ? "สร้างและจ่ายงาน" : "สร้างงาน (ยังไม่จ่าย)"}</PillButton></>}>
+      footer={<><PillButton variant="ghost" className="h-9 px-5 text-xs" onClick={onClose}>ยกเลิก</PillButton>
+        <PillButton variant="confirm" className="h-9 px-6 text-xs font-bold" disabled={busy || !valid} onClick={() => onSave({ ...f, checklist: f.checklist.filter((c: string) => c.trim()) })}>{busy ? <Loader2 size={14} className="animate-spin mr-1" /> : <Check size={14} className="mr-1" />} {isEdit ? "บันทึก" : f.assignees.length ? "สร้างและจ่ายงาน" : "สร้างงาน (ยังไม่จ่าย)"}</PillButton></>}>
       <Field label="ประเภทงาน">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {JOB_TYPES.map((t) => (
@@ -200,24 +200,24 @@ function JobForm({ initial, people, busy, onClose, onSave }: { initial: any; peo
           ))}
         </div>
       </Field>
-      <Field label="ชื่องาน *"><PillInput value={f.title || ""} onChange={(e) => set({ title: e.target.value })} placeholder="เช่น ซ่อมกล้องวงจรปิด ร้านสาขา 3" className="w-full h-10 text-sm" /></Field>
+      <Field label="ชื่องาน *"><PillInput value={f.title || ""} onChange={(e) => set({ title: e.target.value })} placeholder="เช่น ซ่อมกล้องวงจรปิด ร้านสาขา 3" className="w-full h-9 text-sm" /></Field>
       <Field label="รายละเอียด"><textarea value={f.description || ""} onChange={(e) => set({ description: e.target.value })} rows={3} className="w-full rounded-2xl bg-white/[0.03] border border-white/10 p-3 text-sm text-white leading-relaxed outline-none focus:border-nexus-teal/50" /></Field>
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-        <Field label="วันที่นัด"><PillInput type="date" value={f.scheduledDate || ""} onChange={(e) => set({ scheduledDate: e.target.value })} className="w-full h-10 text-sm" /></Field>
-        <Field label="เวลา"><PillInput type="time" value={f.scheduledTime || ""} onChange={(e) => set({ scheduledTime: e.target.value })} className="w-full h-10 text-sm" /></Field>
-        <Field label="ใช้เวลาประมาณ (ชม.)"><PillInput type="number" value={f.estimatedHours || ""} onChange={(e) => set({ estimatedHours: e.target.value })} className="w-full h-10 text-sm font-mono" /></Field>
+        <Field label="วันที่นัด"><PillInput type="date" value={f.scheduledDate || ""} onChange={(e) => set({ scheduledDate: e.target.value })} className="w-full h-9 text-sm" /></Field>
+        <Field label="เวลา"><PillInput type="time" value={f.scheduledTime || ""} onChange={(e) => set({ scheduledTime: e.target.value })} className="w-full h-9 text-sm" /></Field>
+        <Field label="ใช้เวลาประมาณ (ชม.)"><PillInput type="number" value={f.estimatedHours || ""} onChange={(e) => set({ estimatedHours: e.target.value })} className="w-full h-9 text-sm font-mono" /></Field>
         <Field label="ความเร่งด่วน">
-          <PillSelect value={f.priority} onChange={(e) => set({ priority: e.target.value as JobPriority })} className="w-full h-10 text-sm">
+          <PillSelect value={f.priority} onChange={(e) => set({ priority: e.target.value as JobPriority })} className="w-full h-9 text-sm">
             {Object.entries(JOB_PRIORITY).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </PillSelect>
         </Field>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Field label="สถานที่/จุดงาน"><PillInput value={f.site.name || ""} onChange={(e) => set({ site: { ...f.site, name: e.target.value } })} placeholder="เช่น คลังหลัก หรือ บ้านลูกค้า" className="w-full h-10 text-sm" /></Field>
-        <Field label="ลูกค้า (ถ้ามี)"><PillInput value={f.customerName || ""} onChange={(e) => set({ customerName: e.target.value })} className="w-full h-10 text-sm" /></Field>
-        <Field label="ที่อยู่" className="sm:col-span-2"><PillInput value={f.site.address || ""} onChange={(e) => set({ site: { ...f.site, address: e.target.value } })} className="w-full h-10 text-sm" /></Field>
-        <Field label="ผู้ติดต่อ"><PillInput value={f.site.contact || ""} onChange={(e) => set({ site: { ...f.site, contact: e.target.value } })} className="w-full h-10 text-sm" /></Field>
-        <Field label="เบอร์โทร"><PillInput value={f.site.phone || ""} onChange={(e) => set({ site: { ...f.site, phone: e.target.value } })} className="w-full h-10 text-sm font-mono" /></Field>
+        <Field label="สถานที่/จุดงาน"><PillInput value={f.site.name || ""} onChange={(e) => set({ site: { ...f.site, name: e.target.value } })} placeholder="เช่น คลังหลัก หรือ บ้านลูกค้า" className="w-full h-9 text-sm" /></Field>
+        <Field label="ลูกค้า (ถ้ามี)"><PillInput value={f.customerName || ""} onChange={(e) => set({ customerName: e.target.value })} className="w-full h-9 text-sm" /></Field>
+        <Field label="ที่อยู่" className="sm:col-span-2"><PillInput value={f.site.address || ""} onChange={(e) => set({ site: { ...f.site, address: e.target.value } })} className="w-full h-9 text-sm" /></Field>
+        <Field label="ผู้ติดต่อ"><PillInput value={f.site.contact || ""} onChange={(e) => set({ site: { ...f.site, contact: e.target.value } })} className="w-full h-9 text-sm" /></Field>
+        <Field label="เบอร์โทร"><PillInput value={f.site.phone || ""} onChange={(e) => set({ site: { ...f.site, phone: e.target.value } })} className="w-full h-9 text-sm font-mono" /></Field>
       </div>
 
       <Field label={`อุปกรณ์ที่ต้องใช้${locked ? " (รับไปแล้ว แก้ไขไม่ได้)" : ""}`}>
@@ -235,7 +235,7 @@ function JobForm({ initial, people, busy, onClose, onSave }: { initial: any; peo
             <div className="space-y-1.5">
               <div className="relative">
                 <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
-                <PillInput value={pq} onChange={(e) => setPq(e.target.value)} placeholder="ค้นหาสินค้าในคลัง เพื่อเพิ่มเป็นวัสดุ (ตัดสต็อกตอนรับงาน)" className="w-full h-10 text-sm pl-10" />
+                <PillInput value={pq} onChange={(e) => setPq(e.target.value)} placeholder="ค้นหาสินค้าในคลัง เพื่อเพิ่มเป็นวัสดุ (ตัดสต็อกตอนรับงาน)" className="w-full h-9 text-sm pl-10" />
               </div>
               {matches.length > 0 && (
                 <div className="rounded-xl border border-white/10 divide-y divide-white/5">
@@ -287,14 +287,14 @@ function JobDrawer({ job, people, busy, onClose, onEdit, onAssign, onReturnTools
   return (
     <Drawer title={`${job.jobNo} · ${jobTypeLabel(job.type)}`} onClose={onClose}
       footer={<>
-        {!closed && !cancelling && <PillButton variant="ghost" className="h-10 px-4 text-xs text-danger" onClick={() => setCancelling(true)} disabled={busy}>ยกเลิกงาน</PillButton>}
+        {!closed && !cancelling && <PillButton variant="ghost" className="h-9 px-4 text-xs text-danger" onClick={() => setCancelling(true)} disabled={busy}>ยกเลิกงาน</PillButton>}
         {cancelling && <>
-          <PillInput value={reason} onChange={(e) => setReason(e.target.value)} placeholder="เหตุผลที่ยกเลิก" className="h-10 w-[240px] text-sm" />
-          <PillButton variant="ghost" className="h-10 px-4 text-xs text-danger border border-danger/30" disabled={busy || reason.trim().length < 3} onClick={() => onCancel(reason.trim())}>ยืนยันยกเลิก</PillButton>
-          <PillButton variant="ghost" className="h-10 px-3 text-xs" onClick={() => setCancelling(false)}>ไม่ยกเลิก</PillButton>
+          <PillInput value={reason} onChange={(e) => setReason(e.target.value)} placeholder="เหตุผลที่ยกเลิก" className="h-9 w-[240px] text-sm" />
+          <PillButton variant="ghost" className="h-9 px-4 text-xs text-danger border border-danger/30" disabled={busy || reason.trim().length < 3} onClick={() => onCancel(reason.trim())}>ยืนยันยกเลิก</PillButton>
+          <PillButton variant="ghost" className="h-9 px-3 text-xs" onClick={() => setCancelling(false)}>ไม่ยกเลิก</PillButton>
         </>}
-        {out.length > 0 && <PillButton variant="glass" className="h-10 px-4 text-xs" onClick={onReturnTools} disabled={busy}><Hammer size={14} className="mr-1" /> บันทึกคืนเครื่องมือ</PillButton>}
-        {!closed && <PillButton variant="glass" className="h-10 px-4 text-xs" onClick={onEdit} disabled={busy}>แก้ไขรายละเอียด</PillButton>}
+        {out.length > 0 && <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={onReturnTools} disabled={busy}><Hammer size={14} className="mr-1" /> บันทึกคืนเครื่องมือ</PillButton>}
+        {!closed && <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={onEdit} disabled={busy}>แก้ไขรายละเอียด</PillButton>}
       </>}>
       <div className="space-y-2">
         <div className="flex items-center gap-2 flex-wrap">

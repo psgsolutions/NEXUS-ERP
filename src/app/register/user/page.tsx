@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { PillButton, GlassCard } from "@/components/ui/Base";
+import { PillButton, GlassCard, PillInput } from "@/components/ui/Base";
 import { UserPlus, Building, Lock, Mail, User, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -108,10 +108,10 @@ export default function RegisterUserPage() {
                 <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-4">รหัสบริษัทอ้างอิง</label>
                 <div className="relative">
                   <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={16} />
-                  <input 
+                  <PillInput 
                     type="text" 
                     placeholder="ขอรหัสจากผู้ดูแลบริษัท" 
-                    className="w-full pl-12 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white font-mono text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all"
+                    className="w-full h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white font-mono text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all pl-12"
                     value={companyId}
                     onChange={(e) => setCompanyId(e.target.value.toUpperCase())}
                     required
@@ -124,10 +124,10 @@ export default function RegisterUserPage() {
                   <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-4">ชื่อ</label>
                   <div className="relative">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={16} />
-                    <input 
+                    <PillInput 
                       type="text" 
                       placeholder="สมชาย" 
-                      className="w-full pl-10 h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all"
+                      className="w-full h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all pl-10"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       required
@@ -136,7 +136,7 @@ export default function RegisterUserPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-4">นามสกุล</label>
-                  <input 
+                  <PillInput 
                     type="text" 
                     placeholder="ใจดี" 
                     className="w-full h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all"
@@ -150,10 +150,10 @@ export default function RegisterUserPage() {
                 <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-4">อีเมล (ใช้สำหรับเข้าสู่ระบบ)</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={16} />
-                  <input 
+                  <PillInput 
                     type="email" 
                     placeholder="user@example.com" 
-                    className="w-full pl-12 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all"
+                    className="w-full h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all pl-12"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -165,10 +165,10 @@ export default function RegisterUserPage() {
                 <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-4">รหัสผ่าน</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={16} />
-                  <input 
+                  <PillInput 
                     type="password" 
                     placeholder="••••••••" 
-                    className="w-full pl-12 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white font-mono text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all"
+                    className="w-full h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white font-mono text-[14px] font-medium focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all pl-12"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required

@@ -86,7 +86,7 @@ function CnDnForm() {
   const header = (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-5 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center"><ArrowLeft size={20} /></PillButton>
+        <PillButton variant="glass" onClick={() => router.back()} className="w-9 h-9 p-0 flex items-center justify-center"><ArrowLeft size={20} /></PillButton>
         <div>
           <h1 className="text-2xl font-semibold text-white tracking-tight">ออกใบลดหนี้ / ใบเพิ่มหนี้</h1>
           <p className="text-sm text-white/60 mt-1">ปรับมูลค่าใบกำกับภาษีเดิม ได้เลขที่เมื่อบันทึก และบันทึกบัญชีภาษีขายของเดือนที่ออกเอกสาร</p>

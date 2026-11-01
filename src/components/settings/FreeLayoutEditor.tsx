@@ -111,7 +111,7 @@ const RIcon = ({ title, onClick, disabled, on, children }: { title: string; onCl
 /** ตัวเลือกในริบบอน (dropdown ของระบบ) */
 const RSelect = ({ width, title, value, onChange, children }: { width: number; title: string; value: string; onChange: (v: string) => void; children: React.ReactNode }) => (
   <div style={{ width }} title={title}>
-    <PillSelect value={value} onChange={(e) => onChange(String(e.target.value))} className="h-7 pl-3 pr-7 text-[12px] font-medium">{children}</PillSelect>
+    <PillSelect value={value} onChange={(e) => onChange(String(e.target.value))} className="h-8 pl-3 pr-7 text-[12px] font-medium">{children}</PillSelect>
   </div>
 );
 /** ตัวเลขปรับละเอียด: − ค่า + (พิมพ์ค่าเองได้) */
@@ -131,7 +131,7 @@ function Stepper({ label, title, value, step, min, max, onChange }: { label: str
 }
 /** ช่องตัวเลขในริบบอน */
 const RNum = ({ width = 56, ...p }: React.InputHTMLAttributes<HTMLInputElement> & { width?: number }) => (
-  <PillInput type="number" {...p} style={{ width }} className="h-7 px-2 text-[12px] text-right" />
+  <PillInput type="number" {...p} style={{ width }} className="h-8 px-2 text-[12px] text-right" />
 );
 /** ปุ่มริบบอนที่เปิดเมนู — ชั้นลอยของระบบ (ไม่ถูกการ์ดตัด) */
 function RMenu({ icon, label, disabled, width = 220, children }: { icon: React.ReactNode; label: string; disabled?: boolean; width?: number; children: (close: () => void) => React.ReactNode }) {
@@ -908,7 +908,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             <div key={k} className="flex items-center gap-1">
               <span className="w-5 text-[10.5px] text-white/35 text-right">{i + 1}</span>
               <PillInput value={names[k] || ""} placeholder={fieldLabel(k)} title="ชื่อหัวข้อที่พิมพ์ (ว่าง = ชื่อตั้งต้น)"
-                onChange={(e) => { const v = e.target.value.slice(0, 40); const n = { ...names }; if (v.trim()) n[k] = v; else delete n[k]; update(it, { names: n }); }} className="h-7 flex-1 min-w-0 text-[12px]" />
+                onChange={(e) => { const v = e.target.value.slice(0, 40); const n = { ...names }; if (v.trim()) n[k] = v; else delete n[k]; update(it, { names: n }); }} className="h-8 flex-1 min-w-0 text-[12px]" />
               <button type="button" title="ขึ้น" disabled={i === 0} onClick={() => move(i, -1)} className="h-7 w-6 flex items-center justify-center text-white/50 hover:text-white disabled:opacity-20"><ArrowUp size={12} /></button>
               <button type="button" title="ลง" disabled={i === f.length - 1} onClick={() => move(i, 1)} className="h-7 w-6 flex items-center justify-center text-white/50 hover:text-white disabled:opacity-20"><ArrowDown size={12} /></button>
               <button type="button" title="เอาออก" onClick={() => set(f.filter((x) => x !== k))} className="h-7 w-6 flex items-center justify-center text-white/40 hover:text-danger"><X size={12} /></button>
@@ -956,7 +956,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     return (
       <div className="space-y-1.5">
         <div className="flex items-center gap-1 flex-wrap">
-          <PillButton variant="glass" className="h-7 px-2.5 text-[11.5px]" title="จัดวางตามชนิดข้อมูล (ตัวเลขชิดขวา ข้อความชิดซ้าย) และความกว้างอัตโนมัติ"
+          <PillButton variant="glass" className="h-8 px-2.5 text-[11.5px]" title="จัดวางตามชนิดข้อมูล (ตัวเลขชิดขวา ข้อความชิดซ้าย) และความกว้างอัตโนมัติ"
             onClick={() => setSpec(spec.map((x) => ({ key: x.key, ...(x.label ? { label: x.label } : {}) })))}><Wand2 size={12} /> จัดอัตโนมัติ</PillButton>
           <span className="text-[11px] text-white/45 ml-1">ทั้งตาราง</span>
           {(["left", "center", "right"] as const).map((a) => { const I = ALIGN_ICON[a]; return <button key={a} type="button" title={a === "left" ? "ชิดซ้ายทุกคอลัมน์" : a === "center" ? "กึ่งกลางทุกคอลัมน์" : "ชิดขวาทุกคอลัมน์"} onClick={() => setSpec(spec.map((x) => ({ ...x, align: a })))} className="h-7 w-7 rounded-md border border-white/10 flex items-center justify-center text-white/60 hover:text-white"><I size={12} /></button>; })}
@@ -966,12 +966,12 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           const locked = req.includes(x.key), align = x.align || def(x.key).align;
           return (
             <div key={x.key} className="flex items-center gap-1">
-              <PillInput value={x.label || ""} placeholder={def(x.key).label} title={`ชื่อหัวคอลัมน์ (ว่าง = ${def(x.key).label})`} onChange={(e) => patch(i, { label: e.target.value.slice(0, 30) || undefined })} className="h-7 flex-1 min-w-0 text-[12px]" />
+              <PillInput value={x.label || ""} placeholder={def(x.key).label} title={`ชื่อหัวคอลัมน์ (ว่าง = ${def(x.key).label})`} onChange={(e) => patch(i, { label: e.target.value.slice(0, 30) || undefined })} className="h-8 flex-1 min-w-0 text-[12px]" />
               <div className="flex w-[66px] justify-center">
                 {(["left", "center", "right"] as const).map((a) => { const I = ALIGN_ICON[a]; return <button key={a} type="button" title={a === "left" ? "ชิดซ้าย" : a === "center" ? "กึ่งกลาง" : "ชิดขวา"} onClick={() => patch(i, { align: a })} className={cn("h-7 w-[22px] flex items-center justify-center rounded", align === a ? "bg-nexus-teal/20 text-nexus-teal" : "text-white/40 hover:text-white")}><I size={12} /></button>; })}
               </div>
               <PillInput inputMode="decimal" value={x.width ?? ""} placeholder={def(x.key).width ? String(def(x.key).width) : "–"} title="ความกว้างเป็น % ของตาราง (ว่าง = ค่าตั้งต้น · – = แบ่งพื้นที่ที่เหลือ) · ลากเส้นแบ่งคอลัมน์บนกระดาษเพื่อปรับได้เลย"
-                onChange={(e) => { const v = e.target.value.replace(/[^\d.]/g, ""); patch(i, { width: v === "" ? undefined : Math.max(1, Math.min(95, Number(v))) }); }} className="h-7 w-[40px] text-[11.5px] font-mono text-right px-1.5" />
+                onChange={(e) => { const v = e.target.value.replace(/[^\d.]/g, ""); patch(i, { width: v === "" ? undefined : Math.max(1, Math.min(95, Number(v))) }); }} className="h-8 w-[40px] text-[11.5px] font-mono text-right px-1.5" />
               <button type="button" title="เลื่อนไปซ้าย" disabled={i === 0} onClick={() => move(i, -1)} className="h-7 w-5 flex items-center justify-center text-white/50 hover:text-white disabled:opacity-20"><ArrowUp size={12} /></button>
               <button type="button" title="เลื่อนไปขวา" disabled={i === spec.length - 1} onClick={() => move(i, 1)} className="h-7 w-5 flex items-center justify-center text-white/50 hover:text-white disabled:opacity-20"><ArrowDown size={12} /></button>
               <button type="button" title={locked ? "ต้องแสดงเสมอ" : "เอาคอลัมน์ออก"} disabled={locked} onClick={() => setSpec(spec.filter((_y, j) => j !== i))} className="h-7 w-5 flex items-center justify-center text-white/40 hover:text-danger disabled:opacity-20">{locked ? <Lock size={11} /> : <X size={12} />}</button>

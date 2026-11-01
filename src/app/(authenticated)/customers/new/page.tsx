@@ -95,7 +95,7 @@ export default function CustomerDataEntryPage() {
   const headerContent = (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center">
+        <PillButton variant="glass" onClick={() => router.back()} className="w-9 h-9 p-0 flex items-center justify-center">
           <ArrowLeft size={20} />
         </PillButton>
         <div>
@@ -141,7 +141,7 @@ export default function CustomerDataEntryPage() {
               <PillInput 
                 value={formData.customerName}
                 onChange={e => setFormData({...formData, customerName: e.target.value})}
-                className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-bold"
+                className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-bold"
                 placeholder="ระบุชื่อบริษัท"
               />
             </Field>
@@ -151,7 +151,7 @@ export default function CustomerDataEntryPage() {
                   value={formData.taxId}
                   onChange={e => setFormData({...formData, taxId: e.target.value})}
                   maxLength={13}
-                  className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-mono font-bold"
+                  className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-mono font-bold"
                   placeholder="13 หลัก"
                 />
               </Field>
@@ -160,7 +160,7 @@ export default function CustomerDataEntryPage() {
                   value={formData.branchCode}
                   onChange={e => setFormData({...formData, branchCode: e.target.value})}
                   maxLength={5}
-                  className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-mono font-bold"
+                  className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-mono font-bold"
                   placeholder="00000"
                 />
               </Field>
@@ -177,7 +177,7 @@ export default function CustomerDataEntryPage() {
               <PillInput 
                 value={formData.phoneNumber}
                 onChange={e => setFormData({...formData, phoneNumber: e.target.value})}
-                className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-mono font-bold"
+                className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-mono font-bold"
                 placeholder="02-XXX-XXXX"
               />
             </Field>
@@ -186,7 +186,7 @@ export default function CustomerDataEntryPage() {
                 type="email"
                 value={formData.email}
                 onChange={e => setFormData({...formData, email: e.target.value})}
-                className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-bold"
+                className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-bold"
                 placeholder="example@domain.com"
               />
             </Field>
@@ -202,7 +202,7 @@ export default function CustomerDataEntryPage() {
                 <PillInput 
                   value={formData.addressNo}
                   onChange={e => setFormData({...formData, addressNo: e.target.value})}
-                  className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-mono font-bold"
+                  className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-mono font-bold"
                   placeholder="99/9"
                 />
               </Field>
@@ -210,21 +210,21 @@ export default function CustomerDataEntryPage() {
                 <PillInput 
                   value={formData.building}
                   onChange={e => setFormData({...formData, building: e.target.value})}
-                  className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-bold"
+                  className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-bold"
                 />
               </Field>
               <Field label="ซอย">
                 <PillInput 
                   value={formData.soi}
                   onChange={e => setFormData({...formData, soi: e.target.value})}
-                  className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-bold"
+                  className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-bold"
                 />
               </Field>
               <Field label="ถนน">
                 <PillInput 
                   value={formData.road}
                   onChange={e => setFormData({...formData, road: e.target.value})}
-                  className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-bold"
+                  className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-bold"
                 />
               </Field>
 
@@ -232,28 +232,28 @@ export default function CustomerDataEntryPage() {
                 <PillInput 
                   value={formData.subDistrict}
                   onChange={e => setFormData({...formData, subDistrict: e.target.value})}
-                  className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-bold"
+                  className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-bold"
                 />
               </Field>
               <Field label="อำเภอ/เขต">
                 <PillInput 
                   value={formData.district}
                   onChange={e => setFormData({...formData, district: e.target.value})}
-                  className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-bold"
+                  className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-bold"
                 />
               </Field>
               <Field label="จังหวัด">
                 <PillInput 
                   value={formData.province}
                   onChange={e => setFormData({...formData, province: e.target.value})}
-                  className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-bold"
+                  className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-bold"
                 />
               </Field>
               <Field label="รหัสไปรษณีย์">
                 <PillInput 
                   value={formData.zipCode}
                   onChange={e => setFormData({...formData, zipCode: e.target.value})}
-                  className="w-full h-11 px-6 rounded-full bg-white/[0.02] font-mono font-bold"
+                  className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-mono font-bold"
                   placeholder="10000"
                 />
               </Field>
@@ -282,7 +282,7 @@ export default function CustomerDataEntryPage() {
       </div>
       <div className="space-y-4 pt-2">
         <PillButton 
-          className="w-full h-11 rounded-full font-black uppercase tracking-widest shadow-[0_0_12px_rgba(6,182,212,0.15)] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-[12px]" 
+          className="w-full h-9 rounded-full font-black uppercase tracking-widest shadow-[0_0_12px_rgba(6,182,212,0.15)] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-[12px]" 
           onClick={handleSave}
           disabled={isSaving}
         >

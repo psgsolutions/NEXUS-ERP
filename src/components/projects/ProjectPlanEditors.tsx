@@ -78,7 +78,7 @@ export function NumCell({ value, onChange, suffix, kind = "int", className, disa
   };
   return (
     <div className={cn("relative", className)} title={title}>
-      <input
+      <PillInput
         type="text"
         inputMode={decimals ? "decimal" : "numeric"}
         value={shown}

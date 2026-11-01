@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { PillButton, GlassCard, PillCheckbox } from "@/components/ui/Base";
+import { PillButton, GlassCard, PillCheckbox, PillInput } from "@/components/ui/Base";
 import { Cpu, Lock, Mail, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
 import { auth, db } from "@/lib/firebase-client";
 import {
@@ -183,11 +183,11 @@ export default function LoginPage() {
                 <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-4">อีเมล</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={16} />
-                  <input
+                  <PillInput
                     type="email"
                     autoComplete="username"
                     placeholder="name@company.com"
-                    className="w-full pl-12 h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all"
+                    className="w-full h-9 px-6 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all pl-12"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required

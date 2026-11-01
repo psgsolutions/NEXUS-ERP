@@ -1,0 +1,518 @@
+{
+  "src/app/(authenticated)/ai/page.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 1
+  },
+  "src/app/(authenticated)/documents/accounting/page.tsx": {
+    "button": 2,
+    "input": 0,
+    "select": 0,
+    "textarea": 1
+  },
+  "src/app/(authenticated)/documents/page.tsx": {
+    "button": 3,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/executive/page.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/finance/advances/page.tsx": {
+    "button": 2,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/finance/expense-claims/photos/page.tsx": {
+    "button": 4,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/finance/journal-entries/new/page.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/finance/payments/new/page.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/finance/payouts/new/page.tsx": {
+    "button": 0,
+    "input": 0,
+    "select": 1,
+    "textarea": 1
+  },
+  "src/app/(authenticated)/finance/receipts/new/page.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/finance/refunds/new/page.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/finance/refunds/[id]/page.tsx": {
+    "button": 2,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/finance/subledgers/page.tsx": {
+    "button": 4,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/hr/attendance/new/page.tsx": {
+    "button": 2,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/hr/page.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/inventory/in/new/page.tsx": {
+    "button": 0,
+    "input": 0,
+    "select": 0,
+    "textarea": 1
+  },
+  "src/app/(authenticated)/inventory/locations/page.tsx": {
+    "button": 10,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/inventory/page.tsx": {
+    "button": 13,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/inventory/pick/page.tsx": {
+    "button": 3,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/inventory/products/new/page.tsx": {
+    "button": 3,
+    "input": 0,
+    "select": 0,
+    "textarea": 2
+  },
+  "src/app/(authenticated)/inventory/putaway/page.tsx": {
+    "button": 4,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/inventory/[id]/page.tsx": {
+    "button": 0,
+    "input": 0,
+    "select": 0,
+    "textarea": 1
+  },
+  "src/app/(authenticated)/mobile/technician/page.tsx": {
+    "button": 8,
+    "input": 0,
+    "select": 0,
+    "textarea": 2
+  },
+  "src/app/(authenticated)/mobile/technician/work-orders/page.tsx": {
+    "button": 9,
+    "input": 2,
+    "select": 1,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/pos/page.tsx": {
+    "button": 15,
+    "input": 1,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/procurement/orders/new/page.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/procurement/page.tsx": {
+    "button": 3,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/procurement/requests/new/page.tsx": {
+    "button": 0,
+    "input": 0,
+    "select": 0,
+    "textarea": 1
+  },
+  "src/app/(authenticated)/procurement/suppliers/new/page.tsx": {
+    "button": 5,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/projects/milestones/new/page.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/projects/new/page.tsx": {
+    "button": 13,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/projects/[id]/page.tsx": {
+    "button": 2,
+    "input": 0,
+    "select": 0,
+    "textarea": 1
+  },
+  "src/app/(authenticated)/sales/cndn/new/page.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/sales/customers/[id]/_page.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/sales/orders/new/page.tsx": {
+    "button": 0,
+    "input": 0,
+    "select": 0,
+    "textarea": 1
+  },
+  "src/app/(authenticated)/sales/page.tsx": {
+    "button": 11,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/sales/quotations/new/page.tsx": {
+    "button": 22,
+    "input": 1,
+    "select": 0,
+    "textarea": 3
+  },
+  "src/app/(authenticated)/sales/quotations/[id]/page.tsx": {
+    "button": 9,
+    "input": 0,
+    "select": 0,
+    "textarea": 5
+  },
+  "src/app/(authenticated)/service/dispatch/page.tsx": {
+    "button": 9,
+    "input": 0,
+    "select": 0,
+    "textarea": 1
+  },
+  "src/app/(authenticated)/service/work-orders/new/page.tsx": {
+    "button": 0,
+    "input": 0,
+    "select": 0,
+    "textarea": 1
+  },
+  "src/app/(authenticated)/settings/users/page.tsx": {
+    "button": 2,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/(authenticated)/support/page.tsx": {
+    "button": 5,
+    "input": 0,
+    "select": 0,
+    "textarea": 1
+  },
+  "src/app/login/page.tsx": {
+    "button": 2,
+    "input": 1,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/portal/repair/page.tsx": {
+    "button": 4,
+    "input": 4,
+    "select": 0,
+    "textarea": 1
+  },
+  "src/app/register/business/page.tsx": {
+    "button": 7,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/app/register/user/page.tsx": {
+    "button": 2,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/commerce/CustomerModal.tsx": {
+    "button": 2,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/commerce/DocumentAttachmentsCard.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/commerce/DocumentItemsTable.tsx": {
+    "button": 10,
+    "input": 4,
+    "select": 2,
+    "textarea": 1
+  },
+  "src/components/commerce/PurchaseOrderModal.tsx": {
+    "button": 2,
+    "input": 0,
+    "select": 0,
+    "textarea": 1
+  },
+  "src/components/commerce/PurchaseRequestModal.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 1
+  },
+  "src/components/commerce/QuotationModal.tsx": {
+    "button": 0,
+    "input": 0,
+    "select": 0,
+    "textarea": 1
+  },
+  "src/components/commerce/SalesOrderModal.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 2
+  },
+  "src/components/dashboard/RevenueExpenseChart.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/documents/DocumentPdfViewer.tsx": {
+    "button": 6,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/documents/DocumentSharePanel.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 1
+  },
+  "src/components/documents/PdfPages.tsx": {
+    "button": 4,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/finance/PaymentModal.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/finance/ReceiptModal.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/guide/Guidance.tsx": {
+    "button": 2,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/guide/HelpPanel.tsx": {
+    "button": 3,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/guide/Onboarding.tsx": {
+    "button": 2,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/inventory/SupplierMatrix.tsx": {
+    "button": 2,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/inventory/UomHierarchyBuilder.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/inventory/Warehouse3D.tsx": {
+    "button": 26,
+    "input": 1,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/layout/AuthenticatedLayout.tsx": {
+    "button": 4,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/layout/EntitySelector.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/layout/NavButtons.tsx": {
+    "button": 3,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/layout/NotificationBell.tsx": {
+    "button": 3,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/pos/DailySummaryModal.tsx": {
+    "button": 2,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/projects/BoqPurchasePanel.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/projects/ChangeOrdersPanel.tsx": {
+    "button": 7,
+    "input": 0,
+    "select": 0,
+    "textarea": 3
+  },
+  "src/components/projects/ContractPanel.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/projects/LetterBuilder.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 2
+  },
+  "src/components/projects/ProjectBillingPanel.tsx": {
+    "button": 4,
+    "input": 0,
+    "select": 1,
+    "textarea": 0
+  },
+  "src/components/projects/ProjectPlanEditors.tsx": {
+    "button": 6,
+    "input": 0,
+    "select": 0,
+    "textarea": 2
+  },
+  "src/components/projects/SpecLibraryManager.tsx": {
+    "button": 5,
+    "input": 0,
+    "select": 0,
+    "textarea": 1
+  },
+  "src/components/sales/OpportunityScorer.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/settings/DocumentDesigner.tsx": {
+    "button": 11,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/settings/DocumentProfileSettings.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/settings/ESignSettings.tsx": {
+    "button": 3,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/settings/FreeLayoutEditor.tsx": {
+    "button": 40,
+    "input": 1,
+    "select": 0,
+    "textarea": 2
+  },
+  "src/components/settings/RoleAssignDialog.tsx": {
+    "button": 2,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/shared/AttachmentPicker.tsx": {
+    "button": 6,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/components/shared/DocumentVaultUploader.tsx": {
+    "button": 1,
+    "input": 0,
+    "select": 0,
+    "textarea": 0
+  },
+  "src/context/DialogContext.tsx": {
+    "button": 0,
+    "input": 1,
+    "select": 0,
+    "textarea": 0
+  }
+}

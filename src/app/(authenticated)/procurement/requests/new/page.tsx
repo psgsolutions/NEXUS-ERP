@@ -182,7 +182,7 @@ export default function NewPurchaseRequestPage() {
   const headerContent = (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <PillButton variant="glass" onClick={handleBack} className="w-10 h-10 p-0 flex items-center justify-center">
+        <PillButton variant="glass" onClick={handleBack} className="w-9 h-9 p-0 flex items-center justify-center">
           <ArrowLeft size={20} />
         </PillButton>
         <div>
@@ -223,14 +223,14 @@ export default function NewPurchaseRequestPage() {
           {/* User & Request Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Field label="ผู้ยื่นคำขอซื้อ">
-              <PillInput value={header.requester} disabled className="w-full bg-white/[0.01] text-white/40 h-11 rounded-full px-6 text-[13px] font-bold border-white/5 cursor-not-allowed" />
+              <PillInput value={header.requester} disabled className="w-full bg-white/[0.01] text-white/40 h-9 rounded-full px-6 text-[13px] font-bold border-white/5 cursor-not-allowed" />
             </Field>
             <Field label="หน่วยงาน / แผนก">
               <PillInput
                 value={header.department}
                 onChange={(e) => setHeader({...header, department: e.target.value})}
                 placeholder="ระบุแผนก เช่น ฝ่ายวิศวกรรม"
-                className="w-full px-6 h-11 rounded-full text-[13px] font-bold"
+                className="w-full px-6 h-9 rounded-full text-[13px] font-bold"
               />
             </Field>
           </div>
@@ -250,7 +250,7 @@ export default function NewPurchaseRequestPage() {
                 value={header.priority}
                 onChange={(e) => setHeader({...header, priority: e.target.value})}
                 className={cn(
-                  "w-full px-6 h-11 rounded-full text-[13px] font-black",
+                  "w-full px-6 h-9 rounded-full text-[13px] font-black",
                   header.priority === "urgent" ? "text-danger" : "text-cyan-400"
                 )}
               >
@@ -280,10 +280,10 @@ export default function NewPurchaseRequestPage() {
               {vendorData && (
                 <div className="grid grid-cols-2 gap-4 animate-in fade-in duration-300">
                   <Field label="เลขประจำตัวผู้เสียภาษี">
-                    <PillInput value={vendorData.taxId} disabled className="w-full bg-white/[0.02] h-11 rounded-full px-6 text-[13px] font-mono font-bold text-white/60" />
+                    <PillInput value={vendorData.taxId} disabled className="w-full bg-white/[0.02] h-9 rounded-full px-6 text-[13px] font-mono font-bold text-white/60" />
                   </Field>
                   <Field label="เครดิตเทอม">
-                    <PillInput value={vendorData.creditTerms} disabled className="w-full bg-white/[0.02] h-11 rounded-full px-6 text-[13px] font-bold text-cyan-400" />
+                    <PillInput value={vendorData.creditTerms} disabled className="w-full bg-white/[0.02] h-9 rounded-full px-6 text-[13px] font-bold text-cyan-400" />
                   </Field>
                 </div>
               )}
@@ -291,7 +291,7 @@ export default function NewPurchaseRequestPage() {
             {vendorData && (
               <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                 <Field label="ที่อยู่ / ข้อมูลติดต่อ">
-                    <PillInput value={`${vendorData.address} (ติดต่อ: ${vendorData.contact})`} disabled className="w-full bg-white/[0.02] h-11 rounded-full px-6 text-[13px] font-bold text-white/60" />
+                    <PillInput value={`${vendorData.address} (ติดต่อ: ${vendorData.contact})`} disabled className="w-full bg-white/[0.02] h-9 rounded-full px-6 text-[13px] font-bold text-white/60" />
                 </Field>
               </div>
             )}
@@ -302,7 +302,7 @@ export default function NewPurchaseRequestPage() {
               <PillSelect
                 value={header.projectRef}
                 onChange={(e) => setHeader({...header, projectRef: e.target.value})}
-                className="w-full h-11 rounded-full px-6 text-[13px] font-bold bg-white/[0.02]"
+                className="w-full h-9 rounded-full px-6 text-[13px] font-bold bg-white/[0.02]"
               >
                 <option value="">{projects.length === 0 ? "ยังไม่มีโครงการ" : "ไม่ระบุโครงการ"}</option>
                 {projects.map((pj: any) => (

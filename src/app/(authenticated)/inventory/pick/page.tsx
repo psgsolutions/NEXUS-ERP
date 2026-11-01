@@ -121,7 +121,7 @@ function PickingScreen() {
   const header = (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
       <div className="flex items-center gap-4">
-        <PillButton variant="glass" onClick={() => (so ? router.push("/inventory/pick") : router.back())} className="w-10 h-10 p-0 flex items-center justify-center">
+        <PillButton variant="glass" onClick={() => (so ? router.push("/inventory/pick") : router.back())} className="w-9 h-9 p-0 flex items-center justify-center">
           <ArrowLeft size={20} />
         </PillButton>
         <div>

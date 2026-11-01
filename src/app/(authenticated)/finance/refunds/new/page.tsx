@@ -72,7 +72,7 @@ export default function NewCustomerRefundPage() {
   const header = (
     <div className="flex flex-wrap items-center justify-between gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-5 rounded-3xl">
       <div className="flex items-center gap-4 min-w-0">
-        <PillButton variant="glass" onClick={() => router.back()} className="w-10 h-10 p-0 flex items-center justify-center shrink-0"><ArrowLeft size={20} /></PillButton>
+        <PillButton variant="glass" onClick={() => router.back()} className="w-9 h-9 p-0 flex items-center justify-center shrink-0"><ArrowLeft size={20} /></PillButton>
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold text-white">คืนเงินลูกค้า</h1>
           <p className="text-sm text-white/60">คืนยอดที่ลูกค้าชำระเกิน จากใบลดหนี้หลังชำระ หรือการยกเลิกใบเพิ่มหนี้ · เลขที่ RF ออกเมื่อบันทึก</p>

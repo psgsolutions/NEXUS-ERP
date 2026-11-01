@@ -209,7 +209,7 @@ export function ChangeOrdersPanel({ companyId, docId, project, status, canReques
           {rejecting && (
             <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-white/10 bg-danger/[0.04]">
               <span className="text-[13px] text-white/70">ไม่อนุมัติ {list.find((c) => c.id === rejecting.id)?.coNo}</span>
-              <input autoFocus value={rejecting.note} onChange={(e) => setRejecting({ id: rejecting.id, note: e.target.value })} placeholder="เหตุผลที่ไม่อนุมัติ" className="h-8 flex-1 min-w-[200px] px-3 rounded-full bg-white/[0.03] border border-white/10 text-[13px] text-white focus:outline-none" />
+              <PillInput autoFocus value={rejecting.note} onChange={(e) => setRejecting({ id: rejecting.id, note: e.target.value })} placeholder="เหตุผลที่ไม่อนุมัติ" className="h-8 flex-1 min-w-[200px] px-3 rounded-full bg-white/[0.03] border border-white/10 text-[13px] text-white focus:outline-none" />
               <button type="button" disabled={busy} onClick={() => decide(rejecting.id, "reject", rejecting.note)} className="h-8 px-3 rounded-full border border-danger/40 text-danger text-[12px] font-bold">ยืนยันไม่อนุมัติ</button>
               <button type="button" onClick={() => setRejecting(null)} className="p-1 text-white/40" title="ปิด"><X size={14} /></button>
             </div>

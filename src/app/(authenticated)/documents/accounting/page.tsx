@@ -135,7 +135,7 @@ export default function AccountingPackPage() {
           <GlassCard className="p-4 space-y-3">
             <div className="flex flex-wrap items-center gap-3">
               <label className="text-[13px] text-white/70">เดือน</label>
-              <input type="month" value={month} max={monthNow()} onChange={(e) => setMonth(e.target.value)} className="h-9 rounded-full bg-white/5 border border-white/10 px-3 text-sm text-white" />
+              <PillInput type="month" value={month} max={monthNow()} onChange={(e) => setMonth(e.target.value)} className="h-9 rounded-full bg-white/5 border border-white/10 px-3 text-sm text-white" />
               <span className="text-[12px] text-white/45">{thaiMonth(month)}</span>
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1">

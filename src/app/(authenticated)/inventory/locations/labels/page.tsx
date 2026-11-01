@@ -81,7 +81,7 @@ function LabelsPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white/[0.02] border border-white/5 p-4 rounded-3xl print:hidden">
         <div className="flex items-center gap-3">
-          <PillButton variant="glass" onClick={() => router.push("/inventory/locations")} className="w-10 h-10 p-0 flex items-center justify-center"><ArrowLeft size={20} /></PillButton>
+          <PillButton variant="glass" onClick={() => router.push("/inventory/locations")} className="w-9 h-9 p-0 flex items-center justify-center"><ArrowLeft size={20} /></PillButton>
           <div>
             <h1 className="text-xl font-semibold text-white">พิมพ์ฉลาก QR ตำแหน่งจัดเก็บ</h1>
             <p className="text-[13px] text-white/50">ติดฉลากที่ช่องของชั้นวาง แล้วสแกนในหน้าจัดเก็บสินค้าเพื่อรับเข้าชั้น</p>

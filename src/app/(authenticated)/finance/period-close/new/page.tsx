@@ -11,6 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
 import { THAI_MONTHS } from "@/lib/period";
+import { can } from "@/lib/permissions";
 
 interface JournalRow { id: string; path: string; journalNo: string; date: string; description: string; amount: number; diff?: number }
 interface PeriodRow { id: string; year: number; month: number; status: string; closedAt: string | null; closedBy: string; reopenedAt: string | null; reopenedBy: string; reopenReason: string }
@@ -32,8 +33,9 @@ const nowBkk = () => { const d = new Date(Date.now() + 7 * 3600e3); return { yea
 
 export default function PeriodClosePage() {
   const router = useRouter();
-  const { companyId, role } = useAuth();
+  const { companyId, role, roles } = useAuth() as any;
   const { showConfirm } = useSystemDialog();
+  const canPost = can(roles, "finance:post");
   const isSuper = String(role || "").toUpperCase() === "SUPERADMIN";
 
   // ค่าเริ่มต้น: เดือนก่อนหน้า (งวดที่มักปิดในต้นเดือน)
@@ -116,6 +118,20 @@ export default function PeriodClosePage() {
     </div>
   );
 
+  /** อนุมัติรายการร่างค้างของงวดนี้ทีละชุด — แต่ละรายการตรวจเหมือนอนุมัติทีละใบ (ห้ามอนุมัติรายการที่ตัวเองสร้าง ฯลฯ) */
+  const postAllDrafts = async () => {
+    if (!current?.drafts.length) return;
+    if (!(await showConfirm(`อนุมัติลงบัญชีรายการรออนุมัติทั้ง ${current.drafts.length} รายการของงวดนี้?\nรายการที่คุณสร้างเองจะถูกข้าม (ต้องให้ผู้อื่นอนุมัติ)`))) return;
+    setBusy(true); setMessage(null);
+    try {
+      const res = await apiFetch("/api/accounting/journal-post", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, journalIds: current.drafts.map((j) => j.id) }) });
+      const d = await res.json();
+      if (!res.ok || !d.success) throw new Error(d.error || "อนุมัติไม่สำเร็จ");
+      const reasons = [...new Set((d.failed as { error: string }[]).map((f) => f.error))].join(" · ");
+      setMessage({ text: `อนุมัติลงบัญชีแล้ว ${d.posted.length} รายการ${d.failed.length ? ` · ไม่ผ่าน ${d.failed.length} รายการ: ${reasons}` : ""}`, error: d.failed.length > 0 });
+      await load();
+    } catch (e: any) { setMessage({ text: e.message, error: true }); } finally { setBusy(false); }
+  };
   const issues = current ? [...current.drafts.map((j) => ({ ...j, kind: "รออนุมัติ" })), ...current.unbalanced.map((j) => ({ ...j, kind: "ไม่สมดุล" }))] : [];
 
   const left = (
@@ -153,6 +169,14 @@ export default function PeriodClosePage() {
           {check(current.unbalanced.length ? "fail" : "ok", current.unbalanced.length ? `มีรายการที่ลงบัญชีแล้วไม่สมดุล ${current.unbalanced.length} รายการ` : "รายการที่ลงบัญชีแล้วสมดุลทุกรายการ")}
           {current.previousOpen && check("warn", `งวดก่อนหน้า (${current.previousOpen.label}) ยังไม่ได้ปิด`, "ปิดงวดได้ แต่ควรปิดตามลำดับเดือน")}
 
+          {canPost && current.status !== "closed" && current.drafts.length > 0 && (
+            <div className="mt-3 flex items-center gap-3 flex-wrap">
+              <PillButton variant="confirm" className="h-9 px-4 text-xs font-bold" disabled={busy} onClick={postAllDrafts}>
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />} อนุมัติลงบัญชีทั้งหมด ({current.drafts.length})
+              </PillButton>
+              <span className="text-[12px] text-white/45">ตรวจทีละรายการเหมือนอนุมัติทีละใบ · รายการที่คุณสร้างเองจะถูกข้าม</span>
+            </div>
+          )}
           {issues.length > 0 && (
             <div className="nexus-table-wrap mt-3">
               <table className="w-full table-fixed text-[13px]">

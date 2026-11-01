@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalDistributeCenter, AlignStartHorizontal, AlignStartVertical,
-  AlertTriangle, AlignVerticalDistributeCenter, ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUp, Plus, ArrowUpDown, CheckCircle2, Copy, CopyPlus, Database, Eye, ImagePlus, Loader2, Lock, Magnet, Minus, MousePointer2,
+  AlertTriangle, AlignVerticalDistributeCenter, ArrowDown, ArrowLeft, ArrowLeftRight, ArrowRight, ArrowUp, Plus, ArrowUpDown, BadgeCheck, CheckCircle2, Copy, CopyPlus, Database, Eye, ImagePlus, Loader2, Lock, Magnet, Minus, MousePointer2,
   Group as GroupIcon, Pin, PinOff, Redo2, Split, Square, Trash2, Undo2, Ungroup, AlignLeft, AlignCenter, AlignRight, Wand2, X, Rows3,
   Bold, Type, Stamp as StampIcon, MoreHorizontal, Image as ImageIcon, TextCursorInput, BringToFront, SendToBack, ChevronLeft, PanelBottom,
   Circle, Triangle, RotateCcw, StretchHorizontal, StretchVertical,
@@ -18,7 +18,7 @@ import { FloatingLayer } from "@/components/ui/FloatingLayer";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import type { DocumentModel } from "@/lib/documents/model";
 import {
-  BLOCK_LABELS, BLOCK_PARTS, LABEL_KINDS, FONT_MIN, FONT_MAX, LINE_HEIGHT, SUB_GAP, fixedBlockSize, PAPERS, pageOf, marginsOf, refitBlocks, type Margins, type PaperSize, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, blockPad, themeLine, tint, columnWidthsPt, gridSizes, OPTIONAL_TOTALS, visibleTotals, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, type FontFamily,
+  BLOCK_LABELS, BLOCK_PARTS, LABEL_KINDS, FONT_MIN, FONT_MAX, LINE_HEIGHT, SUB_GAP, fixedBlockSize, PAPERS, pageOf, marginsOf, refitBlocks, type Margins, type PaperSize, COLOR_TOKENS, FONT_SCALE, HEAD_KINDS, requiredSatisfied, resolveColor, ITEM_COLUMNS, blockPad, themeLine, tint, columnWidthsPt, gridSizes, OPTIONAL_TOTALS, visibleTotals, TEXT_BLOCKS, TEXT_VARIABLES, legalFieldVisible, addableBlocksFor, defaultFreeLayout, docHasAmounts, requiredBlocksFor, requiredColumnsFor, resolveDesign, resolveColumns, ARCHETYPES, docHasCopy, FONT_LABELS, COPY_STYLES, type FontFamily,
   type BlockKind, type ColumnSpec, type DocTheme, type FreeBlock, type FreeLayout, type ItemColumn, type Letterhead,
 } from "@/lib/documents/design";
 import { fileToPageImage } from "./usePdfPageImage";
@@ -38,7 +38,7 @@ import { useLayerSprites } from "./useLayerSprites";
  *  - กล่องที่เอกสารภาษีต้องมี ย้าย/ปรับได้แต่ลบไม่ได้
  */
 const SNAP_PT = 4;
-const SINGLE: BlockKind[] = ["seller", "title", "meta", "party", "items", "totals", "words", "notes", "payment", "signatures"];
+const SINGLE: BlockKind[] = ["seller", "title", "meta", "party", "items", "totals", "words", "notes", "payment", "signatures", "copy"];
 const DEDUP: BlockKind[] = ["seller", "title", "meta", "party"];
 /** กล่องข้อมูลสำเร็จรูป (สร้างแล้วติ๊กเพิ่ม/ลด/เรียงหัวข้อเองได้) */
 const INFO_PRESETS: { id: string; label: string }[] = [
@@ -778,11 +778,11 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
 
   // ---------- เพิ่ม/ย้ายกล่อง ----------
   const addZone: Zone = letterOnly || !bodyOn ? "head" : "doc";
-  const addable = (letterOnly ? HEAD_KINDS.filter((k) => k !== "title" && k !== "meta") : !bodyOn ? HEAD_KINDS : addableBlocksFor(docType)).filter((k) => !SINGLE.includes(k) || !items.some((i) => i.b.kind === k));
+  const addable = (letterOnly ? HEAD_KINDS.filter((k) => k !== "title" && k !== "meta") : !bodyOn ? HEAD_KINDS : addableBlocksFor(docType)).filter((k) => (k !== "copy" || docHasCopy(docType)) && (!SINGLE.includes(k) || !items.some((i) => i.b.kind === k)));
   const newBlock = (kind: BlockKind, extra: Partial<FreeBlock> = {}): FreeBlock => {
     const id = `${kind}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 4)}`;
     const def = defaultFreeLayout(docType, font).blocks.find((b) => b.kind === kind);
-    const size: Record<string, [number, number]> = { text: [200, 24], line: [300, 1.5], rect: [200, 80], image: [120, 80], logo: [64, 64], stamp: [72, 72], field: [180, 18], sign: [120, 46], grid: [300, 90] };
+    const size: Record<string, [number, number]> = { text: [200, 24], line: [300, 1.5], rect: [200, 80], image: [120, 80], logo: [64, 64], stamp: [72, 72], field: [180, 18], sign: [120, 46], grid: [300, 90], copy: [84, 28] };
     const [w, h] = def ? [def.w, def.h] : size[kind] || [200, 40];
     // ลายเซ็น: เริ่มที่ช่องลงนามแรก แสดงเฉพาะรูปลายเซ็น (ชื่อ/วันที่อยู่ในช่องลงนามอยู่แล้ว)
     if (kind === "grid") extra = { rows: 3, cols2: 3, ...extra };
@@ -1265,6 +1265,16 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             {!signers.length && <p className="text-[11px] text-warning/90">ยังไม่มีผู้ลงนาม — เพิ่มลายเซ็นที่แท็บ &quot;ลายเซ็น · ตราประทับ&quot;</p>}
           </div>
         )}
+        {b.kind === "copy" && (
+          <div className="space-y-2 rounded-xl border border-white/10 p-2.5">
+            <Field label="รูปแบบป้าย">
+              <PillSelect value={b.copyStyle || "box"} onChange={(e) => (e.target.value === "box" ? unset(it, "copyStyle") : update(it, { copyStyle: e.target.value as any }))} className="h-8 w-full text-sm">
+                {COPY_STYLES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+              </PillSelect>
+            </Field>
+            <p className="text-[11px] text-white/45 leading-relaxed">ลากวางตำแหน่งได้อิสระ · ขนาดป้าย = ลากมุมกล่อง (ตัวอักษรขยายพอดีกล่อง) หรือตั้งขนาดตัวอักษรเองที่แท็บ ข้อความ · สีป้ายตั้งที่สีตัวอักษร · พิมพ์ &quot;ต้นฉบับ&quot; หรือ &quot;สำเนา&quot; ตามฉบับที่พิมพ์ — มีป้ายนี้แล้วไม่พิมพ์ป้ายใต้ชื่อเอกสารซ้ำ</p>
+          </div>
+        )}
         {b.kind === "stamp" && <p className="text-[11px] text-white/45">รูปตราและขนาดตราตั้งที่แท็บ &quot;ลายเซ็น · ตราประทับ&quot; (ขนาดจริงคงที่ ย่อ/ขยายในหน้านี้ไม่ได้) · พิมพ์เฉพาะเอกสารที่ออกจริง (ฉบับร่าง/ยกเลิกไม่มีตรา) · ตอนพิมพ์เลือกไม่ใส่ได้</p>}
         {b.kind === "rect" && <p className="text-[11px] text-white/45">กรอบคลิกเลือกที่เส้นขอบ (ข้างในคลิกข้อมูลที่อยู่ในกรอบได้) หรือเลือกจากรายการชั้น</p>}
         {b.kind === "image" && (
@@ -1420,7 +1430,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       style={{ left: editItem.b.x * S, top: editItem.b.y * S, width: Math.max(140, editItem.b.w * S), minHeight: Math.max(40, editItem.b.h * S), fontSize: (editItem.b.fontSize || 10) * FONT_SCALE[font] * S, lineHeight: editItem.b.lineHeight ?? 1.35, textAlign: editItem.b.align, fontWeight: editItem.b.bold ? 700 : 400, color: resolveColor(editItem.b.color, theme) || "#111" }} />
   );
 
-  const missing = addable.filter((k) => SINGLE.includes(k));
+  const missing = addable.filter((k) => SINGLE.includes(k) && k !== "copy");
   const dropAt = (e: React.DragEvent) => {
     const kind = e.dataTransfer.getData("text/nexus-kind");
     if (!kind || !canEdit) return;
@@ -1585,6 +1595,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             {addable.includes("logo") && <RBtn icon={<ImagePlus size={18} />} label="โลโก้" drag="logo" disabled={!canEdit} onClick={() => addAt("logo", visibleCenter())} />}
             {addable.includes("sign") && <RBtn icon={<PenLine size={18} />} label="ลายเซ็น" drag="sign" disabled={!canEdit} onClick={() => addAt("sign", visibleCenter())} />}
             {addable.includes("stamp") && <RBtn icon={<StampIcon size={18} />} label="ตราประทับ" drag="stamp" disabled={!canEdit} onClick={() => addAt("stamp", visibleCenter())} />}
+            {addable.includes("copy") && <RBtn icon={<BadgeCheck size={18} />} label="ต้นฉบับ/สำเนา" drag="copy" disabled={!canEdit} onClick={() => addAt("copy", visibleCenter())} />}
           </RGroup>
           {bodyOn && (
             <RGroup label="ตารางสำเร็จรูป (ข้อมูลขึ้นเอง)">
@@ -1700,7 +1711,9 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                 <RSelect width={160} title="ฟอนต์" value={t0.font || theme.font} onChange={(v) => patchSel(textSel, { font: (v === theme.font ? undefined : v) as FontFamily | undefined })}>
                   {(Object.keys(FONT_LABELS) as FontFamily[]).map((f) => <option key={f} value={f}>{FONT_LABELS[f].split(" (")[0]}{f === theme.font ? " (ธีม)" : ""}</option>)}
                 </RSelect>
-                <RSelect width={72} title="ขนาดตัวอักษร (pt)" value={String(textSize)} onChange={(v) => patchSel(textSel, { fontSize: Number(v) })}>
+                <RSelect width={72} title="ขนาดตัวอักษร (pt)" value={t0?.kind === "copy" && t0.fontSize === undefined ? "fit" : String(textSize)} onChange={(v) => patchSel(textSel, { fontSize: v === "fit" ? undefined : Number(v) })}>
+                  {/* ป้ายต้นฉบับ/สำเนา: ไม่ตั้งขนาด = ตัวอักษรพอดีกล่อง */}
+                  {t0?.kind === "copy" && <option value="fit">พอดีกล่อง</option>}
                   {[...new Set([...SIZES, textSize])].sort((a, b) => a - b).map((v) => <option key={v} value={String(v)}>{Math.round(v * 100) / 100}</option>)}
                 </RSelect>
                 <RIcon title="ตัวใหญ่ขึ้น" onClick={() => patchSel(textSel, (b) => ({ fontSize: Math.min(FONT_MAX, (b.fontSize ?? theme.fontSize) + 1) }))}><span className="font-bold">A+</span></RIcon>

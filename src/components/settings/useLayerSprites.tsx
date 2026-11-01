@@ -78,7 +78,7 @@ export function useLayerSprites(model: DocumentModel | null, S: number) {
           sd.registerDocumentFonts(window.location.origin);
           const parts: Parts = fl.freeLayoutParts(m, "original");
           const dpr = Math.min(2, window.devicePixelRatio || 1), px = scale * dpr;
-          const global = `${px}|${stableKey({ ...m, seller: { ...m.seller, design: m.seller.design } })}|${stableKey({ shown: parts.c.shown, stamp: parts.c.stampPlaced, sign: parts.c.signPlaced })}`;
+          const global = `${px}|${stableKey({ ...m, seller: { ...m.seller, design: m.seller.design } })}|${stableKey({ shown: parts.c.shown, stamp: parts.c.stampPlaced, copy: parts.c.copyPlaced, sign: parts.c.signPlaced })}`;
           const baseKey = `base|${global}|${parts.parts.length}|${!!parts.copyLabel}|${parts.rest.length}`;
           const want = [{ key: baseKey, node: <>{parts.chrome}{parts.copyLabel}</>, b: null as FreeBlock | null, part: "" }, ...parts.parts.map((p) => ({ key: `${global}|${contentKey(p.b)}`, node: p.node, b: p.b as FreeBlock | null, part: p.key }))];
           const missing = want.filter((w) => !cache.current.has(w.key));

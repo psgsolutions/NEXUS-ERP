@@ -221,3 +221,23 @@ describe("document design — data boxes and table column spec", () => {
     expect(t.colSpec).toEqual([{ key: "description" }, { key: "code", align: "center", width: 95 }, { key: "detail", label: "รายละเอียดสินค้า" }, { key: "amount" }]);
   });
 });
+
+describe("totals label fitting (one line, same row height)", () => {
+  it("splits a trailing bracket or the 'รวมในราคา' qualifier", async () => {
+    const { splitTotalLabel } = await import("@/lib/documents/design");
+    expect(splitTotalLabel("มูลค่าก่อนภาษี (ส่วนที่เป็นใบกำกับภาษี)")).toEqual({ main: "มูลค่าก่อนภาษี", sub: "(ส่วนที่เป็นใบกำกับภาษี)" });
+    expect(splitTotalLabel("ภาษีมูลค่าเพิ่ม 7% รวมในราคา")).toEqual({ main: "ภาษีมูลค่าเพิ่ม 7%", sub: "รวมในราคา" });
+    expect(splitTotalLabel("รวมเป็นเงิน")).toEqual({ main: "รวมเป็นเงิน", sub: "" });
+  });
+  it("only splits when too wide, and fits both lines inside the row's text height", async () => {
+    const { fitTotalLabel } = await import("@/lib/documents/design");
+    expect(fitTotalLabel("มูลค่าก่อนภาษี (ก่อนภาษี)", { width: 500, fs: 9.5, enFs: 6, inner: 17.8 }).sub).toBe("");
+    const f = fitTotalLabel("มูลค่าก่อนภาษี (ส่วนที่เป็นใบกำกับภาษี)", { width: 80, fs: 9.5, enFs: 6, inner: 14 });
+    expect(f.sub).toBe("(ส่วนที่เป็นใบกำกับภาษี)");
+    expect((f.mainFs + f.subFs) * 1.15).toBeLessThanOrEqual(14.01);
+    // ข้อความยาวที่ไม่มีวงเล็บ: ย่อตัวอักษรแทนการขึ้นบรรทัด
+    const g = fitTotalLabel("หักเงินประกันผลงานตามสัญญาจ้างเลขที่ยาวมาก", { width: 90, fs: 9.5, enFs: 6, inner: 17.8 });
+    expect(g.sub).toBe("");
+    expect(g.mainFs).toBeLessThan(9.5);
+  });
+});

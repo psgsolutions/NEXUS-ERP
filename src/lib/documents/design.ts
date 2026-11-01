@@ -59,7 +59,12 @@ export interface Letterhead { id: string; name: string; height: number; blocks: 
 export interface DocumentDesign { theme: DocTheme; perDoc: Record<string, PerDocDesign>; letterheads: Letterhead[] }
 
 // ---------- ผังลากวางอิสระ ----------
-export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "info" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "field" | "text" | "line" | "rect" | "shape" | "image" | "stamp" | "sign" | "grid";
+export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "info" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "field" | "text" | "line" | "rect" | "shape" | "image" | "stamp" | "sign" | "grid" | "copy";
+/** ป้ายต้นฉบับ/สำเนา (kind=copy): กรอบเหลี่ยม · กรอบมน · พื้นทึบ · แบบตรายาง (กรอบคู่ เอียง) · ตัวอักษรอย่างเดียว */
+export type CopyStyle = "box" | "pill" | "solid" | "stamp" | "text";
+export const COPY_STYLES: { key: CopyStyle; label: string }[] = [
+  { key: "box", label: "กรอบเหลี่ยม" }, { key: "pill", label: "กรอบมน" }, { key: "solid", label: "พื้นทึบ" }, { key: "stamp", label: "แบบตรายาง" }, { key: "text", label: "ตัวอักษร" },
+];
 export type ItemColumn = "no" | "code" | "description" | "detail" | "qty" | "unit" | "qtyUnit" | "price" | "discount" | "discountText" | "gross" | "amount";
 /** คอลัมน์ตารางที่ตั้งเอง: ลำดับตามรายการ · หัวคอลัมน์ · จัดวาง · ความกว้าง (% ของตาราง ว่าง = อัตโนมัติ) */
 export interface ColumnSpec { key: ItemColumn; label?: string; align?: "left" | "center" | "right"; width?: number }
@@ -160,6 +165,8 @@ export interface FreeBlock {
   /** ตารางเส้น (kind=grid): สัดส่วนความกว้างแต่ละคอลัมน์ / ความสูงแต่ละแถว (ว่าง = เท่ากัน) — ลากเส้นแบ่งปรับเองได้ */
   colW?: number[];
   rowH?: number[];
+  /** ป้ายต้นฉบับ/สำเนา: รูปแบบ (ไม่ตั้ง = กรอบเหลี่ยม) · ขนาดตัวอักษรใช้ fontSize (ไม่ตั้ง = พอดีกล่อง) */
+  copyStyle?: CopyStyle;
 }
 export interface FreeLayout {
   enabled: boolean; blocks: FreeBlock[];
@@ -267,7 +274,7 @@ export const REQUIRED_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party",
 export const BLOCK_LABELS: Record<BlockKind, string> = {
   logo: "โลโก้", seller: "ข้อมูลผู้ขาย", title: "ชื่อเอกสาร", meta: "เลขที่/วันที่", party: "ข้อมูลลูกค้า/คู่ค้า", info: "กล่องข้อมูล", stamp: "ตราประทับ", shape: "รูปทรง", items: "ตารางรายการ",
   totals: "ยอดรวม", words: "จำนวนเงินตัวอักษร", notes: "หมายเหตุ", payment: "ข้อมูลการชำระเงิน", signatures: "ช่องลงนาม",
-  field: "ข้อมูลเดี่ยว", text: "ข้อความ", line: "เส้น", rect: "กรอบ/พื้นหลัง", image: "รูปภาพ", sign: "ลายเซ็นอิเล็กทรอนิกส์", grid: "ตาราง (เส้น)",
+  field: "ข้อมูลเดี่ยว", text: "ข้อความ", line: "เส้น", rect: "กรอบ/พื้นหลัง", image: "รูปภาพ", sign: "ลายเซ็นอิเล็กทรอนิกส์", grid: "ตาราง (เส้น)", copy: "ป้ายต้นฉบับ/สำเนา",
 };
 const EN_PART = "ภาษาอังกฤษใต้หัวข้อ";
 /** ส่วนย่อยในกล่องที่เลือกซ่อนได้ (ชื่อ ที่อยู่ เลขผู้เสียภาษีของผู้ขาย/ผู้ซื้อ แสดงเสมอ ตามกฎหมาย) */
@@ -278,6 +285,7 @@ export const BLOCK_PARTS: Partial<Record<BlockKind, { key: string; label: string
   party: [{ key: "contact", label: "ชื่อผู้ติดต่อ" }, { key: "phone", label: "โทรศัพท์" }, { key: "email", label: "อีเมล" }],
   items: [{ key: "detail", label: "รายละเอียดใต้รายการ" }, { key: "heading", label: "หัวข้อหมวด" }],
   signatures: [{ key: "date", label: "บรรทัดวันที่" }, { key: "en", label: EN_PART }],
+  copy: [{ key: "en", label: "ภาษาอังกฤษ (ORIGINAL / COPY)" }],
 };
 /** ส่วนย่อย "ภาษาอังกฤษใต้หัวข้อ" (แม่แบบสองภาษา) — ติ๊กออกได้ทีละกล่อง */
 for (const k of ["items", "totals", "meta", "party", "info", "field", "notes"] as BlockKind[]) BLOCK_PARTS[k] = [...(BLOCK_PARTS[k] || []), { key: "en", label: EN_PART }];
@@ -298,9 +306,9 @@ export function resolveColumns(b: { colSpec?: ColumnSpec[]; cols?: ItemColumn[] 
 /** กล่องที่มีตัวอักษร (ปรับขนาด/ระยะบรรทัด/สีได้) */
 /** กล่องที่มีป้าย : ข้อมูล (ตั้งระยะข้อความได้) */
 export const LABEL_KINDS: BlockKind[] = ["info", "field", "meta", "party"];
-export const TEXT_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party", "info", "items", "totals", "words", "notes", "payment", "signatures", "field", "text"];
+export const TEXT_BLOCKS: BlockKind[] = ["seller", "title", "meta", "party", "info", "items", "totals", "words", "notes", "payment", "signatures", "field", "text", "copy"];
 /** กล่องที่วางในหัวกระดาษได้ */
-export const HEAD_KINDS: BlockKind[] = ["logo", "seller", "title", "meta", "info", "field", "text", "line", "rect", "shape", "image", "stamp", "grid"];
+export const HEAD_KINDS: BlockKind[] = ["logo", "seller", "title", "meta", "info", "field", "text", "line", "rect", "shape", "image", "stamp", "grid", "copy"];
 /** คีย์ช่องข้อมูล: เลขที่ วันที่ แถวข้อมูลของเอกสาร (m:ป้าย) ข้อมูลเพิ่ม (f:คีย์) */
 /**
  * เอกสารที่ออกเป็นต้นฉบับ/สำเนา (ให้ลูกค้าต้นฉบับ เก็บสำเนา) — แสดงป้ายเสมอในทุกแม่แบบ ปิดไม่ได้
@@ -335,7 +343,8 @@ export const docHasAmounts = (docType?: string) => !NO_AMOUNT_DOCS.includes(Stri
 export const requiredBlocksFor = (docType?: string): BlockKind[] => (docHasAmounts(docType) ? REQUIRED_BLOCKS : REQUIRED_BLOCKS.filter((k) => k !== "totals"));
 /** กล่องที่เพิ่มได้ในเอกสารชนิดนี้ */
 export const addableBlocksFor = (docType?: string): BlockKind[] =>
-  (["info", "text", "line", "rect", "shape", "image", "logo", "stamp", "sign", "grid", "field", "words", "notes", "payment", "signatures", "totals"] as BlockKind[]).filter((k) => docHasAmounts(docType) || (k !== "words" && k !== "totals"));
+  (["info", "text", "line", "rect", "shape", "image", "logo", "stamp", "sign", "grid", "field", "words", "notes", "payment", "signatures", "totals", "copy"] as BlockKind[])
+    .filter((k) => (docHasAmounts(docType) || (k !== "words" && k !== "totals")) && (k !== "copy" || docHasCopy(docType)));
 /** ใบกำกับภาษีเต็มรูป: ม.86/4 (5) ต้องแสดง ชื่อ ชนิด ปริมาณ และมูลค่าของสินค้า/บริการ — คอลัมน์จำนวนเอาออกไม่ได้ */
 const TAX_INVOICE_DOCS = ["invoice"];
 /** คอลัมน์ที่ต้องแสดงเสมอ */
@@ -372,6 +381,43 @@ export const EN_LABELS: Record<string, string> = {
   "ภาษีมูลค่าเพิ่ม 7% รวมในราคา": "VAT 7% Included", "จำนวนเงินรวมทั้งสิ้น": "Grand Total", "หัก ณ ที่จ่าย": "Withholding Tax", "ยอดชำระสุทธิ": "Net Payable",
 };
 export const enLabel = (th: string) => EN_LABELS[th] || "";
+
+/** ความยาวที่มองเห็นของข้อความ (ไม่นับสระบน/ล่าง วรรณยุกต์ไทย) */
+export const visibleLen = (s: string) => s.replace(/[ัิ-ฺ็-๎]/g, "").length;
+/** ความกว้างโดยประมาณของข้อความ (pt) — ใช้ตัดสินว่าป้ายล้นช่องหรือไม่ */
+export const textWidth = (s: string, fs: number) => visibleLen(s) * fs * 0.55;
+
+/**
+ * แยกป้ายยอดรวมที่ยาว: ส่วนในวงเล็บท้ายป้าย / คำขยาย "รวมในราคา" ย้ายลงไปเป็นบรรทัดเล็กใต้ข้อความหลัก
+ * ("มูลค่าก่อนภาษี (ส่วนที่เป็นใบกำกับภาษี)" → main "มูลค่าก่อนภาษี" · sub "(ส่วนที่เป็นใบกำกับภาษี)")
+ */
+export function splitTotalLabel(label: string): { main: string; sub: string } {
+  const m = label.match(/^(.+?)\s*(\([^()]+\))\s*$/);
+  if (m) return { main: m[1], sub: m[2] };
+  const q = label.match(/^(.+?)\s+(รวมในราคา|ไม่รวมในราคา)$/);
+  if (q) return { main: q[1], sub: q[2] };
+  return { main: label, sub: "" };
+}
+
+/**
+ * จัดป้ายยอดรวมให้อยู่บรรทัดเดียวเสมอ ภายในความสูงแถวเดิม (ไม่ขยายตาราง)
+ * ล้นช่อง → แยกวงเล็บลงบรรทัดเล็ก · ยังล้น → ย่อตัวอักษรของบรรทัดนั้น (ไม่ต่ำกว่า 55%)
+ * inner = ความสูงส่วนข้อความของแถว (fs·lh + 2·pad) — บรรทัดหลัก+บรรทัดย่อยต้องไม่เกินนี้
+ */
+export function fitTotalLabel(label: string, o: { width: number; fs: number; enFs: number; inner: number; suffix?: string; en?: boolean }) {
+  const sfx = o.suffix || "";
+  const shrink = (s: string, fs: number) => { const w = textWidth(s, fs); return w > o.width && w > 0 ? Math.max(fs * 0.55, fs * (o.width / w)) : fs; };
+  let main = label, sub = "";
+  if (textWidth(label + sfx, o.fs) > o.width) ({ main, sub } = splitTotalLabel(label));
+  let mainFs = shrink(main + sfx, o.fs), subFs = sub ? shrink(sub, o.enFs) : o.enFs;
+  // โหมดสองภาษา: ส่วนย่อยไปรวมกับบรรทัดอังกฤษ (ความสูงแถวคิดบรรทัดอังกฤษไว้แล้ว)
+  if (sub && !o.en) {
+    const need = (mainFs + subFs) * 1.15;
+    if (need > o.inner) { const k = o.inner / need; mainFs *= k; subFs *= k; }
+  }
+  const r = (n: number) => Math.round(n * 100) / 100;
+  return { main, sub, mainFs: r(mainFs), subFs: r(subFs) };
+}
 
 /**
  * แถวยอดเงินที่บริษัทเลือกแสดง/ซ่อนได้ตามฟอร์มของตัวเอง — แถวอื่นเป็นข้อมูลหลัก แสดงเสมอ ไม่มีช่องติ๊ก
@@ -678,6 +724,7 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(b.borderWidth !== undefined && b.borderWidth !== null ? { borderWidth: num(b.borderWidth, 0.25, 8, 1) } : {}),
     ...(["dashed", "dotted"].includes(b.dash) ? { dash: b.dash } : {}),
     ...(b.kind === "shape" ? { shape: b.shape === "triangle" ? "triangle" : "ellipse" } : {}),
+    ...(b.kind === "copy" && COPY_STYLES.some((s) => s.key === b.copyStyle) && b.copyStyle !== "box" ? { copyStyle: b.copyStyle } : {}),
     ...(Array.isArray(b.radii) && b.radii.length === 4 ? { radii: b.radii.map((v: any) => num(v, 0, 60, 0)) as [number, number, number, number] } : {}),
     ...(b.pad !== undefined && b.pad !== null ? { pad: num(b.pad, 0, 30, 4) } : {}),
     ...(b.kind === "info" && b.flow === "row" ? { flow: "row" as const } : {}),

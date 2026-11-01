@@ -2,7 +2,7 @@ import React from "react";
 import { Document, Ellipse, Font, Image, Page, Polygon, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import type { ColumnKey, CopyMode, DocumentModel } from "@/lib/documents/model";
 import { amountInWords, branchLabel, formatTaxId, money, qtyText, thaiDate } from "@/lib/documents/format";
-import { gridSizes, totalsRowHeights, totalsTableHeight, visibleTotals, blockPad, FONT_MAX, FONT_MIN, FONT_SCALE, SIGN_SIZE, docHasCopy, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
+import { gridSizes, fitTotalLabel, textWidth, visibleLen, totalsRowHeights, totalsTableHeight, visibleTotals, blockPad, FONT_MAX, FONT_MIN, FONT_SCALE, SIGN_SIZE, docHasCopy, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
 
 /**
  * เทมเพลตเอกสาร A4 (ใช้ร่วมทุกประเภทเอกสาร) — หน้าตาตามธีมของบริษัท (ตั้งค่า › ออกแบบเอกสาร)
@@ -102,6 +102,8 @@ export type Ctx = {
   shown?: Set<string>;
   /** วางกล่องตราประทับเองแล้ว (ไม่ประทับทับช่องลงนามซ้ำ) */
   stampPlaced?: boolean;
+  /** วางป้ายต้นฉบับ/สำเนาเป็นกล่องแยกแล้ว — ไม่พิมพ์ป้ายใต้ชื่อเอกสารซ้ำ */
+  copyPlaced?: boolean;
   /** การตั้งค่ากล่อง: รัศมีมุม · สีเส้น/ความหนาเส้นในตาราง/กรอบ · สีพื้นหัวตาราง */
   radius?: number; lineColor?: string; lineWidth?: number; headBg?: string;
   /** ระยะข้อความของกล่องที่มีป้าย: ป้าย→ข้อมูล · ความกว้างป้าย · ระยะระหว่างแถว (pt) */
@@ -176,7 +178,7 @@ export function SectionTitle({ c, align = "right", inverse = false }: { c: Ctx; 
     <View style={{ alignItems: align === "center" ? "center" : align === "right" ? "flex-end" : "flex-start" }}>
       <T style={[c.s.title, { textAlign: align }, tone]}>{docTitle(c)}</T>
       {en && !c.hide.has("en") ? <T style={[c.s.small, { textAlign: align }, tone]}>{en}</T> : null}
-      {!docHasCopy(c.doc.type) || c.hide.has("copy") ? null : <T style={[c.s.copyBox, inverse ? { borderColor: "#ffffff", color: "#ffffff" } : {}]}>{c.copy === "copy" ? "สำเนา" : "ต้นฉบับ"}</T>}
+      {!docHasCopy(c.doc.type) || c.hide.has("copy") || c.copyPlaced ? null : <T style={[c.s.copyBox, inverse ? { borderColor: "#ffffff", color: "#ffffff" } : {}]}>{c.copy === "copy" ? "สำเนา" : "ต้นฉบับ"}</T>}
     </View>
   );
 }
@@ -197,7 +199,28 @@ function Lbl({ c, th, style, align, suffix = "" }: { c: Ctx; th: string; style?:
 }
 
 /** ความยาวที่มองเห็นของข้อความ (ไม่นับสระบน/ล่าง วรรณยุกต์ไทย) */
-function vlen(s: string) { return s.replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, "").length; }
+const vlen = visibleLen;
+
+/**
+ * \u0E1B\u0E49\u0E32\u0E22\u0E41\u0E16\u0E27\u0E22\u0E2D\u0E14\u0E23\u0E27\u0E21 \u2014 \u0E1A\u0E23\u0E23\u0E17\u0E31\u0E14\u0E40\u0E14\u0E35\u0E22\u0E27\u0E40\u0E2A\u0E21\u0E2D \u0E44\u0E21\u0E48\u0E02\u0E22\u0E32\u0E22\u0E04\u0E27\u0E32\u0E21\u0E2A\u0E39\u0E07\u0E41\u0E16\u0E27 (fitTotalLabel)
+ * \u0E2A\u0E48\u0E27\u0E19\u0E43\u0E19\u0E27\u0E07\u0E40\u0E25\u0E47\u0E1A\u0E17\u0E35\u0E48\u0E25\u0E49\u0E19\u0E22\u0E49\u0E32\u0E22\u0E25\u0E07\u0E1A\u0E23\u0E23\u0E17\u0E31\u0E14\u0E40\u0E25\u0E47\u0E01\u0E43\u0E15\u0E49\u0E02\u0E49\u0E2D\u0E04\u0E27\u0E32\u0E21\u0E2B\u0E25\u0E31\u0E01 (\u0E42\u0E2B\u0E21\u0E14\u0E2A\u0E2D\u0E07\u0E20\u0E32\u0E29\u0E32: \u0E15\u0E48\u0E2D\u0E2B\u0E19\u0E49\u0E32\u0E1A\u0E23\u0E23\u0E17\u0E31\u0E14\u0E2D\u0E31\u0E07\u0E01\u0E24\u0E29)
+ */
+function TotalLbl({ c, th, width, inner, style, align, suffix = "" }: { c: Ctx; th: string; width: number; inner: number; style?: any; align?: "left" | "center" | "right"; suffix?: string }) {
+  const fs = c.s.page.fontSize as number, enFs = c.s.en.fontSize as number;
+  const enOn = c.t.bilingual && !c.hide.has("en");
+  const f = fitTotalLabel(th, { width, fs, enFs, inner, suffix, en: enOn && !!enLabel(th) });
+  if (!f.sub && f.mainFs === fs) return <Lbl c={c} th={th} style={style} align={align} suffix={suffix} />;
+  const a = align ? { textAlign: align } : {};
+  const tone = style && !Array.isArray(style) && style.color ? { color: style.color, opacity: 0.85 } : {};
+  const en = enOn ? enLabel(th) : "";
+  const second = [f.sub, en].filter(Boolean).join(" ");
+  return (
+    <View>
+      <T style={[style, a, { fontSize: f.mainFs, ...(second && !en ? { lineHeight: 1.15 } : {}) }]}>{f.main}{suffix}</T>
+      {second ? <T style={[c.s.en, tone, a, { fontSize: en ? Math.min(enFs, Math.max(enFs * 0.55, enFs * width / Math.max(1, textWidth(second, enFs)))) : f.subFs }, en && c.subGap ? { marginTop: c.subGap } : {}]}>{second}</T> : null}
+    </View>
+  );
+}
 /** กว้างพอสำหรับป้ายที่ยาวสุด (ป้ายชิดซ้ายเป็นแนวเดียว ข้อมูลเริ่มตรงกัน) */
 export function autoLabelWidth(c: Ctx, labels: string[], max: number) {
   const fs = c.s.page.fontSize as number;
@@ -531,13 +554,21 @@ export function SectionTotals({ c: c0 }: { c: Ctx }) {
   const pad = c.rowPad ?? 2.5;
   // ย่อแล้ว: ขนาดและระยะบรรทัดของตัวอักษรในกล่องตามขนาดใหม่ (ระยะบรรทัดของหน้าเป็นค่าคงที่ ไม่ย่อตาม)
   const fz = c !== c0 ? { fontSize: c.s.page.fontSize, lineHeight: c.s.page.lineHeight } : {};
+  // ความกว้างที่ป้ายใช้ได้ (ไม่มีกรอบ = ประมาณตามช่องยอดรวมมาตรฐาน) · ความสูงส่วนข้อความของแถว
+  const fs = c.s.page.fontSize as number, lh = (c.s.page.lineHeight as number) || 1.35;
+  const boxW = (c.box?.w ?? 230) - (c.boxPad ?? 0) * 2;
+  const inner = fs * lh + pad * 2;
+  const enOn = c.t.bilingual && !c.hide.has("en");
+  // แถวที่ป้ายแยกเป็น 2 บรรทัดย่อ (ไม่มีบรรทัดอังกฤษ) ใช้ระยะบน-ล่างของแถวเป็นที่ของบรรทัดย่อย
+  const splitRow = (label: string, width: number, suffix = "") => !enOn && !!fitTotalLabel(label, { width, fs, enFs: c.s.en.fontSize as number, inner, suffix }).sub;
   if (t.totals === "grid") {
+    const lw = (boxW - 2) * 0.56 - 12;
     return (
       <View style={{ borderWidth: 1, borderColor: t.primary, borderRadius: rad(c), ...fz }}>
         {rows.map((row, i) => (
           <View key={row.label} style={{ flexDirection: "row", minHeight: heights[i], borderTopWidth: i ? 0.6 : 0, borderColor: t.primary }}>
-            <View style={{ flex: 1, backgroundColor: `${t.accent}${row.strong ? "cc" : "88"}`, paddingVertical: pad, paddingHorizontal: 6, justifyContent: "center" }}>
-              <Lbl c={c} th={row.label} suffix=" :" align="right" style={row.strong ? { fontWeight: "bold" } : {}} />
+            <View style={{ flex: 1, backgroundColor: `${t.accent}${row.strong ? "cc" : "88"}`, paddingVertical: splitRow(row.label, lw, " :") ? 0 : pad, paddingHorizontal: 6, justifyContent: "center" }}>
+              <TotalLbl c={c} th={row.label} width={lw} inner={inner} suffix=" :" align="right" style={row.strong ? { fontWeight: "bold" } : {}} />
             </View>
             <View style={{ width: "44%", paddingVertical: pad, paddingHorizontal: 6, justifyContent: "center", borderLeftWidth: 0.6, borderColor: t.primary }}>
               <T style={{ textAlign: "right", fontWeight: row.strong ? "bold" : undefined }}>{money(row.amount)}</T>
@@ -554,9 +585,10 @@ export function SectionTotals({ c: c0 }: { c: Ctx }) {
         const box = !strong ? {} : t.totals === "solid" ? { backgroundColor: t.primary, borderRadius: rad(c, 3), marginTop: 2 }
           : t.totals === "outline" ? { borderWidth: 1, borderColor: t.primary, borderRadius: rad(c, 3), marginTop: 2 } : { borderTopWidth: 1, borderColor: t.primary, marginTop: 2 };
         const text = strong && t.totals === "solid" ? { fontWeight: "bold" as const, color: "#ffffff" } : strong ? { fontWeight: "bold" as const, color: t.primary } : {};
+        const lw = boxW - 12 - 8 - textWidth(money(row.amount), fs) * 1.08;
         return (
-          <View key={row.label} style={[c.s.totalRow, { paddingVertical: pad, minHeight: heights[i] - (strong ? 2 : 0), alignItems: "center" }, box]}>
-            <Lbl c={c} th={row.label} style={text} />
+          <View key={row.label} style={[c.s.totalRow, { paddingVertical: splitRow(row.label, lw) ? 0 : pad, minHeight: heights[i] - (strong ? 2 : 0), alignItems: "center" }, box]}>
+            <TotalLbl c={c} th={row.label} width={lw} inner={inner} style={text} />
             <T style={[{ fontWeight: "bold" as const }, text]}>{money(row.amount)}</T>
           </View>
         );
@@ -770,6 +802,7 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
       </View>
     );
   }
+  if (b.kind === "copy") return docHasCopy(c.doc.type) ? <CopyLabel c={c} b={b} /> : null;
   if (b.kind === "shape") {
     // รูปทรง: วงรี/วงกลม · สามเหลี่ยม (วาดเป็นเวกเตอร์)
     const sw = b.border ? b.borderWidth ?? 1 : 0, dash = b.dash === "dashed" ? `${sw * 4} ${sw * 2.5}` : b.dash === "dotted" ? `${sw} ${sw * 1.8}` : undefined;
@@ -798,6 +831,34 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
             </View>
           )
           : <View style={{ position: "absolute", top: pad, left: pad, right: pad, ...(b.valign ? { bottom: pad, justifyContent: b.valign === "middle" ? "center" : "flex-end" } : {}), ...(own ? { fontSize: bc.s.page.fontSize, lineHeight: bc.s.page.lineHeight, color: bc.t.text } : {}), ...(b.kind !== "text" ? textDeco(b) : {}) }}>{content}</View>}
+    </View>
+  );
+}
+
+/**
+ * ป้ายต้นฉบับ/สำเนาที่วางเอง — รูปแบบตาม copyStyle · ตัวอักษรพอดีกล่อง (หรือขนาดที่ตั้ง) · กึ่งกลางกล่องเสมอ
+ * แบบตรายาง: กรอบคู่ เอียงเล็กน้อย
+ */
+function CopyLabel({ c, b }: { c: Ctx; b: FreeBlock }) {
+  const isCopy = c.copy === "copy";
+  const th = isCopy ? "สำเนา" : "ต้นฉบับ", en = c.t.bilingual && !(b.hide || []).includes("en") ? (isCopy ? "COPY" : "ORIGINAL") : "";
+  const style = b.copyStyle || "box", color = b.color || c.t.primary;
+  const font = FONT_SCALE[b.font || c.t.font];
+  const inset = style === "text" ? 0 : style === "stamp" ? 7 : 4;
+  // ไม่ตั้งขนาด = ใหญ่สุดที่พอดีกล่อง (ความสูงหารจำนวนบรรทัด · ความกว้างตามความยาวข้อความ)
+  const fit = Math.min((b.h - inset * 2) / (en ? 1.25 * 1.15 + 0.62 * 1.15 : 1.25), (b.w - inset * 2 - 4) / Math.max(1, visibleLen(th) * 0.6 * font));
+  const fs = b.fontSize ? b.fontSize * font : Math.max(5, fit);
+  const bw = b.borderWidth ?? (style === "stamp" ? 1.4 : 1);
+  const r = style === "pill" ? b.h / 2 : style === "stamp" ? 3 : b.radius ?? (c.t.rounded ? 3 : 0);
+  const frame = style === "text" ? {} : style === "solid" ? { backgroundColor: color, borderRadius: r } : { borderWidth: bw, borderColor: color, borderRadius: r };
+  const ink = style === "solid" ? "#ffffff" : color;
+  return (
+    <View style={{ position: "absolute", left: b.x, top: b.y, width: b.w, height: b.h, ...(b.opacity ? { opacity: b.opacity } : style === "stamp" ? { opacity: 0.85 } : {}), ...(style === "stamp" ? { transform: "rotate(-6deg)" } : {}) }}>
+      <View style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", ...frame, ...(b.bg && style !== "solid" ? { backgroundColor: b.bg } : {}) }}>
+        {style === "stamp" ? <View style={{ position: "absolute", left: 2.5, top: 2.5, right: 2.5, bottom: 2.5, borderWidth: bw * 0.6, borderColor: color, borderRadius: 2 }} /> : null}
+        <T style={{ fontSize: fs, lineHeight: en ? 1.15 : 1.25, fontWeight: "bold", color: ink, textAlign: "center", letterSpacing: b.letterSpacing ?? (style === "stamp" ? 1 : 0) }}>{th}</T>
+        {en ? <T style={{ fontSize: fs * 0.62, lineHeight: 1.15, fontWeight: "bold", color: ink, textAlign: "center", letterSpacing: 1 }}>{en}</T> : null}
+      </View>
     </View>
   );
 }

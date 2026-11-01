@@ -41,3 +41,55 @@ describe("fixed form keeps legally required data inside the designed frame (ม.
     inside("ยอดชำระสุทธิ", totals);
   }, 60_000);
 });
+
+describe("totals labels never wrap to a second line", () => {
+  it("long bracketed label moves its bracket under the main text, row height unchanged", async () => {
+    const layout = defaultFreeLayout("invoice");
+    const totals = layout.blocks.find((b) => b.kind === "totals")!;
+    totals.w = 150;
+    const design = normalizeDesign({ perDoc: { invoice: { free: { ...layout, enabled: true } } } });
+    const seller = { name: "บริษัท ทดสอบ จำกัด", taxId: "0105555555555", branchCode: "00000", address: "1 ถนนทดสอบ", design } as any;
+    const doc = sampleModelFor("invoice", seller, "2026-10-30");
+    doc.totals = [
+      { label: "รวมเป็นเงิน", amount: 1000 },
+      { label: "มูลค่าก่อนภาษี (ส่วนที่เป็นใบกำกับภาษี)", amount: 934.58 },
+      { label: "ภาษีมูลค่าเพิ่ม 7%", amount: 65.42 },
+      { label: "จำนวนเงินรวมทั้งสิ้น", amount: 1000, strong: true },
+    ];
+    registerDocumentFonts(path.join(process.cwd(), "public"));
+    const lines = await pageLines(await renderToBuffer(React.createElement(FreeLayoutDocument, { doc }) as any));
+    const main = lineOf(lines, "มูลค่าก่อนภาษี")!, sub = lineOf(lines, "(ส่วนที่เป็นใบกำกับภาษี)")!;
+    expect(main && sub).toBeTruthy();
+    expect(main.text).not.toContain("(ส่วน"); // วงเล็บแยกลงบรรทัดใต้
+    expect(sub.top).toBeGreaterThan(main.top);
+    // ระยะระหว่างแถวก่อนหน้า/ถัดไปเท่ากับแถวปกติ (ตารางไม่สูงขึ้น)
+    const r1 = lineOf(lines, "รวมเป็นเงิน")!, r3 = lineOf(lines, "ภาษีมูลค่าเพิ่ม")!, r4 = lineOf(lines, "จำนวนเงินรวมทั้งสิ้น")!;
+    expect(Math.abs((r3.top - r1.top) / 2 - (r4.top - r3.top))).toBeLessThanOrEqual(3);
+    expect(r4.top).toBeLessThanOrEqual(totals.y + totals.h);
+  }, 60_000);
+});
+
+describe("placeable original/copy label", () => {
+  it("prints at the placed position in the chosen style and replaces the label under the title", async () => {
+    const layout = defaultFreeLayout("invoice");
+    layout.blocks.push({ id: "copy-1", kind: "copy", x: 40, y: 300, w: 100, h: 36, copyStyle: "stamp" });
+    const design = normalizeDesign({ perDoc: { invoice: { free: { ...layout, enabled: true } } } });
+    const blk = design.perDoc.invoice!.free!.blocks.find((b) => b.kind === "copy")!;
+    expect(blk.copyStyle).toBe("stamp");
+    const seller = { name: "บริษัท ทดสอบ จำกัด", taxId: "0105555555555", branchCode: "00000", address: "1 ถนนทดสอบ", design } as any;
+    const doc = sampleModelFor("invoice", seller, "2026-10-30");
+    registerDocumentFonts(path.join(process.cwd(), "public"));
+    for (const [copy, word] of [["original", "ต้นฉบับ"], ["copy", "สำเนา"]] as const) {
+      const lines = await pageLines(await renderToBuffer(React.createElement(FreeLayoutDocument, { doc, copy }) as any));
+      const hits = lines.filter((l) => l.text.includes(word));
+      expect(hits.length, word).toBe(1); // ไม่ซ้ำใต้ชื่อเอกสาร
+      expect(hits[0].top).toBeGreaterThan(300);
+      expect(hits[0].top).toBeLessThan(345);
+    }
+  }, 60_000);
+  it("is only addable on documents that have original/copy", async () => {
+    const { addableBlocksFor } = await import("@/lib/documents/design");
+    expect(addableBlocksFor("invoice")).toContain("copy");
+    expect(addableBlocksFor("quotation")).not.toContain("copy");
+  });
+});

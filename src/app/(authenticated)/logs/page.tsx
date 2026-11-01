@@ -62,7 +62,7 @@ export default function LogsPage() {
             <p className="text-xs font-semibold text-white/60 mt-1 leading-none">ประวัติการสร้าง แก้ไข และลบข้อมูลในระบบ</p>
           </div>
         </div>
-        <div className="flex items-center gap-4 text-[13px] text-white/60">
+        <div className="flex items-center gap-4 text-[12px] text-white/60">
           <span>ทั้งหมด <span className="font-mono font-bold text-white">{logs.length}</span></span>
           <span>วันนี้ <span className="font-mono font-bold text-nexus-teal">{todayCount}</span></span>
           <PillButton variant="glass" onClick={load} disabled={loading} className="h-8 px-3 text-xs"><RefreshCw size={13} className={cn("mr-1.5", loading && "animate-spin")} /> โหลดใหม่</PillButton>
@@ -95,7 +95,7 @@ export default function LogsPage() {
                   <NexusTableCell className="text-white/80">{l.actor}</NexusTableCell>
                   <NexusTableCell><span className={cn("text-[12px] font-bold", ACTION_TONE[l.action] || "text-white/60")}>{ACTION_TH[l.action] || l.action}</span></NexusTableCell>
                   <NexusTableCell className="text-white/80">{moduleLabel(l.module)}</NexusTableCell>
-                  <NexusTableCell className="font-mono text-[13px] text-nexus-blue">{l.targetId || "-"}</NexusTableCell>
+                  <NexusTableCell className="font-mono text-[12px] text-nexus-blue">{l.targetId || "-"}</NexusTableCell>
                 </NexusTableRow>
               ))}
             </NexusTable>

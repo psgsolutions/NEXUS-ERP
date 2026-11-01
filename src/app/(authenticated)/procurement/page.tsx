@@ -439,10 +439,10 @@ export default function ProcurementPage() {
            <GlassCard accentColor="blue" className="p-5">
               <h4 className="text-xs font-bold text-nexus-teal tracking-widest mb-4">ผู้จำหน่ายที่สั่งซื้อมากที่สุด (12 เดือน)</h4>
               <div className="space-y-2.5">
-                 {topSuppliers.length === 0 && <p className="text-[13px] text-white/40">ยังไม่มีใบสั่งซื้อ</p>}
+                 {topSuppliers.length === 0 && <p className="text-[12px] text-white/40">ยังไม่มีใบสั่งซื้อ</p>}
                  {topSuppliers.map(([name, total]) => (
                    <div key={name} className="space-y-1">
-                     <div className="flex justify-between gap-2 text-[13px]"><span className="text-white/80 truncate">{name}</span><span className="font-mono text-white shrink-0">{compactTHB(total)}</span></div>
+                     <div className="flex justify-between gap-2 text-[12px]"><span className="text-white/80 truncate">{name}</span><span className="font-mono text-white shrink-0">{compactTHB(total)}</span></div>
                      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-nexus-teal" style={{ width: `${Math.round((total / topSuppliers[0][1]) * 100)}%` }} /></div>
                    </div>
                  ))}
@@ -452,9 +452,9 @@ export default function ProcurementPage() {
            <GlassCard accentColor="purple" className="p-5">
               <h4 className="text-xs font-bold text-white/70 tracking-widest mb-4">ยอดค้างจ่ายผู้จำหน่าย</h4>
               <div className="space-y-2">
-                 {topPayables.length === 0 && <p className="text-[13px] text-white/40">ไม่มียอดค้างจ่าย</p>}
+                 {topPayables.length === 0 && <p className="text-[12px] text-white/40">ไม่มียอดค้างจ่าย</p>}
                  {topPayables.map(([name, total]) => (
-                   <div key={name} className="flex justify-between gap-2 text-[13px]"><span className="text-white/70 truncate">{name}</span><span className="font-mono text-warning shrink-0">{compactTHB(total)}</span></div>
+                   <div key={name} className="flex justify-between gap-2 text-[12px]"><span className="text-white/70 truncate">{name}</span><span className="font-mono text-warning shrink-0">{compactTHB(total)}</span></div>
                  ))}
               </div>
            </GlassCard>

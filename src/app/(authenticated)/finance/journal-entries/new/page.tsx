@@ -156,7 +156,7 @@ export default function NewJournalEntryPage() {
           </PillButton>
         </div>
         <div className="nexus-table-wrap">
-          <table className="w-full table-fixed text-[13px]">
+          <table className="w-full table-fixed text-[12px]">
             <colgroup>
               <col className="w-8" />
               <col />
@@ -218,9 +218,9 @@ export default function NewJournalEntryPage() {
       <GlassCard className="p-4 space-y-2">
         <h4 className="text-sm font-bold text-white mb-1">ตรวจสอบความสมดุล</h4>
         {[["รวมเดบิต", totals.dr], ["รวมเครดิต", totals.cr]].map(([k, v]) => (
-          <div key={k as string} className="flex justify-between text-[13px]"><span className="text-white/60">{k}</span><span className="font-mono text-white">{baht(v as number)}</span></div>
+          <div key={k as string} className="flex justify-between text-[12px]"><span className="text-white/60">{k}</span><span className="font-mono text-white">{baht(v as number)}</span></div>
         ))}
-        <div className="flex justify-between text-[13px] pt-2 border-t border-white/5">
+        <div className="flex justify-between text-[12px] pt-2 border-t border-white/5">
           <span className="text-white/60">ผลต่าง</span>
           <span className={cn("font-mono font-bold", totals.diff === 0 ? "text-white" : "text-danger")}>{baht(Math.abs(totals.diff))}</span>
         </div>

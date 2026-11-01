@@ -164,7 +164,7 @@ export default function NewWHTPage() {
   const rightSidebar = (
     <GlassCard accentColor="amber" className="p-6 space-y-8 sticky top-0 relative overflow-hidden">
        <div className="space-y-1 border-b border-white/5 pb-4 relative z-10">
-         <h5 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
+         <h5 className="text-[12px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
            สรุปยอดภาษี
          </h5>
        </div>

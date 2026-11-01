@@ -218,7 +218,7 @@ export default function SalesOrderDetailPage() {
     <div className="space-y-6 pr-2 pb-10">
       <div className="grid grid-cols-2 gap-4">
         <GlassCard className="p-4 border-white/10 rounded-3xl space-y-3">
-          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3">
+          <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3">
             <Building2 size={16} className="text-nexus-teal" /> ลูกค้า
           </h3>
           <p className="text-[14px] font-bold text-white">{customerName}</p>
@@ -229,7 +229,7 @@ export default function SalesOrderDetailPage() {
           )}
         </GlassCard>
         <GlassCard className="p-4 border-white/10 rounded-3xl space-y-2 text-[12px]">
-          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3">
+          <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3">
             <Calendar size={16} className="text-nexus-blue" /> เงื่อนไข
           </h3>
           <Row label="วันที่เอกสาร" value={toDateStr(so.docDate || so.date || so.createdAt)} />
@@ -243,7 +243,7 @@ export default function SalesOrderDetailPage() {
       </div>
 
       <GlassCard className="p-4 border-white/10 rounded-3xl space-y-3">
-        <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 border-b border-white/10 pb-3">
+        <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 border-b border-white/10 pb-3">
           รายการสินค้า / บริการ ({items.length})
         </h3>
         <NexusTable headers={["รายการ", "จำนวน", "ราคา/หน่วย", "ส่วนลด", "รวม"]}>
@@ -255,7 +255,7 @@ export default function SalesOrderDetailPage() {
             return (
               <NexusTableRow key={it.id || idx}>
                 <NexusTableCell>
-                  <div className="text-white text-[13px] font-bold">{it.name || it.description || "-"}</div>
+                  <div className="text-white text-[12px] font-bold">{it.name || it.description || "-"}</div>
                   {it.sku && <div className="text-[11px] text-white/40 font-mono">{it.sku}</div>}
                 </NexusTableCell>
                 <NexusTableCell className="text-right" mono>{qty.toLocaleString()} {it.unit || ""}</NexusTableCell>

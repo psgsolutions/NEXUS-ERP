@@ -96,7 +96,7 @@ export default function StockCountPage() {
           <h1 className="text-lg font-bold text-white tracking-tight leading-none">ตรวจนับสต็อก</h1>
           <p className="text-xs font-semibold text-white/60 mt-1 leading-none">กรอกจำนวนที่นับได้ ระบบเทียบยอดในระบบ ปรับสต็อก และบันทึกบัญชีผลต่าง</p>
         </div>
-        <div className="flex items-center gap-3 text-[13px] text-white/60">
+        <div className="flex items-center gap-3 text-[12px] text-white/60">
           <span>กรอกแล้ว <b className="font-mono text-white">{entered.length}</b></span>
           <span>ขาด <b className="font-mono text-danger">{money(shortValue)}</b></span>
           <span>เกิน <b className="font-mono text-nexus-teal">{money(overValue)}</b></span>
@@ -117,7 +117,7 @@ export default function StockCountPage() {
             <div className="py-16 flex items-center justify-center gap-2 text-white/40 text-sm"><Loader2 size={16} className="animate-spin" /> กำลังโหลดสินค้า…</div>
           ) : (
             <NexusTable headers={["รหัส", "สินค้า", "หน่วย", "ยอดในระบบ", "นับได้", "ผลต่าง", "มูลค่าผลต่าง"]} itemCount={rows.length}>
-              {rows.length === 0 && <NexusTableRow className="cursor-default"><NexusTableCell colSpan={7} className="text-center text-[13px] text-white/40 py-10">ไม่มีสินค้า</NexusTableCell></NexusTableRow>}
+              {rows.length === 0 && <NexusTableRow className="cursor-default"><NexusTableCell colSpan={7} className="text-center text-[12px] text-white/40 py-10">ไม่มีสินค้า</NexusTableCell></NexusTableRow>}
               {rows.map((p: any) => {
                 const d = diffOf(p), c = counted[p.id];
                 return (
@@ -141,7 +141,7 @@ export default function StockCountPage() {
         <GlassCard className="p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/5 text-[14px] font-bold text-white">ใบตรวจนับที่บันทึกแล้ว</div>
           <NexusTable headers={["เลขที่", "วันที่ตรวจนับ", "หมายเหตุ", "รายการ", "มีผลต่าง", "มูลค่าขาด", "มูลค่าเกิน", "ผู้บันทึก"]} itemCount={history.length}>
-            {history.length === 0 && <NexusTableRow className="cursor-default"><NexusTableCell colSpan={8} className="text-center text-[13px] text-white/40 py-8">ยังไม่มีใบตรวจนับ</NexusTableCell></NexusTableRow>}
+            {history.length === 0 && <NexusTableRow className="cursor-default"><NexusTableCell colSpan={8} className="text-center text-[12px] text-white/40 py-8">ยังไม่มีใบตรวจนับ</NexusTableCell></NexusTableRow>}
             {history.map((h) => (
               <NexusTableRow key={h.id} className="cursor-default">
                 <NexusTableCell mono className="text-amber-300">{h.id}</NexusTableCell>

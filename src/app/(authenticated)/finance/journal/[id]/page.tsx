@@ -123,14 +123,14 @@ export default function JournalDetailPage() {
   const left = (
     <div className="space-y-6 pr-2 pb-10">
       <GlassCard className="p-4 border-white/10 rounded-3xl space-y-3">
-        <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3">
+        <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3">
           <BookOpen size={16} className="text-nexus-blue" /> รายการเดบิต / เครดิต ({lines.length})
         </h3>
         <NexusTable headers={["รหัสบัญชี", "ชื่อบัญชี", "เดบิต", "เครดิต"]}>
           {lines.map((l: any, idx: number) => (
             <NexusTableRow key={idx}>
               <NexusTableCell className="whitespace-nowrap text-nexus-blue" mono>{l.accountCode || l.accountId || l.code || "-"}</NexusTableCell>
-              <NexusTableCell className="text-white text-[13px]">{l.accountName || l.name || "-"}{l.description ? <span className="block text-[11px] text-white/40">{l.description}</span> : null}</NexusTableCell>
+              <NexusTableCell className="text-white text-[12px]">{l.accountName || l.name || "-"}{l.description ? <span className="block text-[11px] text-white/40">{l.description}</span> : null}</NexusTableCell>
               <NexusTableCell className="text-right" mono>{Number(l.debit) ? formatCurrency(Number(l.debit)) : "-"}</NexusTableCell>
               <NexusTableCell className="text-right" mono>{Number(l.credit) ? formatCurrency(Number(l.credit)) : "-"}</NexusTableCell>
             </NexusTableRow>

@@ -45,8 +45,8 @@ export default function LogDetailPage() {
 
   const row = (k: string, v: React.ReactNode) => (
     <div className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
-      <span className="text-[13px] text-white/60 shrink-0">{k}</span>
-      <span className="text-[13px] text-white text-right truncate">{v}</span>
+      <span className="text-[12px] text-white/60 shrink-0">{k}</span>
+      <span className="text-[12px] text-white text-right truncate">{v}</span>
     </div>
   );
 
@@ -71,9 +71,9 @@ export default function LogDetailPage() {
           </GlassCard>
           <GlassCard className="p-5">
             <h3 className="text-sm font-bold text-white mb-2">ข้อมูลที่เปลี่ยน</h3>
-            {!keys.length ? <p className="text-[13px] text-white/50">ไม่มีรายละเอียดข้อมูล</p> : (
+            {!keys.length ? <p className="text-[12px] text-white/50">ไม่มีรายละเอียดข้อมูล</p> : (
               <div className="nexus-table-wrap">
-                <table className="w-full table-fixed text-[13px]">
+                <table className="w-full table-fixed text-[12px]">
                   <colgroup><col className="w-[26%]" /><col /><col /></colgroup>
                   <thead>
                     <tr className="text-[11px] font-bold text-white/50 border-b border-white/10">

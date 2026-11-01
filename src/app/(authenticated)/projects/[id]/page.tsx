@@ -201,8 +201,8 @@ export default function ProjectDetailPage() {
 
   const infoRow = (label: string, value: React.ReactNode) => (
     <div className="flex items-start justify-between gap-4 py-2 border-b border-white/5 last:border-0">
-      <span className="text-[13px] text-white/50 shrink-0">{label}</span>
-      <span className="text-[13px] text-white text-right break-words min-w-0">{value || "-"}</span>
+      <span className="text-[12px] text-white/50 shrink-0">{label}</span>
+      <span className="text-[12px] text-white text-right break-words min-w-0">{value || "-"}</span>
     </div>
   );
 
@@ -287,7 +287,7 @@ export default function ProjectDetailPage() {
 
   const financeRow = (label: string, value: React.ReactNode, emphasis?: string) => (
     <div className="flex items-center justify-between py-2.5 border-b border-white/5 last:border-0">
-      <span className="text-[13px] text-white/60">{label}</span>
+      <span className="text-[12px] text-white/60">{label}</span>
       <span className={cn("text-[14px] font-mono font-bold", emphasis || "text-white")}>{value}</span>
     </div>
   );
@@ -323,11 +323,11 @@ export default function ProjectDetailPage() {
 
   const docs = (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      {(p.documentChecklist || []).length === 0 && <p className="text-[13px] text-white/40">ไม่มีรายการเอกสารบังคับ</p>}
+      {(p.documentChecklist || []).length === 0 && <p className="text-[12px] text-white/40">ไม่มีรายการเอกสารบังคับ</p>}
       {(p.documentChecklist || []).map((d: any) => (
         <div key={d.docCode} className="p-3 rounded-2xl bg-white/[0.02] border border-white/10 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[13px] font-bold text-white">{d.docName}</p>
+            <p className="text-[12px] font-bold text-white">{d.docName}</p>
             <p className="text-[12px] text-white/40 font-mono">{d.docCode}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -341,10 +341,10 @@ export default function ProjectDetailPage() {
 
   const history = (
     <GlassCard className="p-0 overflow-hidden">
-      {(p.history || []).length === 0 && <p className="text-[13px] text-white/40 p-6">ยังไม่มีประวัติการดำเนินการ</p>}
+      {(p.history || []).length === 0 && <p className="text-[12px] text-white/40 p-6">ยังไม่มีประวัติการดำเนินการ</p>}
       {[...(p.history || [])].reverse().map((h: any, i: number) => (
         <div key={i} className="px-5 py-3 border-b border-white/5 last:border-0">
-          <p className="text-[13px] text-white">
+          <p className="text-[12px] text-white">
             <span className="font-bold">{ACTION_TH[h.action] || h.action}</span>
             {h.action === "progress" ? ` ${h.progress}%` : ""} โดย {h.byName}
           </p>
@@ -417,7 +417,7 @@ export default function ProjectDetailPage() {
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             rows={3}
-            className="w-full bg-white/[0.03] border border-white/10 rounded-xl p-3 text-[13px] text-white focus:outline-none focus:border-nexus-teal/40"
+            className="w-full bg-white/[0.03] border border-white/10 rounded-xl p-3 text-[12px] text-white focus:outline-none focus:border-nexus-teal/40"
             placeholder="ระบุเหตุผล (จำเป็น)"
           />
           <div className="flex gap-2 justify-end">
@@ -437,8 +437,8 @@ export default function ProjectDetailPage() {
         {financeRow("ต้นทุนจริง", <button type="button" className="text-nexus-teal hover:underline" onClick={() => setTab("finance")}>ดูเทียบงบ →</button>)}
         <div className="pt-3">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[13px] text-white/60">ความคืบหน้า</span>
-            <span className="text-[13px] font-mono font-bold text-white">{progress}%</span>
+            <span className="text-[12px] text-white/60">ความคืบหน้า</span>
+            <span className="text-[12px] font-mono font-bold text-white">{progress}%</span>
           </div>
           <div className="h-2 bg-white/5 rounded-full overflow-hidden">
             <div className="h-full bg-nexus-teal" style={{ width: `${progress}%` }} />
@@ -483,7 +483,7 @@ export default function ProjectDetailPage() {
           return (
             <div key={def.stepOrder} className={cn("p-3 rounded-xl border", isCurrent ? "border-warning/30 bg-warning/5" : "border-white/10 bg-white/[0.02]")}>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[13px] font-bold text-white">ขั้นที่ {def.stepOrder}: {def.title}</span>
+                <span className="text-[12px] font-bold text-white">ขั้นที่ {def.stepOrder}: {def.title}</span>
                 <StatusBadge status={st as any} label={label} />
               </div>
               <p className="text-[12px] text-white/50 mt-0.5">{def.description}</p>

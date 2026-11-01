@@ -148,8 +148,8 @@ export default function RegisterBusinessPage() {
                 <div className="space-y-2">
                   <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-2">รูปแบบกิจการ</label>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => setPersonType('juristic')} className={cn("flex-1 h-9 rounded-full text-[13px] font-bold transition-all border", personType === 'juristic' ? "bg-nexus-teal/20 text-nexus-teal border-nexus-teal/40" : "bg-white/[0.03] text-white/40 border-white/10 hover:bg-white/10")}>นิติบุคคล</button>
-                    <button type="button" onClick={() => setPersonType('natural')} className={cn("flex-1 h-9 rounded-full text-[13px] font-bold transition-all border", personType === 'natural' ? "bg-nexus-teal/20 text-nexus-teal border-nexus-teal/40" : "bg-white/[0.03] text-white/40 border-white/10 hover:bg-white/10")}>บุคคลธรรมดา</button>
+                    <button type="button" onClick={() => setPersonType('juristic')} className={cn("flex-1 h-9 rounded-full text-[12px] font-bold transition-all border", personType === 'juristic' ? "bg-nexus-teal/20 text-nexus-teal border-nexus-teal/40" : "bg-white/[0.03] text-white/40 border-white/10 hover:bg-white/10")}>นิติบุคคล</button>
+                    <button type="button" onClick={() => setPersonType('natural')} className={cn("flex-1 h-9 rounded-full text-[12px] font-bold transition-all border", personType === 'natural' ? "bg-nexus-teal/20 text-nexus-teal border-nexus-teal/40" : "bg-white/[0.03] text-white/40 border-white/10 hover:bg-white/10")}>บุคคลธรรมดา</button>
                   </div>
                 </div>
               </div>
@@ -173,8 +173,8 @@ export default function RegisterBusinessPage() {
                 <div className="space-y-2">
                   <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-2">สาขา</label>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => setBranchType('hq')} className={cn("flex-1 h-9 rounded-full text-[13px] font-bold transition-all border", branchType === 'hq' ? "bg-nexus-teal/20 text-nexus-teal border-nexus-teal/40" : "bg-white/[0.03] text-white/40 border-white/10 hover:bg-white/10")}>สนง.ใหญ่</button>
-                    <button type="button" onClick={() => setBranchType('branch')} className={cn("flex-1 h-9 rounded-full text-[13px] font-bold transition-all border", branchType === 'branch' ? "bg-nexus-teal/20 text-nexus-teal border-nexus-teal/40" : "bg-white/[0.03] text-white/40 border-white/10 hover:bg-white/10")}>สาขา</button>
+                    <button type="button" onClick={() => setBranchType('hq')} className={cn("flex-1 h-9 rounded-full text-[12px] font-bold transition-all border", branchType === 'hq' ? "bg-nexus-teal/20 text-nexus-teal border-nexus-teal/40" : "bg-white/[0.03] text-white/40 border-white/10 hover:bg-white/10")}>สนง.ใหญ่</button>
+                    <button type="button" onClick={() => setBranchType('branch')} className={cn("flex-1 h-9 rounded-full text-[12px] font-bold transition-all border", branchType === 'branch' ? "bg-nexus-teal/20 text-nexus-teal border-nexus-teal/40" : "bg-white/[0.03] text-white/40 border-white/10 hover:bg-white/10")}>สาขา</button>
                   </div>
                 </div>
                 {branchType === 'branch' && (
@@ -202,13 +202,13 @@ export default function RegisterBusinessPage() {
               <div className="space-y-2">
                 <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-2">จดทะเบียนภาษีมูลค่าเพิ่ม</label>
                 <div className="flex gap-2 w-[250px]">
-                  <button type="button" onClick={() => setVatReg('yes')} className={cn("flex-1 h-9 rounded-full text-[13px] font-bold transition-all border", vatReg === 'yes' ? "bg-nexus-teal/20 text-nexus-teal border-nexus-teal/40" : "bg-white/[0.03] text-white/40 border-white/10 hover:bg-white/10")}>จดทะเบียน</button>
-                  <button type="button" onClick={() => setVatReg('no')} className={cn("flex-1 h-9 rounded-full text-[13px] font-bold transition-all border", vatReg === 'no' ? "bg-nexus-teal/20 text-nexus-teal border-nexus-teal/40" : "bg-white/[0.03] text-white/40 border-white/10 hover:bg-white/10")}>ไม่จดทะเบียน</button>
+                  <button type="button" onClick={() => setVatReg('yes')} className={cn("flex-1 h-9 rounded-full text-[12px] font-bold transition-all border", vatReg === 'yes' ? "bg-nexus-teal/20 text-nexus-teal border-nexus-teal/40" : "bg-white/[0.03] text-white/40 border-white/10 hover:bg-white/10")}>จดทะเบียน</button>
+                  <button type="button" onClick={() => setVatReg('no')} className={cn("flex-1 h-9 rounded-full text-[12px] font-bold transition-all border", vatReg === 'no' ? "bg-nexus-teal/20 text-nexus-teal border-nexus-teal/40" : "bg-white/[0.03] text-white/40 border-white/10 hover:bg-white/10")}>ไม่จดทะเบียน</button>
                 </div>
               </div>
 
               <div className="pt-4">
-                <PillButton type="submit" variant="primary" className="w-full h-9 shadow-neon-teal text-[13px]">
+                <PillButton type="submit" variant="primary" className="w-full h-9 shadow-neon-teal text-[12px]">
                   ถัดไป <ArrowRight size={16} />
                 </PillButton>
               </div>
@@ -243,7 +243,7 @@ export default function RegisterBusinessPage() {
                         businessType === biz.id ? "border-nexus-teal bg-nexus-teal/10 shadow-[0_0_10px_rgba(0,255,209,0.1)]" : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05]"
                       )}
                     >
-                      <h4 className={cn("text-[13px] font-bold", businessType === biz.id ? "text-nexus-teal" : "text-white/80")}>{biz.title}</h4>
+                      <h4 className={cn("text-[12px] font-bold", businessType === biz.id ? "text-nexus-teal" : "text-white/80")}>{biz.title}</h4>
                       {biz.desc && <p className="text-[11px] text-white/40 mt-1">{biz.desc}</p>}
                     </div>
                   ))}
@@ -294,7 +294,7 @@ export default function RegisterBusinessPage() {
                 <PillButton type="button" variant="ghost" onClick={() => setStep(1)} className="px-6 text-white/60">
                   ย้อนกลับ
                 </PillButton>
-                <PillButton type="submit" variant="primary" disabled={loading} className="flex-1 h-9 shadow-neon-teal text-[13px]">
+                <PillButton type="submit" variant="primary" disabled={loading} className="flex-1 h-9 shadow-neon-teal text-[12px]">
                   {loading ? <Loader2 className="animate-spin" size={16} /> : "ยืนยันการสร้างกิจการ"}
                 </PillButton>
               </div>

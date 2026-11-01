@@ -87,7 +87,7 @@ export default function CustomerDetailPage() {
               {/* Data Sections */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <GlassCard className="p-4 border-white/10 space-y-3">
-                   <h3 className="text-[13px] font-medium text-nexus-teal uppercase tracking-widest flex items-center gap-2">
+                   <h3 className="text-[12px] font-medium text-nexus-teal uppercase tracking-widest flex items-center gap-2">
                       <Briefcase size={16} />
                       ข้อมูลนิติบุคคล
                    </h3>
@@ -100,7 +100,7 @@ export default function CustomerDetailPage() {
                 </GlassCard>
 
                 <GlassCard className="p-4 border-white/10 space-y-3">
-                   <h3 className="text-[13px] font-medium text-white/40 uppercase tracking-widest flex items-center gap-2">
+                   <h3 className="text-[12px] font-medium text-white/40 uppercase tracking-widest flex items-center gap-2">
                       <CreditCard size={16} />
                       นโยบายการเงิน
                    </h3>
@@ -193,7 +193,7 @@ function SiteItem({ name, detail }: { name: string, detail: string }) {
     <div className="flex items-center gap-4 group cursor-pointer">
        <div className="w-2 h-2 rounded-full bg-nexus-blue group-hover:shadow-neon-blue transition-all" />
        <div>
-          <p className="text-[13px] font-medium text-white group-hover:text-nexus-blue transition-colors">{name}</p>
+          <p className="text-[12px] font-medium text-white group-hover:text-nexus-blue transition-colors">{name}</p>
           <p className="text-[11px] font-medium text-white/20 uppercase">{detail}</p>
        </div>
     </div>

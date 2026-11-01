@@ -154,13 +154,13 @@ export default function WarehouseLayoutPage() {
           <div className="rounded-xl border border-dashed border-white/15 px-3 py-2 text-[12px] text-white/60 flex items-center justify-between">
             <span>พื้นที่รับสินค้า</span><span className="font-mono text-white/80">{receivingLocation(whCode)}</span>
           </div>
-          {zones.length === 0 && <p className="text-[13px] text-white/40 text-center py-6">ยังไม่มีโซน กด &quot;+ โซน&quot; เพื่อเริ่มสร้างผัง</p>}
+          {zones.length === 0 && <p className="text-[12px] text-white/40 text-center py-6">ยังไม่มีโซน กด &quot;+ โซน&quot; เพื่อเริ่มสร้างผัง</p>}
           {zones.map((z, zi) => (
             <div key={zi} className="space-y-1">
               <button type="button" onClick={() => setSel({ zone: zi, rack: null })}
                 className={cn("w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-left", sel?.zone === zi && sel.rack === null ? "bg-white/[0.06] border-white/20" : "border-transparent hover:bg-white/[0.03]")}>
                 <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: z.color || ZONE_COLORS[zi % ZONE_COLORS.length] }} />
-                <span className="text-[13px] font-semibold text-white truncate">โซน {z.code}{z.name && z.name !== `โซน ${z.code}` ? ` · ${z.name}` : ""}</span>
+                <span className="text-[12px] font-semibold text-white truncate">โซน {z.code}{z.name && z.name !== `โซน ${z.code}` ? ` · ${z.name}` : ""}</span>
                 <span className="ml-auto text-[11px] text-white/40 whitespace-nowrap">{z.racks.length} ชั้นวาง</span>
               </button>
               <div className="pl-5 space-y-0.5">
@@ -170,7 +170,7 @@ export default function WarehouseLayoutPage() {
                     <button key={ri} type="button" onClick={() => setSel({ zone: zi, rack: ri })}
                       className={cn("w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-left", sel?.zone === zi && sel.rack === ri ? "bg-nexus-teal/10 text-nexus-teal" : "text-white/70 hover:bg-white/[0.03]")}>
                       <LayoutGrid size={13} className="flex-shrink-0" />
-                      <span className="text-[13px] truncate">{r.code}{r.name ? ` · ${r.name}` : ""}</span>
+                      <span className="text-[12px] truncate">{r.code}{r.name ? ` · ${r.name}` : ""}</span>
                       <span className="ml-auto text-[11px] text-white/40 whitespace-nowrap">{r.levels}×{r.bins}{used ? ` · มีของ ${used}` : ""}</span>
                     </button>
                   );
@@ -270,7 +270,7 @@ function ZoneEditor({ zone, canEdit, whCode, stock, ownerCtx, onChange, onRemove
         })}
         {canEdit && (
           <button type="button" onClick={onAddRack} className="rounded-xl border border-dashed border-white/15 hover:border-nexus-teal/40 text-white/40 hover:text-nexus-teal p-4 flex flex-col items-center justify-center gap-1 min-h-[150px]">
-            <Plus size={18} /><span className="text-[13px]">เพิ่มชั้นวาง</span>
+            <Plus size={18} /><span className="text-[12px]">เพิ่มชั้นวาง</span>
           </button>
         )}
       </div>
@@ -334,7 +334,7 @@ function RackEditor({ zone, rack, whCode, stock, canEdit, ownerCtx, onChange, on
       {/* มุมมองหน้าชั้นวาง: ชั้นบนสุดอยู่ด้านบน ช่องเรียงซ้าย→ขวา */}
       <div className="rounded-2xl border border-white/10 bg-black/20 p-4 overflow-hidden">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[13px] text-white/70">มุมมองด้านหน้า · โซน {zone.code} · ชั้นวาง {rack.code}</span>
+          <span className="text-[12px] text-white/70">มุมมองด้านหน้า · โซน {zone.code} · ชั้นวาง {rack.code}</span>
           {ownerCtx.multi && canEdit ? (
             <span className="flex items-center gap-2 text-[12px] text-white/60">
               กำหนดเจ้าของรายช่อง:

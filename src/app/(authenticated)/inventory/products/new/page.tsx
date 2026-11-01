@@ -708,7 +708,7 @@ export default function NewProductPage() {
                     <Package size={14} />
                   </div>
                   <div>
-                    <h3 className="text-[13px] font-bold text-white uppercase tracking-wider">1. ข้อมูลหลัก หมวดหมู่ และผังบัญชี</h3>
+                    <h3 className="text-[12px] font-bold text-white uppercase tracking-wider">1. ข้อมูลหลัก หมวดหมู่ และผังบัญชี</h3>
                   </div>
                 </div>
                 <SmartScanner 
@@ -966,7 +966,7 @@ export default function NewProductPage() {
                 <div className="w-6 h-6 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20">
                   <DollarSign size={14} />
                 </div>
-                <h3 className="text-[13px] font-bold text-white uppercase tracking-wider">2. ราคาและอัตรากำไร</h3>
+                <h3 className="text-[12px] font-bold text-white uppercase tracking-wider">2. ราคาและอัตรากำไร</h3>
               </div>
 
               <div className="space-y-2.5">
@@ -1020,7 +1020,7 @@ export default function NewProductPage() {
 
                 <div className="w-full flex justify-between items-center pt-2 border-t border-white/5 px-1">
                   <span className="text-[12px] font-bold text-white/60 uppercase tracking-wide">กำไรคาดการณ์หน้าร้าน</span>
-                  <span className={cn("text-[13px] font-bold font-mono", profit > 0 ? "text-nexus-teal" : "text-white/40")}>
+                  <span className={cn("text-[12px] font-bold font-mono", profit > 0 ? "text-nexus-teal" : "text-white/40")}>
                     ฿{profit.toLocaleString()} <span className="text-[11px]">({profitMargin}%)</span>
                   </span>
                 </div>
@@ -1036,7 +1036,7 @@ export default function NewProductPage() {
                 <div className="w-6 h-6 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20">
                   <Boxes size={14} />
                 </div>
-                <h3 className="text-[13px] font-bold text-white uppercase tracking-wider">3. คลังจัดเก็บ และหน่วยนับ</h3>
+                <h3 className="text-[12px] font-bold text-white uppercase tracking-wider">3. คลังจัดเก็บ และหน่วยนับ</h3>
               </div>
 
               <div className="space-y-2.5">
@@ -1183,7 +1183,7 @@ export default function NewProductPage() {
                 <div className="w-6 h-6 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20">
                   <Truck size={14} />
                 </div>
-                <h3 className="text-[13px] font-bold text-white uppercase tracking-wider">4. การจัดซื้อ และควบคุมสต๊อก</h3>
+                <h3 className="text-[12px] font-bold text-white uppercase tracking-wider">4. การจัดซื้อ และควบคุมสต๊อก</h3>
               </div>
 
               <div className="space-y-2.5">
@@ -1308,7 +1308,7 @@ export default function NewProductPage() {
               <div className="w-6 h-6 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20">
                 <Sliders size={14} />
               </div>
-              <h3 className="text-[13px] font-bold text-white uppercase tracking-wider">5. การติดตาม สเปก และเอกสาร</h3>
+              <h3 className="text-[12px] font-bold text-white uppercase tracking-wider">5. การติดตาม สเปก และเอกสาร</h3>
             </div>
 
             <div className="space-y-2.5">
@@ -1407,7 +1407,7 @@ export default function NewProductPage() {
                     value={formData.poRef} 
                     onChange={(e) => setFormData(prev => ({ ...prev, poRef: e.target.value }))} 
                     placeholder="ระบุเลขที่ใบสั่งซื้อ (PO-XXXXX)..." 
-                    className="w-full h-8 pl-10 rounded-full font-mono text-[13px]" 
+                    className="w-full h-8 pl-10 rounded-full font-mono text-[12px]" 
                   />
                 </div>
               </Field>

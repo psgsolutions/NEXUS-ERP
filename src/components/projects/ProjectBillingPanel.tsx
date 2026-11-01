@@ -138,7 +138,7 @@ export function ProjectBillingPanel({ companyId, docId, customerId }: { companyI
         <p className="text-[12px] text-white/45 flex-1 min-w-[240px]">ใบแจ้งหนี้งวดงานยังไม่ใช่ใบกำกับภาษี เมื่อรับชำระที่ <Link href={`/finance/receipts/new${customerId ? `?customer=${encodeURIComponent(customerId)}` : ""}`} className="text-nexus-teal underline">หน้ารับชำระเงิน</Link> ระบบออกใบเสร็จรับเงิน/ใบกำกับภาษีให้ (VAT ถึงกำหนดเดือนที่รับเงิน)</p>
       </GlassCard>
 
-      {!st.billable && <p className="text-[13px] text-warning px-1">โครงการสถานะ "{st.projectStatus}" ยังเรียกเก็บเงินไม่ได้ ต้องอนุมัติโครงการก่อน</p>}
+      {!st.billable && <p className="text-[12px] text-warning px-1">โครงการสถานะ "{st.projectStatus}" ยังเรียกเก็บเงินไม่ได้ ต้องอนุมัติโครงการก่อน</p>}
       <NexusTable headers={["รายการ", "กำหนดเสร็จ", "ความคืบหน้า", "ยอดงวด (รวม VAT)", "เลขที่ใบแจ้งหนี้", "สถานะ", ""]}>
         {st.milestones.length === 0 ? (
           <NexusTableRow><NexusTableCell colSpan={7} className="text-center text-white/50 py-8">ยังไม่มีงวดงาน (กำหนดที่แท็บภาพรวม)</NexusTableCell></NexusTableRow>
@@ -191,13 +191,13 @@ export function ProjectBillingPanel({ companyId, docId, customerId }: { companyI
           )}
         </div>
         {(advPct > 0 || s.advanceBilled > 0) && (
-          <p className="text-[13px] text-white/60">เงินล่วงหน้า {s.advancePercent || advPct}%: เรียกเก็บ {baht(s.advanceBilled)} · หักคืนแล้ว {baht(s.advanceRecovered)} · คงเหลือ <span className="text-white font-bold">{baht(s.advanceOutstanding)}</span> บาท (ก่อน VAT){!liveAdvance && anyProgress ? " · ต้องออกใบเงินล่วงหน้าก่อนเรียกเก็บงวดแรก" : ""}</p>
+          <p className="text-[12px] text-white/60">เงินล่วงหน้า {s.advancePercent || advPct}%: เรียกเก็บ {baht(s.advanceBilled)} · หักคืนแล้ว {baht(s.advanceRecovered)} · คงเหลือ <span className="text-white font-bold">{baht(s.advanceOutstanding)}</span> บาท (ก่อน VAT){!liveAdvance && anyProgress ? " · ต้องออกใบเงินล่วงหน้าก่อนเรียกเก็บงวดแรก" : ""}</p>
         )}
-        <p className="text-[13px] text-white/60">เงินประกันผลงาน: ลูกค้าหักไว้ {baht(s.retentionHeld)} · เบิกคืนแล้ว {baht(s.retentionReleased)} · คงค้าง <span className="text-white font-bold">{baht(s.retentionOutstanding)}</span> บาท (ก่อน VAT)</p>
+        <p className="text-[12px] text-white/60">เงินประกันผลงาน: ลูกค้าหักไว้ {baht(s.retentionHeld)} · เบิกคืนแล้ว {baht(s.retentionReleased)} · คงค้าง <span className="text-white font-bold">{baht(s.retentionOutstanding)}</span> บาท (ก่อน VAT)</p>
         {[...retentionBills, ...cancelledBills.filter((b) => b.docKind === "progress")].map((b) => {
           const pl = payLabel(b);
           return (
-            <div key={b.docId} className="flex items-center justify-between gap-3 text-[13px] border-t border-white/5 pt-2">
+            <div key={b.docId} className="flex items-center justify-between gap-3 text-[12px] border-t border-white/5 pt-2">
               <span className="text-white/70 truncate">{b.invoiceNo} · {b.docKind === "retention" ? "เบิกคืนเงินประกัน" : b.docKind === "advance" ? "เงินล่วงหน้า" : b.milestoneName} · {thDate(b.issueDate)} · {baht(b.grandTotal)}</span>
               <span className="flex items-center gap-2 shrink-0">
                 <StatusBadge status={pl.status} label={pl.label} />

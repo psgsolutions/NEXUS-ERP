@@ -267,7 +267,7 @@ function NewInventoryInScreen() {
                 <PillSelect
                   value={header.poDocPath}
                   onChange={(e) => selectPO(e.target.value)}
-                  className="w-full text-amber-400 border-amber-500/30 h-9 rounded-full px-6 font-mono text-[13px]"
+                  className="w-full text-amber-400 border-amber-500/30 h-9 rounded-full px-6 font-mono text-[12px]"
                 >
                   <option value="">{openPOs.length === 0 ? "-- ไม่มีใบสั่งซื้อที่รอรับสินค้า --" : "-- เลือกใบสั่งซื้อ --"}</option>
                   {openPOs.map((po: any) => (
@@ -302,7 +302,7 @@ function NewInventoryInScreen() {
                   value={header.reference}
                   onChange={(e) => setHeader({...header, reference: e.target.value})}
                   placeholder="เช่น เลขที่ใบส่งของของผู้จำหน่าย"
-                  className="w-full h-9 rounded-full px-6 font-mono text-[13px]"
+                  className="w-full h-9 rounded-full px-6 font-mono text-[12px]"
                 />
               </Field>
             </div>
@@ -312,7 +312,7 @@ function NewInventoryInScreen() {
         <div className="space-y-4 pt-6 border-t border-white/5">
           <div className="flex items-center gap-2 mb-2">
             <Truck size={16} className="text-white/40" />
-            <h4 className="text-[13px] font-semibold text-white/60 uppercase tracking-widest">รายการสินค้า</h4>
+            <h4 className="text-[12px] font-semibold text-white/60 uppercase tracking-widest">รายการสินค้า</h4>
           </div>
           <p className="text-[11px] text-white/40">
             ช่อง &quot;ราคา&quot; ในตาราง = ต้นทุนต่อหน่วยที่รับเข้า (ค่าเริ่มต้นคือต้นทุนเฉลี่ยปัจจุบัน หรือราคาในใบสั่งซื้อ) ใช้คำนวณต้นทุนเฉลี่ยใหม่และลงบัญชีสินค้าคงเหลือ

@@ -78,7 +78,7 @@ export function BoqPurchasePanel({ companyId, docId, project, lines, requester, 
       <WhatHappens items={["สร้างใบขอซื้อ 1 ใบ อ้างอิงโครงการนี้ (ต้นทุนเข้าโครงการเมื่อซื้อจริง)", "ผู้อนุมัติอนุมัติ แล้วแอดมินการเงินออกใบสั่งซื้อ/สั่งของ", "จำนวนที่ตั้งไว้ให้ = จำนวนใน BOQ ลบที่ขอซื้อไปแล้ว"]} />
       {msg && <div className={cn("p-3 rounded-xl text-xs font-bold border", msg.error ? "bg-danger/10 border-danger/20 text-danger" : "bg-nexus-teal/10 border-nexus-teal/20 text-nexus-teal")}>{msg.text}</div>}
       {!buyable.length ? (
-        <p className="text-[13px] text-white/55">BOQ นี้ไม่มีรายการสินค้า/วัสดุ (ค่าแรงและบริการไม่ต้องขอซื้อ)</p>
+        <p className="text-[12px] text-white/55">BOQ นี้ไม่มีรายการสินค้า/วัสดุ (ค่าแรงและบริการไม่ต้องขอซื้อ)</p>
       ) : (
         <>
           <NexusTable headers={["รายการ", "จำนวนใน BOQ", "ขอแล้ว", "จำนวนที่ขอซื้อ", "หน่วย", "ต้นทุนต่อหน่วย"]}>
@@ -97,9 +97,9 @@ export function BoqPurchasePanel({ companyId, docId, project, lines, requester, 
             })}
           </NexusTable>
           <div className="flex flex-wrap items-center gap-3 justify-end">
-            <span className="text-[13px] text-white/60">ต้องการภายใน</span>
+            <span className="text-[12px] text-white/60">ต้องการภายใน</span>
             <PillInput type="date" value={requiredDate} onChange={(e) => setRequiredDate(e.target.value)} className="h-9 w-[160px] text-sm font-mono" />
-            <span className="text-[13px] text-white/60">{chosen.length} รายการ · ประมาณ <span className="font-mono text-white">{money(total)}</span> บาท</span>
+            <span className="text-[12px] text-white/60">{chosen.length} รายการ · ประมาณ <span className="font-mono text-white">{money(total)}</span> บาท</span>
             <PillButton variant="primary" onClick={submit} disabled={busy || !chosen.length} className="h-9 px-5 text-xs">{busy ? "กำลังสร้าง..." : "สร้างใบขอซื้อ"}</PillButton>
           </div>
         </>

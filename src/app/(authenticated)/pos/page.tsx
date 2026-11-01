@@ -158,7 +158,7 @@ export default function POSPage() {
         </div>
         <div className="flex gap-1 overflow-x-auto flex-shrink-0">
           {categories.map((c) => (
-            <button key={c} type="button" onClick={() => setCategory(c)} className={cn("h-8 px-3.5 rounded-full text-[13px] whitespace-nowrap transition-colors", category === c ? "bg-white/10 text-white font-semibold" : "text-white/45 hover:text-white/80")}>{c === "all" ? "ทั้งหมด" : c}</button>
+            <button key={c} type="button" onClick={() => setCategory(c)} className={cn("h-8 px-3.5 rounded-full text-[12px] whitespace-nowrap transition-colors", category === c ? "bg-white/10 text-white font-semibold" : "text-white/45 hover:text-white/80")}>{c === "all" ? "ทั้งหมด" : c}</button>
           ))}
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-2 content-start pr-1">
@@ -185,7 +185,7 @@ export default function POSPage() {
       <div className="w-full xl:w-[400px] flex-shrink-0 flex flex-col rounded-2xl bg-white/[0.03] min-h-0">
         <div className="flex items-center justify-between px-4 h-12 border-b border-white/[0.06]">
           <span className="text-[15px] font-semibold text-white">บิลปัจจุบัน{totals.items > 0 && <span className="text-white/40 font-normal"> · {totals.items} ชิ้น</span>}</span>
-          {held.length > 0 && <button type="button" onClick={() => setShowHeld(true)} className="text-[13px] text-white/60 hover:text-white flex items-center gap-1"><PlayCircle size={14} /> บิลที่พัก {held.length}</button>}
+          {held.length > 0 && <button type="button" onClick={() => setShowHeld(true)} className="text-[12px] text-white/60 hover:text-white flex items-center gap-1"><PlayCircle size={14} /> บิลที่พัก {held.length}</button>}
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto px-4">
           {cart.length === 0 && (
@@ -213,13 +213,13 @@ export default function POSPage() {
           ))}
         </div>
         <div className="border-t border-white/[0.06] px-4 py-3 space-y-2.5">
-          <div className="flex items-center gap-4 text-[13px]">
+          <div className="flex items-center gap-4 text-[12px]">
             <button type="button" onClick={() => setShowDiscount((v) => !v)} className={cn("hover:text-white", showDiscount || totals.discount > 0 ? "text-white" : "text-white/50")}>+ ส่วนลด</button>
             <button type="button" onClick={() => setCustomer(customer ? null : { name: "", taxId: "", branch: "สำนักงานใหญ่", address: "" })} className={cn("flex items-center gap-1 hover:text-white", customer ? "text-white" : "text-white/50")}><User size={13} /> {customer ? "ยกเลิกใบกำกับเต็มรูป" : "+ ใบกำกับภาษีเต็มรูป"}</button>
           </div>
           {(showDiscount || totals.discount > 0) && (
             <div className="flex items-center gap-2">
-              <label className="text-[13px] text-white/50 whitespace-nowrap">ส่วนลดท้ายบิล (บาท)</label>
+              <label className="text-[12px] text-white/50 whitespace-nowrap">ส่วนลดท้ายบิล (บาท)</label>
               <PillInput value={discount} onChange={(e) => setDiscount(e.target.value.replace(/[^\d.]/g, ""))} inputMode="decimal" className="h-9 flex-1 text-right font-mono text-sm" placeholder="0.00" />
             </div>
           )}
@@ -231,16 +231,16 @@ export default function POSPage() {
               <PillInput value={customer.address} onChange={(e) => setCustomer({ ...customer, address: e.target.value })} placeholder="ที่อยู่" className="h-9 text-sm col-span-2" />
             </div>
           )}
-          <div className="space-y-1 text-[13px] text-white/50">
+          <div className="space-y-1 text-[12px] text-white/50">
             <div className="flex justify-between"><span>รวมเป็นเงิน</span><span className="font-mono">{baht(totals.subTotal)}</span></div>
             {totals.discount > 0 && <div className="flex justify-between"><span>ส่วนลด</span><span className="font-mono">−{baht(totals.discount)}</span></div>}
             <div className="flex justify-between"><span>VAT 7%</span><span className="font-mono">{baht(totals.vat)}</span></div>
           </div>
           <div className="flex justify-between items-baseline"><span className="text-[15px] text-white">ยอดชำระ</span><span className="text-[30px] font-bold font-mono text-white leading-none">฿{baht(totals.total)}</span></div>
           <div className="flex gap-2 pt-1">
-            <button type="button" onClick={hold} disabled={!cart.length} title="พักบิล (F10)" className="h-12 px-4 rounded-full bg-white/5 text-[13px] text-white/70 hover:bg-white/10 disabled:opacity-30 flex items-center gap-1.5"><PauseCircle size={15} /> พักบิล</button>
-            <button type="button" onClick={clear} disabled={!cart.length} className="h-12 px-3 rounded-full text-[13px] text-white/40 hover:text-danger disabled:opacity-30">ล้าง</button>
-            <button type="button" onClick={() => setPayOpen(true)} disabled={!cart.length} className="flex-1 h-12 rounded-full bg-nexus-teal text-surface-0 text-[16px] font-bold hover:brightness-110 active:scale-[0.98] disabled:bg-white/10 disabled:text-white/30 transition-colors">ชำระเงิน <span className="font-normal opacity-60 text-[13px]">F9</span></button>
+            <button type="button" onClick={hold} disabled={!cart.length} title="พักบิล (F10)" className="h-12 px-4 rounded-full bg-white/5 text-[12px] text-white/70 hover:bg-white/10 disabled:opacity-30 flex items-center gap-1.5"><PauseCircle size={15} /> พักบิล</button>
+            <button type="button" onClick={clear} disabled={!cart.length} className="h-12 px-3 rounded-full text-[12px] text-white/40 hover:text-danger disabled:opacity-30">ล้าง</button>
+            <button type="button" onClick={() => setPayOpen(true)} disabled={!cart.length} className="flex-1 h-12 rounded-full bg-nexus-teal text-surface-0 text-[16px] font-bold hover:brightness-110 active:scale-[0.98] disabled:bg-white/10 disabled:text-white/30 transition-colors">ชำระเงิน <span className="font-normal opacity-60 text-[12px]">F9</span></button>
           </div>
         </div>
       </div>
@@ -275,7 +275,7 @@ export default function POSPage() {
             <li>กด &quot;ชำระเงิน&quot; เลือกวิธีชำระ แล้วยืนยัน ระบบตัดสต็อกและบันทึกบัญชีให้</li>
             <li>พิมพ์ใบเสร็จ 80 มม. แล้วกด &quot;ขายบิลถัดไป&quot;</li>
           </ol>
-          <div className="grid grid-cols-2 gap-2 pt-2 text-[13px]">
+          <div className="grid grid-cols-2 gap-2 pt-2 text-[12px]">
             {[["F1", "ไปที่ช่องค้นหา"], ["F9 / Ctrl+Enter", "ชำระเงิน"], ["F10", "พักบิล"], ["Esc", "ปิดหน้าต่าง"]].map(([k, v]) => (
               <div key={k} className="flex items-center gap-2"><span className="px-2 py-0.5 rounded-md border border-white/20 font-mono text-[12px] text-white"><Keyboard size={11} className="inline mr-1" />{k}</span><span className="text-white/60">{v}</span></div>
             ))}
@@ -366,7 +366,7 @@ function PaymentModal({ total, company, onClose, onPay }: { total: number; compa
       {(method === "TRANSFER" || method === "CARD") && (
         <PillInput autoFocus value={ref} onChange={(e) => setRef(e.target.value)} placeholder={method === "CARD" ? "เลขที่สลิปบัตร / 4 หลักท้ายบัตร" : "เลขอ้างอิงการโอนจากสลิป"} className="w-full h-12 text-[15px]" />
       )}
-      {err && <p className="text-[13px] text-danger font-bold">{err}</p>}
+      {err && <p className="text-[12px] text-danger font-bold">{err}</p>}
       <PillButton variant="confirm" className="w-full h-12 text-[18px] font-bold" disabled={busy || !canConfirm} onClick={confirm}>
         {busy ? <Loader2 size={20} className="animate-spin mr-2" /> : <Check size={20} className="mr-2" />} {method === "CASH" ? "รับเงินและปิดบิล" : method === "PROMPTPAY" ? "ได้รับเงินแล้ว ปิดบิล" : "บันทึกการชำระ"}
       </PillButton>
@@ -472,7 +472,7 @@ function PosSettings({ company, companyId, onClose, onSaved }: { company: any; c
   };
   return (
     <Modal title="ตั้งค่าหน้าร้าน" onClose={onClose}>
-      <label className="block text-[13px] text-white/70">รหัสพร้อมเพย์ของร้าน (เบอร์มือถือ 10 หลัก หรือเลขประจำตัวผู้เสียภาษี 13 หลัก)</label>
+      <label className="block text-[12px] text-white/70">รหัสพร้อมเพย์ของร้าน (เบอร์มือถือ 10 หลัก หรือเลขประจำตัวผู้เสียภาษี 13 หลัก)</label>
       <PillInput value={pp} onChange={(e) => setPp(e.target.value)} placeholder={company?.taxId ? `เว้นว่าง = ใช้เลขผู้เสียภาษี ${company.taxId}` : "0812345678"} className={cn("w-full h-9 text-sm font-mono", !valid && "border-danger")} />
       {!valid && <p className="text-[12px] text-danger">รูปแบบไม่ถูกต้อง</p>}
       {error && <p className="text-[12px] text-danger">{error}</p>}

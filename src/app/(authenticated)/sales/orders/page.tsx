@@ -162,7 +162,7 @@ export default function SalesOrderDashboardPage() {
                     </NexusTableCell>
                     
                     <NexusTableCell>
-                      <div className="font-bold text-white text-[13px]">{so.customerName || '-'}</div>
+                      <div className="font-bold text-white text-[12px]">{so.customerName || '-'}</div>
                       {so.poNumber && (
                         <div className="text-[11px] text-white/40 mt-1 flex items-center gap-1 font-mono uppercase tracking-wider">
                           <Building2 size={10} /> PO: {so.poNumber}

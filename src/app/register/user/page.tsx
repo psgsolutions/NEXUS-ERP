@@ -95,10 +95,10 @@ export default function RegisterUserPage() {
               <div className="space-y-2">
                 <label className="text-[11px] font-medium text-white/40 uppercase tracking-[0.1em] ml-2">ประเภทบัญชีผู้ใช้</label>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setRole('customer')} className={cn("flex-1 h-9 rounded-full text-[13px] font-bold transition-all border", role === 'customer' ? "bg-nexus-blue/20 text-nexus-blue border-nexus-blue/40" : "bg-white/[0.03] text-white/40 border-white/10 hover:bg-white/10")}>
+                  <button type="button" onClick={() => setRole('customer')} className={cn("flex-1 h-9 rounded-full text-[12px] font-bold transition-all border", role === 'customer' ? "bg-nexus-blue/20 text-nexus-blue border-nexus-blue/40" : "bg-white/[0.03] text-white/40 border-white/10 hover:bg-white/10")}>
                     ลูกค้า
                   </button>
-                  <button type="button" onClick={() => setRole('technician')} className={cn("flex-1 h-9 rounded-full text-[13px] font-bold transition-all border", role === 'technician' ? "bg-warning/20 text-warning border-warning/40" : "bg-white/[0.03] text-white/40 border-white/10 hover:bg-white/10")}>
+                  <button type="button" onClick={() => setRole('technician')} className={cn("flex-1 h-9 rounded-full text-[12px] font-bold transition-all border", role === 'technician' ? "bg-warning/20 text-warning border-warning/40" : "bg-white/[0.03] text-white/40 border-white/10 hover:bg-white/10")}>
                     ช่างเทคนิค
                   </button>
                 </div>
@@ -181,7 +181,7 @@ export default function RegisterUserPage() {
                   type="submit" 
                   disabled={loading}
                   className={cn(
-                    "w-full h-9 text-[13px] gap-2 font-black",
+                    "w-full h-9 text-[12px] gap-2 font-black",
                     role === 'customer' 
                       ? "bg-nexus-blue text-white shadow-[0_0_15px_rgba(0,102,255,0.4)]" 
                       : "bg-warning text-black shadow-[0_0_15px_rgba(255,197,61,0.4)]"

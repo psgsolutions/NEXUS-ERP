@@ -60,8 +60,8 @@ export default function SerialDetailPage() {
 
   const row = (k: string, v: React.ReactNode) => (
     <div className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
-      <span className="text-[13px] text-white/60 shrink-0">{k}</span>
-      <span className="text-[13px] text-white text-right truncate">{v || "-"}</span>
+      <span className="text-[12px] text-white/60 shrink-0">{k}</span>
+      <span className="text-[12px] text-white text-right truncate">{v || "-"}</span>
     </div>
   );
 
@@ -97,7 +97,7 @@ export default function SerialDetailPage() {
                 <NexusTableCell><span className={cn("text-[12px] font-bold", t.tone)}>{t.label}</span></NexusTableCell>
                 <NexusTableCell className="text-white/60">{m.fromLocation || "-"}</NexusTableCell>
                 <NexusTableCell className="text-white/60">{m.toLocation || "-"}</NexusTableCell>
-                <NexusTableCell className="font-mono text-[13px] text-white/70">{m.referenceId || m.transactionId || "-"}</NexusTableCell>
+                <NexusTableCell className="font-mono text-[12px] text-white/70">{m.referenceId || m.transactionId || "-"}</NexusTableCell>
               </NexusTableRow>
             );
           })}

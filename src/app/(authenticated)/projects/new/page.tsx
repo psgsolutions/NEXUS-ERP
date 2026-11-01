@@ -667,7 +667,7 @@ export default function NewProjectPage() {
     <label className="text-[12px] font-bold text-white/70 ml-1 flex items-center gap-1.5 min-h-[18px]">{text}{extra}</label>
   );
   const segBtn = (activeOn: boolean) => cn(
-    "h-9 px-4 rounded-full text-[13px] font-bold border transition-all flex items-center gap-1.5 whitespace-nowrap",
+    "h-9 px-4 rounded-full text-[12px] font-bold border transition-all flex items-center gap-1.5 whitespace-nowrap",
     activeOn ? "bg-nexus-teal/15 border-nexus-teal/40 text-nexus-teal" : "bg-white/[0.02] border-white/10 text-white/50 hover:text-white"
   );
   const cardTitle = (icon: React.ReactNode, text: string, right?: React.ReactNode) => (
@@ -721,7 +721,7 @@ export default function NewProjectPage() {
               type="button"
               onClick={() => goTo(i)}
               className={cn(
-                "h-9 px-3 rounded-full border text-[12px] 2xl:text-[13px] font-bold flex items-center gap-2 transition-all min-w-0",
+                "h-9 px-3 rounded-full border text-[12px] 2xl:text-[12px] font-bold flex items-center gap-2 transition-all min-w-0",
                 active ? "bg-nexus-teal/15 border-nexus-teal/40 text-nexus-teal"
                   : done ? "bg-white/[0.04] border-nexus-teal/20 text-white/80"
                   : "bg-white/[0.02] border-white/10 text-white/40 hover:text-white"
@@ -763,14 +763,14 @@ export default function NewProjectPage() {
         ค่าบริการต่อปี {maintDef.annualRate}% ของมูลค่าอุปกรณ์{maintDef.sparePct > 0 && ` + สำรองอะไหล่ ${maintDef.sparePct}%`} · ปรับราคาได้ที่ขั้นรายการและต้นทุน
       </p>
       {maintSource.equipment.length === 0 ? (
-        <p className="text-[13px] text-white/40">โครงการต้นทางไม่มีรายการอุปกรณ์</p>
+        <p className="text-[12px] text-white/40">โครงการต้นทางไม่มีรายการอุปกรณ์</p>
       ) : (
         <div className="space-y-1">
           {maintSource.equipment.map((e) => {
             const on = maintSelected.has(e.lineId);
             return (
               <button key={e.lineId} type="button" onClick={() => setMaintSelected((prev) => { const n = new Set(prev); if (n.has(e.lineId)) n.delete(e.lineId); else n.add(e.lineId); return n; })}
-                className={cn("w-full grid grid-cols-[20px_minmax(0,1fr)_100px_140px] gap-2 items-center px-3 py-1.5 rounded-xl border text-left text-[13px]",
+                className={cn("w-full grid grid-cols-[20px_minmax(0,1fr)_100px_140px] gap-2 items-center px-3 py-1.5 rounded-xl border text-left text-[12px]",
                   on ? "border-nexus-teal/30 bg-nexus-teal/5 text-white" : "border-white/5 text-white/40")}>
                 <span className={cn("w-4 h-4 rounded border flex items-center justify-center", on ? "bg-nexus-teal border-nexus-teal text-black" : "border-white/30")}>{on && <Check size={11} />}</span>
                 <span className="truncate" title={e.name}>{e.name}</span>
@@ -907,7 +907,7 @@ export default function NewProjectPage() {
                 <PillInput value={govTorDocNo} onChange={(e) => setGovTorDocNo(e.target.value)} placeholder="เช่น TOR-2569-015" className="w-full h-9 text-sm font-mono" />
               </Field>
               <Field label="มูลค่าโครงการ (รวม VAT)" w={200} grow>
-                <div className={cn("h-9 px-4 rounded-full border flex items-center justify-end text-[13px] font-mono font-bold",
+                <div className={cn("h-9 px-4 rounded-full border flex items-center justify-end text-[12px] font-mono font-bold",
                   overBudget || overRefPrice ? "border-warning/40 bg-warning/10 text-warning" : "border-white/10 bg-white/[0.02] text-white/80")}>
                   {baht(contractValue)}
                 </div>
@@ -947,7 +947,7 @@ export default function NewProjectPage() {
 
         <div className="pt-3 border-t border-white/10 space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[13px] font-bold text-white flex items-center gap-1.5"><UserCheck size={14} className="text-nexus-teal" /> ผู้ประสานงาน / {isGov ? "กรรมการตรวจรับ" : "ผู้ติดตามหน้างาน"} ({projectFollowers.length} คน)</span>
+            <span className="text-[12px] font-bold text-white flex items-center gap-1.5"><UserCheck size={14} className="text-nexus-teal" /> ผู้ประสานงาน / {isGov ? "กรรมการตรวจรับ" : "ผู้ติดตามหน้างาน"} ({projectFollowers.length} คน)</span>
             <PillButton variant="glass" onClick={() => setProjectFollowers((prev) => [...prev, { id: `FOL-${Date.now()}`, name: "", role: isGov ? "กรรมการตรวจรับพัสดุ" : "ผู้ประสานงานหน้างาน", phone: "", note: "" }])} className="h-8 px-3 text-xs font-bold text-nexus-teal border-nexus-teal/30">+ เพิ่มรายชื่อ</PillButton>
           </div>
           {projectFollowers.map((fol) => {
@@ -1034,7 +1034,7 @@ export default function NewProjectPage() {
                   <NumCell kind="money" value={Number(lab.materialCost) || 0} onChange={(v) => updateLabor(lab.id, { materialCost: v })} />
                   <NumCell kind="money" value={Number(lab.laborCost) || 0} onChange={(v) => updateLabor(lab.id, { laborCost: v })} />
                   <NumCell kind="money" value={Number(lab.price) || 0} onChange={(v) => updateLabor(lab.id, { price: v })} />
-                  <span className="text-[13px] font-mono text-white text-right whitespace-nowrap hidden 2xl:block">{baht(qty * (Number(lab.price) || 0))}</span>
+                  <span className="text-[12px] font-mono text-white text-right whitespace-nowrap hidden 2xl:block">{baht(qty * (Number(lab.price) || 0))}</span>
                   <button type="button" onClick={() => setProjectLabors((prev) => prev.filter((item) => item.id !== lab.id))} className="p-1 text-white/40 hover:text-danger justify-self-end" title="ลบรายการ"><Trash2 size={15} /></button>
                 </div>
               );
@@ -1069,7 +1069,7 @@ export default function NewProjectPage() {
             <NumCell kind="pct" value={targetMargin} onChange={(v) => setTargetMargin(Math.min(80, v))} suffix="%" />
           </Field>
           <Field label="ราคาขายที่ได้กำไรตามเป้า (ก่อน VAT)" w={260} grow>
-            <div className="h-9 px-4 rounded-full border border-white/10 bg-white/[0.02] flex items-center justify-between gap-3 text-[13px]">
+            <div className="h-9 px-4 rounded-full border border-white/10 bg-white/[0.02] flex items-center justify-between gap-3 text-[12px]">
               <b className="font-mono text-white">{suggestedPrice > 0 ? baht(suggestedPrice) : "-"}</b>
               {suggestedPrice > 0 && budget.totalRev > 0 && (
                 <span className={cn("font-mono text-[12px]", suggestedPrice >= budget.totalRev ? "text-warning" : "text-nexus-teal")}>
@@ -1152,8 +1152,8 @@ export default function NewProjectPage() {
   // ---------- ขั้นที่ 5: ทีมงานและตรวจทาน ----------
   const reviewRow = (k: string, v: React.ReactNode) => (
     <div className="flex items-start justify-between gap-4 py-2 border-b border-white/5 last:border-0">
-      <span className="text-[13px] text-white/50 shrink-0">{k}</span>
-      <span className="text-[13px] text-white text-right break-words min-w-0">{v || "-"}</span>
+      <span className="text-[12px] text-white/50 shrink-0">{k}</span>
+      <span className="text-[12px] text-white text-right break-words min-w-0">{v || "-"}</span>
     </div>
   );
 
@@ -1201,7 +1201,7 @@ export default function NewProjectPage() {
       {gpLow && (
         <div className={cn("p-4 rounded-2xl border flex items-start gap-3", budget.gpPercent < 0 ? "bg-danger/10 border-danger/30" : "bg-warning/10 border-warning/30")}>
           <AlertCircle size={18} className={cn("shrink-0 mt-0.5", budget.gpPercent < 0 ? "text-danger" : "text-warning")} />
-          <div className="text-[13px]">
+          <div className="text-[12px]">
             <p className={cn("font-bold", budget.gpPercent < 0 ? "text-danger" : "text-warning")}>
               {budget.gpPercent < 0 ? `กำไรขั้นต้นติดลบ (${budget.gpPercent}%)` : `กำไรขั้นต้นต่ำกว่าเกณฑ์ ${GP_TARGET}% (${budget.gpPercent}%)`}
             </p>
@@ -1257,10 +1257,10 @@ export default function NewProjectPage() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <GlassCard className="p-5 space-y-2">
           {cardTitle(<ClipboardList size={16} className="text-nexus-teal" />, `เอกสารบังคับ (${typeConfig?.requiredDocuments.length || 0} รายการ)`)}
-          {!typeConfig && <p className="text-[13px] text-white/40">เลือกรูปแบบงานเพื่อดูเอกสารที่ต้องใช้</p>}
+          {!typeConfig && <p className="text-[12px] text-white/40">เลือกรูปแบบงานเพื่อดูเอกสารที่ต้องใช้</p>}
           {typeConfig?.requiredDocuments.map((d) => (
             <div key={d.docCode} className="flex items-center justify-between gap-3 py-1.5 border-b border-white/5 last:border-0">
-              <span className="text-[13px] text-white/80">{d.docName}</span>
+              <span className="text-[12px] text-white/80">{d.docName}</span>
               <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap", d.isMandatory ? "text-warning border-warning/30 bg-warning/10" : "text-white/40 border-white/10")}>{d.isMandatory ? "บังคับ" : "ไม่บังคับ"}</span>
             </div>
           ))}
@@ -1271,7 +1271,7 @@ export default function NewProjectPage() {
             <div key={s.stepOrder} className="flex items-start gap-3 py-1.5 border-b border-white/5 last:border-0">
               <span className="w-6 h-6 rounded-full bg-white/10 text-white/70 text-[12px] font-mono flex items-center justify-center shrink-0">{s.stepOrder}</span>
               <div>
-                <p className="text-[13px] font-bold text-white">{s.title}</p>
+                <p className="text-[12px] font-bold text-white">{s.title}</p>
                 <p className="text-[12px] text-white/50">{s.description}</p>
               </div>
             </div>
@@ -1329,8 +1329,8 @@ export default function NewProjectPage() {
   // ---------- แผงสรุป ----------
   const sideRow = (k: string, v: string, cls = "text-white") => (
     <div className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
-      <span className="text-[13px] text-white/60">{k}</span>
-      <span className={cn("text-[13px] 2xl:text-[14px] font-mono font-bold text-right", cls)}>{v}</span>
+      <span className="text-[12px] text-white/60">{k}</span>
+      <span className={cn("text-[12px] 2xl:text-[14px] font-mono font-bold text-right", cls)}>{v}</span>
     </div>
   );
 
@@ -1359,7 +1359,7 @@ export default function NewProjectPage() {
                 {ok ? <Check size={12} /> : <span className="text-[11px] font-mono">{i + 1}</span>}
               </span>
               <span className="min-w-0">
-                <span className="block text-[13px] text-white/80">{s.title}</span>
+                <span className="block text-[12px] text-white/80">{s.title}</span>
                 {(err || !visited.has(i)) && <span className="block text-[12px] text-white/40">{err || "ยังไม่ได้ตรวจทาน"}</span>}
               </span>
             </button>

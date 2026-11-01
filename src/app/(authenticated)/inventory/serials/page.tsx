@@ -53,10 +53,10 @@ export default function SerialListPage() {
                 const w = warrantyState(s);
                 return (
                   <NexusTableRow key={s.id} onClick={() => router.push(`/inventory/serials/${encodeURIComponent(s.id)}`)}>
-                    <NexusTableCell className="font-mono text-[13px] text-nexus-blue">{s.sn || s.id}</NexusTableCell>
+                    <NexusTableCell className="font-mono text-[12px] text-nexus-blue">{s.sn || s.id}</NexusTableCell>
                     <NexusTableCell className="font-bold text-white/80">{productName.get(s.productId) || s.productId || "-"}</NexusTableCell>
                     <NexusTableCell className="text-white/60">{s.lastLocation || s.location || "-"}</NexusTableCell>
-                    <NexusTableCell className="font-mono text-[13px] text-white/60">{s.lastReference || "-"}</NexusTableCell>
+                    <NexusTableCell className="font-mono text-[12px] text-white/60">{s.lastReference || "-"}</NexusTableCell>
                     <NexusTableCell><span className={`text-[12px] font-bold ${w.tone}`}>{w.label}</span></NexusTableCell>
                     <NexusTableCell className="text-white/60">{thDate(s.updatedAt)}</NexusTableCell>
                     <NexusTableCell><StatusBadge status={st.badge} label={st.label} /></NexusTableCell>

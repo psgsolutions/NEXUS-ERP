@@ -65,7 +65,7 @@ export default function ReorderPage() {
           <h1 className="text-lg font-bold text-white tracking-tight leading-none">สั่งซื้อตามจุดสั่งซื้อ</h1>
           <p className="text-xs font-semibold text-white/60 mt-1 leading-none">สินค้าที่พร้อมใช้ + กำลังสั่ง ไม่เกินจุดสั่งซื้อ · จำนวนแนะนำ = เติมให้ถึงสต็อกสูงสุด</p>
         </div>
-        <span className="text-[13px] text-white/60">เลือก <b className="font-mono text-white">{chosen.length}</b> · ประมาณ <b className="font-mono text-white">{money(total)}</b></span>
+        <span className="text-[12px] text-white/60">เลือก <b className="font-mono text-white">{chosen.length}</b> · ประมาณ <b className="font-mono text-white">{money(total)}</b></span>
         <PillButton variant="glass" className="h-9 px-3 text-xs" onClick={load}><RefreshCw size={13} /> โหลดใหม่</PillButton>
         <PillButton variant="confirm" className="h-9 px-4 text-xs font-bold" disabled={!chosen.length || busy} onClick={create}>{busy ? <Loader2 size={14} className="animate-spin" /> : <PackagePlus size={14} />} สร้างใบขอซื้อ</PillButton>
       </header>
@@ -76,7 +76,7 @@ export default function ReorderPage() {
             <div className="py-16 flex items-center justify-center gap-2 text-white/40 text-sm"><Loader2 size={16} className="animate-spin" /> กำลังตรวจสต็อก…</div>
           ) : (
             <NexusTable headers={["", "รหัส", "สินค้า", "พร้อมใช้", "กำลังสั่ง", "จุดสั่งซื้อ", "สต็อกสูงสุด", "สั่ง", "ราคาทุน", "มูลค่า"]} itemCount={lines.length}>
-              {lines.length === 0 && <NexusTableRow className="cursor-default"><NexusTableCell colSpan={10} className="text-center text-[13px] text-white/40 py-10">ไม่มีสินค้าที่ถึงจุดสั่งซื้อ (สินค้าที่ไม่ได้ตั้งจุดสั่งซื้อ/สต็อกขั้นต่ำจะไม่ถูกตรวจ)</NexusTableCell></NexusTableRow>}
+              {lines.length === 0 && <NexusTableRow className="cursor-default"><NexusTableCell colSpan={10} className="text-center text-[12px] text-white/40 py-10">ไม่มีสินค้าที่ถึงจุดสั่งซื้อ (สินค้าที่ไม่ได้ตั้งจุดสั่งซื้อ/สต็อกขั้นต่ำจะไม่ถูกตรวจ)</NexusTableCell></NexusTableRow>}
               {lines.map((l) => {
                 const on = Number(pick[l.productId]) > 0;
                 return (

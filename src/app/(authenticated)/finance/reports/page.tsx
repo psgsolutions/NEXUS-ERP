@@ -159,7 +159,7 @@ export default function FinancialReportsPage() {
 
       {tab === "gl" && data?.accounts && (
         <div className="flex items-center gap-3">
-          <span className="text-[13px] text-white/60 whitespace-nowrap">บัญชี</span>
+          <span className="text-[12px] text-white/60 whitespace-nowrap">บัญชี</span>
           <PillSelect value={account} onChange={(e) => setAccount(e.target.value)} className="h-9 px-4 w-[360px] max-w-full text-sm">
             {data.accounts.length === 0 && <option value="">ไม่มีรายการบัญชีในระบบ</option>}
             {data.accounts.map((a: any) => <option key={a.code} value={a.code}>{a.code} {a.name}</option>)}
@@ -173,14 +173,14 @@ export default function FinancialReportsPage() {
         <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-white/5 flex-wrap">
           <div>
             <h3 className="text-[16px] font-semibold text-white leading-normal">{TITLE[tab]}</h3>
-            <p className="text-[13px] text-white/50 leading-normal">{periodText}</p>
+            <p className="text-[12px] text-white/50 leading-normal">{periodText}</p>
           </div>
           {ready && <ReportNotices tab={tab} data={data} />}
         </div>
         {loading && !ready ? (
-          <div className="py-16 flex items-center justify-center gap-2 text-[13px] text-white/40"><Loader2 size={16} className="animate-spin" /> กำลังสร้างรายงาน…</div>
+          <div className="py-16 flex items-center justify-center gap-2 text-[12px] text-white/40"><Loader2 size={16} className="animate-spin" /> กำลังสร้างรายงาน…</div>
         ) : !ready ? (
-          <div className="py-16 text-center text-[13px] text-white/40">ไม่มีข้อมูล</div>
+          <div className="py-16 text-center text-[12px] text-white/40">ไม่มีข้อมูล</div>
         ) : (
           <ReportBody tab={tab} data={data} onAccount={(code) => { setAccount(code); setTab("gl"); }} />
         )}
@@ -222,7 +222,7 @@ const TotalRow = ({ cells }: { cells: React.ReactNode[] }) => (
   </NexusTableRow>
 );
 const Empty = ({ cols, text }: { cols: number; text: string }) => (
-  <NexusTableRow className="cursor-default"><NexusTableCell colSpan={cols} className="text-center text-[13px] text-white/40 py-10">{text}</NexusTableCell></NexusTableRow>
+  <NexusTableRow className="cursor-default"><NexusTableCell colSpan={cols} className="text-center text-[12px] text-white/40 py-10">{text}</NexusTableCell></NexusTableRow>
 );
 
 interface Section { title: string; lines: { code: string; name: string; amount: number }[]; total?: number; totalLabel?: string; emphasis?: boolean }
@@ -278,7 +278,7 @@ function ReportBody({ tab, data, onAccount }: { tab: ReportId; data: any; onAcco
         <TotalRow cells={["", "เงินสดและเงินฝากต้นงวด", "", "", money(data.opening)]} />
         {cashSections(data).map((s) => (
           <React.Fragment key={s.title}>
-            <NexusTableRow className="cursor-default"><NexusTableCell colSpan={5} className="text-[13px] font-semibold text-nexus-teal pt-5">{s.title}</NexusTableCell></NexusTableRow>
+            <NexusTableRow className="cursor-default"><NexusTableCell colSpan={5} className="text-[12px] font-semibold text-nexus-teal pt-5">{s.title}</NexusTableCell></NexusTableRow>
             {s.rows.length === 0 && <Empty cols={5} text="ไม่มีรายการ" />}
             {s.rows.map((r: any) => (
               <NexusTableRow key={`${s.title}-${r.code}`} {...drill(r.code, onAccount)}>
@@ -339,7 +339,7 @@ function ReportBody({ tab, data, onAccount }: { tab: ReportId; data: any; onAcco
   }
   if (tab === "gl") {
     const l = data.ledger;
-    if (!l) return <div className="py-16 text-center text-[13px] text-white/40">เลือกบัญชีที่ต้องการดู</div>;
+    if (!l) return <div className="py-16 text-center text-[12px] text-white/40">เลือกบัญชีที่ต้องการดู</div>;
     return (
       <NexusTable headers={["วันที่", "เลขที่เอกสาร", "คำอธิบาย", "เดบิต", "เครดิต", "คงเหลือ"]} itemCount={l.entries.length}>
         <TotalRow cells={["", "", `ยอดยกมา (ด้าน${l.normalSide === "debit" ? "เดบิต" : "เครดิต"})`, "", "", money(l.opening)]} />
@@ -366,7 +366,7 @@ function ReportBody({ tab, data, onAccount }: { tab: ReportId; data: any; onAcco
           <React.Fragment key={s.title}>
             {!s.emphasis && (
               <NexusTableRow className="cursor-default">
-                <NexusTableCell colSpan={3} className="text-[13px] font-semibold text-nexus-teal pt-5">{s.title}</NexusTableCell>
+                <NexusTableCell colSpan={3} className="text-[12px] font-semibold text-nexus-teal pt-5">{s.title}</NexusTableCell>
               </NexusTableRow>
             )}
             {s.lines.map((x) => (

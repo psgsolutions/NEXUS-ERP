@@ -233,7 +233,7 @@ export default function LoginPage() {
                 type="submit"
                 variant="primary"
                 disabled={loading}
-                className="w-full h-9 text-[13px] gap-2 shadow-neon-teal mt-6"
+                className="w-full h-9 text-[12px] gap-2 shadow-neon-teal mt-6"
               >
                 {loading ? <Loader2 className="animate-spin" size={16} /> : (
                   <>

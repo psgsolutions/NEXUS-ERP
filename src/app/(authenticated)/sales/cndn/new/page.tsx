@@ -103,7 +103,7 @@ function CnDnForm() {
 
   const label = (t: string, req?: boolean) => <label className="text-[12px] font-bold text-white/70 ml-1">{t}{req && <span className="text-danger ml-1">*</span>}</label>;
   const row = (k: string, v: React.ReactNode, strong = false) => (
-    <div className="flex items-center justify-between gap-3 py-1.5 text-[13px]">
+    <div className="flex items-center justify-between gap-3 py-1.5 text-[12px]">
       <span className="text-white/60">{k}</span>
       <span className={cn("font-mono text-right", strong ? "font-bold text-white" : "text-white/85")}>{v}</span>
     </div>

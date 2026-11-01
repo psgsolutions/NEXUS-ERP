@@ -139,11 +139,11 @@ function PickingScreen() {
     return (
       <NexusPageLayout header={header} leftContent={
         <GlassCard className="p-5 border-white/10 rounded-3xl space-y-2">
-          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2"><ClipboardList size={16} className="text-nexus-teal" /> ใบสั่งขายที่รอเบิกสินค้า ({pickable.length})</h3>
+          <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2"><ClipboardList size={16} className="text-nexus-teal" /> ใบสั่งขายที่รอเบิกสินค้า ({pickable.length})</h3>
           {pickable.length === 0 && <p className="text-[12px] text-white/40">ไม่มีใบสั่งขายที่อนุมัติแล้วและรอเบิกสินค้า</p>}
           {pickable.map((o: any) => (
             <button key={o.id} onClick={() => router.push(`/inventory/pick?so=${encodeURIComponent(o.id)}`)} className="w-full text-left p-3 rounded-xl bg-white/[0.03] border border-white/5 hover:border-nexus-teal/40 transition-all">
-              <p className="text-[13px] font-bold text-white font-mono">{soNo(o)}</p>
+              <p className="text-[12px] font-bold text-white font-mono">{soNo(o)}</p>
               <p className="text-[12px] text-white/50">{o.customerName || o.customerSnapshot?.name || "-"} • ค้างเบิก {soPickRemaining(o).size} รายการ</p>
             </button>
           ))}
@@ -176,7 +176,7 @@ function PickingScreen() {
           autoComplete="off"
         />
         {feedback && (
-          <div className={cn("p-3 rounded-xl text-[13px] font-bold flex items-center gap-2",
+          <div className={cn("p-3 rounded-xl text-[12px] font-bold flex items-center gap-2",
             feedback.type === "ok" && "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400",
             feedback.type === "error" && "bg-red-500/10 border border-red-500/30 text-red-400",
             feedback.type === "info" && "bg-cyan-500/10 border border-cyan-500/30 text-cyan-300")}>
@@ -190,11 +190,11 @@ function PickingScreen() {
       </GlassCard>
 
       <GlassCard className="p-5 space-y-3 border-white/10 rounded-3xl">
-        <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2"><PackageCheck size={16} className="text-nexus-teal" /> หยิบแล้ว (ยังไม่บันทึก)</h3>
+        <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2"><PackageCheck size={16} className="text-nexus-teal" /> หยิบแล้ว (ยังไม่บันทึก)</h3>
         {lines.length === 0 ? <p className="text-[12px] text-white/40">ยังไม่มีรายการ</p> : lines.map((l) => (
           <div key={`${l.location}|${l.productId}`} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/5">
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-bold text-white truncate">{productById.get(l.productId)?.name || l.productId}</p>
+              <p className="text-[12px] font-bold text-white truncate">{productById.get(l.productId)?.name || l.productId}</p>
               <p className="text-[11px] text-white/40 font-mono">{l.location === UNASSIGNED ? "สต็อกไม่ระบุตำแหน่ง" : l.location}</p>
             </div>
             <span className="font-mono text-white font-bold w-12 text-right">{l.qty}</span>

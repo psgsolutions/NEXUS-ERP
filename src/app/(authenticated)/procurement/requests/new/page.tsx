@@ -34,7 +34,7 @@ import { apiFetch } from "@/lib/api-client";
 function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
     <div className="space-y-2">
-      <label className="text-[13px] font-bold text-white/60 flex items-center gap-1">
+      <label className="text-[12px] font-bold text-white/60 flex items-center gap-1">
         {label} {required && <span className="text-danger">*</span>}
       </label>
       {children}
@@ -223,26 +223,26 @@ export default function NewPurchaseRequestPage() {
           {/* User & Request Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Field label="ผู้ยื่นคำขอซื้อ">
-              <PillInput value={header.requester} disabled className="w-full bg-white/[0.01] text-white/40 h-9 rounded-full px-6 text-[13px] font-bold border-white/5 cursor-not-allowed" />
+              <PillInput value={header.requester} disabled className="w-full bg-white/[0.01] text-white/40 h-9 rounded-full px-6 text-[12px] font-bold border-white/5 cursor-not-allowed" />
             </Field>
             <Field label="หน่วยงาน / แผนก">
               <PillInput
                 value={header.department}
                 onChange={(e) => setHeader({...header, department: e.target.value})}
                 placeholder="ระบุแผนก เช่น ฝ่ายวิศวกรรม"
-                className="w-full px-6 h-9 rounded-full text-[13px] font-bold"
+                className="w-full px-6 h-9 rounded-full text-[12px] font-bold"
               />
             </Field>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Field label="วันที่ยื่นคำขอ">
-              <NexusDatePicker value={header.requestDate} disabled className="w-full opacity-50 h-11 rounded-full px-6 text-[13px] font-bold border-white/5" />
+              <NexusDatePicker value={header.requestDate} disabled className="w-full opacity-50 h-11 rounded-full px-6 text-[12px] font-bold border-white/5" />
             </Field>
             <Field label="วันที่ต้องการใช้งาน *" required>
               <NexusDatePicker value={header.requiredDate}
                 onChange={(e) => setHeader({...header, requiredDate: e.target.value})}
-                className="w-full text-cyan-400 h-11 rounded-full px-6 text-[13px] font-bold bg-white/[0.02]" 
+                className="w-full text-cyan-400 h-11 rounded-full px-6 text-[12px] font-bold bg-white/[0.02]" 
               />
             </Field>
             <Field label="ลำดับความสำคัญ">
@@ -250,7 +250,7 @@ export default function NewPurchaseRequestPage() {
                 value={header.priority}
                 onChange={(e) => setHeader({...header, priority: e.target.value})}
                 className={cn(
-                  "w-full px-6 h-9 rounded-full text-[13px] font-black",
+                  "w-full px-6 h-9 rounded-full text-[12px] font-black",
                   header.priority === "urgent" ? "text-danger" : "text-cyan-400"
                 )}
               >
@@ -272,7 +272,7 @@ export default function NewPurchaseRequestPage() {
                   value={vendorId} 
                   onChange={setVendorId} 
                   placeholder="ค้นหาผู้จำหน่าย..."
-                  className="h-11 rounded-full text-[13px] font-bold px-4"
+                  className="h-11 rounded-full text-[12px] font-bold px-4"
                 />
               </Field>
               
@@ -280,10 +280,10 @@ export default function NewPurchaseRequestPage() {
               {vendorData && (
                 <div className="grid grid-cols-2 gap-4 animate-in fade-in duration-300">
                   <Field label="เลขประจำตัวผู้เสียภาษี">
-                    <PillInput value={vendorData.taxId} disabled className="w-full bg-white/[0.02] h-9 rounded-full px-6 text-[13px] font-mono font-bold text-white/60" />
+                    <PillInput value={vendorData.taxId} disabled className="w-full bg-white/[0.02] h-9 rounded-full px-6 text-[12px] font-mono font-bold text-white/60" />
                   </Field>
                   <Field label="เครดิตเทอม">
-                    <PillInput value={vendorData.creditTerms} disabled className="w-full bg-white/[0.02] h-9 rounded-full px-6 text-[13px] font-bold text-cyan-400" />
+                    <PillInput value={vendorData.creditTerms} disabled className="w-full bg-white/[0.02] h-9 rounded-full px-6 text-[12px] font-bold text-cyan-400" />
                   </Field>
                 </div>
               )}
@@ -291,7 +291,7 @@ export default function NewPurchaseRequestPage() {
             {vendorData && (
               <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                 <Field label="ที่อยู่ / ข้อมูลติดต่อ">
-                    <PillInput value={`${vendorData.address} (ติดต่อ: ${vendorData.contact})`} disabled className="w-full bg-white/[0.02] h-9 rounded-full px-6 text-[13px] font-bold text-white/60" />
+                    <PillInput value={`${vendorData.address} (ติดต่อ: ${vendorData.contact})`} disabled className="w-full bg-white/[0.02] h-9 rounded-full px-6 text-[12px] font-bold text-white/60" />
                 </Field>
               </div>
             )}
@@ -302,7 +302,7 @@ export default function NewPurchaseRequestPage() {
               <PillSelect
                 value={header.projectRef}
                 onChange={(e) => setHeader({...header, projectRef: e.target.value})}
-                className="w-full h-9 rounded-full px-6 text-[13px] font-bold bg-white/[0.02]"
+                className="w-full h-9 rounded-full px-6 text-[12px] font-bold bg-white/[0.02]"
               >
                 <option value="">{projects.length === 0 ? "ยังไม่มีโครงการ" : "ไม่ระบุโครงการ"}</option>
                 {projects.map((pj: any) => (
@@ -312,7 +312,7 @@ export default function NewPurchaseRequestPage() {
             </Field>
             <Field label="วัตถุประสงค์ / ความจำเป็น *" required>
               <textarea 
-                className="w-full h-32 rounded-3xl bg-white/[0.02] border border-white/5 text-white text-[13px] font-bold p-6 focus:outline-none focus:border-cyan-400/40 transition-all custom-scrollbar"
+                className="w-full h-32 rounded-3xl bg-white/[0.02] border border-white/5 text-white text-[12px] font-bold p-6 focus:outline-none focus:border-cyan-400/40 transition-all custom-scrollbar"
                 value={header.reason}
                 onChange={(e) => setHeader({...header, reason: e.target.value})}
                 placeholder="ระบุเหตุผลความจำเป็นในการจัดซื้อครั้งนี้..."
@@ -346,7 +346,7 @@ export default function NewPurchaseRequestPage() {
   const rightSidebar = (
     <GlassCard accentColor="purple" className="p-5 space-y-8 sticky top-0">
       <div className="space-y-1 border-b border-white/5 pb-4">
-        <h5 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
+        <h5 className="text-[12px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
           สรุปรายการคำขอซื้อ
         </h5>
       </div>
@@ -361,7 +361,7 @@ export default function NewPurchaseRequestPage() {
       {/* 4. Tax & WHT Engine Toggle */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <label className="text-[13px] font-bold text-white/60">รูปแบบภาษีมูลค่าเพิ่ม</label>
+          <label className="text-[12px] font-bold text-white/60">รูปแบบภาษีมูลค่าเพิ่ม</label>
           <PillSelect 
             value={vatMode} 
             onChange={(e) => setVatMode(e.target.value as any)}
@@ -373,7 +373,7 @@ export default function NewPurchaseRequestPage() {
           </PillSelect>
         </div>
         <div className="flex items-center justify-between">
-          <label className="text-[13px] font-bold text-white/60">หัก ณ ที่จ่าย (WHT)</label>
+          <label className="text-[12px] font-bold text-white/60">หัก ณ ที่จ่าย (WHT)</label>
           <PillSelect 
             value={whtRate.toString()} 
             onChange={(e) => setWhtRate(Number(e.target.value))}
@@ -389,27 +389,27 @@ export default function NewPurchaseRequestPage() {
 
       <div className="bg-black/40 p-6 rounded-2xl border border-white/5 space-y-3">
         <div className="flex justify-between items-center">
-          <span className="text-white/60 text-[13px]">รวมเป็นเงิน</span>
+          <span className="text-white/60 text-[12px]">รวมเป็นเงิน</span>
           <span className="text-white font-mono text-[14px]">฿{subtotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
         </div>
         
         {discountTotal > 0 && (
           <div className="flex justify-between items-center text-cyan-400">
-            <span className="text-cyan-400/80 text-[13px]">หักส่วนลด</span>
+            <span className="text-cyan-400/80 text-[12px]">หักส่วนลด</span>
             <span className="font-mono text-[14px]">-฿{discountTotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
           </div>
         )}
 
         {vatMode !== "none" && (
           <div className="flex justify-between items-center">
-            <span className="text-white/60 text-[13px]">ภาษีมูลค่าเพิ่ม 7%</span>
+            <span className="text-white/60 text-[12px]">ภาษีมูลค่าเพิ่ม 7%</span>
             <span className="text-white font-mono text-[14px]">฿{vatAmount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
           </div>
         )}
 
         {whtRate > 0 && (
           <div className="flex justify-between items-center text-orange-400">
-            <span className="text-orange-400/80 text-[13px]">ยอดหัก ณ ที่จ่าย</span>
+            <span className="text-orange-400/80 text-[12px]">ยอดหัก ณ ที่จ่าย</span>
             <span className="font-mono text-[14px]">-฿{whtAmount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
           </div>
         )}

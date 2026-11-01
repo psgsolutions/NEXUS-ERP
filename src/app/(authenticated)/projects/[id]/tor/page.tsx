@@ -86,7 +86,7 @@ export default function ProjectTorPrintPage() {
               ))}
             </div>
           ) : (
-            <p className="mt-10 text-right text-[13px]">จัดทำเมื่อ {thaiDate(new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10))}</p>
+            <p className="mt-10 text-right text-[12px]">จัดทำเมื่อ {thaiDate(new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10))}</p>
           )}
         </div>
       )}

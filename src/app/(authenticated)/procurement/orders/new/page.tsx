@@ -257,7 +257,7 @@ function NewPurchaseOrderScreen() {
             <PillSelect
               value={form.supplier}
               onChange={(e) => setForm({...form, supplier: e.target.value})}
-              className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[13px] font-bold"
+              className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[12px] font-bold"
             >
               <option value="">{suppliers.length === 0 ? "ยังไม่มีข้อมูลผู้จัดจำหน่าย" : "เลือกคู่ค้า..."}</option>
               {suppliers.map((s: any) => (
@@ -271,7 +271,7 @@ function NewPurchaseOrderScreen() {
               value={form.reference} 
               onChange={(e) => setForm({...form, reference: e.target.value})} 
               placeholder="PR No. / Quote No." 
-              className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[13px] font-bold" 
+              className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[12px] font-bold" 
             />
           </Field>
         </div>
@@ -282,7 +282,7 @@ function NewPurchaseOrderScreen() {
               <PillSelect 
                 value={form.project_id} 
                 onChange={(e) => setForm({...form, project_id: e.target.value})} 
-                className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[13px] font-bold"
+                className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[12px] font-bold"
               >
                 <option value="">{projects.length === 0 ? "ยังไม่มีโครงการ" : "เลือกโครงการ..."}</option>
                 {projects.map((p: any) => (
@@ -297,7 +297,7 @@ function NewPurchaseOrderScreen() {
                 value={form.department}
                 onChange={(e) => setForm({...form, department: e.target.value})}
                 placeholder="ระบุแผนก เช่น ฝ่ายไอที"
-                className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[13px] font-bold"
+                className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[12px] font-bold"
               />
             </Field>
           )}
@@ -307,7 +307,7 @@ function NewPurchaseOrderScreen() {
                 value={warehouses[0] ? `${warehouses[0].code || warehouses[0].id} : ${warehouses[0].name || ""}` : "ยังไม่ได้ตั้งค่าคลังสินค้า"}
                 disabled
                 readOnly
-                className="w-full h-9 px-6 rounded-full bg-white/[0.01] border-cyan-500/20 text-cyan-400/60 cursor-not-allowed font-bold text-[13px]" 
+                className="w-full h-9 px-6 rounded-full bg-white/[0.01] border-cyan-500/20 text-cyan-400/60 cursor-not-allowed font-bold text-[12px]" 
               />
             </Field>
           )}
@@ -318,22 +318,22 @@ function NewPurchaseOrderScreen() {
       <div className="grid grid-cols-2 gap-6">
         <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-white/5 pb-4 h-[36px]">
-            <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 ">
+            <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 ">
             <Calendar size={16} /> วันที่เอกสาร
           </h3>
           </div>
           <div className="space-y-4">
             <Field label="วันที่สั่งซื้อ *">
-              <NexusDatePicker value={form.date} onChange={(e) => setForm({...form, date: e.target.value})} className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[13px] font-bold" />
+              <NexusDatePicker value={form.date} onChange={(e) => setForm({...form, date: e.target.value})} className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[12px] font-bold" />
             </Field>
             <Field label="กำหนดส่งมอบ *">
-              <NexusDatePicker value={form.delivery_date} onChange={(e) => setForm({...form, delivery_date: e.target.value})} className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[13px] font-bold" />
+              <NexusDatePicker value={form.delivery_date} onChange={(e) => setForm({...form, delivery_date: e.target.value})} className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[12px] font-bold" />
             </Field>
           </div>
         </div>
         
         <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
+          <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
             <Globe size={16} /> การค้าสากลและการเงิน
           </h3>
           <div className="space-y-4">
@@ -348,7 +348,7 @@ function NewPurchaseOrderScreen() {
                   else if (newCurrency === "JPY") rate = 0.235;
                   setForm({...form, currency: newCurrency, exchange_rate: rate});
                 }} 
-                className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[13px] font-bold"
+                className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[12px] font-bold"
               >
                 <option value="THB">THB - Thai Baht (฿)</option>
                 <option value="USD">USD - US Dollar ($)</option>
@@ -365,7 +365,7 @@ function NewPurchaseOrderScreen() {
                   disabled={form.currency === "THB"}
                   value={form.exchange_rate} 
                   onChange={(e) => setForm({...form, exchange_rate: parseFloat(e.target.value) || 0})} 
-                  className="w-full h-9 px-6 pr-14 rounded-full bg-white/[0.02] border-white/10 font-mono font-bold text-[13px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                  className="w-full h-9 px-6 pr-14 rounded-full bg-white/[0.02] border-white/10 font-mono font-bold text-[12px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                 />
                 <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-white/60 uppercase">
                   THB
@@ -377,7 +377,7 @@ function NewPurchaseOrderScreen() {
       </div>
 
       <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-        <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
+        <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
           <FileText size={16} /> เงื่อนไขและภาษี
         </h3>
         <div className="grid grid-cols-2 gap-6">
@@ -385,7 +385,7 @@ function NewPurchaseOrderScreen() {
             <PillSelect 
               value={form.vat_type}
               onChange={(e) => setForm({...form, vat_type: e.target.value as VatType})}
-              className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[13px] font-bold"
+              className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[12px] font-bold"
             >
               <option value="Exclusive">แยกภาษี (Exclusive - 7%)</option>
               <option value="Inclusive">รวมภาษี (Inclusive - 7%)</option>
@@ -396,7 +396,7 @@ function NewPurchaseOrderScreen() {
             <PillSelect 
               value={form.payment_term} 
               onChange={(e) => setForm({...form, payment_term: e.target.value})} 
-              className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[13px] font-bold"
+              className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[12px] font-bold"
             >
               <option value="Net 30">Net 30 Days</option>
               <option value="Advanced 100%">Advanced 100%</option>
@@ -407,7 +407,7 @@ function NewPurchaseOrderScreen() {
 
       {/* Smart Document Table */}
       <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
-        <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
+        <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-4">
           <ShoppingCart size={16} /> รายการสินค้า / บริการ
         </h3>
 
@@ -422,11 +422,11 @@ function NewPurchaseOrderScreen() {
   const rightSidebar = (
     <div className="space-y-4 h-fit pb-10">
       <GlassCard className="p-6 border-white/5 rounded-3xl bg-surface-1 shadow-2xl space-y-4 w-full">
-        <div className="flex justify-between items-center text-[13px]">
+        <div className="flex justify-between items-center text-[12px]">
           <span className="text-white/40 font-bold uppercase tracking-widest text-[11px]">มูลค่าก่อนภาษี</span>
           <span className="text-white font-mono font-bold tracking-tight text-right">{formatForeign(financials.net)}</span>
         </div>
-        <div className="flex justify-between items-center text-[13px] pb-4 border-b border-white/5">
+        <div className="flex justify-between items-center text-[12px] pb-4 border-b border-white/5">
           <span className="text-white/40 font-bold uppercase tracking-widest text-[11px]">ภาษีมูลค่าเพิ่ม 7%</span>
           <span className="text-white font-mono font-bold tracking-tight text-right">{formatForeign(financials.vat)}</span>
         </div>
@@ -442,7 +442,7 @@ function NewPurchaseOrderScreen() {
         {form.currency !== "THB" && (
           <div className="flex justify-between items-center pt-4 border-t border-white/10 mt-4">
             <span className="text-[11px] text-cyan-400/60 font-semibold uppercase tracking-widest">Equivalent (THB)</span>
-            <span className="text-[13px] font-mono font-bold text-cyan-400 text-right">{formatCurrency(financialsTHB.total)}</span>
+            <span className="text-[12px] font-mono font-bold text-cyan-400 text-right">{formatCurrency(financialsTHB.total)}</span>
           </div>
         )}
       </GlassCard>

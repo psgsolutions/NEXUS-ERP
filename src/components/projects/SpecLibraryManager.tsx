@@ -25,7 +25,7 @@ const toDraft = (t: SpecTemplate): Draft => ({
   variants: t.variants.map((v) => ({ ...v, clauses: v.clauses.join("\n") })),
 });
 const newId = (p: string) => `${p}${Date.now().toString(36).toUpperCase()}`;
-const textareaCls = "w-full bg-black/20 border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:outline-none resize-y leading-relaxed";
+const textareaCls = "w-full bg-black/20 border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[12px] text-white focus:outline-none resize-y leading-relaxed";
 
 export function SpecLibraryManager() {
   const { companyId, role, roles } = useAuth();
@@ -111,7 +111,7 @@ export function SpecLibraryManager() {
               <p className="text-[11px] font-bold text-white/40 uppercase tracking-wide px-1">{cat}</p>
               {list.map((t) => (
                 <button key={t.id} type="button" onClick={() => { setSelectedId(t.id); setDraft(toDraft(t)); }}
-                  className={cn("w-full text-left px-3 py-2 rounded-xl border text-[13px] flex items-center justify-between gap-2",
+                  className={cn("w-full text-left px-3 py-2 rounded-xl border text-[12px] flex items-center justify-between gap-2",
                     t.id === draft?.id ? "border-nexus-teal/40 bg-nexus-teal/10 text-nexus-teal font-bold" : "border-transparent text-white/75 hover:bg-white/5")}>
                   <span className="truncate">{t.name}</span>
                   <span className="text-[11px] text-white/40 shrink-0">{t.variants.length} แบบ{overridden.has(t.id) && t.builtIn === undefined && DEFAULT_SPEC_TEMPLATES.some((d) => d.id === t.id) ? " · แก้ไข" : ""}</span>
@@ -150,7 +150,7 @@ export function SpecLibraryManager() {
                 <div className="flex gap-2">
                   {(["PRODUCT", "SERVICE"] as const).map((k) => (
                     <button key={k} type="button" onClick={() => setDraft({ ...draft, appliesTo: k })}
-                      className={cn("h-9 px-4 rounded-full border text-[13px] font-bold", draft.appliesTo === k ? "bg-nexus-teal/15 border-nexus-teal/40 text-nexus-teal" : "border-white/10 text-white/50")}>
+                      className={cn("h-9 px-4 rounded-full border text-[12px] font-bold", draft.appliesTo === k ? "bg-nexus-teal/15 border-nexus-teal/40 text-nexus-teal" : "border-white/10 text-white/50")}>
                       {k === "PRODUCT" ? "สินค้า/อุปกรณ์" : "งานบริการ"}
                     </button>
                   ))}
@@ -164,7 +164,7 @@ export function SpecLibraryManager() {
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-[13px] font-bold text-white">รูปแบบการเขียน ({draft.variants.length})</h4>
+                <h4 className="text-[12px] font-bold text-white">รูปแบบการเขียน ({draft.variants.length})</h4>
                 <PillButton variant="glass" onClick={() => setDraft({ ...draft, variants: [...draft.variants, { id: newId("V"), name: "", clauses: "" }] })} className="h-8 px-3 text-xs font-bold text-nexus-teal border-nexus-teal/30">
                   <Plus size={13} className="mr-1" /> เพิ่มรูปแบบ
                 </PillButton>

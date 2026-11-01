@@ -266,7 +266,7 @@ export default function CustomerDataEntryPage() {
   const rightSidebar = (
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
       <div className="space-y-1 border-b border-white/5 pb-4">
-        <h5 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
+        <h5 className="text-[12px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
           สรุปข้อมูลลูกค้า
         </h5>
       </div>

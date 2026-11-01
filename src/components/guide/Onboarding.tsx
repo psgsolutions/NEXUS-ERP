@@ -94,16 +94,16 @@ export function OnboardingHost({ children }: { children: React.ReactNode }) {
           <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-3xl border border-white/10 bg-surface-2 shadow-2xl p-6 space-y-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="flex items-center gap-1.5 text-[13px] font-semibold text-nexus-teal"><Sparkles size={15} /> เริ่มใช้งาน</p>
+                <p className="flex items-center gap-1.5 text-[12px] font-semibold text-nexus-teal"><Sparkles size={15} /> เริ่มใช้งาน</p>
                 <h2 className="text-xl font-bold text-white mt-1">ยินดีต้อนรับ{displayName ? ` คุณ${displayName}` : ""}</h2>
               </div>
               <button onClick={closeWelcome} aria-label="ปิด" className="p-2 rounded-full text-white/50 hover:text-white hover:bg-white/5"><X size={18} /></button>
             </div>
             {state.intros.map((r) => (
               <section key={r.role} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
-                <p className="text-[13px] text-white/55">ตำแหน่ง <span className="font-bold text-white">{r.role}</span></p>
+                <p className="text-[12px] text-white/55">ตำแหน่ง <span className="font-bold text-white">{r.role}</span></p>
                 <p className="text-[14px] text-white/85 leading-relaxed">{r.duties}</p>
-                <ul className="list-disc pl-5 space-y-0.5 text-[13px] text-white/65">{r.daily.map((d) => <li key={d}>{d}</li>)}</ul>
+                <ul className="list-disc pl-5 space-y-0.5 text-[12px] text-white/65">{r.daily.map((d) => <li key={d}>{d}</li>)}</ul>
               </section>
             ))}
             <section className="space-y-2 text-[14px] text-white/75 leading-relaxed">
@@ -151,7 +151,7 @@ export function OnboardingChecklist() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="flex items-center gap-2 text-[15px] font-bold text-white"><ListChecks size={18} className="text-nexus-teal" /> เริ่มต้นใช้งาน</h3>
-          <p className="text-[13px] text-white/55 mt-0.5">ทำครบแล้วรายการนี้จะหายไปเอง · ทำแล้ว {done}/{state.tasks.length}</p>
+          <p className="text-[12px] text-white/55 mt-0.5">ทำครบแล้วรายการนี้จะหายไปเอง · ทำแล้ว {done}/{state.tasks.length}</p>
         </div>
         <button onClick={() => setDismissed(true)} className="text-[12px] text-white/45 hover:text-white">ซ่อน</button>
       </div>

@@ -138,7 +138,7 @@ export default function ExecutiveDashboardPage() {
               </div>
             )}
           </div>
-          {p ? <RevenueExpenseChart data={p.months} /> : <div className="h-[240px] flex items-center justify-center text-[13px] text-white/40">{loading ? "กำลังโหลด…" : "ไม่มีข้อมูล"}</div>}
+          {p ? <RevenueExpenseChart data={p.months} /> : <div className="h-[240px] flex items-center justify-center text-[12px] text-white/40">{loading ? "กำลังโหลด…" : "ไม่มีข้อมูล"}</div>}
         </GlassCard>
 
         {/* งานที่จะเป็นรายได้/รายจ่าย */}
@@ -170,7 +170,7 @@ function PipelineRow({ label, item, href, warn }: { label: string; item?: { coun
   return (
     <button type="button" onClick={() => router.push(href)} className="w-full flex items-center justify-between gap-3 py-3 text-left group">
       <span className="min-w-0">
-        <span className="block text-[13px] text-white/70 group-hover:text-white truncate">{label}</span>
+        <span className="block text-[12px] text-white/70 group-hover:text-white truncate">{label}</span>
         <span className="block text-[12px] text-white/40">{item ? `${item.count} ใบ` : "…"}</span>
       </span>
       <span className={cn("text-[15px] font-bold font-mono whitespace-nowrap", warn && item && item.count > 0 ? "text-warning" : "text-white")}>
@@ -196,9 +196,9 @@ function AgingCard({ title, icon, color, summary, partyLabel, empty }: { title: 
       </div>
 
       {!summary ? (
-        <p className="text-[13px] text-white/40 py-6 text-center">กำลังโหลด…</p>
+        <p className="text-[12px] text-white/40 py-6 text-center">กำลังโหลด…</p>
       ) : summary.total <= 0 ? (
-        <p className="text-[13px] text-white/40 py-6 text-center">{empty}</p>
+        <p className="text-[12px] text-white/40 py-6 text-center">{empty}</p>
       ) : (
         <>
           <div className="space-y-2 mb-5">
@@ -212,7 +212,7 @@ function AgingCard({ title, icon, color, summary, partyLabel, empty }: { title: 
               </div>
             ))}
           </div>
-          <table className="w-full text-[13px]">
+          <table className="w-full text-[12px]">
             <thead>
               <tr className="text-white/40 border-b border-white/10">
                 <th className="text-left font-medium py-2">{partyLabel}ที่ค้างมากสุด</th>

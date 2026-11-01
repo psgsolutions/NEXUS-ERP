@@ -40,7 +40,7 @@ export function MonthlySummaryCard() {
           <div className="text-[14px] leading-[1.9] text-white/85 whitespace-pre-line">{res.text}</div>
         </div>
       ) : (
-        <p className="text-[13px] text-white/45">เลือกเดือนแล้วกด &quot;สรุปเดือนนี้&quot; — ยอดขาย กำไร เงินสด ลูกหนี้ค้าง ลูกค้า/สินค้าหลัก และรายการผิดปกติ ในไม่กี่บรรทัด</p>
+        <p className="text-[12px] text-white/45">เลือกเดือนแล้วกด &quot;สรุปเดือนนี้&quot; — ยอดขาย กำไร เงินสด ลูกหนี้ค้าง ลูกค้า/สินค้าหลัก และรายการผิดปกติ ในไม่กี่บรรทัด</p>
       )}
     </GlassCard>
   );

@@ -29,7 +29,7 @@ export function CustomerScheduleCard() {
     <GlassCard accentColor="blue" className="p-4">
       <h3 className="flex items-center gap-2 text-[15px] font-bold text-white mb-2"><CalendarClock size={17} className="text-nexus-blue" /> รอบวางบิล / รับเงิน 30 วันข้างหน้า</h3>
       {!events.length ? (
-        <p className="text-[13px] text-white/55 py-2">
+        <p className="text-[12px] text-white/55 py-2">
           {configured ? "ไม่มีนัดวางบิลหรือรับเงินที่มียอดค้างใน 30 วันนี้" : "ยังไม่มีลูกค้าที่ตั้งรอบวางบิล/รับเช็ค — ตั้งได้ที่ ข้อมูลลูกค้า › รูปแบบเอกสารของลูกค้ารายนี้"}
         </p>
       ) : (

@@ -48,7 +48,7 @@ export function GanttChart({ milestones }: { milestones: GanttItem[] }) {
   }, [milestones]);
 
   if (!scale) {
-    return <div className="py-16 text-center text-[13px] text-white/40">ยังไม่มีงวดงาน</div>;
+    return <div className="py-16 text-center text-[12px] text-white/40">ยังไม่มีงวดงาน</div>;
   }
   const pos = (start: string, end: string) => {
     const l = (ms(start) - scale.from) / (scale.to - scale.from);
@@ -72,7 +72,7 @@ export function GanttChart({ milestones }: { milestones: GanttItem[] }) {
           const tone = BAR[m.status] || BAR.pending;
           const label = (
             <>
-              <p className="text-[13px] font-bold text-white truncate">{m.task}</p>
+              <p className="text-[12px] font-bold text-white truncate">{m.task}</p>
               <p className="text-[11px] text-white/50 truncate">{m.sub ? `${m.sub} · ` : ""}<span className={tone.text}>{MILESTONE_STATUS_TH[m.status]}</span> · {m.progress}%</p>
             </>
           );

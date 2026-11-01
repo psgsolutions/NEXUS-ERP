@@ -84,7 +84,7 @@ function LabelsPage() {
           <PillButton variant="glass" onClick={() => router.push("/inventory/locations")} className="w-9 h-9 p-0 flex items-center justify-center"><ArrowLeft size={20} /></PillButton>
           <div>
             <h1 className="text-xl font-semibold text-white">พิมพ์ฉลาก QR ตำแหน่งจัดเก็บ</h1>
-            <p className="text-[13px] text-white/50">ติดฉลากที่ช่องของชั้นวาง แล้วสแกนในหน้าจัดเก็บสินค้าเพื่อรับเข้าชั้น</p>
+            <p className="text-[12px] text-white/50">ติดฉลากที่ช่องของชั้นวาง แล้วสแกนในหน้าจัดเก็บสินค้าเพื่อรับเข้าชั้น</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -106,10 +106,10 @@ function LabelsPage() {
             {Object.entries(SIZES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </PillSelect>
           {zone === "ALL" && (
-            <label className="flex items-center gap-1.5 text-[13px] text-white/70"><input type="checkbox" checked={withRecv} onChange={(e) => setWithRecv(e.target.checked)} /> รวมพื้นที่รับสินค้า</label>
+            <label className="flex items-center gap-1.5 text-[12px] text-white/70"><input type="checkbox" checked={withRecv} onChange={(e) => setWithRecv(e.target.checked)} /> รวมพื้นที่รับสินค้า</label>
           )}
           {data?.multiCompany && (
-            <label className="flex items-center gap-1.5 text-[13px] text-white/70"><input type="checkbox" checked={onlyMine} onChange={(e) => setOnlyMine(e.target.checked)} /> เฉพาะช่องของบริษัทนี้</label>
+            <label className="flex items-center gap-1.5 text-[12px] text-white/70"><input type="checkbox" checked={onlyMine} onChange={(e) => setOnlyMine(e.target.checked)} /> เฉพาะช่องของบริษัทนี้</label>
           )}
           <PillButton variant="primary" className="h-9 px-5 text-xs font-bold" onClick={() => window.print()} disabled={shown.length === 0}><Printer size={14} className="mr-1.5" /> พิมพ์ {shown.length} ดวง</PillButton>
         </div>

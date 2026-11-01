@@ -110,7 +110,7 @@ export default function CashAdvancesPage() {
             <GlassCard accentColor="blue" className="p-5 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-[15px] font-bold text-white">เคลียร์ {clearing.advanceNo} · รับไป {money(clearing.paidAmount ?? clearing.amount)} บาท</h2>
-                <button type="button" onClick={() => { setClearing(null); setItems([]); }} className="text-[13px] text-white/50 hover:text-white">ปิด</button>
+                <button type="button" onClick={() => { setClearing(null); setItems([]); }} className="text-[12px] text-white/50 hover:text-white">ปิด</button>
               </div>
               {items.map((it, i) => (
                 <div key={i} className="grid grid-cols-1 md:grid-cols-[1fr_140px_120px_160px_36px] gap-2 items-center">

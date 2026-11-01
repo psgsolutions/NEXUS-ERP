@@ -153,7 +153,7 @@ export default function CreateWorkOrderPage() {
       {/* Header Form */}
       <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
-          <h3 className="text-[13px] font-semibold text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
+          <h3 className="text-[12px] font-semibold text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
             อ้างอิงเอกสาร
           </h3>
           
@@ -161,7 +161,7 @@ export default function CreateWorkOrderPage() {
             <PillSelect
               value={formData.soId}
               onChange={handleSoChange}
-              className="h-9 px-5 bg-white/[0.03] border-white/10 text-[13px] w-full"
+              className="h-9 px-5 bg-white/[0.03] border-white/10 text-[12px] w-full"
             >
               <option value="">-- เลือกใบสั่งขาย --</option>
               {salesOrders.map((so: any) => (
@@ -184,7 +184,7 @@ export default function CreateWorkOrderPage() {
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-[13px] font-semibold text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
+          <h3 className="text-[12px] font-semibold text-nexus-teal uppercase tracking-widest border-b border-white/5 pb-2">
             มอบหมายงาน
           </h3>
           
@@ -195,7 +195,7 @@ export default function CreateWorkOrderPage() {
                 const a = assignees.find(x => x.uid === e.target.value);
                 setFormData({ ...formData, technicianUid: a?.uid || '', technicianName: a?.name || '' });
               }}
-              className="h-9 px-5 bg-white/[0.03] border-white/10 text-[13px] w-full"
+              className="h-9 px-5 bg-white/[0.03] border-white/10 text-[12px] w-full"
             >
               <option value="">-- เลือกผู้รับผิดชอบ --</option>
               {assignees.map(a => (
@@ -219,7 +219,7 @@ export default function CreateWorkOrderPage() {
 
       {/* Line Items */}
       <div className="flex-1 flex flex-col gap-4 bg-white/[0.02] border border-white/5 rounded-3xl p-6 shadow-2xl">
-        <h3 className="text-[13px] font-semibold text-nexus-teal uppercase tracking-widest flex items-center gap-2">
+        <h3 className="text-[12px] font-semibold text-nexus-teal uppercase tracking-widest flex items-center gap-2">
           รายการสินค้าและค่าแรง
         </h3>
         <p className="text-[11px] text-white/40 not-italic mb-2 -mt-2 font-bold">ดึงรายการจากใบสั่งขายโดยอัตโนมัติ สามารถลบรายการที่ไม่เกี่ยวข้องกับงานช่างออกได้</p>
@@ -231,14 +231,14 @@ export default function CreateWorkOrderPage() {
   const rightSidebar = (
     <div className="space-y-4 h-fit pb-10">
       <div className="bg-surface-1 border border-white/5 rounded-3xl p-6 shadow-2xl space-y-4 w-full">
-        <h3 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4">
+        <h3 className="text-[12px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4">
           <UserCircle size={16} className="text-nexus-teal" /> สถานะการจ่ายงาน
         </h3>
         
         <div className="space-y-3">
           <div className="flex flex-col gap-1 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
             <span className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">สถานะปัจจุบัน</span>
-            <span className="text-[13px] font-bold text-warning">รอสั่งงาน (DRAFT)</span>
+            <span className="text-[12px] font-bold text-warning">รอสั่งงาน (DRAFT)</span>
           </div>
           
           <div className="flex flex-col gap-1 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
@@ -254,7 +254,7 @@ export default function CreateWorkOrderPage() {
           <textarea
             value={formData.remarks}
             onChange={e => setFormData({...formData, remarks: e.target.value})}
-            className="w-full h-24 p-4 bg-white/[0.03] border border-white/10 rounded-2xl text-[13px] text-white font-bold resize-none outline-none focus:border-nexus-teal/40 transition-all"
+            className="w-full h-24 p-4 bg-white/[0.03] border border-white/10 rounded-2xl text-[12px] text-white font-bold resize-none outline-none focus:border-nexus-teal/40 transition-all"
             placeholder="ข้อควรระวัง หรือ รายละเอียดเพิ่มเติมสำหรับหน้างาน..."
           />
         </div>

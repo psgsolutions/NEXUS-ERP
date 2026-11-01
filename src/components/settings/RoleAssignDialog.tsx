@@ -49,7 +49,7 @@ export function RoleAssignDialog({
             </div>
             <div className="min-w-0">
               <h3 className="text-[16px] font-semibold text-white leading-normal">{title}</h3>
-              {subtitle && <p className="text-[13px] text-white/50 truncate leading-normal">{subtitle}</p>}
+              {subtitle && <p className="text-[12px] text-white/50 truncate leading-normal">{subtitle}</p>}
             </div>
           </div>
           <button type="button" onClick={onClose} disabled={busy} className="text-white/40 hover:text-white p-1" aria-label="ปิด">

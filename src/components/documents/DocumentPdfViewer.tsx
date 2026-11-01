@@ -123,7 +123,7 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-white/10">
         <div className={cn("flex rounded-full bg-white/5 p-1", noCopy && "invisible")}>
           {(["original", "copy"] as CopyMode[]).map((c) => (
-            <button key={c} type="button" onClick={() => setCopy(c)} className={cn("h-8 px-4 rounded-full text-[13px]", copy === c ? "bg-white/15 text-white font-semibold" : "text-white/50 hover:text-white")}>
+            <button key={c} type="button" onClick={() => setCopy(c)} className={cn("h-8 px-4 rounded-full text-[12px]", copy === c ? "bg-white/15 text-white font-semibold" : "text-white/50 hover:text-white")}>
               {formCopies ? (c === "original" ? "ฉบับที่ 1" : "ฉบับที่ 2") : c === "original" ? "ต้นฉบับ" : "สำเนา"}
             </button>
           ))}
@@ -131,7 +131,7 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
         {esignAvail && (
           <div className="flex rounded-full bg-white/5 p-1" title="ลายเซ็นและตราประทับอิเล็กทรอนิกส์ (ตั้งค่า › ลายเซ็น · ตราประทับ)">
             {([[true, "ใส่ลายเซ็น/ตรา"], [false, "ไม่ใส่"]] as const).map(([v, label]) => (
-              <button key={label} type="button" onClick={() => setEsign(v)} className={cn("h-8 px-4 rounded-full text-[13px]", esign === v ? "bg-white/15 text-white font-semibold" : "text-white/50 hover:text-white")}>{label}</button>
+              <button key={label} type="button" onClick={() => setEsign(v)} className={cn("h-8 px-4 rounded-full text-[12px]", esign === v ? "bg-white/15 text-white font-semibold" : "text-white/50 hover:text-white")}>{label}</button>
             ))}
           </div>
         )}
@@ -139,11 +139,11 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex rounded-full bg-white/5 p-1" title="หน่วยงานบางแห่งให้เว้นวันที่ไว้ลงเอง">
               {([["dated", "ใส่วันที่"], ["undated", "เว้นวันที่"]] as const).map(([m, label]) => (
-                <button key={m} type="button" onClick={() => { setDateMode(m); setLearnMsg(""); }} className={cn("h-8 px-4 rounded-full text-[13px]", (m === "undated") === dateOpt.undated ? "bg-white/15 text-white font-semibold" : "text-white/50 hover:text-white")}>{label}</button>
+                <button key={m} type="button" onClick={() => { setDateMode(m); setLearnMsg(""); }} className={cn("h-8 px-4 rounded-full text-[12px]", (m === "undated") === dateOpt.undated ? "bg-white/15 text-white font-semibold" : "text-white/50 hover:text-white")}>{label}</button>
               ))}
             </div>
             {dateOpt.customerId && dateOpt.undated !== dateOpt.profileUndated && (
-              <button type="button" onClick={rememberDate} className="text-[13px] font-semibold text-nexus-teal hover:underline">จำแบบนี้สำหรับลูกค้ารายนี้</button>
+              <button type="button" onClick={rememberDate} className="text-[12px] font-semibold text-nexus-teal hover:underline">จำแบบนี้สำหรับลูกค้ารายนี้</button>
             )}
             {learnMsg && <span className="text-[12px] text-white/60">{learnMsg}</span>}
           </div>

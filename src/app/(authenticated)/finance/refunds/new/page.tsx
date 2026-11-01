@@ -110,7 +110,7 @@ export default function NewCustomerRefundPage() {
             <div className="flex gap-2">
               {METHODS.map((m) => (
                 <button key={m.code} type="button" onClick={() => setMethod(m.code)}
-                  className={cn("h-9 px-4 rounded-full border text-[13px] font-bold", method === m.code ? "bg-nexus-teal/15 border-nexus-teal/40 text-nexus-teal" : "border-white/10 text-white/50 hover:text-white")}>
+                  className={cn("h-9 px-4 rounded-full border text-[12px] font-bold", method === m.code ? "bg-nexus-teal/15 border-nexus-teal/40 text-nexus-teal" : "border-white/10 text-white/50 hover:text-white")}>
                   {m.label}
                 </button>
               ))}
@@ -135,8 +135,8 @@ export default function NewCustomerRefundPage() {
 
   const row = (k: string, v: string, strong = false) => (
     <div className="flex items-center justify-between gap-3 py-1.5 border-b border-white/5 last:border-0">
-      <span className="text-[13px] text-white/60">{k}</span>
-      <span className={cn("text-[13px] font-mono text-right", strong ? "font-bold text-white" : "text-white/80")}>{v}</span>
+      <span className="text-[12px] text-white/60">{k}</span>
+      <span className={cn("text-[12px] font-mono text-right", strong ? "font-bold text-white" : "text-white/80")}>{v}</span>
     </div>
   );
   const methodDef = METHODS.find((m) => m.code === method)!;
@@ -152,7 +152,7 @@ export default function NewCustomerRefundPage() {
           {row("ใบลดหนี้ (ก่อน VAT)", baht(inv.creditNoteTotal))}
           {row("คืนเงินแล้ว", baht(inv.refundedTotal))}
           {row("ยอดค้างคืน", baht(inv.refundDue), true)}
-        </>) : <p className="text-[13px] text-white/40">ยังไม่ได้เลือก</p>}
+        </>) : <p className="text-[12px] text-white/40">ยังไม่ได้เลือก</p>}
       </GlassCard>
       <GlassCard className="p-4">
         <h4 className="text-sm font-bold text-white mb-2">รายการบัญชี (รออนุมัติ)</h4>

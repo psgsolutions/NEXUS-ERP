@@ -264,13 +264,13 @@ export default function NewExpenseClaimPage() {
       <div className="space-y-4 flex-1">
         <div className="flex justify-between items-center">
           <span className="text-[12px] font-semibold text-white/40 uppercase tracking-widest">ยอดก่อนภาษี</span>
-          <span className="text-[13px] font-mono text-white/80">{formatCurrency(formData.subtotal)}</span>
+          <span className="text-[12px] font-mono text-white/80">{formatCurrency(formData.subtotal)}</span>
         </div>
 
         {formData.hasVat && (
           <div className="flex justify-between items-center">
             <span className="text-[12px] font-semibold text-white/40 uppercase tracking-widest">ภาษีมูลค่าเพิ่ม (7%)</span>
-            <span className="text-[13px] font-mono text-cyan-400">{formatCurrency(vatAmount)}</span>
+            <span className="text-[12px] font-mono text-cyan-400">{formatCurrency(vatAmount)}</span>
           </div>
         )}
       </div>

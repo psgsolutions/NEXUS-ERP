@@ -79,14 +79,14 @@ export default function StockCardPage() {
         <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-white/5 flex-wrap">
           <div>
             <h3 className="text-[16px] font-semibold text-white leading-normal">{data?.product ? `${data.product.sku ? data.product.sku + " · " : ""}${data.product.name}` : "เลือกสินค้า"}</h3>
-            <p className="text-[13px] text-white/50 leading-normal">หน่วย {data?.product?.unit || "-"}</p>
+            <p className="text-[12px] text-white/50 leading-normal">หน่วย {data?.product?.unit || "-"}</p>
           </div>
-          {card && <span className="text-[13px] text-white/70">คงเหลือสิ้นงวด <span className="font-mono font-bold text-white">{qty(card.closingQty)}</span>{cost && <> · มูลค่า <span className="font-mono font-bold text-white">{money(card.closingValue)}</span></>}</span>}
+          {card && <span className="text-[12px] text-white/70">คงเหลือสิ้นงวด <span className="font-mono font-bold text-white">{qty(card.closingQty)}</span>{cost && <> · มูลค่า <span className="font-mono font-bold text-white">{money(card.closingValue)}</span></>}</span>}
         </div>
         {loading && !card ? (
-          <div className="py-16 flex items-center justify-center gap-2 text-[13px] text-white/40"><Loader2 size={16} className="animate-spin" /> กำลังโหลด…</div>
+          <div className="py-16 flex items-center justify-center gap-2 text-[12px] text-white/40"><Loader2 size={16} className="animate-spin" /> กำลังโหลด…</div>
         ) : !card ? (
-          <div className="py-16 text-center text-[13px] text-white/40">ไม่มีข้อมูล</div>
+          <div className="py-16 text-center text-[12px] text-white/40">ไม่มีข้อมูล</div>
         ) : (
           <NexusTable headers={["วันที่", "เลขที่อ้างอิง", "ประเภท", "ตำแหน่ง", "รับ", "จ่าย", "คงเหลือ", ...(cost ? ["ต้นทุนต่อหน่วย", "ต้นทุนเฉลี่ย", "มูลค่าคงเหลือ"] : [])]} itemCount={card.entries.length}>
             <NexusTableRow className="bg-white/[0.03] cursor-default">
@@ -97,7 +97,7 @@ export default function StockCardPage() {
               {cost && <><NexusTableCell>{""}</NexusTableCell><NexusTableCell>{""}</NexusTableCell><NexusTableCell mono className="font-bold text-white">{money(card.openingValue)}</NexusTableCell></>}
             </NexusTableRow>
             {card.entries.length === 0 && (
-              <NexusTableRow className="cursor-default"><NexusTableCell colSpan={cost ? 10 : 7} className="text-center text-[13px] text-white/40 py-10">ไม่มีความเคลื่อนไหวในช่วงนี้</NexusTableCell></NexusTableRow>
+              <NexusTableRow className="cursor-default"><NexusTableCell colSpan={cost ? 10 : 7} className="text-center text-[12px] text-white/40 py-10">ไม่มีความเคลื่อนไหวในช่วงนี้</NexusTableCell></NexusTableRow>
             )}
             {card.entries.map((e: any, i: number) => (
               <NexusTableRow key={i} className="cursor-default">

@@ -62,7 +62,7 @@ export default function MyJobsPage() {
         <>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[13px] text-white/50">สวัสดี {displayName}</p>
+              <p className="text-[12px] text-white/50">สวัสดี {displayName}</p>
               <h1 className="text-2xl font-bold text-white leading-normal">งานของฉัน</h1>
             </div>
             <button type="button" onClick={load} className="w-10 h-10 rounded-full border border-white/10 text-white/60 hover:text-white flex items-center justify-center" aria-label="รีเฟรช">
@@ -75,7 +75,7 @@ export default function MyJobsPage() {
               <button key={id} type="button" onClick={() => setTab(id)}
                 className={cn("rounded-2xl border px-3 py-3 text-left transition-colors", tab === id ? "bg-nexus-teal/15 border-nexus-teal/40" : "bg-white/[0.02] border-white/10")}>
                 <p className={cn("text-[22px] font-bold font-mono leading-none", tab === id ? "text-nexus-teal" : "text-white")}>{n}</p>
-                <p className="text-[13px] text-white/60 mt-1">{label}</p>
+                <p className="text-[12px] text-white/60 mt-1">{label}</p>
               </button>
             ))}
           </div>
@@ -83,7 +83,7 @@ export default function MyJobsPage() {
           {openWo > 0 && (
             <Link href="/mobile/technician/work-orders" className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
               <span className="flex items-center gap-2 text-[14px] text-white"><ClipboardList size={18} className="text-nexus-blue" /> ใบสั่งงานบริการจากใบสั่งขาย</span>
-              <span className="flex items-center gap-1 text-[13px] text-white/60">{openWo} ใบ <ChevronRight size={16} /></span>
+              <span className="flex items-center gap-1 text-[12px] text-white/60">{openWo} ใบ <ChevronRight size={16} /></span>
             </Link>
           )}
 
@@ -134,7 +134,7 @@ function JobCard({ job, onOpen }: { job: Job; onOpen: () => void }) {
         <span className="ml-auto"><StatusBadge status={JOB_STATUS[job.status].badge} label={JOB_STATUS[job.status].label} /></span>
       </div>
       <p className="text-[16px] font-semibold text-white leading-normal">{job.title}</p>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-white/60">
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-white/60">
         {(job.scheduledDate || job.scheduledTime) && <span className="flex items-center gap-1"><CalendarClock size={14} /> {thDate(job.scheduledDate)} {job.scheduledTime}</span>}
         {job.site?.name && <span className="flex items-center gap-1 min-w-0"><MapPin size={14} className="flex-shrink-0" /> <span className="truncate">{job.site.name}</span></span>}
         {job.equipment.length > 0 && <span className="flex items-center gap-1"><Package size={14} /> อุปกรณ์ {job.equipment.length} รายการ</span>}
@@ -152,7 +152,7 @@ function JobDetail({ job, busy, onBack, onAccept, onReject, onStart, onComplete,
       <button type="button" onClick={onBack} className="flex items-center gap-1 text-[14px] text-nexus-teal"><ChevronLeft size={18} /> งานของฉัน</button>
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[13px] font-mono text-white/50">{job.jobNo}</span>
+          <span className="text-[12px] font-mono text-white/50">{job.jobNo}</span>
           <span className="text-[12px] px-2 py-0.5 rounded-full bg-nexus-blue/15 text-nexus-blue">{jobTypeLabel(job.type)}</span>
           {job.priority !== "NORMAL" && <span className={cn("text-[12px] px-2 py-0.5 rounded-full border", PRIORITY_CLS[job.priority])}>{JOB_PRIORITY[job.priority]}</span>}
           <span className="ml-auto"><StatusBadge status={JOB_STATUS[job.status].badge} label={JOB_STATUS[job.status].label} /></span>
@@ -161,8 +161,8 @@ function JobDetail({ job, busy, onBack, onAccept, onReject, onStart, onComplete,
         {job.description && <p className="text-[14px] text-white/70 whitespace-pre-line leading-relaxed">{job.description}</p>}
         <div className="grid grid-cols-1 gap-2 text-[14px]">
           {(job.scheduledDate || job.scheduledTime) && <p className="flex items-center gap-2 text-white/80"><CalendarClock size={16} className="text-white/40" /> นัดหมาย {thDate(job.scheduledDate)} {job.scheduledTime}{job.estimatedHours ? ` · ประมาณ ${job.estimatedHours} ชม.` : ""}</p>}
-          {(job.site?.name || job.site?.address) && <p className="flex items-start gap-2 text-white/80"><MapPin size={16} className="text-white/40 mt-0.5 flex-shrink-0" /> <span>{job.site?.name}{job.site?.address ? <><br /><span className="text-white/50 text-[13px]">{job.site.address}</span></> : null}</span></p>}
-          {job.customerName && <p className="text-white/60 text-[13px]">ลูกค้า: {job.customerName}</p>}
+          {(job.site?.name || job.site?.address) && <p className="flex items-start gap-2 text-white/80"><MapPin size={16} className="text-white/40 mt-0.5 flex-shrink-0" /> <span>{job.site?.name}{job.site?.address ? <><br /><span className="text-white/50 text-[12px]">{job.site.address}</span></> : null}</span></p>}
+          {job.customerName && <p className="text-white/60 text-[12px]">ลูกค้า: {job.customerName}</p>}
         </div>
         <div className="flex gap-2 flex-wrap">
           {job.site?.phone && <a href={`tel:${job.site.phone}`} className="h-10 px-4 rounded-full border border-white/10 text-[14px] text-white flex items-center gap-2"><Phone size={16} /> โทร {job.site.contact || ""}</a>}
@@ -205,7 +205,7 @@ function JobDetail({ job, busy, onBack, onAccept, onReject, onStart, onComplete,
       )}
 
       {job.status === "DONE" && job.resultNote && <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-[14px] text-white/80"><p className="text-[12px] text-white/40 mb-1">บันทึกการปิดงาน</p>{job.resultNote}</div>}
-      {job.status === "DONE" && out.length > 0 && <p className="text-[13px] text-warning">ยังมีเครื่องมือค้างคืน {out.length} รายการ กรุณาคืนหัวหน้างาน</p>}
+      {job.status === "DONE" && out.length > 0 && <p className="text-[12px] text-warning">ยังมีเครื่องมือค้างคืน {out.length} รายการ กรุณาคืนหัวหน้างาน</p>}
 
       {/* ปุ่มหลักตามสถานะ (ตรึงด้านล่างบนมือถือ) */}
       <div className="sticky bottom-0 z-10 flex gap-2 pt-6 pb-3 -mx-4 px-4 bg-gradient-to-t from-surface-0 via-surface-0/95 to-transparent">
@@ -239,7 +239,7 @@ function AcceptSheet({ job, busy, onConfirm }: { job: Job; busy: boolean; onConf
     <>
       {job.equipment.length === 0 ? <p className="text-[14px] text-white/70">งานนี้ไม่มีอุปกรณ์ที่ต้องรับ กดรับงานได้เลย</p> : (
         <>
-          <p className="text-[13px] text-white/60">ตรวจรับอุปกรณ์ให้ครบแล้วติ๊กทีละรายการ วัสดุที่มีรหัสสินค้าจะถูกตัดสต็อกเมื่อกดรับงาน</p>
+          <p className="text-[12px] text-white/60">ตรวจรับอุปกรณ์ให้ครบแล้วติ๊กทีละรายการ วัสดุที่มีรหัสสินค้าจะถูกตัดสต็อกเมื่อกดรับงาน</p>
           <div className="space-y-1">
             {job.equipment.map((e, i) => (
               <button key={i} type="button" onClick={() => setGot((g) => g.map((x, k) => (k === i ? !x : x)))} className="w-full flex items-center gap-3 py-2.5 text-left">
@@ -260,7 +260,7 @@ function TextSheet({ label, placeholder, confirm, danger, busy, min = 0, onConfi
   const [text, setText] = useState("");
   return (
     <>
-      <label className="block text-[13px] text-white/70">{label}</label>
+      <label className="block text-[12px] text-white/70">{label}</label>
       <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder} rows={3} className="w-full rounded-2xl bg-white/[0.03] border border-white/10 p-3 text-[15px] text-white leading-relaxed outline-none focus:border-nexus-teal/50" />
       <PillButton variant={danger ? "ghost" : "confirm"} className={cn("h-12 w-full text-[16px] font-bold", danger && "text-danger border border-danger/30")} disabled={busy || text.trim().length < min} onClick={() => onConfirm(text.trim())}>{confirm}</PillButton>
     </>
@@ -274,8 +274,8 @@ function CompleteSheet({ job, busy, onConfirm }: { job: Job; busy: boolean; onCo
   const remaining = job.checklist.filter((c) => !c.done).length;
   return (
     <>
-      {remaining > 0 && <p className="text-[13px] text-warning">ยังมีขั้นตอนที่ไม่ได้ติ๊ก {remaining} รายการ</p>}
-      <label className="block text-[13px] text-white/70">สรุปผลงาน</label>
+      {remaining > 0 && <p className="text-[12px] text-warning">ยังมีขั้นตอนที่ไม่ได้ติ๊ก {remaining} รายการ</p>}
+      <label className="block text-[12px] text-white/70">สรุปผลงาน</label>
       <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="เช่น เปลี่ยนสายไฟ 2 เมตร ทดสอบแล้วใช้งานได้" className="w-full rounded-2xl bg-white/[0.03] border border-white/10 p-3 text-[15px] text-white leading-relaxed outline-none focus:border-nexus-teal/50" />
       {tools.length > 0 && (
         <button type="button" onClick={() => setReturned(!returned)} className="w-full flex items-center gap-3 py-2 text-left">

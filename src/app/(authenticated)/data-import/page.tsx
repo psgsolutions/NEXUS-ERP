@@ -298,13 +298,13 @@ export default function DataImportPage() {
             </div>
           </div>
 
-          <p className="text-[13px] text-white/50 px-1 leading-relaxed">
+          <p className="text-[12px] text-white/50 px-1 leading-relaxed">
             1. ดาวน์โหลดแม่แบบ{template.label} แล้วกรอกในชีต &quot;ข้อมูล&quot; (คัดลอกคอลัมน์จากไฟล์เดิมมาวางได้){!isOpening(tab) && <> หรือ &quot;ส่งออก Excel&quot; เพื่อแก้ข้อมูลเดิม</>} · 2. เลือกไฟล์ ระบบตรวจทุกแถวก่อน · 3. กดนำเข้า — {STEPS[tab]}
           </p>
 
           {isOpening(tab) && status && (
             <GlassCard accentColor="blue" className="p-2">
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-3 pt-2 pb-1 text-[13px] text-white/60">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-3 pt-2 pb-1 text-[12px] text-white/60">
                 <span className="font-bold text-white/80">กระทบยอดบัญชีคุมกับยอดรายตัว</span>
                 <span>งบทดลองยกมา {status.tb.length ? status.tb.map((t) => `${t.journalNo} (${t.status === "draft" ? "ร่าง" : "ลงบัญชีแล้ว"})`).join(", ") : "ยังไม่มี"}</span>
                 <span>ลูกหนี้ยกมา <span className="font-mono text-white">{status.ar.count}</span> ใบ</span>
@@ -337,7 +337,7 @@ export default function DataImportPage() {
           {existingTb.length > 0 && rows.length > 0 && count.done === 0 &&<div className="p-3 rounded-xl text-xs font-bold border bg-warning/10 border-warning/20 text-warning">มีใบสำคัญงบทดลองยกมาแล้ว ({existingTb.map((t) => t.journalNo).join(", ")}) — ถ้านำเข้าซ้ำ ให้ยกเลิกใบเดิมก่อน ยอดจะได้ไม่เบิ้ล</div>}
 
           {rows.length > 0 && (
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-white/60 px-1">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-white/60 px-1">
               <span className="text-white/80">{fileName}</span>
               <span>ทั้งหมด <span className="font-mono font-bold text-white">{rows.length}</span></span>
               <span>พร้อมนำเข้า <span className="font-mono font-bold text-nexus-teal">{count.ready}</span></span>

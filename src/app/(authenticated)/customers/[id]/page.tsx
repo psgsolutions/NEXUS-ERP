@@ -165,7 +165,7 @@ export default function CustomerDetailPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="flex items-center gap-2 text-[15px] font-bold text-white"><FileCog size={17} className="text-nexus-blue" /> รูปแบบเอกสารของลูกค้ารายนี้</h2>
-                <p className="text-[13px] text-white/55 mt-1">เลือกลูกค้ารายนี้ในใบเสนอราคา ใบวางบิล ใบเสร็จ แล้วระบบใช้ค่าเหล่านี้ให้เอง · ช่องที่ไม่ได้ตั้ง ใช้ค่าตั้งต้นตามประเภทองค์กร{profile.updatedBy ? ` · แก้ล่าสุดโดย ${profile.updatedBy}` : ""}</p>
+                <p className="text-[12px] text-white/55 mt-1">เลือกลูกค้ารายนี้ในใบเสนอราคา ใบวางบิล ใบเสร็จ แล้วระบบใช้ค่าเหล่านี้ให้เอง · ช่องที่ไม่ได้ตั้ง ใช้ค่าตั้งต้นตามประเภทองค์กร{profile.updatedBy ? ` · แก้ล่าสุดโดย ${profile.updatedBy}` : ""}</p>
               </div>
               {canEditProfile && <PillButton variant="confirm" onClick={saveProfile} disabled={!!saving} className="h-9 px-5 text-xs shrink-0"><Save size={14} className="mr-1.5" /> {saving === "profile" ? "กำลังบันทึก..." : "บันทึกรูปแบบเอกสาร"}</PillButton>}
             </div>

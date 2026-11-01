@@ -259,7 +259,7 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
             {/* Right Pane: Cart (35%) */}
             <div className="w-full lg:w-[35%] flex flex-col bg-surface-1/40 border border-white/5 rounded-[2.5rem] shadow-inner min-h-0 relative">
               <div className="p-5 border-b border-white/5 shrink-0 flex items-center justify-between">
-                <h3 className="text-[13px] font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <h3 className="text-[12px] font-bold text-white uppercase tracking-wider flex items-center gap-2">
                   พัสดุที่เลือก <span className="bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 px-2 py-0.5 rounded-full text-[11px]">{selectedProducts.length}</span>
                 </h3>
               </div>

@@ -87,7 +87,7 @@ export default function PODetailPage() {
               {/* Vendor & Entity Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <GlassCard className="p-4 border-white/10 space-y-3">
-                   <h3 className="text-[13px] font-medium text-nexus-teal uppercase tracking-widest flex items-center gap-2">
+                   <h3 className="text-[12px] font-medium text-nexus-teal uppercase tracking-widest flex items-center gap-2">
                       <Building2 size={16} />
                       ข้อมูลคู่ค้า
                    </h3>
@@ -100,7 +100,7 @@ export default function PODetailPage() {
                 </GlassCard>
 
                 <GlassCard className="p-4 border-white/10 space-y-3">
-                   <h3 className="text-[13px] font-medium text-white/40 uppercase tracking-widest flex items-center gap-2">
+                   <h3 className="text-[12px] font-medium text-white/40 uppercase tracking-widest flex items-center gap-2">
                       <Truck size={16} />
                       ที่อยู่จัดส่ง & คลังรับพัสดุ
                    </h3>
@@ -142,7 +142,7 @@ export default function PODetailPage() {
                           <span>฿8,177.57</span>
                        </div>
                        <div className="pt-3 border-t border-white/5 flex justify-between items-center">
-                          <span className="text-[13px] font-medium text-nexus-teal uppercase">ยอดเงินสุทธิ</span>
+                          <span className="text-[12px] font-medium text-nexus-teal uppercase">ยอดเงินสุทธิ</span>
                           <span className="text-xl font-bold text-nexus-teal drop-shadow-neon">฿125,000.00</span>
                        </div>
                     </div>
@@ -186,7 +186,7 @@ function ApprovalStep({ label, user, status }: { label: string, user: string, st
           {status === "done" ? <CheckCircle2 size={16} /> : <Clock size={16} />}
        </div>
        <div>
-          <p className="text-[13px] font-medium text-white">{label}</p>
+          <p className="text-[12px] font-medium text-white">{label}</p>
           <p className="text-[11px] font-medium text-white/20 uppercase">{user}</p>
        </div>
     </div>

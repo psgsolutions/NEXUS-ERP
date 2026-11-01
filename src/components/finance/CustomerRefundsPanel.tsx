@@ -27,7 +27,7 @@ export function CustomerRefundsPanel({ companyId }: { companyId: string }) {
       {due.length > 0 && (
         <div className="space-y-1">
           {due.map((i: any) => (
-            <div key={i.id} className="grid grid-cols-[minmax(0,140px)_minmax(0,1fr)_120px_80px] gap-2 items-center px-3 py-1.5 rounded-xl border border-white/5 text-[13px]">
+            <div key={i.id} className="grid grid-cols-[minmax(0,140px)_minmax(0,1fr)_120px_80px] gap-2 items-center px-3 py-1.5 rounded-xl border border-white/5 text-[12px]">
               <span className="font-mono text-nexus-blue truncate">{i.invoiceNo || i.id}</span>
               <span className="text-white/80 truncate" title={i.customerName}>{i.customerName || "-"}</span>
               <span className="font-mono text-warning text-right">{baht(i.refundDue)}</span>
@@ -40,7 +40,7 @@ export function CustomerRefundsPanel({ companyId }: { companyId: string }) {
         <div className="pt-2 border-t border-white/10 space-y-1">
           <p className="text-[11px] font-bold text-white/40 px-1">ใบคืนเงินล่าสุด</p>
           {recent.map((r: any) => (
-            <Link key={r.id} href={`/finance/refunds/${encodeURIComponent(r.refundNo)}`} className="grid grid-cols-[minmax(0,140px)_minmax(0,1fr)_120px_80px] gap-2 items-center px-3 py-1.5 rounded-xl hover:bg-white/5 text-[13px]">
+            <Link key={r.id} href={`/finance/refunds/${encodeURIComponent(r.refundNo)}`} className="grid grid-cols-[minmax(0,140px)_minmax(0,1fr)_120px_80px] gap-2 items-center px-3 py-1.5 rounded-xl hover:bg-white/5 text-[12px]">
               <span className="font-mono text-nexus-teal truncate">{r.refundNo}</span>
               <span className="text-white/70 truncate">{r.customerName} · {r.invoiceNo}</span>
               <span className="font-mono text-white/80 text-right">{baht(r.amount)}</span>

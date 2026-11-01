@@ -96,7 +96,7 @@ export function ContractPanel({ companyId, docId, project, canEdit }: { companyI
             <Field label="ค่าปรับ (% ของค่าจ้าง ต่อวัน)" tip="ตามสัญญา เช่น งานจ้างมัก 0.01–0.10% ต่อวัน"><PillInput inputMode="decimal" value={c.penaltyRatePct ?? ""} onChange={(e) => set({ penaltyRatePct: e.target.value === "" ? undefined : Number(e.target.value.replace(/[^\d.]/g, "")) })} className="w-full h-9 text-sm text-right font-mono" /></Field>
             <Field label="ค่าปรับขั้นต่ำ (บาท/วัน)"><PillInput inputMode="decimal" value={c.penaltyMinPerDay ?? ""} onChange={(e) => set({ penaltyMinPerDay: e.target.value === "" ? undefined : Number(e.target.value.replace(/[^\d.]/g, "")) })} className="w-full h-9 text-sm text-right font-mono" /></Field>
             <Field label="ระยะรับประกัน (เดือน)"><PillInput inputMode="numeric" value={c.warrantyMonths ?? ""} onChange={(e) => set({ warrantyMonths: e.target.value === "" ? undefined : Number(e.target.value.replace(/\D/g, "")) })} className="w-full h-9 text-sm text-right font-mono" /></Field>
-            <div className="space-y-1 text-[13px] text-white/70 self-end pb-1">
+            <div className="space-y-1 text-[12px] text-white/70 self-end pb-1">
               {penalty.daysLate > 0 && <p className="text-warning font-bold">ส่งช้า {penalty.daysLate} วัน · ค่าปรับสะสม {money(penalty.total)} บาท</p>}
               {wEnd && <p>สิ้นสุดรับประกัน {wEnd}</p>}
             </div>
@@ -130,7 +130,7 @@ export function ContractPanel({ companyId, docId, project, canEdit }: { companyI
               </div>
             )}
           </div>
-          {!c.guarantees.length && <p className="text-[13px] text-white/50">ยังไม่มีหลักประกัน — งานราชการที่ประกวดราคามักต้องวางหลักประกันซองตอนยื่น และหลักประกันสัญญาตอนทำสัญญา</p>}
+          {!c.guarantees.length && <p className="text-[12px] text-white/50">ยังไม่มีหลักประกัน — งานราชการที่ประกวดราคามักต้องวางหลักประกันซองตอนยื่น และหลักประกันสัญญาตอนทำสัญญา</p>}
           {c.guarantees.map((g, i) => (
             <div key={g.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-3">
               <div className="flex items-center justify-between gap-2">

@@ -116,7 +116,7 @@ export function DocumentAttachmentsCard({
       {!effectiveLocked && (
         <label className="border-2 border-dashed border-white/20 hover:border-nexus-teal/60 bg-white/[0.01] hover:bg-white/[0.03] rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all group">
           <UploadCloud size={24} className="text-nexus-teal/60 group-hover:text-nexus-teal transition-colors" />
-          <span className="text-[13px] font-bold text-white/80 group-hover:text-white transition-colors">
+          <span className="text-[12px] font-bold text-white/80 group-hover:text-white transition-colors">
             คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวางที่นี่
           </span>
           <input
@@ -139,7 +139,7 @@ export function DocumentAttachmentsCard({
             <div className="flex items-center gap-3 min-w-0">
               {getFileIcon(file.filename)}
               <div className="truncate">
-                <p className="text-[13px] font-bold text-white truncate group-hover/file:text-nexus-teal transition-colors">
+                <p className="text-[12px] font-bold text-white truncate group-hover/file:text-nexus-teal transition-colors">
                   {file.filename}
                 </p>
                 <p className="text-[11px] font-mono text-white/40">

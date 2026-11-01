@@ -247,7 +247,7 @@ function PaymentForm() {
             <div className="flex gap-2 flex-wrap">
               {METHODS.map((m) => (
                 <button key={m.id} type="button" onClick={() => setMethod(m.id)}
-                  className={cn("h-9 px-4 rounded-full text-[13px] font-bold border flex items-center gap-1.5", method === m.id ? "bg-nexus-teal/15 border-nexus-teal/40 text-nexus-teal" : "bg-white/[0.02] border-white/10 text-white/50 hover:text-white")}>
+                  className={cn("h-9 px-4 rounded-full text-[12px] font-bold border flex items-center gap-1.5", method === m.id ? "bg-nexus-teal/15 border-nexus-teal/40 text-nexus-teal" : "bg-white/[0.02] border-white/10 text-white/50 hover:text-white")}>
                   {m.icon} {m.label}
                 </button>
               ))}
@@ -304,7 +304,7 @@ function PaymentForm() {
 
   const sideRow = (k: React.ReactNode, v: string, cls = "text-white") => (
     <div className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
-      <span className="text-[13px] text-white/60">{k}</span>
+      <span className="text-[12px] text-white/60">{k}</span>
       <span className={cn("text-[14px] font-mono font-bold", cls)}>{v}</span>
     </div>
   );

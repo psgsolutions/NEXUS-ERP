@@ -80,7 +80,7 @@ export default function ProductLabelsPage() {
             {filtered.map((p: any) => (
               <div key={p.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] text-white truncate">{p.name}</p>
+                  <p className="text-[12px] text-white truncate">{p.name}</p>
                   <p className="text-[11px] text-white/40 font-mono">{p.sku}{p.barcode ? ` • ${p.barcode}` : " • (ไม่มีบาร์โค้ด ใช้ SKU)"}</p>
                 </div>
                 <PillInput

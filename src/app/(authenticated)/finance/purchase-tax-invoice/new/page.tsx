@@ -91,8 +91,8 @@ function TaxInvoiceForm() {
 
   const row = (k: string, v: React.ReactNode) => (
     <div className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
-      <span className="text-[13px] text-white/60">{k}</span>
-      <span className="text-[13px] text-white text-right">{v}</span>
+      <span className="text-[12px] text-white/60">{k}</span>
+      <span className="text-[12px] text-white text-right">{v}</span>
     </div>
   );
 

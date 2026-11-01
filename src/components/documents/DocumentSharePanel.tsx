@@ -85,15 +85,15 @@ export function DocumentSharePanel({ type, id, title, defaultTo = "" }: { type: 
   });
 
   if (!status) return <div className="p-5 text-white/50 text-sm flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> กำลังโหลด…</div>;
-  if (status.internal) return <div className="p-5 text-white/60 text-[13px]">{title} เป็นเอกสารภายใน ส่งให้บุคคลภายนอกไม่ได้</div>;
+  if (status.internal) return <div className="p-5 text-white/60 text-[12px]">{title} เป็นเอกสารภายใน ส่งให้บุคคลภายนอกไม่ได้</div>;
 
   const label = "text-[12px] font-bold text-white/60 ml-1";
   return (
-    <div className="p-4 space-y-5 text-[13px]">
-      {msg && <div className={cn("rounded-xl px-3 py-2 text-[13px] font-semibold", msg.error ? "bg-danger/10 text-danger border border-danger/25" : "bg-nexus-teal/10 text-nexus-teal border border-nexus-teal/25")}>{msg.text}</div>}
+    <div className="p-4 space-y-5 text-[12px]">
+      {msg && <div className={cn("rounded-xl px-3 py-2 text-[12px] font-semibold", msg.error ? "bg-danger/10 text-danger border border-danger/25" : "bg-nexus-teal/10 text-nexus-teal border border-nexus-teal/25")}>{msg.text}</div>}
 
       <section className="space-y-2">
-        <h4 className="text-[13px] font-bold text-white flex items-center gap-2"><Link2 size={15} /> ลิงก์เปิดดู / ดาวน์โหลด</h4>
+        <h4 className="text-[12px] font-bold text-white flex items-center gap-2"><Link2 size={15} /> ลิงก์เปิดดู / ดาวน์โหลด</h4>
         <p className="text-[12px] text-white/45">ผู้รับเปิดได้โดยไม่ต้องล็อกอิน ลิงก์ใช้ได้ 30 วัน ยกเลิกได้ทุกเมื่อ</p>
         {active && <p className="text-[12px] text-white/70 font-mono break-all bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2">{active.url}</p>}
         <div className="grid grid-cols-2 gap-2">
@@ -107,7 +107,7 @@ export function DocumentSharePanel({ type, id, title, defaultTo = "" }: { type: 
       </section>
 
       <section className="space-y-2">
-        <h4 className="text-[13px] font-bold text-white flex items-center gap-2"><Mail size={15} /> ส่งอีเมล</h4>
+        <h4 className="text-[12px] font-bold text-white flex items-center gap-2"><Mail size={15} /> ส่งอีเมล</h4>
         {!status.emailReady ? (
           <p className="text-[12px] text-warning">ยังไม่ได้ตั้งค่าอีเมลของระบบ (ผู้ดูแลระบบต้องตั้ง Gmail App Password ก่อน) ระหว่างนี้ใช้ "คัดลอกลิงก์" แล้วส่งจากอีเมลของคุณได้</p>
         ) : (
@@ -129,7 +129,7 @@ export function DocumentSharePanel({ type, id, title, defaultTo = "" }: { type: 
       </section>
 
       <section className="space-y-2">
-        <h4 className="text-[13px] font-bold text-white">ประวัติการส่ง</h4>
+        <h4 className="text-[12px] font-bold text-white">ประวัติการส่ง</h4>
         {status.sends.length === 0 ? <p className="text-[12px] text-white/40">ยังไม่เคยส่ง</p> : (
           <div className="divide-y divide-white/[0.06]">
             {status.sends.map((s, i) => (

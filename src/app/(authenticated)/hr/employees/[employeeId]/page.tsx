@@ -84,8 +84,8 @@ export default function EmployeeDetailPage() {
 
   const row = (k: string, v: React.ReactNode) => (
     <div className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
-      <span className="text-[13px] text-white/60 shrink-0">{k}</span>
-      <span className="text-[13px] text-white text-right truncate">{v || "-"}</span>
+      <span className="text-[12px] text-white/60 shrink-0">{k}</span>
+      <span className="text-[12px] text-white text-right truncate">{v || "-"}</span>
     </div>
   );
 
@@ -115,7 +115,7 @@ export default function EmployeeDetailPage() {
               {row("ธนาคาร", e.bankName)}
               {row("เลขที่บัญชี", <span className="font-mono">{mask(e.bankAccount)}</span>)}
             </>
-          ) : <p className="text-[13px] text-white/50">ไม่มีสิทธิ์ดูข้อมูลเงินเดือน</p>}
+          ) : <p className="text-[12px] text-white/50">ไม่มีสิทธิ์ดูข้อมูลเงินเดือน</p>}
         </GlassCard>
       </div>
 

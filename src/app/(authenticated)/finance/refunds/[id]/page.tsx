@@ -42,8 +42,8 @@ export default function CustomerRefundPage() {
 
   const row = (k: string, v: React.ReactNode) => (
     <div className="flex items-start justify-between gap-4 py-2 border-b border-white/5 last:border-0">
-      <span className="text-[13px] text-white/50 shrink-0">{k}</span>
-      <span className="text-[13px] text-white text-right min-w-0 break-words">{v || "-"}</span>
+      <span className="text-[12px] text-white/50 shrink-0">{k}</span>
+      <span className="text-[12px] text-white text-right min-w-0 break-words">{v || "-"}</span>
     </div>
   );
 
@@ -69,7 +69,7 @@ export default function CustomerRefundPage() {
 
       {cancelling && (
         <div className="flex flex-wrap items-center gap-2 px-4 py-3 rounded-2xl border border-danger/25 bg-danger/[0.04]">
-          <PillInput autoFocus value={reason} onChange={(e) => setReason(e.target.value)} placeholder="เหตุผลการยกเลิก (จำเป็น)" className="h-9 flex-1 min-w-[240px] px-4 rounded-full bg-white/[0.03] border border-white/10 text-[13px] text-white focus:outline-none" />
+          <PillInput autoFocus value={reason} onChange={(e) => setReason(e.target.value)} placeholder="เหตุผลการยกเลิก (จำเป็น)" className="h-9 flex-1 min-w-[240px] px-4 rounded-full bg-white/[0.03] border border-white/10 text-[12px] text-white focus:outline-none" />
           <button type="button" disabled={busy || reason.trim().length < 3} onClick={doCancel} className="h-9 px-4 rounded-full border border-danger/40 text-danger text-[12px] font-bold disabled:opacity-40">{busy ? "กำลังยกเลิก..." : "ยืนยันยกเลิก"}</button>
           <button type="button" onClick={() => setCancelling(false)} className="h-9 px-4 rounded-full border border-white/10 text-white/60 text-[12px] font-bold">ปิด</button>
         </div>

@@ -146,7 +146,7 @@ export default function ProductsPage() {
                         </NexusTableCell>
                         
                         <NexusTableCell className="w-full">
-                          <div className="font-bold text-white text-[13px]">{displayName}</div>
+                          <div className="font-bold text-white text-[12px]">{displayName}</div>
                           {p.salesBom?.length > 0 && (
                             <div className="text-[11px] text-white/40 mt-1 flex items-center gap-1 font-semibold uppercase tracking-wider">
                               <Box size={10} /> BOM: {p.salesBom.length} items
@@ -178,7 +178,7 @@ export default function ProductsPage() {
                           {Number(displayProjectPrice).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
                         </NexusTableCell>
                         
-                        <NexusTableCell align="right" className="w-[1%] whitespace-nowrap font-mono text-[13px] font-bold text-nexus-teal tracking-tight">
+                        <NexusTableCell align="right" className="w-[1%] whitespace-nowrap font-mono text-[12px] font-bold text-nexus-teal tracking-tight">
                           {Number(displayRetailPrice).toLocaleString('th-TH', { minimumFractionDigits: 2 })}
                         </NexusTableCell>
 

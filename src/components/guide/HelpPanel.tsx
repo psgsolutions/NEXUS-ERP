@@ -67,7 +67,7 @@ export function HelpButton() {
                 <>
                   <p className="text-white/80">{guide.summary}</p>
                   <section>
-                    <h4 className="text-[13px] font-bold text-white mb-2">ทำอย่างไร</h4>
+                    <h4 className="text-[12px] font-bold text-white mb-2">ทำอย่างไร</h4>
                     <ol className="space-y-2">
                       {guide.steps.map((s, i) => (
                         <li key={i} className="flex gap-3">
@@ -79,13 +79,13 @@ export function HelpButton() {
                   </section>
                   {guide.cautions && guide.cautions.length > 0 && (
                     <section className="rounded-xl border border-warning/25 bg-warning/[0.07] p-3 space-y-1.5">
-                      <h4 className="flex items-center gap-1.5 text-[13px] font-bold text-warning"><AlertTriangle size={14} /> ข้อควรระวัง</h4>
-                      {guide.cautions.map((c, i) => <p key={i} className="text-[13px] text-white/75">{c}</p>)}
+                      <h4 className="flex items-center gap-1.5 text-[12px] font-bold text-warning"><AlertTriangle size={14} /> ข้อควรระวัง</h4>
+                      {guide.cautions.map((c, i) => <p key={i} className="text-[12px] text-white/75">{c}</p>)}
                     </section>
                   )}
                   {links.length > 0 && (
                     <section>
-                      <h4 className="text-[13px] font-bold text-white mb-2">ขั้นถัดไป / หน้าที่เกี่ยวข้อง</h4>
+                      <h4 className="text-[12px] font-bold text-white mb-2">ขั้นถัดไป / หน้าที่เกี่ยวข้อง</h4>
                       <div className="space-y-1.5">
                         {links.map((l) => (
                           <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] text-white/80 hover:text-nexus-teal hover:border-nexus-teal/30">
@@ -101,7 +101,7 @@ export function HelpButton() {
               )}
               <p className="text-[12px] text-white/45 border-t border-white/5 pt-4">ไอคอน ⓘ ข้างช่องกรอก = คำอธิบายช่องนั้น · กล่อง &quot;เมื่อกดบันทึก ระบบจะ…&quot; บอกผลของการบันทึกก่อนกด</p>
               {onboarding && onboarding.tasks.some((t) => !t.done) && (
-                <button type="button" onClick={() => { setDismissed(false); setOpen(false); router.push("/dashboard"); }} className="text-[13px] font-semibold text-nexus-teal hover:underline">
+                <button type="button" onClick={() => { setDismissed(false); setOpen(false); router.push("/dashboard"); }} className="text-[12px] font-semibold text-nexus-teal hover:underline">
                   แสดงรายการเริ่มต้นใช้งานของฉัน ({onboarding.tasks.filter((t) => t.done).length}/{onboarding.tasks.length})
                 </button>
               )}

@@ -554,7 +554,7 @@ export default function SalesPage() {
       </section>
 
       {(loadErrors.length > 0 || Object.values(truncated).some(Boolean)) && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-[13px]">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px]">
           {loadErrors.length > 0 && <span className="text-danger">โหลด{loadErrors.join(", ")}ไม่สำเร็จ — ตรวจการเชื่อมต่อแล้วรีเฟรชหน้า</span>}
           {Object.values(truncated).some(Boolean) && (
             <>
@@ -722,17 +722,17 @@ export default function SalesPage() {
                     {invCancel && (
                       <div className="mb-3 px-4 py-3 rounded-2xl border border-danger/25 bg-danger/[0.04] space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[13px] font-semibold text-white">ยกเลิกใบกำกับภาษี {invCancel.no}</span>
-                          <label className="flex items-center gap-1.5 text-[13px] text-white/70"><input type="radio" checked={invCancel.replace} onChange={() => setInvCancel({ ...invCancel, replace: true })} /> ยกเลิกและออกใบแทน (แก้ข้อมูลผู้ซื้อ ยอดเงินเท่าเดิม)</label>
-                          <label className="flex items-center gap-1.5 text-[13px] text-white/70"><input type="radio" checked={!invCancel.replace} onChange={() => setInvCancel({ ...invCancel, replace: false })} /> ยกเลิกอย่างเดียว (กลับรายการบัญชี)</label>
+                          <span className="text-[12px] font-semibold text-white">ยกเลิกใบกำกับภาษี {invCancel.no}</span>
+                          <label className="flex items-center gap-1.5 text-[12px] text-white/70"><input type="radio" checked={invCancel.replace} onChange={() => setInvCancel({ ...invCancel, replace: true })} /> ยกเลิกและออกใบแทน (แก้ข้อมูลผู้ซื้อ ยอดเงินเท่าเดิม)</label>
+                          <label className="flex items-center gap-1.5 text-[12px] text-white/70"><input type="radio" checked={!invCancel.replace} onChange={() => setInvCancel({ ...invCancel, replace: false })} /> ยกเลิกอย่างเดียว (กลับรายการบัญชี)</label>
                         </div>
-                        <PillInput autoFocus value={invCancel.reason} onChange={(e) => setInvCancel({ ...invCancel, reason: e.target.value })} placeholder="เหตุผลการยกเลิก (จำเป็น) เช่น ชื่อ/ที่อยู่ผู้ซื้อไม่ถูกต้อง" className="h-9 w-full px-3 rounded-full bg-white/[0.03] border border-white/10 text-[13px] leading-[1.9] text-white focus:outline-none" />
+                        <PillInput autoFocus value={invCancel.reason} onChange={(e) => setInvCancel({ ...invCancel, reason: e.target.value })} placeholder="เหตุผลการยกเลิก (จำเป็น) เช่น ชื่อ/ที่อยู่ผู้ซื้อไม่ถูกต้อง" className="h-9 w-full px-3 rounded-full bg-white/[0.03] border border-white/10 text-[12px] leading-[1.9] text-white focus:outline-none" />
                         {invCancel.replace && (
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                            <PillInput value={invCancel.customer.name} onChange={(e) => setInvCancel({ ...invCancel, customer: { ...invCancel.customer, name: e.target.value } })} placeholder="ชื่อผู้ซื้อ" className="h-9 px-3 rounded-full bg-white/[0.03] border border-white/10 text-[13px] leading-[1.9] text-white md:col-span-2 focus:outline-none" />
-                            <PillInput value={invCancel.customer.taxId} onChange={(e) => setInvCancel({ ...invCancel, customer: { ...invCancel.customer, taxId: e.target.value.replace(/\D/g, "").slice(0, 13) } })} placeholder="เลขผู้เสียภาษี 13 หลัก" className="h-9 px-3 rounded-full bg-white/[0.03] border border-white/10 text-[13px] leading-[1.9] text-white font-mono focus:outline-none" />
-                            <PillInput value={invCancel.customer.branch} onChange={(e) => setInvCancel({ ...invCancel, customer: { ...invCancel.customer, branch: e.target.value } })} placeholder="สาขา (00000 = สำนักงานใหญ่)" className="h-9 px-3 rounded-full bg-white/[0.03] border border-white/10 text-[13px] leading-[1.9] text-white focus:outline-none" />
-                            <PillInput value={invCancel.customer.address} onChange={(e) => setInvCancel({ ...invCancel, customer: { ...invCancel.customer, address: e.target.value } })} placeholder="ที่อยู่ผู้ซื้อ" className="h-9 px-3 rounded-full bg-white/[0.03] border border-white/10 text-[13px] leading-[1.9] text-white md:col-span-4 focus:outline-none" />
+                            <PillInput value={invCancel.customer.name} onChange={(e) => setInvCancel({ ...invCancel, customer: { ...invCancel.customer, name: e.target.value } })} placeholder="ชื่อผู้ซื้อ" className="h-9 px-3 rounded-full bg-white/[0.03] border border-white/10 text-[12px] leading-[1.9] text-white md:col-span-2 focus:outline-none" />
+                            <PillInput value={invCancel.customer.taxId} onChange={(e) => setInvCancel({ ...invCancel, customer: { ...invCancel.customer, taxId: e.target.value.replace(/\D/g, "").slice(0, 13) } })} placeholder="เลขผู้เสียภาษี 13 หลัก" className="h-9 px-3 rounded-full bg-white/[0.03] border border-white/10 text-[12px] leading-[1.9] text-white font-mono focus:outline-none" />
+                            <PillInput value={invCancel.customer.branch} onChange={(e) => setInvCancel({ ...invCancel, customer: { ...invCancel.customer, branch: e.target.value } })} placeholder="สาขา (00000 = สำนักงานใหญ่)" className="h-9 px-3 rounded-full bg-white/[0.03] border border-white/10 text-[12px] leading-[1.9] text-white focus:outline-none" />
+                            <PillInput value={invCancel.customer.address} onChange={(e) => setInvCancel({ ...invCancel, customer: { ...invCancel.customer, address: e.target.value } })} placeholder="ที่อยู่ผู้ซื้อ" className="h-9 px-3 rounded-full bg-white/[0.03] border border-white/10 text-[12px] leading-[1.9] text-white md:col-span-4 focus:outline-none" />
                           </div>
                         )}
                         <div className="flex items-center gap-2">
@@ -797,8 +797,8 @@ export default function SalesPage() {
                   <div className="animate-in fade-in duration-500">
                     {cndnCancel && (
                       <div className="flex flex-wrap items-center gap-2 mb-3 px-4 py-3 rounded-2xl border border-danger/25 bg-danger/[0.04]">
-                        <span className="text-[13px] text-white/80">ยกเลิก {cndnCancel.no}</span>
-                        <PillInput autoFocus value={cndnCancel.reason} onChange={(e) => setCndnCancel({ ...cndnCancel, reason: e.target.value })} placeholder="เหตุผลการยกเลิก (จำเป็น)" className="h-8 flex-1 min-w-[220px] px-3 rounded-full bg-white/[0.03] border border-white/10 text-[13px] text-white focus:outline-none" />
+                        <span className="text-[12px] text-white/80">ยกเลิก {cndnCancel.no}</span>
+                        <PillInput autoFocus value={cndnCancel.reason} onChange={(e) => setCndnCancel({ ...cndnCancel, reason: e.target.value })} placeholder="เหตุผลการยกเลิก (จำเป็น)" className="h-8 flex-1 min-w-[220px] px-3 rounded-full bg-white/[0.03] border border-white/10 text-[12px] text-white focus:outline-none" />
                         <button type="button" disabled={cndnBusy || cndnCancel.reason.trim().length < 3} onClick={cancelCndn} className="h-8 px-3 rounded-full border border-danger/40 text-danger text-[12px] font-bold disabled:opacity-40">{cndnBusy ? "กำลังยกเลิก..." : "ยืนยันยกเลิก"}</button>
                         <button type="button" onClick={() => setCndnCancel(null)} className="h-8 px-3 rounded-full border border-white/10 text-white/60 text-[12px] font-bold">ปิด</button>
                       </div>
@@ -1102,9 +1102,9 @@ export default function SalesPage() {
 function CustomerRow({ id, docId, name, industry, taxId, status, canDelete, companyId, onClick }: { id: string, docId: string, name: string, industry: string, taxId: string, status: "active" | "inactive", canDelete: boolean, companyId: string, onClick?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[12px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
       <NexusTableCell className="font-bold text-white/80 group-hover:text-white transition-colors w-full">{name}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-white/60">{industry}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-white/60">{industry}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-xs text-white/30">{taxId}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={status} label={status === "active" ? "ใช้งาน" : "ปิดใช้งาน"} />
@@ -1162,9 +1162,9 @@ function QuotationRow({ id, docId, customer, title, value, stage, validUntil, ca
 function SalesOrderRow({ id, docId, customer, date, total, status, onClick, onPrint }: { id: string, docId: string, customer: string, date: string, total: string, status: string, companyId: string, onClick?: () => void, onPrint?: () => void }) {
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[12px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
       <NexusTableCell className="font-bold text-white/80 w-full">{customer}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-white/40 uppercase tracking-widest">{date}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-white/40 uppercase tracking-widest">{date}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white" mono>{total}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge {...salesOrderStatusBadge(status)} />
@@ -1188,11 +1188,11 @@ function InvoiceRow({ id, docId, soRef, customer, date, dueDate, total, status, 
   const cancelled = status === "cancelled";
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[13px] text-white/40">{soRef}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[12px] text-nexus-blue font-medium tracking-tighter">{id}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[12px] text-white/40">{soRef}</NexusTableCell>
       <NexusTableCell className="font-bold text-white/80 w-full">{customer}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-white/40">{date}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-warning">{dueDate}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-white/40">{date}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-warning">{dueDate}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white" mono>{total}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         {cancelled ? (
@@ -1241,10 +1241,10 @@ function InvoiceRow({ id, docId, soRef, customer, date, dueDate, total, status, 
 function BillingNoteRow({ id, docId, customer, date, dueDate, total, status, companyId, onClick, onPrint }: any) {
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-warning font-medium tracking-tighter">{id}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[12px] text-warning font-medium tracking-tighter">{id}</NexusTableCell>
       <NexusTableCell className="font-bold text-white/80 w-full">{customer}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-white/40">{date}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-warning">{dueDate}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-white/40">{date}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-warning">{dueDate}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white" mono>{total}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         <StatusBadge status={status === "Paid" ? "active" : "pending"} label={status === "Paid" ? "รับชำระแล้ว" : "รอดำเนินการ"} />
@@ -1261,10 +1261,10 @@ function CndnRow({ id, customer, type, invoiceNo, reason, date, total, status, c
   const cancelled = String(status || "").toLowerCase() === "cancelled";
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="font-mono text-[13px] text-nexus-blue"><span title={reason ? `เหตุผล: ${reason}` : undefined}>{id}</span></NexusTableCell>
+      <NexusTableCell className="font-mono text-[12px] text-nexus-blue"><span title={reason ? `เหตุผล: ${reason}` : undefined}>{id}</span></NexusTableCell>
       <NexusTableCell className="font-bold text-white/80">{customer}</NexusTableCell>
       <NexusTableCell><span className={type === "DN" ? "text-warning text-[12px] font-bold" : "text-nexus-teal text-[12px] font-bold"}>{type === "DN" ? "ใบเพิ่มหนี้" : "ใบลดหนี้"}</span></NexusTableCell>
-      <NexusTableCell className="font-mono text-[13px] text-white/60">{invoiceNo}</NexusTableCell>
+      <NexusTableCell className="font-mono text-[12px] text-white/60">{invoiceNo}</NexusTableCell>
       <NexusTableCell className="text-white/60">{date}</NexusTableCell>
       <NexusTableCell className="text-white" mono>{total}</NexusTableCell>
       <NexusTableCell>{cancelled ? <StatusBadge status="danger" label="ยกเลิกแล้ว" /> : <StatusBadge status="active" label="ออกแล้ว" />}</NexusTableCell>
@@ -1283,10 +1283,10 @@ function CndnRow({ id, customer, type, invoiceNo, reason, date, total, status, c
 function ReceiptRow({ id, docId, invRef, customer, date, total, status, companyId, onClick, onPrint }: any) {
   return (
     <NexusTableRow onClick={onClick}>
-      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[13px] text-emerald-400 font-medium tracking-tighter">{id}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[13px] text-white/40">{invRef}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap align-middle text-center font-mono text-[12px] text-emerald-400 font-medium tracking-tighter">{id}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center font-mono text-[12px] text-white/40">{invRef}</NexusTableCell>
       <NexusTableCell className="font-bold text-white/80 w-full">{customer}</NexusTableCell>
-      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[13px] font-medium text-white/40">{date}</NexusTableCell>
+      <NexusTableCell className="w-[1%] whitespace-nowrap text-center text-[12px] font-medium text-white/40">{date}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-emerald-400" mono>{total}</NexusTableCell>
       <NexusTableCell className="w-[1%] whitespace-nowrap text-center">
         {status === "cancelled" ? <StatusBadge status="danger" label="ยกเลิกแล้ว" /> : <StatusBadge status="active" label="รับชำระแล้ว" />}
@@ -1305,7 +1305,7 @@ function ReceiptRow({ id, docId, invRef, customer, date, total, status, companyI
 function PipelineStage({ label, count, value, color = "bg-white/10", max = 20, active = false, onClick }: { label: string, count: number, value: string, color?: string, max?: number, active?: boolean, onClick?: () => void }) {
   return (
     <button type="button" onClick={onClick} title={`คลิกเพื่อแสดงเฉพาะใบเสนอราคา "${label}"`} className={cn("w-full text-left space-y-2 rounded-xl px-2.5 py-2 border transition-colors", active ? "bg-nexus-teal/10 border-nexus-teal/30" : "border-transparent hover:bg-white/[0.04] hover:border-white/10")}>
-       <div className="flex justify-between items-center text-[13px] font-medium tracking-wide">
+       <div className="flex justify-between items-center text-[12px] font-medium tracking-wide">
           <span className={active ? "text-nexus-teal font-bold" : "text-white/60"}>{label} ({count})</span>
           <span className="text-white/80 mono-numbers">{value}</span>
        </div>

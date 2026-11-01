@@ -115,7 +115,7 @@ export default function SettingsPage() {
           </div>
           {SEQUENCE_GROUPS.map((g) => (
             <section key={g.title} className="space-y-2">
-              <h3 className="text-[13px] font-semibold text-white/70">{g.title}</h3>
+              <h3 className="text-[12px] font-semibold text-white/70">{g.title}</h3>
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
                 {g.items.map(([prefix, label]) => (
                   <SequenceCard key={prefix} label={label} prefix={prefix} value={formats[prefix] || ""} onChange={(v) => setFormats({ ...formats, [prefix]: v })} />
@@ -154,12 +154,12 @@ function SequenceCard({ label, prefix, value, onChange }: { label: string; prefi
       <div className="flex items-center gap-3 w-full sm:w-[260px] shrink-0 min-w-0">
         <div className="w-8 h-8 shrink-0 rounded-lg bg-nexus-blue/10 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 text-[11px] font-mono font-bold">{prefix}</div>
         <div className="min-w-0">
-          <p className="text-[13px] font-medium text-white truncate" title={label}>{label}</p>
+          <p className="text-[12px] font-medium text-white truncate" title={label}>{label}</p>
           <p className="text-[12px] text-white/40 font-mono truncate">ตัวอย่าง: {example}</p>
         </div>
       </div>
       <PillInput
-        className="flex-1 h-9 px-3 text-[13px] font-mono text-center bg-black/40 border-white/5 text-nexus-teal focus:border-nexus-teal/50"
+        className="flex-1 h-9 px-3 text-[12px] font-mono text-center bg-black/40 border-white/5 text-nexus-teal focus:border-nexus-teal/50"
         value={value}
         placeholder={`${prefix}-[YYMM]-[0000]`}
         onChange={(e) => onChange(e.target.value)}

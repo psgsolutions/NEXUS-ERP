@@ -134,7 +134,7 @@ export default function AccountingPackPage() {
 
           <GlassCard className="p-4 space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <label className="text-[13px] text-white/70">เดือน</label>
+              <label className="text-[12px] text-white/70">เดือน</label>
               <PillInput type="month" value={month} max={monthNow()} onChange={(e) => setMonth(e.target.value)} className="h-9 rounded-full bg-white/5 border border-white/10 px-3 text-sm text-white" />
               <span className="text-[12px] text-white/45">{thaiMonth(month)}</span>
             </div>
@@ -146,7 +146,7 @@ export default function AccountingPackPage() {
 
           {rows && (
             <>
-              <div className="flex flex-wrap items-center gap-3 px-1 text-[13px] text-white/60">
+              <div className="flex flex-wrap items-center gap-3 px-1 text-[12px] text-white/60">
                 <span>พบ <b className="text-white font-mono">{rows.length}</b> ฉบับ · เลือก <b className="text-nexus-teal font-mono">{chosen.length}</b>{batches.length > 1 ? ` (แบ่ง ${batches.length} ชุด ชุดละไม่เกิน ${PER_BATCH})` : ""}</span>
                 <button type="button" className="text-nexus-teal hover:underline" onClick={() => setPicked(new Set(rows.map((r) => `${r.type}:${r.id}`)))}>เลือกทั้งหมด</button>
                 <button type="button" className="text-white/50 hover:text-white" onClick={() => setPicked(new Set())}>ไม่เลือกเลย</button>
@@ -156,10 +156,10 @@ export default function AccountingPackPage() {
                 </div>
               </div>
               {busy && <div className="p-3 rounded-xl text-xs font-bold border bg-nexus-teal/10 border-nexus-teal/20 text-nexus-teal flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> {busy}</div>}
-              <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="ข้อความในอีเมล (ไม่บังคับ — ว่าง = ข้อความมาตรฐาน)" className="w-full min-h-[70px] rounded-2xl bg-white/[0.03] border border-white/10 px-4 py-2 text-[13px] leading-[1.9] text-white" />
+              <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="ข้อความในอีเมล (ไม่บังคับ — ว่าง = ข้อความมาตรฐาน)" className="w-full min-h-[70px] rounded-2xl bg-white/[0.03] border border-white/10 px-4 py-2 text-[12px] leading-[1.9] text-white" />
               <GlassCard className="p-0 overflow-hidden">
                 <NexusTable headers={["", "วันที่", "ชนิด", "เลขที่", "คู่ค้า", "จำนวนเงิน", "สถานะ"]} itemCount={rows.length}>
-                  {rows.length === 0 && <NexusTableRow className="cursor-default"><NexusTableCell colSpan={7} className="text-center text-[13px] text-white/40 py-8">ไม่มีเอกสารในเดือนนี้</NexusTableCell></NexusTableRow>}
+                  {rows.length === 0 && <NexusTableRow className="cursor-default"><NexusTableCell colSpan={7} className="text-center text-[12px] text-white/40 py-8">ไม่มีเอกสารในเดือนนี้</NexusTableCell></NexusTableRow>}
                   {rows.map((r) => {
                     const k = `${r.type}:${r.id}`;
                     return (

@@ -57,15 +57,15 @@ export default function SharedDocumentPage() {
               ? <img src={info.seller.logo} alt="" className="w-12 h-12 object-contain shrink-0" />
               : <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-white" style={{ background: brand }}><FileText size={22} /></div>}
             <div className="min-w-0">
-              <p className="text-[13px] text-slate-500 truncate">{info.seller.name}</p>
+              <p className="text-[12px] text-slate-500 truncate">{info.seller.name}</p>
               <h1 className="text-lg font-bold leading-snug" style={{ color: brand }}>{info.title} <span className="text-slate-700 font-semibold">{info.number}</span></h1>
-              <p className="text-[13px] text-slate-500">วันที่ {info.date}{info.partyName ? ` · ${info.partyName}` : ""}</p>
+              <p className="text-[12px] text-slate-500">วันที่ {info.date}{info.partyName ? ` · ${info.partyName}` : ""}</p>
             </div>
           </div>
           {info.total !== null && (
             <div className="sm:text-right shrink-0">
               <p className="text-[12px] text-slate-500">{info.totalLabel}</p>
-              <p className="text-xl font-bold font-mono">{money(info.total)} <span className="text-[13px] font-normal text-slate-500">บาท</span></p>
+              <p className="text-xl font-bold font-mono">{money(info.total)} <span className="text-[12px] font-normal text-slate-500">บาท</span></p>
             </div>
           )}
         </header>

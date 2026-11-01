@@ -63,7 +63,7 @@ export function EntitySelector() {
       <FloatingLayer ref={floatingRef} anchorRef={anchorRef} open={isOpen} className="bg-surface-2 border border-white/10 rounded-2xl shadow-2xl p-4 space-y-2 w-[280px]">
         <div className="flex items-start gap-2">
           <Building2 size={16} className="text-nexus-teal mt-0.5 shrink-0" />
-          <p className="text-[13px] font-bold text-white">{name}</p>
+          <p className="text-[12px] font-bold text-white">{name}</p>
         </div>
         {company?.taxId && <p className="text-[12px] text-white/60">เลขประจำตัวผู้เสียภาษี <span className="font-mono text-white/80">{company.taxId}</span></p>}
         {company?.address && <p className="text-[12px] text-white/60 leading-relaxed">{company.address}</p>}

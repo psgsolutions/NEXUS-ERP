@@ -97,7 +97,7 @@ export function ESignSettings() {
   }, [profile, cfg, previewType]);
 
   if (!loaded) return <div className="py-16 flex items-center justify-center gap-2 text-white/40 text-sm"><Loader2 size={16} className="animate-spin" /> กำลังโหลด…</div>;
-  if (!canEdit) return <GlassCard className="p-6 text-[13px] text-white/60">ตราประทับและช่องลงนามตั้งได้เฉพาะผู้ดูแลบริษัท · ลายเซ็นของคุณตั้งได้ที่ <Link href="/my-signature" className="text-nexus-teal hover:underline">ลายเซ็นของฉัน</Link></GlassCard>;
+  if (!canEdit) return <GlassCard className="p-6 text-[12px] text-white/60">ตราประทับและช่องลงนามตั้งได้เฉพาะผู้ดูแลบริษัท · ลายเซ็นของคุณตั้งได้ที่ <Link href="/my-signature" className="text-nexus-teal hover:underline">ลายเซ็นของฉัน</Link></GlassCard>;
 
   return (
     <div className="flex flex-col xl:flex-row gap-4 xl:items-start">
@@ -106,7 +106,7 @@ export function ESignSettings() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-[18px] font-bold text-white">ตราประทับและช่องลงนาม</h2>
-              <p className="text-[13px] text-white/50">ใส่ให้อัตโนมัติเฉพาะเอกสารที่ออกจริง — ฉบับร่าง รออนุมัติ และเอกสารยกเลิกไม่มีลายเซ็น/ตรา</p>
+              <p className="text-[12px] text-white/50">ใส่ให้อัตโนมัติเฉพาะเอกสารที่ออกจริง — ฉบับร่าง รออนุมัติ และเอกสารยกเลิกไม่มีลายเซ็น/ตรา</p>
             </div>
             <PillButton variant="confirm" className="h-9 px-5 text-xs font-bold flex-shrink-0" disabled={!dirty || saving} onClick={save}>{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} บันทึก</PillButton>
           </div>
@@ -117,7 +117,7 @@ export function ESignSettings() {
               {cfg.stamp ? <img src={cfg.stamp} alt="ตราประทับบริษัท" className="max-w-full max-h-full object-contain" /> : <Stamp size={26} className="text-black/30" />}
             </button>
             <div className="space-y-2 flex-1 min-w-0">
-              <p className="text-[13px] text-white/80 font-semibold">ตราประทับบริษัท</p>
+              <p className="text-[12px] text-white/80 font-semibold">ตราประทับบริษัท</p>
               <p className="text-[12px] text-white/45 leading-snug">สแกน/ถ่ายรูปตราบนกระดาษขาว ระบบทำพื้นขาวเป็นโปร่งใสและตัดขอบให้ · ไฟล์ PNG พื้นโปร่งใสได้ผลดีที่สุด</p>
               <MmSize label="ขนาดตราบนกระดาษ (ด้านยาว)" value={ptToMm(cfg.stampSize)} lim={STAMP_MM} onChange={(mm) => set({ stampSize: mmToPt(mm) })} />
               <div className="flex gap-2">
@@ -181,7 +181,7 @@ export function ESignSettings() {
           </div>
           {DESIGNABLE_DOCS.map((d) => (
             <div key={d.type} className={cn("rounded-xl border p-2.5 space-y-1.5", previewType === d.type ? "border-nexus-teal/40 bg-nexus-teal/[0.04]" : "border-white/10")}>
-              <button type="button" onClick={() => setPreviewType(d.type)} className="text-[13px] font-semibold text-white hover:text-nexus-teal">{d.title}</button>
+              <button type="button" onClick={() => setPreviewType(d.type)} className="text-[12px] font-semibold text-white hover:text-nexus-teal">{d.title}</button>
               {d.signatures.map((label) => (
                 <div key={label} className="flex items-center gap-2">
                   <span className="w-[130px] text-[12px] text-white/65 truncate" title={label}>{label}</span>
@@ -200,7 +200,7 @@ export function ESignSettings() {
       </div>
 
       <div className="flex-1 min-w-0 h-[880px] xl:h-[calc(100vh-120px)] rounded-2xl border border-white/10 overflow-hidden flex flex-col bg-white/[0.02] xl:sticky xl:top-20">
-        <div className="px-4 pt-3 text-[13px] text-white/60">ตัวอย่าง: {DESIGNABLE_DOCS.find((d) => d.type === previewType)?.title} (ตามที่ตั้ง ยังไม่บันทึก)</div>
+        <div className="px-4 pt-3 text-[12px] text-white/60">ตัวอย่าง: {DESIGNABLE_DOCS.find((d) => d.type === previewType)?.title} (ตามที่ตั้ง ยังไม่บันทึก)</div>
         {model && <DocumentPdfViewer model={model} className="flex-1" />}
       </div>
     </div>

@@ -77,7 +77,7 @@ export function NotificationBell() {
 
       <FloatingLayer ref={panelRef} anchorRef={anchorRef} open={open} matchWidth={false} align="right" minWidth={360} maxHeight={480} className="bg-surface-2 border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col w-[360px]">
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
-          <span className="text-[13px] font-bold text-white">การแจ้งเตือน{unread.length ? ` · ใหม่ ${unread.length}` : ""}</span>
+          <span className="text-[12px] font-bold text-white">การแจ้งเตือน{unread.length ? ` · ใหม่ ${unread.length}` : ""}</span>
           {unread.length > 0 && (
             <button onClick={() => markRead(unread)} className="text-[12px] text-nexus-teal hover:underline flex items-center gap-1">
               <CheckCheck size={13} /> อ่านทั้งหมด
@@ -85,14 +85,14 @@ export function NotificationBell() {
           )}
         </div>
         <div className="overflow-y-auto custom-scrollbar">
-          {mine.length === 0 && <p className="px-4 py-8 text-center text-[13px] text-white/40">ยังไม่มีการแจ้งเตือน</p>}
+          {mine.length === 0 && <p className="px-4 py-8 text-center text-[12px] text-white/40">ยังไม่มีการแจ้งเตือน</p>}
           {mine.slice(0, 50).map((n: any) => {
             const fresh = isUnread(n);
             return (
               <button key={n.id} onClick={() => openItem(n)} className={cn("w-full text-left px-4 py-3 border-b border-white/5 last:border-0 flex gap-3 hover:bg-white/[0.04] transition-colors", fresh && "bg-nexus-teal/[0.04]")}>
                 <span className={cn("mt-1.5 w-2 h-2 rounded-full shrink-0", fresh ? "bg-nexus-teal" : "bg-transparent")} />
                 <span className="min-w-0 flex-1">
-                  <span className={cn("block text-[13px] truncate", fresh ? "font-bold text-white" : "text-white/70")}>{n.title}</span>
+                  <span className={cn("block text-[12px] truncate", fresh ? "font-bold text-white" : "text-white/70")}>{n.title}</span>
                   {n.message && <span className="block text-[12px] text-white/50 truncate">{n.message}</span>}
                   <span className="block text-[11px] text-white/35 mt-0.5">{relativeTimeTh(toMillis(n.createdAt))}</span>
                 </span>

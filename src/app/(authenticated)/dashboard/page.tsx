@@ -282,7 +282,7 @@ export default function DashboardPage() {
               {attention.length > 0 ? <AlertTriangle size={24} /> : <CheckCircle2 size={24} />}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className={cn("text-[13px] font-medium uppercase tracking-[0.15em] mb-1", attention.length > 0 ? "text-warning" : "text-nexus-teal")}>
+              <h3 className={cn("text-[12px] font-medium uppercase tracking-[0.15em] mb-1", attention.length > 0 ? "text-warning" : "text-nexus-teal")}>
                 สิ่งที่ต้องดำเนินการ{attention.length > 1 ? ` (${attention.length} เรื่อง)` : ""}
               </h3>
               <p className="text-[15px] font-bold text-white leading-relaxed">
@@ -291,7 +291,7 @@ export default function DashboardPage() {
               {attention.length > 1 && (
                 <ul className="mt-1 space-y-0.5">
                   {attention.slice(1).map((a, i) => (
-                    <li key={i} className="text-[13px] text-white/50">
+                    <li key={i} className="text-[12px] text-white/50">
                       <Link href={a.href} className="hover:text-white">• {a.text}</Link>
                     </li>
                   ))}
@@ -338,7 +338,7 @@ export default function DashboardPage() {
                 <Link href="/projects" className="text-xs font-bold text-white/40 hover:text-white">ดูทั้งหมด</Link>
               </div>
               <div className="space-y-4">
-                {projects.length === 0 && <p className="text-[13px] text-white/40 py-6 text-center">ยังไม่มีโครงการที่ดำเนินอยู่</p>}
+                {projects.length === 0 && <p className="text-[12px] text-white/40 py-6 text-center">ยังไม่มีโครงการที่ดำเนินอยู่</p>}
                 {projects.slice(0, 4).map((p) => {
                   const late = p.deadlineMs > 0 && p.deadlineMs < Date.now() && p.progress < 100;
                   return (
@@ -366,7 +366,7 @@ export default function DashboardPage() {
               </div>
               <div className="space-y-2">
                 {!productsLoading && lowStock.length === 0 && (
-                  <p className="text-[13px] text-white/40 py-6 text-center">สต็อกทุกรายการอยู่เหนือจุดสั่งซื้อ</p>
+                  <p className="text-[12px] text-white/40 py-6 text-center">สต็อกทุกรายการอยู่เหนือจุดสั่งซื้อ</p>
                 )}
                 {lowStock.slice(0, 4).map((s) => (
                   <StockAlertRow key={s.id} item={s.name} sku={s.sku} stock={s.onHand} min={s.min} unit={s.unit} />
@@ -392,13 +392,13 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex-1">
-              {!logsLoading && feed.length === 0 && <p className="text-[13px] text-white/40 py-10 text-center">ยังไม่มีบันทึกกิจกรรม</p>}
+              {!logsLoading && feed.length === 0 && <p className="text-[12px] text-white/40 py-10 text-center">ยังไม่มีบันทึกกิจกรรม</p>}
               {feed.map((f) => (
                 <TacticalLogItem key={f.id} kind={f.kind} msg={f.message} time={relativeTimeTh(f.atMs)} />
               ))}
             </div>
 
-            <Link href="/logs" className="w-full py-4 px-4 text-[13px] font-medium text-white/40 hover:text-white hover:bg-white/[0.02] transition-all flex items-center justify-center gap-2 border-t border-white/5">
+            <Link href="/logs" className="w-full py-4 px-4 text-[12px] font-medium text-white/40 hover:text-white hover:bg-white/[0.02] transition-all flex items-center justify-center gap-2 border-t border-white/5">
               ดูประวัติระบบทั้งหมด <ArrowUpRight size={14} className="flex-shrink-0" />
             </Link>
           </GlassCard>}
@@ -415,7 +415,7 @@ export default function DashboardPage() {
             <div className="divide-y divide-white/5">
               {pending.map((p) => (
                 <Link key={p.label} href={p.href} className="flex items-center justify-between py-2.5 group">
-                  <span className="text-[13px] text-white/70 group-hover:text-white">
+                  <span className="text-[12px] text-white/70 group-hover:text-white">
                     {p.label}
                     {p.samples > 0 && <span className="text-[11px] text-white/30 ml-1.5">(ตัวอย่าง {p.samples})</span>}
                   </span>
@@ -462,7 +462,7 @@ function StockAlertRow({ item, sku, stock, min, unit }: { item: string, sku: str
           <Package size={16} />
         </div>
         <div className="min-w-0">
-          <p className="text-[13px] font-bold text-white truncate" title={item}>{item}</p>
+          <p className="text-[12px] font-bold text-white truncate" title={item}>{item}</p>
           <p className="text-[12px] text-white/40 font-mono">{sku ? `${sku} · ` : ""}จุดสั่งซื้อ {min} {unit}</p>
         </div>
       </div>
@@ -486,7 +486,7 @@ function TacticalLogItem({ kind, msg, time }: { kind: ActivityKind, msg: string,
     <div className="px-5 py-3.5 flex gap-4 items-start border-b border-white/[0.03] last:border-0">
       <div className={cn("w-2 h-2 rounded-full mt-1.5 flex-shrink-0", st.dot)} />
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-bold text-white/80 leading-snug break-words">{msg}</p>
+        <p className="text-[12px] font-bold text-white/80 leading-snug break-words">{msg}</p>
         <div className="flex items-center gap-2 mt-1">
           <span className="text-[12px] text-white/40">{time}</span>
           <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded border", st.badge)}>{st.label}</span>

@@ -162,7 +162,7 @@ export default function NewTaxFilingPage() {
         )}
 
         {loading ? (
-          <p className="text-[13px] text-white/40">กำลังคำนวณจากข้อมูลจริง...</p>
+          <p className="text-[12px] text-white/40">กำลังคำนวณจากข้อมูลจริง...</p>
         ) : taxType === "VAT30" ? (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -217,7 +217,7 @@ export default function NewTaxFilingPage() {
           <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 text-center space-y-3">
             <FileText size={40} className="mx-auto text-cyan-400" />
             <h4 className="text-xl font-semibold text-white">ยืนยันบันทึกการยื่นแบบ?</h4>
-            <p className="text-[13px] text-white/50 max-w-lg mx-auto">
+            <p className="text-[12px] text-white/50 max-w-lg mx-auto">
               ระบบจะบันทึกว่ายื่น {TAX_LABEL[taxType]} งวด {periodLabel(period)} แล้ว ยอดภาษี {formatCurrency(taxDue)} บาท และล็อกงวดนี้ไม่ให้ยื่นซ้ำ
               (การยื่นจริงกับกรมสรรพากรทำผ่านระบบ e-Filing โดยใช้ไฟล์ CSV ที่ดาวน์โหลดได้)
             </p>
@@ -232,11 +232,11 @@ export default function NewTaxFilingPage() {
       <p className="text-[12px] font-semibold text-white/40 tracking-widest">ขั้นตอนการดำเนินการ</p>
       <div className={cn("p-4 rounded-2xl border", step === 1 ? "bg-cyan-500/10 border-cyan-500/20" : "bg-white/[0.02] border-white/5 opacity-50")}>
         <p className="text-[11px] font-semibold text-cyan-400 tracking-widest mb-1">ขั้นที่ 1</p>
-        <p className="text-[13px] font-bold text-white">ตรวจสอบยอดภาษี</p>
+        <p className="text-[12px] font-bold text-white">ตรวจสอบยอดภาษี</p>
       </div>
       <div className={cn("p-4 rounded-2xl border", step === 2 ? "bg-cyan-500/10 border-cyan-500/20" : "bg-white/[0.02] border-white/5 opacity-50")}>
         <p className="text-[11px] font-semibold text-white/40 tracking-widest mb-1">ขั้นที่ 2</p>
-        <p className="text-[13px] font-bold text-white flex items-center gap-2">บันทึกการยื่น {lock && <CheckCircle2 size={14} className="text-emerald-400" />}</p>
+        <p className="text-[12px] font-bold text-white flex items-center gap-2">บันทึกการยื่น {lock && <CheckCircle2 size={14} className="text-emerald-400" />}</p>
       </div>
     </div>
   );

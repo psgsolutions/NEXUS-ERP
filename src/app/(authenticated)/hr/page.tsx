@@ -116,7 +116,7 @@ export default function HRPage() {
                   const st = EMPLOYEE_STATUS[e._status];
                   return (
                     <NexusTableRow key={e.id} onClick={() => router.push(`/hr/employees/${encodeURIComponent(e.id)}`)}>
-                      <NexusTableCell className="font-mono text-[13px] text-nexus-blue">{e.employeeId || e.id}</NexusTableCell>
+                      <NexusTableCell className="font-mono text-[12px] text-nexus-blue">{e.employeeId || e.id}</NexusTableCell>
                       <NexusTableCell className="font-bold text-white/80">{e._name}{e.nickname ? <span className="text-white/40 font-normal"> ({e.nickname})</span> : null}</NexusTableCell>
                       <NexusTableCell className="text-white/70">{e.position || "-"}</NexusTableCell>
                       <NexusTableCell className="text-white/60">{e.department || "-"}</NexusTableCell>
@@ -138,7 +138,7 @@ export default function HRPage() {
                     const t = todayBy.get(e.id) || {};
                     return (
                       <NexusTableRow key={e.id} onClick={() => router.push(`/hr/employees/${encodeURIComponent(e.id)}`)}>
-                        <NexusTableCell className="font-mono text-[13px] text-nexus-blue">{e.employeeId || e.id}</NexusTableCell>
+                        <NexusTableCell className="font-mono text-[12px] text-nexus-blue">{e.employeeId || e.id}</NexusTableCell>
                         <NexusTableCell className="font-bold text-white/80">{e._name}</NexusTableCell>
                         <NexusTableCell className="text-white/60">{e.department || "-"}</NexusTableCell>
                         <NexusTableCell mono className="text-white">{t.in?.time || "-"}</NexusTableCell>
@@ -186,7 +186,7 @@ export default function HRPage() {
                   const partial = x.status === "Partially Paid";
                   return (
                     <NexusTableRow key={x.id}>
-                      <NexusTableCell className="font-mono text-[13px] text-nexus-teal">{x.expenseId || x.id}</NexusTableCell>
+                      <NexusTableCell className="font-mono text-[12px] text-nexus-teal">{x.expenseId || x.id}</NexusTableCell>
                       <NexusTableCell className="text-white/60">{thDate(x.createdAt)}</NexusTableCell>
                       <NexusTableCell className="font-bold text-white/80">{x.employeeName || "-"}</NexusTableCell>
                       <NexusTableCell className="text-white/70">{x.description || "-"}</NexusTableCell>

@@ -171,13 +171,13 @@ export default function PutawayPage() {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-[12px] font-bold text-white/70">ต้นทาง</label>
-            <PillSelect value={source} onChange={(e) => { setSource(e.target.value); setLines([]); setTarget(null); focusScan(); }} className="w-full h-9 rounded-full px-5 text-[13px] font-bold">
+            <PillSelect value={source} onChange={(e) => { setSource(e.target.value); setLines([]); setTarget(null); focusScan(); }} className="w-full h-9 rounded-full px-5 text-[12px] font-bold">
               {sourceOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </PillSelect>
           </div>
           <div className="space-y-2">
             <label className="text-[12px] font-bold text-white/70">ปลายทาง (ยิงบาร์โค้ดชั้นวาง หรือเลือก)</label>
-            <PillSelect value={target?.code || ""} onChange={(e) => { setTarget(rackLocations.find((l) => l.code === e.target.value) || null); focusScan(); }} className={cn("w-full h-9 rounded-full px-5 text-[13px] font-bold", target ? "text-nexus-teal" : "")}>
+            <PillSelect value={target?.code || ""} onChange={(e) => { setTarget(rackLocations.find((l) => l.code === e.target.value) || null); focusScan(); }} className={cn("w-full h-9 rounded-full px-5 text-[12px] font-bold", target ? "text-nexus-teal" : "")}>
               <option value="">{rackLocations.length === 0 ? "ยังไม่มีชั้นวางในผังคลัง" : "-- ยิงหรือเลือกชั้นวาง --"}</option>
               {rackLocations.filter((l) => l.code !== source).map((l) => <option key={l.code} value={l.code}>{l.code} • {l.label}</option>)}
             </PillSelect>
@@ -196,7 +196,7 @@ export default function PutawayPage() {
             autoComplete="off"
           />
           {feedback && (
-            <div className={cn("p-3 rounded-xl text-[13px] font-bold flex items-center gap-2",
+            <div className={cn("p-3 rounded-xl text-[12px] font-bold flex items-center gap-2",
               feedback.type === "ok" && "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400",
               feedback.type === "error" && "bg-red-500/10 border border-red-500/30 text-red-400",
               feedback.type === "info" && "bg-cyan-500/10 border border-cyan-500/30 text-cyan-300")}>
@@ -208,7 +208,7 @@ export default function PutawayPage() {
       </GlassCard>
 
       <GlassCard className="p-5 space-y-3 border-white/10 rounded-3xl">
-        <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2">
+        <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2">
           <Package size={16} className="text-nexus-teal" /> รายการที่จะวางเข้า {target ? <span className="text-nexus-teal font-mono">{target.code}</span> : "-"}
         </h3>
         {lines.length === 0 ? (
@@ -216,7 +216,7 @@ export default function PutawayPage() {
         ) : lines.map((l) => (
           <div key={l.productId} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/5">
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-bold text-white truncate">{l.name}</p>
+              <p className="text-[12px] font-bold text-white truncate">{l.name}</p>
               <p className="text-[11px] text-white/40 font-mono">{l.sku} • ที่ต้นทาง {availableAtSource.get(l.productId) || 0}</p>
             </div>
             <button onClick={() => setLineQty(l.productId, l.qty - 1)} className="w-8 h-8 rounded-full bg-white/5 text-white flex items-center justify-center"><Minus size={14} /></button>

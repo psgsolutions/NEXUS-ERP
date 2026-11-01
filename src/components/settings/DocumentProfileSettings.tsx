@@ -128,12 +128,12 @@ export function DocumentProfileSettings() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-[18px] font-bold text-white">ข้อมูลนิติบุคคล</h2>
-            <p className="text-[13px] text-white/50">ใช้พิมพ์บนทุกเอกสาร — ใบกำกับภาษีต้องมีชื่อ ที่อยู่ เลขผู้เสียภาษี และสาขาครบ · สีและรูปแบบเอกสาร ตั้งที่แท็บ &quot;ออกแบบเอกสาร&quot;</p>
+            <p className="text-[12px] text-white/50">ใช้พิมพ์บนทุกเอกสาร — ใบกำกับภาษีต้องมีชื่อ ที่อยู่ เลขผู้เสียภาษี และสาขาครบ · สีและรูปแบบเอกสาร ตั้งที่แท็บ &quot;ออกแบบเอกสาร&quot;</p>
           </div>
           {canEdit && <PillButton variant="confirm" className="h-9 px-5 text-xs font-bold flex-shrink-0" disabled={!dirty || saving} onClick={save}>{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} บันทึก</PillButton>}
         </div>
         {missing.length > 0 && (
-          <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-[13px] text-warning">
+          <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-[12px] text-warning">
             <AlertTriangle size={15} className="mt-0.5 flex-shrink-0" /> ยังขาด: {missing.join(", ")} — ออกใบกำกับภาษีไม่ครบตามกฎหมาย
           </div>
         )}
@@ -145,7 +145,7 @@ export function DocumentProfileSettings() {
             {form.logo ? <img src={form.logo} alt="โลโก้บริษัท" className="max-w-full max-h-full object-contain" /> : <ImagePlus size={24} className="text-black/30" />}
           </button>
           <div className="space-y-1.5">
-            <p className="text-[13px] text-white/70">โลโก้บนหัวเอกสาร (PNG · JPG · WebP · SVG)</p>
+            <p className="text-[12px] text-white/70">โลโก้บนหัวเอกสาร (PNG · JPG · WebP · SVG)</p>
             {logoMeta && <p className="text-[12px] text-white/50">{logoMeta.w}×{logoMeta.h} px · {logoMeta.kb} KB · {logoMeta.transparent ? <span className="text-nexus-teal">พื้นหลังโปร่งใส ✓</span> : "พื้นหลังทึบ"}</p>}
             <p className="text-[11px] text-white/40 leading-snug">เก็บละเอียดสูงสุด 1200px ขยายบนเอกสารได้คมชัด · ไฟล์พื้นโปร่งใสคงความโปร่งใสไว้ · ปรับขนาดบนเอกสารที่แท็บ &quot;ออกแบบเอกสาร&quot;</p>
             {canEdit && form.logo && <PillButton variant="ghost" className="h-8 px-3 text-xs text-danger" onClick={() => set({ logo: "" })}><Trash2 size={13} /> เอาโลโก้ออก</PillButton>}
@@ -173,7 +173,7 @@ export function DocumentProfileSettings() {
       </GlassCard>
 
       <div className="flex-1 min-w-0 h-[860px] rounded-2xl border border-white/10 overflow-hidden flex flex-col bg-white/[0.02]">
-        <div className="px-4 pt-3 text-[13px] text-white/60">ตัวอย่างเอกสาร (อัปเดตตามที่แก้ ยังไม่บันทึก)</div>
+        <div className="px-4 pt-3 text-[12px] text-white/60">ตัวอย่างเอกสาร (อัปเดตตามที่แก้ ยังไม่บันทึก)</div>
         <DocumentPdfViewer model={model} className="flex-1" />
       </div>
     </div>

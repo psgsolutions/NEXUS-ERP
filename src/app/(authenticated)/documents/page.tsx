@@ -132,7 +132,7 @@ export default function DocumentHistoryPage() {
           </GlassCard>
 
           {error && <div className="p-3 rounded-xl text-xs font-bold border bg-danger/10 border-danger/20 text-danger">{error}</div>}
-          {!loading && !shown.length && !error && <GlassCard className="p-8 text-center text-[13px] text-white/55">ยังไม่มีเอกสาร{q ? "ที่ตรงกับคำค้น" : ""}</GlassCard>}
+          {!loading && !shown.length && !error && <GlassCard className="p-8 text-center text-[12px] text-white/55">ยังไม่มีเอกสาร{q ? "ที่ตรงกับคำค้น" : ""}</GlassCard>}
 
           {view === "grid" ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-7 gap-3">
@@ -143,7 +143,7 @@ export default function DocumentHistoryPage() {
                     {r.cancelled && <span className="absolute top-1.5 right-1.5 text-[11px] px-1.5 py-0.5 rounded bg-danger text-white font-bold">ยกเลิก</span>}
                   </div>
                   <p className="text-[11px] text-nexus-teal font-semibold truncate">{TYPE_LABEL[r.type] || r.type}</p>
-                  <p className="text-[13px] text-white font-bold truncate font-mono">{r.number}</p>
+                  <p className="text-[12px] text-white font-bold truncate font-mono">{r.number}</p>
                   <p className="text-[12px] text-white/60 truncate">{r.party || "-"}</p>
                   <div className="flex items-center justify-between text-[12px] text-white/50">
                     <span>{r.date ? thaiDate(r.date) : "-"}</span>
@@ -154,7 +154,7 @@ export default function DocumentHistoryPage() {
             </div>
           ) : (
             <GlassCard className="p-0 overflow-x-auto">
-              <table className="w-full text-[13px]">
+              <table className="w-full text-[12px]">
                 <thead className="text-white/50 text-[12px]">
                   <tr className="border-b border-white/10">
                     <th className="text-left font-semibold px-3 py-2 whitespace-nowrap">วันที่</th>

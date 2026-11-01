@@ -141,7 +141,7 @@ export default function NewAssetDepreciationPage() {
            </div>
            <div>
               <h4 className="text-2xl font-semibold text-white uppercase tracking-tight">ประมวลผลค่าเสื่อมราคาประจำเดือน</h4>
-              <p className="text-[13px] font-bold text-white/30 uppercase tracking-[0.2em] mt-1">Automated Depreciation Posting</p>
+              <p className="text-[12px] font-bold text-white/30 uppercase tracking-[0.2em] mt-1">Automated Depreciation Posting</p>
            </div>
         </div>
 
@@ -202,18 +202,18 @@ export default function NewAssetDepreciationPage() {
   const rightSidebar = (
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
        <div className="space-y-1 border-b border-white/5 pb-4 relative z-10">
-         <h5 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
+         <h5 className="text-[12px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2">
            Account Matrix
          </h5>
        </div>
        <div className="space-y-4 relative z-10">
           <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
              <p className="text-[11px] font-black text-cyan-400 uppercase tracking-widest mb-2">Debit (+Expense)</p>
-             <p className="text-[13px] font-bold text-white">5121-00 ค่าเสื่อมราคา</p>
+             <p className="text-[12px] font-bold text-white">5121-00 ค่าเสื่อมราคา</p>
           </div>
           <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
              <p className="text-[11px] font-black text-danger uppercase tracking-widest mb-2">Credit (-Asset)</p>
-             <p className="text-[13px] font-bold text-white">1591-00 ค่าเสื่อมสะสม</p>
+             <p className="text-[12px] font-bold text-white">1591-00 ค่าเสื่อมสะสม</p>
           </div>
        </div>
 

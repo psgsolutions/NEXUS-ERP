@@ -183,7 +183,7 @@ function PayrollEditor() {
 
       <GlassCard className="p-3">
         <div className="nexus-table-wrap">
-          <table className="w-full table-fixed text-[13px]">
+          <table className="w-full table-fixed text-[12px]">
             <colgroup><col /><col className="w-[11%]" /><col className="w-[11%]" /><col className="w-[12%]" /><col className="w-[10%]" /><col className="w-[10%]" /><col className="w-[9%]" /><col className="w-[12%]" /></colgroup>
             <thead>
               <tr className="text-[11px] font-bold text-white/50 border-b border-white/10">

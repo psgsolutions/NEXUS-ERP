@@ -88,8 +88,8 @@ export default function SettlementDocument({ kind }: { kind: "receipt" | "paymen
 
   const row = (k: string, v: React.ReactNode) => (
     <div className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
-      <span className="text-[13px] text-white/60 shrink-0">{k}</span>
-      <span className="text-[13px] text-white text-right truncate">{v || "-"}</span>
+      <span className="text-[12px] text-white/60 shrink-0">{k}</span>
+      <span className="text-[12px] text-white text-right truncate">{v || "-"}</span>
     </div>
   );
 
@@ -126,9 +126,9 @@ export default function SettlementDocument({ kind }: { kind: "receipt" | "paymen
           </GlassCard>
           <GlassCard className="p-5">
             <h3 className="text-sm font-bold text-white mb-2">รายการ</h3>
-            {!lines.length ? <p className="text-[13px] text-white/50">เอกสารรุ่นเก่า ไม่มีรายละเอียดรายการ</p> : (
+            {!lines.length ? <p className="text-[12px] text-white/50">เอกสารรุ่นเก่า ไม่มีรายละเอียดรายการ</p> : (
               <div className="nexus-table-wrap">
-                <table className="w-full table-fixed text-[13px]">
+                <table className="w-full table-fixed text-[12px]">
                   <colgroup><col /><col className="w-[18%]" /><col className="w-[18%]" /><col className="w-[16%]" /><col className="w-[18%]" /></colgroup>
                   <thead>
                     <tr className="text-[11px] font-bold text-white/50 border-b border-white/10">
@@ -168,8 +168,8 @@ export default function SettlementDocument({ kind }: { kind: "receipt" | "paymen
       {d && (
         <GlassCard className="p-4 space-y-2">
           <h4 className="text-sm font-bold text-white mb-1">เอกสารที่เกี่ยวข้อง</h4>
-          {d.journalId && companyId && <Link href={journalHref(companyId, d.journalId)} className="block text-[13px] text-nexus-teal hover:underline">รายการบัญชี{d.journalAction === "voided" ? " (ยกเลิกแล้ว)" : ""}</Link>}
-          {(d.whtCertificates || []).map((w: string) => <p key={w} className="text-[13px] text-white/70">หนังสือรับรองหัก ณ ที่จ่าย <span className="font-mono">{w}</span>{cancelled ? " (ยกเลิก)" : ""}</p>)}
+          {d.journalId && companyId && <Link href={journalHref(companyId, d.journalId)} className="block text-[12px] text-nexus-teal hover:underline">รายการบัญชี{d.journalAction === "voided" ? " (ยกเลิกแล้ว)" : ""}</Link>}
+          {(d.whtCertificates || []).map((w: string) => <p key={w} className="text-[12px] text-white/70">หนังสือรับรองหัก ณ ที่จ่าย <span className="font-mono">{w}</span>{cancelled ? " (ยกเลิก)" : ""}</p>)}
         </GlassCard>
       )}
       {canCancel && (

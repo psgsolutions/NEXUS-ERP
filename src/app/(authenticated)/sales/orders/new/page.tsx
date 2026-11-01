@@ -160,7 +160,7 @@ export default function SalesOrderPage() {
       <div className="flex flex-col gap-6">
         {/* Customer Column */}
         <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-nexus-teal hover:border-white/25">
-          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
+          <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
             <Building2 size={16} className="text-nexus-teal" /> ข้อมูลลูกค้า
           </h3>
 
@@ -171,7 +171,7 @@ export default function SalesOrderPage() {
                   onClick={() => setIsCustomerSelectorOpen(!isCustomerSelectorOpen)}
                   className="w-full h-9 bg-white/[0.02] rounded-full px-6 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition-all group"
                 >
-                  <span className={cn("text-[13px] font-bold", customer ? "text-white" : "text-white/30")}>
+                  <span className={cn("text-[12px] font-bold", customer ? "text-white" : "text-white/30")}>
                     {customer ? customerName(customer) : customersLoading ? "กำลังโหลดรายชื่อลูกค้า..." : "เลือกลูกค้า"}
                   </span>
                   <Plus size={16} className="text-white/30 group-hover:text-cyan-400 transition-all" />
@@ -191,7 +191,7 @@ export default function SalesOrderPage() {
                         }}
                         className="p-3 hover:bg-white/5 rounded-lg cursor-pointer transition-all"
                       >
-                        <p className="text-[13px] font-bold text-white">{customerName(c)}</p>
+                        <p className="text-[12px] font-bold text-white">{customerName(c)}</p>
                         <p className="text-[11px] text-white/30 mt-1 font-mono">{c.taxId || "-"} • <span className="font-sans">{customerAddress(c) || "-"}</span></p>
                       </div>
                     ))}
@@ -199,7 +199,7 @@ export default function SalesOrderPage() {
                       onClick={() => router.push("/customers/new")}
                       className="p-3 mt-2 border-t border-white/5 hover:bg-cyan-500/10 rounded-lg cursor-pointer text-cyan-400 flex items-center gap-2"
                     >
-                      <Plus size={14} /> <span className="text-[13px] font-bold">เพิ่มลูกค้าใหม่...</span>
+                      <Plus size={14} /> <span className="text-[12px] font-bold">เพิ่มลูกค้าใหม่...</span>
                     </div>
                   </div>
                 )}
@@ -215,7 +215,7 @@ export default function SalesOrderPage() {
                        <span className="text-[11px] text-white/40">สาขา {customer.branch || customer.branchCode || "00000"}</span>
                      )}
                   </div>
-                  <p className="text-[13px] font-bold text-white/60 min-h-[40px] leading-relaxed">
+                  <p className="text-[12px] font-bold text-white/60 min-h-[40px] leading-relaxed">
                     {customer ? (billingAddress || "ไม่มีข้อมูลที่อยู่ของลูกค้ารายนี้") : "-"}
                   </p>
                 </Field>
@@ -240,10 +240,10 @@ export default function SalesOrderPage() {
                     value={deliveryAddress}
                     onChange={e => setDeliveryAddress(e.target.value)}
                     placeholder="ระบุสถานที่จัดส่งหรือไซต์งาน..."
-                    className="w-full h-24 p-3 text-[13px] bg-white/[0.02] border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-cyan-500/50"
+                    className="w-full h-24 p-3 text-[12px] bg-white/[0.02] border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-cyan-500/50"
                   />
                 ) : (
-                  <p className="text-[13px] font-bold text-white/30">
+                  <p className="text-[12px] font-bold text-white/30">
                     {billingAddress || "-"}
                   </p>
                 )}
@@ -255,17 +255,17 @@ export default function SalesOrderPage() {
         {/* Dates & Tax & Terms Column */}
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-nexus-blue hover:border-white/25">
-            <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
+            <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
               <Calendar size={16} className="text-nexus-blue" /> เงื่อนไขและโครงการ
             </h3>
             <div className="space-y-4">
               <Field label="วันที่ออก *">
-                <NexusDatePicker value={docDate} onChange={(e) => setDocDate(e.target.value)} className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[13px] font-bold" />
+                <NexusDatePicker value={docDate} onChange={(e) => setDocDate(e.target.value)} className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[12px] font-bold" />
               </Field>
 
               <div className="grid grid-cols-2 gap-4">
                 <Field label="เงื่อนไขการชำระเงิน">
-                  <PillSelect value={paymentTerm} onChange={(e) => setPaymentTerm(e.target.value)} className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[13px] font-bold">
+                  <PillSelect value={paymentTerm} onChange={(e) => setPaymentTerm(e.target.value)} className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[12px] font-bold">
                     <option value="0">เงินสด</option>
                     <option value="15">เครดิต 15 วัน</option>
                     <option value="30">เครดิต 30 วัน</option>
@@ -274,7 +274,7 @@ export default function SalesOrderPage() {
                   </PillSelect>
                 </Field>
                 <Field label="โครงการ / Cost Center">
-                  <PillSelect value={projectId} onChange={(e) => setProjectId(e.target.value)} className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[13px] font-bold">
+                  <PillSelect value={projectId} onChange={(e) => setProjectId(e.target.value)} className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[12px] font-bold">
                     <option value="">-- ไม่ระบุโครงการ --</option>
                     {projects.map((p: any) => (
                       <option key={p.id} value={p.id}>{p.projectId || p.id} - {p.title || p.name || p.projectName || "-"}</option>
@@ -286,12 +286,12 @@ export default function SalesOrderPage() {
           </div>
 
           <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-purple-500 hover:border-white/25">
-            <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
+            <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
               <Percent size={16} className="text-purple-400" /> ข้อมูลราคาและภาษี
             </h3>
             <div className="space-y-4">
               <Field label="ประเภทราคา *">
-                <PillSelect value={taxType} onChange={(e) => setTaxType(e.target.value as TaxType)} className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[13px] font-bold">
+                <PillSelect value={taxType} onChange={(e) => setTaxType(e.target.value as TaxType)} className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[12px] font-bold">
                   <option value="exclusive">แยกภาษี</option>
                   <option value="inclusive">รวมภาษี</option>
                   <option value="none">ไม่มีภาษี</option>
@@ -300,11 +300,11 @@ export default function SalesOrderPage() {
               <div className="p-3 rounded-xl bg-black/30 border border-white/10 flex items-center justify-between">
                 <div>
                   <p className="text-[11px] text-white/40 uppercase tracking-widest font-semibold">สกุลเงินเอกสาร</p>
-                  <p className="text-[13px] text-white font-bold mt-1">THB - บาทไทย</p>
+                  <p className="text-[12px] text-white font-bold mt-1">THB - บาทไทย</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[11px] text-white/40 uppercase tracking-widest font-semibold">อัตราแลกเปลี่ยน</p>
-                  <p className="text-[13px] text-white font-mono mt-1">1.00000</p>
+                  <p className="text-[12px] text-white font-mono mt-1">1.00000</p>
                 </div>
               </div>
             </div>
@@ -313,7 +313,7 @@ export default function SalesOrderPage() {
 
         {/* Line Items Table */}
         <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-emerald-500 hover:border-white/25">
-          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
+          <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
             รายการสินค้า / บริการ
           </h3>
 
@@ -325,7 +325,7 @@ export default function SalesOrderPage() {
 
         {/* Attachments: ยังไม่มี Firebase Storage จึงยังแนบไฟล์จริงไม่ได้ */}
         <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-amber-500">
-          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
+          <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
             <Paperclip size={16} className="text-amber-400" /> เอกสารแนบ
           </h3>
           <div className="w-full py-6 rounded-2xl border border-dashed border-white/10 flex flex-col items-center justify-center text-white/30 bg-black/30">
@@ -389,24 +389,24 @@ export default function SalesOrderPage() {
 
       {/* Summary Card */}
       <GlassCard className="p-6 border-white/5 rounded-3xl bg-surface-1 shadow-2xl space-y-4 w-full">
-        <div className="flex justify-between items-center text-[13px]">
+        <div className="flex justify-between items-center text-[12px]">
           <span className="text-white/40 font-bold uppercase tracking-widest text-[11px]">มูลค่ารวม</span>
           <span className="text-white font-mono font-bold">{formatCurrency(summary.subtotal)} บาท</span>
         </div>
         {summary.discount > 0 && (
-          <div className="flex justify-between items-center text-[13px]">
+          <div className="flex justify-between items-center text-[12px]">
             <span className="text-cyan-400/70 font-bold uppercase tracking-widest text-[11px]">ส่วนลดรวม</span>
             <span className="text-cyan-400 font-mono font-bold">-{formatCurrency(summary.discount)} บาท</span>
           </div>
         )}
         {taxType !== "none" && (
-          <div className="flex justify-between items-center text-[13px] border-t border-white/5 pt-4">
+          <div className="flex justify-between items-center text-[12px] border-t border-white/5 pt-4">
             <span className="text-white/40 font-bold uppercase tracking-widest text-[11px]">มูลค่าก่อนภาษี</span>
             <span className="text-white font-mono font-bold">{formatCurrency(summary.preVat)} บาท</span>
           </div>
         )}
         {taxType !== "none" && (
-          <div className="flex justify-between items-center text-[13px] pb-4 border-b border-white/5">
+          <div className="flex justify-between items-center text-[12px] pb-4 border-b border-white/5">
             <span className="text-white/40 font-bold uppercase tracking-widest text-[11px]">ภาษีมูลค่าเพิ่ม 7% (VAT)</span>
             <span className="text-white font-mono font-bold">{formatCurrency(summary.vat)} บาท</span>
           </div>

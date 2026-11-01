@@ -345,7 +345,7 @@ export function SmartSelect({
                     handleSelect(opt.value);
                   }}
                   className={cn(
-                    "w-full text-left px-3 py-2 rounded-xl text-[13px] transition-colors flex flex-col gap-0.5 border",
+                    "w-full text-left px-3 py-2 rounded-xl text-[12px] transition-colors flex flex-col gap-0.5 border",
                     highlightedIndex === index
                       ? "bg-white/15 border-nexus-teal/60 text-white font-bold ring-1 ring-nexus-teal/40 shadow-neon-teal"
                       : value === opt.value
@@ -521,7 +521,7 @@ export function NumberInput({
         }}
         onBlur={handleBlur}
         disabled={disabled}
-        className="flex-1 w-full bg-transparent border-none text-center text-[13px] font-mono font-bold text-white focus:outline-none px-2"
+        className="flex-1 w-full bg-transparent border-none text-center text-[12px] font-mono font-bold text-white focus:outline-none px-2"
       />
       
       {!disabled && (
@@ -596,7 +596,7 @@ export function StepperInput({
         onFocus={(e) => e.target.select()}
         onKeyDown={onKeyDown}
         autoFocus={autoFocus}
-        className={cn("w-full h-8 px-4 rounded-full font-mono text-center text-[13px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", suffix ? "pr-14" : "pr-8", className)} 
+        className={cn("w-full h-8 px-4 rounded-full font-mono text-center text-[12px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", suffix ? "pr-14" : "pr-8", className)} 
       />
       {suffix && (
         <span className="absolute right-7 text-[12px] font-bold text-white/40 pointer-events-none font-sans">
@@ -708,7 +708,7 @@ export function SmartTable<T extends Record<string, any>>({
               setSearchTerm(e.target.value);
               setCurrentPage(1); // Reset to page 1 on search
             }}
-            className="w-full h-8 pl-10 pr-4 bg-white/5 border border-white/10 rounded-full text-[13px] text-white placeholder-white/40 focus:outline-none focus:border-nexus-blue"
+            className="w-full h-8 pl-10 pr-4 bg-white/5 border border-white/10 rounded-full text-[12px] text-white placeholder-white/40 focus:outline-none focus:border-nexus-blue"
           />
         </div>
       </div>
@@ -737,7 +737,7 @@ export function SmartTable<T extends Record<string, any>>({
           <tbody className="divide-y divide-white/5">
             {currentData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-12 text-center text-white/40 text-[13px]">
+                <td colSpan={columns.length} className="px-4 py-12 text-center text-white/40 text-[12px]">
                   {emptyMessage}
                 </td>
               </tr>
@@ -765,7 +765,7 @@ export function SmartTable<T extends Record<string, any>>({
                       <td 
                         key={col.id} 
                         className={cn(
-                          "px-4 py-3 text-[13px] text-white/90",
+                          "px-4 py-3 text-[12px] text-white/90",
                           alignmentClass,
                           col.isNumeric && "font-mono",
                           onRowClick && "group-hover:text-white",

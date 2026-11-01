@@ -80,7 +80,7 @@ export function RevenueExpenseChart({ data }: { data: MonthlyPL[] }) {
       </div>
 
       {showTable ? (
-        <table className="w-full text-[13px]">
+        <table className="w-full text-[12px]">
           <thead>
             <tr className="text-white/50 border-b border-white/10">
               <th className="text-left font-medium py-2">เดือน</th>
@@ -103,7 +103,7 @@ export function RevenueExpenseChart({ data }: { data: MonthlyPL[] }) {
       ) : (
         <div ref={boxRef} className="relative w-full" onMouseLeave={() => setHover(null)}>
           {!hasData && (
-            <div className="absolute inset-0 flex items-center justify-center text-[13px] text-white/40 z-10 pointer-events-none">
+            <div className="absolute inset-0 flex items-center justify-center text-[12px] text-white/40 z-10 pointer-events-none">
               ยังไม่มีรายการบัญชีรายได้หรือค่าใช้จ่ายใน {periodText}
             </div>
           )}
@@ -162,12 +162,12 @@ export function RevenueExpenseChart({ data }: { data: MonthlyPL[] }) {
                     <span className="w-3 h-[2px] rounded" style={{ background: s.color }} />
                     {s.label}
                   </span>
-                  <span className="text-[13px] font-bold font-mono text-white">{fullBaht(hovered[s.key])}</span>
+                  <span className="text-[12px] font-bold font-mono text-white">{fullBaht(hovered[s.key])}</span>
                 </div>
               ))}
               <div className="flex items-center justify-between gap-4 border-t border-white/10 mt-1 pt-1">
                 <span className="text-[12px] text-white/60">กำไร (ขาดทุน)</span>
-                <span className={cn("text-[13px] font-bold font-mono", hovered.revenue - hovered.expense < 0 ? "text-danger" : "text-white")}>
+                <span className={cn("text-[12px] font-bold font-mono", hovered.revenue - hovered.expense < 0 ? "text-danger" : "text-white")}>
                   {fullBaht(hovered.revenue - hovered.expense)}
                 </span>
               </div>

@@ -132,7 +132,7 @@ export default function PODetailPage() {
     <div className="space-y-6 pr-2 pb-10">
       <div className="grid grid-cols-2 gap-4">
         <GlassCard className="p-4 border-white/10 rounded-3xl space-y-2 text-[12px]">
-          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3"><Building2 size={16} className="text-purple-300" /> ผู้จัดจำหน่าย</h3>
+          <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3"><Building2 size={16} className="text-purple-300" /> ผู้จัดจำหน่าย</h3>
           <Row label="ชื่อ" value={po.supplierName || "-"} />
           <Row label="อ้างอิง" value={po.reference || "-"} />
           <Row label="ประเภทการสั่งซื้อ" value={po.orderType === "PROJECT" ? "โครงการ" : po.orderType === "CONSUMABLE" ? "ของใช้บริษัท" : "สต็อกพัสดุ"} />
@@ -140,7 +140,7 @@ export default function PODetailPage() {
           {po.department && <Row label="แผนก" value={po.department} />}
         </GlassCard>
         <GlassCard className="p-4 border-white/10 rounded-3xl space-y-2 text-[12px]">
-          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3"><Calendar size={16} className="text-nexus-blue" /> เงื่อนไข</h3>
+          <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3"><Calendar size={16} className="text-nexus-blue" /> เงื่อนไข</h3>
           <Row label="วันที่สั่งซื้อ" value={po.date || "-"} />
           <Row label="กำหนดส่ง" value={po.expectedDate || "-"} />
           <Row label="การชำระเงิน" value={po.paymentTerm || "-"} />
@@ -150,7 +150,7 @@ export default function PODetailPage() {
       </div>
 
       <GlassCard className="p-4 border-white/10 rounded-3xl space-y-3">
-        <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 border-b border-white/10 pb-3">รายการสั่งซื้อ ({items.length})</h3>
+        <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 border-b border-white/10 pb-3">รายการสั่งซื้อ ({items.length})</h3>
         <NexusTable headers={["รายการ", "สั่ง", "รับแล้ว", "ราคา/หน่วย", "รวม"]}>
           {items.map((it: any, idx: number) => {
             const qty = Number(it.qty ?? it.qtyOrdered ?? 0);
@@ -159,7 +159,7 @@ export default function PODetailPage() {
             return (
               <NexusTableRow key={it.id || idx}>
                 <NexusTableCell>
-                  <div className="text-white text-[13px] font-bold">{it.name || it.description || "-"}</div>
+                  <div className="text-white text-[12px] font-bold">{it.name || it.description || "-"}</div>
                   {it.sku && <div className="text-[11px] text-white/40 font-mono">{it.sku}</div>}
                 </NexusTableCell>
                 <NexusTableCell className="text-right" mono>{qty.toLocaleString()} {it.unit || ""}</NexusTableCell>
@@ -174,7 +174,7 @@ export default function PODetailPage() {
 
       {po.terms && (
         <GlassCard className="p-4 border-white/10 rounded-3xl space-y-2">
-          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2"><FileText size={16} /> เงื่อนไขเพิ่มเติม</h3>
+          <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2"><FileText size={16} /> เงื่อนไขเพิ่มเติม</h3>
           <p className="text-[12px] text-white/60 whitespace-pre-line">{po.terms}</p>
         </GlassCard>
       )}

@@ -87,7 +87,7 @@ export function NumCell({ value, onChange, suffix, kind = "int", className, disa
         onFocus={(e) => { const el = e.target; setEditing(value ? String(value) : ""); requestAnimationFrame(() => el.select()); }}
         onBlur={() => setEditing(null)}
         className={cn(
-          "w-full h-9 rounded-full bg-white/[0.03] border text-white text-[13px] font-mono text-right focus:outline-none focus:border-nexus-teal/40 disabled:opacity-40",
+          "w-full h-9 rounded-full bg-white/[0.03] border text-white text-[12px] font-mono text-right focus:outline-none focus:border-nexus-teal/40 disabled:opacity-40",
           warn ? "border-warning/60" : "border-white/10",
           suffix ? "pl-3 pr-12" : "px-3"
         )}
@@ -142,7 +142,7 @@ export function ExpensesEditor({ expenses, onChange, onReset, amounts }: {
             {(Object.keys(EXPENSE_BASIS_TH) as ExpenseBasis[]).map((b) => <option key={b} value={b}>{EXPENSE_BASIS_TH[b]}</option>)}
           </PillSelect>
           <NumCell value={e.value} kind={e.basis === "AMOUNT" ? "money" : "pct"} onChange={(v) => update(e.id, { value: e.basis === "AMOUNT" ? v : Math.min(100, v) })} suffix={e.basis === "AMOUNT" ? "บาท" : "%"} />
-          <span className="text-[13px] font-mono text-white text-right whitespace-nowrap">{baht(amounts[e.id] || 0)}</span>
+          <span className="text-[12px] font-mono text-white text-right whitespace-nowrap">{baht(amounts[e.id] || 0)}</span>
           <button type="button" onClick={() => onChange(expenses.filter((x) => x.id !== e.id))} className="p-1 text-white/40 hover:text-danger justify-self-end" title="ลบรายการ"><Trash2 size={15} /></button>
         </div>
       ))}
@@ -155,7 +155,7 @@ export function ExpensesEditor({ expenses, onChange, onReset, amounts }: {
             <RotateCcw size={13} className="mr-1" /> คำนวณใหม่ทั้งหมด
           </PillButton>
         </div>
-        <span className="text-[13px] text-white/60">รวมค่าใช้จ่ายดำเนินงาน <b className="font-mono text-white ml-2">{baht(total)}</b></span>
+        <span className="text-[12px] text-white/60">รวมค่าใช้จ่ายดำเนินงาน <b className="font-mono text-white ml-2">{baht(total)}</b></span>
       </div>
     </div>
   );
@@ -200,11 +200,11 @@ export function TimelineEditor({ phases, onChange, onRegenerate, contractValue, 
           <div key={p.id} className={cols}>
             <span className="text-[12px] font-mono text-white/50 text-center hidden 2xl:block">{i + 1}</span>
             <PillInput value={p.name} title={p.name} onChange={(e) => update(p.id, { name: e.target.value })} placeholder="ชื่องวดงาน" className="h-9 text-sm px-4" />
-            <PillInput type="date" value={p.startDate} title={`${daysBetween(p.startDate, p.endDate)} วัน`} onChange={(e) => update(p.id, { startDate: e.target.value })} className={cn("h-9 text-[13px] font-mono px-3", outOfRange(p) && "border-warning/50")} />
-            <PillInput type="date" value={p.endDate} onChange={(e) => update(p.id, { endDate: e.target.value })} className={cn("h-9 text-[13px] font-mono px-3", (p.endDate < p.startDate || outOfRange(p)) && "border-warning/50")} />
-            <span className="text-[13px] font-mono text-white/70 text-right hidden 2xl:block">{daysBetween(p.startDate, p.endDate) || "-"}</span>
+            <PillInput type="date" value={p.startDate} title={`${daysBetween(p.startDate, p.endDate)} วัน`} onChange={(e) => update(p.id, { startDate: e.target.value })} className={cn("h-9 text-[12px] font-mono px-3", outOfRange(p) && "border-warning/50")} />
+            <PillInput type="date" value={p.endDate} onChange={(e) => update(p.id, { endDate: e.target.value })} className={cn("h-9 text-[12px] font-mono px-3", (p.endDate < p.startDate || outOfRange(p)) && "border-warning/50")} />
+            <span className="text-[12px] font-mono text-white/70 text-right hidden 2xl:block">{daysBetween(p.startDate, p.endDate) || "-"}</span>
             <NumCell value={p.weight} kind="pct" onChange={(v) => update(p.id, { weight: Math.min(100, v) })} suffix="%" />
-            <span className="text-[13px] font-mono text-white text-right whitespace-nowrap">{baht((contractValue * (Number(p.weight) || 0)) / 100)}</span>
+            <span className="text-[12px] font-mono text-white text-right whitespace-nowrap">{baht((contractValue * (Number(p.weight) || 0)) / 100)}</span>
             <button type="button" onClick={() => onChange(phases.filter((x) => x.id !== p.id))} className="p-1 text-white/40 hover:text-danger justify-self-end" title="ลบงวดงาน"><Trash2 size={15} /></button>
           </div>
         ))}
@@ -222,7 +222,7 @@ export function TimelineEditor({ phases, onChange, onRegenerate, contractValue, 
             <Sparkles size={13} className="mr-1" /> สร้างตามรูปแบบงาน
           </PillButton>
         </div>
-        <span className={cn("text-[13px]", weightOk ? "text-white/60" : "text-warning font-bold")}>
+        <span className={cn("text-[12px]", weightOk ? "text-white/60" : "text-warning font-bold")}>
           สัดส่วนรวม <b className="font-mono ml-1">{totalWeight}%</b>{!weightOk && " (ต้องเท่ากับ 100%)"}
           <span className="text-white/40 font-normal ml-3">งวดเงินคิดจากมูลค่ารวม VAT {baht(contractValue)}</span>
         </span>
@@ -248,7 +248,7 @@ const SOURCE_CHIP: Record<DocSource, { label: string; cls: string }> = {
   ai: { label: "AI เรียบเรียง", cls: "text-nexus-blue border-nexus-blue/30 bg-nexus-blue/10" },
 };
 
-const textareaCls = "w-full bg-black/20 border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:outline-none resize-y leading-relaxed";
+const textareaCls = "w-full bg-black/20 border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[12px] text-white focus:outline-none resize-y leading-relaxed";
 const autoRows = (v: string, min = 2) => Math.min(40, Math.max(min, (v || "").split("\n").length + 1));
 
 export function DocSectionsEditor({ defs, sections, source, onChange, onRegenerate, aiNotes, onAiNotes, onAi, aiBusy }: {
@@ -266,7 +266,7 @@ export function DocSectionsEditor({ defs, sections, source, onChange, onRegenera
     <div className="space-y-4">
       <div className="p-4 rounded-2xl border border-nexus-blue/25 bg-nexus-blue/[0.04] space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-[13px] font-bold text-white flex items-center gap-2"><Bot size={15} className="text-nexus-blue" /> ผู้ช่วย AI เรียบเรียงรายละเอียดโครงการ</span>
+          <span className="text-[12px] font-bold text-white flex items-center gap-2"><Bot size={15} className="text-nexus-blue" /> ผู้ช่วย AI เรียบเรียงรายละเอียดโครงการ</span>
           <PillButton variant="glass" onClick={onAi} disabled={aiBusy} className="h-8 px-3 text-xs font-bold text-nexus-blue border-nexus-blue/30">
             <Sparkles size={13} className="mr-1" /> {aiBusy ? "AI กำลังเรียบเรียง..." : "ให้ AI เรียบเรียง"}
           </PillButton>
@@ -287,7 +287,7 @@ export function DocSectionsEditor({ defs, sections, source, onChange, onRegenera
         return (
           <div key={s.key} className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[13px] font-bold text-white flex items-center gap-1.5">
+              <span className="text-[12px] font-bold text-white flex items-center gap-1.5">
                 {i + 1}. {s.title}
                 {s.locked && <Lock size={12} className="text-white/40" />}
               </span>
@@ -305,7 +305,7 @@ export function DocSectionsEditor({ defs, sections, source, onChange, onRegenera
               )}
             </div>
             {s.locked ? (
-              <div className="whitespace-pre-wrap rounded-xl border border-white/5 bg-white/[0.02] p-3 text-[13px] text-white/60 leading-relaxed">{sections[s.key]}</div>
+              <div className="whitespace-pre-wrap rounded-xl border border-white/5 bg-white/[0.02] p-3 text-[12px] text-white/60 leading-relaxed">{sections[s.key]}</div>
             ) : (
               <textarea
                 value={sections[s.key] || ""}
@@ -348,7 +348,7 @@ export function SpecChoiceEditor({ rows, library, choices, autoIds, onChange, on
         return (
           <div key={r.lineId} className="grid grid-cols-[minmax(0,1fr)_220px] 2xl:grid-cols-[minmax(0,300px)_240px_minmax(0,1fr)] gap-x-2 gap-y-1.5 items-center p-2.5 rounded-2xl border border-white/5 bg-white/[0.02]">
             <div className="min-w-0 pl-1">
-              <p className="text-[13px] font-bold text-white truncate" title={r.name}>{r.name}</p>
+              <p className="text-[12px] font-bold text-white truncate" title={r.name}>{r.name}</p>
               <p className="text-[11px] text-white/40">จำนวน {r.qty.toLocaleString("th-TH")} {r.unit} · {want === "PRODUCT" ? "สินค้า" : "งานบริการ"}
                 {autoIds.has(r.lineId) && ch?.templateId && <span className="text-nexus-teal ml-1.5">· จับคู่อัตโนมัติ</span>}
                 {!autoIds.has(r.lineId) && <button type="button" onClick={() => onReset(r.lineId)} className="ml-1.5 text-white/50 hover:text-nexus-teal">· ใช้การจับคู่อัตโนมัติ</button>}

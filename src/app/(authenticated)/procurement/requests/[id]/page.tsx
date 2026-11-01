@@ -132,25 +132,25 @@ export default function PurchaseRequestDetailPage() {
     <div className="space-y-6 pr-2 pb-10">
       <div className="grid grid-cols-2 gap-4">
         <GlassCard className="p-4 border-white/10 rounded-3xl space-y-2 text-[12px]">
-          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3"><User size={16} className="text-cyan-300" /> ผู้ขอซื้อ</h3>
+          <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3"><User size={16} className="text-cyan-300" /> ผู้ขอซื้อ</h3>
           <Row label="ผู้ยื่นคำขอ" value={pr.requester || "-"} />
           <Row label="แผนก" value={pr.department || "-"} />
           <Row label="โครงการ" value={pr.projectName || pr.projectId || "-"} />
           <Row label="ผู้จำหน่ายที่แนะนำ" value={pr.suggestedSupplierName || "-"} />
         </GlassCard>
         <GlassCard className="p-4 border-white/10 rounded-3xl space-y-2 text-[12px]">
-          <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3"><Calendar size={16} className="text-nexus-blue" /> กำหนดการ</h3>
+          <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-3"><Calendar size={16} className="text-nexus-blue" /> กำหนดการ</h3>
           <Row label="วันที่ขอ" value={pr.requestDate || "-"} />
           <Row label="วันที่ต้องการใช้" value={pr.requiredDate || "-"} />
           <Row label="ความสำคัญ" value={PRIORITY[pr.priority] || pr.priority || "-"} />
         </GlassCard>
       </div>
       <GlassCard className="p-4 border-white/10 rounded-3xl space-y-2">
-        <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80">วัตถุประสงค์ / ความจำเป็น</h3>
-        <p className="text-[13px] text-white/70 whitespace-pre-line">{pr.reason || "-"}</p>
+        <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80">วัตถุประสงค์ / ความจำเป็น</h3>
+        <p className="text-[12px] text-white/70 whitespace-pre-line">{pr.reason || "-"}</p>
       </GlassCard>
       <GlassCard className="p-4 border-white/10 rounded-3xl space-y-3">
-        <h3 className="text-[13px] font-semibold uppercase tracking-widest text-white/80 border-b border-white/10 pb-3">รายการขอซื้อ ({items.length})</h3>
+        <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 border-b border-white/10 pb-3">รายการขอซื้อ ({items.length})</h3>
         <NexusTable headers={["รายการ", "จำนวน", "ราคาประมาณ/หน่วย", "รวม"]}>
           {items.map((it: any, idx: number) => {
             const qty = Number(it.qty || 0);
@@ -158,7 +158,7 @@ export default function PurchaseRequestDetailPage() {
             return (
               <NexusTableRow key={it.id || idx}>
                 <NexusTableCell>
-                  <div className="text-white text-[13px] font-bold">{it.name || "-"}</div>
+                  <div className="text-white text-[12px] font-bold">{it.name || "-"}</div>
                   {it.sku && <div className="text-[11px] text-white/40 font-mono">{it.sku}</div>}
                 </NexusTableCell>
                 <NexusTableCell className="text-right" mono>{qty.toLocaleString()} {it.unit || ""}</NexusTableCell>

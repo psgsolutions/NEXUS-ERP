@@ -35,7 +35,7 @@ export function InfoTip({ text, className }: { text: React.ReactNode; className?
         <Info size={14} />
       </button>
       <FloatingLayer anchorRef={ref} open={open} matchWidth={false} minWidth={260} maxHeight={260}>
-        <div className="max-w-[320px] p-3 rounded-xl border border-white/10 bg-surface-0/95 backdrop-blur-xl shadow-2xl text-[13px] leading-relaxed text-white/85 font-normal normal-case tracking-normal">
+        <div className="max-w-[320px] p-3 rounded-xl border border-white/10 bg-surface-0/95 backdrop-blur-xl shadow-2xl text-[12px] leading-relaxed text-white/85 font-normal normal-case tracking-normal">
           {text}
         </div>
       </FloatingLayer>
@@ -49,8 +49,8 @@ export function EmptyGuide({ cols, text, hint }: { cols: number; text: string; h
     <tr>
       <td colSpan={cols} className="py-10 px-4 text-center">
         <p className="text-[14px] text-white/60">{text}</p>
-        {hint && <p className="text-[13px] text-white/45 mt-1">{hint}</p>}
-        <button type="button" onClick={() => window.dispatchEvent(new Event("nexus:help"))} className="mt-2 text-[13px] font-semibold text-nexus-teal hover:underline">ดูวิธีใช้หน้านี้</button>
+        {hint && <p className="text-[12px] text-white/45 mt-1">{hint}</p>}
+        <button type="button" onClick={() => window.dispatchEvent(new Event("nexus:help"))} className="mt-2 text-[12px] font-semibold text-nexus-teal hover:underline">ดูวิธีใช้หน้านี้</button>
       </td>
     </tr>
   );
@@ -62,7 +62,7 @@ export function WhatHappens({ items, title = "เมื่อกดบันท�
   return (
     <div className={cn("rounded-xl border border-nexus-blue/20 bg-nexus-blue/[0.06] p-3", className)}>
       <p className="flex items-center gap-1.5 text-[12px] font-bold text-nexus-blue mb-1.5"><ListChecks size={14} /> {title}</p>
-      <ol className="list-decimal pl-5 space-y-0.5 text-[13px] leading-relaxed text-white/75">
+      <ol className="list-decimal pl-5 space-y-0.5 text-[12px] leading-relaxed text-white/75">
         {list.map((x, i) => <li key={i}>{x}</li>)}
       </ol>
     </div>

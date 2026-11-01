@@ -505,7 +505,7 @@ export function DocumentDesigner() {
   // ---------- ตั้งค่าเพิ่มเติม (พับไว้) ----------
   const moreSettings = (
     <details className="group rounded-2xl border border-white/10 bg-white/[0.02]" open={isLetter}>
-      <summary className="list-none cursor-pointer select-none px-3.5 py-3 text-[13px] font-bold text-white/75 flex items-center gap-2"><span className="text-white/35 group-open:rotate-90 transition-transform">›</span> ตั้งค่าเพิ่มเติม (รูปแบบ · หัวกระดาษ · AI)</summary>
+      <summary className="list-none cursor-pointer select-none px-3.5 py-3 text-[12px] font-bold text-white/75 flex items-center gap-2"><span className="text-white/35 group-open:rotate-90 transition-transform">›</span> ตั้งค่าเพิ่มเติม (รูปแบบ · หัวกระดาษ · AI)</summary>
       <fieldset disabled={!canEdit} className="px-3 pb-3 space-y-2.5">
         <Section title="รูปแบบส่วนต่าง ๆ" all>
           <div className="grid grid-cols-2 gap-2">
@@ -606,7 +606,7 @@ export function DocumentDesigner() {
         <div className="flex flex-wrap items-center gap-2 px-1">
           <div className="flex rounded-full bg-white/5 p-1 border border-white/10">
             {([["simple", "อัตโนมัติ", ListChecks], ["canvas", "ออกแบบเอง", MousePointerClick]] as const).map(([m, label, I]) => (
-              <button key={m} type="button" onClick={() => setMode(m)} className={cn("h-8 px-4 rounded-full text-[13px] flex items-center gap-1.5", mode === m ? "bg-nexus-teal/20 text-nexus-teal font-bold" : "text-white/55 hover:text-white")}><I size={14} /> {label}</button>
+              <button key={m} type="button" onClick={() => setMode(m)} className={cn("h-8 px-4 rounded-full text-[12px] flex items-center gap-1.5", mode === m ? "bg-nexus-teal/20 text-nexus-teal font-bold" : "text-white/55 hover:text-white")}><I size={14} /> {label}</button>
             ))}
           </div>
           <span className="text-[12px] text-white/70">กำลังแก้: <b className="text-white">{def.title}</b></span>
@@ -637,7 +637,7 @@ export function DocumentDesigner() {
           </div>
           <div className="flex-1 min-w-0 w-full space-y-2 xl:sticky xl:top-4">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-[13px] text-white/70">ตัวอย่าง{docName} (เปลี่ยนทันทีที่แก้)</p>
+              <p className="text-[12px] text-white/70">ตัวอย่าง{docName} (เปลี่ยนทันทีที่แก้)</p>
               <div className="ml-auto flex gap-2">
                 <PillButton variant="glass" className="h-8 px-3 text-xs" onClick={() => setModal("pdf")}><Eye size={13} /> ดู PDF / พิมพ์</PillButton>
                 {canEdit && <PillButton variant="primary" className="h-8 px-3 text-xs" onClick={() => setMode("canvas")}><MousePointerClick size={13} /> ปรับแก้จากแม่แบบนี้ (ออกแบบเอง)</PillButton>}
@@ -695,7 +695,7 @@ export function DocumentDesigner() {
         <Modal title="แม่แบบของบริษัท" onClose={() => setModal("")} wide>
           <div className="space-y-4">
             <div className="rounded-xl border border-white/10 p-3 space-y-2">
-              <p className="text-[13px] text-white/80">ผังของ <b className="text-white">{def.title}</b> ที่กำลังแก้</p>
+              <p className="text-[12px] text-white/80">ผังของ <b className="text-white">{def.title}</b> ที่กำลังแก้</p>
               <p className="text-[12px] text-white/45">แม่แบบเก็บรูปแบบ (ผัง กรอบ สี ฟอนต์ ระยะ มุม หัวกระดาษ) — ใช้กับเอกสารชนิดอื่นแล้ว ข้อมูล คอลัมน์ และช่องลงนามจัดตามเอกสารนั้นเอง</p>
               <div className="flex flex-wrap gap-2">
                 <PillButton variant="confirm" className="h-9 px-4 text-xs font-bold" onClick={saveAsTemplate}><Save size={14} /> บันทึกเป็นแม่แบบของบริษัท</PillButton>
@@ -707,7 +707,7 @@ export function DocumentDesigner() {
               </div>
             </div>
             {companyTemplates.length === 0 ? (
-              <p className="text-[13px] text-white/45 text-center py-6">ยังไม่มีแม่แบบของบริษัท — ออกแบบเอกสารให้เรียบร้อยแล้วกด &quot;บันทึกเป็นแม่แบบของบริษัท&quot;</p>
+              <p className="text-[12px] text-white/45 text-center py-6">ยังไม่มีแม่แบบของบริษัท — ออกแบบเอกสารให้เรียบร้อยแล้วกด &quot;บันทึกเป็นแม่แบบของบริษัท&quot;</p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
                 {companyTemplates.map((tp) => <CompanyTemplateCard key={tp.id} tp={tp} docType={docType} profile={profile} canEdit={canEdit} onApply={(scope) => applyCompanyTpl(tp, scope)} onDelete={() => deleteCompanyTemplate(tp)} />)}
@@ -734,13 +734,13 @@ export function DocumentDesigner() {
         <Modal title="ประวัติการออกแบบที่บันทึก" onClose={() => setModal("")}>
           <p className="text-[12px] text-white/50">เปิดเวอร์ชันเก่าเพื่อดู แล้วกด &quot;บันทึก&quot; ถ้าต้องการใช้ (เก็บล่าสุด 20 ครั้ง)</p>
           {!versions ? <div className="py-6 flex justify-center"><Loader2 size={16} className="animate-spin text-white/40" /></div>
-            : !versions.length ? <p className="text-[13px] text-white/60 py-4 text-center">ยังไม่มีประวัติ — จะเริ่มเก็บตั้งแต่การบันทึกครั้งถัดไป</p>
+            : !versions.length ? <p className="text-[12px] text-white/60 py-4 text-center">ยังไม่มีประวัติ — จะเริ่มเก็บตั้งแต่การบันทึกครั้งถัดไป</p>
             : (
               <div className="space-y-1.5">
                 {versions.map((v, i) => (
                   <div key={v.id} className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2">
                     <div className="min-w-0">
-                      <p className="text-[13px] text-white">{v.savedAt ? new Date(v.savedAt).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" }) : "-"}{i === 0 && <span className="ml-2 text-[11px] text-nexus-teal">ล่าสุด</span>}</p>
+                      <p className="text-[12px] text-white">{v.savedAt ? new Date(v.savedAt).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" }) : "-"}{i === 0 && <span className="ml-2 text-[11px] text-nexus-teal">ล่าสุด</span>}</p>
                       <p className="text-[12px] text-white/50 truncate">{TEMPLATES.find((t) => t.id === v.templateId)?.name || "กำหนดเอง"}{v.savedByName ? ` · ${v.savedByName}` : ""}</p>
                     </div>
                     <PillButton variant="glass" className="h-8 px-3 text-xs ml-auto" onClick={() => restoreVersion(v.id)}><PanelTop size={13} /> เปิดเวอร์ชันนี้</PillButton>

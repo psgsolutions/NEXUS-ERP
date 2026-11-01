@@ -105,7 +105,7 @@ export default function ExpensePhotosPage() {
             <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }} />
             <input ref={fileRef} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }} />
             <PillCheckbox label="รูปที่เลือกพร้อมกันเป็นบิลเดียวกัน (บิลยาวหลายหน้า)" checked={oneBill} onChange={(e) => setOneBill(e.target.checked)} />
-            {busy && <p className="text-[13px] text-nexus-teal flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> {busy}</p>}
+            {busy && <p className="text-[12px] text-nexus-teal flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> {busy}</p>}
             <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-white/5">
               <PillButton variant="glass" className="h-8 px-3 text-xs" onClick={linkLine}><MessageCircle size={13} /> ส่งรูปผ่าน LINE</PillButton>
               {lineCode && <span className="text-[12px] text-white/70">เพิ่มเพื่อน LINE ของบริษัท{lineCode.botName ? ` (${lineCode.botName})` : ""} แล้วพิมพ์ <b className="text-nexus-teal font-mono text-[14px]">เชื่อม {lineCode.code}</b> (ภายใน 10 นาที) — จากนั้นส่งรูปบิลในแชตได้เลย</span>}
@@ -121,7 +121,7 @@ export default function ExpensePhotosPage() {
           </div>
 
           {loading ? <div className="py-10 flex justify-center gap-2 text-white/40 text-sm"><Loader2 size={16} className="animate-spin" /> กำลังโหลด…</div>
-            : !shown.length ? <GlassCard className="p-8 text-center text-[13px] text-white/55">{tab === "open" ? "ยังไม่มีบิลรอยืนยัน — กดถ่ายรูปบิลด้านบน" : "ไม่มีรายการ"}</GlassCard>
+            : !shown.length ? <GlassCard className="p-8 text-center text-[12px] text-white/55">{tab === "open" ? "ยังไม่มีบิลรอยืนยัน — กดถ่ายรูปบิลด้านบน" : "ไม่มีรายการ"}</GlassCard>
             : shown.map((it) => <InboxCard key={it.id} item={it} canConfirm={canConfirm} mine={it.createdBy === user?.uid} employees={employees} projects={openProjects} post={post} onDone={load} showAlert={showAlert} showConfirm={showConfirm} />)}
         </div>
       </div>
@@ -212,10 +212,10 @@ function InboxCard({ item, canConfirm, mine, employees, projects, post, onDone, 
           <div className="space-y-1">
             {d.items.map((l, i) => (
               <div key={i} className="flex items-center gap-1.5">
-                <PillInput value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} placeholder="รายการ" className="h-8 flex-1 min-w-0 text-[13px]" />
-                <PillInput inputMode="decimal" value={l.qty} onChange={(e) => setLine(i, { qty: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 })} className="h-8 w-14 text-[13px] text-right font-mono" title="จำนวน" />
-                <PillInput inputMode="decimal" value={l.unitPrice} onChange={(e) => setLine(i, { unitPrice: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 })} className="h-8 w-24 text-[13px] text-right font-mono" title="ราคาต่อหน่วย" />
-                <span className="w-24 text-right text-[13px] font-mono text-white/80">{money(l.amount)}</span>
+                <PillInput value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} placeholder="รายการ" className="h-8 flex-1 min-w-0 text-[12px]" />
+                <PillInput inputMode="decimal" value={l.qty} onChange={(e) => setLine(i, { qty: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 })} className="h-8 w-14 text-[12px] text-right font-mono" title="จำนวน" />
+                <PillInput inputMode="decimal" value={l.unitPrice} onChange={(e) => setLine(i, { unitPrice: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 })} className="h-8 w-24 text-[12px] text-right font-mono" title="ราคาต่อหน่วย" />
+                <span className="w-24 text-right text-[12px] font-mono text-white/80">{money(l.amount)}</span>
                 {editable && <button type="button" onClick={() => set({ items: d.items.filter((_x, j) => j !== i) })} aria-label="ลบรายการ" className="w-7 h-7 flex items-center justify-center text-white/40 hover:text-danger"><Trash2 size={13} /></button>}
               </div>
             ))}
@@ -223,8 +223,8 @@ function InboxCard({ item, canConfirm, mine, employees, projects, post, onDone, 
           </div>
           {d.docType === "TAX_INVOICE" && (
             <div className="flex flex-wrap items-center gap-2 text-[12px] text-white/60">
-              ก่อน VAT <PillInput inputMode="decimal" value={d.subtotal} onChange={(e) => set({ subtotal: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 })} className="h-8 w-28 text-right font-mono text-[13px]" />
-              VAT <PillInput inputMode="decimal" value={d.vat} onChange={(e) => set({ vat: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 })} className="h-8 w-24 text-right font-mono text-[13px]" />
+              ก่อน VAT <PillInput inputMode="decimal" value={d.subtotal} onChange={(e) => set({ subtotal: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 })} className="h-8 w-28 text-right font-mono text-[12px]" />
+              VAT <PillInput inputMode="decimal" value={d.vat} onChange={(e) => set({ vat: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 })} className="h-8 w-24 text-right font-mono text-[12px]" />
             </div>
           )}
           {needsSubstitute(d) && <p className="text-[12px] text-sky-200/80 flex items-center gap-1.5"><FileText size={12} /> ไม่มีใบเสร็จ — ระบบออกใบรับรองแทนใบเสร็จรับเงินให้ (ไม่มีภาษีซื้อ)</p>}

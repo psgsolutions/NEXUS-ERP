@@ -85,7 +85,7 @@ export default function ServicePage() {
           <div className="w-11 h-11 bg-nexus-teal/20 border border-nexus-teal/20 rounded-xl flex items-center justify-center"><Headset size={22} className="text-nexus-teal" /></div>
           <div>
             <h1 className="text-2xl font-bold text-white leading-normal">งานบริการและแจ้งซ่อม</h1>
-            <p className="text-[13px] text-white/50">รับเรื่อง → ส่งให้ช่าง → ช่างปิดงาน → ปิดเรื่อง · ติดตามเวลาแก้ไขตามความเร่งด่วน</p>
+            <p className="text-[12px] text-white/50">รับเรื่อง → ส่งให้ช่าง → ช่างปิดงาน → ปิดเรื่อง · ติดตามเวลาแก้ไขตามความเร่งด่วน</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -110,7 +110,7 @@ ${url}`); } catch { showAlert(url, "ลิงก์แจ้งซ่อมส�
         <GlassCard className="p-4 space-y-2 border-warning/30">
           <p className="text-[14px] font-semibold text-white flex items-center gap-2"><Inbox size={16} className="text-warning" /> ลูกค้าแจ้งผ่านพอร์ทัล รอรับเรื่อง ({portal.length})</p>
           {(showAllPortal ? portal : portal.slice(0, 5)).map((p) => (
-            <div key={p.id} className="flex items-center justify-between gap-3 text-[13px] border-t border-white/5 pt-2">
+            <div key={p.id} className="flex items-center justify-between gap-3 text-[12px] border-t border-white/5 pt-2">
               <span className="text-white/80 min-w-0 truncate">{fmt(p.createdAt)} · {p.customerName ? `${p.customerName} ` : ""}{p.phoneNumber}{p.serialNumber ? ` · S/N ${p.serialNumber}` : ""} · {p.symptom}</span>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {p.hasPhoto && <PillButton variant="ghost" className="h-8 px-3 text-xs" disabled={busy} onClick={async () => { const d = await run("/api/service/tickets", { action: "portalPhoto", portalId: p.id }); if (d?.photo) setPhoto(d.photo); }}><ImageIcon size={13} /> รูป</PillButton>}
@@ -119,7 +119,7 @@ ${url}`); } catch { showAlert(url, "ลิงก์แจ้งซ่อมส�
               </div>
             </div>
           ))}
-          {portal.length > 5 && <button type="button" onClick={() => setShowAllPortal((v) => !v)} className="text-[13px] text-nexus-teal hover:underline">{showAllPortal ? "ย่อ" : `ดูทั้งหมด ${portal.length} รายการ`}</button>}
+          {portal.length > 5 && <button type="button" onClick={() => setShowAllPortal((v) => !v)} className="text-[12px] text-nexus-teal hover:underline">{showAllPortal ? "ย่อ" : `ดูทั้งหมด ${portal.length} รายการ`}</button>}
         </GlassCard>
       )}
 
@@ -129,7 +129,7 @@ ${url}`); } catch { showAlert(url, "ลิงก์แจ้งซ่อมส�
 
       <GlassCard accentColor="teal" className="p-0 overflow-hidden">
         <NexusTable headers={["เลขที่", "วันที่แจ้ง", "ลูกค้า", "อาการ/เรื่อง", "ประเภท", "ความเร่งด่วน", "เวลาที่เหลือ", "ช่างผู้รับผิดชอบ", "สถานะ"]} itemCount={shown.length}>
-          {shown.length === 0 && <NexusTableRow className="cursor-default"><NexusTableCell colSpan={9} className="text-center text-[13px] text-white/40 py-10">{loading ? "กำลังโหลด…" : "ไม่มีใบแจ้งในรายการนี้"}</NexusTableCell></NexusTableRow>}
+          {shown.length === 0 && <NexusTableRow className="cursor-default"><NexusTableCell colSpan={9} className="text-center text-[12px] text-white/40 py-10">{loading ? "กำลังโหลด…" : "ไม่มีใบแจ้งในรายการนี้"}</NexusTableCell></NexusTableRow>}
           {shown.map((t) => (
             <NexusTableRow key={t.ticketNo} onClick={() => setOpenNo(t.ticketNo)}>
               <NexusTableCell mono>{t.ticketNo}</NexusTableCell>
@@ -186,7 +186,7 @@ const Field = ({ label, children, className }: { label: string; children: React.
   <div className={cn("space-y-1", className)}><label className="block text-[12px] font-bold text-white/70 ml-1">{label}</label>{children}</div>
 );
 const Chips = ({ options, value, onChange }: { options: readonly { value: string; label: string }[]; value: string; onChange: (v: string) => void }) => (
-  <div className="flex gap-1.5 flex-wrap">{options.map((o) => <button key={o.value} type="button" onClick={() => onChange(o.value)} className={cn("h-9 px-3 rounded-full border text-[13px]", value === o.value ? "bg-nexus-teal/15 border-nexus-teal/40 text-nexus-teal" : "border-white/10 text-white/60 hover:text-white")}>{o.label}</button>)}</div>
+  <div className="flex gap-1.5 flex-wrap">{options.map((o) => <button key={o.value} type="button" onClick={() => onChange(o.value)} className={cn("h-9 px-3 rounded-full border text-[12px]", value === o.value ? "bg-nexus-teal/15 border-nexus-teal/40 text-nexus-teal" : "border-white/10 text-white/60 hover:text-white")}>{o.label}</button>)}</div>
 );
 
 function TicketForm({ initial, busy, call, onClose, onSave }: { initial: any; busy: boolean; call: (url: string, body: any) => Promise<any>; onClose: () => void; onSave: (t: any, portalId?: string) => void }) {
@@ -252,9 +252,9 @@ function TicketDrawer({ ticket: t, people, canEdit, busy, onClose, onAction }: {
         </>}
       </>}>
       <div className="space-y-2">
-        <div className="flex items-center gap-2 flex-wrap"><StatusBadge status={st?.badge || "pending"} label={st?.label || t.status} /><span className="text-[13px]"><Sla t={t} /></span></div>
+        <div className="flex items-center gap-2 flex-wrap"><StatusBadge status={st?.badge || "pending"} label={st?.label || t.status} /><span className="text-[12px]"><Sla t={t} /></span></div>
         <p className="text-[16px] text-white leading-relaxed whitespace-pre-line">{t.symptom}</p>
-        <div className="text-[13px] text-white/60 space-y-1">
+        <div className="text-[12px] text-white/60 space-y-1">
           <p>{t.customerName || "-"}{t.phone ? <> · <a href={`tel:${t.phone}`} className="text-nexus-teal inline-flex items-center gap-1"><Phone size={12} /> {t.phone}</a></> : null}</p>
           {t.address && <p>{t.address}</p>}
           {(t.serialNumber || t.productName) && <p>{t.productName} {t.serialNumber ? `· S/N ${t.serialNumber}` : ""} {t.inWarranty ? <span className="text-nexus-teal">· อยู่ในประกัน</span> : null}</p>}
@@ -276,7 +276,7 @@ function TicketDrawer({ ticket: t, people, canEdit, busy, onClose, onAction }: {
                 return (
                   <button key={p.uid} type="button" onClick={() => setAssignees((a) => (on ? a.filter((x) => x !== p.uid) : [...a, p.uid]))} className={cn("flex items-center gap-2 px-3 py-2 rounded-xl border text-left", on ? "bg-nexus-teal/10 border-nexus-teal/40" : "border-white/10 hover:bg-white/5")}>
                     <span className={cn("w-5 h-5 rounded-md border flex items-center justify-center", on ? "bg-nexus-teal border-nexus-teal text-surface-0" : "border-white/30")}>{on && <Check size={13} strokeWidth={3} />}</span>
-                    <span className="min-w-0"><span className="block text-[13px] text-white truncate">{p.name}</span><span className="block text-[11px] text-white/40">งานค้าง {p.openJobs}</span></span>
+                    <span className="min-w-0"><span className="block text-[12px] text-white truncate">{p.name}</span><span className="block text-[11px] text-white/40">งานค้าง {p.openJobs}</span></span>
                   </button>
                 );
               })}
@@ -303,7 +303,7 @@ function TicketDrawer({ ticket: t, people, canEdit, busy, onClose, onAction }: {
         <GlassCard className="p-4 space-y-2">
           <p className="text-[14px] font-semibold text-white">งานช่างที่ผูกกับเรื่องนี้</p>
           {t.jobs.map((j: any) => (
-            <div key={j.jobNo} className="flex items-center justify-between text-[13px]">
+            <div key={j.jobNo} className="flex items-center justify-between text-[12px]">
               <span className="text-white/80 font-mono">{j.jobNo}</span>
               <span className="text-white/60">{j.assigneeNames?.join(", ") || "รอจ่ายงาน"} {j.scheduledDate ? `· ${j.scheduledDate}` : ""}</span>
               <StatusBadge status={JOB_STATUS[j.status as keyof typeof JOB_STATUS]?.badge || "pending"} label={JOB_STATUS[j.status as keyof typeof JOB_STATUS]?.label || j.status} />
@@ -319,7 +319,7 @@ function TicketDrawer({ ticket: t, people, canEdit, busy, onClose, onAction }: {
         </div>
       )}
       <div className="space-y-1.5">
-        <p className="text-[13px] font-semibold text-white/70">ประวัติ</p>
+        <p className="text-[12px] font-semibold text-white/70">ประวัติ</p>
         {[...(t.history || [])].reverse().map((h: any, i: number) => (
           <p key={i} className="text-[12px] text-white/50"><span className="font-mono text-white/40">{fmt(h.at)}</span> · {h.action}{h.note ? `: ${h.note}` : ""} · {h.byName}</p>
         ))}

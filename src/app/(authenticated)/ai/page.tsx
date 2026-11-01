@@ -69,7 +69,7 @@ export default function AIHubPage() {
               <div className="flex items-center gap-2 text-white font-bold"><Sparkles size={18} className="text-nexus-teal" /> ลองถามเช่น</div>
               <div className="flex flex-wrap gap-2">
                 {SUGGESTIONS.map((s) => (
-                  <button key={s} onClick={() => ask(s)} className="px-3.5 py-2 rounded-full border border-white/10 bg-white/[0.03] text-[13px] text-white/80 hover:border-nexus-teal/40 hover:text-white transition-colors text-left">{s}</button>
+                  <button key={s} onClick={() => ask(s)} className="px-3.5 py-2 rounded-full border border-white/10 bg-white/[0.03] text-[12px] text-white/80 hover:border-nexus-teal/40 hover:text-white transition-colors text-left">{s}</button>
                 ))}
               </div>
               <p className="text-[12px] text-white/40">ระบบส่งเฉพาะตัวเลขสรุป (ยอดขาย ลูกหนี้ เจ้าหนี้ สต็อก โครงการ) ให้ AI ไม่ส่งเงินเดือนรายคน เลขบัตรประชาชน หรือเลขบัญชีธนาคาร · คำตอบควรตรวจสอบกับรายงานก่อนตัดสินใจ</p>
@@ -86,7 +86,7 @@ export default function AIHubPage() {
               </div>
             </div>
           ))}
-          {busy && <div className="flex items-center gap-2 text-[13px] text-white/50"><Loader2 size={14} className="animate-spin" /> กำลังวิเคราะห์ข้อมูล...</div>}
+          {busy && <div className="flex items-center gap-2 text-[12px] text-white/50"><Loader2 size={14} className="animate-spin" /> กำลังวิเคราะห์ข้อมูล...</div>}
           <div ref={endRef} />
         </div>
       </div>

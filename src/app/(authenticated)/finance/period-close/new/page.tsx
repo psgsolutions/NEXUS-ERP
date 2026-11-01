@@ -112,7 +112,7 @@ export default function PeriodClosePage() {
     <div className="flex items-start gap-3 py-2.5 border-b border-white/5 last:border-0">
       {state === "ok" ? <CheckCircle2 size={17} className="text-nexus-teal shrink-0 mt-0.5" /> : state === "warn" ? <AlertTriangle size={17} className="text-warning shrink-0 mt-0.5" /> : <AlertCircle size={17} className="text-danger shrink-0 mt-0.5" />}
       <div className="min-w-0">
-        <p className="text-[13px] font-bold text-white">{title}</p>
+        <p className="text-[12px] font-bold text-white">{title}</p>
         {detail && <p className="text-[12px] text-white/50 mt-0.5">{detail}</p>}
       </div>
     </div>
@@ -179,7 +179,7 @@ export default function PeriodClosePage() {
           )}
           {issues.length > 0 && (
             <div className="nexus-table-wrap mt-3">
-              <table className="w-full table-fixed text-[13px]">
+              <table className="w-full table-fixed text-[12px]">
                 <colgroup><col className="w-[150px]" /><col className="w-[92px]" /><col /><col className="w-[120px]" /><col className="w-[84px]" /></colgroup>
                 <thead>
                   <tr className="text-[11px] font-bold text-white/50 border-b border-white/10">
@@ -209,9 +209,9 @@ export default function PeriodClosePage() {
 
       <GlassCard className="p-5">
         <h3 className="text-sm font-bold text-white mb-2">ประวัติงวดบัญชี</h3>
-        {!data?.periods.length ? <p className="text-[13px] text-white/40 py-2">ยังไม่เคยปิดงวด</p> : (
+        {!data?.periods.length ? <p className="text-[12px] text-white/40 py-2">ยังไม่เคยปิดงวด</p> : (
           <div className="nexus-table-wrap">
-            <table className="w-full table-fixed text-[13px]">
+            <table className="w-full table-fixed text-[12px]">
               <colgroup><col className="w-[130px]" /><col className="w-[96px]" /><col className="w-[90px]" /><col /><col className="w-[30%]" /></colgroup>
               <thead>
                 <tr className="text-[11px] font-bold text-white/50 border-b border-white/10">
@@ -244,9 +244,9 @@ export default function PeriodClosePage() {
     <div className="p-4 space-y-4">
       <GlassCard className="p-4 space-y-2">
         <h4 className="text-sm font-bold text-white mb-1">สรุปงวด {label}</h4>
-        <div className="flex justify-between text-[13px]"><span className="text-white/60">รายการที่ลงบัญชีแล้ว</span><span className="font-mono text-white">{current ? current.posted.toLocaleString("th-TH") : "-"}</span></div>
-        <div className="flex justify-between text-[13px]"><span className="text-white/60">ยอดเดบิตรวม</span><span className="font-mono text-white">{current ? baht(current.totalDebit) : "-"}</span></div>
-        <div className="flex justify-between text-[13px]"><span className="text-white/60">รออนุมัติ</span><span className={cn("font-mono", current?.drafts.length ? "text-warning" : "text-white")}>{current ? current.drafts.length : "-"}</span></div>
+        <div className="flex justify-between text-[12px]"><span className="text-white/60">รายการที่ลงบัญชีแล้ว</span><span className="font-mono text-white">{current ? current.posted.toLocaleString("th-TH") : "-"}</span></div>
+        <div className="flex justify-between text-[12px]"><span className="text-white/60">ยอดเดบิตรวม</span><span className="font-mono text-white">{current ? baht(current.totalDebit) : "-"}</span></div>
+        <div className="flex justify-between text-[12px]"><span className="text-white/60">รออนุมัติ</span><span className={cn("font-mono", current?.drafts.length ? "text-warning" : "text-white")}>{current ? current.drafts.length : "-"}</span></div>
       </GlassCard>
       {current?.status === "closed" && (
         <GlassCard className="p-4 space-y-2">

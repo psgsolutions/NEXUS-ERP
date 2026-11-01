@@ -91,7 +91,7 @@ export function LetterBuilder({ companyId, project, contract }: { companyId: str
         </div>
       </div>
       {!kind ? (
-        <p className="text-[13px] text-white/55">เลือกชนิดหนังสือ ระบบเติมข้อมูลโครงการ สัญญา และหลักประกันให้ แล้วแก้ข้อความได้ก่อนพิมพ์</p>
+        <p className="text-[12px] text-white/55">เลือกชนิดหนังสือ ระบบเติมข้อมูลโครงการ สัญญา และหลักประกันให้ แล้วแก้ข้อความได้ก่อนพิมพ์</p>
       ) : (
         <div className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">

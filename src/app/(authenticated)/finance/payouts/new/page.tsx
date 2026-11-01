@@ -133,7 +133,7 @@ export default function CreatePayoutPage() {
             <select
               value={formData.soId}
               onChange={handleSoChange}
-              className="h-10 px-5 rounded-full bg-black/50 border border-white/10 text-white text-[13px] font-bold focus:outline-none focus:border-cyan-400/40 w-full appearance-none transition-all"
+              className="h-10 px-5 rounded-full bg-black/50 border border-white/10 text-white text-[12px] font-bold focus:outline-none focus:border-cyan-400/40 w-full appearance-none transition-all"
             >
               <option value="" className="bg-slate-900 text-white/40">-- เลือกใบสั่งขาย --</option>
               {salesOrders.map(so => (
@@ -198,9 +198,9 @@ export default function CreatePayoutPage() {
               laborItems.map((item, index) => (
                 <div key={item.id} className="flex gap-2 px-4 py-2 items-center hover:bg-white/[0.02] transition-colors min-h-[40px]">
                   <div className="w-8 text-center text-xs font-mono text-white/40">{index + 1}</div>
-                  <div className="flex-1 text-[13px] font-bold text-white">{item.name}</div>
-                  <div className="w-24 text-right text-[13px] text-white/60 font-mono">{item.qty} <span className="font-sans">{item.unit}</span></div>
-                  <div className="w-32 text-right font-mono text-[13px] text-cyan-400 font-bold">{item.payoutAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</div>
+                  <div className="flex-1 text-[12px] font-bold text-white">{item.name}</div>
+                  <div className="w-24 text-right text-[12px] text-white/60 font-mono">{item.qty} <span className="font-sans">{item.unit}</span></div>
+                  <div className="w-32 text-right font-mono text-[12px] text-cyan-400 font-bold">{item.payoutAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</div>
                 </div>
               ))
             )}
@@ -213,14 +213,14 @@ export default function CreatePayoutPage() {
 
   const rightSidebar = (
     <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 shadow-2xl space-y-6 sticky top-0">
-      <h3 className="text-[13px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4 relative z-10">
+      <h3 className="text-[12px] font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4 relative z-10">
         <FileText size={16} className="text-cyan-400" /> สรุปยอดจ่าย
       </h3>
       
       <div className="space-y-4 relative z-10 bg-white/[0.03] p-5 rounded-2xl border border-white/5">
         <div className="flex justify-between items-center text-white/60 pb-3 border-b border-white/5">
           <span className="text-[11px] font-semibold uppercase tracking-widest">รวมยอดค่าแรง</span>
-          <span className="font-mono text-[13px] font-bold text-white">{subTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+          <span className="font-mono text-[12px] font-bold text-white">{subTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
         </div>
         
         <div className="flex justify-between items-center text-red-400">
@@ -228,7 +228,7 @@ export default function CreatePayoutPage() {
             หัก ณ ที่จ่าย (WHT)
             <span className="text-[11px] font-mono text-red-400/60 leading-none">3.00%</span>
           </span>
-          <span className="font-mono text-[13px] font-bold">-{whtAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+          <span className="font-mono text-[12px] font-bold">-{whtAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
         </div>
       </div>
       
@@ -244,7 +244,7 @@ export default function CreatePayoutPage() {
         <textarea
           value={formData.remarks}
           onChange={e => setFormData({...formData, remarks: e.target.value})}
-          className="w-full h-24 p-4 bg-black/40 border border-white/10 rounded-2xl text-[13px] font-bold text-white resize-none outline-none focus:border-cyan-400/50 custom-scrollbar"
+          className="w-full h-24 p-4 bg-black/40 border border-white/10 rounded-2xl text-[12px] font-bold text-white resize-none outline-none focus:border-cyan-400/50 custom-scrollbar"
           placeholder="หมายเหตุการจ่ายเงิน..."
         />
       </div>

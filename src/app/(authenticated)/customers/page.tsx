@@ -124,7 +124,7 @@ export default function CustomerDashboardPage() {
                   </NexusTableCell>
 
                   <NexusTableCell className="w-full">
-                    <div className="font-bold text-white text-[13px]">{customer.customerName || customer.name || customer.companyName || "-"}</div>
+                    <div className="font-bold text-white text-[12px]">{customer.customerName || customer.name || customer.companyName || "-"}</div>
                     {(customer.customerBranch || customer.branch) && (
                       <div className="text-[11px] text-white/40 mt-1 flex items-center gap-1 font-semibold uppercase tracking-wider">
                         <Building2 size={10} /> {customer.customerBranch || customer.branch}

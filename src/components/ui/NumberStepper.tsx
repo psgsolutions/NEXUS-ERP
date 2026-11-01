@@ -39,7 +39,7 @@ export function NumberStepper({
         <Minus size={12} />
       </button>
       <div className="flex-1 px-2 flex items-center justify-center gap-1 min-w-[60px]">
-        <span className="text-[13px] font-black text-white font-mono">{value.toLocaleString()}</span>
+        <span className="text-[12px] font-black text-white font-mono">{value.toLocaleString()}</span>
         {unit && <span className="text-[11px] font-bold text-white/20 uppercase tracking-widest">{unit}</span>}
       </div>
       <button 

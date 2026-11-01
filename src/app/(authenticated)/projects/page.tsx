@@ -205,8 +205,8 @@ export default function ProjectsPage() {
                       const progress = Math.max(0, Math.min(100, Number(p.progress) || 0));
                       return (
                         <NexusTableRow key={p.id}>
-                          <NexusTableCell><Link href={href} className="font-mono text-[13px] text-nexus-blue font-medium">{p.projectId || p.id}</Link></NexusTableCell>
-                          <NexusTableCell><Link href={href} className="text-[13px] font-bold text-white/80 hover:text-white">{projectName(p)}</Link></NexusTableCell>
+                          <NexusTableCell><Link href={href} className="font-mono text-[12px] text-nexus-blue font-medium">{p.projectId || p.id}</Link></NexusTableCell>
+                          <NexusTableCell><Link href={href} className="text-[12px] font-bold text-white/80 hover:text-white">{projectName(p)}</Link></NexusTableCell>
                           <NexusTableCell>
                             <div className="flex items-center gap-2">
                               <div className="h-1 w-20 2xl:w-28 bg-white/5 rounded-full overflow-hidden shrink-0"><div className="h-full bg-nexus-teal" style={{ width: `${progress}%` }} /></div>
@@ -238,7 +238,7 @@ export default function ProjectsPage() {
                       const st = WO_STATUS[w._status] || { label: w.status || "-", badge: "inactive" as const };
                       return (
                         <NexusTableRow key={w.id}>
-                          <NexusTableCell className="font-mono text-[13px] text-nexus-teal">{w.woCode || w.id}</NexusTableCell>
+                          <NexusTableCell className="font-mono text-[12px] text-nexus-teal">{w.woCode || w.id}</NexusTableCell>
                           <NexusTableCell className="font-bold text-white/80">{w.customerName || "-"}</NexusTableCell>
                           <NexusTableCell className="text-white/70">
                             {w._project ? <Link href={`/projects/${encodeURIComponent(w._project.id)}`} className="hover:text-white">{projectName(w._project)}</Link> : (w.projectId || "-")}
@@ -258,7 +258,7 @@ export default function ProjectsPage() {
                     {costing.length === 0 && <EmptyRow cols={8} text="ไม่มีโครงการที่ยังไม่ปิด" />}
                     {costing.map((c) => (
                       <NexusTableRow key={c.p.id}>
-                        <NexusTableCell><Link href={`/projects/${encodeURIComponent(c.p.id)}`} className="font-mono text-[13px] text-nexus-blue">{c.p.projectId || c.p.id}</Link></NexusTableCell>
+                        <NexusTableCell><Link href={`/projects/${encodeURIComponent(c.p.id)}`} className="font-mono text-[12px] text-nexus-blue">{c.p.projectId || c.p.id}</Link></NexusTableCell>
                         <NexusTableCell className="font-bold text-white/80">{projectName(c.p)}</NexusTableCell>
                         <NexusTableCell mono>{baht(c.value)}</NexusTableCell>
                         <NexusTableCell mono className="text-white/70">{baht(c.planned)}</NexusTableCell>
@@ -274,12 +274,12 @@ export default function ProjectsPage() {
                 {activeTab === "contractors" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3 p-2">
                     {contractors.length === 0 ? (
-                      <div className="col-span-full p-12 text-center text-white/40 border border-white/5 border-dashed rounded-3xl text-[13px]">ยังไม่มีผู้รับเหมาหรือทีมช่างในระบบ</div>
+                      <div className="col-span-full p-12 text-center text-white/40 border border-white/5 border-dashed rounded-3xl text-[12px]">ยังไม่มีผู้รับเหมาหรือทีมช่างในระบบ</div>
                     ) : contractors.map((c: any) => (
                       <div key={c.id} className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl space-y-2">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <h4 className="text-[13px] font-bold text-white truncate">{c.name || "-"}</h4>
+                            <h4 className="text-[12px] font-bold text-white truncate">{c.name || "-"}</h4>
                             <p className="text-[12px] text-white/50">{c.category || "-"}{c.contact_person ? ` · ${c.contact_person}` : ""}</p>
                           </div>
                           <Users size={16} className="text-nexus-blue/70 shrink-0" />
@@ -310,7 +310,7 @@ export default function ProjectsPage() {
               <GlassCard accentColor="purple" className="p-5">
                 <h4 className="text-sm font-bold text-white/60 mb-4">กำหนดส่งมอบที่ใกล้ถึง</h4>
                 <div className="space-y-2">
-                  {projectStats.upcoming.length === 0 && <p className="text-[13px] text-white/40">ไม่มีกำหนดส่งมอบที่ใกล้ถึง</p>}
+                  {projectStats.upcoming.length === 0 && <p className="text-[12px] text-white/40">ไม่มีกำหนดส่งมอบที่ใกล้ถึง</p>}
                   {projectStats.upcoming.map((p: any) => (
                     <Link key={p.id} href={`/projects/${encodeURIComponent(p.id)}`} className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-all">
                       <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center text-white/40 shrink-0"><Clock size={15} /></div>

@@ -67,7 +67,7 @@ export default function DispatchPage() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white leading-normal">ศูนย์จ่ายงาน</h1>
-          <p className="text-[13px] text-white/50">มอบหมายงานบริการ ติดตั้ง MA จัดของ ขนย้าย และส่งของ ให้ช่างและพนักงาน · ผู้รับงานกดรับที่หน้า &quot;งานของฉัน&quot;</p>
+          <p className="text-[12px] text-white/50">มอบหมายงานบริการ ติดตั้ง MA จัดของ ขนย้าย และส่งของ ให้ช่างและพนักงาน · ผู้รับงานกดรับที่หน้า &quot;งานของฉัน&quot;</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={load} disabled={loading}>{loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}</PillButton>
@@ -100,7 +100,7 @@ export default function DispatchPage() {
             <div key={col.id} className="rounded-2xl border border-white/10 bg-white/[0.015] p-3 space-y-2">
               <div className="flex items-center justify-between px-1">
                 <div><p className="text-[14px] font-semibold text-white">{col.title}</p><p className="text-[11px] text-white/40">{col.hint}</p></div>
-                <span className="text-[13px] font-mono text-white/60">{items.length}</span>
+                <span className="text-[12px] font-mono text-white/60">{items.length}</span>
               </div>
               {items.length === 0 && <p className="text-[12px] text-white/30 text-center py-6">ไม่มีงาน</p>}
               {items.map((j) => (
@@ -159,14 +159,14 @@ const Field = ({ label, children, className }: { label: string; children: React.
 function PeoplePicker({ people, value, onChange }: { people: any[]; value: string[]; onChange: (v: string[]) => void }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-      {people.length === 0 && <p className="text-[13px] text-white/40">ไม่พบผู้ใช้ในบริษัท</p>}
+      {people.length === 0 && <p className="text-[12px] text-white/40">ไม่พบผู้ใช้ในบริษัท</p>}
       {people.map((p) => {
         const on = value.includes(p.uid);
         return (
           <button key={p.uid} type="button" onClick={() => onChange(on ? value.filter((x) => x !== p.uid) : [...value, p.uid])}
             className={cn("flex items-center gap-2 px-3 py-2 rounded-xl border text-left", on ? "bg-nexus-teal/10 border-nexus-teal/40" : "border-white/10 hover:bg-white/5")}>
             <span className={cn("w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0", on ? "bg-nexus-teal border-nexus-teal text-surface-0" : "border-white/30")}>{on && <Check size={13} strokeWidth={3} />}</span>
-            <span className="min-w-0 flex-1"><span className="block text-[13px] text-white truncate">{p.name}</span><span className="block text-[11px] text-white/40">งานค้าง {p.openJobs} งาน</span></span>
+            <span className="min-w-0 flex-1"><span className="block text-[12px] text-white truncate">{p.name}</span><span className="block text-[11px] text-white/40">งานค้าง {p.openJobs} งาน</span></span>
           </button>
         );
       })}
@@ -194,7 +194,7 @@ function JobForm({ initial, people, busy, onClose, onSave }: { initial: any; peo
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {JOB_TYPES.map((t) => (
             <button key={t.value} type="button" disabled={locked} onClick={() => setType(t.value)} className={cn("rounded-xl border px-3 py-2 text-left", f.type === t.value ? "bg-nexus-teal/10 border-nexus-teal/40" : "border-white/10 hover:bg-white/5")}>
-              <span className="block text-[13px] font-semibold text-white">{t.label}</span>
+              <span className="block text-[12px] font-semibold text-white">{t.label}</span>
               <span className="block text-[11px] text-white/40 leading-snug">{t.hint}</span>
             </button>
           ))}
@@ -225,7 +225,7 @@ function JobForm({ initial, people, busy, onClose, onSave }: { initial: any; peo
           {f.equipment.map((e: JobItem, i: number) => (
             <div key={i} className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2">
               <span className={cn("text-[11px] px-2 py-0.5 rounded-full", e.kind === "TOOL" ? "bg-warning/15 text-warning" : "bg-nexus-teal/15 text-nexus-teal")}>{e.kind === "TOOL" ? "เครื่องมือ" : "วัสดุ"}</span>
-              <span className="flex-1 min-w-0 text-[13px] text-white truncate">{e.name}{e.productId ? <span className="text-white/40"> · ตัดสต็อก</span> : null}</span>
+              <span className="flex-1 min-w-0 text-[12px] text-white truncate">{e.name}{e.productId ? <span className="text-white/40"> · ตัดสต็อก</span> : null}</span>
               <PillInput type="number" value={e.qty} disabled={locked} onChange={(ev) => set({ equipment: f.equipment.map((x: JobItem, k: number) => (k === i ? { ...x, qty: Number(ev.target.value) } : x)) })} className="h-8 w-[80px] text-sm font-mono" />
               <span className="text-[12px] text-white/50 w-10">{e.unit || ""}</span>
               {!locked && <button type="button" onClick={() => set({ equipment: f.equipment.filter((_: any, k: number) => k !== i) })} className="text-white/40 hover:text-danger" aria-label="ลบ"><Trash2 size={15} /></button>}
@@ -241,7 +241,7 @@ function JobForm({ initial, people, busy, onClose, onSave }: { initial: any; peo
                 <div className="rounded-xl border border-white/10 divide-y divide-white/5">
                   {matches.map((p: any) => (
                     <button key={p.id} type="button" onClick={() => addItem({ kind: "MATERIAL", productId: p.id, sku: p.sku, name: p.name || p.sku, qty: 1, unit: p.unit })} className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/5">
-                      <span className="text-[13px] text-white truncate">{p.sku ? `${p.sku} · ` : ""}{p.name}</span>
+                      <span className="text-[12px] text-white truncate">{p.sku ? `${p.sku} · ` : ""}{p.name}</span>
                       <span className="text-[12px] text-white/50 whitespace-nowrap">คงเหลือ {Number(p.stockStatus?.onHand ?? 0).toLocaleString("th-TH")} {p.unit || ""}</span>
                     </button>
                   ))}
@@ -303,7 +303,7 @@ function JobDrawer({ job, people, busy, onClose, onEdit, onAssign, onReturnTools
         </div>
         <h2 className="text-[19px] font-bold text-white leading-normal">{job.title}</h2>
         {job.description && <p className="text-[14px] text-white/70 whitespace-pre-line">{job.description}</p>}
-        <div className="text-[13px] text-white/60 space-y-1">
+        <div className="text-[12px] text-white/60 space-y-1">
           {(job.scheduledDate || job.scheduledTime) && <p className="flex items-center gap-2"><CalendarClock size={14} /> {thDate(job.scheduledDate)} {job.scheduledTime}{job.estimatedHours ? ` · ประมาณ ${job.estimatedHours} ชม.` : ""}</p>}
           {(job.site?.name || job.site?.address) && <p className="flex items-center gap-2"><MapPin size={14} /> {[job.site?.name, job.site?.address].filter(Boolean).join(" · ")}</p>}
           {job.site?.contact && <p>ผู้ติดต่อ {job.site.contact} {job.site.phone}</p>}
@@ -317,7 +317,7 @@ function JobDrawer({ job, people, busy, onClose, onEdit, onAssign, onReturnTools
           <h3 className="text-[14px] font-semibold text-white flex items-center gap-2"><Users size={15} /> ผู้รับงาน</h3>
           {!closed && changed && <PillButton variant="confirm" className="h-8 px-4 text-xs font-bold" disabled={busy || (issued && ["ACCEPTED", "IN_PROGRESS"].includes(job.status))} onClick={() => onAssign(assignees)}>{assignees.length ? "จ่ายงาน" : "ถอนผู้รับงาน"}</PillButton>}
         </div>
-        {closed ? <p className="text-[13px] text-white/70">{job.assigneeNames?.join(", ") || "-"}</p> : <PeoplePicker people={people} value={assignees} onChange={setAssignees} />}
+        {closed ? <p className="text-[12px] text-white/70">{job.assigneeNames?.join(", ") || "-"}</p> : <PeoplePicker people={people} value={assignees} onChange={setAssignees} />}
         {issued && !closed && <p className="text-[12px] text-white/40">ผู้รับงานเบิกอุปกรณ์แล้ว เปลี่ยนผู้รับงานไม่ได้จนกว่าจะปิดงาน</p>}
       </GlassCard>
 
@@ -325,7 +325,7 @@ function JobDrawer({ job, people, busy, onClose, onEdit, onAssign, onReturnTools
         <GlassCard className="p-4 space-y-1">
           <h3 className="text-[14px] font-semibold text-white mb-1">อุปกรณ์</h3>
           {job.equipment.map((e, i) => (
-            <div key={i} className="flex items-center justify-between text-[13px] py-1 border-b border-white/5 last:border-0">
+            <div key={i} className="flex items-center justify-between text-[12px] py-1 border-b border-white/5 last:border-0">
               <span className="text-white">{e.kind === "TOOL" ? "เครื่องมือ" : "วัสดุ"} · {e.name}</span>
               <span className="text-white/60 font-mono">{e.qty} {e.unit || ""} {e.kind === "TOOL" && (Number(e.issuedQty) || 0) > 0 ? ((Number(e.returnedQty) || 0) >= (Number(e.issuedQty) || 0) ? "· คืนแล้ว" : "· ยืมอยู่") : (Number(e.issuedQty) || 0) > 0 ? "· รับแล้ว" : ""}</span>
             </div>
@@ -336,12 +336,12 @@ function JobDrawer({ job, people, busy, onClose, onEdit, onAssign, onReturnTools
       {job.checklist.length > 0 && (
         <GlassCard className="p-4 space-y-1">
           <h3 className="text-[14px] font-semibold text-white mb-1 flex items-center gap-2"><ClipboardList size={15} /> ความคืบหน้า {job.checklist.filter((c) => c.done).length}/{job.checklist.length}</h3>
-          {job.checklist.map((c, i) => <p key={i} className={cn("text-[13px]", c.done ? "text-nexus-teal" : "text-white/60")}>{c.done ? "✓" : "○"} {c.text}</p>)}
+          {job.checklist.map((c, i) => <p key={i} className={cn("text-[12px]", c.done ? "text-nexus-teal" : "text-white/60")}>{c.done ? "✓" : "○"} {c.text}</p>)}
         </GlassCard>
       )}
 
       <div className="space-y-1">
-        <h3 className="text-[13px] font-semibold text-white/70">ประวัติ</h3>
+        <h3 className="text-[12px] font-semibold text-white/70">ประวัติ</h3>
         {[...(job.history || [])].reverse().map((h, i) => (
           <p key={i} className="text-[12px] text-white/50"><span className="font-mono text-white/40">{new Date(h.at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}</span> · {h.action}{h.note ? `: ${h.note}` : ""} · {h.byName}</p>
         ))}

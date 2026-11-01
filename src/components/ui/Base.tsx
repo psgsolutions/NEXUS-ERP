@@ -87,7 +87,7 @@ export function NexusSearchInput({
         onChange={onChange}
         className={cn(
           "w-full h-8 pl-10 pr-12 py-0 leading-[1.9] rounded-full bg-white/[0.02] border border-white/5",
-          "text-white text-[13px] font-bold tracking-wide",
+          "text-white text-[12px] font-bold tracking-wide",
           "focus:outline-none focus:border-nexus-teal/30 focus:bg-white/[0.05] focus:shadow-[0_0_30px_rgba(0,255,209,0.05)]",
           "transition-all duration-500",
           "backdrop-blur-xl"
@@ -506,7 +506,7 @@ export function PillTabs({
             onClick={() => onTabChange(tab.id)}
             title={desc ? desc : undefined}
             className={cn(
-              "h-9 px-3.5 2xl:px-5 rounded-full text-[12px] 2xl:text-[13px] font-black transition-all duration-300 flex items-center gap-2 2xl:gap-2.5 uppercase tracking-wide 2xl:tracking-wider whitespace-nowrap flex-shrink-0",
+              "h-9 px-3.5 2xl:px-5 rounded-full text-[12px] 2xl:text-[12px] font-black transition-all duration-300 flex items-center gap-2 2xl:gap-2.5 uppercase tracking-wide 2xl:tracking-wider whitespace-nowrap flex-shrink-0",
               activeTab === tab.id 
                 ? "bg-nexus-teal/15 text-nexus-teal shadow-[0_0_10px_rgba(0,255,209,0.1)] border border-nexus-teal/30" 
                 : "bg-white/5 text-white/50 hover:text-white hover:bg-white/10 border border-transparent"
@@ -678,7 +678,7 @@ export function NexusTable({
               <th
                 key={i}
                 className={cn(
-                  "px-2.5 2xl:px-4 py-2.5 text-[12px] 2xl:text-[13px] font-medium text-white/60 tracking-wide leading-tight whitespace-nowrap align-middle",
+                  "px-2.5 2xl:px-4 py-2.5 text-[12px] 2xl:text-[12px] font-medium text-white/60 tracking-wide leading-tight whitespace-nowrap align-middle",
                   "first:rounded-tl-2xl last:rounded-tr-2xl first:pl-4 last:pr-4",
                   aligns[i] === "right" ? "text-right" : aligns[i] === "center" ? "text-center" : "text-left"
                 )}
@@ -748,7 +748,7 @@ export function NexusTableCell({
       colSpan={colSpan}
       onClick={onClick}
       className={cn(
-        "px-2.5 2xl:px-4 py-2 first:pl-4 last:pr-4 text-[13px] 2xl:text-[14px] font-normal text-white/80 transition-colors duration-300 align-middle",
+        "px-2.5 2xl:px-4 py-2 first:pl-4 last:pr-4 text-[12px] 2xl:text-[14px] font-normal text-white/80 transition-colors duration-300 align-middle",
         // ทุกช่องบรรทัดเดียว (ยกเว้นแถวข้อความที่ต้องการตัดบรรทัด เช่น ข้อความว่าง/คำอธิบาย ที่ระบุ wrap)
         wrap || colSpan ? "whitespace-normal leading-relaxed" : "whitespace-nowrap",
         mono && "font-mono text-nexus-teal tracking-normal font-bold [font-style:normal!important]",
@@ -790,7 +790,7 @@ export function StrategicTable({
               <th 
                 key={i} 
                 className={cn(
-                  "px-8 py-2 text-[13px] font-medium text-white/50 tracking-wider whitespace-nowrap",
+                  "px-8 py-2 text-[12px] font-medium text-white/50 tracking-wider whitespace-nowrap",
                   (header.includes("มูลค่า") || header.includes("ยอด") || header.toLowerCase().includes("amount") || header.includes("รหัส") || header.toLowerCase().includes("sku") || header.toLowerCase().includes("code")) ? "text-right" : 
                   (header.includes("สถานะ") || header.includes("วันที่") || header.toLowerCase().includes("date") || header.toLowerCase().includes("status")) ? "text-center" : 
                   "text-left"
@@ -1225,7 +1225,7 @@ export function CreatableCombobox({
           setSearch("");
         }}
         className={cn(
-          "h-9 w-full px-5 pr-10 rounded-full bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold focus-within:border-nexus-teal/40 focus-within:bg-white/[0.06] transition-all cursor-pointer flex items-center justify-between group backdrop-blur-sm",
+          "h-9 w-full px-5 pr-10 rounded-full bg-white/[0.03] border border-white/10 text-white text-[12px] font-bold focus-within:border-nexus-teal/40 focus-within:bg-white/[0.06] transition-all cursor-pointer flex items-center justify-between group backdrop-blur-sm",
           isOpen && "border-nexus-teal/40 bg-white/[0.06]",
           className
         )}
@@ -1250,7 +1250,7 @@ export function CreatableCombobox({
           <input 
             autoFocus
             type="text"
-            className="w-full bg-black/40 border border-white/10 rounded-xl h-10 px-4 text-[13px] text-white focus:outline-none focus:border-nexus-teal/50 mb-1"
+            className="w-full bg-black/40 border border-white/10 rounded-xl h-10 px-4 text-[12px] text-white focus:outline-none focus:border-nexus-teal/50 mb-1"
             placeholder="Search or type new..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -1258,7 +1258,7 @@ export function CreatableCombobox({
           />
           {filteredOptions.length === 0 && search && allowCustom && (
             <div
-              className="px-4 py-2.5 rounded-xl text-[13px] text-nexus-teal font-bold hover:bg-nexus-teal/10 cursor-pointer flex items-center gap-2"
+              className="px-4 py-2.5 rounded-xl text-[12px] text-nexus-teal font-bold hover:bg-nexus-teal/10 cursor-pointer flex items-center gap-2"
               onClick={() => {
                 onChange(search);
                 setIsOpen(false);
@@ -1271,7 +1271,7 @@ export function CreatableCombobox({
             <div
               key={idx}
               className={cn(
-                "px-4 py-2.5 rounded-xl text-[13px] text-white/70 hover:text-white hover:bg-white/5 cursor-pointer transition-all",
+                "px-4 py-2.5 rounded-xl text-[12px] text-white/70 hover:text-white hover:bg-white/5 cursor-pointer transition-all",
                 value === opt.value && "bg-nexus-teal/10 text-nexus-teal font-bold"
               )}
               onClick={() => {
@@ -1283,7 +1283,7 @@ export function CreatableCombobox({
             </div>
           ))}
           {filteredOptions.length === 0 && (!search || !allowCustom) && (
-            <div className="px-4 py-3 text-[13px] text-white/30 text-center">
+            <div className="px-4 py-3 text-[12px] text-white/30 text-center">
               No results found
             </div>
           )}
@@ -1312,7 +1312,7 @@ export function NexusDatePicker({
       disabled={disabled}
       onChange={(e) => onChange?.({ target: { value: e.target.value } })}
       className={cn(
-        "h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold focus:border-nexus-teal/40 focus:bg-white/[0.06] focus:outline-none transition-all",
+        "h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[12px] font-bold focus:border-nexus-teal/40 focus:bg-white/[0.06] focus:outline-none transition-all",
         disabled && "opacity-50 cursor-not-allowed",
         className
       )}

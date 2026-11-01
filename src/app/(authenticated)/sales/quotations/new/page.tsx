@@ -852,7 +852,7 @@ export default function QuotationCreationPage() {
               ) : (
                 <div className="flex items-center justify-between px-3 py-1.5 rounded-full bg-black/40 border border-nexus-teal/50 shadow-[0_0_15px_rgba(34,211,238,0.1)]">
                   <div className="flex items-center gap-2 truncate">
-                    <span className="font-bold text-[13px] text-white truncate">{getCustomerName(selectedCustomer)}</span>
+                    <span className="font-bold text-[12px] text-white truncate">{getCustomerName(selectedCustomer)}</span>
                   </div>
                   <button
                     type="button"
@@ -884,7 +884,7 @@ export default function QuotationCreationPage() {
             <div className="space-y-3 pt-1">
               {selectedCustomer && !isEditingAddress ? (
                 <div className="flex items-center justify-between p-2.5 px-4 rounded-2xl bg-black/30 border border-white/10">
-                  <div className="flex items-center gap-2 truncate text-[13px] text-white/90">
+                  <div className="flex items-center gap-2 truncate text-[12px] text-white/90">
                     <span className="text-nexus-teal shrink-0 font-bold">📍</span>
                     <span className="truncate">{[addrLine1, addrLine2, subDistrict, district, province, postalCode].filter(Boolean).join(" ") || selectedCustomer.address || "ยังไม่ได้ระบุที่อยู่"}</span>
                   </div>
@@ -915,7 +915,7 @@ export default function QuotationCreationPage() {
                     value={addrLine1}
                     onChange={(e) => setAddrLine1(e.target.value)}
                     placeholder="บ้านเลขที่ / อาคาร / ชั้น / หมู่บ้าน"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[12px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                   <div className="grid grid-cols-5 gap-2 pt-1">
                     <PillInput
@@ -923,35 +923,35 @@ export default function QuotationCreationPage() {
                       value={addrLine2}
                       onChange={(e) => setAddrLine2(e.target.value)}
                       placeholder="ซอย / ถนน"
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[12px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
                     <PillInput
                       type="text"
                       value={subDistrict}
                       onChange={(e) => setSubDistrict(e.target.value)}
                       placeholder="แขวง / ตำบล"
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[12px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
                     <PillInput
                       type="text"
                       value={district}
                       onChange={(e) => setDistrict(e.target.value)}
                       placeholder="เขต / อำเภอ"
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[12px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
                     <PillInput
                       type="text"
                       value={province}
                       onChange={(e) => setProvince(e.target.value)}
                       placeholder="จังหวัด"
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[12px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
                     <PillInput
                       type="text"
                       value={postalCode}
                       onChange={(e) => setPostalCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
                       placeholder="รหัสไปรษณีย์"
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none transition-all"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[12px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -965,7 +965,7 @@ export default function QuotationCreationPage() {
                     value={customerTaxId}
                     onChange={(e) => setCustomerTaxId(e.target.value.replace(/\D/g, '').slice(0, 13))}
                     placeholder="เลขประจำตัวผู้เสียภาษี 13 หลัก"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[12px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                 </div>
                 <div className="space-y-1">
@@ -975,7 +975,7 @@ export default function QuotationCreationPage() {
                     value={customerBranch}
                     onChange={(e) => setCustomerBranch(e.target.value)}
                     placeholder="สำนักงานใหญ่ หรือ เลขสาขา"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[12px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                 </div>
               </div>
@@ -988,21 +988,21 @@ export default function QuotationCreationPage() {
                     value={contactPerson}
                     onChange={(e) => setContactPerson(e.target.value)}
                     placeholder="ชื่อผู้ติดต่อ (บังคับกรอก)"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[12px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                   <PillInput
                     type="text"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="เบอร์โทรศัพท์"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[12px] font-bold font-mono text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                   <PillInput
                     type="text"
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
                     placeholder="อีเมล"
-                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
+                    className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[12px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all"
                   />
                 </div>
               </div>
@@ -1026,7 +1026,7 @@ export default function QuotationCreationPage() {
                     onClick={() => setIsQuotationTypeDropdownActive(true)}
                     className="w-full h-8 flex items-center justify-between px-4 rounded-full border border-white/10 bg-black/20 transition-colors cursor-pointer hover:bg-white/[0.02] hover:border-nexus-teal/50"
                   >
-                    <p className="flex-1 font-bold text-[13px] text-white py-0 leading-relaxed truncate">
+                    <p className="flex-1 font-bold text-[12px] text-white py-0 leading-relaxed truncate">
                       {quotationType === "SALE" && "SALE (ขายทั่วไป)"}
                       {quotationType === "INSTALLATION" && "INSTALLATION (ขายพร้อมติดตั้ง)"}
                       {quotationType === "MAINTENANCE" && "MAINTENANCE (สัญญา MA)"}
@@ -1056,7 +1056,7 @@ export default function QuotationCreationPage() {
                           : "border-transparent hover:bg-nexus-teal/10 hover:border-nexus-teal/30"
                       )}
                     >
-                      <span className={cn("font-bold text-[13px]", quotationType === option.value ? "text-nexus-teal" : "text-white")}>
+                      <span className={cn("font-bold text-[12px]", quotationType === option.value ? "text-nexus-teal" : "text-white")}>
                         {option.label}
                       </span>
                     </div>
@@ -1078,7 +1078,7 @@ export default function QuotationCreationPage() {
                           value={salespersonSearchTerm}
                           onChange={(e) => setSalespersonSearchTerm(e.target.value)}
                           placeholder="ค้นหาพนักงานขาย..."
-                          className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-nexus-teal/50 rounded-full px-4 py-0 text-[13px] font-bold text-nexus-teal focus:outline-none focus:shadow-[0_0_15px_rgba(20,184,166,0.15)]"
+                          className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-nexus-teal/50 rounded-full px-4 py-0 text-[12px] font-bold text-nexus-teal focus:outline-none focus:shadow-[0_0_15px_rgba(20,184,166,0.15)]"
                         />
                       </div>
                     }
@@ -1101,7 +1101,7 @@ export default function QuotationCreationPage() {
                               className="flex items-center gap-3 px-3 py-2 hover:bg-nexus-teal/10 cursor-pointer transition-colors rounded-xl border border-transparent hover:border-nexus-teal/30"
                             >
                               <div className="flex-1 truncate">
-                                <span className="font-bold text-[13px] text-white flex items-center gap-2">
+                                <span className="font-bold text-[12px] text-white flex items-center gap-2">
                                   {getSalespersonName(u)}
                                 </span>
                               </div>
@@ -1121,7 +1121,7 @@ export default function QuotationCreationPage() {
                     }}
                     className="w-full h-8 flex items-center px-4 rounded-full border border-white/10 bg-black/20 transition-colors cursor-text hover:bg-white/[0.02] hover:border-nexus-teal/50 group"
                   >
-                    <p className={cn("flex-1 font-bold text-[13px] truncate py-0 leading-relaxed", (!selectedSalesperson && !salespersonSearchTerm) ? "text-white/40" : "text-white")}>
+                    <p className={cn("flex-1 font-bold text-[12px] truncate py-0 leading-relaxed", (!selectedSalesperson && !salespersonSearchTerm) ? "text-white/40" : "text-white")}>
                       {selectedSalesperson ? getSalespersonName(selectedSalesperson) : (salespersonSearchTerm || (usersLoading ? "กำลังโหลดข้อมูล..." : "เลือกพนักงานขาย..."))}
                     </p>
                     <Search size={14} className="text-white/20 group-hover:text-nexus-teal/50 transition-colors" />
@@ -1137,7 +1137,7 @@ export default function QuotationCreationPage() {
                 min={0}
                 max={100}
                 suffix="%"
-                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 text-white focus:text-nexus-teal text-[13px]"
+                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 text-white focus:text-nexus-teal text-[12px]"
               />
             </div>
             <div className="space-y-1 col-span-3">
@@ -1147,7 +1147,7 @@ export default function QuotationCreationPage() {
                 onChange={(val) => setExpectedDeliveryDays(val)}
                 min={0}
                 suffix="วัน"
-                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 text-white focus:text-nexus-teal text-[13px]"
+                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 text-white focus:text-nexus-teal text-[12px]"
               />
             </div>
             <div className="space-y-1 col-span-6">
@@ -1156,7 +1156,7 @@ export default function QuotationCreationPage() {
                 value={expectedCloseDate}
                 onChange={(e) => setExpectedCloseDate(e.target.value)}
                 className={cn(
-                  "w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border rounded-full px-4 py-0 leading-relaxed text-[13px] font-bold text-white font-mono focus:text-nexus-teal text-left",
+                  "w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border rounded-full px-4 py-0 leading-relaxed text-[12px] font-bold text-white font-mono focus:text-nexus-teal text-left",
                   !dateValidation.isValid
                     ? "border-danger text-danger focus:border-danger"
                     : "border-white/10 focus:border-nexus-teal/50"
@@ -1194,7 +1194,7 @@ export default function QuotationCreationPage() {
                       onChange={(e) => setIncoTerms(e.target.value)}
                       onFocus={() => setIsShippingTermsActive(true)}
                       placeholder="Ex. จัดส่งฟรี, ขนส่งเอกชน, รับสินค้าด้วยตัวเอง..."
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 text-[13px] font-bold text-white focus:text-nexus-teal text-left"
+                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 text-[12px] font-bold text-white focus:text-nexus-teal text-left"
                     />
                   </div>
                 }
@@ -1236,7 +1236,7 @@ export default function QuotationCreationPage() {
                 value={deliveryAddress}
                 onChange={(e) => setDeliveryAddress(e.target.value)}
                 placeholder="ระบุสถานที่จัดส่ง หรือคลิกปุ่มด้านบน"
-                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 text-[13px] font-bold text-white focus:text-nexus-teal"
+                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 text-[12px] font-bold text-white focus:text-nexus-teal"
               />
             </div>
           </div>
@@ -1252,11 +1252,11 @@ export default function QuotationCreationPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">วันที่ออก <span className="text-danger">*</span></label>
-                <NexusDatePicker value={docDate} onChange={(e) => setDocDate(e.target.value)} className="w-full h-8 rounded-full px-2 text-nexus-teal text-[13px] font-bold font-mono text-center" />
+                <NexusDatePicker value={docDate} onChange={(e) => setDocDate(e.target.value)} className="w-full h-8 rounded-full px-2 text-nexus-teal text-[12px] font-bold font-mono text-center" />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">ใช้งานได้ถึง</label>
-                <div className="w-full h-8 rounded-full px-3 flex items-center justify-center bg-black/20 border border-white/10 text-nexus-teal text-[13px] font-bold whitespace-nowrap overflow-hidden pointer-events-none select-none cursor-default" title={`อีก ${validDays} วัน`}>
+                <div className="w-full h-8 rounded-full px-3 flex items-center justify-center bg-black/20 border border-white/10 text-nexus-teal text-[12px] font-bold whitespace-nowrap overflow-hidden pointer-events-none select-none cursor-default" title={`อีก ${validDays} วัน`}>
                   {validUntil ? new Date(`${validUntil}T00:00:00`).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" }) : "-"}
                 </div>
               </div>
@@ -1270,7 +1270,7 @@ export default function QuotationCreationPage() {
                   onChange={(val) => setValidDays(val || 0)}
                   min={0}
                   suffix="วัน"
-                  className="w-full h-8 bg-black/20 border border-white/10 text-[13px] font-bold text-white font-mono text-center"
+                  className="w-full h-8 bg-black/20 border border-white/10 text-[12px] font-bold text-white font-mono text-center"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -1279,7 +1279,7 @@ export default function QuotationCreationPage() {
                   type="text"
                   value={paymentTerms}
                   onChange={(e) => setPaymentTerms(e.target.value)}
-                  className="w-full h-8 bg-black/20 border border-white/10 rounded-full px-2 text-[13px] font-bold text-nexus-teal text-center"
+                  className="w-full h-8 bg-black/20 border border-white/10 rounded-full px-2 text-[12px] font-bold text-nexus-teal text-center"
                 />
               </div>
             </div>
@@ -1291,14 +1291,14 @@ export default function QuotationCreationPage() {
                 value={referenceNo}
                 onChange={(e) => setReferenceNo(e.target.value)}
                 placeholder="PR-2026-001"
-                className="w-full h-8 bg-black/20 border border-white/10 rounded-full px-2 text-[13px] font-bold text-nexus-teal font-mono text-center"
+                className="w-full h-8 bg-black/20 border border-white/10 rounded-full px-2 text-[12px] font-bold text-nexus-teal font-mono text-center"
               />
             </div>
             <div className="flex flex-col gap-1.5 col-span-full">
               <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">ลายเซ็น · ตราประทับในเอกสาร</label>
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1 min-h-8" title="ใส่ลายเซ็น/ตราประทับอิเล็กทรอนิกส์ตามที่ตั้งไว้ที่ ตั้งค่า › ลายเซ็น · ตราประทับ — ไม่ติ๊ก = เว้นช่องไว้เซ็น/ประทับด้วยมือ">
-                <PillCheckbox label="ใส่ตราประทับ" checked={useStamp} onChange={(e) => setUseStamp(e.target.checked)} className="text-[13px] text-white/80" />
-                <PillCheckbox label="ใส่ลายเซ็น" checked={useSignature} onChange={(e) => setUseSignature(e.target.checked)} className="text-[13px] text-white/80" />
+                <PillCheckbox label="ใส่ตราประทับ" checked={useStamp} onChange={(e) => setUseStamp(e.target.checked)} className="text-[12px] text-white/80" />
+                <PillCheckbox label="ใส่ลายเซ็น" checked={useSignature} onChange={(e) => setUseSignature(e.target.checked)} className="text-[12px] text-white/80" />
               </div>
             </div>
           </div>
@@ -1458,7 +1458,7 @@ export default function QuotationCreationPage() {
           <textarea
             value={termsAndConditions}
             onChange={(e) => setTermsAndConditions(e.target.value)}
-            className="w-full h-32 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed transition-all"
+            className="w-full h-32 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[12px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed transition-all"
           />
         </div>
         <div className="bg-surface-1 border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
@@ -1475,7 +1475,7 @@ export default function QuotationCreationPage() {
             value={remark}
             onChange={(e) => setRemark(e.target.value)}
             placeholder="หมายเหตุเพิ่มเติมที่ต้องการแสดงบนเอกสาร..."
-            className="w-full h-24 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed transition-all"
+            className="w-full h-24 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[12px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed transition-all"
           />
           <div className="flex flex-wrap gap-2 pt-1">
             {['#รับประกัน 1 ปี', '#ชำระมัดจำ 50%', '#ส่งมอบภายใน 30 วัน', '#ราคานี้ยืนระยะเวลา 15 วัน'].map(tag => (
@@ -1498,7 +1498,7 @@ export default function QuotationCreationPage() {
             value={internalNotes}
             onChange={(e) => setInternalNotes(e.target.value)}
             placeholder="ระบุเหตุผลการให้ส่วนลด หรือข้อความสำหรับผู้อนุมัติ (ลูกค้าจะไม่เห็นข้อความนี้)..."
-            className="w-full h-32 bg-black/40 border border-warning/10 rounded-xl p-3 text-[13px] text-warning/80 focus:outline-none focus:border-warning/50 resize-none leading-relaxed"
+            className="w-full h-32 bg-black/40 border border-warning/10 rounded-xl p-3 text-[12px] text-warning/80 focus:outline-none focus:border-warning/50 resize-none leading-relaxed"
           />
         </div>
       </div>
@@ -1682,7 +1682,7 @@ export default function QuotationCreationPage() {
             value={docDiscountValue === 0 ? '' : docDiscountValue}
             onChange={(e) => setDocDiscountValue(Math.max(0, Number(e.target.value) || 0))}
             placeholder="0.00"
-            className="w-full h-8 px-4 rounded-full bg-black/40 border border-white/10 text-right font-mono text-[13px] text-nexus-teal font-bold focus:outline-none focus:border-nexus-teal"
+            className="w-full h-8 px-4 rounded-full bg-black/40 border border-white/10 text-right font-mono text-[12px] text-nexus-teal font-bold focus:outline-none focus:border-nexus-teal"
           />
         </div>
 

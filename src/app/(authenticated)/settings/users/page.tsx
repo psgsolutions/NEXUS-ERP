@@ -268,7 +268,7 @@ export default function UsersPage() {
               </NexusTableCell>
               {mode === "pending" ? (
                 <>
-                  <NexusTableCell className="text-[13px] text-white/70">
+                  <NexusTableCell className="text-[12px] text-white/70">
                     {u.registrationId ? (
                       <div>
                         <p className="font-bold text-warning">ขอเปิดบริษัทใหม่</p>
@@ -282,7 +282,7 @@ export default function UsersPage() {
                       </div>
                     )}
                   </NexusTableCell>
-                  <NexusTableCell className="text-[13px] text-white/70">{roleLabel(u.role)}</NexusTableCell>
+                  <NexusTableCell className="text-[12px] text-white/70">{roleLabel(u.role)}</NexusTableCell>
                   <NexusTableCell className="text-[12px] text-white/50 font-mono">{formatDate(u.createdAt)}</NexusTableCell>
                 </>
               ) : (
@@ -290,7 +290,7 @@ export default function UsersPage() {
                   {isSuper && <NexusTableCell className="text-[12px] text-white/60 font-mono">{u.companyId || "-"}</NexusTableCell>}
                   <NexusTableCell>
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-[13px] text-white/80 truncate min-w-0" title={u.roles.map(roleLabel).join(" · ")}>
+                      <span className="text-[12px] text-white/80 truncate min-w-0" title={u.roles.map(roleLabel).join(" · ")}>
                         {rolesSummary(u.roles)}
                       </span>
                       {isSuper && u.uid !== user?.uid && !u.roles.includes("SUPERADMIN") && u.status === "ACTIVE" && (
@@ -316,7 +316,7 @@ export default function UsersPage() {
       <NexusTable headers={["สิทธิ์", ...MATRIX_ROLES.map((r) => r.label)]} minWidth="min-w-[1000px]">
         {PERMISSION_LABELS.map((p) => (
           <NexusTableRow key={p.key}>
-            <NexusTableCell className="text-[13px] text-white/80 whitespace-nowrap">{p.label}</NexusTableCell>
+            <NexusTableCell className="text-[12px] text-white/80 whitespace-nowrap">{p.label}</NexusTableCell>
             {MATRIX_ROLES.map((r) => (
               <NexusTableCell key={r.value} className="text-center">
                 {getPermissions(r.value).includes(p.key) ? (

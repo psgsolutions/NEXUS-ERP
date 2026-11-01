@@ -89,7 +89,7 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                <div className="space-y-8">
                   <div className="flex items-center gap-3 text-nexus-blue">
                      <MapPin size={18} />
-                     <h5 className="text-[13px] font-semibold uppercase tracking-widest">1. เส้นทางการโอนย้าย</h5>
+                     <h5 className="text-[12px] font-semibold uppercase tracking-widest">1. เส้นทางการโอนย้าย</h5>
                   </div>
                   <div className="space-y-6">
                      <div className="grid grid-cols-2 gap-4">
@@ -141,7 +141,7 @@ export function StockTransferModal({ isOpen, onClose, onConfirm }: StockTransfer
                <div className="space-y-8">
                   <div className="flex items-center gap-3 text-white">
                      <Package size={18} />
-                     <h5 className="text-[13px] font-semibold uppercase tracking-widest">2. รายการพัสดุ</h5>
+                     <h5 className="text-[12px] font-semibold uppercase tracking-widest">2. รายการพัสดุ</h5>
                   </div>
                   <div className="space-y-6">
                      <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/5 space-y-6">

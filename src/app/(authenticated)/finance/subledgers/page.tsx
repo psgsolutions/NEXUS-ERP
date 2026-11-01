@@ -148,7 +148,7 @@ function SubledgersPage() {
 
       {ready && (tab === "ar-statement" || tab === "ap-statement") && (
         <div className="flex items-center gap-3">
-          <span className="text-[13px] text-white/60 whitespace-nowrap">{tab === "ar-statement" ? "ลูกค้า" : "ผู้ขาย/ผู้รับเงิน"}</span>
+          <span className="text-[12px] text-white/60 whitespace-nowrap">{tab === "ar-statement" ? "ลูกค้า" : "ผู้ขาย/ผู้รับเงิน"}</span>
           <PillSelect value={party} onChange={(e) => setParty(e.target.value)} className="h-9 px-4 w-[380px] max-w-full text-sm">
             {data.parties.length === 0 && <option value="">ยังไม่มีข้อมูล</option>}
             {data.parties.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -157,12 +157,12 @@ function SubledgersPage() {
       )}
       {ready && tab === "bank" && (
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-[13px] text-white/60 whitespace-nowrap">บัญชี</span>
+          <span className="text-[12px] text-white/60 whitespace-nowrap">บัญชี</span>
           <PillSelect value={bookId} onChange={(e) => setBookId(e.target.value)} className="h-9 px-4 w-[380px] max-w-full text-sm">
             {data.books.map((b: any) => <option key={b.id} value={b.id}>{b.name}{b.active ? "" : " (ปิดใช้งาน)"} · {b.count} รายการ</option>)}
           </PillSelect>
           {canEdit && data.books.find((b: any) => b.id === bookId)?.account && (
-            <button type="button" className="text-[13px] text-nexus-teal hover:underline" onClick={() => setBankDialog(data.books.find((b: any) => b.id === bookId).account)}>แก้ไขบัญชีนี้</button>
+            <button type="button" className="text-[12px] text-nexus-teal hover:underline" onClick={() => setBankDialog(data.books.find((b: any) => b.id === bookId).account)}>แก้ไขบัญชีนี้</button>
           )}
         </div>
       )}
@@ -174,9 +174,9 @@ function SubledgersPage() {
       ) : (
         <GlassCard accentColor="teal" className="p-0 overflow-hidden">
           {loading && !ready ? (
-            <div className="py-16 flex items-center justify-center gap-2 text-[13px] text-white/40"><Loader2 size={16} className="animate-spin" /> กำลังโหลด…</div>
+            <div className="py-16 flex items-center justify-center gap-2 text-[12px] text-white/40"><Loader2 size={16} className="animate-spin" /> กำลังโหลด…</div>
           ) : !ready ? (
-            <div className="py-16 text-center text-[13px] text-white/40">ไม่มีข้อมูล</div>
+            <div className="py-16 text-center text-[12px] text-white/40">ไม่มีข้อมูล</div>
           ) : (
             <TabBody tab={tab} data={data} canEdit={canEdit} onCheque={chequeAction} periodText={isRange ? `${monthLabel(from)} – ${monthLabel(to)}` : ""} />
           )}
@@ -199,11 +199,11 @@ const TotalRow = ({ cells }: { cells: React.ReactNode[] }) => (
   <NexusTableRow className="bg-white/[0.03] cursor-default">{cells.map((c, i) => <NexusTableCell key={i} className="font-bold text-white">{c}</NexusTableCell>)}</NexusTableRow>
 );
 const Empty = ({ cols, text }: { cols: number; text: string }) => (
-  <NexusTableRow className="cursor-default"><NexusTableCell colSpan={cols} className="text-center text-[13px] text-white/40 py-10">{text}</NexusTableCell></NexusTableRow>
+  <NexusTableRow className="cursor-default"><NexusTableCell colSpan={cols} className="text-center text-[12px] text-white/40 py-10">{text}</NexusTableCell></NexusTableRow>
 );
 const CardHead = ({ title, sub, right }: { title: string; sub?: string; right?: React.ReactNode }) => (
   <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-white/5 flex-wrap">
-    <div><h3 className="text-[16px] font-semibold text-white leading-normal">{title}</h3>{sub && <p className="text-[13px] text-white/50 leading-normal">{sub}</p>}</div>
+    <div><h3 className="text-[16px] font-semibold text-white leading-normal">{title}</h3>{sub && <p className="text-[12px] text-white/50 leading-normal">{sub}</p>}</div>
     {right}
   </div>
 );
@@ -245,8 +245,8 @@ function TabBody({ tab, data, canEdit, onCheque, periodText }: { tab: TabId; dat
     return (
       <>
         <CardHead title={`ใบแจ้งยอด${isAr ? "ลูกค้า" : "ผู้ขาย"}: ${data.party?.name || "-"}`} sub={[periodText, info?.taxId ? `เลขประจำตัวผู้เสียภาษี ${info.taxId}` : ""].filter(Boolean).join(" · ")}
-          right={s && <span className="text-[13px] text-white/70">ยอด{isAr ? "ค้างชำระ" : "ค้างจ่าย"} ณ สิ้นงวด <span className="font-mono font-bold text-white">{money(s.closing)}</span></span>} />
-        {!s ? <div className="py-16 text-center text-[13px] text-white/40">เลือก{isAr ? "ลูกค้า" : "ผู้ขาย"}</div> : (
+          right={s && <span className="text-[12px] text-white/70">ยอด{isAr ? "ค้างชำระ" : "ค้างจ่าย"} ณ สิ้นงวด <span className="font-mono font-bold text-white">{money(s.closing)}</span></span>} />
+        {!s ? <div className="py-16 text-center text-[12px] text-white/40">เลือก{isAr ? "ลูกค้า" : "ผู้ขาย"}</div> : (
           <NexusTable headers={["วันที่", "เลขที่เอกสาร", "ประเภทเอกสาร", "อ้างอิง", isAr ? "เดบิต (เพิ่มหนี้)" : "ตั้งหนี้", isAr ? "เครดิต (ลดหนี้)" : "จ่ายชำระ", "คงเหลือ"]} itemCount={s.entries.length}>
             <TotalRow cells={["", "", "ยอดยกมา", "", "", "", money(s.opening)]} />
             {s.entries.length === 0 && <Empty cols={7} text="ไม่มีรายการในช่วงนี้" />}
@@ -273,7 +273,7 @@ function TabBody({ tab, data, canEdit, onCheque, periodText }: { tab: TabId; dat
     return (
       <>
         <CardHead title={`สมุด${data.bookId === "CASH" ? "เงินสด" : "เงินฝาก"}: ${book?.name || "-"}`} sub={periodText}
-          right={<span className="text-[13px] text-white/70">คงเหลือ ณ สิ้นงวด <span className="font-mono font-bold text-white">{money(b.closing)}</span></span>} />
+          right={<span className="text-[12px] text-white/70">คงเหลือ ณ สิ้นงวด <span className="font-mono font-bold text-white">{money(b.closing)}</span></span>} />
         {data.books.length === 1 && data.bookId === "CASH" && (
           <p className="px-6 py-3 text-[12px] text-white/50 border-b border-white/5">ยังไม่มีทะเบียนบัญชีธนาคาร กด &quot;เพิ่มบัญชีธนาคาร&quot; แล้วใส่ชื่อที่เคยพิมพ์ในใบเสร็จเดิมไว้ในช่อง &quot;ชื่อเดิมที่เคยใช้&quot; ระบบจะจัดเอกสารเดิมเข้าบัญชีให้</p>
         )}
@@ -337,7 +337,7 @@ function TabBody({ tab, data, canEdit, onCheque, periodText }: { tab: TabId; dat
     return (
       <>
         <CardHead title="ทะเบียนสินทรัพย์ถาวร" sub={`${data.rows.length} รายการ · ค่าเสื่อมราคาต่อเดือนรวม ${money(data.totals.monthly)} บาท`}
-          right={data.history?.[0] && <span className="text-[13px] text-white/60">คิดค่าเสื่อมล่าสุดงวด {data.history[0].period}</span>} />
+          right={data.history?.[0] && <span className="text-[12px] text-white/60">คิดค่าเสื่อมล่าสุดงวด {data.history[0].period}</span>} />
         <NexusTable headers={["รหัสสินทรัพย์", "ชื่อสินทรัพย์", "หมวดหมู่", "วันที่ได้มา", "ราคาทุน", "ค่าเสื่อมต่อเดือน", "ค่าเสื่อมสะสม", "มูลค่าตามบัญชี", "สถานะ"]} itemCount={data.rows.length}>
           {data.rows.length === 0 && <Empty cols={9} text="ยังไม่มีสินทรัพย์ถาวรในทะเบียน" />}
           {data.rows.map((a: any) => (
@@ -361,7 +361,7 @@ function TabBody({ tab, data, canEdit, onCheque, periodText }: { tab: TabId; dat
   // valuation
   return (
     <>
-      <CardHead title="มูลค่าสินค้าคงเหลือ" sub={`ณ ปัจจุบัน · ${data.totalItems} รายการ · ยอดคงเหลือ × ต้นทุนเฉลี่ยถ่วงน้ำหนัก`} right={<span className="text-[13px] text-white/70">มูลค่ารวม <span className="font-mono font-bold text-white">{money(data.totalValue)}</span></span>} />
+      <CardHead title="มูลค่าสินค้าคงเหลือ" sub={`ณ ปัจจุบัน · ${data.totalItems} รายการ · ยอดคงเหลือ × ต้นทุนเฉลี่ยถ่วงน้ำหนัก`} right={<span className="text-[12px] text-white/70">มูลค่ารวม <span className="font-mono font-bold text-white">{money(data.totalValue)}</span></span>} />
       <NexusTable headers={["รหัสสินค้า", "ชื่อสินค้า", "หมวดหมู่", "คงเหลือ", "หน่วย", "ต้นทุนเฉลี่ย", "มูลค่า"]} itemCount={data.rows.length}>
         {data.rows.length === 0 && <Empty cols={7} text="ยังไม่มีสินค้า" />}
         {data.rows.map((p: any) => (
@@ -438,7 +438,7 @@ function BankAccountDialog({ value, companyId, onClose, onSaved }: { value: any;
           {field("วันที่ของยอดยกมา", "openingDate", { type: "date" })}
           <div className="sm:col-span-2">{field("ชื่อเดิมที่เคยใช้ในใบเสร็จ/ใบสำคัญจ่าย (คั่นด้วย ,)", "legacy", { placeholder: "เช่น กสิกร, KBANK 123-4" })}</div>
           {isEdit && (
-            <label className="flex items-center gap-2 text-[13px] text-white/70 sm:col-span-2">
+            <label className="flex items-center gap-2 text-[12px] text-white/70 sm:col-span-2">
               <input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} /> ใช้งานบัญชีนี้ (ปิดแล้วเลือกในเอกสารใหม่ไม่ได้ แต่ประวัติยังอยู่)
             </label>
           )}
@@ -597,7 +597,7 @@ function ReconcilePanel({ companyId, canEdit }: { companyId: string; canEdit: bo
                 <PillInput type="number" value={closing} onChange={(e) => setClosing(e.target.value)} className="h-9 w-[200px] px-4 text-sm font-mono" />
               </div>
               {diff !== null && (
-                <span className={cn("text-[13px] font-bold flex items-center gap-1.5 pb-2", Math.abs(diff) < 0.01 ? "text-nexus-teal" : "text-warning")}>
+                <span className={cn("text-[12px] font-bold flex items-center gap-1.5 pb-2", Math.abs(diff) < 0.01 ? "text-nexus-teal" : "text-warning")}>
                   {Math.abs(diff) < 0.01 ? <><CheckCircle2 size={15} /> ยอดตรงกัน</> : <><AlertTriangle size={15} /> ผลต่าง {money(diff)} บาท</>}
                 </span>
               )}

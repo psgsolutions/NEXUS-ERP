@@ -147,7 +147,7 @@ function MilestoneEditor() {
             </PillButton>
           </div>
           <div className="nexus-table-wrap">
-            <table className="w-full table-fixed text-[13px]">
+            <table className="w-full table-fixed text-[12px]">
               <colgroup><col className="w-7" /><col /><col className="w-[132px]" /><col className="w-[132px]" /><col className="w-[72px]" /><col className="w-[112px]" /><col className="w-[72px]" /><col className="w-[78px]" /><col className="w-8" /></colgroup>
               <thead>
                 <tr className="text-[11px] font-bold text-white/50 border-b border-white/10">

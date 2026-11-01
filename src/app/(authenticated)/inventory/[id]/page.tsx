@@ -262,7 +262,7 @@ export default function ProductDetailPage() {
       <div className="flex-1 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-10 h-10 animate-spin text-nexus-teal" />
-          <p className="text-[13px] font-medium text-white/30 uppercase tracking-widest">กำลังโหลดข้อมูลพัสดุ...</p>
+          <p className="text-[12px] font-medium text-white/30 uppercase tracking-widest">กำลังโหลดข้อมูลพัสดุ...</p>
         </div>
       </div>
     );
@@ -656,7 +656,7 @@ export default function ProductDetailPage() {
                isLow ? <AlertTriangle size={20} className="text-warning shrink-0" /> :
                <CheckCircle2 size={20} className="text-nexus-teal shrink-0" />}
               <div>
-                <p className={cn("text-[13px] font-medium uppercase tracking-widest", isOut ? "text-danger" : isLow ? "text-warning" : "text-nexus-teal")}>
+                <p className={cn("text-[12px] font-medium uppercase tracking-widest", isOut ? "text-danger" : isLow ? "text-warning" : "text-nexus-teal")}>
                   {stockLabel}
                 </p>
                 <p className="text-[11px] text-white/40 font-bold mt-0.5">

@@ -177,7 +177,7 @@ export default function AuthenticatedLayout({
                <div className="flex items-center gap-3">
                   <NavButtons />
                   {/* จอมือถือ: ซ่อนเส้นทางหน้า (พื้นที่ไม่พอ) */}
-                  <nav className="hidden sm:flex items-center gap-2 text-[13px] font-bold text-white/50 whitespace-nowrap">
+                  <nav className="hidden sm:flex items-center gap-2 text-[12px] font-bold text-white/50 whitespace-nowrap">
                      <Link href="/dashboard" className="hover:text-white transition-colors">ภาพรวม</Link>
                      {currentPage && currentPage !== "ภาพรวม" && <>
                        <ChevronRight size={10} />
@@ -243,7 +243,7 @@ export default function AuthenticatedLayout({
                     {/* User Identity Info Card */}
                     <div className="p-4 border-b border-white/5 mb-2 mt-1 bg-white/[0.01] rounded-xl border border-white/[0.02]">
                        <p className="text-[11px] font-semibold text-white/50 mb-1">บัญชีผู้ใช้</p>
-                       <p className="text-[13px] font-black text-white truncate uppercase font-mono tracking-tight">{user?.email || 'admin@nexus.os'}</p>
+                       <p className="text-[12px] font-black text-white truncate uppercase font-mono tracking-tight">{user?.email || 'admin@nexus.os'}</p>
                        
                        <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2 text-[11px]">
                           <span className="font-bold text-white/50">ตำแหน่ง</span>
@@ -312,8 +312,8 @@ function NoAccess() {
         <Lock size={22} />
       </div>
       <p className="text-[15px] font-semibold text-white">ไม่มีสิทธิ์เข้าถึงหน้านี้</p>
-      <p className="text-[13px] text-white/50 max-w-sm leading-relaxed">ตำแหน่งของคุณยังไม่ได้รับสิทธิ์ใช้งานส่วนนี้ หากต้องใช้งาน กรุณาติดต่อผู้ดูแลสูงสุดเพื่อกำหนดตำแหน่งเพิ่ม</p>
-      <Link href="/" className="text-[13px] text-nexus-teal hover:underline">กลับหน้าแรก</Link>
+      <p className="text-[12px] text-white/50 max-w-sm leading-relaxed">ตำแหน่งของคุณยังไม่ได้รับสิทธิ์ใช้งานส่วนนี้ หากต้องใช้งาน กรุณาติดต่อผู้ดูแลสูงสุดเพื่อกำหนดตำแหน่งเพิ่ม</p>
+      <Link href="/" className="text-[12px] text-nexus-teal hover:underline">กลับหน้าแรก</Link>
     </div>
   );
 }

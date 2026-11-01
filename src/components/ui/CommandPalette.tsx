@@ -79,7 +79,7 @@ export const CommandPalette = () => {
                 >
                   <span className="text-white/20 group-hover:text-nexus-blue">{item.icon}</span>
                   <div className="flex flex-col items-start">
-                    <span className="text-[13px] font-bold">{item.label}</span>
+                    <span className="text-[12px] font-bold">{item.label}</span>
                     <span className="text-[11px] text-white/20 uppercase font-bold tracking-widest">{item.type === "NAV" ? "Navigation" : "Action"}</span>
                   </div>
                   <span className="ml-auto text-[11px] text-white/20 uppercase tracking-[0.2em] font-bold">

@@ -325,7 +325,7 @@ export default function NewSupplierPage() {
           </div>
 
           <section className="space-y-6 pt-6 border-t border-white/5">
-            <h4 className="text-[13px] font-semibold text-white/80 uppercase flex items-center gap-2 border-b border-white/5 pb-3">
+            <h4 className="text-[12px] font-semibold text-white/80 uppercase flex items-center gap-2 border-b border-white/5 pb-3">
               <MapPin size={16} /> พิกัดและการติดต่อ
             </h4>
             <SmartAddressPicker onSelect={handleSmartAddress} />
@@ -536,7 +536,7 @@ export default function NewSupplierPage() {
 
         <div className="p-6 sm:p-8 space-y-8">
           <Field label="วิธีการรับเงิน / ชำระเงิน *">
-            <PillSelect value={form.payment_method} onChange={(e) => setForm({...form, payment_method: e.target.value})} className="w-full h-9 px-6 rounded-full font-black text-purple-400 bg-white/[0.02] text-[13px]">
+            <PillSelect value={form.payment_method} onChange={(e) => setForm({...form, payment_method: e.target.value})} className="w-full h-9 px-6 rounded-full font-black text-purple-400 bg-white/[0.02] text-[12px]">
               <option value="TRANSFER">โอนเงินผ่านบัญชีธนาคาร</option>
               <option value="CHEQUE">รับด้วยเช็ค</option>
               <option value="CASH">ชำระด้วยเงินสด</option>
@@ -546,7 +546,7 @@ export default function NewSupplierPage() {
           {form.payment_method === "TRANSFER" && (
             <div className="space-y-6 bg-white/[0.02] p-6 rounded-3xl border border-white/5">
               <Field label="ธนาคาร *">
-                <PillSelect value={form.bank_name} onChange={(e) => setForm({...form, bank_name: e.target.value})} className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-bold text-[13px]">
+                <PillSelect value={form.bank_name} onChange={(e) => setForm({...form, bank_name: e.target.value})} className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-bold text-[12px]">
                   <option value="">เลือกธนาคาร...</option>
                   {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
                 </PillSelect>
@@ -602,7 +602,7 @@ export default function NewSupplierPage() {
           )}
 
           {form.payment_method === "CASH" && (
-            <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 text-center text-white/50 text-[13px] font-bold uppercase tracking-widest">
+            <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 text-center text-white/50 text-[12px] font-bold uppercase tracking-widest">
                ชำระเงินสดหน้าร้านหรือตามตกลง (ไม่ต้องระบุเอกสารเพิ่มเติม)
             </div>
           )}

@@ -80,7 +80,7 @@ export default function StockAgingPage() {
             <div className="py-16 flex items-center justify-center gap-2 text-white/40 text-sm"><Loader2 size={16} className="animate-spin" /> กำลังสร้างรายงาน…</div>
           ) : (
             <NexusTable headers={["รหัส", "สินค้า", "คงเหลือ", "หน่วย", "ต้นทุนเฉลี่ย", "มูลค่า", "รับเข้าล่าสุด", "เบิกออกล่าสุด", "ไม่เคลื่อนไหว (วัน)"]} itemCount={rows.length}>
-              {rows.length === 0 && <NexusTableRow className="cursor-default"><NexusTableCell colSpan={9} className="text-center text-[13px] text-white/40 py-10">{onlySlow ? "ไม่มีสินค้าเคลื่อนไหวช้า" : "ไม่มีสินค้าคงเหลือ"}</NexusTableCell></NexusTableRow>}
+              {rows.length === 0 && <NexusTableRow className="cursor-default"><NexusTableCell colSpan={9} className="text-center text-[12px] text-white/40 py-10">{onlySlow ? "ไม่มีสินค้าเคลื่อนไหวช้า" : "ไม่มีสินค้าคงเหลือ"}</NexusTableCell></NexusTableRow>}
               {rows.map((r: any) => (
                 <NexusTableRow key={r.productId} className="cursor-default">
                   <NexusTableCell mono>{r.sku || "-"}</NexusTableCell>

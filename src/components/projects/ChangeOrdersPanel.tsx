@@ -14,7 +14,7 @@ const STATUS_BADGE: Record<ChangeOrderStatus, "pending" | "active" | "danger"> =
 const baht = (n: number) => `฿${(Number(n) || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const tsText = (t: any) => (t?.toDate ? t.toDate().toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" }) : "-");
 const DAY = 86400e3;
-const textareaCls = "w-full bg-black/20 border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[13px] text-white focus:outline-none resize-y leading-relaxed";
+const textareaCls = "w-full bg-black/20 border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[12px] text-white focus:outline-none resize-y leading-relaxed";
 
 export function ChangeOrdersPanel({ companyId, docId, project, status, canRequest, canApprove, canQuote = false, onMessage }: {
   companyId: string;
@@ -112,7 +112,7 @@ export function ChangeOrdersPanel({ companyId, docId, project, status, canReques
     }
   };
 
-  const segBtn = (on: boolean) => cn("h-9 px-4 rounded-full text-[13px] font-bold border whitespace-nowrap",
+  const segBtn = (on: boolean) => cn("h-9 px-4 rounded-full text-[12px] font-bold border whitespace-nowrap",
     on ? "bg-nexus-teal/15 border-nexus-teal/40 text-nexus-teal" : "bg-white/[0.02] border-white/10 text-white/50 hover:text-white");
 
   return (
@@ -203,13 +203,13 @@ export function ChangeOrdersPanel({ companyId, docId, project, status, canReques
 
       <GlassCard className="p-0 overflow-hidden">
         {list.length === 0 ? (
-          <p className="p-6 text-center text-[13px] text-white/40">ยังไม่มีการเปลี่ยนแปลง</p>
+          <p className="p-6 text-center text-[12px] text-white/40">ยังไม่มีการเปลี่ยนแปลง</p>
         ) : (
           <>
           {rejecting && (
             <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-white/10 bg-danger/[0.04]">
-              <span className="text-[13px] text-white/70">ไม่อนุมัติ {list.find((c) => c.id === rejecting.id)?.coNo}</span>
-              <PillInput autoFocus value={rejecting.note} onChange={(e) => setRejecting({ id: rejecting.id, note: e.target.value })} placeholder="เหตุผลที่ไม่อนุมัติ" className="h-8 flex-1 min-w-[200px] px-3 rounded-full bg-white/[0.03] border border-white/10 text-[13px] text-white focus:outline-none" />
+              <span className="text-[12px] text-white/70">ไม่อนุมัติ {list.find((c) => c.id === rejecting.id)?.coNo}</span>
+              <PillInput autoFocus value={rejecting.note} onChange={(e) => setRejecting({ id: rejecting.id, note: e.target.value })} placeholder="เหตุผลที่ไม่อนุมัติ" className="h-8 flex-1 min-w-[200px] px-3 rounded-full bg-white/[0.03] border border-white/10 text-[12px] text-white focus:outline-none" />
               <button type="button" disabled={busy} onClick={() => decide(rejecting.id, "reject", rejecting.note)} className="h-8 px-3 rounded-full border border-danger/40 text-danger text-[12px] font-bold">ยืนยันไม่อนุมัติ</button>
               <button type="button" onClick={() => setRejecting(null)} className="p-1 text-white/40" title="ปิด"><X size={14} /></button>
             </div>

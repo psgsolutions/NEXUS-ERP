@@ -63,7 +63,7 @@ const CompactVerticalStepperInput = ({ value, onChange, min = 0 }: { value: numb
         value={value === 0 ? "" : value}
         onChange={(e) => onChange(Math.max(min, Number(e.target.value) || 0))}
         onFocus={(e) => e.target.select()}
-        className="flex-1 w-full h-full bg-transparent text-center font-mono text-[13px] font-black text-white px-1 focus:outline-none rounded-full not-italic [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        className="flex-1 w-full h-full bg-transparent text-center font-mono text-[12px] font-black text-white px-1 focus:outline-none rounded-full not-italic [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         min={min}
       />
       <div className="absolute right-1 top-1 bottom-1 flex flex-col items-center justify-between w-4 opacity-0 group-hover/stepper:opacity-100 focus-within:opacity-100 transition-opacity bg-black/40 rounded-full overflow-hidden border border-white/10">
@@ -248,7 +248,7 @@ const InlineRow = ({
             onChange={(e) => updateItem(item.id, "name", e.target.value)}
             disabled={isLocked}
             placeholder="ระบุชื่อหัวข้อกลุ่ม (เช่น: หมวดหมู่อุปกรณ์เครือข่าย)..."
-            className="flex-1 min-w-0 bg-transparent text-[13px] font-bold text-white focus:outline-none"
+            className="flex-1 min-w-0 bg-transparent text-[12px] font-bold text-white focus:outline-none"
           />
         </div>
         <div className="flex items-center gap-1">
@@ -386,7 +386,7 @@ const InlineRow = ({
   const renderQty = () => !isLocked ? (
     <CompactVerticalStepperInput value={item.qty} onChange={(val) => updateItem(item.id, "qty", val)} min={1} />
   ) : (
-    <div className="text-center"><span className="font-mono text-[13px] text-white/80 not-italic">{item.qty}</span></div>
+    <div className="text-center"><span className="font-mono text-[12px] text-white/80 not-italic">{item.qty}</span></div>
   );
 
   const renderUnit = () => !isLocked ? (
@@ -471,7 +471,7 @@ const InlineRow = ({
   );
 
   const renderAmount = () => (
-    <p className="text-right font-mono text-[13px] font-black text-nexus-teal not-italic whitespace-nowrap">
+    <p className="text-right font-mono text-[12px] font-black text-nexus-teal not-italic whitespace-nowrap">
       {lineFinalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
     </p>
   );
@@ -510,7 +510,7 @@ const InlineRow = ({
   );
 
   const seqCell = (
-    <div className="text-center font-mono text-[13px] text-white/60 flex items-center justify-center gap-1">
+    <div className="text-center font-mono text-[12px] text-white/60 flex items-center justify-center gap-1">
       {item.isSubItem ? <CornerDownRight size={12} className="text-nexus-teal/50" /> : (index + 1)}
     </div>
   );
@@ -559,7 +559,7 @@ const InlineRow = ({
         <div className={cn("px-4 py-4 bg-black/40 border-b border-white/5 gap-4 relative z-0 shadow-inner grid", narrowPanel ? "grid-cols-1" : "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_240px]")}>
 
           {tier !== "full" && item.name && (
-            <p className={cn("text-[13px] font-bold text-white leading-snug break-words", !narrowPanel && "col-span-3")}>{item.name}</p>
+            <p className={cn("text-[12px] font-bold text-white leading-snug break-words", !narrowPanel && "col-span-3")}>{item.name}</p>
           )}
 
           {hiddenFields.length > 0 && (
@@ -667,7 +667,7 @@ const InlineRow = ({
                 </div>
                 <div className="flex justify-between items-center gap-2 pt-2 border-t border-white/5 mt-1">
                   <span className="text-[12px] text-white/60">กำไรคาดการณ์ (GP):</span>
-                  <span className={cn("text-[13px] font-mono font-black", lineGP >= 0 ? "text-nexus-blue" : "text-danger")}>
+                  <span className={cn("text-[12px] font-mono font-black", lineGP >= 0 ? "text-nexus-blue" : "text-danger")}>
                     {Number(item.price || 0) > 0 ? `${lineGP.toFixed(2)}%` : "-"}
                   </span>
                 </div>

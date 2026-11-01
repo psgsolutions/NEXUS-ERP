@@ -1124,7 +1124,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     return (
       <fieldset disabled={!canEdit} className="space-y-3">
         <div className="flex items-center gap-1.5">
-          <p className="text-[13px] font-bold text-white">{BLOCK_LABELS[b.kind]}</p>
+          <p className="text-[12px] font-bold text-white">{BLOCK_LABELS[b.kind]}</p>
           {isLocked(it) && <Lock size={12} className="text-white/50" />}
           <span className={cn("ml-auto text-[11px] px-2 py-0.5 rounded-full", it.zone === "head" ? "bg-purple-500/15 text-purple-200" : "bg-nexus-teal/15 text-nexus-teal")}>{it.zone === "head" ? "หัวกระดาษ" : "เนื้อเอกสาร"}</span>
         </div>
@@ -1166,7 +1166,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
 
         {b.kind === "text" && (
           <div className="space-y-1.5">
-            <textarea ref={textRef} value={b.text || ""} onChange={(e) => update(it, { text: e.target.value })} className="w-full min-h-[70px] rounded-xl bg-white/[0.03] border border-white/10 px-3 py-2 text-[13px] leading-[1.9] text-white" />
+            <textarea ref={textRef} value={b.text || ""} onChange={(e) => update(it, { text: e.target.value })} className="w-full min-h-[70px] rounded-xl bg-white/[0.03] border border-white/10 px-3 py-2 text-[12px] leading-[1.9] text-white" />
             <PillSelect value="" onChange={(e) => { const k = String(e.target.value); if (!k) return; const el = textRef.current, cur = b.text || "", at = el ? el.selectionStart : cur.length; update(it, { text: `${cur.slice(0, at)}{{${k}}}${cur.slice(at)}` }); }} className="h-8 w-full text-[12px]">
               <option value="">+ แทรกข้อมูลจากฐานข้อมูล…</option>
               {variables.map((v) => <option key={v.key} value={v.key}>{v.label} · {v.source}</option>)}
@@ -1846,7 +1846,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     <div className="space-y-3">
       {!letterOnly && (
         <div className="space-y-1.5">
-          <p className="text-[13px] font-bold text-white">ข้อมูลที่แสดงในเอกสารนี้</p>
+          <p className="text-[12px] font-bold text-white">ข้อมูลที่แสดงในเอกสารนี้</p>
           <DataChecklist groups={groups} onToggle={toggle} canEdit={canEdit} />
         </div>
       )}
@@ -1981,7 +1981,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
         <div className="w-full lg:w-[330px] flex-shrink-0 lg:sticky" style={{ top: below, ["--below" as string]: `${below + 16}px` }}>
         <GlassCard className="p-3 w-full space-y-3 lg:overflow-y-auto lg:pb-14 lg:max-h-[calc(100vh-var(--below))]">
           <div className="flex items-center gap-2 -mb-1">
-            <p className="text-[13px] font-bold text-white flex items-center gap-1.5"><Paintbrush size={14} className="text-nexus-teal" /> รูปแบบ</p>
+            <p className="text-[12px] font-bold text-white flex items-center gap-1.5"><Paintbrush size={14} className="text-nexus-teal" /> รูปแบบ</p>
             <button type="button" onClick={() => setUiPart({ right: false })} title="ย่อแผงรูปแบบ" className="ml-auto h-7 w-7 rounded-md flex items-center justify-center text-white/55 hover:text-white hover:bg-white/10"><PanelRightClose size={15} /></button>
           </div>
           {problems > 0 && (

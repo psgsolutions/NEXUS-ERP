@@ -258,7 +258,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
               {activeTab === "logistics" && (
                 <div className="space-y-10">
                   <div className="space-y-6">
-                    <div className="flex items-center gap-3 text-nexus-blue"><Truck size={18} /><h4 className="text-[13px] font-semibold uppercase tracking-widest">ข้อมูลการจัดส่งสินค้า</h4></div>
+                    <div className="flex items-center gap-3 text-nexus-blue"><Truck size={18} /><h4 className="text-[12px] font-semibold uppercase tracking-widest">ข้อมูลการจัดส่งสินค้า</h4></div>
                     <div className="space-y-6">
                        <Field label="วิธีการจัดส่ง">
                           <PillSelect 
@@ -275,7 +275,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
                        <div className="grid grid-cols-2 gap-8">
                           <Field label="ที่อยู่ในการจัดส่ง">
                              <textarea 
-                               className="w-full h-32 rounded-xl bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold p-6 focus:outline-none focus:border-nexus-blue/40"
+                               className="w-full h-32 rounded-xl bg-white/[0.03] border border-white/10 text-white text-[12px] font-bold p-6 focus:outline-none focus:border-nexus-blue/40"
                                value={header.shippingAddress}
                                onChange={(e) => setHeader({...header, shippingAddress: e.target.value})}
                                placeholder="ระบุสถานที่ส่งสินค้า..."
@@ -283,7 +283,7 @@ export function SalesOrderModal({ isOpen, onClose, onSave }: SalesOrderModalProp
                           </Field>
                           <Field label="ที่อยู่ในการออกใบเสร็จ">
                              <textarea 
-                               className="w-full h-32 rounded-xl bg-white/[0.03] border border-white/10 text-white text-[13px] font-bold p-6 focus:outline-none focus:border-nexus-blue/40"
+                               className="w-full h-32 rounded-xl bg-white/[0.03] border border-white/10 text-white text-[12px] font-bold p-6 focus:outline-none focus:border-nexus-blue/40"
                                value={header.billingAddress}
                                onChange={(e) => setHeader({...header, billingAddress: e.target.value})}
                                placeholder="ระบุที่อยู่ตามใบกำกับภาษี..."

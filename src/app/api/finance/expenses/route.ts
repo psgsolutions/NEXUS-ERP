@@ -5,7 +5,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { prepareSequence } from "@/lib/sequence-server";
 import { auditServer } from "@/services/audit.server";
-import { EXPENSE_ACCOUNTS } from "@/lib/payables";
+import { EXPENSE_ACCOUNTS, suggestExpenseAccount } from "@/lib/payables";
 import { createExpenseClaim } from "@/lib/expenses.server";
 
 /**
@@ -32,6 +32,13 @@ export async function POST(request: Request) {
     const action = str(body.action, 20);
     const now = admin.firestore.FieldValue.serverTimestamp();
     const base = { companyId, createdBy: apiUser.uid, createdByEmail: apiUser.email || "", createdAt: now, updatedAt: now, isDeleted: false, status: "Awaiting Payment" };
+    // แนะนำรหัสบัญชีจากประวัติค่าใช้จ่าย 300 รายการล่าสุดของบริษัท (ไม่ออกเลข ไม่บันทึกอะไร)
+    if (action === "suggestAccount") {
+      if (!["finance:edit", "projects:edit", "inventory:edit", "sales:edit", "hr:edit", "procurement:edit"].some((p) => can(apiUser.roles, p as any))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
+      const snap = await adminDb.collection(`companies/${companyId}/expenses`).orderBy("createdAt", "desc").limit(300).get();
+      const suggestion = suggestExpenseAccount(snap.docs.map((d) => d.data()).filter((x) => x.isDeleted !== true), { description: str(body.description, 500), vendor: str(body.vendor, 200) });
+      return NextResponse.json({ success: true, suggestion });
+    }
     const take = await prepareSequence("EXP", companyId);
 
     if (action === "claim") {

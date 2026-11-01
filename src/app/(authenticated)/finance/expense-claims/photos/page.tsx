@@ -139,11 +139,28 @@ function InboxCard({ item, canConfirm, mine, employees, projects, post, onDone, 
   const [busy, setBusy] = useState("");
   const [emp, setEmp] = useState("");
   const [acct, setAcct] = useState(item.data?.suggestedAccount || EXPENSE_ACCOUNTS[0].code);
+  const open = item.status === "DRAFT" || item.status === "REVIEW";
+  // บัญชีจากประวัติของบริษัท (ร้าน/รายการเดียวกันเคยลงบัญชีไหน) แทนที่คำแนะนำของ AI ถ้าผู้ใช้ยังไม่เลือกเอง
+  const acctTouched = useRef(false);
+  const [acctHint, setAcctHint] = useState("");
+  const vendorName = d.vendorName, itemText = d.items.map((l) => l.description).join(" ");
+  useEffect(() => {
+    if (!open || (!vendorName && !itemText.trim())) return;
+    let alive = true;
+    post("/api/finance/expenses", { action: "suggestAccount", vendor: vendorName, description: itemText })
+      .then((r) => {
+        const s = r.suggestion;
+        if (!alive || !s) return;
+        setAcctHint(`จากประวัติ: ${s.code} ${s.name} (${s.matches} รายการ)`);
+        if (!acctTouched.current) setAcct(s.code);
+      })
+      .catch(() => { /* ไม่มีคำแนะนำ — ใช้ของ AI */ });
+    return () => { alive = false; };
+  }, [open, vendorName, itemText, post]);
   const [proj, setProj] = useState("");
   const [doc, setDoc] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
-  const open = item.status === "DRAFT" || item.status === "REVIEW";
   const editable = open && (mine || canConfirm);
   useEffect(() => { setD(normalizeInboxData(item.data)); setDirty(false); }, [item.data]);
   const set = (patch: Partial<InboxData>) => { setD((x) => ({ ...x, ...patch })); setDirty(true); };
@@ -222,7 +239,7 @@ function InboxCard({ item, canConfirm, mine, employees, projects, post, onDone, 
         {open && canConfirm && (
           <div className="w-full flex flex-wrap items-center gap-2 pt-1">
             <div className="w-full sm:w-[210px]"><PillSelect value={emp} onChange={(e) => setEmp(String(e.target.value))} className="h-9 w-full text-[12.5px]"><option value="">ผู้จ่ายเงิน (ผู้เบิก)…</option>{employees.map((e) => <option key={e.id} value={e.id}>{empName(e)}</option>)}</PillSelect></div>
-            <div className="w-full sm:w-[230px]"><PillSelect value={acct} onChange={(e) => setAcct(String(e.target.value))} className="h-9 w-full text-[12.5px]">{EXPENSE_ACCOUNTS.map((a) => <option key={a.code} value={a.code}>{a.code} {a.name}</option>)}</PillSelect></div>
+            <div className="w-full sm:w-[230px]"><PillSelect value={acct} onChange={(e) => { acctTouched.current = true; setAcct(String(e.target.value)); }} className="h-9 w-full text-[12.5px]" title={acctHint || undefined}>{EXPENSE_ACCOUNTS.map((a) => <option key={a.code} value={a.code}>{a.code} {a.name}</option>)}</PillSelect></div>
             <div className="w-full sm:w-[210px]"><PillSelect value={proj} onChange={(e) => setProj(String(e.target.value))} className="h-9 w-full text-[12.5px]"><option value="">ไม่เข้าโครงการ</option>{projects.map((p: any) => <option key={p.id} value={p.id}>{p.projectName || p.title || p.id}</option>)}</PillSelect></div>
             <div className="ml-auto flex gap-2">
               {rejecting ? (

@@ -1,7 +1,7 @@
 "use client";
 
 import { EXPENSE_ACCOUNTS } from "@/lib/payables";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSystemDialog } from "@/context/DialogContext";
 import {
@@ -57,6 +57,25 @@ export default function NewExpenseClaimPage() {
       .catch(() => setEmployees([]));
   }, [companyId]);
   const [saving, setSaving] = useState(false);
+  // แนะนำรหัสบัญชีจากประวัติค่าใช้จ่ายของบริษัท (ตามรายละเอียดที่พิมพ์) — ใช้เฉพาะเมื่อผู้ใช้ยังไม่เลือกบัญชีเอง
+  const accountTouched = useRef(false);
+  const [accountHint, setAccountHint] = useState("");
+  useEffect(() => {
+    const description = formData.description.trim();
+    if (!companyId || description.length < 3) { setAccountHint(""); return; }
+    const t = setTimeout(() => {
+      apiFetch("/api/finance/expenses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "suggestAccount", description }) })
+        .then((r) => r.json())
+        .then((d) => {
+          const s = d.success ? d.suggestion : null;
+          if (!s) { setAccountHint(""); return; }
+          setAccountHint(`แนะนำจากประวัติ: ${s.code} ${s.name} (รายการคล้ายกัน ${s.matches} รายการ)`);
+          if (!accountTouched.current) setFormData((f) => ({ ...f, expenseAccountCode: s.code }));
+        })
+        .catch(() => setAccountHint(""));
+    }, 600);
+    return () => clearTimeout(t);
+  }, [companyId, formData.description]);
   // รูปใบเสร็จ/บิลที่แนบ (อัปโหลดหลังสร้างใบเบิกแล้ว)
   const [files, setFiles] = useState<PendingFile[]>([]);
   const employeeName = (e: any) => e ? (e.name || [e.firstName, e.lastName].filter(Boolean).join(" ") || e.employeeCode || e.id) : "";
@@ -173,13 +192,14 @@ export default function NewExpenseClaimPage() {
         <Field label="รหัสบัญชีค่าใช้จ่าย (EXPENSE ACCOUNT) *">
           <PillSelect
             value={formData.expenseAccountCode}
-            onChange={e => setFormData({ ...formData, expenseAccountCode: e.target.value })}
+            onChange={e => { accountTouched.current = true; setFormData({ ...formData, expenseAccountCode: e.target.value }); }}
             className="w-full"
           >
             {EXPENSE_ACCOUNTS.map((a) => (
               <option key={a.code} value={a.code}>{a.code} - {a.name}</option>
             ))}
           </PillSelect>
+          {accountHint && <p className="text-[11.5px] text-nexus-teal/80 mt-1 ml-1">{accountHint}{accountTouched.current ? " — คุณเลือกบัญชีเองแล้ว" : ""}</p>}
         </Field>
 
         <Field label="โครงการ (ถ้าเป็นค่าใช้จ่ายของโครงการ)">

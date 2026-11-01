@@ -290,10 +290,12 @@ export function PillCheckbox({ label, className, ...props }: React.InputHTMLAttr
 }
 
 export function GlassCard({ 
+  id,
   className, 
   children,
   accentColor
 }: { 
+  id?: string;
   className?: string; 
   children: React.ReactNode;
   accentColor?: "teal" | "blue" | "purple" | "emerald" | "amber" | "rose";
@@ -309,6 +311,7 @@ export function GlassCard({
 
   return (
     <div
+      id={id}
       className={cn(
         "bg-neutral-900/90 backdrop-blur-3xl border border-white/15 rounded-3xl shadow-2xl overflow-hidden relative group/card",
         "before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/[0.05] before:to-transparent before:pointer-events-none",

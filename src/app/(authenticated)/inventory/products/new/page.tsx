@@ -17,7 +17,11 @@ import {
   Sliders,
   DollarSign,
   X,
-  CheckCircle2
+  CheckCircle2,
+  Copy,
+  AlertTriangle,
+  ChevronDown,
+  ImageIcon
 } from "lucide-react";
 import { 
   PillButton, 
@@ -45,6 +49,8 @@ import { SupplierMatrix } from "@/components/inventory/SupplierMatrix";
 import { DocumentVaultUploader, DigitalDocumentItem } from "@/components/shared/DocumentVaultUploader";
 import { ProductConversion, ProductSupplierInfo } from "@/types/inventory";
 import { getRequiredFieldsStatus, checkSkuDuplicate, findBarcodeConflict } from "@/lib/product-validation";
+import { carryOver, findSimilarProducts, marginOf, productToForm, type MarginLevel } from "@/lib/product-form";
+import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 
 const INITIAL_FORM_DATA = {
   // 1. Identification & Classification
@@ -111,6 +117,10 @@ const INITIAL_FORM_DATA = {
   poRef: ""
 };
 
+// สีตามความหมาย: ขาดทุน = แดง · ต่ำกว่าเกณฑ์ = เหลือง · ผ่าน = เขียว
+const MARGIN_TEXT: Record<MarginLevel, string> = { none: "text-white/60", loss: "text-rose-400", low: "text-amber-400", ok: "text-emerald-400" };
+const MARGIN_BAR: Record<MarginLevel, string> = { none: "bg-white/20", loss: "bg-rose-400", low: "bg-amber-400", ok: "bg-emerald-400" };
+
 const computeNextSku = (existingProducts: any[], extraSkus: string[] = []) => {
   const now = new Date();
   const yy = now.getFullYear().toString().slice(-2);
@@ -153,6 +163,19 @@ export default function NewProductPage() {
 
   const { data: suppliers } = useSuppliers();
   const { warehouses } = useWarehouses();
+  // เกณฑ์ GP ขั้นต่ำเดียวกับใบเสนอราคา (ตั้งค่าบริษัท)
+  const { data: companyDoc } = useRealtimeDocument(companyId ? `companies/${companyId}` : null);
+  const minGp = Number((companyDoc as any)?.settings?.minGpPercentForAutoSend ?? 15);
+
+  // ช่องขั้นสูง (ผังบัญชี มิติ หน่วยหลายระดับ ผู้ขายหลายราย การติดตาม/สเปก) — จำค่าที่เลือกไว้ในเครื่อง
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  useEffect(() => {
+    try { if (localStorage.getItem("nexus_product_form_advanced") === "1") setShowAdvanced(true); } catch { /* ใช้ค่าเริ่มต้น */ }
+  }, []);
+  const toggleAdvanced = () => setShowAdvanced((v) => {
+    try { localStorage.setItem("nexus_product_form_advanced", v ? "0" : "1"); } catch { /* ใช้ได้เฉพาะหน้านี้ */ }
+    return !v;
+  });
 
   const INITIAL_CATEGORIES = [
     { value: "general", label: "ทั่วไป" },
@@ -396,8 +419,6 @@ export default function NewProductPage() {
     }
   };
 
-  const profit = formData.price - formData.cost;
-  const profitMargin = formData.price > 0 ? ((profit / formData.price) * 100).toFixed(1) : "0.0";
   const initialQty = (formData.qty && formData.qty > 0) ? formData.qty : 0;
   const totalCost = sourceMode === "manual" 
     ? (initialQty * (formData.cost || 0))
@@ -424,6 +445,58 @@ export default function NewProductPage() {
   const requiredStatus = React.useMemo(() => {
     return getRequiredFieldsStatus(formData);
   }, [formData]);
+
+  // สินค้าที่อาจซ้ำ (ไม่บล็อกการบันทึก — ให้เปิดดูก่อน)
+  const similarProducts = React.useMemo(
+    () => findSimilarProducts(formData, products || [], companyId || ""),
+    [formData.name, formData.mpn, formData.supplierSku, formData.brand, formData.model, products, companyId] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const posMargin = marginOf(formData.cost, formData.price, minGp);
+  const otherMargins = [
+    { label: "โครงการ", price: formData.priceProject },
+    { label: "ขายส่ง", price: formData.priceWholesale },
+    { label: "ต่ำสุด", price: formData.minimumFloorPrice },
+  ].filter((m) => m.price > 0).map((m) => ({ ...m, ...marginOf(formData.cost, m.price, minGp) }));
+
+  // สร้างจากสินค้าเดิม: เลือกในหน้านี้ หรือเปิดมาจากคลังสินค้า (?from=รหัสสินค้า)
+  const [cloneSourceId, setCloneSourceId] = useState("");
+  const cloneOptions = React.useMemo(
+    () => (products || []).filter((p: any) => !p.isDeleted).map((p: any) => ({ value: p.id, label: `${p.sku ? `${p.sku} · ` : ""}${p.name || p.productName || p.id}` })),
+    [products]
+  );
+  const applyClone = async (id: string, ask = true) => {
+    const src = (products || []).find((p: any) => p.id === id);
+    if (!src) return;
+    if (ask && isFormDirty() && !(await showConfirm("ข้อมูลที่กรอกไว้จะถูกแทนด้วยข้อมูลจากสินค้าที่เลือก ดำเนินการต่อใช่หรือไม่?", "สร้างจากสินค้าเดิม"))) return;
+    setFormData((prev) => ({ ...productToForm(INITIAL_FORM_DATA, src), sku: prev.sku }));
+    setIsPriceManuallyEdited(true);
+    setErrors({});
+    setCloneSourceId(id);
+  };
+  const cloneParamDone = useRef(false);
+  useEffect(() => {
+    if (cloneParamDone.current || !products?.length) return;
+    cloneParamDone.current = true;
+    const from = new URLSearchParams(window.location.search).get("from");
+    if (from) applyClone(from, false);
+  }, [products]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // สถานะของแต่ละส่วน (แถบลำดับขั้นด้านบน)
+  const has = (v: unknown) => v !== null && v !== undefined && v !== "" && v !== 0 && !(Array.isArray(v) && !v.length);
+  const sections = [
+    { id: "sec-main", label: "ข้อมูลหลัก", done: has(formData.name) && has(formData.category), required: true },
+    { id: "sec-price", label: "ราคา/ต้นทุน", done: formData.cost > 0 && formData.price > 0, required: true },
+    { id: "sec-stock", label: "คลังและหน่วย", done: has(formData.baseUnit) || has(formData.warehouseId), required: !!(formData.qty && formData.qty > 0) && !formData.warehouseId },
+    { id: "sec-purchase", label: "จัดซื้อและสต็อก", done: has(formData.supplierId) || has(formData.reorderPoint), required: false },
+    { id: "sec-advanced", label: "ขั้นสูง", done: formData.isSerialized || formData.isBatchTracked || formData.isExpiryTracked || has(formData.technicalSpecs) || has(formData.documents), required: false },
+  ];
+  const advancedFilled = [formData.glIncomeAccount, formData.glCogsAccount, formData.glInventoryAccount, formData.weightKg, formData.dimensionW, formData.dimensionL, formData.dimensionH, formData.conversions, formData.supplierConfig, formData.sns, formData.technicalSpecs, formData.aliases, formData.accessories, formData.documents].filter(has).length
+    + [formData.isSerialized, formData.isBatchTracked, formData.isExpiryTracked].filter(Boolean).length;
+  const goToSection = (id: string) => {
+    if (id === "sec-advanced" && !showAdvanced) toggleAdvanced();
+    setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
 
   const scrollToField = (fieldId: string) => {
     const el = document.getElementById(fieldId);
@@ -624,18 +697,19 @@ export default function NewProductPage() {
           if (!res.ok || !d.success) throw new Error(d.error || "บันทึกสินค้าไม่สำเร็จ");
         };
         await saveToFirestore(saveOp());
-        showAlert("เพิ่มสินค้าใหม่เข้าสู่ระบบเรียบร้อยแล้ว");
-
         if (saveAndContinue) {
+          // ตัวถัดไปคงหมวด ยี่ห้อ หน่วย ภาษี ผู้ขาย คลัง และการติดตามไว้ — ล้างเฉพาะตัวสินค้า
           const nextSku = computeNextSku(products, [savedSku]);
-          setFormData({
-            ...INITIAL_FORM_DATA,
-            sku: nextSku
-          });
+          setFormData(prev => ({ ...carryOver(INITIAL_FORM_DATA, prev), sku: nextSku }));
           setErrors({});
           setPoItems([]);
+          setIsPriceManuallyEdited(false);
+          setCloneSourceId("");
+          showAlert(`บันทึก ${savedSku} แล้ว · ตัวถัดไปใช้หมวด ยี่ห้อ หน่วย ผู้ขาย และคลังเดิม แก้ได้ตามต้องการ`);
+          document.getElementById("sec-main")?.scrollIntoView({ behavior: "smooth", block: "start" });
           return;
         }
+        showAlert("เพิ่มสินค้าใหม่เข้าสู่ระบบเรียบร้อยแล้ว");
 
       } else {
         // รับสินค้าจากใบสั่งซื้อทำที่หน้ารับสินค้าเข้าคลัง (ตัดสต็อก ต้นทุนเฉลี่ย และลงบัญชีที่ server)
@@ -676,7 +750,20 @@ export default function NewProductPage() {
         </div>
       </div>
       <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
-        <PillTabs 
+        {sourceMode === "manual" && (
+          <div className="flex items-center gap-1.5 w-full sm:w-[280px]" title="คัดลอกหมวด ยี่ห้อ หน่วย ราคา ผู้ขาย และการตั้งค่าจากสินค้าเดิม (ไม่คัดลอกรหัส บาร์โค้ด รูป และยอดยกมา)">
+            <Copy size={14} className="text-nexus-teal shrink-0" />
+            <SmartSelect
+              options={cloneOptions}
+              value={cloneSourceId}
+              onChange={(val) => { if (val) applyClone(val); }}
+              allowCustom={false}
+              placeholder="สร้างจากสินค้าเดิม..."
+              className="flex-1"
+            />
+          </div>
+        )}
+        <PillTabs
           tabs={[
             { id: "manual", label: "คีย์สินค้าเข้าระบบ", icon: <Package size={14} /> },
             { id: "po", label: "รับจากคำสั่งซื้อ", icon: <Truck size={14} /> }
@@ -698,10 +785,39 @@ export default function NewProductPage() {
     <div className="space-y-3.5 pr-1 pb-10">
       {sourceMode === "manual" ? (
         <div className="space-y-3.5">
+          {/* ลำดับขั้นของฟอร์ม: คลิกเพื่อไปยังส่วน · จุดสี = กรอกแล้ว / ยังขาดช่องบังคับ / ไม่บังคับ */}
+          <div className="sticky -top-4 xl:-top-6 z-30 flex items-center gap-1.5 flex-wrap bg-surface-1/95 backdrop-blur-xl border border-white/10 rounded-2xl px-2 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.45)]">
+            {sections.map((sec, i) => (
+              <PillButton
+                key={sec.id}
+                variant="ghost"
+                onClick={() => goToSection(sec.id)}
+                className="h-8 px-3 normal-case tracking-normal font-semibold text-white/80 gap-1.5"
+                title={sec.done ? "กรอกแล้ว" : sec.required ? "ยังขาดช่องบังคับ" : "ไม่บังคับ"}
+              >
+                <span className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[11px] font-bold font-mono",
+                  sec.done ? "bg-emerald-500/25 text-emerald-300" : sec.required ? "bg-rose-500/25 text-rose-300" : "bg-white/10 text-white/60")}>
+                  {sec.done ? <CheckCircle2 size={11} /> : i + 1}
+                </span>
+                {sec.label}
+              </PillButton>
+            ))}
+            <PillButton
+              variant={showAdvanced ? "primary" : "glass"}
+              onClick={toggleAdvanced}
+              className="h-8 px-3 ml-auto normal-case tracking-normal font-semibold gap-1.5"
+              title="ผังบัญชี มิติและน้ำหนัก หน่วยหลายระดับ ผู้ขายหลายราย การติดตาม สเปก และเอกสาร"
+            >
+              <Sliders size={12} />
+              {showAdvanced ? "ซ่อนช่องขั้นสูง" : "แสดงช่องขั้นสูง"}
+              {!showAdvanced && advancedFilled > 0 && <span className="text-[11px] font-mono text-nexus-teal">({advancedFilled})</span>}
+            </PillButton>
+          </div>
+
           {/* ROW 1: Card 1 (ซ้าย) & Card 2 (ขวา) */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5 items-start">
             {/* CARD 1: ข้อมูลหลัก หมวดหมู่ และผังบัญชี */}
-            <GlassCard accentColor="teal" className="p-4 space-y-3.5 animate-in fade-in duration-300 relative overflow-visible">
+            <GlassCard id="sec-main" accentColor="teal" className="p-4 space-y-3.5 animate-in fade-in duration-300 relative overflow-visible scroll-mt-14">
               <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20">
@@ -849,6 +965,23 @@ export default function NewProductPage() {
                 </div>
               </div>
 
+              {/* อาจซ้ำกับสินค้าเดิม: เปิดดูในแท็บใหม่ได้ ไม่บล็อกการบันทึก */}
+              {similarProducts.length > 0 && (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 space-y-1">
+                  <p className="text-[12px] font-bold text-amber-300 flex items-center gap-1.5">
+                    <AlertTriangle size={12} /> อาจซ้ำกับสินค้าที่มีอยู่ — ตรวจก่อนบันทึก
+                  </p>
+                  {similarProducts.map((p) => (
+                    <a key={p.id} href={`/inventory/${p.id}`} target="_blank" rel="noreferrer"
+                      className="flex items-center gap-2 text-[12px] text-white/85 hover:text-white rounded-lg px-1.5 py-0.5 hover:bg-white/5 min-w-0">
+                      <span className="font-mono text-nexus-teal shrink-0">{p.sku || "—"}</span>
+                      <span className="truncate flex-1">{p.name}</span>
+                      <span className="text-[11px] text-amber-300 shrink-0">{p.reason}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
+
               {/* BROW 3: ยี่ห้อ - รุ่นหลัก - รุ่นย่อย / ซีรีส์ */}
               <div className="flex flex-wrap gap-2 items-end">
                 <div className="flex-1 min-w-[130px]">
@@ -920,8 +1053,8 @@ export default function NewProductPage() {
                 </div>
               </div>
 
-              {/* BROW 5: การผูกผังบัญชี */}
-              <div className="pt-2 border-t border-white/5 space-y-2">
+              {/* BROW 5: การผูกผังบัญชี (ขั้นสูง — ว่างไว้ใช้ค่าตั้งต้นตามประเภทสินค้า) */}
+              {showAdvanced && <div className="pt-2 border-t border-white/5 space-y-2">
                 <h6 className="text-[11px] font-bold uppercase text-nexus-teal tracking-wider">การผูกผังบัญชี</h6>
                 <div className="flex flex-wrap gap-2 bg-black/40 p-2.5 rounded-xl border border-white/5 items-end">
                   <div className="flex-1 min-w-[140px]">
@@ -957,11 +1090,11 @@ export default function NewProductPage() {
                     </Field>
                   </div>
                 </div>
-              </div>
+              </div>}
             </GlassCard>
 
             {/* CARD 2: ราคาและอัตรากำไร */}
-            <GlassCard accentColor="blue" className="p-4 space-y-3 animate-in fade-in duration-300 relative overflow-visible">
+            <GlassCard id="sec-price" accentColor="blue" className="p-4 space-y-3 animate-in fade-in duration-300 relative overflow-visible scroll-mt-14">
               <div className="flex items-center gap-2 border-b border-white/5 pb-2">
                 <div className="w-6 h-6 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20">
                   <DollarSign size={14} />
@@ -1018,11 +1151,35 @@ export default function NewProductPage() {
                   </div>
                 </div>
 
-                <div className="w-full flex justify-between items-center pt-2 border-t border-white/5 px-1">
-                  <span className="text-[12px] font-bold text-white/60 uppercase tracking-wide">กำไรคาดการณ์หน้าร้าน</span>
-                  <span className={cn("text-[12px] font-bold font-mono", profit > 0 ? "text-nexus-teal" : "text-white/40")}>
-                    ฿{profit.toLocaleString()} <span className="text-[11px]">({profitMargin}%)</span>
-                  </span>
+                {/* กำไรขั้นต้นเทียบเกณฑ์ GP ของบริษัท (เดียวกับใบเสนอราคา) */}
+                <div className="pt-2 border-t border-white/5 px-1 space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[12px] font-bold text-white/60 uppercase tracking-wide">กำไรขั้นต้นหน้าร้าน</span>
+                    <span className={cn("text-[14px] font-bold font-mono", MARGIN_TEXT[posMargin.level])}>
+                      ฿{posMargin.profit.toLocaleString()} <span className="text-[12px]">({posMargin.percent}%)</span>
+                    </span>
+                  </div>
+                  <div className="relative w-full h-1.5 rounded-full bg-white/10">
+                    <div className={cn("h-full rounded-full transition-all duration-300", MARGIN_BAR[posMargin.level])} style={{ width: `${Math.min(Math.max(posMargin.percent, 0), 100)}%` }} />
+                    <div className="absolute -top-0.5 w-0.5 h-2.5 bg-white/70 rounded-full" style={{ left: `${Math.min(Math.max(minGp, 0), 100)}%` }} title={`เกณฑ์ GP ขั้นต่ำ ${minGp}%`} />
+                  </div>
+                  <div className="flex justify-between items-center gap-2 flex-wrap">
+                    <span className={cn("text-[11px] font-semibold flex items-center gap-1", MARGIN_TEXT[posMargin.level])}>
+                      {posMargin.level === "loss" ? <><AlertTriangle size={11} /> ราคาขายต่ำกว่าต้นทุน</>
+                        : posMargin.level === "low" ? <><AlertTriangle size={11} /> ต่ำกว่าเกณฑ์ GP {minGp}% (ใบเสนอราคาต้องขออนุมัติ)</>
+                        : posMargin.level === "ok" ? <><CheckCircle2 size={11} /> ผ่านเกณฑ์ GP {minGp}%</>
+                        : <span className="text-white/60">ใส่ราคาขายเพื่อดูกำไร · เกณฑ์ GP {minGp}%</span>}
+                    </span>
+                    {otherMargins.length > 0 && (
+                      <span className="flex items-center gap-2 text-[11px] font-mono">
+                        {otherMargins.map((m) => (
+                          <span key={m.label} className={MARGIN_TEXT[m.level]} title={`กำไร ฿${m.profit.toLocaleString()}`}>
+                            <span className="text-white/60 font-sans">{m.label}</span> {m.percent}%
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </GlassCard>
@@ -1031,7 +1188,7 @@ export default function NewProductPage() {
           {/* ROW 2: Card 3 (ซ้าย) & Card 4 (ขวา) */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5 items-start">
             {/* CARD 3: คลังจัดเก็บ และหน่วยนับ */}
-            <GlassCard accentColor="purple" className="p-4 space-y-3 animate-in fade-in duration-300 relative overflow-visible">
+            <GlassCard id="sec-stock" accentColor="purple" className="p-4 space-y-3 animate-in fade-in duration-300 relative overflow-visible scroll-mt-14">
               <div className="flex items-center gap-2 border-b border-white/5 pb-2">
                 <div className="w-6 h-6 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20">
                   <Boxes size={14} />
@@ -1121,15 +1278,15 @@ export default function NewProductPage() {
                     </div>
                   </div>
 
-                  <UomHierarchyBuilder
+                  {showAdvanced && <UomHierarchyBuilder
                     baseUnit={formData.baseUnit}
                     conversions={formData.conversions}
                     onChange={(conversions) => setFormData(prev => ({ ...prev, conversions }))}
-                  />
+                  />}
                 </div>
 
-                {/* น้ำหนักและขนาด */}
-                <div className="pt-2 border-t border-white/5 space-y-2">
+                {/* น้ำหนักและขนาด (ขั้นสูง) */}
+                {showAdvanced && <div className="pt-2 border-t border-white/5 space-y-2">
                   <h6 className="text-[11px] font-bold uppercase text-nexus-teal tracking-wider">มิติและน้ำหนัก</h6>
                   <div className="flex flex-wrap gap-2 bg-black/40 p-3 rounded-xl border border-white/5 items-end">
                     <div className="flex-1 min-w-[75px]">
@@ -1173,12 +1330,12 @@ export default function NewProductPage() {
                       </Field>
                     </div>
                   </div>
-                </div>
+                </div>}
               </div>
             </GlassCard>
 
             {/* CARD 4: การจัดซื้อ และการควบคุมสต๊อก */}
-            <GlassCard accentColor="amber" className="p-4 space-y-3 animate-in fade-in duration-300 relative overflow-visible">
+            <GlassCard id="sec-purchase" accentColor="amber" className="p-4 space-y-3 animate-in fade-in duration-300 relative overflow-visible scroll-mt-14">
               <div className="flex items-center gap-2 border-b border-white/5 pb-2">
                 <div className="w-6 h-6 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20">
                   <Truck size={14} />
@@ -1246,11 +1403,11 @@ export default function NewProductPage() {
                   </div>
                 </div>
 
-                <SupplierMatrix
+                {showAdvanced && <SupplierMatrix
                   supplierConfig={formData.supplierConfig}
                   suppliersList={supplierOptions}
                   onChange={(supplierConfig) => setFormData(prev => ({ ...prev, supplierConfig }))}
-                />
+                />}
 
                 <div className="pt-2 border-t border-white/5 space-y-2">
                   <h6 className="text-[11px] font-bold uppercase text-nexus-teal tracking-wider">ระดับสต๊อกสินค้า</h6>
@@ -1302,8 +1459,9 @@ export default function NewProductPage() {
             </GlassCard>
           </div>
 
-          {/* ROW 3: Card 5 (แถวล่างสุด - เต็มความกว้าง) */}
-          <GlassCard accentColor="emerald" className="p-4 space-y-3 animate-in fade-in duration-300 relative overflow-visible">
+          {/* ROW 3: Card 5 (แถวล่างสุด - เต็มความกว้าง) — ช่องขั้นสูง */}
+          {showAdvanced && (
+          <GlassCard id="sec-advanced" accentColor="emerald" className="p-4 space-y-3 animate-in fade-in duration-300 relative overflow-visible scroll-mt-14">
             <div className="flex items-center gap-2 border-b border-white/5 pb-2">
               <div className="w-6 h-6 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20">
                 <Sliders size={14} />
@@ -1394,6 +1552,7 @@ export default function NewProductPage() {
               />
             </div>
           </GlassCard>
+          )}
         </div>
       ) : (
         /* PO Import Mode */
@@ -1470,6 +1629,49 @@ export default function NewProductPage() {
 
   const rightSidebar = (
     <GlassCard className="p-6 space-y-6 sticky top-0 bg-surface-1 shadow-2xl relative overflow-hidden border-white/5 rounded-3xl">
+      {/* ตัวอย่างสินค้า: เห็นตลอดขณะเลื่อนฟอร์ม */}
+      {sourceMode === "manual" && (
+        <div className="relative z-10 space-y-3">
+          <div className="flex gap-3 items-start">
+            <div className="w-16 h-16 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+              {formData.imageUrl
+                ? <img src={formData.imageUrl} alt="รูปสินค้า" className="w-full h-full object-cover" />
+                : <ImageIcon size={20} className="text-white/30" />}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] font-mono font-bold text-nexus-teal">{formData.sku || "—"}</p>
+              <p className={cn("text-[14px] font-bold leading-snug line-clamp-2", formData.name ? "text-white" : "text-white/40")}>
+                {formData.name || "ยังไม่ระบุชื่อสินค้า"}
+              </p>
+              <p className="text-[12px] text-white/60 truncate">
+                {[formData.brand, formData.model, categoriesList.find((c) => c.value === formData.category)?.label || formData.category].filter(Boolean).join(" · ") || "ยี่ห้อ · รุ่น · หมวดหมู่"}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-xl bg-white/[0.04] border border-white/10 px-2.5 py-2">
+              <p className="text-[11px] font-semibold text-white/60">ราคาขาย</p>
+              <p className="text-[16px] font-bold font-mono text-white tabular-nums truncate">฿{(formData.price || 0).toLocaleString()}</p>
+            </div>
+            <div className="rounded-xl bg-white/[0.04] border border-white/10 px-2.5 py-2">
+              <p className="text-[11px] font-semibold text-white/60">ต้นทุน</p>
+              <p className="text-[16px] font-bold font-mono text-white/85 tabular-nums truncate">฿{(formData.cost || 0).toLocaleString()}</p>
+            </div>
+            <div className={cn("rounded-xl border px-2.5 py-2",
+              posMargin.level === "loss" ? "bg-rose-500/10 border-rose-500/30" : posMargin.level === "low" ? "bg-amber-500/10 border-amber-500/30" : posMargin.level === "ok" ? "bg-emerald-500/10 border-emerald-500/30" : "bg-white/[0.04] border-white/10")}
+              title={`เกณฑ์ GP ขั้นต่ำ ${minGp}%`}>
+              <p className="text-[11px] font-semibold text-white/60">กำไร</p>
+              <p className={cn("text-[16px] font-bold font-mono tabular-nums", MARGIN_TEXT[posMargin.level])}>{posMargin.level === "none" ? "—" : `${posMargin.percent}%`}</p>
+            </div>
+          </div>
+          {cloneSourceId && (
+            <p className="text-[11px] text-white/60 flex items-center gap-1.5">
+              <Copy size={11} className="text-nexus-teal" /> สร้างจาก {cloneOptions.find((o) => o.value === cloneSourceId)?.label || cloneSourceId}
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="space-y-1 relative z-10 border-b border-white/5 pb-3">
         <p className="text-[12px] font-bold text-white/60 uppercase tracking-widest">การตรวจสอบข้อมูล</p>
         <h5 className="text-[14px] font-bold text-white uppercase tracking-tight">สรุปความถูกต้องของสินค้า</h5>
@@ -1547,6 +1749,12 @@ export default function NewProductPage() {
           </div>
         )}
 
+        {sourceMode === "manual" && similarProducts.length > 0 && (
+          <PillButton variant="warning" onClick={() => goToSection("sec-main")} className="w-full h-8 normal-case tracking-normal font-semibold justify-start">
+            <AlertTriangle size={13} /> อาจซ้ำกับสินค้าเดิม {similarProducts.length} รายการ
+          </PillButton>
+        )}
+
         <div className="pt-2 border-t border-white/10">
           <NexusDataField label="มูลค่าต้นทุนรวม" value={`฿${totalCost.toLocaleString()}`} highlight />
         </div>
@@ -1577,11 +1785,12 @@ export default function NewProductPage() {
       <div className="flex items-center gap-3">
         <PillButton 
           variant="primary" 
-          onClick={() => handleSubmit(true)} 
-          disabled={submitting} 
+          onClick={() => handleSubmit(true)}
+          disabled={submitting}
           className="h-8 px-5 text-[14px]"
+          title="บันทึกแล้วเริ่มสินค้าตัวถัดไป โดยคงหมวด ยี่ห้อ หน่วย ภาษี ผู้ขาย และคลังไว้"
         >
-          {submitting ? "กำลังบันทึก..." : "บันทึกและเพิ่มต่อ"}
+          {submitting ? "กำลังบันทึก..." : "บันทึกและเพิ่มตัวถัดไป"}
         </PillButton>
         <PillButton 
           variant="save" 
@@ -1597,7 +1806,9 @@ export default function NewProductPage() {
 
   return (
     <>
+      {/* จอใหญ่: สูงเท่ากรอบเนื้อหา (จอ − แถบบน h-16) ฟอร์มและแผงสรุปจึงเลื่อนแยกกัน — แถบลำดับขั้นและแผงสรุปอยู่บนจอตลอด */}
       <NexusPageLayout
+        className="xl:h-[calc(100dvh-4rem)] xl:min-h-0"
         header={headerContent}
         leftContent={leftContent}
         rightSidebar={rightSidebar}

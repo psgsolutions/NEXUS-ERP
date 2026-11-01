@@ -35,7 +35,8 @@ import {
   Warehouse,
   MapPin,
   Sparkles,
-  Trash2
+  Trash2,
+  Copy
 } from "lucide-react";
 import { 
   PillButton, 
@@ -994,6 +995,14 @@ export default function InventoryPage() {
                           onClick={() => router.push(`/inventory/${selectedProduct.id}`)}
                         >
                           <Warehouse size={14} /> วิเคราะห์ความเคลื่อนไหวลึก
+                        </PillButton>
+                        <PillButton
+                          variant="glass"
+                          className="w-full text-xs"
+                          title="เปิดฟอร์มสินค้าใหม่โดยคัดลอกหมวด ยี่ห้อ หน่วย ราคา และผู้ขายจากสินค้านี้"
+                          onClick={() => router.push(`/inventory/products/new?from=${encodeURIComponent(selectedProduct.id)}`)}
+                        >
+                          <Copy size={14} /> สร้างสินค้าใหม่จากตัวนี้
                         </PillButton>
                         
                         <div className="flex gap-2">

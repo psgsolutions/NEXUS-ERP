@@ -346,6 +346,32 @@ export function syncFollowers(design: DocumentDesign): DocumentDesign {
   return perDoc ? { ...design, perDoc } : design;
 }
 
+/**
+ * ป้ายต้นฉบับ/สำเนาของเอกสาร from → ทุกเอกสารที่มีต้นฉบับ/สำเนา: ตำแหน่ง ขนาด แบบ สี เหมือนกัน (id เดียวกัน)
+ * from ไม่มีป้าย = เอาป้ายออกจากทุกเอกสาร (กลับไปพิมพ์ใต้ชื่อเอกสาร) · เอกสารที่ตามต้นแบบ: นับเป็นส่วนที่แก้เอง ต้นแบบไม่ทับ
+ */
+export function shareCopyLabel(design: DocumentDesign, from: string): DocumentDesign {
+  if (!docHasCopy(from)) return design;
+  const label = design.perDoc[from]?.free?.blocks.find((b) => b.kind === "copy");
+  let perDoc: Record<string, PerDocDesign> | null = null;
+  for (const t of DESIGNABLE_DOCS) {
+    const per = design.perDoc[t.type];
+    if (t.type === from || !docHasCopy(t.type) || !per?.free) continue;
+    const mine = per.free.blocks.filter((b) => b.kind === "copy");
+    if (label ? mine.length === 1 && JSON.stringify(mine[0]) === JSON.stringify(label) : !mine.length) continue;
+    const blocks = [...per.free.blocks.filter((b) => b.kind !== "copy"), ...(label ? [{ ...label }] : [])];
+    let next: PerDocDesign = { ...per, free: { ...per.free, blocks } };
+    if (followsMaster(design, t.type)) {
+      const own = new Set(per.own || []), removed = new Set(per.removed || []);
+      for (const b of mine) { own.delete(b.id); removed.add(b.id); }
+      if (label) { own.add(label.id); removed.delete(label.id); }
+      next = { ...next, own: [...own], removed: [...removed] };
+    }
+    (perDoc ||= { ...design.perDoc })[t.type] = next;
+  }
+  return perDoc ? { ...design, perDoc } : design;
+}
+
 /** ตั้ง/ยกเลิกเอกสารต้นแบบ — ตั้งใหม่: ทุกเอกสารกลับมาตามต้นแบบทั้งหมด (ล้างส่วนที่แก้เองและการเลิกตาม) */
 export function setMaster(design: DocumentDesign, docType: string | undefined): DocumentDesign {
   if (!docType) { const { master: _m, ...rest } = design; void _m; return rest; }

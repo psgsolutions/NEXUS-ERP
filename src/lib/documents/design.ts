@@ -65,7 +65,11 @@ export interface PerDocDesign {
 export interface Letterhead { id: string; name: string; height: number; blocks: FreeBlock[] }
 
 /** master = ชนิดเอกสารต้นแบบ: เอกสารอื่นใช้รูปแบบตามต้นแบบเสมอ (ยกเว้นส่วนที่แต่ละเอกสารแก้เอง) */
-export interface DocumentDesign { theme: DocTheme; perDoc: Record<string, PerDocDesign>; letterheads: Letterhead[]; master?: string }
+export interface DocumentDesign {
+  theme: DocTheme; perDoc: Record<string, PerDocDesign>; letterheads: Letterhead[]; master?: string;
+  /** ป้ายต้นฉบับ/สำเนาตำแหน่ง ขนาด และแบบเดียวกันทุกเอกสารที่มีต้นฉบับ/สำเนา (แก้เอกสารหนึ่ง = ทุกเอกสาร) */
+  copyLinked?: boolean;
+}
 
 // ---------- ผังลากวางอิสระ ----------
 export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "info" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "field" | "text" | "line" | "rect" | "shape" | "image" | "stamp" | "sign" | "grid" | "copy";
@@ -828,7 +832,7 @@ export function normalizeDesign(raw: any, brandColor?: string): DocumentDesign {
     if (Object.keys(d).length) perDoc[k] = d;
   }
   const master = typeof r.master === "string" && perDoc[r.master]?.free ? r.master : undefined;
-  return { theme: normalizeTheme(r.theme, brandColor), perDoc, letterheads, ...(master ? { master } : {}) };
+  return { theme: normalizeTheme(r.theme, brandColor), perDoc, letterheads, ...(master ? { master } : {}), ...(r.copyLinked === true ? { copyLinked: true } : {}) };
 }
 
 /** ตำแหน่งส่วนหัว/ลูกค้า/ตาราง ตามขนาดฟอนต์ (TH Sarabun ใหญ่กว่า 1.32 เท่า ต้องเว้นที่มากกว่า) */

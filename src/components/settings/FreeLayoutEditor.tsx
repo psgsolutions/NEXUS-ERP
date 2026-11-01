@@ -11,6 +11,7 @@ import {
   ArrowUpToLine, ArrowDownToLine, BoxSelect, Sigma, PenLine, RectangleHorizontal, RectangleVertical, Scan, Move, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Ruler as RulerIcon, Grid3x3, Paintbrush, ZoomIn, Merge, ListChecks,
 } from "lucide-react";
 import { templateLayout } from "@/lib/documents/layout-templates";
+import { DESIGNABLE_DOCS } from "@/lib/documents/build";
 import { DataChecklist } from "./DataChecklist";
 import { blankLayout, dataGroups, toggleData, type DataContext } from "@/lib/documents/design-data";
 import { GlassCard, PillButton, PillCheckbox, PillInput, PillSelect, PillTabs, cn } from "@/components/ui/Base";
@@ -195,7 +196,10 @@ function nearest(values: number[], targets: number[]): { delta: number; at: numb
   return best;
 }
 
-export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead, onLetterheadChange, letterOnly, model, canEdit, docTitle, defaultColumns, defaultSignatures, docMeta, docFields, history, dataCtx, signers = [], stampSize = 72, aiLayout }: {
+/** ชื่อเอกสารที่มีต้นฉบับ/สำเนา (ป้ายใช้ร่วมกันได้) */
+const COPY_DOC_NAMES = DESIGNABLE_DOCS.filter((d) => docHasCopy(d.type)).map((d) => d.title).join(" · ");
+
+export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead, onLetterheadChange, letterOnly, model, canEdit, docTitle, defaultColumns, defaultSignatures, docMeta, docFields, history, dataCtx, signers = [], stampSize = 72, aiLayout, copyLink }: {
   docType: string; theme: DocTheme;
   layout: FreeLayout; onChange: (l: FreeLayout) => void;
   letterhead: Letterhead | null; onLetterheadChange: (l: Letterhead) => void;
@@ -215,6 +219,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   stampSize?: number;
   /** AI อ่านตัวอย่างเอกสาร (รูป) แล้วคืนผังที่แก้ได้ */
   aiLayout?: (image: string, landscape: boolean) => Promise<FreeLayout>;
+  /** ป้ายต้นฉบับ/สำเนาตำแหน่งเดียวกันทุกเอกสารที่มีต้นฉบับ/สำเนา */
+  copyLink?: { on: boolean; onToggle: (on: boolean) => void };
 }) {
   const font = theme.font;
   // ขนาดหน้า (กระดาษ/แนวที่ตั้ง) · ขอบกระดาษแต่ละด้าน [บน ขวา ล่าง ซ้าย]
@@ -1272,6 +1278,10 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
                 {COPY_STYLES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
               </PillSelect>
             </Field>
+            {copyLink && (
+              <PillCheckbox label="ตำแหน่ง ขนาด และแบบเดียวกันทุกเอกสารที่มีต้นฉบับ/สำเนา" checked={copyLink.on} onChange={(e) => copyLink.onToggle(e.target.checked)} />
+            )}
+            {copyLink?.on && <p className="text-[11px] text-nexus-teal/90 leading-relaxed">ใช้ร่วมกัน: {COPY_DOC_NAMES} — ย้าย/ปรับป้ายที่เอกสารใดก็เปลี่ยนทุกเอกสาร</p>}
             <p className="text-[11px] text-white/45 leading-relaxed">ลากวางตำแหน่งได้อิสระ · ขนาดป้าย = ลากมุมกล่อง (ตัวอักษรขยายพอดีกล่อง) หรือตั้งขนาดตัวอักษรเองที่แท็บ ข้อความ · สีป้ายตั้งที่สีตัวอักษร · พิมพ์ &quot;ต้นฉบับ&quot; หรือ &quot;สำเนา&quot; ตามฉบับที่พิมพ์ — มีป้ายนี้แล้วไม่พิมพ์ป้ายใต้ชื่อเอกสารซ้ำ</p>
           </div>
         )}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DESIGNABLE_DOCS } from "@/lib/documents/build";
-import { followsMaster, resetToMaster, setMaster, syncFollowers, trackOwnEdits } from "@/lib/documents/design-data";
+import { followsMaster, resetToMaster, setMaster, shareCopyLabel, syncFollowers, trackOwnEdits } from "@/lib/documents/design-data";
 import { defaultFreeLayout, normalizeDesign, type DocumentDesign, type FreeBlock } from "@/lib/documents/design";
 
 /** ใบเสนอราคาที่ออกแบบเอง + เอกสารอื่นยังเป็นผังตั้งต้น */
@@ -68,6 +68,23 @@ describe("master document: other documents follow, but stay freely editable", ()
     d = edit(d, "quotation", move("band", 66));
     expect(block(d, "receipt", "band")!.x).toBe(0);
     expect(block(d, "invoice", "band")!.x).toBe(66);
+  });
+
+  it("copy label: one position/size/style shared by every document with original/copy", () => {
+    const COPY = ["invoice", "receipt", "billing_note", "delivery_note", "cndn"].filter((t) => DESIGNABLE_DOCS.some((d) => d.type === t));
+    const label: FreeBlock = { id: "copy-1", kind: "copy", x: 470, y: 20, w: 90, h: 30, copyStyle: "stamp" };
+    let d = edit({ ...m, copyLinked: true }, "receipt", (bs) => [...bs, label]);
+    d = shareCopyLabel(d, "receipt");
+    for (const t of COPY) expect(block(d, t, "copy-1"), t).toMatchObject({ x: 470, y: 20, w: 90, h: 30, copyStyle: "stamp" });
+    expect(block(d, "quotation", "copy-1")).toBeUndefined(); // ใบเสนอราคาไม่มีต้นฉบับ/สำเนา
+    // ย้ายที่ใบวางบิล → ทุกเอกสารย้ายตาม · ต้นแบบเปลี่ยนภายหลังไม่ทับ
+    d = shareCopyLabel(edit(d, "billing_note", move("copy-1", 30)), "billing_note");
+    d = edit(d, "quotation", move("band", 12));
+    for (const t of COPY) expect(block(d, t, "copy-1")!.x, t).toBe(30);
+    // เอาป้ายออก → ออกจากทุกเอกสาร
+    d = shareCopyLabel(edit(d, "invoice", (bs) => bs.filter((b) => b.kind !== "copy")), "invoice");
+    for (const t of COPY) expect(block(d, t, "copy-1"), t).toBeUndefined();
+    expect(normalizeDesign({ ...d, copyLinked: true }).copyLinked).toBe(true);
   });
 
   it("master and per-document edits survive save (normalize)", () => {

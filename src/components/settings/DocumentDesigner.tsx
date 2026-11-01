@@ -18,7 +18,7 @@ import {
 } from "@/lib/documents/design";
 import { templateLayout } from "@/lib/documents/layout-templates";
 import {
-  applyCompanyTemplate, applyFormToAll, dataGroups, ensureLayout, fitTotalsBlocks, followsMaster, layoutIdFor, resetToMaster, setMaster, syncFollowers, toggleData, trackOwnEdits,
+  applyCompanyTemplate, applyFormToAll, dataGroups, ensureLayout, fitTotalsBlocks, followsMaster, layoutIdFor, resetToMaster, setMaster, shareCopyLabel, syncFollowers, toggleData, trackOwnEdits,
   type DataContext,
 } from "@/lib/documents/design-data";
 import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
@@ -371,7 +371,14 @@ export function DocumentDesigner() {
   /** แก้ผังของเอกสารนี้ · เอกสารที่ตามต้นแบบ: จำกล่องที่แก้เป็นของเอกสารนี้ (ต้นแบบเปลี่ยนภายหลังไม่ทับ) */
   const setFree = (free: FreeLayout) => change((d) => {
     const p = d.perDoc[docType] || {};
-    return { ...d, perDoc: { ...d.perDoc, [docType]: followsMaster(d, docType) ? trackOwnEdits(p, free) : { ...p, free } } };
+    const next = { ...d, perDoc: { ...d.perDoc, [docType]: followsMaster(d, docType) ? trackOwnEdits(p, free) : { ...p, free } } };
+    // ป้ายต้นฉบับ/สำเนาตำแหน่งเดียวกัน: แก้ที่เอกสารนี้ = ทุกเอกสารที่มีต้นฉบับ/สำเนา
+    return d.copyLinked ? shareCopyLabel(next, docType) : next;
+  });
+  const setCopyLinked = (on: boolean) => change((d) => {
+    if (on) return shareCopyLabel({ ...d, copyLinked: true }, docType);
+    const { copyLinked: _c, ...rest } = d; void _c;
+    return rest;
   });
   /** เปลี่ยนผังทั้งหน้าของเอกสารนี้ (ผังจากเอกสารอื่น/แบบอื่น/แม่แบบ) — ถ้าตามต้นแบบอยู่ = เลิกตาม */
   const detachIfFollowing = (d: DocumentDesign) => (followsMaster(d, docType) ? { ...d, perDoc: { ...d.perDoc, [docType]: { ...(d.perDoc[docType] || {}), detached: true } } } : d);
@@ -727,6 +734,7 @@ export function DocumentDesigner() {
           docFields={def.fields || []}
           layout={curLayout}
           onChange={setFree}
+          copyLink={{ on: !!shown.copyLinked, onToggle: setCopyLinked }}
           letterhead={letterhead}
           onLetterheadChange={setLetterhead}
           letterOnly={isLetter}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { postingLines, trialBalance } from "@/lib/financial-reports";
-import { cashActivityOf, cashFlow, salesProfit, stockAging } from "@/lib/management-reports";
+import { cashActivityOf, cashFlow, findAnomalies, salesProfit, stockAging } from "@/lib/management-reports";
 
 const j = (id: string, date: string, items: [string, number, number][]) => ({ id, date, status: "posted", items: items.map(([accountCode, debit, credit]) => ({ accountCode, debit, credit })) });
 
@@ -109,5 +109,33 @@ describe("sales by salesperson", () => {
     expect(r.rows.find((x) => x.key === "u1")).toMatchObject({ name: "สมชาย", revenue: 900, cost: 600, profit: 300 });
     expect(r.rows.find((x) => x.key === "u2")).toMatchObject({ revenue: 400, cost: 100 });
     expect(r.rows.find((x) => x.key === "-")!.name).toBe("ไม่ระบุพนักงานขาย");
+  });
+});
+
+describe("anomaly checks", () => {
+  const ts = (d: string) => ({ toDate: () => new Date(`${d}T03:00:00Z`) });
+  const r = findAnomalies({
+    expenses: [
+      { id: "E1", vendor: "ร้าน ก", totalAmount: 500, createdAt: ts("2026-10-02") },
+      { id: "E2", vendor: "ร้าน ก", totalAmount: 500, createdAt: ts("2026-10-05") },
+      { id: "E3", vendor: "ร้าน ก", totalAmount: 500, createdAt: ts("2026-10-20") },
+    ],
+    payments: [
+      { paymentNo: "PV1", payeeName: "ร้าน ข", totalAmount: 900, paymentDate: "2026-10-10" },
+      { paymentNo: "PV2", payeeName: "ร้าน ข", totalAmount: 900, paymentDate: "2026-10-10" },
+    ],
+    invoices: [{ invoiceNo: "INV1", issueDate: "2026-10-11", subTotal: 1000, vatAmount: 75, items: [{ name: "ตู้", qty: 2, price: 400, cost: 450, discountType: "PERCENT", discountValue: 35 }] }],
+    journals: [{ id: "J1", status: "draft", date: "2026-09-01", items: [{ debit: 120 }] }, { id: "J2", status: "draft", date: "2026-10-25", items: [{ debit: 1 }] }],
+  }, "2026-10-01", "2026-10-31", "C1");
+  const kinds = r.map((x) => x.kind);
+
+  it("flags duplicates, below-cost sales, big discounts, wrong VAT and stale drafts", () => {
+    expect(kinds.filter((k) => k === "ค่าใช้จ่ายอาจบันทึกซ้ำ")).toHaveLength(1);
+    expect(r.find((x) => x.kind === "จ่ายเงินซ้ำวันเดียวกัน")!.docNo).toBe("PV2");
+    expect(r.find((x) => x.kind === "ขายต่ำกว่าทุน")!.amount).toBe(100);
+    expect(kinds).toContain("ส่วนลดสูงผิดปกติ");
+    expect(r.find((x) => x.kind === "ภาษีขายไม่ตรง 7%")!.amount).toBe(5);
+    expect(r.filter((x) => x.kind === "รายการบัญชีรออนุมัติเกิน 30 วัน").map((x) => x.docNo)).toEqual(["J1"]);
+    expect(r[0].severity).toBe("high");
   });
 });

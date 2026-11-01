@@ -183,3 +183,58 @@ export function stockAging(products: any[], movements: any[], asOf: string, slow
   const slow = rows.filter((r) => r.slow);
   return { rows, buckets, total, slowItems: slow.length, slowValue: r2(slow.reduce((s, r) => s + r.value, 0)), slowDays };
 }
+
+// ---------- ตรวจรายการผิดปกติ ----------
+export interface Anomaly { kind: string; severity: "high" | "medium"; date: string; docNo: string; detail: string; amount: number; link: string }
+const dayOf = (v: any) => (typeof v === "string" ? v.slice(0, 10) : isoDay(v));
+const daysBetween = (a: string, b: string) => Math.abs(new Date(`${a}T00:00:00Z`).getTime() - new Date(`${b}T00:00:00Z`).getTime()) / dayMs;
+/**
+ * ตรวจตามกฎที่อธิบายได้ (ไม่ใช่ AI) ช่วง from..to:
+ * ค่าใช้จ่ายซ้ำ (ผู้รับเงิน+ยอดเดียวกันภายใน 7 วัน) · จ่ายเงินซ้ำ (ผู้รับ+ยอดเดียวกันวันเดียวกัน) · ขายต่ำกว่าทุน ·
+ * ส่วนลดต่อรายการ ≥ 30% · ภาษีขายไม่ตรง 7% ของฐาน (ต่างเกิน 1 บาท) · รายการบัญชีร่างค้างเกิน 30 วัน (นับถึง to)
+ */
+export function findAnomalies(d: { invoices: any[]; expenses: any[]; payments: any[]; journals: any[] }, from: string, to: string, companyId: string): Anomaly[] {
+  const out: Anomaly[] = [];
+  const inR = (x: string) => !!x && x >= from && x <= to;
+  const jl = (id: string) => `/finance/journal/${encodeURIComponent(`companies/${companyId}/journal_entries/${id}`)}`;
+  // ค่าใช้จ่ายซ้ำ
+  const exps = d.expenses.filter(live).map((e) => ({ e, date: dayOf(e.createdAt || e.docDate), who: String(e.vendor || e.supplierName || e.employeeName || "").trim(), amt: r2(Number(e.totalAmount) || 0) }))
+    .filter((x) => x.who && x.amt > 0).sort((a, b) => a.date.localeCompare(b.date));
+  for (let i = 0; i < exps.length; i++) for (let j = i + 1; j < exps.length; j++) {
+    const a = exps[i], b = exps[j];
+    if (daysBetween(a.date, b.date) > 7) break;
+    if (a.who === b.who && a.amt === b.amt && inR(b.date)) out.push({ kind: "ค่าใช้จ่ายอาจบันทึกซ้ำ", severity: "high", date: b.date, docNo: String(b.e.expenseId || b.e.id || ""), detail: `${b.who} ยอดเดียวกับ ${a.e.expenseId || a.e.id} (${a.date})`, amount: b.amt, link: "/procurement" });
+  }
+  // จ่ายเงินซ้ำ
+  const pays = d.payments.filter(live).filter((p) => String(p.status || "").toLowerCase() !== "cancelled");
+  const seen = new Map<string, any>();
+  for (const p of pays) {
+    const date = String(p.paymentDate || ""), key = `${String(p.payeeName || p.payeeKey || "")}|${r2(Number(p.totalAmount) || 0)}|${date}`;
+    if (!inR(date)) continue;
+    if (seen.has(key)) out.push({ kind: "จ่ายเงินซ้ำวันเดียวกัน", severity: "high", date, docNo: String(p.paymentNo || p.id), detail: `${p.payeeName || "-"} ยอดเดียวกับ ${seen.get(key).paymentNo || seen.get(key).id}`, amount: r2(Number(p.totalAmount) || 0), link: "/finance" });
+    else seen.set(key, p);
+  }
+  // ใบกำกับภาษี: ขายต่ำกว่าทุน · ส่วนลดสูง · VAT ไม่ตรง
+  for (const inv of d.invoices.filter(live)) {
+    const date = String(inv.issueDate || "").slice(0, 10), no = String(inv.invoiceNo || inv.documentNo || inv.id);
+    if (!inR(date) || String(inv.status || "").toLowerCase() === "cancelled") continue;
+    for (const it of Array.isArray(inv.items) ? inv.items : []) {
+      const price = Number(it.price ?? it.unitPrice) || 0, cost = Number(it.cost ?? it.costPrice) || 0, qty = Number(it.qty) || 0;
+      if (cost > 0 && price > 0 && price < cost) out.push({ kind: "ขายต่ำกว่าทุน", severity: "medium", date, docNo: no, detail: `${it.name || it.productName || "-"} ราคา ${price.toLocaleString("th-TH")} ทุน ${cost.toLocaleString("th-TH")}`, amount: r2((cost - price) * qty), link: "/sales" });
+      const gross = qty * price, v = Number(it.discountValue) || 0;
+      const pct = gross > 0 ? (String(it.discountType).toUpperCase() === "AMOUNT" ? (v / gross) * 100 : v) : 0;
+      if (pct >= 30) out.push({ kind: "ส่วนลดสูงผิดปกติ", severity: "medium", date, docNo: no, detail: `${it.name || it.productName || "-"} ลด ${Math.round(pct)}%`, amount: r2((gross * pct) / 100), link: "/sales" });
+    }
+    const sub = Number(inv.subTotal) || 0, vat = Number(inv.vatAmount) || 0;
+    if (vat > 0 && Math.abs(vat - sub * 0.07) > 1) out.push({ kind: "ภาษีขายไม่ตรง 7%", severity: "high", date, docNo: no, detail: `ฐาน ${sub.toLocaleString("th-TH")} ภาษี ${vat.toLocaleString("th-TH")} (ควรเป็น ${r2(sub * 0.07).toLocaleString("th-TH")})`, amount: r2(vat - sub * 0.07), link: "/sales" });
+  }
+  // รายการบัญชีร่างค้างนาน
+  for (const j of d.journals) {
+    if (j.isDeleted === true || String(j.status || "").toLowerCase() !== "draft") continue;
+    const date = dayOf(j.date || j.createdAt);
+    if (!date || date > to || daysBetween(date, to) <= 30) continue;
+    const amt = r2((Array.isArray(j.items) ? j.items : []).reduce((s: number, l: any) => s + (Number(l.debit) || 0), 0));
+    out.push({ kind: "รายการบัญชีรออนุมัติเกิน 30 วัน", severity: "medium", date, docNo: String(j.reference || j.id), detail: String(j.description || "").slice(0, 120), amount: amt, link: jl(String(j.id)) });
+  }
+  return out.sort((a, b) => (a.severity === b.severity ? b.date.localeCompare(a.date) : a.severity === "high" ? -1 : 1));
+}

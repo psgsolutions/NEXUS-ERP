@@ -6,7 +6,7 @@ import { balanceSheet, generalLedger, monthEnd, postingLines, profitAndLoss, tri
 import { inputVatRows, outputVatRows, vatTotals } from "@/lib/vat-reports";
 import { buildWhtRecords, computePP30 } from "@/lib/tax-calc";
 import { getRecords } from "@/lib/master-store.server";
-import { cashFlow, salesProfit } from "@/lib/management-reports";
+import { cashFlow, findAnomalies, salesProfit } from "@/lib/management-reports";
 
 /**
  * [API-SERVER] รายงานบัญชีและภาษี (คำนวณที่ server จากข้อมูลจริง)
@@ -19,7 +19,7 @@ import { cashFlow, salesProfit } from "@/lib/management-reports";
  */
 
 const YM = /^\d{4}-(0[1-9]|1[0-2])$/;
-const REPORTS = ["tb", "gl", "pl", "bs", "cf", "sales-customer", "sales-product", "sales-salesperson", "vat-out", "vat-in", "pnd3", "pnd53"] as const;
+const REPORTS = ["tb", "gl", "pl", "bs", "cf", "sales-customer", "sales-product", "sales-salesperson", "anomalies", "vat-out", "vat-in", "pnd3", "pnd53"] as const;
 type Report = (typeof REPORTS)[number];
 const thisMonth = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 7);
 
@@ -45,6 +45,11 @@ export async function POST(request: Request) {
     if (report === "cf") {
       const { lines, draftCount, undatedCount } = postingLines(await journals());
       return NextResponse.json({ ...base, draftCount, undatedCount, ...cashFlow(lines, fromDate, toDate) });
+    }
+    if (report === "anomalies") {
+      const [invoices, expenses, payments, jes] = await Promise.all([col("invoices"), col("expenses"), col("payments"), journals()]);
+      const rows = findAnomalies({ invoices, expenses, payments, journals: jes }, fromDate, toDate, companyId);
+      return NextResponse.json({ ...base, rows, high: rows.filter((r) => r.severity === "high").length });
     }
     if (report === "sales-customer" || report === "sales-product" || report === "sales-salesperson") {
       const [invoices, notes] = await Promise.all([col("invoices"), col("cndn")]);

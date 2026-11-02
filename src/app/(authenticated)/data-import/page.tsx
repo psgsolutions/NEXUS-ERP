@@ -364,12 +364,18 @@ export default function DataImportPage() {
         }
         if (id) {
           // แก้รายการเดิม: ค่ากลางของเครือ (ถ้ามีสิทธิ์) ไม่เช่นนั้นเป็นค่าของบริษัท · จำนวนยกมาไม่ใช้ตอนแก้
+          const adopt = !!row.values._adopt;
           const changes = { ...req.data };
+          if (adopt) {
+            // รายการกลางที่บริษัทนี้ไม่ได้ใช้: นำกลับมาใช้ (รหัสเดิม) แล้วอัปเดตตามไฟล์ — ยังจัดการ/ลบได้แบบข้อมูลนำเข้า
+            await post("/api/master-data", { action: "adopt", entity, id, data: { importedFrom: "excel" } });
+            if (entity === "suppliers") await post("/api/master-data", { action: "adopt", entity: "contractors", id, data: { importedFrom: "excel" } }).catch(() => undefined);
+          }
           delete changes.importedFrom;
           const save = (e: string, scope: "group" | "company") => post("/api/master-data", { action: "update", entity: e, id, changes, scope });
           await save(entity, "group").catch((err) => (/สิทธิ์|403/.test(err.message) ? save(entity, "company") : Promise.reject(err)));
           if (entity === "suppliers") await save("contractors", "group").catch(() => save("contractors", "company")).catch(() => undefined);
-          update(b.id, [row.rowNo], { status: "done", message: "แก้ไขแล้ว" });
+          update(b.id, [row.rowNo], { status: "done", message: adopt ? `นำกลับมาใช้ รหัส ${id}` : "แก้ไขแล้ว", ...(adopt ? { createdId: id } : {}) });
           continue;
         }
         if (entity === "products") {
@@ -713,7 +719,7 @@ export default function DataImportPage() {
                 {batch.rows.map((r) => (
                   <NexusTableRow key={r.rowNo}>
                     <NexusTableCell className="font-mono text-white/50">{r.rowNo}</NexusTableCell>
-                    {!isOpening(batch.entity) && <NexusTableCell className={cn("text-[12px] font-bold", r.values._id ? "text-warning" : "text-white/60")}>{r.values._id ? "แก้ไข" : "เพิ่มใหม่"}</NexusTableCell>}
+                    {!isOpening(batch.entity) && <NexusTableCell className={cn("text-[12px] font-bold", r.values._adopt ? "text-nexus-teal" : r.values._id ? "text-warning" : "text-white/60")}>{r.values._adopt ? "นำกลับมาใช้" : r.values._id ? "แก้ไข" : "เพิ่มใหม่"}</NexusTableCell>}
                     {previewCols.map((c) => (
                       <NexusTableCell key={c.key} className={cn(c.type === "number" || c.type === "int" ? "font-mono" : "", "text-white/80")}>
                         {r.values[c.key] === undefined ? "-" : c.type === "number" ? money(r.values[c.key]) : typeof r.values[c.key] === "number" ? r.values[c.key].toLocaleString("th-TH") : String(r.values[c.key])}

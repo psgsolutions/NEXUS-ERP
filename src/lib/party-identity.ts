@@ -4,11 +4,16 @@
  * ผู้เสียภาษี 1 ราย (เลขผู้เสียภาษี + สาขา) มีได้หลายหน่วยงาน เช่น กรุงเทพมหานคร → สำนักงานเขตต่าง ๆ,
  * กองทัพอากาศ → กองบิน/กรม, บริษัทในเครือที่แยกการบริหาร — แต่ละหน่วยงานเป็นคู่ค้า 1 รายการ
  * มีที่อยู่ ผู้ติดต่อ วงเงิน และลูกหนี้ของตัวเอง
- *  - ห้ามซ้ำ: เลขผู้เสียภาษี + สาขา + ชื่อหน่วยงาน (หน่วยงานหลักเว้นชื่อหน่วยงานว่าง)
+ *  - ห้ามซ้ำ: เลขผู้เสียภาษี + สาขา + ชื่อหน่วยงาน (ไม่กรอกชื่อหน่วยงาน = ใช้ชื่อรายการ)
+ *    → เลขเดียวกัน ต่างชื่อ = คนละรายการ (1 ชื่อ 1 ที่อยู่) · เลขเดียวกัน ชื่อเดียวกัน = ซ้ำ
  *  - ชื่อบนใบกำกับภาษี: ตั้งได้ต่อหน่วยงาน (taxInvoiceName) ไม่ตั้ง = "ชื่อนิติบุคคล (ชื่อหน่วยงาน)"
  */
 
 const str = (v: unknown) => String(v ?? "").trim();
+
+/** ชื่อที่ใช้แยกรายการภายใต้เลขผู้เสียภาษี+สาขาเดียวกัน: ชื่อหน่วยงาน หรือชื่อรายการ (ตัวพิมพ์ใหญ่ ไม่มีช่องว่าง) */
+export const partyUnitKey = (r: Record<string, any> | null | undefined) =>
+  (str(r?.unitName) || str(r?.name) || str(r?.customerName) || str(r?.supplierName) || str(r?.legalName) || str(r?.companyName)).toUpperCase().replace(/\s+/g, "");
 
 /** เลขประจำตัวผู้เสียภาษี/บัตรประชาชน 13 หลัก: ตรวจหลักสุดท้ายตามสูตรกรมสรรพากร (mod 11) */
 export function isValidThaiTaxId(raw: unknown): boolean {
@@ -45,7 +50,7 @@ const normBranch = (v: unknown) => {
   return d ? d.padStart(5, "0") : "00000";
 };
 
-export interface SameTaxEntry { id: string; name: string; branchCode: string; unitName: string }
+export interface SameTaxEntry { id: string; name: string; branchCode: string; unitName: string; key: string }
 
 /** รายการอื่นที่ใช้เลขผู้เสียภาษีเดียวกัน (ทุกสาขาและหน่วยงาน) — ใช้เตือนตอนเพิ่ม/แก้ */
 export function sameTaxIdRecords(list: Array<Record<string, any>>, taxId: unknown, exceptId = ""): SameTaxEntry[] {
@@ -53,11 +58,11 @@ export function sameTaxIdRecords(list: Array<Record<string, any>>, taxId: unknow
   if (t.length !== 13) return [];
   return (list || [])
     .filter((r) => r && r.id !== exceptId && !r.isDeleted && String(r.taxId ?? r.tax_id ?? "").replace(/\D/g, "") === t)
-    .map((r) => ({ id: String(r.id), name: partyDocName(r), branchCode: normBranch(r.branchCode ?? r.branch_code), unitName: str(r.unitName) }));
+    .map((r) => ({ id: String(r.id), name: partyDocName(r), branchCode: normBranch(r.branchCode ?? r.branch_code), unitName: str(r.unitName), key: partyUnitKey(r) }));
 }
 
-/** ซ้ำจริง = เลข + สาขา + ชื่อหน่วยงาน ตรงกัน (ไม่สนตัวพิมพ์และช่องว่าง) */
-export function exactDuplicate(entries: SameTaxEntry[], branchCode: unknown, unitName: unknown): SameTaxEntry | null {
-  const b = normBranch(branchCode), u = str(unitName).toUpperCase().replace(/\s+/g, "");
-  return entries.find((e) => e.branchCode === b && e.unitName.toUpperCase().replace(/\s+/g, "") === u) || null;
+/** ซ้ำจริง = เลข + สาขา + ชื่อหน่วยงาน/ชื่อรายการ ตรงกัน (ไม่สนตัวพิมพ์และช่องว่าง) */
+export function exactDuplicate(entries: SameTaxEntry[], branchCode: unknown, record: { unitName?: string; name?: string }): SameTaxEntry | null {
+  const b = normBranch(branchCode), k = partyUnitKey(record);
+  return entries.find((e) => e.branchCode === b && e.key === k) || null;
 }

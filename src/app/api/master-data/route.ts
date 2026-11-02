@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import * as admin from "firebase-admin";
 import { PRODUCT_THUMB_MAX } from "@/lib/attachments";
 import { isStockItem } from "@/lib/product-kind";
-import { taxIdProblem } from "@/lib/party-identity";
+import { partyUnitKey, taxIdProblem } from "@/lib/party-identity";
 import { prepareSequence } from "@/lib/sequence-server";
 import { resolveSequenceFormat, type SequencePrefix } from "@/lib/sequence-engine";
 import { requireApiUser, authErrorResponse, ApiAuthError, type ApiUser } from "@/lib/api-auth";
@@ -114,6 +114,19 @@ async function findDuplicates(tx: admin.firestore.Transaction | null, groupId: s
     const ref = adminDb.doc(`groups/${groupId}/unique_keys/${uniqueKeyDocId(entity, fields, value)}`);
     const snap = tx ? await tx.get(ref) : await ref.get();
     if (snap.exists && snap.data()!.id !== exceptId) hits.push({ fields, value, id: snap.data()!.id });
+    // ดัชนีรูปแบบเดิม (ก่อนใช้ชื่อรายการแทนหน่วยงานว่าง) = "เลข|สาขา|" — ซ้ำเมื่อรายการนั้นชื่อเดียวกัน
+    if (fields.includes("unitName") && !hits.some((h) => h.fields === fields)) {
+      const parts = value.split("|");
+      const legacyValue = fields.map((f, i) => (f === "unitName" ? "" : parts[i])).join("|");
+      const lref = adminDb.doc(`groups/${groupId}/unique_keys/${uniqueKeyDocId(entity, fields, legacyValue)}`);
+      const lsnap = tx ? await tx.get(lref) : await lref.get();
+      const ownerId = lsnap.exists ? String(lsnap.data()!.id) : "";
+      if (ownerId && ownerId !== exceptId) {
+        const oref = adminDb.doc(`groups/${groupId}/${entity}/${ownerId}`);
+        const owner = (tx ? await tx.get(oref) : await oref.get()).data();
+        if (owner && owner.isDeleted !== true && uniqueKeyValue(fields, owner) === value) hits.push({ fields, value, id: ownerId });
+      }
+    }
   }
   return hits;
 }
@@ -146,7 +159,7 @@ async function usedInDocuments(entity: MasterEntity, groupId: string, companyId:
   return "";
 }
 
-const FIELD_LABEL: Record<string, string> = { taxId: "เลขผู้เสียภาษี", branchCode: "สาขา", unitName: "หน่วยงาน", sku: "รหัสสินค้า", barcode: "บาร์โค้ด" };
+const FIELD_LABEL: Record<string, string> = { taxId: "เลขผู้เสียภาษี", branchCode: "สาขา", unitName: "ชื่อ/หน่วยงาน", sku: "รหัสสินค้า", barcode: "บาร์โค้ด" };
 const dupMessage = (entity: MasterEntity, hits: { fields: string[]; value: string; id: string }[]) =>
   `${MASTER_SCHEMAS[entity].label}ที่มี ${hits.map((h) => h.fields.map((f, i) => `${FIELD_LABEL[f] || f} ${h.value.split("|")[i] || (f === "unitName" ? "(หน่วยงานหลัก)" : "-")}`).join(" · ")).join(", ")} มีอยู่แล้วในเครือ (รหัส ${hits.map((h) => h.id).join(", ")})` +
   (MASTER_SCHEMAS[entity].unique.some((u) => u.includes("unitName")) ? " — ใช้รายการเดิม หรือถ้าเป็นหน่วยงานแยกภายใต้เลขเดียวกัน ให้ระบุชื่อหน่วยงาน" : " — ใช้รายการเดิมแล้วตั้งชื่อเฉพาะบริษัทแทน");
@@ -181,7 +194,9 @@ async function legacyDuplicates(entity: MasterEntity, companyId: string, data: R
   const col = LEGACY_ROOT[entity] ? adminDb.collection(LEGACY_ROOT[entity]!).where("companyId", "==", companyId) : adminDb.collection(`companies/${companyId}/${entity}`);
   const [a, b] = await Promise.all([col.where("taxId", "==", taxId).limit(5).get(), col.where("tax_id", "==", taxId).limit(5).get()]);
   const seen = new Set<string>();
-  [...a.docs, ...b.docs].filter(live).filter((d) => branchOf(d.data()) === branch).forEach((d) => {
+  // ชื่อเดียวกันเท่านั้นถึงซ้ำ (เลขเดียวกัน ต่างชื่อ = คนละรายการ) · สำเนาของบริษัทที่ไม่มีชื่อ ตรวจที่ดัชนีข้อมูลกลางแทน
+  const unit = partyUnitKey(data);
+  [...a.docs, ...b.docs].filter(live).filter((d) => branchOf(d.data()) === branch && !!partyUnitKey(d.data()) && partyUnitKey(d.data()) === unit).forEach((d) => {
     if (!seen.has(d.id)) { seen.add(d.id); hits.push({ fields: ["taxId", "branchCode"], value: `${taxId}|${branch}`, id: d.id }); }
   });
   return hits;

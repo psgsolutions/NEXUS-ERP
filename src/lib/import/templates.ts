@@ -1,4 +1,4 @@
-import { isValidThaiTaxId } from "@/lib/party-identity";
+import { isValidThaiTaxId, partyUnitKey } from "@/lib/party-identity";
 /**
  * แม่แบบนำเข้าข้อมูลจาก Excel (ฟังก์ชันล้วน — ใช้ทั้งหน้าจอและ unit test)
  * แต่ละแถวแปลงเป็นคำขอแบบเดียวกับฟอร์มเพิ่มข้อมูลในระบบ (ลูกค้า/ผู้ขาย/สินค้า: /api/master-data · พนักงาน: /api/hr/employees)
@@ -50,7 +50,7 @@ const ADDRESS: ImportColumn[] = [
 const PARTY_TAX: ImportColumn[] = [
   { key: "taxId", header: "เลขประจำตัวผู้เสียภาษี", type: "taxId", example: "0105561234560", note: "13 หลัก (ไม่มีขีดก็ได้) — ใช้ตรวจข้อมูลซ้ำ" },
   { key: "branchCode", header: "รหัสสาขา", type: "branch", example: "00000", note: "00000 = สำนักงานใหญ่ / ว่าง = สำนักงานใหญ่" },
-  { key: "unitName", header: "หน่วยงาน", type: "text", example: "", note: "หน่วยงานย่อยที่ใช้เลขผู้เสียภาษีเดียวกัน เช่น สำนักงานเขตบางรัก — ว่าง = หน่วยงานหลัก" },
+  { key: "unitName", header: "หน่วยงาน", type: "text", example: "", note: "หน่วยงานย่อยที่ใช้เลขผู้เสียภาษีเดียวกัน เช่น สำนักงานเขตบางรัก — ว่าง = ใช้ชื่อ (เลขเดียวกัน ต่างชื่อ = คนละรายการ)" },
   { key: "taxInvoiceName", header: "ชื่อบนใบกำกับภาษี", type: "text", example: "", note: "ว่าง = ชื่อ (หน่วยงาน)" },
 ];
 
@@ -276,7 +276,8 @@ export function parseRows(template: ImportTemplate, rows: any[][], index: Record
     // ซ้ำภายในไฟล์ (คีย์แรกต้องมีค่า คีย์ที่เหลือว่างได้ เช่น หน่วยงานหลักไม่มีชื่อหน่วยงาน)
     template.uniqueKeys.forEach((keys, k) => {
       if (!values[keys[0]] || ignoreDup?.has(rowNo)) return;
-      const v = keys.map((key) => String(values[key] ?? "").trim().toLowerCase().replace(/\s+/g, "")).join("|");
+      // ชื่อหน่วยงานว่าง = ใช้ชื่อรายการ (เลขผู้เสียภาษีเดียวกัน ต่างชื่อ = คนละรายการ)
+      const v = keys.map((key) => (key === "unitName" ? partyUnitKey(values) : String(values[key] ?? "").trim().toLowerCase().replace(/\s+/g, ""))).join("|");
       const first = seen[k].get(v);
       if (first) errors.push(`${keys.map((key) => template.columns.find((c) => c.key === key)?.header).join("+")} ซ้ำกับแถว ${first}`);
       else seen[k].set(v, rowNo);

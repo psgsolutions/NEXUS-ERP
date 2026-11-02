@@ -10,7 +10,9 @@
  * บริษัทที่ไม่มี groupId = เครือของตัวเอง (groupId = companyId)
  */
 
-export type MasterEntity = "products" | "customers" | "suppliers" | "contractors";
+import { partyUnitKey } from "@/lib/party-identity";
+
+export type MasterEntity ="products" | "customers" | "suppliers" | "contractors";
 export const MASTER_ENTITIES: MasterEntity[] = ["products", "customers", "suppliers", "contractors"];
 
 export interface MasterSchema {
@@ -27,7 +29,7 @@ export interface MasterSchema {
 
 // unitName = หน่วยงานภายใต้เลขผู้เสียภาษีเดียวกัน (เช่น สำนักงานเขต) · taxInvoiceName = ชื่อบนใบกำกับภาษีของหน่วยงานนั้น
 const PARTY_IDENTITY = ["taxId", "tax_id", "branchCode", "branch_code", "legalName", "entityType", "unitName", "taxInvoiceName"];
-/** ห้ามซ้ำ: เลขผู้เสียภาษี + สาขา + ชื่อหน่วยงาน (หน่วยงานหลักเว้นว่าง) — ผู้เสียภาษีเดียวมีได้หลายหน่วยงาน */
+/** ห้ามซ้ำ: เลขผู้เสียภาษี + สาขา + ชื่อหน่วยงาน (ว่าง = ชื่อรายการ) — เลขเดียวกัน ต่างชื่อ = คนละรายการ (1 ชื่อ 1 ที่อยู่) */
 const PARTY_UNIQUE = [["taxId", "branchCode", "unitName"]];
 // รวมชื่อฟิลด์แบบเดิมของฟอร์ม (snake_case / ที่อยู่แยกช่อง) เพื่อให้ข้อมูลทั่วไปอยู่ที่ข้อมูลกลาง
 const PARTY_SHARED = [
@@ -101,7 +103,8 @@ export function splitChanges(entity: MasterEntity, changes: Record<string, any>,
 
 /** ค่าคีย์ห้ามซ้ำแบบปกติ (ตัวพิมพ์ใหญ่ ไม่มีช่องว่าง) — ค่าว่างคืน "" */
 export function uniqueKeyValue(fields: string[], data: Record<string, any>): string {
-  const parts = fields.map((f) => String(data?.[f] ?? "").trim().toUpperCase().replace(/\s+/g, ""));
+  // unitName ของคู่ค้า: ไม่กรอก = ใช้ชื่อรายการ (เลขผู้เสียภาษีเดียวกัน ต่างชื่อ = คนละรายการ)
+  const parts = fields.map((f) => (f === "unitName" ? partyUnitKey(data) : String(data?.[f] ?? "").trim().toUpperCase().replace(/\s+/g, "")));
   if (!parts[0]) return "";
   // สาขาว่าง = สำนักงานใหญ่
   return parts.map((p, i) => (p || (fields[i] === "branchCode" ? "00000" : ""))).join("|");

@@ -29,16 +29,30 @@ describe("one taxpayer, many units (e.g. city districts, air force wings)", () =
     expect(keys).toEqual(["taxId", "branchCode", "unitName"]);
     const main = uniqueKeyValue(keys, list[0]), unit = uniqueKeyValue(keys, list[1]);
     expect(main).not.toBe(unit);
-    expect(uniqueKeyValue(keys, { taxId: BMA, branchCode: "", unitName: "  " })).toBe(main); // ว่าง = หน่วยงานหลัก สาขาว่าง = 00000
+    expect(uniqueKeyValue(keys, { taxId: BMA, branchCode: "", unitName: "  ", name: "กรุงเทพ มหานคร" })).toBe(main); // หน่วยงานว่าง = ใช้ชื่อ · สาขาว่าง = 00000
     expect(uniqueKeyValue(keys, { taxId: BMA, unitName: "สำนักงานเขต บางรัก" })).toBe(unit); // เว้นวรรคต่างกันถือว่าซ้ำ
   });
 
   it("lists every unit that already uses the tax ID and finds the exact duplicate", () => {
     const same = sameTaxIdRecords(list, BMA, "C1");
     expect(same.map((s) => s.id)).toEqual(["C2", "C3"]);
-    expect(exactDuplicate(sameTaxIdRecords(list, BMA), "", "")?.id).toBe("C1");
-    expect(exactDuplicate(sameTaxIdRecords(list, BMA), "00000", "สำนักงานเขตบางรัก")?.id).toBe("C2");
-    expect(exactDuplicate(sameTaxIdRecords(list, BMA), "00000", "สำนักงานเขตปทุมวัน")).toBeNull();
+    expect(exactDuplicate(sameTaxIdRecords(list, BMA), "", { name: "กรุงเทพมหานคร" })?.id).toBe("C1");
+    expect(exactDuplicate(sameTaxIdRecords(list, BMA), "00000", { unitName: "สำนักงานเขตบางรัก" })?.id).toBe("C2");
+    expect(exactDuplicate(sameTaxIdRecords(list, BMA), "00000", { unitName: "สำนักงานเขตปทุมวัน" })).toBeNull();
+  });
+
+  it("same tax ID with a different name is another record (1 name = 1 address)", () => {
+    const [keys] = MASTER_SCHEMAS.customers.unique;
+    const a = uniqueKeyValue(keys, { taxId: BMA, name: "สำนักงานเขตบางรัก" });
+    const b = uniqueKeyValue(keys, { taxId: BMA, name: "สำนักงานเขตปทุมวัน" });
+    expect(a).not.toBe(b);
+    expect(uniqueKeyValue(keys, { taxId: BMA, name: "สำนักงานเขต บางรัก" })).toBe(a);
+    expect(uniqueKeyValue(keys, { taxId: BMA, name: "ชื่ออื่น", unitName: "สำนักงานเขตบางรัก" })).toBe(a); // ชื่อหน่วยงานมาก่อนชื่อรายการ
+    expect(exactDuplicate(sameTaxIdRecords(list, BMA), "00000", { name: "สำนักงานเขตปทุมวัน" })).toBeNull();
+    const t = IMPORT_TEMPLATES.customers;
+    const head = ["ชื่อลูกค้า*", "เลขประจำตัวผู้เสียภาษี"];
+    const rows = parseRows(t, [["สำนักงานเขตบางรัก", BMA], ["สำนักงานเขตปทุมวัน", BMA], ["สำนักงานเขต บางรัก", BMA]], mapHeaders(t, head).index);
+    expect(rows.map((x) => x.errors.length)).toEqual([0, 0, 1]);
   });
 
   it("name on documents is set per unit", () => {

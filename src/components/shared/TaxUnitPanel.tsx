@@ -9,7 +9,7 @@ import { exactDuplicate, partyDocName, sameTaxIdRecords, taxIdProblem } from "@/
 /**
  * ตรวจเลขผู้เสียภาษีขณะกรอก + หน่วยงานภายใต้เลขเดียวกัน (ใช้ในฟอร์มลูกค้า/ผู้ขาย)
  *  - เลขผิดสูตรตรวจ: เตือนทันที (บันทึกไม่ได้ที่ server)
- *  - เลขนี้มีอยู่แล้ว: แสดงทุกสาขา/หน่วยงานที่ใช้เลขนี้ ให้เปิดรายการเดิม หรือกรอกชื่อหน่วยงานถ้าเป็นหน่วยงานแยก
+ *  - เลขนี้มีอยู่แล้ว: แสดงทุกสาขา/หน่วยงานที่ใช้เลขนี้ · ต่างชื่อ = คนละรายการ (1 ชื่อ 1 ที่อยู่) · ชื่อเดียวกัน = ซ้ำ
  *  - ชื่อบนใบกำกับภาษี: ตั้งได้ต่อหน่วยงาน (ว่าง = ชื่อ (หน่วยงาน))
  */
 export function TaxUnitPanel({
@@ -28,7 +28,7 @@ export function TaxUnitPanel({
 }) {
   const problem = taxIdProblem(taxId);
   const same = problem ? [] : sameTaxIdRecords(records, taxId, exceptId);
-  const dup = exactDuplicate(same, branchCode, unitName);
+  const dup = exactDuplicate(same, branchCode, { unitName, name: baseName });
   const preview = partyDocName({ name: baseName, unitName, taxInvoiceName });
   const branchLabel = (b: string) => (b === "00000" ? "สำนักงานใหญ่" : `สาขา ${b}`);
 
@@ -41,7 +41,7 @@ export function TaxUnitPanel({
         <div className={`rounded-xl border px-3 py-2.5 space-y-1.5 ${dup ? "border-danger/40 bg-danger/10" : "border-amber-500/30 bg-amber-500/10"}`}>
           <p className={`text-[12px] font-bold flex items-center gap-1.5 ${dup ? "text-danger" : "text-amber-300"}`}>
             <AlertTriangle size={13} />
-            {dup ? "ซ้ำกับรายการที่มีอยู่ — ใช้รายการเดิม หรือถ้าเป็นหน่วยงานแยก ให้กรอกชื่อหน่วยงานด้านล่าง" : `เลขผู้เสียภาษีนี้ใช้อยู่แล้ว ${same.length} รายการ — ถ้าเป็นหน่วยงานเดียวกันให้ใช้รายการเดิม`}
+            {dup ? "ซ้ำ: เลขผู้เสียภาษี สาขา และชื่อเดียวกันมีอยู่แล้ว — ใช้รายการเดิม หรือถ้าเป็นหน่วยงานแยก ให้ใช้ชื่อของหน่วยงานนั้น" : `เลขผู้เสียภาษีนี้ใช้อยู่แล้ว ${same.length} รายการ — ชื่อต่างกันจะบันทึกเป็นอีกรายการ (มีที่อยู่ของตัวเอง) ถ้าเป็นที่เดียวกันให้ใช้รายการเดิม`}
           </p>
           {same.slice(0, 8).map((s) => (
             <Link key={s.id} href={hrefOf(s.id)} target="_blank" className="flex items-center gap-2 text-[12px] text-white/85 hover:text-white rounded-lg px-1.5 py-0.5 hover:bg-white/5 min-w-0">

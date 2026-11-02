@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileDown, FileSpreadsheet, Files, RefreshCw, Trash2, Upload, X } from "lucide-react";
+import { Download, FileDown, FileSpreadsheet, Files, Pencil, RefreshCw, SpellCheck, Trash2, Upload, X } from "lucide-react";
 import { GlassCard, NexusDatePicker, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillCheckbox, PillSelect, PillTabs, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
@@ -11,6 +11,9 @@ import { CHART_OF_ACCOUNTS } from "@/lib/chart-of-accounts";
 import { IMPORT_TEMPLATES, mapHeaders, parseRows, toCreateRequest, toTemplateRow, type ImportEntity, type ImportTemplate, type ParsedRow } from "@/lib/import/templates";
 import { OPENING_TB_REF, OPENING_TEMPLATES, tbLines, type OpeningKind } from "@/lib/import/opening";
 import { detectEntity, sheetName } from "@/lib/import/detect";
+import { checkRowSpelling, type FieldFix } from "@/lib/import/row-check";
+import { buildAddressIndex, type AddressIndex } from "@/lib/spellcheck";
+import { ImportRowEditor } from "@/components/import/ImportRowEditor";
 
 /**
  * นำเข้า/ส่งออกข้อมูลด้วย Excel
@@ -21,16 +24,18 @@ import { detectEntity, sheetName } from "@/lib/import/detect";
  *  - หลายไฟล์/หลายชีตพร้อมกัน: แต่ละชีตระบุชนิดข้อมูลจากหัวตาราง (+ชื่อไฟล์/ชีต) เปลี่ยนเองได้
  *    นำเข้าทั้งหมดตามลำดับ ลูกค้า → ผู้ขาย → สินค้า → พนักงาน → งบทดลอง → ลูกหนี้ → เจ้าหนี้
  * อ่านไฟล์ในเบราว์เซอร์ ตรวจทุกแถวก่อน (server ตรวจซ้ำอีกชั้น)
+ *  - แถวที่ไม่ผ่าน/นำเข้าไม่สำเร็จ แก้ในหน้านี้ได้ (ไม่ต้องแก้ไฟล์แล้วเลือกใหม่) ตรวจใหม่ทันที
+ *  - ตรวจคำผิด: ปรับรูปแบบที่ปลอดภัยให้เอง + เตือนคำที่อาจพิมพ์ผิด/ที่อยู่ไม่ตรงฐานข้อมูล พร้อมคำแนะนำ (ไม่บล็อกการนำเข้า)
  */
 
 type TabId = ImportEntity | OpeningKind;
-type RowState = ParsedRow & { status: "ready" | "invalid" | "saving" | "done" | "failed"; message?: string };
+type RowState = ParsedRow & { status: "ready" | "invalid" | "saving" | "done" | "failed"; message?: string; fixes?: FieldFix[] };
 /** ชุดข้อมูลหนึ่งชีตของไฟล์ที่เลือก */
 interface Batch {
   id: string; fileName: string; sheet: string; sheets: number;
   entity: TabId | null; ambiguous: boolean;
   aoa: any[][]; rows: RowState[];
-  notes: { missing: string[]; unknown: string[] }; error: string;
+  notes: { missing: string[]; unknown: string[]; normalized?: number }; error: string;
 }
 interface Status {
   tb: { id: string; journalNo: string; date: string; status: string; total: number }[];
@@ -80,6 +85,47 @@ const countOf = (rows: RowState[]) => {
   return c;
 };
 
+/** ฐานข้อมูลที่อยู่ไทย (โหลดครั้งเดียวเมื่อมีข้อมูลลูกค้า/ผู้ขาย) — ใช้ตรวจจังหวัด อำเภอ ตำบล รหัสไปรษณีย์ */
+let ADDRESS_INDEX: AddressIndex | null = null;
+
+/** แถวที่ต้องดู: ไม่ผ่าน · นำเข้าไม่สำเร็จ · มีคำที่อาจพิมพ์ผิด (ยังไม่นำเข้า) */
+const needsAttention = (r: RowState) => r.status === "invalid" || r.status === "failed" || ((r.status === "ready") && !!r.fixes?.length);
+
+/** ตรวจใหม่หลังแก้ข้อมูล: แถวที่นำเข้าแล้ว/กำลังบันทึกคงสถานะเดิม */
+function reparse(b: Batch, aoa: any[][]): Batch {
+  const next = parseBatch(aoa, b.entity);
+  const keep = new Map(b.rows.filter((r) => r.status === "done" || r.status === "saving").map((r) => [r.rowNo, r]));
+  return { ...b, aoa, ...next, rows: next.rows.map((r) => keep.get(r.rowNo) || r) };
+}
+
+/** ค่าตามไฟล์ของแต่ละช่องในแถว (ใช้ในหน้าต่างแก้ไข) */
+function cellsOf(b: Batch, rowNo: number): Record<string, string> {
+  if (!b.entity) return {};
+  const t = TEMPLATES[b.entity];
+  const { index } = mapHeaders(t, b.aoa[0] || []);
+  const raw = b.aoa[rowNo - 1] || [];
+  return Object.fromEntries(t.columns.map((c) => [c.key, index[c.key] === undefined || raw[index[c.key]] === undefined || raw[index[c.key]] === null ? "" : String(raw[index[c.key]])]));
+}
+
+/** เขียนค่าที่แก้กลับลงตารางของชีต (เพิ่มคอลัมน์ให้ถ้าไฟล์ไม่มีช่องนั้น) */
+function writeCells(b: Batch, rowNo: number, cells: Record<string, string>): any[][] {
+  const t = TEMPLATES[b.entity!];
+  const aoa = b.aoa.map((r) => [...(r || [])]);
+  const header = aoa[0] || (aoa[0] = []);
+  const { index } = mapHeaders(t, header);
+  const row = aoa[rowNo - 1] || (aoa[rowNo - 1] = []);
+  for (const c of t.columns) {
+    if (!(c.key in cells)) continue;
+    let at = index[c.key];
+    if (at === undefined) {
+      if (!cells[c.key]) continue;
+      at = header.length; header.push(c.required ? `${c.header}*` : c.header);
+    }
+    row[at] = cells[c.key];
+  }
+  return aoa;
+}
+
 /** แปลงตารางของชีตเป็นแถวที่ตรวจแล้ว ตามชนิดข้อมูล */
 function parseBatch(aoa: any[][], entity: TabId | null): Pick<Batch, "rows" | "notes" | "error"> {
   const empty = { rows: [], notes: { missing: [], unknown: [] } };
@@ -91,7 +137,13 @@ function parseBatch(aoa: any[][], entity: TabId | null): Pick<Batch, "rows" | "n
   const parsed = parseRows(template, aoa.slice(1), index);
   if (!parsed.length) return { rows: [], notes: { missing, unknown }, error: "ไม่พบแถวข้อมูลใต้หัวตาราง" };
   if (parsed.length > MAX_ROWS) return { rows: [], notes: { missing, unknown }, error: `มี ${parsed.length} แถว — แบ่งไฟล์ละไม่เกิน ${MAX_ROWS.toLocaleString("th-TH")} แถว` };
-  return { rows: parsed.map((r) => ({ ...r, status: r.errors.length ? "invalid" : "ready" })), notes: { missing, unknown }, error: "" };
+  let normalized = 0;
+  const rows: RowState[] = parsed.map((r) => {
+    const chk = checkRowSpelling(template, r.values, ADDRESS_INDEX);
+    normalized += chk.normalized;
+    return { ...r, values: chk.values, fixes: chk.fixes, status: r.errors.length ? "invalid" : "ready" };
+  });
+  return { rows, notes: { missing, unknown, normalized }, error: "" };
 }
 
 export default function DataImportPage() {
@@ -213,6 +265,42 @@ export default function DataImportPage() {
     if (added[0]) setSelected(added[0].id);
   };
   const setBatchEntity = (id: string, entity: TabId | null) => setBatches((cur) => cur.map((b) => (b.id === id ? { ...b, entity, ambiguous: false, ...parseBatch(b.aoa, entity) } : b)));
+
+  // ตรวจที่อยู่: โหลดฐานข้อมูลที่อยู่ไทยเมื่อมีข้อมูลลูกค้า/ผู้ขาย แล้วตรวจทุกชุดใหม่
+  const needsAddress = batches.some((b) => b.entity === "customers" || b.entity === "suppliers");
+  useEffect(() => {
+    if (!needsAddress || ADDRESS_INDEX) return;
+    let cancelled = false;
+    fetch("/data/thailand_addresses.json").then((r) => r.json()).then((rows) => {
+      if (cancelled) return;
+      ADDRESS_INDEX = buildAddressIndex(rows);
+      setBatches((cur) => cur.map((b) => (b.entity ? reparse(b, b.aoa) : b)));
+    }).catch(() => { /* ตรวจคำผิดทั่วไปได้ตามเดิม แค่ไม่ตรวจที่อยู่ */ });
+    return () => { cancelled = true; };
+  }, [needsAddress]);
+
+  // แก้แถวในหน้าจอ
+  const [editing, setEditing] = useState<{ batchId: string; rowNo: number } | null>(null);
+  const editBatch = editing ? batches.find((b) => b.id === editing.batchId) || null : null;
+  const editRow = editBatch?.rows.find((r) => r.rowNo === editing?.rowNo) || null;
+  const editCells = useMemo(() => (editBatch && editing ? cellsOf(editBatch, editing.rowNo) : {}), [editBatch?.aoa, editing?.rowNo]); // eslint-disable-line react-hooks/exhaustive-deps
+  const nextAttention = (b: Batch, after: number) => b.rows.find((r) => r.rowNo > after && needsAttention(r)) || b.rows.find((r) => r.rowNo < after && needsAttention(r)) || null;
+  const saveEdit = (cells: Record<string, string>, goNext: boolean) => {
+    if (!editBatch || !editing) return;
+    const updated = reparse(editBatch, writeCells(editBatch, editing.rowNo, cells));
+    setBatches((cur) => cur.map((b) => (b.id === updated.id ? updated : b)));
+    const nxt = goNext ? nextAttention(updated, editing.rowNo) : null;
+    setEditing(nxt && nxt.rowNo !== editing.rowNo ? { batchId: updated.id, rowNo: nxt.rowNo } : null);
+  };
+  // แก้คำผิดตามคำแนะนำทั้งชุด (เฉพาะแถวที่ยังไม่นำเข้า และคำแนะนำที่มีคำที่ถูก)
+  const applyAllFixes = (b: Batch) => {
+    let aoa = b.aoa;
+    for (const r of b.rows) {
+      if (r.status === "done" || r.status === "saving" || !r.fixes?.some((x) => x.to)) continue;
+      aoa = writeCells({ ...b, aoa }, r.rowNo, Object.fromEntries(r.fixes.filter((x) => x.to).map((x) => [x.key, x.to])));
+    }
+    setBatches((cur) => cur.map((x) => (x.id === b.id ? reparse(x, aoa) : x)));
+  };
 
   const post = async (url: string, body: Record<string, any>) => {
     const res = await apiFetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, ...body }) });
@@ -347,6 +435,9 @@ export default function DataImportPage() {
   const hasOpeningStock = batches.some((b) => b.entity === "products" && b.rows.some((r) => r.values.openingQty > 0));
   const hasTb = batches.some((b) => b.entity === "tb");
   const pending = batch ? pendingOf(batch).length : 0;
+  const attention = batch ? batch.rows.filter(needsAttention) : [];
+  const typoRows = batch ? batch.rows.filter((r) => r.status !== "done" && r.fixes?.length).length : 0;
+  const typoFixable = batch ? batch.rows.filter((r) => r.status !== "done" && r.status !== "saving" && r.fixes?.some((x) => x.to)).length : 0;
   const existingTb = hasTb ? status?.tb || [] : [];
   const exportable = allowed.filter((t): t is ImportEntity => !isOpening(t));
 
@@ -488,6 +579,19 @@ export default function DataImportPage() {
             </>
           )}
 
+          <ImportRowEditor
+            open={!!editRow}
+            template={editBatch?.entity ? TEMPLATES[editBatch.entity] : null}
+            rowNo={editRow?.rowNo || 0}
+            cells={editCells}
+            errors={editRow?.errors || []}
+            message={editRow?.status === "failed" ? editRow.message : undefined}
+            fixes={editRow?.fixes || []}
+            hasNext={!!(editBatch && editRow && nextAttention(editBatch, editRow.rowNo) && nextAttention(editBatch, editRow.rowNo)!.rowNo !== editRow.rowNo)}
+            onClose={() => setEditing(null)}
+            onSave={saveEdit}
+          />
+
           {batch && batch.rows.length > 0 && bTemplate && (
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-white/60 px-1">
               <span className="text-white/80 font-bold">{batch.fileName}{batch.sheets > 1 ? ` · ${batch.sheet}` : ""} — {bTemplate.label}</span>
@@ -496,6 +600,10 @@ export default function DataImportPage() {
               {count.invalid > 0 && <span>ไม่ผ่าน <span className="font-mono font-bold text-danger">{count.invalid}</span></span>}
               {count.done > 0 && <span>นำเข้าแล้ว <span className="font-mono font-bold text-nexus-teal">{count.done}</span></span>}
               {count.failed > 0 && <span>ไม่สำเร็จ <span className="font-mono font-bold text-danger">{count.failed}</span></span>}
+              {typoRows > 0 && <span>อาจพิมพ์ผิด <span className="font-mono font-bold text-amber-300">{typoRows}</span></span>}
+              {(batch.notes.normalized || 0) > 0 && <span title="นิคหิต+สระอา → สระอำ, ช่องว่างซ้ำ, อักขระล่องหน">ปรับรูปแบบให้แล้ว <span className="font-mono text-white/80">{batch.notes.normalized}</span> จุด</span>}
+              {attention.length > 0 && <PillButton variant="glass" onClick={() => setEditing({ batchId: batch.id, rowNo: attention[0].rowNo })} className="h-9 px-4 text-xs"><Pencil size={13} /> แก้แถวที่ต้องดู ({attention.length})</PillButton>}
+              {typoFixable > 0 && <PillButton variant="warning" onClick={() => applyAllFixes(batch)} disabled={busy} className="h-9 px-4 text-xs"><SpellCheck size={13} /> แก้คำผิดตามคำแนะนำ ({typoFixable} แถว)</PillButton>}
               {tb && (
                 <>
                   <span>เดบิต <span className="font-mono font-bold text-white">{money(tb.debit)}</span></span>
@@ -511,7 +619,7 @@ export default function DataImportPage() {
 
           {batch && batch.rows.length > 0 && (
             <GlassCard accentColor="teal" className="p-2">
-              <NexusTable headers={["ลำดับ", ...(isOpening(batch.entity) ? [] : ["การทำงาน"]), ...previewCols.map((c) => c.header), "สถานะ", "หมายเหตุ"]}>
+              <NexusTable headers={["ลำดับ", ...(isOpening(batch.entity) ? [] : ["การทำงาน"]), ...previewCols.map((c) => c.header), "สถานะ", "หมายเหตุ", ""]}>
                 {batch.rows.map((r) => (
                   <NexusTableRow key={r.rowNo}>
                     <NexusTableCell className="font-mono text-white/50">{r.rowNo}</NexusTableCell>
@@ -522,7 +630,18 @@ export default function DataImportPage() {
                       </NexusTableCell>
                     ))}
                     <NexusTableCell><span className={cn("text-[12px] font-bold", STATUS[r.status][1])}>{STATUS[r.status][0]}</span></NexusTableCell>
-                    <NexusTableCell className="text-[12px] text-white/60" title={[...r.errors, r.message].filter(Boolean).join(" · ")}>{[...r.errors, r.message].filter(Boolean).join(" · ") || "-"}</NexusTableCell>
+                    <NexusTableCell className="text-[12px]" title={[...r.errors, r.message, ...(r.fixes || []).map((x) => x.message)].filter(Boolean).join(" · ")}>
+                      {[...r.errors, r.message].filter(Boolean).length > 0
+                        ? <span className="text-danger">{[...r.errors, r.message].filter(Boolean).join(" · ")}</span>
+                        : r.fixes?.length && r.status !== "done"
+                          ? <span className="text-amber-300 flex items-center gap-1"><SpellCheck size={12} className="shrink-0" /> {r.fixes.map((x) => x.message).join(" · ")}</span>
+                          : <span className="text-white/60">-</span>}
+                    </NexusTableCell>
+                    <NexusTableCell className="text-right">
+                      {r.status !== "done" && r.status !== "saving" && (
+                        <PillButton variant={needsAttention(r) ? "glass" : "ghost"} onClick={() => setEditing({ batchId: batch.id, rowNo: r.rowNo })} disabled={busy} className="h-8 px-3 text-xs normal-case tracking-normal"><Pencil size={12} /> แก้ไข</PillButton>
+                      )}
+                    </NexusTableCell>
                   </NexusTableRow>
                 ))}
               </NexusTable>

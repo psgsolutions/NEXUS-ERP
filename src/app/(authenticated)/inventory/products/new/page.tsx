@@ -52,6 +52,7 @@ import { getRequiredFieldsStatus, checkSkuDuplicate, findBarcodeConflict } from 
 import { carryOver, findSimilarProducts, marginOf, productToForm, type MarginLevel } from "@/lib/product-form";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { makeThumbnail, prepareAttachment } from "@/lib/attachments";
+import { SpellHint } from "@/components/shared/SpellHint";
 
 const INITIAL_FORM_DATA = {
   // 1. Identification & Classification
@@ -945,6 +946,7 @@ export default function NewProductPage() {
                           className={cn("w-full h-8 px-3 rounded-full text-[12px]", errors.name && "border-danger focus:ring-danger")} 
                           placeholder="ระบุชื่อสินค้า ยี่ห้อ รุ่น และสเปก..." 
                         />
+                        <SpellHint value={formData.name} onFix={(v) => setFormData(prev => ({ ...prev, name: v }))} />
                       </Field>
                     </div>
                   </div>

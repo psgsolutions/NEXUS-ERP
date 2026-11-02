@@ -25,6 +25,7 @@ import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { TaxUnitPanel } from "@/components/shared/TaxUnitPanel";
+import { SpellHint } from "@/components/shared/SpellHint";
 import { useSuppliers } from "@/hooks/useCustomers";
 import { taxIdProblem } from "@/lib/party-identity";
 
@@ -319,6 +320,7 @@ export default function NewSupplierPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Field label="ชื่อช่าง / บริษัท / ห้างร้าน *">
               <PillInput value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} placeholder="ระบุชื่อทีมช่าง หรือชื่อนิติบุคคลเต็ม..." className="w-full h-9 rounded-full bg-white/[0.02] px-6" />
+              <SpellHint value={form.name} onFix={(v) => setForm({ ...form, name: v })} />
             </Field>
             <Field label={form.entity_category === "TEAM" ? "เลขประจำตัวประชาชน/ผู้เสียภาษี *" : "เลขประจำตัวผู้เสียภาษี *"}>
               <PillInput 

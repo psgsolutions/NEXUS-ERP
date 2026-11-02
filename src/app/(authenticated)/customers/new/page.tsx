@@ -12,6 +12,7 @@ import { useSystemDialog } from '@/context/DialogContext';
 import NexusPageLayout from '@/components/layout/NexusPageLayout';
 import { DocumentStepper } from '@/components/ui/DocumentStepper';
 import { TaxUnitPanel } from '@/components/shared/TaxUnitPanel';
+import { SpellHint } from '@/components/shared/SpellHint';
 import { useCustomers } from '@/hooks/useCustomers';
 import { taxIdProblem } from '@/lib/party-identity';
 
@@ -153,6 +154,7 @@ export default function CustomerDataEntryPage() {
                 className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-bold"
                 placeholder="ระบุชื่อบริษัท"
               />
+              <SpellHint value={formData.customerName} onFix={(v) => setFormData({ ...formData, customerName: v })} />
             </Field>
             <div className="grid grid-cols-2 gap-4">
               <Field label="เลขประจำตัวผู้เสียภาษี *" required>

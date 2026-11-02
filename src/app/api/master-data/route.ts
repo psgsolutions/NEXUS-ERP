@@ -3,6 +3,8 @@ import * as admin from "firebase-admin";
 import { PRODUCT_THUMB_MAX } from "@/lib/attachments";
 import { isStockItem } from "@/lib/product-kind";
 import { taxIdProblem } from "@/lib/party-identity";
+import { prepareSequence } from "@/lib/sequence-server";
+import { resolveSequenceFormat, type SequencePrefix } from "@/lib/sequence-engine";
 import { requireApiUser, authErrorResponse, ApiAuthError, type ApiUser } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
@@ -33,6 +35,17 @@ import { MASTER_SCHEMAS, isMasterEntity, mergeRecord, splitChanges, uniqueKeyDoc
 
 const str = (v: any, max = 200) => String(v ?? "").trim().slice(0, max);
 const ID = /^[A-Za-z0-9_.-]{1,120}$/;
+
+/**
+ * รหัสคู่ค้าตามมาตรฐาน (รูปแบบตั้งได้ที่ ตั้งค่า → รูปแบบเลขที่ ค่าตั้งต้น PREFIX-YYMM-0000)
+ * ออกที่ server ทุกช่องทาง (ฟอร์ม นำเข้า Excel) ในทรานแซกชันเดียวกับการสร้าง — ไม่ข้ามเลข ไม่ซ้ำ
+ *  - ลูกค้า CUS-… (รหัสเอกสาร = รหัสลูกค้า) · ผู้ขาย SUP-… (รหัสเอกสาร = รหัสผู้ขาย) · ผู้รับเหมา SUB-…
+ */
+const PARTY_CODE: Partial<Record<MasterEntity, { prefix: SequencePrefix; field: string; asId: boolean }>> = {
+  customers: { prefix: "CUS", field: "customerId", asId: true },
+  suppliers: { prefix: "SUP", field: "supplierCode", asId: true },
+  contractors: { prefix: "SUB", field: "contractorId", asId: true },
+};
 /** ฟิลด์ของบริษัทที่ระบบคำนวณเอง (สต็อก ต้นทุน ยอดหนี้) ห้ามแก้ผ่าน API นี้ */
 const PROTECTED: Record<MasterEntity, string[]> = {
   products: ["stock", "currentStock", "stockStatus", "cost", "wac", "averageCost", "lastCost", "stockValue"],
@@ -170,16 +183,18 @@ async function legacyDoc(entity: MasterEntity, id: string, companyId: string) {
 
 /** ออกรหัสสินค้า PRD-ปปดด-NNN (รูปแบบเดียวกับฟอร์มเพิ่มสินค้า) จากตัวนับของเครือ ข้ามรหัสที่มีคนใช้แล้ว */
 async function nextAutoSku(groupId: string, companyId: string): Promise<string> {
+  // รูปแบบตาม ตั้งค่า → รูปแบบเลขที่ (ค่าตั้งต้น PRD-YYMM-0000) · ตัวนับใช้ร่วมทั้งเครือ เพราะสินค้าเป็นข้อมูลกลาง
   const th = new Date(Date.now() + 7 * 3600_000);
-  const prefix = `PRD-${String(th.getUTCFullYear()).slice(-2)}${String(th.getUTCMonth() + 1).padStart(2, "0")}-`;
-  const counterRef = adminDb.doc(`counters/${groupId}_${prefix.slice(0, -1)}`);
+  const fmt = (await adminDb.doc(`companies/${companyId}/settings/sequence_formats`).get()).data()?.PRD;
+  const { prefixPart: prefix, suffixPart, padLength } = resolveSequenceFormat("PRD", fmt, new Date(th.getUTCFullYear(), th.getUTCMonth(), th.getUTCDate()));
+  const counterRef = adminDb.doc(`counters/${groupId}_${prefix.replace(/[^A-Za-z0-9_-]/g, "").replace(/-$/, "")}`);
   for (let tries = 0; tries < 50; tries++) {
     const n = await adminDb.runTransaction(async (tx) => {
       const seq = ((await tx.get(counterRef)).data()?.seq || 0) + 1;
       tx.set(counterRef, { seq, currentValue: seq, type: "PRD", groupId, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
       return seq;
     });
-    const sku = `${prefix}${String(n).padStart(3, "0")}`;
+    const sku = `${prefix}${String(n).padStart(padLength, "0")}${suffixPart}`;
     const used = (await findDuplicates(null, groupId, "products", { sku })).length || (await legacyDuplicates("products", companyId, { sku })).length;
     if (!used) return sku;
   }
@@ -243,8 +258,8 @@ export async function POST(request: Request) {
       const data = normalizeParty(entity, clean(body.data || {}));
       if (!str(data.name)) throw new ApiAuthError(400, `กรุณาระบุชื่อ${schema.label}`);
       if (entity === "products" && body.autoSku === true && !str(data.sku)) data.sku = data.productCode = await nextAutoSku(groupId, companyId);
-      const id = str(body.id, 120) || masterCol.doc().id;
-      if (!ID.test(id)) throw new ApiAuthError(400, "รหัสไม่ถูกต้อง");
+      let id = str(body.id, 120);
+      if (id && !ID.test(id)) throw new ApiAuthError(400, "รหัสไม่ถูกต้อง");
       // สร้างรายการใหม่ = ค่าที่กรอกเป็นค่ากลาง (identity + shared) ส่วนที่เหลือเป็นของบริษัท
       const { master, local } = splitChanges(entity, data, "group");
       protectLocal(entity, local);
@@ -263,7 +278,14 @@ export async function POST(request: Request) {
       if (entity === "products") local.stockStatus = { onHand: 0, reserved: 0, available: 0 };
       const legacyHits = await legacyDuplicates(entity, companyId, master);
       if (legacyHits.length) throw new ApiAuthError(409, dupMessage(entity, legacyHits));
-      await adminDb.runTransaction(async (tx) => {
+      const codeSpec = PARTY_CODE[entity];
+      const takeCode = codeSpec && !str(local[codeSpec.field]) ? await prepareSequence(codeSpec.prefix, companyId) : null;
+      const fixedId = id;
+      id = await adminDb.runTransaction(async (tx) => {
+        // รหัสมาตรฐาน: อ่านตัวนับก่อนการเขียน (ทรานแซกชันลองใหม่ได้เลขใหม่ที่ถูกต้อง)
+        const seq = takeCode ? await takeCode(tx) : null;
+        const id = fixedId || (seq && codeSpec?.asId ? seq.number : masterCol.doc().id);
+        if (seq && codeSpec) local[codeSpec.field] = seq.number;
         const [m, l] = await Promise.all([tx.get(masterCol.doc(id)), tx.get(localCol.doc(id))]);
         const legacy = LEGACY_ROOT[entity] ? await tx.get(adminDb.doc(`${LEGACY_ROOT[entity]}/${id}`)) : null;
         if (m.exists || l.exists || legacy?.exists) throw new ApiAuthError(409, `รหัส ${id} มีอยู่แล้ว`);
@@ -273,6 +295,8 @@ export async function POST(request: Request) {
         tx.create(masterCol.doc(id), { ...master, groupId, createdBy: apiUser.uid, createdByCompany: companyId, createdAt: now, updatedAt: now, isDeleted: false });
         tx.create(localCol.doc(id), { ...local, companyId, groupId, createdBy: apiUser.uid, createdAt: now, updatedAt: now, isDeleted: false });
         tx.create(masterCol.doc(id).collection("history").doc(), historyEntry(apiUser, companyId, "create", master));
+        seq?.commit();
+        return id;
       });
       if (opening.qty > 0) {
         const amount = Math.round(opening.qty * opening.unitCost * 100) / 100;
@@ -291,7 +315,7 @@ export async function POST(request: Request) {
         });
       }
       await auditServer.logCreate(apiUser.uid, companyId, `MASTER_${entity.toUpperCase()}`, id, { name: master.name ?? data.name, ...(entity === "products" ? { sku: master.sku } : {}), openingStock: opening.qty || undefined });
-      return NextResponse.json({ success: true, id, groupId, openingStock: opening.qty, ...(entity === "products" ? { sku: master.sku } : {}) });
+      return NextResponse.json({ success: true, id, groupId, openingStock: opening.qty, ...(entity === "products" ? { sku: master.sku } : {}), ...(codeSpec ? { code: local[codeSpec.field] } : {}) });
     }
 
     const id = str(body.id, 120);

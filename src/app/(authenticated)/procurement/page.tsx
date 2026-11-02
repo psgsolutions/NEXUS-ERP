@@ -359,7 +359,7 @@ export default function ProcurementPage() {
                  {activeTab === "suppliers" ? (
                     <NexusTable headers={["รหัสคู่ค้า", "ชื่อคู่ค้า / นิติบุคคล", "หมวดหมู่", "เบอร์โทรศัพท์", "สถานะ"]}>
                        {filteredSuppliers.map(s => (
-                         <SupplierRow key={s.id} {...s} onClick={() => setIsSupplierOpen(true)} />
+                         <SupplierRow key={s.id} {...s} id={s.supplierCode || s.id} name={s.name || s.supplierName} status={s.isActive === false || s.status === "inactive" ? "inactive" : "active"} onClick={() => router.push(`/procurement/suppliers/${encodeURIComponent(s.id)}`)} />
                        ))}
                     </NexusTable>
                  ) : activeTab === "pr" ? (

@@ -146,7 +146,8 @@ const computeNextSku = (existingProducts: any[], extraSkus: string[] = []) => {
     nextNum = maxNum + 1;
   }
 
-  return `${prefix}${String(nextNum).padStart(3, "0")}`;
+  // ตัวอย่างรหัสที่จะได้ (รหัสจริงออกที่ server ตอนบันทึก ตามรูปแบบเลขที่ของบริษัท)
+  return `${prefix}${String(nextNum).padStart(4, "0")}`;
 };
 
 export default function NewProductPage() {
@@ -613,7 +614,8 @@ export default function NewProductPage() {
         const prodId = `PROD-${Date.now()}`;
         const initialQty = (formData.qty && formData.qty > 0) ? formData.qty : 0;
         const totalQty = initialQty * (formData.conversionRate || 1);
-        const savedSku = formData.sku;
+        // รหัสสินค้าจริงออกที่ server ตามรูปแบบเลขที่ (ค่าในฟอร์มเป็นตัวอย่าง)
+        let savedSku = formData.sku;
 
         const saveOp = async () => {
           const productData = {
@@ -707,10 +709,11 @@ export default function NewProductPage() {
           const { stockStatus: _s, ...withoutStock } = productData as any; void _s;
           const res = await apiFetch("/api/master-data", {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ companyId, action: "create", entity: "products", id: prodId, data: withoutStock, openingStock: { qty: totalQty, unitCost: formData.cost || 0, ...(formData.isSerialized && serialList.length ? { serials: serialList } : {}) } }),
+            body: JSON.stringify({ companyId, action: "create", entity: "products", id: prodId, autoSku: true, data: { ...withoutStock, sku: "", productCode: "" }, openingStock: { qty: totalQty, unitCost: formData.cost || 0, ...(formData.isSerialized && serialList.length ? { serials: serialList } : {}) } }),
           });
           const d = await res.json();
           if (!res.ok || !d.success) throw new Error(d.error || "บันทึกสินค้าไม่สำเร็จ");
+          if (d.sku) savedSku = d.sku;
         };
         await saveToFirestore(saveOp());
 

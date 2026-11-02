@@ -3,6 +3,8 @@ import { adminAuth, adminDb } from "./firebase-admin";
 import { ApiAuthError, type ApiUser } from "./api-auth";
 import { isPendingExpired, normalizeUserStatus } from "./user-status";
 import { ASSIGNABLE_ROLES as ROLE_OPTIONS, FULL_ACCESS_ROLES, can, primaryRole, resolveRoles } from "./permissions";
+import { auditServer } from "@/services/audit.server";
+import { randomBytes } from "crypto";
 
 /**
  * [SERVER-ONLY: Admin SDK] สมัครใช้งาน / อนุมัติผู้ใช้
@@ -12,17 +14,32 @@ import { ASSIGNABLE_ROLES as ROLE_OPTIONS, FULL_ACCESS_ROLES, can, primaryRole, 
  */
 
 export const SELF_REGISTER_ROLES = ["CUSTOMER", "TECHNICIAN"] as const;
-// ตำแหน่งที่ SUPERADMIN กำหนดได้ (นิยามสิทธิ์อยู่ที่ src/lib/permissions.ts)
+// ตำแหน่งที่กำหนดให้ผู้ใช้ได้ (นิยามสิทธิ์อยู่ที่ src/lib/permissions.ts)
 export const ASSIGNABLE_ROLES = ROLE_OPTIONS.map((r) => r.value) as string[];
+/**
+ * ผู้ดูแลระบบของบริษัทมีได้ 1 คน (เจ้าของที่เปิดบริษัท) — ผู้ดูแลระบบ/HR ของบริษัทให้ตำแหน่ง ADMIN ไม่ได้
+ * ย้ายผู้ดูแลระบบไปคนอื่นทำโดย SUPERADMIN
+ */
+const COMPANY_ADMIN_ROLE = "ADMIN";
+const isCompanyAdmin = (u: Record<string, any>) => resolveRoles(u).includes(COMPANY_ADMIN_ROLE);
 // เจ้าของกิจการที่เปิดบริษัทใหม่: ได้ทุกตำแหน่งงาน (SUPERADMIN ปรับลดภายหลังได้)
 const BUSINESS_OWNER_ROLES: string[] = FULL_ACCESS_ROLES;
 
 /** ตรวจรายการตำแหน่งที่ส่งมา: ต้องเป็นตำแหน่งที่กำหนดได้ อย่างน้อย 1 ตำแหน่ง */
-function cleanRoles(raw: any): string[] {
+function cleanRoles(raw: any, isSuper = false): string[] {
   const list = Array.from(new Set((Array.isArray(raw) ? raw : []).map((r: any) => String(r || "").toUpperCase())));
   if (!list.length) bad("กรุณาเลือกตำแหน่งอย่างน้อย 1 ตำแหน่ง");
   if (list.some((r) => !ASSIGNABLE_ROLES.includes(r))) bad("ตำแหน่งไม่ถูกต้อง");
+  if (!isSuper && list.includes(COMPANY_ADMIN_ROLE)) bad("บริษัทมีผู้ดูแลระบบได้ 1 คน — ย้ายผู้ดูแลระบบติดต่อผู้ดูแลระบบกลาง (SUPERADMIN)");
   return list;
+}
+
+/** SUPERADMIN ให้ตำแหน่ง ADMIN: ต้องไม่มีผู้ดูแลระบบคนอื่นที่ใช้งานอยู่ในบริษัทเดียวกัน */
+async function assertSingleAdmin(companyId: string | null | undefined, uid: string, roles: string[]) {
+  if (!companyId || !roles.includes(COMPANY_ADMIN_ROLE)) return;
+  const members = await adminDb.collection("users").where("companyId", "==", companyId).get();
+  const other = members.docs.find((d) => d.id !== uid && normalizeUserStatus(d.get("status")) === "ACTIVE" && isCompanyAdmin(d.data()));
+  if (other) bad(`บริษัทนี้มีผู้ดูแลระบบแล้ว (${other.get("name") || other.get("email")}) — ถอดตำแหน่งผู้ดูแลระบบของคนเดิมก่อน`);
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -182,6 +199,7 @@ export async function listManagedUsers(caller: ApiUser) {
       requestedCompanyId: x.requestedCompanyId || null,
       requestedCompanyName: x.requestedCompanyName || null,
       registrationId: x.registrationId || null,
+      mustChangePassword: x.mustChangePassword === true,
       createdAt: serializeTime(x.createdAt),
     };
   });
@@ -207,16 +225,15 @@ async function nextCompanyId(): Promise<string> {
 export type UserAction = "approve" | "reject" | "suspend" | "reactivate" | "setRoles";
 
 /**
- * อนุมัติ/ระงับ/กำหนดตำแหน่งผู้ใช้
- * - ผู้ดูแลระบบ (users:manage): อนุมัติตามประเภทที่สมัคร (ลูกค้า/ช่าง) ปฏิเสธ ระงับ เปิดใช้งาน
- * - กำหนดตำแหน่ง (approve พร้อม roles / setRoles): เฉพาะ SUPERADMIN
+ * อนุมัติ/ระงับ/กำหนดตำแหน่งผู้ใช้ — ผู้ดูแลระบบและ HR ของบริษัท (users:manage) ทำได้กับคนในบริษัทตัวเอง
+ * - กำหนดตำแหน่งงาน (approve พร้อม roles / setRoles): ทุกตำแหน่ง ยกเว้นผู้ดูแลระบบ (บริษัทละ 1 คน)
+ * - บัญชีผู้ดูแลระบบของบริษัท: เปลี่ยนตำแหน่ง/ระงับได้เฉพาะ SUPERADMIN · เปลี่ยนตำแหน่งของตัวเองไม่ได้
  */
 export async function applyUserAction(caller: ApiUser, uid: string, action: UserAction, roles?: any) {
   const isSuper = caller.roles.includes("SUPERADMIN");
-  if (!isSuper && !can(caller.roles, "users:manage")) throw new ApiAuthError(403, "ต้องเป็นผู้ดูแลระบบเท่านั้น");
+  if (!isSuper && !can(caller.roles, "users:manage")) throw new ApiAuthError(403, "ต้องเป็นผู้ดูแลระบบหรือฝ่ายบุคคลเท่านั้น");
   const assigning = roles !== undefined && roles !== null;
-  if (assigning && !isSuper) throw new ApiAuthError(403, "กำหนดตำแหน่งได้เฉพาะ SUPERADMIN");
-  if (uid === caller.uid) bad("ไม่สามารถเปลี่ยนสถานะบัญชีของตัวเองได้");
+  if (uid === caller.uid) bad("ไม่สามารถเปลี่ยนสถานะหรือตำแหน่งของบัญชีตัวเองได้");
 
   const ref = adminDb.collection("users").doc(uid);
   const snap = await ref.get();
@@ -230,6 +247,10 @@ export async function applyUserAction(caller: ApiUser, uid: string, action: User
     if (!mine || u.registrationId) throw new ApiAuthError(403, "ไม่มีสิทธิ์จัดการผู้ใช้นี้");
   }
 
+  if (!isSuper && isCompanyAdmin(u) && ["suspend", "setRoles", "reject"].includes(action)) {
+    throw new ApiAuthError(403, "บัญชีผู้ดูแลระบบของบริษัท เปลี่ยนแปลงได้โดยผู้ดูแลระบบกลาง (SUPERADMIN) เท่านั้น");
+  }
+
   const stamp = { updatedAt: now(), updatedBy: caller.uid };
   switch (action) {
     case "approve": {
@@ -238,12 +259,14 @@ export async function applyUserAction(caller: ApiUser, uid: string, action: User
         if (!isSuper) throw new ApiAuthError(403, "การเปิดบริษัทใหม่ต้องอนุมัติโดย SUPERADMIN");
         return approveBusiness(caller, uid, u.registrationId);
       }
-      const assigned = assigning ? cleanRoles(roles) : null;
+      const assigned = assigning ? cleanRoles(roles, isSuper) : null;
+      if (assigned && isSuper) await assertSingleAdmin(u.requestedCompanyId, uid, assigned);
       await ref.update({
         status: "ACTIVE", companyId: u.requestedCompanyId, approvedAt: now(), approvedBy: caller.uid, ...stamp,
         ...(assigned ? { roles: assigned, role: primaryRole(assigned) } : {}),
       });
       await adminAuth.updateUser(uid, { disabled: false });
+      await auditServer.logUpdate(caller.uid, u.requestedCompanyId, "USER_ROLES", uid, { status, roles: resolveRoles(u) }, { status: "ACTIVE", roles: assigned || resolveRoles(u) });
       return { companyId: u.requestedCompanyId, roles: assigned || resolveRoles(u) };
     }
     case "reject": {
@@ -268,15 +291,61 @@ export async function applyUserAction(caller: ApiUser, uid: string, action: User
       return {};
     }
     case "setRoles": {
-      if (!isSuper) throw new ApiAuthError(403, "กำหนดตำแหน่งได้เฉพาะ SUPERADMIN");
       if (resolveRoles(u).includes("SUPERADMIN")) throw new ApiAuthError(403, "เปลี่ยนตำแหน่งของ SUPERADMIN ไม่ได้");
-      const next = cleanRoles(roles);
+      if (status !== "ACTIVE") bad("กำหนดตำแหน่งได้เฉพาะบัญชีที่ใช้งานอยู่");
+      const next = cleanRoles(roles, isSuper);
+      if (isSuper) await assertSingleAdmin(u.companyId, uid, next);
       await ref.update({ roles: next, role: primaryRole(next), ...stamp });
+      await auditServer.logUpdate(caller.uid, u.companyId, "USER_ROLES", uid, { roles: resolveRoles(u) }, { roles: next });
       return { roles: next };
     }
     default:
       bad("คำสั่งไม่ถูกต้อง");
   }
+}
+
+export interface CreateStaffInput { name: string; email: string; roles: string[]; companyId?: string }
+
+/** รหัสผ่านชั่วคราว 12 ตัว (ตัด 0/O/1/l/I ที่อ่านสับสน) — ผู้ใช้ต้องตั้งใหม่เมื่อเข้าระบบครั้งแรก */
+function tempPassword(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  const pw = Array.from(randomBytes(12), (b) => chars[b % chars.length]).join("");
+  return /\d/.test(pw) && /[A-Za-z]/.test(pw) ? pw : tempPassword();
+}
+
+/**
+ * ผู้ดูแลระบบ/HR สร้างบัญชีพนักงานในบริษัทตัวเอง พร้อมตำแหน่งงาน — ใช้งานได้ทันที
+ * คืนรหัสผ่านชั่วคราวครั้งเดียว (ไม่เก็บ) ผู้ใช้ต้องเปลี่ยนรหัสเมื่อเข้าระบบครั้งแรก
+ */
+export async function createStaffUser(caller: ApiUser, input: CreateStaffInput) {
+  const isSuper = caller.roles.includes("SUPERADMIN");
+  if (!isSuper && !can(caller.roles, "users:manage")) throw new ApiAuthError(403, "ต้องเป็นผู้ดูแลระบบหรือฝ่ายบุคคลเท่านั้น");
+  const companyId = isSuper ? String(input.companyId || "").trim().toUpperCase() : caller.companyId;
+  if (!companyId) bad("กรุณาระบุบริษัท");
+  if (isSuper && !(await adminDb.collection("companies").doc(companyId).get()).exists) bad("ไม่พบบริษัทนี้");
+  const name = String(input.name || "").trim().slice(0, 120);
+  const email = String(input.email || "").trim().toLowerCase();
+  const roles = cleanRoles(input.roles, isSuper);
+  if (isSuper) await assertSingleAdmin(companyId, "", roles);
+  const password = tempPassword();
+  validateAccount(email, password, name);
+  const user = await createAuthUser(email, password, name);
+  await adminDb.collection("users").doc(user.uid).set({
+    email, name, roles, role: primaryRole(roles), status: "ACTIVE", companyId,
+    mustChangePassword: true, createdBy: caller.uid, createdAt: now(), approvedAt: now(), approvedBy: caller.uid,
+  });
+  await auditServer.logCreate(caller.uid, companyId, "USER_ROLES", user.uid, { name, email, roles });
+  return { uid: user.uid, companyId, tempPassword: password };
+}
+
+/** ผู้ใช้ตั้งรหัสผ่านใหม่ (บังคับเมื่อเข้าระบบครั้งแรกด้วยรหัสชั่วคราว) */
+export async function changeOwnPassword(caller: ApiUser, newPassword: string) {
+  const pw = String(newPassword || "");
+  if (pw.length < 8) bad("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร");
+  if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) bad("รหัสผ่านต้องมีทั้งตัวอักษรและตัวเลข");
+  await adminAuth.updateUser(caller.uid, { password: pw });
+  await adminDb.collection("users").doc(caller.uid).set({ mustChangePassword: false, passwordChangedAt: now() }, { merge: true });
+  return {};
 }
 
 /** SUPERADMIN อนุมัติกิจการใหม่: สร้าง companies/{id} แล้วผูกเจ้าของเป็น ADMIN */

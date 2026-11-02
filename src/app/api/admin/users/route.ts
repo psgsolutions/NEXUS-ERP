@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
 import { ApiAuthError, authErrorResponse, requireApiUser } from "@/lib/api-auth";
-import { applyUserAction, listManagedUsers, type UserAction } from "@/lib/user-admin.server";
+import { applyUserAction, createStaffUser, listManagedUsers, type UserAction } from "@/lib/user-admin.server";
 import { can } from "@/lib/permissions";
 
 /**
- * [API-SERVER] จัดการผู้ใช้ (ADMIN: บริษัทตัวเอง, SUPERADMIN: ทั้งหมด)
+ * [API-SERVER] จัดการผู้ใช้ (ผู้ดูแลระบบ/HR: บริษัทตัวเอง, SUPERADMIN: ทั้งหมด)
  * GET  /api/admin/users                 -> { users, registrations }
  * POST /api/admin/users { uid, action, roles? }  action: approve | reject | suspend | reactivate | setRoles
- * - กำหนดตำแหน่ง (approve พร้อม roles / setRoles) ได้เฉพาะ SUPERADMIN
+ * POST /api/admin/users { action: "create", name, email, roles, companyId? }  -> { uid, tempPassword } (แสดงครั้งเดียว)
+ * - ตำแหน่งผู้ดูแลระบบ (บริษัทละ 1 คน) กำหนดได้เฉพาะ SUPERADMIN
  */
 
 async function requireManager(request: Request) {
   const user = await requireApiUser(request);
   if (!can(user.roles, "users:manage")) {
-    throw new ApiAuthError(403, "ต้องเป็นผู้ดูแลระบบเท่านั้น");
+    throw new ApiAuthError(403, "ต้องเป็นผู้ดูแลระบบหรือฝ่ายบุคคลเท่านั้น");
   }
   return user;
 }
@@ -33,7 +34,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireManager(request);
-    const { uid, action, roles } = await request.json();
+    const body = await request.json();
+    const { uid, action, roles } = body;
+    if (action === "create") return NextResponse.json({ success: true, ...(await createStaffUser(user, { name: body.name, email: body.email, roles, companyId: body.companyId })) });
     if (!uid || !action) throw new ApiAuthError(400, "ข้อมูลไม่ครบ");
     const result = await applyUserAction(user, String(uid), action as UserAction, roles);
     return NextResponse.json({ success: true, ...result });

@@ -40,6 +40,7 @@ const T = {
   executive: { id: "executive", label: "เปิดแดชบอร์ดผู้บริหาร", href: "/executive", check: { kind: "visit", path: "/executive" } },
   settings: { id: "settings", label: "ตรวจข้อมูลบริษัทบนหัวเอกสาร", href: "/settings", check: { kind: "visit", path: "/settings" } },
   importData: { id: "importData", label: "เปิดหน้านำเข้าข้อมูล Excel", href: "/data-import", check: { kind: "visit", path: "/data-import" } },
+  users: { id: "users", label: "เพิ่มผู้ใช้และกำหนดตำแหน่งงาน", href: "/settings/users", check: { kind: "visit", path: "/settings/users" } },
 } satisfies Record<string, OnboardingTask>;
 
 const ROLE_SETUP: Record<string, { duties: string; daily: string[]; tasks: OnboardingTask[] }> = {
@@ -74,9 +75,9 @@ const ROLE_SETUP: Record<string, { duties: string; daily: string[]; tasks: Onboa
     tasks: [T.myJobs, T.help],
   },
   HR: {
-    duties: "ข้อมูลพนักงาน ลงเวลา เงินเดือน และการเบิกค่าใช้จ่ายของพนักงาน",
-    daily: ["ตรวจการลงเวลา", "ทำเงินเดือนสิ้นเดือน", "ตรวจรายการเบิกค่าใช้จ่าย"],
-    tasks: [T.hrView, T.help],
+    duties: "ข้อมูลพนักงาน บัญชีเข้าระบบและตำแหน่งงานของทุกคน ลงเวลา เงินเดือน และการเบิกค่าใช้จ่ายของพนักงาน",
+    daily: ["เพิ่มบัญชีพนักงานใหม่ กำหนด/ปรับตำแหน่ง ระงับบัญชีคนที่ลาออก", "ตรวจการลงเวลา", "ทำเงินเดือนสิ้นเดือน", "ตรวจรายการเบิกค่าใช้จ่าย"],
+    tasks: [T.users, T.hrView, T.help],
   },
   EXECUTIVE: {
     duties: "ดูภาพรวมธุรกิจ และอนุมัติเอกสารตามวงเงิน",
@@ -84,9 +85,9 @@ const ROLE_SETUP: Record<string, { duties: string; daily: string[]; tasks: Onboa
     tasks: [T.executive, T.help],
   },
   ADMIN: {
-    duties: "ดูแลผู้ใช้ ตำแหน่งงาน และการตั้งค่าระบบ",
-    daily: ["เพิ่ม/ระงับผู้ใช้", "ตรวจบันทึกการใช้งาน"],
-    tasks: [T.settings, T.help],
+    duties: "ผู้ดูแลระบบของบริษัท (บริษัทละ 1 คน): ผู้ใช้ ตำแหน่งงาน และการตั้งค่าระบบ — ฝ่ายบุคคลช่วยกำหนดตำแหน่งได้",
+    daily: ["เพิ่ม/ระงับผู้ใช้ และกำหนดตำแหน่งงาน", "ตรวจบันทึกการใช้งาน"],
+    tasks: [T.settings, T.users, T.help],
   },
   SUPERADMIN: {
     duties: "ดูแลระบบทั้งหมด กำหนดตำแหน่งผู้ใช้ และตั้งค่าบริษัท",

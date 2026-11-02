@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import AuthenticatedLayout from "@/components/layout/AuthenticatedLayout";
 import { Loader2 } from "lucide-react";
+import { ForcePasswordChange } from "@/components/shared/ForcePasswordChange";
 
 export default function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuth();
+  const { user, loading, profile, displayName } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -35,6 +36,8 @@ export default function ProtectedLayout({
   return (
     <AuthenticatedLayout>
       {children}
+      {/* บัญชีที่ผู้ดูแลระบบ/HR สร้างให้: ต้องตั้งรหัสผ่านใหม่ก่อนใช้งาน */}
+      {profile?.mustChangePassword === true && <ForcePasswordChange name={displayName} />}
     </AuthenticatedLayout>
   );
 }

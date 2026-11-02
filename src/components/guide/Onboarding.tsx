@@ -23,7 +23,9 @@ const OnboardingContext = createContext<Ctx>({ state: null, reload: () => {}, se
 export const useOnboarding = () => useContext(OnboardingContext);
 
 export function OnboardingHost({ children }: { children: React.ReactNode }) {
-  const { companyId, displayName, user } = useAuth();
+  const { companyId, displayName, user, profile } = useAuth();
+  // บัญชีที่ต้องตั้งรหัสผ่านใหม่: ให้ตั้งรหัสก่อน แล้วค่อยแสดงหน้าต้อนรับ
+  const mustChangePassword = profile?.mustChangePassword === true;
   const pathname = usePathname();
   const [state, setState] = useState<State | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
@@ -88,7 +90,7 @@ export function OnboardingHost({ children }: { children: React.ReactNode }) {
   return (
     <OnboardingContext.Provider value={{ state, reload, setDismissed, advanced, setAdvanced }}>
       {children}
-      {showWelcome && state && (
+      {showWelcome && state && !mustChangePassword && (
         <div className="fixed inset-0 z-[310] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="ยินดีต้อนรับ">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-3xl border border-white/10 bg-surface-2 shadow-2xl p-6 space-y-5">

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Users, ShieldCheck, UserCheck, Link2, Loader2, RefreshCw } from "lucide-react";
+import { Users, ShieldCheck, UserCheck, Link2, Loader2, RefreshCw, UserPlus, Copy, KeyRound } from "lucide-react";
 import { GlassCard, PillButton, StatusBadge, cn, NexusSearchInput, NexusTable, NexusTableRow, NexusTableCell } from "@/components/ui/Base";
 import { SecurityGuard } from "@/components/shared/SecurityGuard";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
@@ -22,6 +22,7 @@ interface ManagedUser {
   requestedCompanyId: string | null;
   requestedCompanyName: string | null;
   registrationId: string | null;
+  mustChangePassword?: boolean;
   createdAt: string | null;
 }
 
@@ -69,6 +70,8 @@ const rolesSummary = (roles: string[]) => {
   return roles.length > 2 ? `${shown} +${roles.length - 2}` : shown;
 };
 
+const EMPTY_ROLES: string[] = [];
+
 const formatDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" }) : "-";
 
@@ -85,8 +88,16 @@ export default function UsersPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
-  // หน้าต่างกำหนดตำแหน่ง (SUPERADMIN): ตอนอนุมัติ หรือแก้ไขตำแหน่ง
+  // หน้าต่างกำหนดตำแหน่ง (ผู้ดูแลระบบ/HR ของบริษัท หรือ SUPERADMIN): ตอนอนุมัติ หรือแก้ไขตำแหน่ง
   const [assign, setAssign] = useState<{ user: ManagedUser; mode: "approve" | "setRoles" } | null>(null);
+  // สร้างบัญชีพนักงาน + รหัสผ่านชั่วคราว (แสดงครั้งเดียว)
+  const [creating, setCreating] = useState<{ name: string; email: string } | null>(null);
+  const [createBusy, setCreateBusy] = useState(false);
+  const [issued, setIssued] = useState<{ name: string; email: string; password: string } | null>(null);
+  // ตำแหน่งผู้ดูแลระบบมีบริษัทละ 1 คน — กำหนดได้เฉพาะ SUPERADMIN
+  const excludeRoles = isSuper ? [] : ["ADMIN"];
+  const isCompanyAdmin = (u: ManagedUser) => u.roles.includes("ADMIN");
+  const canEditRoles = (u: ManagedUser) => u.uid !== user?.uid && !u.roles.includes("SUPERADMIN") && u.status === "ACTIVE" && (isSuper || !isCompanyAdmin(u));
 
   const load = useCallback(async () => {
     if (!canManage) return;
@@ -132,6 +143,36 @@ export default function UsersPage() {
     }
   };
 
+  const createAccount = async (roles: string[]) => {
+    if (!creating) return;
+    setCreateBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const res = await apiFetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create", name: creating.name.trim(), email: creating.email.trim(), roles }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) throw new Error(result.error || "สร้างบัญชีไม่สำเร็จ");
+      setIssued({ name: creating.name.trim(), email: creating.email.trim().toLowerCase(), password: result.tempPassword });
+      setCreating(null);
+      await load();
+    } catch (e: any) {
+      setError(e.message);
+      setCreating(null);
+    } finally {
+      setCreateBusy(false);
+    }
+  };
+
+  const copyIssued = async () => {
+    if (!issued) return;
+    const text = [`เข้าระบบ NEXUS ERP: ${window.location.origin}/login`, `อีเมล: ${issued.email}`, `รหัสผ่านชั่วคราว: ${issued.password}`, "(ระบบจะให้ตั้งรหัสผ่านใหม่เมื่อเข้าครั้งแรก)"].join("\n");
+    try { await navigator.clipboard.writeText(text); setNotice("คัดลอกข้อมูลเข้าระบบแล้ว ส่งให้พนักงานทางช่องทางส่วนตัว"); } catch { /* คัดลอกเองจากหน้าจอ */ }
+  };
+
   const copyRegisterLink = async () => {
     const link = `${window.location.origin}/register/user`;
     try {
@@ -163,7 +204,7 @@ export default function UsersPage() {
             </span>
           </div>
           <p className="text-sm text-white/60 font-medium mt-1">
-            {isSuper ? "ผู้ใช้ทุกบริษัทและคำขอเปิดบริษัทใหม่" : "อนุมัติผู้สมัคร กำหนดสิทธิ์ และระงับบัญชีผู้ใช้ของบริษัท"}
+            {isSuper ? "ผู้ใช้ทุกบริษัทและคำขอเปิดบริษัทใหม่" : "สร้างบัญชีพนักงาน กำหนดตำแหน่งงาน (สิทธิ์ตามตำแหน่ง) และระงับบัญชี — ผู้ดูแลระบบและฝ่ายบุคคลของบริษัท"}
           </p>
         </div>
       </div>
@@ -173,9 +214,15 @@ export default function UsersPage() {
           รีเฟรช
         </PillButton>
         {!isSuper && (
-          <PillButton variant="confirm" onClick={copyRegisterLink} className="h-8 px-5 font-bold text-xs">
+          <PillButton variant="glass" onClick={copyRegisterLink} className="h-8 px-4 text-xs" title="ให้พนักงานสมัครเอง แล้วอนุมัติพร้อมกำหนดตำแหน่งที่แท็บรออนุมัติ">
             <Link2 size={14} className="mr-1.5" />
             คัดลอกลิงก์สมัครผู้ใช้
+          </PillButton>
+        )}
+        {!isSuper && canManage && (
+          <PillButton variant="confirm" onClick={() => { setIssued(null); setCreating({ name: "", email: "" }); }} className="h-8 px-5 font-bold text-xs">
+            <UserPlus size={14} className="mr-1.5" />
+            เพิ่มผู้ใช้
           </PillButton>
         )}
       </div>
@@ -203,7 +250,7 @@ export default function UsersPage() {
       const needsSuper = !!u.registrationId && !isSuper;
       return (
         <div className="flex gap-2 justify-end">
-          <PillButton variant="confirm" disabled={needsSuper} onClick={() => (isSuper && !u.registrationId ? setAssign({ user: u, mode: "approve" }) : runAction(u.uid, "approve"))} className="h-8 px-4 text-xs">
+          <PillButton variant="confirm" disabled={needsSuper} onClick={() => (!u.registrationId ? setAssign({ user: u, mode: "approve" }) : runAction(u.uid, "approve"))} className="h-8 px-4 text-xs">
             อนุมัติ
           </PillButton>
           <SecurityGuard onConfirm={() => runAction(u.uid, "reject")} actionLabel="ปฏิเสธคำขอ" message={`ปฏิเสธคำขอของ ${u.email}? บัญชีนี้จะถูกปิดการใช้งาน`}>
@@ -212,6 +259,7 @@ export default function UsersPage() {
         </div>
       );
     }
+    if (!isSuper && isCompanyAdmin(u)) return <span className="text-[11px] text-white/40">ผู้ดูแลระบบของบริษัท</span>;
     if (u.status === "ACTIVE") {
       return (
         <SecurityGuard onConfirm={() => runAction(u.uid, "suspend")} actionLabel="ระงับบัญชี" message={`ระงับบัญชี ${u.email}? ผู้ใช้จะถูกออกจากระบบและเข้าใช้งานไม่ได้จนกว่าจะเปิดใช้งานอีกครั้ง`}>
@@ -293,10 +341,15 @@ export default function UsersPage() {
                       <span className="text-[12px] text-white/80 truncate min-w-0" title={u.roles.map(roleLabel).join(" · ")}>
                         {rolesSummary(u.roles)}
                       </span>
-                      {isSuper && u.uid !== user?.uid && !u.roles.includes("SUPERADMIN") && u.status === "ACTIVE" && (
+                      {canEditRoles(u) && (
                         <button type="button" onClick={() => setAssign({ user: u, mode: "setRoles" })} className="text-[12px] text-nexus-teal hover:underline whitespace-nowrap flex-shrink-0">
                           กำหนดตำแหน่ง
                         </button>
+                      )}
+                      {u.mustChangePassword && (
+                        <span className="text-[11px] text-warning whitespace-nowrap flex-shrink-0 flex items-center gap-1" title="ยังไม่ได้เข้าระบบครั้งแรกเพื่อตั้งรหัสผ่านใหม่">
+                          <KeyRound size={11} /> รอตั้งรหัสผ่าน
+                        </span>
                       )}
                     </div>
                   </NexusTableCell>
@@ -330,13 +383,13 @@ export default function UsersPage() {
         ))}
       </NexusTable>
       <p className="px-6 py-4 text-[12px] text-white/50 border-t border-white/5">
-        ผู้ใช้ 1 คนมีได้หลายตำแหน่ง สิทธิ์รวมกันตามทุกตำแหน่ง · ฝ่ายบัญชีอนุมัติใบสั่งซื้อได้ไม่เกิน 500,000 บาท เกินกว่านั้นต้องเป็นผู้บริหาร · กำหนดตำแหน่งได้เฉพาะผู้ดูแลสูงสุด
+        ผู้ใช้ 1 คนมีได้หลายตำแหน่ง สิทธิ์รวมกันตามทุกตำแหน่ง · ฝ่ายบัญชีอนุมัติใบสั่งซื้อได้ไม่เกิน 500,000 บาท เกินกว่านั้นต้องเป็นผู้บริหาร · ผู้ดูแลระบบและฝ่ายบุคคลของบริษัทกำหนดตำแหน่งให้ทุกคน · ผู้ดูแลระบบมีบริษัทละ 1 คน (ย้ายได้โดยผู้ดูแลระบบกลาง)
       </p>
     </GlassCard>
   );
 
   const leftContent = !canManage ? (
-    <GlassCard className="p-10 text-center text-sm text-white/50">หน้านี้สำหรับผู้ดูแลระบบเท่านั้น</GlassCard>
+    <GlassCard className="p-10 text-center text-sm text-white/50">หน้านี้สำหรับผู้ดูแลระบบและฝ่ายบุคคลเท่านั้น</GlassCard>
   ) : (
     <div className="space-y-6 pb-10">
       <div className="flex gap-2 p-1 bg-white/5 rounded-full w-fit border border-white/5 shadow-inner h-11">
@@ -347,6 +400,20 @@ export default function UsersPage() {
 
       {error && (
         <div className="p-3 bg-danger/10 border border-danger/20 rounded-xl text-danger text-xs font-bold">{error}</div>
+      )}
+      {issued && (
+        <div className="p-4 bg-nexus-teal/10 border border-nexus-teal/30 rounded-xl space-y-2">
+          <p className="text-[14px] font-bold text-white flex items-center gap-2"><KeyRound size={14} className="text-nexus-teal" /> สร้างบัญชี {issued.name} แล้ว</p>
+          <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[12px]">
+            <span className="text-white/60">อีเมล</span><span className="font-mono text-white">{issued.email}</span>
+            <span className="text-white/60">รหัสผ่านชั่วคราว</span><span className="font-mono text-[14px] font-bold text-nexus-teal tracking-wider select-all">{issued.password}</span>
+          </div>
+          <p className="text-[12px] text-warning">แสดงครั้งเดียว — ส่งให้พนักงานทางช่องทางส่วนตัว เข้าระบบครั้งแรกจะต้องตั้งรหัสผ่านใหม่</p>
+          <div className="flex gap-2">
+            <PillButton variant="confirm" onClick={copyIssued} className="h-8 px-4 text-xs"><Copy size={13} /> คัดลอกข้อมูลเข้าระบบ</PillButton>
+            <PillButton variant="ghost" onClick={() => setIssued(null)} className="h-8 px-4 text-xs">ปิด</PillButton>
+          </div>
+        </div>
       )}
       {notice && (
         <div className="p-3 bg-nexus-teal/10 border border-nexus-teal/20 rounded-xl text-nexus-teal text-xs font-bold break-all">{notice}</div>
@@ -381,6 +448,19 @@ export default function UsersPage() {
         busy={!!assign && busyUid === assign.user.uid}
         onClose={() => setAssign(null)}
         onConfirm={(roles) => assign && runAction(assign.user.uid, assign.mode, roles)}
+        excludeRoles={excludeRoles}
+      />
+      <RoleAssignDialog
+        open={!!creating}
+        title="เพิ่มผู้ใช้"
+        subtitle="สร้างบัญชีพนักงานพร้อมตำแหน่งงาน — ใช้งานได้ทันทีด้วยรหัสผ่านชั่วคราว"
+        initialRoles={EMPTY_ROLES}
+        confirmLabel="สร้างบัญชี"
+        busy={createBusy}
+        onClose={() => setCreating(null)}
+        onConfirm={createAccount}
+        excludeRoles={excludeRoles}
+        account={creating ? { ...creating, onChange: setCreating } : undefined}
       />
     </div>
   );

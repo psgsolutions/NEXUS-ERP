@@ -1,7 +1,7 @@
 /**
  * [SEC-V4.0] สิทธิ์ตามตำแหน่ง (Role-Based Access Control)
  * - ผู้ใช้ 1 คนมีได้หลายตำแหน่ง (users/{uid}.roles) สิทธิ์ = รวมสิทธิ์ของทุกตำแหน่ง
- * - กำหนดตำแหน่งได้เฉพาะ SUPERADMIN
+ * - กำหนดตำแหน่งงาน: ผู้ดูแลระบบ (บริษัทละ 1 คน) และฝ่ายบุคคล (HR) ของบริษัท — ตำแหน่งผู้ดูแลระบบให้ได้เฉพาะ SUPERADMIN
  * - บัญชีรุ่นเก่าที่มีแค่ role เดียว แปลงเป็นตำแหน่งใหม่อัตโนมัติ (LEGACY_ROLE_MAP)
  */
 
@@ -56,14 +56,14 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ENGINEER: ["projects:view", "projects:edit", "sales:view", "sales:edit", "sales:cost", "sales:quote_approve", "procurement:view", "inventory:view", "inventory:edit"],
   // คลังสินค้า: รับ/เบิก/โอน ตรวจนับ ดูใบสั่งซื้อ
   WAREHOUSE: ["inventory:view", "inventory:edit", "procurement:view"],
-  // บุคคล: พนักงาน เวลาทำงาน เงินเดือน
-  HR: ["hr:view", "hr:edit"],
+  // บุคคล: พนักงาน เวลาทำงาน เงินเดือน + สร้างบัญชีและกำหนดตำแหน่งงานให้ทุกคนในบริษัท
+  HR: ["hr:view", "hr:edit", "users:manage"],
   // ช่างเทคนิค: แอปช่างหน้างาน
   TECHNICIAN: ["service:field"],
   CUSTOMER: [],
 };
 
-/** ตำแหน่งที่ SUPERADMIN กำหนดให้ผู้ใช้ได้ (เรียงตามที่แสดงในหน้าจอ) */
+/** ตำแหน่งที่กำหนดให้ผู้ใช้ได้ (เรียงตามที่แสดงในหน้าจอ) — ADMIN มีบริษัทละ 1 คน กำหนดโดย SUPERADMIN */
 export const ASSIGNABLE_ROLES: { value: Role; label: string; description: string }[] = [
   { value: "EXECUTIVE", label: "ผู้บริหาร", description: "ดูทุกโมดูล แดชบอร์ดผู้บริหาร อนุมัติซื้อทุกวงเงิน" },
   { value: "ADMIN", label: "ผู้ดูแลระบบ", description: "จัดการผู้ใช้และตั้งค่าระบบ" },
@@ -72,7 +72,7 @@ export const ASSIGNABLE_ROLES: { value: Role; label: string; description: string
   { value: "SALES", label: "ฝ่ายขาย", description: "ลูกค้า ใบเสนอราคา ใบสั่งขาย ออกใบกำกับ/วางบิล/รับชำระ" },
   { value: "ENGINEER", label: "วิศวกร/โครงการ", description: "ลูกค้า ใบเสนอราคา (เห็นต้นทุน อนุมัติไม่เกิน 1 ล้าน) โครงการ ขอซื้อ งานบริการ/MA — ไม่ออก PO/วางบิล/บัญชี" },
   { value: "WAREHOUSE", label: "คลังสินค้า", description: "รับ เบิก โอนสินค้า ตรวจนับ" },
-  { value: "HR", label: "บุคคล", description: "พนักงาน เวลาทำงาน เงินเดือน" },
+  { value: "HR", label: "บุคคล", description: "พนักงาน เวลาทำงาน เงินเดือน สร้างบัญชีและกำหนดตำแหน่งงานให้ทุกคน" },
   { value: "TECHNICIAN", label: "ช่างเทคนิค", description: "แอปช่างหน้างาน" },
   { value: "CUSTOMER", label: "ลูกค้า", description: "ไม่มีสิทธิ์ในระบบหลังบ้าน" },
 ];

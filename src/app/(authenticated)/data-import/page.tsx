@@ -16,6 +16,7 @@ import { buildAddressIndex, type AddressIndex } from "@/lib/spellcheck";
 import { isDupWarning, markPartyDuplicates } from "@/lib/import/party-dups";
 import { useCustomers, useSuppliers } from "@/hooks/useCustomers";
 import { ImportRowEditor } from "@/components/import/ImportRowEditor";
+import { ImportedRecordsManager } from "@/components/import/ImportedRecordsManager";
 
 /**
  * นำเข้า/ส่งออกข้อมูลด้วย Excel
@@ -194,6 +195,7 @@ export default function DataImportPage() {
   const [postJournal, setPostJournal] = useState(true);
   const [tbDate, setTbDate] = useState(firstOfMonth());
   const [status, setStatus] = useState<Status | null>(null);
+  const [showImported, setShowImported] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const template = TEMPLATES[tab];
   const canFinance = can(roles, "finance:edit");
@@ -750,6 +752,18 @@ export default function DataImportPage() {
               </NexusTable>
             </GlassCard>
           )}
+
+          {/* ข้อมูลที่นำเข้าแล้ว (จากฐานข้อมูล — จัดการได้แม้ปิดหน้า/โหลดใหม่) · เปิดเมื่อกดเท่านั้น จะได้ไม่อ่านข้อมูลโดยไม่จำเป็น */}
+          <GlassCard accentColor="blue" className="p-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex-1 min-w-[240px]">
+                <h3 className="text-[14px] font-semibold text-white leading-normal">ข้อมูลที่นำเข้าแล้ว</h3>
+                <p className="text-[12px] text-white/55 leading-normal">เลือกรายการที่นำเข้าจาก Excel เพื่อลบ ระงับใช้งาน หรือเปิดแก้ไข — ลบได้เมื่อยังไม่ถูกใช้ในเอกสาร</p>
+              </div>
+              <PillButton variant="glass" onClick={() => setShowImported((v) => !v)} className="h-9 px-4 text-xs">{showImported ? "ซ่อน" : "จัดการข้อมูลที่นำเข้าแล้ว"}</PillButton>
+            </div>
+            {showImported && <ImportedRecordsManager />}
+          </GlassCard>
         </div>
       </div>
     </div>

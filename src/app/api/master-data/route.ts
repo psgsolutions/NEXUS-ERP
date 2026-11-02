@@ -154,9 +154,37 @@ async function usedInDocuments(entity: MasterEntity, groupId: string, companyId:
     : entity === "products" ? [["stock_movements", "productId", "ความเคลื่อนไหวสต็อก"]]
     : [["purchase_orders", "supplierId", "ใบสั่งซื้อ"], ["expenses", "supplierId", "ค่าใช้จ่าย"], ["withholding_taxes", "supplierId", "หนังสือรับรองหัก ณ ที่จ่าย"], ["goods_receipts", "supplierId", "ใบรับสินค้า"]];
   for (const c of companies) for (const [col, field, label] of checks) {
+    if (entity === "products" && col === "stock_movements") {
+      // ยอดยกมาตอนสร้าง/นำเข้าสินค้า (OPEN-{id}) ไม่นับเป็นการใช้งาน — ลบสินค้าแล้วกลับรายการให้ (ดู openingReversal)
+      const moves = await adminDb.collection(`companies/${c}/${col}`).where(field, "==", id).limit(50).get();
+      if (moves.docs.some((d) => d.get("isDeleted") !== true && d.get("referenceId") !== `OPEN-${id}`)) return label;
+      continue;
+    }
     if (!(await adminDb.collection(`companies/${c}/${col}`).where(field, "==", id).limit(1).get()).empty) return label;
   }
   return "";
+}
+
+/**
+ * สินค้าที่มีแค่ยอดยกมา (สร้าง/นำเข้าพร้อมจำนวนคงเหลือ แล้วยังไม่มีการเคลื่อนไหวอื่น) — สิ่งที่ต้องกลับรายการเมื่อลบ
+ * ใบสำคัญยอดยกมาที่ลงบัญชีแล้ว = ลบไม่ได้ (ให้ฝ่ายบัญชีกลับรายการก่อน) · ฉบับร่าง = ยกเลิกให้
+ */
+async function openingReversal(companyId: string, id: string, onHand: number, reserved: number) {
+  const ref = `OPEN-${id}`;
+  const moves = (await adminDb.collection(`companies/${companyId}/stock_movements`).where("productId", "==", id).limit(50).get()).docs.filter((d) => d.get("isDeleted") !== true);
+  const opening = moves.filter((d) => d.get("referenceId") === ref);
+  const qty = opening.reduce((s, d) => s + (d.get("type") === "IN" ? Number(d.get("quantity")) || 0 : 0), 0);
+  if (onHand > 0 || reserved > 0) {
+    if (!opening.length || opening.length !== moves.length || reserved > 0 || Math.abs(onHand - qty) > 1e-9) {
+      throw new ApiAuthError(409, "ยังมีสต็อกหรือยอดจองอยู่ ลบไม่ได้ — ตัดจำหน่าย/เบิกออกก่อน");
+    }
+  }
+  if (!opening.length) return null;
+  const journals = (await adminDb.collection(`companies/${companyId}/journal_entries`).where("reference", "==", ref).get()).docs.filter((d) => d.get("isDeleted") !== true && d.get("status") !== "cancelled");
+  const posted = journals.find((d) => d.get("status") !== "draft");
+  if (posted) throw new ApiAuthError(409, `ยอดยกมาของสินค้านี้ลงบัญชีแล้ว (${posted.get("journalNo") || posted.id}) ลบไม่ได้ — ให้ฝ่ายบัญชีกลับรายการก่อน หรือตั้งสถานะเป็นระงับใช้งานแทน`);
+  const serials = (await adminDb.collection(`companies/${companyId}/serial_numbers`).where("productId", "==", id).get()).docs.filter((d) => d.get("isDeleted") !== true && d.get("lastReference") === ref);
+  return { moves: opening.map((d) => d.ref), journals: journals.map((d) => d.ref), serials: serials.map((d) => d.ref), qty };
 }
 
 const FIELD_LABEL: Record<string, string> = { taxId: "เลขผู้เสียภาษี", branchCode: "สาขา", unitName: "ชื่อ/หน่วยงาน", sku: "รหัสสินค้า", barcode: "บาร์โค้ด" };
@@ -423,13 +451,17 @@ export async function POST(request: Request) {
 
     if (action === "remove") {
       const perm = entity === "products" ? "inventory:delete" : entity === "customers" ? "sales:delete" : "procurement:edit";
-      if (!can(apiUser.roles, perm as any)) throw new ApiAuthError(403, `ไม่มีสิทธิ์ลบ${schema.label}`);
       const [m, l, legacy] = await Promise.all([masterCol.doc(id).get(), localCol.doc(id).get(), legacyDoc(entity, id, companyId)]);
       const target = m.exists ? (l.exists ? l.ref : null) : legacy?.ref || null;
+      // รายการที่นำเข้าจาก Excel: ผู้มีสิทธิ์นำเข้าข้อมูลชนิดนั้นลบได้ (แก้การนำเข้าผิด) — ยังต้องไม่ถูกใช้ในเอกสาร
+      const importedRecord = [m.data(), l.data(), legacy?.data()].some((d) => d?.importedFrom === "excel");
+      if (!can(apiUser.roles, perm as any) && !(importedRecord && can(apiUser.roles, schema.editPermission))) throw new ApiAuthError(403, `ไม่มีสิทธิ์ลบ${schema.label}`);
       if (!target) throw new ApiAuthError(404, `ไม่พบ${schema.label}`);
+      let opening: Awaited<ReturnType<typeof openingReversal>> = null;
       if (entity === "products") {
         const st = (m.exists ? l.data() : legacy?.data())?.stockStatus || {};
-        if ((Number(st.onHand) || 0) > 0 || (Number(st.reserved) || 0) > 0) throw new ApiAuthError(409, "ยังมีสต็อกหรือยอดจองอยู่ ลบไม่ได้ — ตัดจำหน่าย/เบิกออกก่อน");
+        // สต็อกที่มาจากยอดยกมาอย่างเดียว (นำเข้าผิด) = กลับรายการให้ตอนลบ · มีการเคลื่อนไหวอื่น = ลบไม่ได้
+        opening = await openingReversal(companyId, id, Number(st.onHand) || 0, Number(st.reserved) || 0);
       }
       // รายการที่ยังไม่เคยใช้ในเอกสารใด และไม่มีบริษัทอื่นในเครือใช้อยู่ (เช่น นำเข้าผิด) = ลบจริงจากข้อมูลกลางด้วย
       // และคืนคีย์ห้ามซ้ำ (เลขผู้เสียภาษี/รหัสสินค้า) ให้นำเข้าใหม่ได้ · ถูกใช้แล้ว = ลบไม่ได้ ให้ระงับใช้งานแทน
@@ -441,6 +473,13 @@ export async function POST(request: Request) {
       const stamp = { isDeleted: true, deletedAt: now, deletedBy: apiUser.uid, updatedAt: now };
       await adminDb.runTransaction(async (tx) => {
         tx.set(target, stamp, { merge: true });
+        if (opening) {
+          const reason = { isDeleted: true, deletedAt: now, deletedBy: apiUser.uid, deleteReason: "ลบสินค้าที่สร้าง/นำเข้าผิด — กลับรายการยอดยกมา" };
+          tx.set(target, { stockStatus: { onHand: 0, reserved: 0, available: 0 } }, { merge: true });
+          opening.moves.forEach((x) => tx.set(x, reason, { merge: true }));
+          opening.serials.forEach((x) => tx.set(x, { ...reason, status: "removed" }, { merge: true }));
+          opening.journals.forEach((x) => tx.set(x, { ...reason, status: "cancelled", cancelReason: reason.deleteReason, updatedAt: now }, { merge: true }));
+        }
         if (m.exists && !othersUsing) {
           tx.set(masterCol.doc(id), stamp, { merge: true });
           writeUniqueKeys(tx, groupId, entity, id, m.data()!, {});
@@ -448,7 +487,7 @@ export async function POST(request: Request) {
         }
       });
       await auditServer.logDelete(apiUser.uid, companyId, `MASTER_${entity.toUpperCase()}`, id);
-      return NextResponse.json({ success: true, id, released: m.exists && !othersUsing });
+      return NextResponse.json({ success: true, id, released: m.exists && !othersUsing, ...(opening ? { reversedOpeningQty: opening.qty } : {}) });
     }
 
     throw new ApiAuthError(400, "ไม่รู้จักคำสั่ง");

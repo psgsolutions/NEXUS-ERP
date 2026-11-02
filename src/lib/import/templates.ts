@@ -302,7 +302,7 @@ export function toCreateRequest(entity: ImportEntity, v: Record<string, any>, op
       prefix: v.prefix || "Mr.", firstName: v.firstName, lastName: v.lastName, nickname: v.nickname || "", citizenId: v.citizenId || "",
       position: v.position, department: v.department || "", employmentType: v.employmentType || "permanent", joinDate: v.joinDate || "",
       status: v.status || "active", phone: v.phone || "", email: v.email || "", workLocation: v.workLocation || "",
-      salary: v.salary || 0, socialSecurity: v.socialSecurity !== false, bankName: v.bankName || "", bankAccount: v.bankAccount || "",
+      salary: v.salary || 0, socialSecurity: v.socialSecurity !== false, bankName: v.bankName || "", bankAccount: v.bankAccount || "", importedFrom: "excel",
     } };
   }
   if (entity === "customers") {

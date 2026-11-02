@@ -95,7 +95,7 @@ export async function POST(request: Request) {
       const seq = await take!(tx);
       seq.commit();
       const ref = adminDb.doc(`employees/${seq.number}`);
-      tx.create(ref, { ...fields, name, employeeId: seq.number, isDeleted: false, createdBy: apiUser.uid, createdAt: now, updatedAt: now });
+      tx.create(ref, { ...fields, name, employeeId: seq.number, ...(body.importedFrom === "excel" ? { importedFrom: "excel" } : {}), isDeleted: false, createdBy: apiUser.uid, createdAt: now, updatedAt: now });
       return { employeeId: seq.number, docId: seq.number, created: true };
     });
 

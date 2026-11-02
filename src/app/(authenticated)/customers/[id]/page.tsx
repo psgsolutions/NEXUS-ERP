@@ -24,7 +24,7 @@ import { RecordDeleteButton } from "@/components/shared/RecordDeleteButton";
  */
 
 const BASIC_FIELDS = ["name", "taxId", "branchCode", "unitName", "taxInvoiceName", "addressNo", "subDistrict", "district", "province", "zipCode", "phone", "email", "contactPerson"] as const;
-type Basic = Record<(typeof BASIC_FIELDS)[number], string> & { creditLimit: string; creditTermDays: string };
+type Basic = Record<(typeof BASIC_FIELDS)[number], string> & { creditLimit: string; creditTermDays: string; active: boolean };
 
 const Field = ({ label, tip, children, className }: { label: string; tip?: string; children: React.ReactNode; className?: string }) => (
   <div className={cn("space-y-1", className)}>
@@ -63,6 +63,7 @@ export default function CustomerDetailPage() {
         addressNo: r.addressNo || r.address_detail || r.address || "", subDistrict: r.subDistrict || "", district: r.district || "", province: r.province || "", zipCode: r.zipCode || "",
         phone: r.phone || r.phoneNumber || "", email: r.email || "", contactPerson: r.contactPerson || r.contactName || "",
         creditLimit: String(r.creditLimit ?? ""), creditTermDays: String(r.creditTermDays ?? r.credit_term_days ?? ""),
+        active: r.isActive !== false && String(r.status || "active").toLowerCase() !== "inactive",
       });
       setProfile(r.docProfile && typeof r.docProfile === "object" ? r.docProfile : { orgType: r.grade === "Government" ? "GOV" : "PRIVATE" });
     } catch (err: any) {
@@ -92,6 +93,7 @@ export default function CustomerDetailPage() {
       await update({
         ...basic, customerName: basic.name, phoneNumber: basic.phone, contactName: basic.contactPerson, address,
         creditLimit: Number(basic.creditLimit) || 0, creditTermDays: Number(basic.creditTermDays) || 0,
+        active: undefined, status: basic.active ? "ACTIVE" : "INACTIVE", isActive: basic.active,
       }, "group");
       setMsg({ text: "บันทึกข้อมูลลูกค้าแล้ว" });
       await load();
@@ -168,6 +170,12 @@ export default function CustomerDetailPage() {
               <Field label="ผู้ติดต่อหลัก"><PillInput value={basic.contactPerson} disabled={!canEditBasic} onChange={(e) => setBasic({ ...basic, contactPerson: e.target.value })} className="w-full h-9 text-sm" /></Field>
               <Field label="วงเงินเครดิต (บาท)" tip="ใช้ตรวจตอนอนุมัติใบสั่งขาย · 0 = ไม่จำกัด"><PillInput inputMode="decimal" value={basic.creditLimit} disabled={!canEditBasic} onChange={(e) => setBasic({ ...basic, creditLimit: e.target.value.replace(/[^\d.]/g, "") })} className="w-full h-9 text-sm text-right font-mono" /></Field>
               <Field label="เครดิต (วัน)"><PillInput inputMode="numeric" value={basic.creditTermDays} disabled={!canEditBasic} onChange={(e) => setBasic({ ...basic, creditTermDays: e.target.value.replace(/\D/g, "") })} className="w-full h-9 text-sm text-right font-mono" /></Field>
+              <Field label="สถานะ" tip="ระงับใช้งาน = ข้อมูลและประวัติยังอยู่ แต่เลือกใช้ในเอกสารใหม่ไม่ได้ · เปลี่ยนกลับเป็นใช้งานได้ทุกเมื่อ">
+                <PillSelect value={basic.active ? "active" : "inactive"} disabled={!canEditBasic} onChange={(e) => setBasic({ ...basic, active: e.target.value === "active" })} className="w-full h-9 text-sm">
+                  <option value="active">ใช้งาน</option>
+                  <option value="inactive">ระงับใช้งาน</option>
+                </PillSelect>
+              </Field>
             </div>
           </GlassCard>
 

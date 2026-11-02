@@ -109,6 +109,9 @@ const toRow = (snap: any, display: (d: any) => Record<string, any>) => {
 
 type SalesSubModule = "crm" | "opportunities" | "quotations" | "orders" | "invoices" | "billing" | "receipts" | "cndn";
 
+/** ลูกค้าใช้งานอยู่หรือไม่ — ค่าเดิมมีทั้ง "ACTIVE"/"active"/"INACTIVE"/"inactive" และ isActive */
+const customerActive = (c: any) => c?.isActive !== false && String(c?.status || "active").toLowerCase() !== "inactive";
+
 export default function SalesPage() {
   const { showConfirm } = useSystemDialog();
   const router = useRouter();
@@ -215,7 +218,7 @@ export default function SalesPage() {
         displayId: raw.customer_code || raw.customerId || raw.id,
         displayTaxId: raw.tax_id || raw.taxId || "-",
         industry: raw.industry || raw.business_group || raw.businessType || "อื่นๆ",
-        status: raw.status || "active",
+        status: customerActive(raw) ? "active" : "inactive",
         credit_term_days: parseInt(String(raw.credit_term_days ?? raw.creditTermDays ?? raw.credit_term ?? raw.paymentTerms ?? raw.payment_term ?? 0).match(/\d+/)?.[0] || "0", 10)
       });
 
@@ -356,7 +359,7 @@ export default function SalesPage() {
     displayId: c.customer_code || c.customerId || c.id,
     displayTaxId: c.tax_id || c.taxId || "-",
     industry: c.industry || c.business_group || c.businessType || "อื่นๆ",
-    status: c.status || "active",
+    status: customerActive(c) ? "active" : "inactive",
     credit_term_days: parseInt(String(c.credit_term_days ?? c.creditTermDays ?? c.credit_term ?? c.paymentTerms ?? c.payment_term ?? 0).match(/\d+/)?.[0] || "0", 10)
   }));
 
@@ -644,7 +647,7 @@ export default function SalesPage() {
                           status={cus.status || "active"}
                           canDelete={can(roles, "sales:delete")}
                           companyId={companyId || ""}
-                          onClick={() => setSelectedCustomer(cus)}
+                          onClick={() => router.push(`/customers/${encodeURIComponent(cus.id)}`)}
                         />
                       ))}
                     </NexusTable>
@@ -932,7 +935,7 @@ export default function SalesPage() {
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-white/5 flex flex-col gap-3">
-                   <PillButton size="sm" variant="glass" onClick={() => { setSelectedItem(selectedCustomer); router.push("/customers/new"); }} className="w-full border-white/20 hover:border-nexus-teal shadow-none">
+                   <PillButton size="sm" variant="glass" onClick={() => router.push(`/customers/${encodeURIComponent(selectedCustomer.id)}`)} className="w-full border-white/20 hover:border-nexus-teal shadow-none">
                      <FileText size={14} className="mr-2" />
                      ดู / แก้ไขข้อมูลทั้งหมด
                    </PillButton>

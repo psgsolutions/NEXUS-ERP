@@ -132,7 +132,21 @@ async function hasTaxDocuments(entity: MasterEntity, groupId: string, companyId:
   return false;
 }
 
-const FIELD_LABEL: Record<string, string> ={ taxId: "เลขผู้เสียภาษี", branchCode: "สาขา", unitName: "หน่วยงาน", sku: "รหัสสินค้า", barcode: "บาร์โค้ด" };
+/** รายการนี้ถูกอ้างถึงในเอกสารของบริษัทใดในเครือแล้วหรือยัง — คืนชื่อเอกสาร หรือ "" */
+async function usedInDocuments(entity: MasterEntity, groupId: string, companyId: string, id: string): Promise<string> {
+  const companies = new Set<string>([companyId, groupId]);
+  (await adminDb.collection("companies").where("groupId", "==", groupId).get()).docs.forEach((d) => companies.add(d.id));
+  const checks: [string, string, string][] =
+    entity === "customers" ? [["quotations", "customerId", "ใบเสนอราคา"], ["sales_orders", "customerId", "ใบสั่งขาย"], ["invoices", "customerId", "ใบกำกับภาษี/ใบแจ้งหนี้"], ["projects", "customerId", "โครงการ"]]
+    : entity === "products" ? [["stock_movements", "productId", "ความเคลื่อนไหวสต็อก"]]
+    : [["purchase_orders", "supplierId", "ใบสั่งซื้อ"], ["expenses", "supplierId", "ค่าใช้จ่าย"], ["withholding_taxes", "supplierId", "หนังสือรับรองหัก ณ ที่จ่าย"], ["goods_receipts", "supplierId", "ใบรับสินค้า"]];
+  for (const c of companies) for (const [col, field, label] of checks) {
+    if (!(await adminDb.collection(`companies/${c}/${col}`).where(field, "==", id).limit(1).get()).empty) return label;
+  }
+  return "";
+}
+
+const FIELD_LABEL: Record<string, string> = { taxId: "เลขผู้เสียภาษี", branchCode: "สาขา", unitName: "หน่วยงาน", sku: "รหัสสินค้า", barcode: "บาร์โค้ด" };
 const dupMessage = (entity: MasterEntity, hits: { fields: string[]; value: string; id: string }[]) =>
   `${MASTER_SCHEMAS[entity].label}ที่มี ${hits.map((h) => h.fields.map((f, i) => `${FIELD_LABEL[f] || f} ${h.value.split("|")[i] || (f === "unitName" ? "(หน่วยงานหลัก)" : "-")}`).join(" · ")).join(", ")} มีอยู่แล้วในเครือ (รหัส ${hits.map((h) => h.id).join(", ")})` +
   (MASTER_SCHEMAS[entity].unique.some((u) => u.includes("unitName")) ? " — ใช้รายการเดิม หรือถ้าเป็นหน่วยงานแยกภายใต้เลขเดียวกัน ให้ระบุชื่อหน่วยงาน" : " — ใช้รายการเดิมแล้วตั้งชื่อเฉพาะบริษัทแทน");
@@ -402,8 +416,24 @@ export async function POST(request: Request) {
         const st = (m.exists ? l.data() : legacy?.data())?.stockStatus || {};
         if ((Number(st.onHand) || 0) > 0 || (Number(st.reserved) || 0) > 0) throw new ApiAuthError(409, "ยังมีสต็อกหรือยอดจองอยู่ ลบไม่ได้ — ตัดจำหน่าย/เบิกออกก่อน");
       }
-      await target.set({ isDeleted: true, deletedAt: now, deletedBy: apiUser.uid, updatedAt: now }, { merge: true });
-      return NextResponse.json({ success: true, id });
+      // รายการที่ยังไม่เคยใช้ในเอกสารใด และไม่มีบริษัทอื่นในเครือใช้อยู่ (เช่น นำเข้าผิด) = ลบจริงจากข้อมูลกลางด้วย
+      // และคืนคีย์ห้ามซ้ำ (เลขผู้เสียภาษี/รหัสสินค้า) ให้นำเข้าใหม่ได้ · ถูกใช้แล้ว = ลบไม่ได้ ให้ระงับใช้งานแทน
+      const used = await usedInDocuments(entity, groupId, companyId, id);
+      if (used) throw new ApiAuthError(409, `${schema.label}นี้ถูกใช้ใน${used}แล้ว ลบไม่ได้ — ตั้งสถานะเป็นระงับใช้งานแทน`);
+      const otherCompanies = m.exists ? (await adminDb.collection("companies").where("groupId", "==", groupId).get()).docs.map((c) => c.id).filter((c) => c !== companyId) : [];
+      const othersUsing = otherCompanies.length > 0 && (await Promise.all(otherCompanies.map((c) => adminDb.doc(`companies/${c}/${entity}/${id}`).get())))
+        .some((d) => d.exists && d.get("isDeleted") !== true);
+      const stamp = { isDeleted: true, deletedAt: now, deletedBy: apiUser.uid, updatedAt: now };
+      await adminDb.runTransaction(async (tx) => {
+        tx.set(target, stamp, { merge: true });
+        if (m.exists && !othersUsing) {
+          tx.set(masterCol.doc(id), stamp, { merge: true });
+          writeUniqueKeys(tx, groupId, entity, id, m.data()!, {});
+          tx.create(masterCol.doc(id).collection("history").doc(), historyEntry(apiUser, companyId, "remove", {}));
+        }
+      });
+      await auditServer.logDelete(apiUser.uid, companyId, `MASTER_${entity.toUpperCase()}`, id);
+      return NextResponse.json({ success: true, id, released: m.exists && !othersUsing });
     }
 
     throw new ApiAuthError(400, "ไม่รู้จักคำสั่ง");

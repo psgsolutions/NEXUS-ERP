@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { AlertTriangle, ChevronRight, Pencil, SpellCheck, X, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCheck, ChevronRight, Pencil, SpellCheck, Trash2, X, XCircle } from "lucide-react";
 import { PillButton, PillInput, cn } from "@/components/ui/Base";
 import type { ImportTemplate } from "@/lib/import/templates";
 import type { FieldFix } from "@/lib/import/row-check";
@@ -10,9 +10,10 @@ import type { FieldFix } from "@/lib/import/row-check";
 /**
  * แก้แถวที่นำเข้าไม่ผ่าน/ไม่สำเร็จ หรือมีคำที่อาจพิมพ์ผิด ในหน้าจอ (ไม่ต้องกลับไปแก้ไฟล์ Excel)
  * แก้แล้วระบบตรวจแถวนั้นใหม่ทันที · ช่องที่ข้อความผิดพลาดพูดถึงจะถูกเน้นสีแดง · คำแนะนำกดใช้ได้ทีละช่อง
+ * คำเตือนคำผิดปล่อยผ่านได้ (คงค่าตามไฟล์) · ไม่ต้องการแถวนี้ = ลบแถว (ข้าม ไม่นำเข้า คืนได้จากตาราง)
  */
 export function ImportRowEditor({
-  open, template, rowNo, cells, errors, message, fixes, hasNext, onClose, onSave,
+  open, template, rowNo, cells, errors, message, fixes, hasNext, onClose, onSave, onDismiss, onSkip,
 }: {
   open: boolean;
   template: ImportTemplate | null;
@@ -25,6 +26,8 @@ export function ImportRowEditor({
   hasNext: boolean;
   onClose: () => void;
   onSave: (cells: Record<string, string>, next: boolean) => void;
+  onDismiss?: (fixes: FieldFix[]) => void;
+  onSkip?: () => void;
 }) {
   const [draft, setDraft] = useState<Record<string, string>>(cells);
   const [mounted, setMounted] = useState(false);
@@ -65,6 +68,7 @@ export function ImportRowEditor({
               <SpellCheck size={14} className="text-amber-300 shrink-0" />
               <p className="text-[12px] text-amber-200 flex-1">พบคำที่อาจพิมพ์ผิด {fixes.length} จุด — ตรวจคำแนะนำใต้แต่ละช่อง</p>
               {fixes.some((f) => f.to) && <PillButton variant="warning" onClick={applyAll} className="h-8 px-3 text-xs">ใช้คำแนะนำทั้งหมด</PillButton>}
+              {onDismiss && <PillButton variant="ghost" onClick={() => onDismiss(fixes)} className="h-8 px-3 text-xs" title="คงค่าตามไฟล์"><CheckCheck size={13} /> ปล่อยผ่านทั้งหมด</PillButton>}
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
@@ -80,6 +84,7 @@ export function ImportRowEditor({
                       <AlertTriangle size={11} className="shrink-0" />
                       <span className="flex-1">{f.message}</span>
                       {f.to && (draft[c.key] ?? "") !== f.to && <PillButton variant="ghost" onClick={() => setDraft({ ...draft, [c.key]: f.to })} className="h-8 px-2 text-[11px] normal-case tracking-normal">ใช้ “{f.to}”</PillButton>}
+                      {onDismiss && <PillButton variant="ghost" onClick={() => onDismiss([f])} className="h-8 px-2 text-[11px] normal-case tracking-normal" title="คงค่าตามไฟล์">ปล่อยผ่าน</PillButton>}
                     </span>
                   ))}
                   {!fx.length && c.note && <span className="block text-[11px] text-white/40">{c.note}</span>}
@@ -90,6 +95,7 @@ export function ImportRowEditor({
         </div>
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-white/10">
+          {onSkip && <PillButton variant="ghost" className="h-9 px-4 text-xs text-danger mr-auto" onClick={onSkip} title="ไม่นำเข้าแถวนี้ (คืนได้จากตาราง)"><Trash2 size={13} /> ลบแถวนี้</PillButton>}
           <PillButton variant="ghost" className="h-9 px-5 text-xs" onClick={onClose}>ยกเลิก</PillButton>
           {hasNext && <PillButton variant="glass" className="h-9 px-5 text-xs" onClick={() => onSave(draft, true)}>บันทึกและไปแถวถัดไป <ChevronRight size={14} /></PillButton>}
           <PillButton variant="confirm" className="h-9 px-5 text-xs font-bold" disabled={!changed} onClick={() => onSave(draft, false)}>บันทึกการแก้ไข</PillButton>

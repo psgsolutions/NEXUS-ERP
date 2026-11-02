@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileDown, FileSpreadsheet, Files, Pencil, RefreshCw, SpellCheck, Trash2, Upload, X } from "lucide-react";
+import { CheckCheck, Download, FileDown, FileSpreadsheet, Files, Pencil, RefreshCw, RotateCcw, SpellCheck, Trash2, Undo2, Upload, X } from "lucide-react";
 import { GlassCard, NexusDatePicker, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillCheckbox, PillSelect, PillTabs, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
@@ -25,17 +25,20 @@ import { ImportRowEditor } from "@/components/import/ImportRowEditor";
  *    นำเข้าทั้งหมดตามลำดับ ลูกค้า → ผู้ขาย → สินค้า → พนักงาน → งบทดลอง → ลูกหนี้ → เจ้าหนี้
  * อ่านไฟล์ในเบราว์เซอร์ ตรวจทุกแถวก่อน (server ตรวจซ้ำอีกชั้น)
  *  - แถวที่ไม่ผ่าน/นำเข้าไม่สำเร็จ แก้ในหน้านี้ได้ (ไม่ต้องแก้ไฟล์แล้วเลือกใหม่) ตรวจใหม่ทันที
- *  - ตรวจคำผิด: ปรับรูปแบบที่ปลอดภัยให้เอง + เตือนคำที่อาจพิมพ์ผิด/ที่อยู่ไม่ตรงฐานข้อมูล พร้อมคำแนะนำ (ไม่บล็อกการนำเข้า)
+ *  - ตรวจคำผิด: ปรับรูปแบบที่ปลอดภัยให้เอง + เตือนคำที่อาจพิมพ์ผิด/ที่อยู่ไม่ตรงฐานข้อมูล พร้อมคำแนะนำ (ไม่บล็อกการนำเข้า) · ปล่อยผ่านคำเตือนได้
+ *  - ลบแถวที่ไม่ต้องการก่อนนำเข้า (ข้าม · คืนได้) และลบรายการที่นำเข้าไปแล้ว (เฉพาะที่ยังไม่ถูกใช้ในเอกสาร — คืนเลขผู้เสียภาษี/รหัสให้นำเข้าใหม่ได้)
  */
 
 type TabId = ImportEntity | OpeningKind;
-type RowState = ParsedRow & { status: "ready" | "invalid" | "saving" | "done" | "failed"; message?: string; fixes?: FieldFix[] };
+type RowState = ParsedRow & { status: "ready" | "invalid" | "saving" | "done" | "failed" | "skipped" | "removed"; message?: string; fixes?: FieldFix[]; createdId?: string };
 /** ชุดข้อมูลหนึ่งชีตของไฟล์ที่เลือก */
 interface Batch {
   id: string; fileName: string; sheet: string; sheets: number;
   entity: TabId | null; ambiguous: boolean;
   aoa: any[][]; rows: RowState[];
   notes: { missing: string[]; unknown: string[]; normalized?: number }; error: string;
+  /** คำเตือนคำผิดที่ผู้ใช้ปล่อยผ่าน: "แถว|ช่อง|ค่าที่แนะนำ" */
+  dismissed?: string[];
 }
 interface Status {
   tb: { id: string; journalNo: string; date: string; status: string; total: number }[];
@@ -59,6 +62,7 @@ const PREVIEW: Record<TabId, string[]> = {
 const STATUS: Record<RowState["status"], [string, string]> = {
   ready: ["พร้อม", "text-nexus-teal"], invalid: ["ไม่ผ่าน", "text-danger"], saving: ["กำลังบันทึก", "text-nexus-blue"],
   done: ["นำเข้าแล้ว", "text-nexus-teal"], failed: ["ไม่สำเร็จ", "text-danger"],
+  skipped: ["ข้าม", "text-white/40"], removed: ["ลบแล้ว", "text-white/40"],
 };
 const STEPS: Record<TabId, string> = {
   customers: "แถวที่ซ้ำกับข้อมูลในระบบจะถูกข้ามและแจ้งเหตุผล",
@@ -80,7 +84,7 @@ const firstOfMonth = () => `${bkkToday().slice(0, 7)}-01`;
 const headerRow = (t: ImportTemplate) => t.columns.map((c) => (c.required ? `${c.header}*` : c.header));
 const colWidths = (t: ImportTemplate) => t.columns.map((c) => ({ wch: Math.max(14, c.header.length + 4) }));
 const countOf = (rows: RowState[]) => {
-  const c = { ready: 0, invalid: 0, saving: 0, done: 0, failed: 0 };
+  const c = { ready: 0, invalid: 0, saving: 0, done: 0, failed: 0, skipped: 0, removed: 0 };
   rows.forEach((r) => c[r.status]++);
   return c;
 };
@@ -91,11 +95,16 @@ let ADDRESS_INDEX: AddressIndex | null = null;
 /** แถวที่ต้องดู: ไม่ผ่าน · นำเข้าไม่สำเร็จ · มีคำที่อาจพิมพ์ผิด (ยังไม่นำเข้า) */
 const needsAttention = (r: RowState) => r.status === "invalid" || r.status === "failed" || ((r.status === "ready") && !!r.fixes?.length);
 
-/** ตรวจใหม่หลังแก้ข้อมูล: แถวที่นำเข้าแล้ว/กำลังบันทึกคงสถานะเดิม */
+const fixKey = (rowNo: number, f: FieldFix) => `${rowNo}|${f.key}|${f.to || f.from}`;
+/** ตัดคำเตือนที่ปล่อยผ่านแล้วออก */
+const withoutDismissed = (rows: RowState[], dismissed: string[] = []) =>
+  dismissed.length ? rows.map((r) => (r.fixes?.length ? { ...r, fixes: r.fixes.filter((f) => !dismissed.includes(fixKey(r.rowNo, f))) } : r)) : rows;
+
+/** ตรวจใหม่หลังแก้ข้อมูล: แถวที่นำเข้าแล้ว/กำลังบันทึก/ข้าม/ลบแล้ว คงสถานะเดิม · คำเตือนที่ปล่อยผ่านไม่กลับมา */
 function reparse(b: Batch, aoa: any[][]): Batch {
   const next = parseBatch(aoa, b.entity);
-  const keep = new Map(b.rows.filter((r) => r.status === "done" || r.status === "saving").map((r) => [r.rowNo, r]));
-  return { ...b, aoa, ...next, rows: next.rows.map((r) => keep.get(r.rowNo) || r) };
+  const keep = new Map(b.rows.filter((r) => ["done", "saving", "skipped", "removed"].includes(r.status)).map((r) => [r.rowNo, r]));
+  return { ...b, aoa, ...next, rows: withoutDismissed(next.rows.map((r) => keep.get(r.rowNo) || r), b.dismissed) };
 }
 
 /** ค่าตามไฟล์ของแต่ละช่องในแถว (ใช้ในหน้าต่างแก้ไข) */
@@ -319,8 +328,8 @@ export default function DataImportPage() {
         const req = toCreateRequest(entity, row.values, { postOpeningJournal: postJournal });
         const id = String(row.values._id || "").trim();
         if (entity === "employees") {
-          await post("/api/hr/employees", { ...req.data, ...(id ? { employeeDocId: id } : {}) });
-          update(b.id, [row.rowNo], { status: "done", message: id ? "แก้ไขแล้ว" : "" });
+          const d = await post("/api/hr/employees", { ...req.data, ...(id ? { employeeDocId: id } : {}) });
+          update(b.id, [row.rowNo], { status: "done", message: id ? "แก้ไขแล้ว" : `รหัส ${d.employeeId || d.docId || ""}`, createdId: id ? undefined : d.docId });
           continue;
         }
         if (id) {
@@ -336,14 +345,18 @@ export default function DataImportPage() {
         if (entity === "products") {
           // รหัสสินค้าว่าง = ให้ server ออกรหัสให้ตอนบันทึก (ไม่ซ้ำในเครือ)
           const res = await post("/api/master-data", { action: "create", entity, id: `PROD-${Date.now()}-${row.rowNo}`, autoSku: !row.values.sku, ...req });
-          update(b.id, [row.rowNo], { status: "done", message: row.values.sku ? "" : `รหัส ${res.sku}` });
+          update(b.id, [row.rowNo], { status: "done", message: `รหัส ${res.sku}`, createdId: res.id });
           continue;
         } else if (entity === "suppliers") {
           // ผู้ขายและผู้รับเหมาใช้รหัสเดียวกัน (เหมือนฟอร์มเพิ่มผู้ขาย)
           const { id } = await post("/api/master-data", { action: "create", entity: "suppliers", ...req });
           await post("/api/master-data", { action: "create", entity: "contractors", id, ...req }).catch((err) => { throw new Error(`สร้างผู้ขายแล้ว (${id}) แต่สร้างผู้รับเหมาไม่สำเร็จ: ${err.message}`); });
+          update(b.id, [row.rowNo], { status: "done", message: `รหัส ${id}`, createdId: id });
+          continue;
         } else {
-          await post("/api/master-data", { action: "create", entity, ...req });
+          const d = await post("/api/master-data", { action: "create", entity, ...req });
+          update(b.id, [row.rowNo], { status: "done", message: d.code ? `รหัส ${d.code}` : "", createdId: d.id });
+          continue;
         }
         update(b.id, [row.rowNo], { status: "done" });
       } catch (err: any) {
@@ -387,9 +400,48 @@ export default function DataImportPage() {
   };
 
   /** งบทดลองต้องนำเข้าทั้งชุด: ทุกแถวผ่าน และเดบิต = เครดิต */
-  const tbOf = (b: Batch) => (b.entity === "tb" ? tbLines(b.rows.filter((r) => r.status !== "invalid").map((r) => r.values as any)) : null);
+  const tbOf = (b: Batch) => (b.entity === "tb" ? tbLines(b.rows.filter((r) => r.status !== "invalid" && r.status !== "skipped").map((r) => r.values as any)) : null);
   const pendingOf = (b: Batch) => (b.entity && !b.error ? b.rows.filter((r) => r.status === "ready" || r.status === "failed") : []);
   const blockedOf = (b: Batch) => !b.entity || !!b.error || b.notes.missing.length > 0 || (b.entity === "tb" && (countOf(b.rows).invalid > 0 || !tbOf(b)?.balanced));
+
+  // ---------- ลบ / ข้าม / ปล่อยผ่าน ----------
+  /** ข้ามแถว (ไม่นำเข้า) หรือคืนแถวที่ข้ามไว้ */
+  const toggleSkip = (b: Batch, r: RowState) => {
+    if (r.status === "skipped") setBatches((cur) => cur.map((x) => (x.id !== b.id ? x : { ...x, rows: x.rows.map((y) => (y.rowNo === r.rowNo ? { ...y, status: y.errors.length ? "invalid" : "ready", message: "" } : y)) })));
+    else update(b.id, [r.rowNo], { status: "skipped", message: "" });
+  };
+  /** ลบรายการที่นำเข้าไปแล้ว (เฉพาะที่สร้างใหม่ และยังไม่ถูกใช้ในเอกสาร) */
+  const removeImported = async (b: Batch, rows: RowState[]) => {
+    const list = rows.filter((r) => r.status === "done" && r.createdId);
+    if (!list.length || busy) return;
+    if (!(await showConfirm(`ลบ${TEMPLATES[b.entity!].label}ที่นำเข้าแล้ว ${list.length} รายการ? — ลบได้เฉพาะรายการที่ยังไม่ถูกใช้ในเอกสาร และเลขผู้เสียภาษี/รหัสจะนำเข้าใหม่ได้`))) return;
+    setBusy(true); setError(""); setInfo("");
+    let ok = 0;
+    for (const r of list) {
+      try {
+        if (b.entity === "employees") await post("/api/hr/employees", { action: "delete", employeeDocId: r.createdId });
+        else {
+          await post("/api/master-data", { action: "remove", entity: b.entity, id: r.createdId });
+          if (b.entity === "suppliers") await post("/api/master-data", { action: "remove", entity: "contractors", id: r.createdId }).catch(() => undefined);
+        }
+        update(b.id, [r.rowNo], { status: "removed", message: "ลบรายการที่นำเข้าแล้ว" });
+        ok++;
+      } catch (err: any) {
+        update(b.id, [r.rowNo], { message: err.message });
+      }
+    }
+    setInfo(`ลบแล้ว ${ok} จาก ${list.length} รายการ${ok < list.length ? " — ที่เหลือถูกใช้ในเอกสารแล้ว (ดูหมายเหตุ)" : ""}`);
+    setBusy(false);
+  };
+  /** ปล่อยผ่านคำเตือนคำผิด (คงค่าตามไฟล์) */
+  const dismissFixes = (b: Batch, pairs: { rowNo: number; fix: FieldFix }[]) => {
+    const keys = pairs.map((p) => fixKey(p.rowNo, p.fix));
+    setBatches((cur) => cur.map((x) => {
+      if (x.id !== b.id) return x;
+      const dismissed = Array.from(new Set([...(x.dismissed || []), ...keys]));
+      return { ...x, dismissed, rows: withoutDismissed(x.rows, dismissed) };
+    }));
+  };
 
   const runBatch = async (b: Batch) => {
     const todo = pendingOf(b);
@@ -590,6 +642,8 @@ export default function DataImportPage() {
             hasNext={!!(editBatch && editRow && nextAttention(editBatch, editRow.rowNo) && nextAttention(editBatch, editRow.rowNo)!.rowNo !== editRow.rowNo)}
             onClose={() => setEditing(null)}
             onSave={saveEdit}
+            onDismiss={(fx) => editBatch && editRow && dismissFixes(editBatch, fx.map((fix) => ({ rowNo: editRow.rowNo, fix })))}
+            onSkip={() => { if (editBatch && editRow) { toggleSkip(editBatch, editRow); setEditing(null); } }}
           />
 
           {batch && batch.rows.length > 0 && bTemplate && (
@@ -604,6 +658,9 @@ export default function DataImportPage() {
               {(batch.notes.normalized || 0) > 0 && <span title="นิคหิต+สระอา → สระอำ, ช่องว่างซ้ำ, อักขระล่องหน">ปรับรูปแบบให้แล้ว <span className="font-mono text-white/80">{batch.notes.normalized}</span> จุด</span>}
               {attention.length > 0 && <PillButton variant="glass" onClick={() => setEditing({ batchId: batch.id, rowNo: attention[0].rowNo })} className="h-9 px-4 text-xs"><Pencil size={13} /> แก้แถวที่ต้องดู ({attention.length})</PillButton>}
               {typoFixable > 0 && <PillButton variant="warning" onClick={() => applyAllFixes(batch)} disabled={busy} className="h-9 px-4 text-xs"><SpellCheck size={13} /> แก้คำผิดตามคำแนะนำ ({typoFixable} แถว)</PillButton>}
+              {typoRows > 0 && <PillButton variant="ghost" onClick={() => dismissFixes(batch, batch.rows.filter((r) => r.status !== "done").flatMap((r) => (r.fixes || []).map((fix) => ({ rowNo: r.rowNo, fix }))))} disabled={busy} className="h-9 px-4 text-xs" title="คงค่าตามไฟล์ ไม่ต้องแก้"><CheckCheck size={13} /> ปล่อยผ่านคำเตือนทั้งหมด</PillButton>}
+              {count.invalid > 0 && <PillButton variant="ghost" onClick={() => update(batch.id, batch.rows.filter((r) => r.status === "invalid").map((r) => r.rowNo), { status: "skipped", message: "" })} disabled={busy} className="h-9 px-4 text-xs" title="ไม่นำเข้าแถวที่ไม่ผ่าน (คืนได้ทีละแถว)"><X size={13} /> ข้ามแถวที่ไม่ผ่าน ({count.invalid})</PillButton>}
+              {!isOpening(batch.entity) && batch.rows.some((r) => r.status === "done" && r.createdId) && <PillButton variant="danger" onClick={() => removeImported(batch, batch.rows)} disabled={busy} className="h-9 px-4 text-xs" title="ลบรายการที่ชุดนี้สร้างใหม่ (ที่ยังไม่ถูกใช้ในเอกสาร)"><Undo2 size={13} /> ยกเลิกการนำเข้าชุดนี้</PillButton>}
               {tb && (
                 <>
                   <span>เดบิต <span className="font-mono font-bold text-white">{money(tb.debit)}</span></span>
@@ -631,16 +688,31 @@ export default function DataImportPage() {
                     ))}
                     <NexusTableCell><span className={cn("text-[12px] font-bold", STATUS[r.status][1])}>{STATUS[r.status][0]}</span></NexusTableCell>
                     <NexusTableCell className="text-[12px]" title={[...r.errors, r.message, ...(r.fixes || []).map((x) => x.message)].filter(Boolean).join(" · ")}>
-                      {[...r.errors, r.message].filter(Boolean).length > 0
+                      {r.status === "removed"
+                        ? <span className="text-white/60">{r.message}</span>
+                        : [...r.errors, r.message].filter(Boolean).length > 0
                         ? <span className="text-danger">{[...r.errors, r.message].filter(Boolean).join(" · ")}</span>
-                        : r.fixes?.length && r.status !== "done"
+                        : r.fixes?.length && !["done", "skipped", "removed"].includes(r.status)
                           ? <span className="text-amber-300 flex items-center gap-1"><SpellCheck size={12} className="shrink-0" /> {r.fixes.map((x) => x.message).join(" · ")}</span>
-                          : <span className="text-white/60">-</span>}
+                          : <span className="text-white/60">{r.status === "done" && r.message ? r.message : "-"}</span>}
                     </NexusTableCell>
                     <NexusTableCell className="text-right">
-                      {r.status !== "done" && r.status !== "saving" && (
-                        <PillButton variant={needsAttention(r) ? "glass" : "ghost"} onClick={() => setEditing({ batchId: batch.id, rowNo: r.rowNo })} disabled={busy} className="h-8 px-3 text-xs normal-case tracking-normal"><Pencil size={12} /> แก้ไข</PillButton>
-                      )}
+                      <span className="inline-flex items-center gap-1 justify-end">
+                        {["ready", "invalid", "failed"].includes(r.status) && (
+                          <PillButton variant={needsAttention(r) ? "glass" : "ghost"} onClick={() => setEditing({ batchId: batch.id, rowNo: r.rowNo })} disabled={busy} className="h-8 px-3 text-xs normal-case tracking-normal"><Pencil size={12} /> แก้ไข</PillButton>
+                        )}
+                        {r.status === "ready" && !!r.fixes?.length && (
+                          <PillButton variant="ghost" onClick={() => dismissFixes(batch, r.fixes!.map((fix) => ({ rowNo: r.rowNo, fix })))} disabled={busy} className="h-8 px-3 text-xs normal-case tracking-normal" title="คงค่าตามไฟล์"><CheckCheck size={12} /> ปล่อยผ่าน</PillButton>
+                        )}
+                        {["ready", "invalid", "failed", "skipped"].includes(r.status) && (
+                          <PillButton variant="ghost" onClick={() => toggleSkip(batch, r)} disabled={busy} className="h-8 px-3 text-xs normal-case tracking-normal" title={r.status === "skipped" ? "นำแถวนี้กลับมานำเข้า" : "ไม่นำเข้าแถวนี้"}>
+                            {r.status === "skipped" ? <><RotateCcw size={12} /> คืนแถว</> : <><Trash2 size={12} /> ลบแถว</>}
+                          </PillButton>
+                        )}
+                        {r.status === "done" && r.createdId && !isOpening(batch.entity) && (
+                          <PillButton variant="ghost" onClick={() => removeImported(batch, [r])} disabled={busy} className="h-8 px-3 text-xs normal-case tracking-normal text-danger" title="ลบรายการที่นำเข้า (ถ้ายังไม่ถูกใช้ในเอกสาร)"><Trash2 size={12} /> ลบที่นำเข้า</PillButton>
+                        )}
+                      </span>
                     </NexusTableCell>
                   </NexusTableRow>
                 ))}

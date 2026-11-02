@@ -26,6 +26,21 @@ export async function POST(request: Request) {
     const apiUser = await requireApiUser(request, companyId);
     if (!can(apiUser.roles, "hr:edit")) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอสำหรับข้อมูลบุคคล");
 
+    // ลบพนักงาน (เช่น นำเข้าผิด): ได้เฉพาะคนที่ยังไม่มีประวัติลงเวลา/เงินเดือน — มีแล้วให้เปลี่ยนสถานะเป็นลาออกแทน
+    if (body.action === "delete") {
+      const id = str(body.employeeDocId, 120);
+      const ref = adminDb.doc(`employees/${id}`);
+      const snap = await ref.get();
+      if (!id || !snap.exists || snap.data()!.companyId !== companyId || snap.data()!.isDeleted === true) throw new ApiAuthError(404, "ไม่พบพนักงาน");
+      const usedAttendance = !(await adminDb.collection("attendance").where("companyId", "==", companyId).where("employeeDocId", "==", id).limit(1).get()).empty;
+      const usedPayroll = usedAttendance ? false : (await adminDb.collection(`companies/${companyId}/payrolls`).get()).docs.some((p) => (p.data().lines || []).some((l: any) => l?.employeeDocId === id));
+      if (usedAttendance || usedPayroll) throw new ApiAuthError(409, `${employeeName(snap.data()!)} มีประวัติ${usedAttendance ? "ลงเวลา" : "เงินเดือน"}แล้ว ลบไม่ได้ — เปลี่ยนสถานะเป็นลาออกแทน`);
+      const now = admin.firestore.FieldValue.serverTimestamp();
+      await ref.update({ isDeleted: true, deletedAt: now, deletedBy: apiUser.uid, updatedAt: now });
+      await auditServer.logDelete(apiUser.uid, companyId, "HR_EMPLOYEE", id);
+      return NextResponse.json({ success: true, id });
+    }
+
     const firstName = str(body.firstName, 80);
     const lastName = str(body.lastName, 80);
     const position = str(body.position, 120);

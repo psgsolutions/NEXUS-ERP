@@ -23,9 +23,9 @@ input::placeholder, textarea::placeholder {
 
 :root {
   /* ความสูงปุ่ม/ช่องกรอกทั้งระบบ (PillButton/PillInput: h-8 → sm, h-9 → md, h-12 → lg) — แก้ที่นี่ที่เดียว */
-  --control-h-sm: 28px;  /* ตาราง แถบเครื่องมือ (เดิม 32px) */
-  --control-h-md: 32px;  /* ฟอร์ม ปุ่มหลักของหน้า (เดิม 36px) */
-  --control-h-lg: 44px;  /* POS / มือถือ (เดิม 48px) */
+  --control-h-sm: 26px;  /* ตาราง แถบเครื่องมือ (เดิม 32 → 28 → 26px) */
+  --control-h-md: 30px;  /* ฟอร์ม ปุ่มหลักของหน้า (เดิม 36 → 32 → 30px) */
+  --control-h-lg: 40px;  /* POS / มือถือ (เดิม 48 → 44 → 40px) */
   --placeholder: rgb(255 255 255 / 0.36);
   --background: #0D0D0D;
   --surface-0: #0D0D0D;   /* Base app canvas */
@@ -387,7 +387,7 @@ input, select, textarea, button, td, th {
 /* แถบแท็บ + ปุ่มของแต่ละเมนู (มาตรฐานเดียวกันทุกหน้า)
    - แท็บอยู่ซ้ายในกรอบของตัวเอง ปุ่มอยู่ขวา
    - ปุ่มฝั่งขวายาวเกิน: ซ้อนเป็นหลายบรรทัดฝั่งเดิม (ไม่ล้นไปทับ/ไม่ตกไปอยู่ใต้แท็บ)
-   - ปุ่มและแท็บสูงเท่ากัน (36px) */
+   - ปุ่มและแท็บสูงเท่ากัน (ค่ากลาง --control-h-md) */
 .module-toolbar {
   display: flex;
   align-items: flex-start;
@@ -419,7 +419,7 @@ input, select, textarea, button, td, th {
 .module-toolbar-actions > button,
 .module-toolbar-actions > a,
 .module-toolbar-actions > div > button {
-  height: 36px;
+  height: var(--control-h-md);
 }
 @media (max-width: 1023px) {
   .module-toolbar { flex-direction: column; align-items: stretch; }

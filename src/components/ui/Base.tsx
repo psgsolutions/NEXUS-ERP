@@ -528,7 +528,7 @@ export function PillTabs({
             onClick={() => onTabChange(tab.id)}
             title={desc ? desc : undefined}
             className={cn(
-              "h-9 px-3.5 2xl:px-5 rounded-full text-[12px] 2xl:text-[12px] font-black transition-all duration-300 flex items-center gap-2 2xl:gap-2.5 uppercase tracking-wide 2xl:tracking-wider whitespace-nowrap flex-shrink-0",
+              "h-[var(--control-h-md)] px-3.5 2xl:px-5 rounded-full text-[12px] 2xl:text-[12px] font-black transition-all duration-300 flex items-center gap-2 2xl:gap-2.5 uppercase tracking-wide 2xl:tracking-wider whitespace-nowrap flex-shrink-0",
               activeTab === tab.id 
                 ? "bg-nexus-teal/15 text-nexus-teal shadow-[0_0_10px_rgba(0,255,209,0.1)] border border-nexus-teal/30" 
                 : "bg-white/5 text-white/50 hover:text-white hover:bg-white/10 border border-transparent"

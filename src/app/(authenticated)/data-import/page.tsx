@@ -8,7 +8,7 @@ import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
 import { CHART_OF_ACCOUNTS } from "@/lib/chart-of-accounts";
-import { IMPORT_TEMPLATES, mapHeaders, parseRows, toCreateRequest, toTemplateRow, type ImportEntity, type ImportTemplate, type ParsedRow } from "@/lib/import/templates";
+import { IMPORT_TEMPLATES, mapHeaders, parseDate, parseRows, toCreateRequest, toTemplateRow, type ImportEntity, type ImportTemplate, type ParsedRow } from "@/lib/import/templates";
 import { OPENING_TB_REF, OPENING_TEMPLATES, tbLines, type OpeningKind } from "@/lib/import/opening";
 import { detectEntity, sheetName } from "@/lib/import/detect";
 import { checkRowSpelling, type FieldFix } from "@/lib/import/row-check";
@@ -102,9 +102,24 @@ const withoutDismissed = (rows: RowState[], dismissed: string[] = []) =>
 
 /** ตรวจใหม่หลังแก้ข้อมูล: แถวที่นำเข้าแล้ว/กำลังบันทึก/ข้าม/ลบแล้ว คงสถานะเดิม · คำเตือนที่ปล่อยผ่านไม่กลับมา */
 function reparse(b: Batch, aoa: any[][]): Batch {
-  const next = parseBatch(aoa, b.entity);
+  // แถวที่ลบ/ข้ามแล้ว ไม่นับเป็นข้อมูลซ้ำกับแถวอื่น
+  const next = parseBatch(aoa, b.entity, new Set(b.rows.filter((r) => r.status === "skipped" || r.status === "removed").map((r) => r.rowNo)));
   const keep = new Map(b.rows.filter((r) => ["done", "saving", "skipped", "removed"].includes(r.status)).map((r) => [r.rowNo, r]));
   return { ...b, aoa, ...next, rows: withoutDismissed(next.rows.map((r) => keep.get(r.rowNo) || r), b.dismissed) };
+}
+
+/**
+ * ค่าของเซลล์ในรูปที่คนอ่าน/แก้ได้ — ตรงกับที่ระบบอ่านจากไฟล์:
+ * Excel เก็บเลขผู้เสียภาษี/เบอร์โทรเป็นตัวเลข (เลข 0 นำหน้าหาย) และวันที่เป็นเลขลำดับวัน
+ */
+function cellText(c: ImportTemplate["columns"][number], v: any): string {
+  if (v === undefined || v === null) return "";
+  if (typeof v === "number") {
+    if (c.type === "taxId") return String(v).padStart(13, "0");
+    if (c.leadingZero) return "0" + String(v);
+    if (c.type === "date") { const d = parseDate(v); if (d) return `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`; }
+  }
+  return String(v);
 }
 
 /** ค่าตามไฟล์ของแต่ละช่องในแถว (ใช้ในหน้าต่างแก้ไข) */
@@ -113,18 +128,19 @@ function cellsOf(b: Batch, rowNo: number): Record<string, string> {
   const t = TEMPLATES[b.entity];
   const { index } = mapHeaders(t, b.aoa[0] || []);
   const raw = b.aoa[rowNo - 1] || [];
-  return Object.fromEntries(t.columns.map((c) => [c.key, index[c.key] === undefined || raw[index[c.key]] === undefined || raw[index[c.key]] === null ? "" : String(raw[index[c.key]])]));
+  return Object.fromEntries(t.columns.map((c) => [c.key, index[c.key] === undefined ? "" : cellText(c, raw[index[c.key]])]));
 }
 
-/** เขียนค่าที่แก้กลับลงตารางของชีต (เพิ่มคอลัมน์ให้ถ้าไฟล์ไม่มีช่องนั้น) */
+/** เขียนค่าที่แก้กลับลงตารางของชีต เฉพาะช่องที่เปลี่ยน (ช่องอื่นคงค่าดิบตามไฟล์) · เพิ่มคอลัมน์ให้ถ้าไฟล์ไม่มีช่องนั้น */
 function writeCells(b: Batch, rowNo: number, cells: Record<string, string>): any[][] {
   const t = TEMPLATES[b.entity!];
+  const before = cellsOf(b, rowNo);
   const aoa = b.aoa.map((r) => [...(r || [])]);
   const header = aoa[0] || (aoa[0] = []);
   const { index } = mapHeaders(t, header);
   const row = aoa[rowNo - 1] || (aoa[rowNo - 1] = []);
   for (const c of t.columns) {
-    if (!(c.key in cells)) continue;
+    if (!(c.key in cells) || cells[c.key] === before[c.key]) continue;
     let at = index[c.key];
     if (at === undefined) {
       if (!cells[c.key]) continue;
@@ -136,14 +152,14 @@ function writeCells(b: Batch, rowNo: number, cells: Record<string, string>): any
 }
 
 /** แปลงตารางของชีตเป็นแถวที่ตรวจแล้ว ตามชนิดข้อมูล */
-function parseBatch(aoa: any[][], entity: TabId | null): Pick<Batch, "rows" | "notes" | "error"> {
+function parseBatch(aoa: any[][], entity: TabId | null, ignoreDup?: Set<number>): Pick<Batch, "rows" | "notes" | "error"> {
   const empty = { rows: [], notes: { missing: [], unknown: [] } };
   if (!entity) return { ...empty, error: "ไม่รู้ว่าเป็นข้อมูลชนิดใด (หัวตารางไม่ตรงแม่แบบ) — เลือกชนิดข้อมูลเอง" };
   if (!aoa.length) return { ...empty, error: "ไม่มีข้อมูล" };
   const template = TEMPLATES[entity];
   const { index, missing, unknown } = mapHeaders(template, aoa[0]);
   if (missing.length) return { rows: [], notes: { missing, unknown }, error: "" };
-  const parsed = parseRows(template, aoa.slice(1), index);
+  const parsed = parseRows(template, aoa.slice(1), index, ignoreDup);
   if (!parsed.length) return { rows: [], notes: { missing, unknown }, error: "ไม่พบแถวข้อมูลใต้หัวตาราง" };
   if (parsed.length > MAX_ROWS) return { rows: [], notes: { missing, unknown }, error: `มี ${parsed.length} แถว — แบ่งไฟล์ละไม่เกิน ${MAX_ROWS.toLocaleString("th-TH")} แถว` };
   let normalized = 0;
@@ -406,10 +422,10 @@ export default function DataImportPage() {
 
   // ---------- ลบ / ข้าม / ปล่อยผ่าน ----------
   /** ข้ามแถว (ไม่นำเข้า) หรือคืนแถวที่ข้ามไว้ */
-  const toggleSkip = (b: Batch, r: RowState) => {
-    if (r.status === "skipped") setBatches((cur) => cur.map((x) => (x.id !== b.id ? x : { ...x, rows: x.rows.map((y) => (y.rowNo === r.rowNo ? { ...y, status: y.errors.length ? "invalid" : "ready", message: "" } : y)) })));
-    else update(b.id, [r.rowNo], { status: "skipped", message: "" });
-  };
+  /** ลบ/คืนแถว แล้วตรวจทั้งชุดใหม่ (แถวที่ซ้ำกับแถวที่ลบไป จะผ่านทันที) */
+  const setSkipped = (b: Batch, rowNos: number[], skip: boolean) =>
+    setBatches((cur) => cur.map((x) => (x.id !== b.id ? x : reparse({ ...x, rows: x.rows.map((y) => (!rowNos.includes(y.rowNo) ? y : skip ? { ...y, status: "skipped", message: "" } : { ...y, status: "invalid", message: "" })) }, x.aoa))));
+  const toggleSkip = (b: Batch, r: RowState) => setSkipped(b, [r.rowNo], r.status !== "skipped");
   /** ลบรายการที่นำเข้าไปแล้ว (เฉพาะที่สร้างใหม่ และยังไม่ถูกใช้ในเอกสาร) */
   const removeImported = async (b: Batch, rows: RowState[]) => {
     const list = rows.filter((r) => r.status === "done" && r.createdId);
@@ -659,7 +675,7 @@ export default function DataImportPage() {
               {attention.length > 0 && <PillButton variant="glass" onClick={() => setEditing({ batchId: batch.id, rowNo: attention[0].rowNo })} className="h-9 px-4 text-xs"><Pencil size={13} /> แก้แถวที่ต้องดู ({attention.length})</PillButton>}
               {typoFixable > 0 && <PillButton variant="warning" onClick={() => applyAllFixes(batch)} disabled={busy} className="h-9 px-4 text-xs"><SpellCheck size={13} /> แก้คำผิดตามคำแนะนำ ({typoFixable} แถว)</PillButton>}
               {typoRows > 0 && <PillButton variant="ghost" onClick={() => dismissFixes(batch, batch.rows.filter((r) => r.status !== "done").flatMap((r) => (r.fixes || []).map((fix) => ({ rowNo: r.rowNo, fix }))))} disabled={busy} className="h-9 px-4 text-xs" title="คงค่าตามไฟล์ ไม่ต้องแก้"><CheckCheck size={13} /> ปล่อยผ่านคำเตือนทั้งหมด</PillButton>}
-              {count.invalid > 0 && <PillButton variant="ghost" onClick={() => update(batch.id, batch.rows.filter((r) => r.status === "invalid").map((r) => r.rowNo), { status: "skipped", message: "" })} disabled={busy} className="h-9 px-4 text-xs" title="ไม่นำเข้าแถวที่ไม่ผ่าน (คืนได้ทีละแถว)"><X size={13} /> ข้ามแถวที่ไม่ผ่าน ({count.invalid})</PillButton>}
+              {count.invalid > 0 && <PillButton variant="ghost" onClick={() => setSkipped(batch, batch.rows.filter((r) => r.status === "invalid").map((r) => r.rowNo), true)} disabled={busy} className="h-9 px-4 text-xs" title="ไม่นำเข้าแถวที่ไม่ผ่าน (คืนได้ทีละแถว)"><X size={13} /> ข้ามแถวที่ไม่ผ่าน ({count.invalid})</PillButton>}
               {!isOpening(batch.entity) && batch.rows.some((r) => r.status === "done" && r.createdId) && <PillButton variant="danger" onClick={() => removeImported(batch, batch.rows)} disabled={busy} className="h-9 px-4 text-xs" title="ลบรายการที่ชุดนี้สร้างใหม่ (ที่ยังไม่ถูกใช้ในเอกสาร)"><Undo2 size={13} /> ยกเลิกการนำเข้าชุดนี้</PillButton>}
               {tb && (
                 <>

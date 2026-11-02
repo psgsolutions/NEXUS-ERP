@@ -210,7 +210,7 @@ export function parseDate(v: any): string | null {
 }
 
 /** ตรวจและแปลงค่าแต่ละแถว (แถวว่างทั้งแถวถูกข้าม) */
-export function parseRows(template: ImportTemplate, rows: any[][], index: Record<string, number>): ParsedRow[] {
+export function parseRows(template: ImportTemplate, rows: any[][], index: Record<string, number>, ignoreDup?: Set<number>): ParsedRow[] {
   const out: ParsedRow[] = [];
   const seen = template.uniqueKeys.map(() => new Map<string, number>());
   rows.forEach((raw, i) => {
@@ -275,7 +275,7 @@ export function parseRows(template: ImportTemplate, rows: any[][], index: Record
     if (template.validate && !errors.length) errors.push(...template.validate(values));
     // ซ้ำภายในไฟล์ (คีย์แรกต้องมีค่า คีย์ที่เหลือว่างได้ เช่น หน่วยงานหลักไม่มีชื่อหน่วยงาน)
     template.uniqueKeys.forEach((keys, k) => {
-      if (!values[keys[0]]) return;
+      if (!values[keys[0]] || ignoreDup?.has(rowNo)) return;
       const v = keys.map((key) => String(values[key] ?? "").trim().toLowerCase().replace(/\s+/g, "")).join("|");
       const first = seen[k].get(v);
       if (first) errors.push(`${keys.map((key) => template.columns.find((c) => c.key === key)?.header).join("+")} ซ้ำกับแถว ${first}`);

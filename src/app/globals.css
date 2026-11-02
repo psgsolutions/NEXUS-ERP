@@ -22,6 +22,10 @@ input::placeholder, textarea::placeholder {
 .surface-light { --placeholder: rgb(15 23 42 / 0.4); }
 
 :root {
+  /* ความสูงปุ่ม/ช่องกรอกทั้งระบบ (PillButton/PillInput: h-8 → sm, h-9 → md, h-12 → lg) — แก้ที่นี่ที่เดียว */
+  --control-h-sm: 28px;  /* ตาราง แถบเครื่องมือ (เดิม 32px) */
+  --control-h-md: 32px;  /* ฟอร์ม ปุ่มหลักของหน้า (เดิม 36px) */
+  --control-h-lg: 44px;  /* POS / มือถือ (เดิม 48px) */
   --placeholder: rgb(255 255 255 / 0.36);
   --background: #0D0D0D;
   --surface-0: #0D0D0D;   /* Base app canvas */

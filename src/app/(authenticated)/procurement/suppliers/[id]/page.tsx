@@ -12,6 +12,7 @@ import { TaxUnitPanel } from "@/components/shared/TaxUnitPanel";
 import { SpellHint } from "@/components/shared/SpellHint";
 import { useSuppliers } from "@/hooks/useCustomers";
 import { partyDocName, taxIdProblem } from "@/lib/party-identity";
+import { RecordDeleteButton } from "@/components/shared/RecordDeleteButton";
 
 /**
  * ข้อมูลผู้ขาย/ผู้รับเหมา: ดูและแก้ไข (ฝ่ายจัดซื้อ procurement:edit)
@@ -113,7 +114,10 @@ export default function SupplierDetailPage() {
             <p className="text-xs font-semibold text-white/60 mt-1 leading-none truncate font-mono">{record.supplierCode || id} · {CATEGORY[form.category]}</p>
           </div>
         </div>
-        {canEdit && <PillButton variant="save" onClick={save} disabled={saving} className="h-9 px-5 text-xs"><Save size={14} className="mr-1.5" /> {saving ? "กำลังบันทึก..." : "บันทึกข้อมูล"}</PillButton>}
+        <div className="flex items-center gap-2">
+          <RecordDeleteButton kind="suppliers" id={id} name={form.name} record={record} onDeleted={() => router.push("/procurement")} />
+          {canEdit && <PillButton variant="save" onClick={save} disabled={saving} className="h-9 px-5 text-xs"><Save size={14} className="mr-1.5" /> {saving ? "กำลังบันทึก..." : "บันทึกข้อมูล"}</PillButton>}
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">

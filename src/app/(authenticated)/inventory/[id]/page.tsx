@@ -62,6 +62,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { apiFetch } from "@/lib/api-client";
 import { findBarcodeConflict } from "@/lib/product-validation";
 import { Product } from "@/types/database";
+import { RecordDeleteButton } from "@/components/shared/RecordDeleteButton";
 
 const CATEGORIES = [
   "Network & Wireless",
@@ -337,6 +338,8 @@ export default function ProductDetailPage() {
             </PillButton>
           </>
         ) : (
+          <>
+          <RecordDeleteButton kind="products" id={productId} name={product.name} record={product} onDeleted={() => router.push("/inventory")} className="h-8 px-4 text-xs" />
           <PillButton
             variant="confirm"
             className="h-8 px-4 text-xs font-bold flex items-center gap-1.5"
@@ -344,6 +347,7 @@ export default function ProductDetailPage() {
           >
             <Edit3 size={14} /> แก้ไขข้อมูล
           </PillButton>
+          </>
         )}
       </div>
     </div>

@@ -15,6 +15,7 @@ import {
   BILLING_LABELS, COMMON_ATTACHMENTS, ORG_DEFAULTS, ORG_LABELS, UNDATED_LABELS, docProfileSummary, effectiveDocProfile,
   type BillingMethod, type DocProfile, type OrgType, type UndatedDoc,
 } from "@/lib/customer-doc-profile";
+import { RecordDeleteButton } from "@/components/shared/RecordDeleteButton";
 
 /**
  * ข้อมูลลูกค้า + โปรไฟล์เอกสาร (รูปแบบเอกสาร/การวางบิล/รับเงิน ของลูกค้ารายนี้)
@@ -138,6 +139,7 @@ export default function CustomerDetailPage() {
             <p className="text-xs font-semibold text-white/60 mt-1 leading-none truncate">{docProfileSummary(profile).join(" · ")}</p>
           </div>
         </div>
+        <RecordDeleteButton kind="customers" id={id} name={basic.name} record={record} onDeleted={() => router.push("/customers")} />
       </header>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">

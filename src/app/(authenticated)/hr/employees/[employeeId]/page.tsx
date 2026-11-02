@@ -10,6 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { can } from "@/lib/permissions";
 import { EMPLOYEE_STATUS, EMPLOYMENT_TYPES, employeeName, employeeStatus } from "@/lib/hr";
+import { RecordDeleteButton } from "@/components/shared/RecordDeleteButton";
 
 const baht = (n: any) => (Number(n) || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const thDate = (d?: string) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) : "-");
@@ -74,11 +75,14 @@ export default function EmployeeDetailPage() {
           <p className="text-sm text-white/60 mt-1">{e.position || "-"} · {e.department || "-"}</p>
         </div>
       </div>
-      {canEdit && (
-        <PillButton variant="confirm" onClick={() => router.push(`/hr/employees/new?edit=${encodeURIComponent(e.id)}`)} className="h-9 px-4 text-xs font-bold">
-          <Edit3 size={14} className="mr-1.5" /> แก้ไขข้อมูล
-        </PillButton>
-      )}
+      <div className="flex items-center gap-2">
+        <RecordDeleteButton kind="employees" id={e.id} name={employeeName(e)} record={e} onDeleted={() => router.push("/hr")} />
+        {canEdit && (
+          <PillButton variant="confirm" onClick={() => router.push(`/hr/employees/new?edit=${encodeURIComponent(e.id)}`)} className="h-9 px-4 text-xs font-bold">
+            <Edit3 size={14} className="mr-1.5" /> แก้ไขข้อมูล
+          </PillButton>
+        )}
+      </div>
     </div>
   );
 

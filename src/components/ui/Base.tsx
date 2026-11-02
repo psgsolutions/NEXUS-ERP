@@ -23,6 +23,25 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   size?: number | string;
 }
 
+/**
+ * ความสูงปุ่ม/ช่องกรอก: ค่ากลางอยู่ที่ globals.css (--control-h-sm / -md / -lg)
+ * หน้าต่าง ๆ ใส่ h-8 (ตาราง/แถบเครื่องมือ) h-9 (ฟอร์ม) h-12 (POS/มือถือ) ตามเดิม — แปลงเป็นค่ากลางที่นี่
+ * แก้ความสูงทั้งระบบได้ที่เดียว (ปุ่มไอคอนสี่เหลี่ยม w-8/w-9/w-12 ปรับตามด้วย)
+ */
+const CONTROL_SIZE: [RegExp, string][] = [
+  [/(?<![\w-])h-8(?![\w-])/g, "h-[var(--control-h-sm)]"],
+  [/(?<![\w-])h-9(?![\w-])/g, "h-[var(--control-h-md)]"],
+  [/(?<![\w-])h-12(?![\w-])/g, "h-[var(--control-h-lg)]"],
+  [/(?<![\w-])w-8(?![\w-])/g, "w-[var(--control-h-sm)]"],
+  [/(?<![\w-])w-9(?![\w-])/g, "w-[var(--control-h-md)]"],
+  [/(?<![\w-])w-12(?![\w-])/g, "w-[var(--control-h-lg)]"],
+];
+export const controlSize = (className?: string) =>
+  className ? CONTROL_SIZE.reduce((c, [re, to]) => c.replace(re, to), className) : className;
+/** ช่องกรอก: ตัวอักษร 14px บรรทัด 1.9 (วรรณยุกต์ไทยไม่ถูกตัด) ต้องสูงอย่างน้อย 30px */
+const INPUT_MIN_H = "h-[max(var(--control-h-sm),30px)]";
+const inputSize = (className?: string) => controlSize(className)?.replace("h-[var(--control-h-sm)]", INPUT_MIN_H);
+
 export function PillButton({ className, variant = "glass", ...props }: ButtonProps) {
   const variants = {
     primary: "bg-nexus-teal/20 text-nexus-teal border border-nexus-teal/40 font-bold backdrop-blur-md glow-accent-hover hover:bg-nexus-teal/35 hover:text-white hover:border-nexus-teal/60 active:scale-95 transition-all duration-300",
@@ -37,9 +56,9 @@ export function PillButton({ className, variant = "glass", ...props }: ButtonPro
   return (
     <button
       className={cn(
-        "h-8 px-5 rounded-full font-black text-[12px] transition-all flex items-center justify-center gap-2 uppercase tracking-wider whitespace-nowrap flex-shrink-0",
+        "h-[var(--control-h-sm)] px-5 rounded-full font-black text-[12px] transition-all flex items-center justify-center gap-2 uppercase tracking-wider whitespace-nowrap flex-shrink-0",
         variants[variant],
-        className
+        controlSize(className)
       )}
       {...props}
     />
@@ -52,8 +71,8 @@ export const PillInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttri
       <input
         ref={ref}
         className={cn(
-          "h-8 px-5 py-0 leading-[1.9] rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all backdrop-blur-sm truncate w-full",
-          className
+          "h-[max(var(--control-h-sm),30px)] px-5 py-0 leading-[1.9] rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-medium focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all backdrop-blur-sm truncate w-full",
+          inputSize(className)
         )}
         {...props}
       />

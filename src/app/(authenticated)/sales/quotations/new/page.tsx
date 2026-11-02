@@ -35,6 +35,7 @@ import { searchAddressByPostalCode } from "@/lib/thailand-address-helper";
 import { db } from "@/lib/firebase-client";
 import { apiFetch } from "@/lib/api-client";
 import { docProfileSummary, effectiveDocProfile, quotationDefaults } from "@/lib/customer-doc-profile";
+import { partyDocName } from "@/lib/party-identity";
 
 export default function QuotationCreationPage() {
   const { showAlert } = useSystemDialog();
@@ -101,7 +102,8 @@ export default function QuotationCreationPage() {
   // Customer State
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const selectedCustomer = useMemo(() => customers.find(c => c.id === selectedCustomerId), [customers, selectedCustomerId]);
-  const getCustomerName = (c: any) => c?.customerName || c?.name || c?.companyName || "";
+  // ชื่อบนเอกสารของหน่วยงาน (หน่วยงานย่อยภายใต้เลขผู้เสียภาษีเดียวกันแยกชื่อกันได้)
+  const getCustomerName = (c: any) => partyDocName(c) || c?.customerName || "";
 
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);

@@ -25,7 +25,10 @@ export interface MasterSchema {
   editPermission: "inventory:edit" | "sales:edit" | "procurement:edit";
 }
 
-const PARTY_IDENTITY = ["taxId", "tax_id", "branchCode", "branch_code", "legalName", "entityType"];
+// unitName = หน่วยงานภายใต้เลขผู้เสียภาษีเดียวกัน (เช่น สำนักงานเขต) · taxInvoiceName = ชื่อบนใบกำกับภาษีของหน่วยงานนั้น
+const PARTY_IDENTITY = ["taxId", "tax_id", "branchCode", "branch_code", "legalName", "entityType", "unitName", "taxInvoiceName"];
+/** ห้ามซ้ำ: เลขผู้เสียภาษี + สาขา + ชื่อหน่วยงาน (หน่วยงานหลักเว้นว่าง) — ผู้เสียภาษีเดียวมีได้หลายหน่วยงาน */
+const PARTY_UNIQUE = [["taxId", "branchCode", "unitName"]];
 // รวมชื่อฟิลด์แบบเดิมของฟอร์ม (snake_case / ที่อยู่แยกช่อง) เพื่อให้ข้อมูลทั่วไปอยู่ที่ข้อมูลกลาง
 const PARTY_SHARED = [
   "name", "customerName", "supplierName", "address", "phone", "phoneNumber", "email", "website", "contactName", "contact_name", "contacts", "addresses", "industry",
@@ -42,9 +45,9 @@ export const MASTER_SCHEMAS: Record<MasterEntity, MasterSchema> = {
     unique: [["sku"], ["barcode"]],
     editPermission: "inventory:edit",
   },
-  customers: { label: "ลูกค้า", identity: PARTY_IDENTITY, shared: PARTY_SHARED, unique: [["taxId", "branchCode"]], editPermission: "sales:edit" },
-  suppliers: { label: "ผู้ขาย", identity: PARTY_IDENTITY, shared: PARTY_SHARED, unique: [["taxId", "branchCode"]], editPermission: "procurement:edit" },
-  contractors: { label: "ผู้รับเหมา", identity: PARTY_IDENTITY, shared: [...PARTY_SHARED, "skills", "idCardNo"], unique: [["taxId", "branchCode"]], editPermission: "procurement:edit" },
+  customers: { label: "ลูกค้า", identity: PARTY_IDENTITY, shared: PARTY_SHARED, unique: PARTY_UNIQUE, editPermission: "sales:edit" },
+  suppliers: { label: "ผู้ขาย", identity: PARTY_IDENTITY, shared: PARTY_SHARED, unique: PARTY_UNIQUE, editPermission: "procurement:edit" },
+  contractors: { label: "ผู้รับเหมา", identity: PARTY_IDENTITY, shared: [...PARTY_SHARED, "skills", "idCardNo"], unique: PARTY_UNIQUE, editPermission: "procurement:edit" },
 };
 
 export const isMasterEntity = (v: any): v is MasterEntity => MASTER_ENTITIES.includes(v);

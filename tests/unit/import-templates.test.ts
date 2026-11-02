@@ -22,13 +22,13 @@ describe("excel import templates", () => {
     const t = IMPORT_TEMPLATES.customers;
     const { index } = mapHeaders(t, ["ชื่อลูกค้า", "เลขประจำตัวผู้เสียภาษี", "รหัสสาขา", "อีเมล", "วงเงินเครดิต (บาท)"]);
     const rows = parseRows(t, [
-      ["ลูกค้า A", "0-1055-61234-56-7", "", "a@x.co", "1,000"],
+      ["ลูกค้า A", "0-1055-61234-56-0", "", "a@x.co", "1,000"],
       [null, "", "", "", ""],
       ["", "123", "2", "bad", "-5"],
-      ["ลูกค้า C", "0105561234567", "สำนักงานใหญ่", "", ""],
+      ["ลูกค้า C", "0105561234560", "สำนักงานใหญ่", "", ""],
     ], index);
     expect(rows.map((r) => r.rowNo)).toEqual([2, 4, 5]);
-    expect(rows[0]).toMatchObject({ values: { name: "ลูกค้า A", taxId: "0105561234567", branchCode: "00000", email: "a@x.co", creditLimit: 1000 }, errors: [] });
+    expect(rows[0]).toMatchObject({ values: { name: "ลูกค้า A", taxId: "0105561234560", branchCode: "00000", email: "a@x.co", creditLimit: 1000 }, errors: [] });
     expect(rows[1].errors).toEqual(expect.arrayContaining(["ไม่มีชื่อลูกค้า", expect.stringContaining("13 หลัก"), expect.stringContaining("อีเมล"), expect.stringContaining("ไม่ติดลบ")]));
     expect(rows[2].errors[0]).toContain("ซ้ำกับแถว 2");
   });
@@ -46,8 +46,8 @@ describe("excel import templates", () => {
   it("restores leading zeros Excel drops from numeric cells", () => {
     const t = IMPORT_TEMPLATES.customers;
     const { index } = mapHeaders(t, ["ชื่อลูกค้า", "เลขประจำตัวผู้เสียภาษี", "โทรศัพท์"]);
-    const [r] = parseRows(t, [["A", 105561234567, 21234567]], index);
-    expect(r.values).toMatchObject({ taxId: "0105561234567", phone: "021234567" });
+    const [r] = parseRows(t, [["A", 105561234560, 21234567]], index);
+    expect(r.values).toMatchObject({ taxId: "0105561234560", phone: "021234567" });
   });
 
   it("builds the same request shape as the in-app forms", () => {
@@ -82,9 +82,9 @@ describe("excel export → edit → import round trip", () => {
   });
 
   it("customer and supplier records come back with the same values and their system id", () => {
-    const c = roundTrip("customers", { id: "C-1", name: "บริษัท ทดสอบ จำกัด", docProfile: { orgType: "GOV" }, taxId: "0105561234567", branchCode: "00001", branchName: "บางนา", addressNo: "99/1", road: "บางนา-ตราด", province: "กรุงเทพมหานคร", phoneNumber: "021234567", creditLimit: 50000, creditTermDays: 45 });
-    expect(c).toMatchObject({ _id: "C-1", orgType: "GOV", taxId: "0105561234567", branchCode: "00001", branchName: "บางนา", address: "99/1", road: "บางนา-ตราด", creditLimit: 50000, creditTermDays: 45 });
-    const s = roundTrip("suppliers", { id: "S-1", name: "ร้านวัสดุ", entity_category: "STORE", tax_id: "0105561234567", payment_method: "CHEQUE", business_type: "GOODS", account_number: "123-4", payment_term: "60 Days" });
+    const c = roundTrip("customers", { id: "C-1", name: "บริษัท ทดสอบ จำกัด", docProfile: { orgType: "GOV" }, taxId: "0105561234560", branchCode: "00001", branchName: "บางนา", addressNo: "99/1", road: "บางนา-ตราด", province: "กรุงเทพมหานคร", phoneNumber: "021234567", creditLimit: 50000, creditTermDays: 45 });
+    expect(c).toMatchObject({ _id: "C-1", orgType: "GOV", taxId: "0105561234560", branchCode: "00001", branchName: "บางนา", address: "99/1", road: "บางนา-ตราด", creditLimit: 50000, creditTermDays: 45 });
+    const s = roundTrip("suppliers", { id: "S-1", name: "ร้านวัสดุ", entity_category: "STORE", tax_id: "0105561234560", payment_method: "CHEQUE", business_type: "GOODS", account_number: "123-4", payment_term: "60 Days" });
     expect(s).toMatchObject({ _id: "S-1", category: "STORE", paymentMethod: "CHEQUE", businessType: "GOODS", bankAccount: "123-4", creditTermDays: 60 });
     expect(toCreateRequest("suppliers", s).data).toMatchObject({ payment_method: "CHEQUE", business_type: "GOODS", account_number: "123-4" });
   });
@@ -97,7 +97,7 @@ describe("excel export → edit → import round trip", () => {
   });
 
   it("employee round trip (date in Buddhist year, yes/no fields)", () => {
-    const e = roundTrip("employees", { id: "E-1", prefix: "Ms.", firstName: "สมหญิง", lastName: "ใจดี", citizenId: "1103700012345", position: "บัญชี", employmentType: "daily", joinDate: "2025-06-01", status: "probation", salary: 450, socialSecurity: false });
+    const e = roundTrip("employees", { id: "E-1", prefix: "Ms.", firstName: "สมหญิง", lastName: "ใจดี", citizenId: "1103700012346", position: "บัญชี", employmentType: "daily", joinDate: "2025-06-01", status: "probation", salary: 450, socialSecurity: false });
     expect(e).toMatchObject({ _id: "E-1", prefix: "Ms.", employmentType: "daily", joinDate: "2025-06-01", status: "probation", salary: 450, socialSecurity: false });
     expect(toCreateRequest("employees", e).data).toMatchObject({ socialSecurity: false, employmentType: "daily" });
   });

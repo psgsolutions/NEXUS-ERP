@@ -42,11 +42,13 @@ export function isCorporate(taxId: any, kind?: any): boolean {
   return k === "CORPORATE" || k === "COMPANY";
 }
 
+import { partyDocName } from "@/lib/party-identity";
+
 export function partySnapshot(rec: any, fallback: { name?: string; taxId?: string } = {}): PartySnapshot {
   const r = rec || {};
   const taxId = str(r.taxId || r.tax_id || fallback.taxId).replace(/\D/g, "");
   return {
-    name: str(r.legalName || r.name || r.supplierName || fallback.name),
+    name: partyDocName(r) || str(fallback.name),
     taxId,
     branchCode: str(r.branchCode || r.branch_code),
     address: addressText(r),

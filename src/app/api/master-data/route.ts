@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import * as admin from "firebase-admin";
 import { PRODUCT_THUMB_MAX } from "@/lib/attachments";
 import { isStockItem } from "@/lib/product-kind";
+import { taxIdProblem } from "@/lib/party-identity";
 import { requireApiUser, authErrorResponse, ApiAuthError, type ApiUser } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
@@ -70,8 +71,14 @@ function normalizeParty(entity: MasterEntity, data: Record<string, any>) {
   if (entity === "products") return data;
   const out = { ...data };
   const tax = String(out.taxId ?? out.tax_id ?? "").replace(/\D/g, "");
-  if (tax) out.taxId = tax;
+  if (tax) {
+    const problem = taxIdProblem(tax);
+    if (problem) throw new ApiAuthError(400, problem);
+    out.taxId = tax;
+  }
   if (!out.branchCode && out.branch_code) out.branchCode = String(out.branch_code);
+  if (out.branchCode !== undefined) { const b = String(out.branchCode).replace(/\D/g, ""); out.branchCode = b ? b.padStart(5, "0") : "00000"; }
+  for (const k of ["unitName", "taxInvoiceName"]) if (out[k] !== undefined) out[k] = String(out[k] ?? "").trim().replace(/\s+/g, " ").slice(0, 200);
   return out;
 }
 
@@ -98,8 +105,24 @@ async function findDuplicates(tx: admin.firestore.Transaction | null, groupId: s
   return hits;
 }
 
+const TAX_IDENTITY = ["taxId", "branchCode", "unitName", "taxInvoiceName", "legalName"];
+
+/** คู่ค้ารายนี้มีเอกสารภาษีในบริษัทใดของเครือแล้วหรือยัง (ลูกค้า: ใบกำกับภาษี · ผู้ขาย/ผู้รับเหมา: ค่าใช้จ่าย/หนังสือรับรองหัก ณ ที่จ่าย) */
+async function hasTaxDocuments(entity: MasterEntity, groupId: string, companyId: string, id: string): Promise<boolean> {
+  const companies = new Set<string>([companyId]);
+  (await adminDb.collection("companies").where("groupId", "==", groupId).get()).docs.forEach((d) => companies.add(d.id));
+  companies.add(groupId);
+  const checks = entity === "customers" ? [["invoices", "customerId"]] : [["withholding_taxes", "supplierId"], ["expenses", "supplierId"]];
+  for (const c of companies) for (const [col, field] of checks) {
+    if (!(await adminDb.collection(`companies/${c}/${col}`).where(field, "==", id).limit(1).get()).empty) return true;
+  }
+  return false;
+}
+
+const FIELD_LABEL: Record<string, string> ={ taxId: "เลขผู้เสียภาษี", branchCode: "สาขา", unitName: "หน่วยงาน", sku: "รหัสสินค้า", barcode: "บาร์โค้ด" };
 const dupMessage = (entity: MasterEntity, hits: { fields: string[]; value: string; id: string }[]) =>
-  `${MASTER_SCHEMAS[entity].label}ที่มี ${hits.map((h) => `${h.fields.join("+")} ${h.value}`).join(", ")} มีอยู่แล้วในเครือ (รหัส ${hits.map((h) => h.id).join(", ")}) — ใช้รายการเดิมแล้วตั้งชื่อเฉพาะบริษัทแทน`;
+  `${MASTER_SCHEMAS[entity].label}ที่มี ${hits.map((h) => h.fields.map((f, i) => `${FIELD_LABEL[f] || f} ${h.value.split("|")[i] || (f === "unitName" ? "(หน่วยงานหลัก)" : "-")}`).join(" · ")).join(", ")} มีอยู่แล้วในเครือ (รหัส ${hits.map((h) => h.id).join(", ")})` +
+  (MASTER_SCHEMAS[entity].unique.some((u) => u.includes("unitName")) ? " — ใช้รายการเดิม หรือถ้าเป็นหน่วยงานแยกภายใต้เลขเดียวกัน ให้ระบุชื่อหน่วยงาน" : " — ใช้รายการเดิมแล้วตั้งชื่อเฉพาะบริษัทแทน");
 
 function writeUniqueKeys(tx: admin.firestore.Transaction, groupId: string, entity: MasterEntity, id: string, before: Record<string, any> | null, after: Record<string, any>) {
   for (const fields of MASTER_SCHEMAS[entity].unique) {
@@ -302,6 +325,15 @@ export async function POST(request: Request) {
         if (hits.length) throw new ApiAuthError(409, dupMessage(entity, hits));
         await legacy.ref.set({ ...all, updatedAt: now, updatedBy: apiUser.uid }, { merge: true });
         return NextResponse.json({ success: true, id, legacy: true, updated: Object.keys(all), ignored });
+      }
+      // ตัวตนทางภาษี (เลข สาขา หน่วยงาน ชื่อบนใบกำกับ) ของคู่ค้าที่มีเอกสารภาษีแล้ว แก้ได้เฉพาะฝ่ายบัญชี
+      // (เอกสารเก่าเก็บข้อมูล ณ วันที่ออกไว้แล้ว ไม่เปลี่ยนตาม) — กันภาษีขาย/ซื้อและ 50 ทวิ เพี้ยนจากการแก้โดยไม่ตั้งใจ
+      if (entity !== "products" && TAX_IDENTITY.some((k) => k in master) && !can(apiUser.roles, "finance:edit")) {
+        const current = (await masterCol.doc(id).get()).data() || {};
+        const changed = TAX_IDENTITY.filter((k) => k in master && String(master[k] ?? "").trim() !== String(current[k] ?? "").trim());
+        if (changed.length && (await hasTaxDocuments(entity, groupId, companyId, id))) {
+          throw new ApiAuthError(403, `${schema.label}นี้มีเอกสารภาษีแล้ว — เลขผู้เสียภาษี สาขา หน่วยงาน และชื่อบนใบกำกับภาษี แก้ได้เฉพาะฝ่ายบัญชี`);
+        }
       }
       if (Object.keys(master).length && !(await canEditMaster(apiUser, companyId, entity, groupId))) {
         throw new ApiAuthError(403, `ข้อมูลกลางของ${schema.label} (${Object.keys(master).join(", ")}) แก้ได้เฉพาะผู้ดูแลเครือ — ตั้งชื่อ/รายละเอียดเฉพาะบริษัทแทนได้`);

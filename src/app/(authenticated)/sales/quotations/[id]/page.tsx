@@ -35,6 +35,7 @@ import { SmartSelect, StepperInput, SciFiDropdownPortal } from "@/components/ui/
 import { db } from "@/lib/firebase-client";
 import { doc, collection, getDoc, getDocs } from "firebase/firestore";
 import { apiFetch } from "@/lib/api-client";
+import { partyDocName } from "@/lib/party-identity";
 
 export default function QuotationEditPage() {
   const { showAlert, showConfirm, showPrompt } = useSystemDialog();
@@ -94,7 +95,8 @@ export default function QuotationEditPage() {
   // Customer State
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const selectedCustomer = useMemo(() => customers.find(c => c.id === selectedCustomerId), [customers, selectedCustomerId]);
-  const getCustomerName = (c: any) => c?.customerName || c?.name || c?.companyName || "";
+  // ชื่อบนเอกสารของหน่วยงาน (หน่วยงานย่อยภายใต้เลขผู้เสียภาษีเดียวกันแยกชื่อกันได้)
+  const getCustomerName = (c: any) => partyDocName(c) || c?.customerName || "";
 
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);

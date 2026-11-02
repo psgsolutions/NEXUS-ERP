@@ -24,6 +24,9 @@ import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
+import { TaxUnitPanel } from "@/components/shared/TaxUnitPanel";
+import { useSuppliers } from "@/hooks/useCustomers";
+import { taxIdProblem } from "@/lib/party-identity";
 
 interface LaborRateItem {
   id: string;
@@ -39,6 +42,9 @@ const INITIAL_FORM = {
   name: "",
   entity_category: "TEAM" as "TEAM" | "COMPANY" | "STORE", // ทีมช่าง | บริษัท | ห้าง/ร้าน
   tax_id: "",
+  branchCode: "00000",
+  unitName: "",
+  taxInvoiceName: "",
   phone: "",
   email: "",
   address_detail: "",
@@ -76,6 +82,8 @@ export default function NewSupplierPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
+  // ผู้ขายทั้งเครือ — เตือนเลขผู้เสียภาษีที่มีอยู่แล้ว
+  const { data: existingSuppliers } = useSuppliers<any>({ includeGroupOnly: true });
 
   const handleBack = async () => {
     if (form.name || form.tax_id) {
@@ -95,6 +103,7 @@ export default function NewSupplierPage() {
     if (!form.tax_id) return void showAlert("กรุณาระบุเลขประจำตัวประชาชนหรือเลขประจำตัวผู้เสียภาษี");
     if (form.tax_id.length !== 13) return void showAlert("เลขประจำตัวต้องมีครบ 13 หลักตามกฎหมายกำหนด");
     if (!/^\d{13}$/.test(form.tax_id)) return void showAlert("เลขประจำตัวต้องเป็นตัวเลข 13 หลักเท่านั้น");
+    if (taxIdProblem(form.tax_id)) return void showAlert(taxIdProblem(form.tax_id));
 
     // Contact info check
     if (!form.phone.trim()) return void showAlert("กรุณาระบุเบอร์โทรศัพท์ติดต่อ");
@@ -319,10 +328,23 @@ export default function NewSupplierPage() {
                   setForm({...form, tax_id: numericVal});
                 }} 
                 placeholder="13 หลัก (ตัวเลขเท่านั้น)..." 
-                className="w-full h-9 rounded-full px-6 font-mono text-cyan-400 bg-white/[0.02]" 
+                className="w-full h-9 rounded-full px-6 font-mono text-cyan-400 bg-white/[0.02]"
               />
             </Field>
+            <Field label="รหัสสาขา">
+              <PillInput value={form.branchCode} onChange={(e) => setForm({ ...form, branchCode: e.target.value.replace(/[^0-9]/g, "").slice(0, 5) })} placeholder="00000 = สำนักงานใหญ่" className="w-full h-9 rounded-full px-6 font-mono bg-white/[0.02]" />
+            </Field>
           </div>
+          <TaxUnitPanel
+            records={existingSuppliers || []}
+            taxId={form.tax_id}
+            branchCode={form.branchCode}
+            unitName={form.unitName}
+            taxInvoiceName={form.taxInvoiceName}
+            baseName={form.name}
+            hrefOf={() => "/procurement"}
+            onChange={(v) => setForm({ ...form, ...v })}
+          />
 
           <section className="space-y-6 pt-6 border-t border-white/5">
             <h4 className="text-[12px] font-semibold text-white/80 uppercase flex items-center gap-2 border-b border-white/5 pb-3">

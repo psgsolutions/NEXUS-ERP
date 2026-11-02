@@ -11,6 +11,9 @@ import { useRouter } from 'next/navigation';
 import { useSystemDialog } from '@/context/DialogContext';
 import NexusPageLayout from '@/components/layout/NexusPageLayout';
 import { DocumentStepper } from '@/components/ui/DocumentStepper';
+import { TaxUnitPanel } from '@/components/shared/TaxUnitPanel';
+import { useCustomers } from '@/hooks/useCustomers';
+import { taxIdProblem } from '@/lib/party-identity';
 
 function convertThaiNumeralsToArabic(text: string): string {
   if (!text) return '';
@@ -52,6 +55,8 @@ export default function CustomerDataEntryPage() {
     customerName: '',
     taxId: '',
     branchCode: '00000',
+    unitName: '',
+    taxInvoiceName: '',
     addressNo: '',
     building: '',
     soi: '',
@@ -65,12 +70,16 @@ export default function CustomerDataEntryPage() {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  // ทุกรายการในเครือ (รวมที่ยังไม่ได้ใช้ในบริษัทนี้) — เตือนเลขผู้เสียภาษีที่มีอยู่แล้ว
+  const { data: existingCustomers } = useCustomers<any>({ includeGroupOnly: true });
 
   const handleSave = async () => {
     if (!formData.customerName || !formData.taxId) {
       showAlert('กรุณาระบุชื่อลูกค้า และเลขประจำตัวผู้เสียภาษี', 'ข้อมูลไม่ครบ', 'error');
       return;
     }
+    const taxProblem = taxIdProblem(convertThaiNumeralsToArabic(formData.taxId));
+    if (taxProblem) { showAlert(taxProblem, 'ตรวจเลขผู้เสียภาษี', 'error'); return; }
 
     try {
       setIsSaving(true);
@@ -165,6 +174,18 @@ export default function CustomerDataEntryPage() {
                 />
               </Field>
             </div>
+          </div>
+          <div className="mt-6">
+            <TaxUnitPanel
+              records={existingCustomers || []}
+              taxId={convertThaiNumeralsToArabic(formData.taxId)}
+              branchCode={formData.branchCode}
+              unitName={formData.unitName}
+              taxInvoiceName={formData.taxInvoiceName}
+              baseName={formData.customerName}
+              hrefOf={(id) => `/customers/${id}`}
+              onChange={(v) => setFormData({ ...formData, ...v })}
+            />
           </div>
         </div>
 

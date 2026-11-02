@@ -1,3 +1,4 @@
+import { isValidThaiTaxId } from "@/lib/party-identity";
 /**
  * แม่แบบนำเข้าข้อมูลจาก Excel (ฟังก์ชันล้วน — ใช้ทั้งหน้าจอและ unit test)
  * แต่ละแถวแปลงเป็นคำขอแบบเดียวกับฟอร์มเพิ่มข้อมูลในระบบ (ลูกค้า/ผู้ขาย/สินค้า: /api/master-data · พนักงาน: /api/hr/employees)
@@ -47,14 +48,16 @@ const ADDRESS: ImportColumn[] = [
 ];
 
 const PARTY_TAX: ImportColumn[] = [
-  { key: "taxId", header: "เลขประจำตัวผู้เสียภาษี", type: "taxId", example: "0105561234567", note: "13 หลัก (ไม่มีขีดก็ได้) — ใช้ตรวจข้อมูลซ้ำ" },
+  { key: "taxId", header: "เลขประจำตัวผู้เสียภาษี", type: "taxId", example: "0105561234560", note: "13 หลัก (ไม่มีขีดก็ได้) — ใช้ตรวจข้อมูลซ้ำ" },
   { key: "branchCode", header: "รหัสสาขา", type: "branch", example: "00000", note: "00000 = สำนักงานใหญ่ / ว่าง = สำนักงานใหญ่" },
+  { key: "unitName", header: "หน่วยงาน", type: "text", example: "", note: "หน่วยงานย่อยที่ใช้เลขผู้เสียภาษีเดียวกัน เช่น สำนักงานเขตบางรัก — ว่าง = หน่วยงานหลัก" },
+  { key: "taxInvoiceName", header: "ชื่อบนใบกำกับภาษี", type: "text", example: "", note: "ว่าง = ชื่อ (หน่วยงาน)" },
 ];
 
 export const IMPORT_TEMPLATES: Record<ImportEntity, ImportTemplate> = {
   customers: {
     entity: "customers", label: "ลูกค้า", permission: "sales:edit",
-    uniqueKeys: [["taxId", "branchCode"]],
+    uniqueKeys: [["taxId", "branchCode", "unitName"]],
     columns: [
       SYSTEM_ID,
       { key: "name", header: "ชื่อลูกค้า", required: true, type: "text", example: "บริษัท ตัวอย่าง จำกัด" },
@@ -72,7 +75,7 @@ export const IMPORT_TEMPLATES: Record<ImportEntity, ImportTemplate> = {
   },
   suppliers: {
     entity: "suppliers", label: "ผู้ขาย", permission: "procurement:edit",
-    uniqueKeys: [["taxId", "branchCode"]],
+    uniqueKeys: [["taxId", "branchCode", "unitName"]],
     columns: [
       SYSTEM_ID,
       { key: "name", header: "ชื่อผู้ขาย", required: true, type: "text", example: "บริษัท ซัพพลาย จำกัด" },
@@ -137,7 +140,7 @@ export const IMPORT_TEMPLATES: Record<ImportEntity, ImportTemplate> = {
       { key: "firstName", header: "ชื่อ", required: true, type: "text", example: "สมชาย" },
       { key: "lastName", header: "นามสกุล", required: true, type: "text", example: "ใจดี" },
       { key: "nickname", header: "ชื่อเล่น", type: "text", example: "ชาย" },
-      { key: "citizenId", header: "เลขบัตรประชาชน", type: "taxId", example: "1103700012345", note: "13 หลัก — ใช้ตรวจข้อมูลซ้ำ" },
+      { key: "citizenId", header: "เลขบัตรประชาชน", type: "taxId", example: "1103700012346", note: "13 หลัก — ใช้ตรวจข้อมูลซ้ำ" },
       { key: "position", header: "ตำแหน่ง", required: true, type: "text", example: "ช่างติดตั้ง" },
       { key: "department", header: "แผนก", type: "text", example: "ติดตั้ง/ช่าง" },
       { key: "employmentType", header: "ประเภทการจ้าง", type: "choice", example: "พนักงานประจำ", note: "พนักงานประจำ / สัญญาจ้าง / รายวัน / พาร์ตไทม์", choices: { "พนักงานประจำ": "permanent", "ประจำ": "permanent", "สัญญาจ้าง": "contract", "รายวัน": "daily", "พาร์ตไทม์": "parttime" } },
@@ -235,7 +238,9 @@ export function parseRows(template: ImportTemplate, rows: any[][], index: Record
         case "taxId": {
           // Excel เก็บเลขเป็นตัวเลข เลข 0 นำหน้าหาย (0105... -> 105...)
           const d = typeof rawVal === "number" ? String(rawVal).padStart(13, "0") : text.replace(/\D/g, "");
-          if (d.length !== 13) errors.push(`${c.header} ต้องมี 13 หลัก ("${text}")`); else values[c.key] = d;
+          if (d.length !== 13) errors.push(`${c.header} ต้องมี 13 หลัก ("${text}")`);
+          else if (!isValidThaiTaxId(d)) errors.push(`${c.header} ไม่ถูกต้อง (หลักสุดท้ายไม่ตรงสูตรตรวจ) ("${text}")`);
+          else values[c.key] = d;
           break;
         }
         case "branch": {
@@ -268,10 +273,10 @@ export function parseRows(template: ImportTemplate, rows: any[][], index: Record
     if ((template.entity === "customers" || template.entity === "suppliers") && values.taxId && !values.branchCode) values.branchCode = "00000";
     if (template.entity === "products" && values.itemType === "SERVICE" && values.openingQty) errors.push("บริการไม่มีจำนวนคงเหลือยกมา");
     if (template.validate && !errors.length) errors.push(...template.validate(values));
-    // ซ้ำภายในไฟล์
+    // ซ้ำภายในไฟล์ (คีย์แรกต้องมีค่า คีย์ที่เหลือว่างได้ เช่น หน่วยงานหลักไม่มีชื่อหน่วยงาน)
     template.uniqueKeys.forEach((keys, k) => {
-      if (!keys.every((key) => values[key])) return;
-      const v = keys.map((key) => String(values[key]).trim().toLowerCase()).join("|");
+      if (!values[keys[0]]) return;
+      const v = keys.map((key) => String(values[key] ?? "").trim().toLowerCase().replace(/\s+/g, "")).join("|");
       const first = seen[k].get(v);
       if (first) errors.push(`${keys.map((key) => template.columns.find((c) => c.key === key)?.header).join("+")} ซ้ำกับแถว ${first}`);
       else seen[k].set(v, rowNo);
@@ -301,7 +306,7 @@ export function toCreateRequest(entity: ImportEntity, v: Record<string, any>, op
   }
   if (entity === "customers") {
     return { data: {
-      name: v.name, customerName: v.name, taxId: v.taxId || "", branchCode: v.branchCode || "00000", ...partyAddress(v),
+      name: v.name, customerName: v.name, taxId: v.taxId || "", branchCode: v.branchCode || "00000", unitName: v.unitName || "", taxInvoiceName: v.taxInvoiceName || "", ...partyAddress(v),
       phone: v.phone || "", phoneNumber: v.phone || "", email: v.email || "", contactPerson: v.contactPerson || "", contactName: v.contactPerson || "",
       creditLimit: v.creditLimit || 0, creditTermDays: v.creditTermDays ?? 30, status: "ACTIVE", importedFrom: "excel",
       branchName: v.branchName || "", note: v.note || "",
@@ -313,7 +318,7 @@ export function toCreateRequest(entity: ImportEntity, v: Record<string, any>, op
     return { data: {
       name: v.name, supplierName: v.name, entity_category: cat, contractor_type: cat,
       category: cat === "TEAM" ? "ทีมช่าง" : cat === "STORE" ? "ห้าง/ร้าน" : "บริษัท",
-      taxId: v.taxId || "", tax_id: v.taxId || "", branchCode: v.branchCode || "00000", ...partyAddress(v),
+      taxId: v.taxId || "", tax_id: v.taxId || "", branchCode: v.branchCode || "00000", unitName: v.unitName || "", taxInvoiceName: v.taxInvoiceName || "", ...partyAddress(v),
       phone: v.phone || "", email: v.email || "", contact_person: v.contactPerson || "", contactName: v.contactPerson || "",
       payment_term: `${v.creditTermDays ?? 30} Days`, creditTermDays: v.creditTermDays ?? 30,
       bankName: v.bankName || "", bank_name: v.bankName || "", bankAccount: v.bankAccount || "", account_number: v.bankAccount || "",

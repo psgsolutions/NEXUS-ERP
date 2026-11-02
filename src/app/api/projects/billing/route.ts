@@ -12,6 +12,7 @@ import { addressText } from "@/lib/documents/party";
 import { advanceBillAmounts, advanceRecovery, billingSummary, progressBillAmounts, retentionReleaseAmounts, type BillRecord } from "@/lib/project-billing";
 import { auditServer } from "@/services/audit.server";
 import { normalizeProjectStatus, PROJECT_STATUS_TH } from "@/lib/project-status";
+import { partyDocName } from "@/lib/party-identity";
 
 /** เรียกเก็บเงินได้เมื่อโครงการอนุมัติแล้ว (อนุมัติ / กำลังดำเนินการ / ปิดโครงการ — เบิกคืนเงินประกันหลังปิด) */
 const BILLABLE = ["Approved", "In Progress", "Completed"];
@@ -123,7 +124,7 @@ export async function POST(request: Request) {
       ]);
       const c = cust?.data() || {};
       const customerSnapshot = {
-        name: str(c.name || c.customerName || pd.customerName, 200), taxId: str(c.taxId || c.tax_id).replace(/\D/g, ""),
+        name: str(partyDocName(c) || pd.customerName, 200), taxId: str(c.taxId || c.tax_id).replace(/\D/g, ""),
         branch: str(c.branch || c.branchName || (c.branchCode && c.branchCode !== "00000" ? c.branchCode : "สำนักงานใหญ่")), branchCode: str(c.branchCode || c.branch_code),
         address: addressText(c),
       };

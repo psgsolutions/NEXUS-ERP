@@ -8,6 +8,9 @@ import { InfoTip } from "@/components/guide/Guidance";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
+import { TaxUnitPanel } from "@/components/shared/TaxUnitPanel";
+import { useCustomers } from "@/hooks/useCustomers";
+import { taxIdProblem } from "@/lib/party-identity";
 import {
   BILLING_LABELS, COMMON_ATTACHMENTS, ORG_DEFAULTS, ORG_LABELS, UNDATED_LABELS, docProfileSummary, effectiveDocProfile,
   type BillingMethod, type DocProfile, type OrgType, type UndatedDoc,
@@ -19,7 +22,7 @@ import {
  * - โปรไฟล์เอกสาร: ฝ่ายขาย/วิศวกร หรือแอดมินการเงิน (finance:edit) — บันทึกแยก เฉพาะของบริษัทนี้
  */
 
-const BASIC_FIELDS = ["name", "taxId", "branchCode", "addressNo", "subDistrict", "district", "province", "zipCode", "phone", "email", "contactPerson"] as const;
+const BASIC_FIELDS = ["name", "taxId", "branchCode", "unitName", "taxInvoiceName", "addressNo", "subDistrict", "district", "province", "zipCode", "phone", "email", "contactPerson"] as const;
 type Basic = Record<(typeof BASIC_FIELDS)[number], string> & { creditLimit: string; creditTermDays: string };
 
 const Field = ({ label, tip, children, className }: { label: string; tip?: string; children: React.ReactNode; className?: string }) => (
@@ -38,6 +41,8 @@ export default function CustomerDetailPage() {
   const canEditProfile = canEditBasic || can(roles, "finance:edit");
 
   const [record, setRecord] = useState<any>(null);
+  // ลูกค้าทั้งเครือ — เตือนเลขผู้เสียภาษี/หน่วยงานซ้ำ
+  const { data: allCustomers } = useCustomers<any>({ includeGroupOnly: true });
   const [basic, setBasic] = useState<Basic | null>(null);
   const [profile, setProfile] = useState<DocProfile>({ orgType: "PRIVATE" });
   const [customAttachment, setCustomAttachment] = useState("");
@@ -53,7 +58,7 @@ export default function CustomerDetailPage() {
       const r = d.record;
       setRecord(r);
       setBasic({
-        name: r.name || r.customerName || "", taxId: r.taxId || r.tax_id || "", branchCode: r.branchCode || "00000",
+        name: r.name || r.customerName || "", taxId: r.taxId || r.tax_id || "", branchCode: r.branchCode || "00000", unitName: r.unitName || "", taxInvoiceName: r.taxInvoiceName || "",
         addressNo: r.addressNo || r.address_detail || r.address || "", subDistrict: r.subDistrict || "", district: r.district || "", province: r.province || "", zipCode: r.zipCode || "",
         phone: r.phone || r.phoneNumber || "", email: r.email || "", contactPerson: r.contactPerson || r.contactName || "",
         creditLimit: String(r.creditLimit ?? ""), creditTermDays: String(r.creditTermDays ?? r.credit_term_days ?? ""),
@@ -78,7 +83,7 @@ export default function CustomerDetailPage() {
   const saveBasic = async () => {
     if (!basic) return;
     if (!basic.name.trim()) return setMsg({ text: "กรุณาระบุชื่อลูกค้า", error: true });
-    if (basic.taxId && basic.taxId.replace(/\D/g, "").length !== 13) return setMsg({ text: "เลขประจำตัวผู้เสียภาษีต้องมี 13 หลัก", error: true });
+    if (basic.taxId && taxIdProblem(basic.taxId)) return setMsg({ text: taxIdProblem(basic.taxId), error: true });
     setSaving("basic");
     setMsg(null);
     try {
@@ -148,6 +153,9 @@ export default function CustomerDetailPage() {
               <Field label="ชื่อลูกค้า / หน่วยงาน" className="md:col-span-2"><PillInput value={basic.name} disabled={!canEditBasic} onChange={(e) => setBasic({ ...basic, name: e.target.value })} className="w-full h-9 text-sm" /></Field>
               <Field label="เลขประจำตัวผู้เสียภาษี"><PillInput value={basic.taxId} disabled={!canEditBasic} onChange={(e) => setBasic({ ...basic, taxId: e.target.value })} className="w-full h-9 text-sm font-mono" /></Field>
               <Field label="รหัสสาขา" tip="สำนักงานใหญ่ = 00000 · ต้องตรงกับที่ลูกค้าแจ้ง เพราะพิมพ์บนใบกำกับภาษี"><PillInput value={basic.branchCode} disabled={!canEditBasic} onChange={(e) => setBasic({ ...basic, branchCode: e.target.value })} className="w-full h-9 text-sm font-mono" /></Field>
+              <div className="md:col-span-2">
+                <TaxUnitPanel records={allCustomers || []} taxId={basic.taxId} branchCode={basic.branchCode} unitName={basic.unitName} taxInvoiceName={basic.taxInvoiceName} baseName={basic.name} exceptId={id} hrefOf={(cid) => `/customers/${cid}`} disabled={!canEditBasic} onChange={(v) => setBasic({ ...basic, ...v })} />
+              </div>
               <Field label="ที่อยู่ (เลขที่ อาคาร ถนน)" className="md:col-span-2"><PillInput value={basic.addressNo} disabled={!canEditBasic} onChange={(e) => setBasic({ ...basic, addressNo: e.target.value })} className="w-full h-9 text-sm" /></Field>
               <Field label="ตำบล/แขวง"><PillInput value={basic.subDistrict} disabled={!canEditBasic} onChange={(e) => setBasic({ ...basic, subDistrict: e.target.value })} className="w-full h-9 text-sm" /></Field>
               <Field label="อำเภอ/เขต"><PillInput value={basic.district} disabled={!canEditBasic} onChange={(e) => setBasic({ ...basic, district: e.target.value })} className="w-full h-9 text-sm" /></Field>

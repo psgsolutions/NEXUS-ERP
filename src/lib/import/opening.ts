@@ -28,7 +28,7 @@ const PARTY_DOC = (party: "ลูกค้า" | "ผู้ขาย", amountHea
   { key: "date", header: "วันที่เอกสาร", required: true, type: "date", example: "15/09/2569", note: "วว/ดด/ปปปป (พ.ศ. หรือ ค.ศ.) หรือเซลล์วันที่ของ Excel" },
   { key: "dueDate", header: "วันครบกำหนด", type: "date", example: "15/10/2569", note: "ว่าง = วันที่เอกสาร" },
   { key: "partyName", header: `ชื่อ${party}`, required: true, type: "text", example: party === "ลูกค้า" ? "บริษัท ตัวอย่าง จำกัด" : "บริษัท ซัพพลาย จำกัด", note: `ต้องมีในระบบแล้ว (นำเข้า${party}ก่อน) — จับคู่ด้วยเลขผู้เสียภาษีก่อน แล้วจึงใช้ชื่อ` },
-  { key: "taxId", header: "เลขประจำตัวผู้เสียภาษี", type: "taxId", example: "0105561234567" },
+  { key: "taxId", header: "เลขประจำตัวผู้เสียภาษี", type: "taxId", example: "0105561234560" },
   { key: "branchCode", header: "รหัสสาขา", type: "branch", example: "00000" },
   { key: "amount", header: amountHeader, required: true, type: "number", example: "53500", note: "ยอดที่ยังค้าง ณ วันเริ่มใช้ระบบ (รวม VAT)" },
   { key: "subTotal", header: "ยอดก่อน VAT", type: "number", example: "50000", note: "ใช้คำนวณภาษีหัก ณ ที่จ่ายตอนรับ/จ่ายเงิน — ว่าง = เท่ากับยอดค้าง" },

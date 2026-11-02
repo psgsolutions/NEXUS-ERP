@@ -7,6 +7,7 @@ import { prepareSequence } from "@/lib/sequence-server";
 import { auditServer } from "@/services/audit.server";
 import { getCompanyCustomer, assertCreditAvailable } from "@/lib/credit-limit.server";
 import { computeDocTotals, normalizeVatMode, sanitizeLines } from "@/lib/doc-totals";
+import { partyDocName } from "@/lib/party-identity";
 
 /**
  * [API-SERVER] สร้างใบสั่งขาย (SO)
@@ -42,7 +43,8 @@ export async function POST(request: Request) {
     const cust = await getCompanyCustomer(companyId, customerId);
     if (!cust) throw new ApiAuthError(400, "ไม่พบลูกค้านี้ในบริษัท");
     const c = cust.data()!;
-    const name = str(c.name || c.customerName || c.companyName || customerId, 200);
+    // ชื่อบนเอกสารของหน่วยงานนั้น (ชื่อบนใบกำกับภาษีที่ตั้งไว้ หรือ "ชื่อ (หน่วยงาน)")
+    const name = str(partyDocName(c) || customerId, 200);
 
     // วงเงินเครดิต: ยอดค้างของใบกำกับภาษีที่ยังไม่ชำระครบ
     if (status === "Confirmed") await assertCreditAvailable(companyId, customerId, c, t.grandTotal);

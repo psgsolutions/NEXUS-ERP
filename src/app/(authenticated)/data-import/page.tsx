@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CheckCheck, Download, FileDown, FileSpreadsheet, Files, Pencil, RefreshCw, RotateCcw, SpellCheck, Trash2, Undo2, Upload, X } from "lucide-react";
+import { AlertTriangle, CheckCheck, Download, FileDown, FileSpreadsheet, Files, Pencil, RefreshCw, RotateCcw, SpellCheck, Trash2, Undo2, Upload, X } from "lucide-react";
 import { GlassCard, NexusDatePicker, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillCheckbox, PillSelect, PillTabs, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
@@ -13,6 +13,8 @@ import { OPENING_TB_REF, OPENING_TEMPLATES, tbLines, type OpeningKind } from "@/
 import { detectEntity, sheetName } from "@/lib/import/detect";
 import { checkRowSpelling, type FieldFix } from "@/lib/import/row-check";
 import { buildAddressIndex, type AddressIndex } from "@/lib/spellcheck";
+import { isDupWarning, markPartyDuplicates } from "@/lib/import/party-dups";
+import { useCustomers, useSuppliers } from "@/hooks/useCustomers";
 import { ImportRowEditor } from "@/components/import/ImportRowEditor";
 
 /**
@@ -84,16 +86,22 @@ const firstOfMonth = () => `${bkkToday().slice(0, 7)}-01`;
 const headerRow = (t: ImportTemplate) => t.columns.map((c) => (c.required ? `${c.header}*` : c.header));
 const colWidths = (t: ImportTemplate) => t.columns.map((c) => ({ wch: Math.max(14, c.header.length + 4) }));
 const countOf = (rows: RowState[]) => {
-  const c = { ready: 0, invalid: 0, saving: 0, done: 0, failed: 0, skipped: 0, removed: 0 };
-  rows.forEach((r) => c[r.status]++);
+  const c = { ready: 0, review: 0, invalid: 0, saving: 0, done: 0, failed: 0, skipped: 0, removed: 0 };
+  rows.forEach((r) => (isReview(r) ? c.review++ : c[r.status]++));
   return c;
 };
 
 /** ฐานข้อมูลที่อยู่ไทย (โหลดครั้งเดียวเมื่อมีข้อมูลลูกค้า/ผู้ขาย) — ใช้ตรวจจังหวัด อำเภอ ตำบล รหัสไปรษณีย์ */
 let ADDRESS_INDEX: AddressIndex | null = null;
 
-/** แถวที่ต้องดู: ไม่ผ่าน · นำเข้าไม่สำเร็จ · มีคำที่อาจพิมพ์ผิด (ยังไม่นำเข้า) */
-const needsAttention = (r: RowState) => r.status === "invalid" || r.status === "failed" || ((r.status === "ready") && !!r.fixes?.length);
+/** ลูกค้า/ผู้ขายที่มีอยู่ในระบบ (โหลดเมื่อมีชุดข้อมูลชนิดนั้น) — ใช้ตรวจซ้ำก่อนนำเข้า */
+const EXISTING: Partial<Record<TabId, any[]>> = {};
+
+/** ยังไม่ผ่านการตรวจทาน: รูปแบบถูกแล้ว แต่มีคำเตือน (คำผิด/เลขผู้เสียภาษีซ้ำ) — แก้หรือปล่อยผ่านก่อนจึงนำเข้า */
+const isReview = (r: RowState) => r.status === "ready" && !!r.fixes?.length;
+
+/** แถวที่ต้องดู: ไม่ผ่าน · นำเข้าไม่สำเร็จ · มีคำเตือน (ยังไม่นำเข้า) */
+const needsAttention = (r: RowState) => r.status === "invalid" || r.status === "failed" || isReview(r);
 
 const fixKey = (rowNo: number, f: FieldFix) => `${rowNo}|${f.key}|${f.to || f.from}`;
 /** ตัดคำเตือนที่ปล่อยผ่านแล้วออก */
@@ -168,6 +176,7 @@ function parseBatch(aoa: any[][], entity: TabId | null, ignoreDup?: Set<number>)
     normalized += chk.normalized;
     return { ...r, values: chk.values, fixes: chk.fixes, status: r.errors.length ? "invalid" : "ready" };
   });
+  if (entity === "customers" || entity === "suppliers") markPartyDuplicates(template, rows, EXISTING[entity] || []);
   return { rows, notes: { missing, unknown, normalized }, error: "" };
 }
 
@@ -293,6 +302,9 @@ export default function DataImportPage() {
 
   // ตรวจที่อยู่: โหลดฐานข้อมูลที่อยู่ไทยเมื่อมีข้อมูลลูกค้า/ผู้ขาย แล้วตรวจทุกชุดใหม่
   const needsAddress = batches.some((b) => b.entity === "customers" || b.entity === "suppliers");
+  const hasCustomers = batches.some((b) => b.entity === "customers"), hasSuppliers = batches.some((b) => b.entity === "suppliers");
+  // ข้อมูลในระบบโหลดเสร็จ/เปลี่ยน → ตรวจซ้ำชุดชนิดนั้นใหม่ (แถวที่นำเข้าแล้ว/ข้าม/ลบ คงสถานะ)
+  const onExistingLoaded = useCallback((entity: TabId) => setBatches((cur) => cur.map((b) => (b.entity === entity ? reparse(b, b.aoa) : b))), []);
   useEffect(() => {
     if (!needsAddress || ADDRESS_INDEX) return;
     let cancelled = false;
@@ -417,7 +429,7 @@ export default function DataImportPage() {
 
   /** งบทดลองต้องนำเข้าทั้งชุด: ทุกแถวผ่าน และเดบิต = เครดิต */
   const tbOf = (b: Batch) => (b.entity === "tb" ? tbLines(b.rows.filter((r) => r.status !== "invalid" && r.status !== "skipped").map((r) => r.values as any)) : null);
-  const pendingOf = (b: Batch) => (b.entity && !b.error ? b.rows.filter((r) => r.status === "ready" || r.status === "failed") : []);
+  const pendingOf = (b: Batch) => (b.entity && !b.error ? b.rows.filter((r) => (r.status === "ready" && !isReview(r)) || r.status === "failed") : []);
   const blockedOf = (b: Batch) => !b.entity || !!b.error || b.notes.missing.length > 0 || (b.entity === "tb" && (countOf(b.rows).invalid > 0 || !tbOf(b)?.balanced));
 
   // ---------- ลบ / ข้าม / ปล่อยผ่าน ----------
@@ -647,6 +659,8 @@ export default function DataImportPage() {
             </>
           )}
 
+          {hasCustomers && <CustomersLoader onLoad={onExistingLoaded} />}
+          {hasSuppliers && <SuppliersLoader onLoad={onExistingLoaded} />}
           <ImportRowEditor
             open={!!editRow}
             template={editBatch?.entity ? TEMPLATES[editBatch.entity] : null}
@@ -667,6 +681,7 @@ export default function DataImportPage() {
               <span className="text-white/80 font-bold">{batch.fileName}{batch.sheets > 1 ? ` · ${batch.sheet}` : ""} — {bTemplate.label}</span>
               <span>ทั้งหมด <span className="font-mono font-bold text-white">{batch.rows.length}</span></span>
               <span>พร้อมนำเข้า <span className="font-mono font-bold text-nexus-teal">{count.ready}</span></span>
+              {count.review > 0 && <span>ต้องตรวจสอบ <span className="font-mono font-bold text-amber-300">{count.review}</span></span>}
               {count.invalid > 0 && <span>ไม่ผ่าน <span className="font-mono font-bold text-danger">{count.invalid}</span></span>}
               {count.done > 0 && <span>นำเข้าแล้ว <span className="font-mono font-bold text-nexus-teal">{count.done}</span></span>}
               {count.failed > 0 && <span>ไม่สำเร็จ <span className="font-mono font-bold text-danger">{count.failed}</span></span>}
@@ -702,14 +717,14 @@ export default function DataImportPage() {
                         {r.values[c.key] === undefined ? "-" : c.type === "number" ? money(r.values[c.key]) : typeof r.values[c.key] === "number" ? r.values[c.key].toLocaleString("th-TH") : String(r.values[c.key])}
                       </NexusTableCell>
                     ))}
-                    <NexusTableCell><span className={cn("text-[12px] font-bold", STATUS[r.status][1])}>{STATUS[r.status][0]}</span></NexusTableCell>
+                    <NexusTableCell><span className={cn("text-[12px] font-bold", isReview(r) ? "text-amber-300" : STATUS[r.status][1])}>{isReview(r) ? "ตรวจสอบ" : STATUS[r.status][0]}</span></NexusTableCell>
                     <NexusTableCell className="text-[12px]" title={[...r.errors, r.message, ...(r.fixes || []).map((x) => x.message)].filter(Boolean).join(" · ")}>
                       {r.status === "removed"
                         ? <span className="text-white/60">{r.message}</span>
                         : [...r.errors, r.message].filter(Boolean).length > 0
                         ? <span className="text-danger">{[...r.errors, r.message].filter(Boolean).join(" · ")}</span>
                         : r.fixes?.length && !["done", "skipped", "removed"].includes(r.status)
-                          ? <span className="text-amber-300 flex items-center gap-1"><SpellCheck size={12} className="shrink-0" /> {r.fixes.map((x) => x.message).join(" · ")}</span>
+                          ? <span className="text-amber-300 flex items-center gap-1">{r.fixes.some(isDupWarning) ? <AlertTriangle size={12} className="shrink-0" /> : <SpellCheck size={12} className="shrink-0" />} {r.fixes.map((x) => x.message).join(" · ")}</span>
                           : <span className="text-white/60">{r.status === "done" && r.message ? r.message : "-"}</span>}
                     </NexusTableCell>
                     <NexusTableCell className="text-right">
@@ -739,4 +754,16 @@ export default function DataImportPage() {
       </div>
     </div>
   );
+}
+
+/** โหลดลูกค้า/ผู้ขายในระบบ (เฉพาะเมื่อมีชุดข้อมูลชนิดนั้น) แล้วให้หน้าตรวจซ้ำใหม่ */
+function CustomersLoader({ onLoad }: { onLoad: (entity: TabId) => void }) {
+  const { data, loading } = useCustomers<any>({ includeGroupOnly: true });
+  useEffect(() => { if (!loading) { EXISTING.customers = data || []; onLoad("customers"); } }, [data, loading, onLoad]);
+  return null;
+}
+function SuppliersLoader({ onLoad }: { onLoad: (entity: TabId) => void }) {
+  const { data, loading } = useSuppliers<any>({ includeGroupOnly: true });
+  useEffect(() => { if (!loading) { EXISTING.suppliers = data || []; onLoad("suppliers"); } }, [data, loading, onLoad]);
+  return null;
 }

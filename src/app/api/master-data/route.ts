@@ -471,6 +471,8 @@ export async function POST(request: Request) {
       const othersUsing = otherCompanies.length > 0 && (await Promise.all(otherCompanies.map((c) => adminDb.doc(`companies/${c}/${entity}/${id}`).get())))
         .some((d) => d.exists && d.get("isDeleted") !== true);
       const stamp = { isDeleted: true, deletedAt: now, deletedBy: apiUser.uid, updatedAt: now };
+      // คีย์ห้ามซ้ำทุกตัวที่ชี้มาที่รายการนี้ (รวมรูปแบบเก่า เช่น "เลข|สาขา" ที่คำนวณจากข้อมูลปัจจุบันไม่ได้) — คืนให้หมดเมื่อลบจริง
+      const ownKeys = m.exists && !othersUsing ? (await adminDb.collection(`groups/${groupId}/unique_keys`).where("id", "==", id).get()).docs.filter((k) => k.get("entity") === entity) : [];
       await adminDb.runTransaction(async (tx) => {
         tx.set(target, stamp, { merge: true });
         if (opening) {
@@ -483,6 +485,7 @@ export async function POST(request: Request) {
         if (m.exists && !othersUsing) {
           tx.set(masterCol.doc(id), stamp, { merge: true });
           writeUniqueKeys(tx, groupId, entity, id, m.data()!, {});
+          ownKeys.forEach((k) => tx.delete(k.ref));
           tx.create(masterCol.doc(id).collection("history").doc(), historyEntry(apiUser, companyId, "remove", {}));
         }
       });

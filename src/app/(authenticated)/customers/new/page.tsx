@@ -15,6 +15,7 @@ import { TaxUnitPanel } from '@/components/shared/TaxUnitPanel';
 import { SpellHint } from '@/components/shared/SpellHint';
 import { useCustomers } from '@/hooks/useCustomers';
 import { taxIdProblem } from '@/lib/party-identity';
+import { ThaiAddressAutocomplete } from "@/components/ui/ThaiAddressAutocomplete";
 
 function convertThaiNumeralsToArabic(text: string): string {
   if (!text) return '';
@@ -252,9 +253,11 @@ export default function CustomerDataEntryPage() {
               </Field>
 
               <Field label="ตำบล/แขวง">
-                <PillInput 
+                <ThaiAddressAutocomplete
                   value={formData.subDistrict}
                   onChange={e => setFormData({...formData, subDistrict: e.target.value})}
+                  onSelect={(a) => setFormData({ ...formData, ...a })}
+                  placeholder="พิมพ์ชื่อตำบล/แขวง แล้วเลือก"
                   className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-bold"
                 />
               </Field>

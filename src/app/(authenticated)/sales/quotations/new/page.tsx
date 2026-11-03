@@ -8,6 +8,8 @@ import { PillButton, PillCheckbox, cn, NexusDatePicker, GlassCard, Modal, PillIn
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { QuotationTermsCards } from "@/components/commerce/QuotationTermsCards";
 import { DocumentAttachmentsCard } from "@/components/commerce/DocumentAttachmentsCard";
+import { ChoiceInput } from "@/components/ui/ChoiceInput";
+import { PAYMENT_TERMS, DELIVERY_TERMS } from "@/lib/choices";
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { quotationLines, quotationModel } from "@/lib/documents/build";
 import { documentProfileOf } from "@/lib/documents/profile";
@@ -314,7 +316,6 @@ export default function QuotationCreationPage() {
   const [leadSource] = useState("");
   const [projectName, setProjectName] = useState("");
   const [incoTerms, setIncoTerms] = useState("");
-  const [isShippingTermsActive, setIsShippingTermsActive] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [savedQuotationId, setSavedQuotationId] = useState("");
   const [expectedDeliveryDays, setExpectedDeliveryDays] = useState<number>(30);
@@ -1188,39 +1189,7 @@ export default function QuotationCreationPage() {
             </div>
             <div className="space-y-1 col-span-6 relative">
               <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เงื่อนไขการส่ง</label>
-              <SciFiDropdownPortal
-                isOpen={isShippingTermsActive}
-                onClose={() => setIsShippingTermsActive(false)}
-                trigger={
-                  <div className="relative w-full">
-                    <PillInput
-                      type="text"
-                      value={incoTerms}
-                      onChange={(e) => setIncoTerms(e.target.value)}
-                      onFocus={() => setIsShippingTermsActive(true)}
-                      placeholder="Ex. จัดส่งฟรี, ขนส่งเอกชน, รับสินค้าด้วยตัวเอง..."
-                      className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 text-[12px] font-bold text-white focus:text-nexus-teal text-left"
-                    />
-                  </div>
-                }
-              >
-                <div className="max-h-[260px] overflow-y-auto custom-scrollbar p-1.5 bg-surface-1 border border-white/10 rounded-2xl shadow-2xl space-y-1">
-                  <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest px-2 pb-1">ตัวเลือกแนะนำ</p>
-                  {["จัดส่งฟรี", "คิดค่าจัดส่งตามระยะทาง", "จัดส่งผ่านขนส่งเอกชน", "ลูกค้ารับสินค้าเอง"].map((term) => (
-                    <button
-                      key={term}
-                      type="button"
-                      onClick={() => {
-                        setIncoTerms(term);
-                        setIsShippingTermsActive(false);
-                      }}
-                      className="w-full text-left px-3 py-1.5 rounded-xl text-[12px] font-bold text-white/70 hover:text-white hover:bg-nexus-teal/20 transition-all border border-transparent hover:border-nexus-teal/30"
-                    >
-                      {term}
-                    </button>
-                  ))}
-                </div>
-              </SciFiDropdownPortal>
+              <ChoiceInput value={incoTerms} onChange={setIncoTerms} options={["จัดส่งฟรี", "คิดค่าจัดส่งตามระยะทาง", "จัดส่งผ่านขนส่งเอกชน", "ลูกค้ารับสินค้าเอง", ...DELIVERY_TERMS]} placeholder="เช่น ส่งถึงหน้างานลูกค้า" className="w-full" />
             </div>
             <div className="space-y-1 col-span-6">
               <div className="flex items-center justify-between">
@@ -1280,12 +1249,7 @@ export default function QuotationCreationPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เงื่อนไขชำระ</label>
-                <PillInput
-                  type="text"
-                  value={paymentTerms}
-                  onChange={(e) => setPaymentTerms(e.target.value)}
-                  className="w-full h-8 bg-black/20 border border-white/10 rounded-full px-2 text-[12px] font-bold text-nexus-teal text-center"
-                />
+                <ChoiceInput value={paymentTerms} onChange={setPaymentTerms} options={PAYMENT_TERMS} placeholder="เลือกหรือพิมพ์เงื่อนไขชำระ" className="w-full" />
               </div>
             </div>
 

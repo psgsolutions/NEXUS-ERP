@@ -8,6 +8,8 @@ import { PillButton, PillCheckbox, cn, NexusDatePicker, GlassCard, Modal, PillIn
 import Link from "next/link";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { DocumentAttachmentsCard } from "@/components/commerce/DocumentAttachmentsCard";
+import { ChoiceInput } from "@/components/ui/ChoiceInput";
+import { PAYMENT_TERMS, LEAD_SOURCES, DELIVERY_TERMS } from "@/lib/choices";
 import { QuotationTermsCards, type PaymentSchedule } from "@/components/commerce/QuotationTermsCards";
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { quotationLines, quotationModel } from "@/lib/documents/build";
@@ -1332,23 +1334,11 @@ export default function QuotationEditPage() {
             </div>
             <div className="space-y-1 col-span-3">
               <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">แหล่งที่มา</label>
-              <PillInput
-                type="text"
-                value={leadSource}
-                onChange={(e) => setLeadSource(e.target.value)}
-                placeholder="เช่น Website, งานสัมมนา, ลูกค้าแนะนำ"
-                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[12px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all text-left leading-relaxed"
-              />
+              <ChoiceInput value={leadSource} onChange={setLeadSource} options={LEAD_SOURCES} placeholder="เช่น ลูกค้าแนะนำ, เว็บไซต์" className="w-full" />
             </div>
             <div className="space-y-1 col-span-6">
               <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เงื่อนไขการส่งมอบ</label>
-              <PillInput
-                type="text"
-                value={incoTerms}
-                onChange={(e) => setIncoTerms(e.target.value)}
-                placeholder="เช่น FOB, EXW, ส่งมอบถึงสถานที่ติดตั้ง"
-                className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-4 py-0 text-[12px] font-bold text-white focus:text-nexus-teal focus:outline-none transition-all text-left leading-relaxed"
-              />
+              <ChoiceInput value={incoTerms} onChange={setIncoTerms} options={DELIVERY_TERMS} placeholder="เช่น ส่งถึงหน้างานลูกค้า" className="w-full" />
             </div>
             <div className="space-y-1 col-span-6">
               <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">สถานที่จัดส่ง</label>
@@ -1383,12 +1373,7 @@ export default function QuotationEditPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เงื่อนไขชำระ</label>
-                <PillInput
-                  type="text"
-                  value={paymentTerms}
-                  onChange={(e) => setPaymentTerms(e.target.value)}
-                  className="w-full h-8 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-full px-2 py-0 text-[12px] font-bold text-nexus-teal text-center focus:outline-none transition-all leading-relaxed"
-                />
+                <ChoiceInput value={paymentTerms} onChange={setPaymentTerms} options={PAYMENT_TERMS} placeholder="เลือกหรือพิมพ์เงื่อนไขชำระ" className="w-full" />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เลขอ้างอิง</label>

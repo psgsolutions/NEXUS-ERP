@@ -5,6 +5,8 @@ import Link from "next/link";
 import { PillInput, PillSelect } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { ChoiceInput } from "@/components/ui/ChoiceInput";
+import { THAI_BANKS } from "@/lib/choices";
 
 /** บัญชีธนาคาร + ข้อมูลเช็คของเอกสารรับ/จ่ายเงิน (ใช้ในใบเสร็จ ใบสำคัญจ่าย และคืนเงินลูกค้า) */
 export interface BankValue { bankAccountId: string; bankAccount: string; chequeNo: string; chequeDate: string; chequeBank: string }
@@ -70,7 +72,7 @@ export function BankPaymentFields({ method, value, onChange, purpose, chequeInco
           </div>
           <div className="space-y-1">
             <Label>{chequeIncoming ? "ธนาคารผู้ออกเช็ค" : "ธนาคาร/สาขาของเช็ค"}</Label>
-            <PillInput value={value.chequeBank} onChange={(e) => set({ chequeBank: e.target.value })} placeholder={chequeIncoming ? "เช่น ไทยพาณิชย์ สาขาสีลม" : "ถ้ามี"} className="w-full h-9 text-sm" />
+            <ChoiceInput value={value.chequeBank} onChange={(v) => set({ chequeBank: v })} options={THAI_BANKS} placeholder={chequeIncoming ? "เช่น ไทยพาณิชย์ สาขาสีลม" : "ถ้ามี"} className="w-full" />
           </div>
         </div>
       )}

@@ -23,6 +23,8 @@ import { SmartAddressPicker, ThaiAddress } from "@/components/ui/SmartAddressPic
 import { SmartScanner } from "@/components/shared/SmartScanner";
 import { CustomerType, CustomerStatus } from "@/lib/erp-logic";
 import { useSystemDialog } from "@/context/DialogContext";
+import { ChoiceInput } from "@/components/ui/ChoiceInput";
+import { THAI_BANKS } from "@/lib/choices";
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -200,7 +202,7 @@ export function CustomerModal({ isOpen, onClose, onSave, initialData }: Customer
                       </Field>
                       <Field label="ธนาคารที่ใช้ / เลขที่บัญชี">
                         <div className="flex gap-2">
-                          <PillInput value={form.bank_name || ""} onChange={(e) => setForm({...form, bank_name: e.target.value})} placeholder="ธนาคาร..." className="w-1/3" />
+                          <div className="w-1/3"><ChoiceInput value={form.bank_name || ""} onChange={(v) => setForm({ ...form, bank_name: v })} options={THAI_BANKS} placeholder="ธนาคาร..." className="w-full" /></div>
                           <PillInput value={form.bank_account || ""} onChange={(e) => setForm({...form, bank_account: e.target.value})} placeholder="เลขที่บัญชี..." className="flex-1 font-mono" />
                         </div>
                       </Field>

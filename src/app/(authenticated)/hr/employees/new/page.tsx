@@ -10,6 +10,9 @@ import { useSystemDialog } from "@/context/DialogContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
+import { ChoiceInput } from "@/components/ui/ChoiceInput";
+import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
+import { POSITIONS, THAI_BANKS, WORK_LOCATIONS } from "@/lib/choices";
 import { BANKS, DEPARTMENTS, EMPLOYEE_STATUS, EMPLOYMENT_TYPES, PREFIXES } from "@/lib/hr";
 
 const today = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
@@ -24,6 +27,8 @@ function EmployeeForm() {
   const router = useRouter();
   const editId = useSearchParams()?.get("edit") || "";
   const { companyId, role, roles } = useAuth();
+  // ค่าที่ใช้อยู่แล้วในบริษัท (ตำแหน่ง แผนก สถานที่ทำงาน) — แสดงเป็นตัวเลือกร่วมกับรายการตั้งต้น
+  const { data: staff } = useRealtimeCollection<any>("employees");
   const { showConfirm } = useSystemDialog();
   const canEdit = can(roles, "hr:edit");
   const { data: existing } = useRealtimeDocument<any>(editId ? `employees/${editId}` : null);
@@ -130,12 +135,12 @@ function EmployeeForm() {
       <GlassCard className="p-5 space-y-3">
         <h3 className="text-sm font-bold text-white">การจ้างงาน</h3>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {field("ตำแหน่ง", text("position"), true)}
-          {field("แผนก", <PillSelect value={form.department} onChange={(e) => set("department", e.target.value)} className="w-full h-9 text-sm">{Array.from(new Set([...DEPARTMENTS, form.department].filter(Boolean))).map((d) => <option key={d} value={d}>{d}</option>)}</PillSelect>)}
+          {field("ตำแหน่ง", <ChoiceInput value={form.position} onChange={(v) => set("position", v)} options={[...POSITIONS, ...staff.map((x: any) => x.position)]} placeholder="เลือกหรือพิมพ์ตำแหน่ง" className="w-full" />, true)}
+          {field("แผนก", <ChoiceInput value={form.department} onChange={(v) => set("department", v)} options={[...DEPARTMENTS, ...staff.map((x: any) => x.department)]} placeholder="เลือกหรือพิมพ์แผนก" className="w-full" />)}
           {field("ประเภทการจ้าง", <PillSelect value={form.employmentType} onChange={(e) => set("employmentType", e.target.value)} className="w-full h-9 text-sm">{Object.entries(EMPLOYMENT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</PillSelect>)}
           {field("สถานะ", <PillSelect value={form.status} onChange={(e) => set("status", e.target.value)} className="w-full h-9 text-sm">{Object.entries(EMPLOYEE_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</PillSelect>)}
           {field("วันที่เริ่มงาน", <PillInput type="date" value={form.joinDate} onChange={(e) => set("joinDate", e.target.value)} className="w-full h-9 text-sm font-mono" />)}
-          {field("สถานที่ทำงานหลัก", text("workLocation", "เช่น สำนักงานใหญ่"), false, "col-span-2 lg:col-span-3")}
+          {field("สถานที่ทำงานหลัก", <ChoiceInput value={form.workLocation} onChange={(v) => set("workLocation", v)} options={[...WORK_LOCATIONS, ...staff.map((x: any) => x.workLocation)]} placeholder="เช่น สำนักงานใหญ่" className="w-full" />, false, "col-span-2 lg:col-span-3")}
         </div>
       </GlassCard>
 
@@ -144,7 +149,7 @@ function EmployeeForm() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {field(form.employmentType === "daily" ? "ค่าจ้างต่อวัน" : "เงินเดือน", <PillInput inputMode="decimal" value={form.salary} onChange={(e) => set("salary", e.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" className="w-full h-9 text-sm text-right font-mono" />)}
           {field("ประกันสังคม", <PillSelect value={form.socialSecurity ? "yes" : "no"} onChange={(e) => set("socialSecurity", e.target.value === "yes")} className="w-full h-9 text-sm"><option value="yes">หักประกันสังคม</option><option value="no">ไม่หัก</option></PillSelect>)}
-          {field("ธนาคาร", <PillSelect value={form.bankName} onChange={(e) => set("bankName", e.target.value)} className="w-full h-9 text-sm">{Array.from(new Set([...BANKS, form.bankName].filter(Boolean))).map((b) => <option key={b} value={b}>{b}</option>)}</PillSelect>)}
+          {field("ธนาคาร", <ChoiceInput value={form.bankName} onChange={(v) => set("bankName", v)} options={THAI_BANKS} placeholder="เลือกหรือพิมพ์ชื่อธนาคาร" className="w-full" />)}
           {field("เลขที่บัญชี", <PillInput value={form.bankAccount} onChange={(e) => set("bankAccount", e.target.value.replace(/[^\d-]/g, ""))} className="w-full h-9 text-sm font-mono" />)}
         </div>
         <p className="text-[11px] text-white/40">ข้อมูลเงินเดือนและบัญชีใช้ในการคำนวณเงินเดือนประจำงวด</p>

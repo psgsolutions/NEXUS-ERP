@@ -17,6 +17,7 @@ import {
 } from "@/lib/customer-doc-profile";
 import { RecordDeleteButton } from "@/components/shared/RecordDeleteButton";
 import { CustomerHistoryCard } from "@/components/shared/CustomerHistoryCard";
+import { ThaiAddressAutocomplete } from "@/components/ui/ThaiAddressAutocomplete";
 
 /**
  * ข้อมูลลูกค้า + โปรไฟล์เอกสาร (รูปแบบเอกสาร/การวางบิล/รับเงิน ของลูกค้ารายนี้)
@@ -162,7 +163,9 @@ export default function CustomerDetailPage() {
                 <TaxUnitPanel records={allCustomers || []} taxId={basic.taxId} branchCode={basic.branchCode} unitName={basic.unitName} taxInvoiceName={basic.taxInvoiceName} baseName={basic.name} exceptId={id} hrefOf={(cid) => `/customers/${cid}`} disabled={!canEditBasic} onChange={(v) => setBasic({ ...basic, ...v })} />
               </div>
               <Field label="ที่อยู่ (เลขที่ อาคาร ถนน)" className="md:col-span-2"><PillInput value={basic.addressNo} disabled={!canEditBasic} onChange={(e) => setBasic({ ...basic, addressNo: e.target.value })} className="w-full h-9 text-sm" /></Field>
-              <Field label="ตำบล/แขวง"><PillInput value={basic.subDistrict} disabled={!canEditBasic} onChange={(e) => setBasic({ ...basic, subDistrict: e.target.value })} className="w-full h-9 text-sm" /></Field>
+              <Field label="ตำบล/แขวง" tip="พิมพ์ชื่อตำบลแล้วเลือก ระบบเติมอำเภอ จังหวัด รหัสไปรษณีย์ให้">{canEditBasic
+                ? <ThaiAddressAutocomplete value={basic.subDistrict} onChange={(e) => setBasic({ ...basic, subDistrict: e.target.value })} onSelect={(a) => setBasic({ ...basic, ...a })} placeholder="พิมพ์ชื่อตำบล/แขวง" className="w-full h-9 text-sm" />
+                : <PillInput value={basic.subDistrict} disabled className="w-full h-9 text-sm" />}</Field>
               <Field label="อำเภอ/เขต"><PillInput value={basic.district} disabled={!canEditBasic} onChange={(e) => setBasic({ ...basic, district: e.target.value })} className="w-full h-9 text-sm" /></Field>
               <Field label="จังหวัด"><PillInput value={basic.province} disabled={!canEditBasic} onChange={(e) => setBasic({ ...basic, province: e.target.value })} className="w-full h-9 text-sm" /></Field>
               <Field label="รหัสไปรษณีย์"><PillInput value={basic.zipCode} disabled={!canEditBasic} onChange={(e) => setBasic({ ...basic, zipCode: e.target.value })} className="w-full h-9 text-sm font-mono" /></Field>

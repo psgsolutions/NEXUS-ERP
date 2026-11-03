@@ -30,6 +30,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { useSuppliers } from "@/hooks/useCustomers";
 import { apiFetch } from "@/lib/api-client";
+import { ChoiceInput } from "@/components/ui/ChoiceInput";
+import { DEPARTMENTS } from "@/lib/hr";
 
 function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
@@ -226,12 +228,7 @@ export default function NewPurchaseRequestPage() {
               <PillInput value={header.requester} disabled className="w-full bg-white/[0.01] text-white/40 h-9 rounded-full px-6 text-[12px] font-bold border-white/5 cursor-not-allowed" />
             </Field>
             <Field label="หน่วยงาน / แผนก">
-              <PillInput
-                value={header.department}
-                onChange={(e) => setHeader({...header, department: e.target.value})}
-                placeholder="ระบุแผนก เช่น ฝ่ายวิศวกรรม"
-                className="w-full px-6 h-9 rounded-full text-[12px] font-bold"
-              />
+              <ChoiceInput value={header.department} onChange={(v) => setHeader({ ...header, department: v })} options={DEPARTMENTS} placeholder="เลือกหรือพิมพ์แผนก" className="w-full" />
             </Field>
           </div>
 

@@ -28,6 +28,8 @@ import { TaxUnitPanel } from "@/components/shared/TaxUnitPanel";
 import { SpellHint } from "@/components/shared/SpellHint";
 import { useSuppliers } from "@/hooks/useCustomers";
 import { taxIdProblem } from "@/lib/party-identity";
+import { ChoiceInput } from "@/components/ui/ChoiceInput";
+import { THAI_BANKS } from "@/lib/choices";
 
 interface LaborRateItem {
   id: string;
@@ -570,10 +572,7 @@ export default function NewSupplierPage() {
           {form.payment_method === "TRANSFER" && (
             <div className="space-y-6 bg-white/[0.02] p-6 rounded-3xl border border-white/5">
               <Field label="ธนาคาร *">
-                <PillSelect value={form.bank_name} onChange={(e) => setForm({...form, bank_name: e.target.value})} className="w-full h-9 px-6 rounded-full bg-white/[0.02] font-bold text-[12px]">
-                  <option value="">เลือกธนาคาร...</option>
-                  {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
-                </PillSelect>
+                <ChoiceInput value={form.bank_name} onChange={(v) => setForm({ ...form, bank_name: v })} options={[...THAI_BANKS, ...BANKS]} placeholder="เลือกหรือพิมพ์ชื่อธนาคาร" className="w-full" />
               </Field>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <Field label="เลขที่บัญชี *">

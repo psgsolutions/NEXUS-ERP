@@ -14,6 +14,9 @@ import { useSuppliers } from "@/hooks/useCustomers";
 import { partyDocName, taxIdProblem } from "@/lib/party-identity";
 import { RecordDeleteButton } from "@/components/shared/RecordDeleteButton";
 import { SupplierProductsCard } from "@/components/shared/SupplierProductsCard";
+import { ChoiceInput } from "@/components/ui/ChoiceInput";
+import { THAI_BANKS } from "@/lib/choices";
+import { ThaiAddressAutocomplete } from "@/components/ui/ThaiAddressAutocomplete";
 
 /**
  * ข้อมูลผู้ขาย/ผู้รับเหมา: ดูและแก้ไข (ฝ่ายจัดซื้อ procurement:edit)
@@ -151,13 +154,15 @@ export default function SupplierDetailPage() {
               <Field label="เครดิต (วัน)">{input("creditTermDays", "text-right font-mono")}</Field>
               <Field label="ผู้ติดต่อ">{input("contactPerson")}</Field>
               <Field label="ที่อยู่ (เลขที่ อาคาร ถนน)" className="md:col-span-2">{input("addressNo")}</Field>
-              <Field label="ตำบล/แขวง">{input("subDistrict")}</Field>
+              <Field label="ตำบล/แขวง">{canEdit
+                ? <ThaiAddressAutocomplete value={form.subDistrict} onChange={(e) => set({ subDistrict: e.target.value })} onSelect={(a) => set(a)} placeholder="พิมพ์ชื่อตำบล/แขวง" className="w-full h-9 text-sm" />
+                : input("subDistrict")}</Field>
               <Field label="อำเภอ/เขต">{input("district")}</Field>
               <Field label="จังหวัด">{input("province")}</Field>
               <Field label="รหัสไปรษณีย์">{input("zipCode", "font-mono")}</Field>
               <Field label="โทรศัพท์">{input("phone")}</Field>
               <Field label="อีเมล">{input("email")}</Field>
-              <Field label="ธนาคาร">{input("bankName")}</Field>
+              <Field label="ธนาคาร"><ChoiceInput value={form.bankName} onChange={(v) => set({ bankName: v })} options={THAI_BANKS} disabled={!canEdit} placeholder="เลือกหรือพิมพ์ชื่อธนาคาร" className="w-full" /></Field>
               <Field label="เลขที่บัญชี">{input("bankAccount", "font-mono")}</Field>
               <Field label="ชื่อบัญชี" className="md:col-span-2">{input("bankAccountName")}</Field>
             </div>

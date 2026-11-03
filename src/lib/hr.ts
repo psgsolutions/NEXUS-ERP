@@ -1,3 +1,4 @@
+import { THAI_BANKS } from "@/lib/choices";
 /** ข้อมูลกลางของงานบุคคล (พนักงานเก็บที่ collection "employees" ระดับบนพร้อม companyId) */
 
 export const PREFIXES = [
@@ -21,7 +22,8 @@ export const EMPLOYEE_STATUS: Record<string, { label: string; badge: "active" | 
   resigned: { label: "ลาออก", badge: "inactive" },
 };
 
-export const BANKS = ["กสิกรไทย", "ไทยพาณิชย์", "กรุงเทพ", "กรุงไทย", "กรุงศรีอยุธยา", "ทหารไทยธนชาต", "ออมสิน", "อื่น ๆ"];
+/** รายชื่อธนาคาร (ชุดกลางที่ src/lib/choices.ts — ช่องธนาคารพิมพ์ชื่ออื่นเพิ่มได้) */
+export const BANKS = THAI_BANKS;
 
 /** เวลาเข้างานปกติ (ลงเวลาเข้าหลังเวลานี้ = สาย) */
 export const WORK_START = "08:30";

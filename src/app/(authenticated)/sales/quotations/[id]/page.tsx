@@ -456,13 +456,14 @@ export default function QuotationEditPage() {
             setCustomerSearchTerm(legacyCustomerName);
           } else if (normalizedStatus !== "DRAFT" && data.customerSnapshot) {
             const snap = data.customerSnapshot;
+            // ภาพลูกค้า ณ วันส่ง: หน้าสร้างใหม่เก็บเป็น name/taxId/branch/phone/email · หน้าแก้ไขเก็บเป็น customerName/customerTaxId/...
             setSelectedCustomerId(snap.customerId || data.customerId || "");
-            setCustomerSearchTerm(snap.customerName || data.customerName || "");
-            setCustomerTaxId(snap.customerTaxId || data.customerTaxId || "");
-            setCustomerBranch(snap.customerBranch || data.customerBranch || "สำนักงานใหญ่");
+            setCustomerSearchTerm(snap.customerName || snap.name || data.customerName || "");
+            setCustomerTaxId(snap.customerTaxId || snap.taxId || data.customerTaxId || "");
+            setCustomerBranch(snap.customerBranch || snap.branch || data.customerBranch || "สำนักงานใหญ่");
             setContactPerson(snap.contactPerson || data.contactPerson || "");
-            setContactPhone(snap.contactPhone || data.contactPhone || "");
-            setContactEmail(snap.contactEmail || data.contactEmail || "");
+            setContactPhone(snap.contactPhone || snap.phone || data.contactPhone || "");
+            setContactEmail(snap.contactEmail || snap.email || data.contactEmail || "");
             setAddrLine1(snap.addrLine1 || "");
             setAddrLine2(snap.addrLine2 || "");
             setSubDistrict(snap.subDistrict || "");
@@ -502,7 +503,7 @@ export default function QuotationEditPage() {
           setProjectName(data.projectName || data.subject || "");
           setIncoTerms(data.incoTerms || "");
           setExpectedDeliveryDays(data.expectedDeliveryDays || 30);
-          setShippingAddress(data.shippingAddress || "");
+          setShippingAddress(data.shippingAddress || data.deliveryAddress || "");
           setInternalNotes(data.internalNotes || "");
           setStatus(normalizedStatus);
           if (data.salesPersonId) {
@@ -516,11 +517,14 @@ export default function QuotationEditPage() {
             const lData = d.data();
             return {
               id: d.id,
+              sequence: Number(lData.sequence) || 0,
+              itemType: lData.itemType || "PRODUCT",
               productId: lData.productId || null,
               sku: lData.sku || "",
               name: lData.productName || "",
               description: lData.description || "",
-              details: lData.details || lData.technicalSpecs || "",
+              // ใบที่สร้างจากหน้าสร้างใหม่รุ่นก่อนเก็บรายละเอียดไว้ใน description
+              details: lData.details || lData.technicalSpecs || lData.description || "",
               qty: lData.qty || 1,
               unit: lData.uom || "ชิ้น",
               price: lData.unitPrice || 0,
@@ -538,6 +542,8 @@ export default function QuotationEditPage() {
             // รูปแบบเก่า: รายการเก็บในเอกสารหลัก
             loadedItems.push(...data.items.map((it: any, idx: number) => ({
               id: it.id || `legacy-${idx}`,
+              sequence: idx + 1,
+              itemType: it.itemType || "PRODUCT",
               productId: it.productId || null,
               sku: it.sku || "",
               name: it.name || it.productName || "",
@@ -777,7 +783,9 @@ export default function QuotationEditPage() {
       };
 
       const linesPayload = items.map((item) => ({
-        productId: item.id || "",
+        itemType: item.itemType || "PRODUCT",
+        // item.id = รหัสแถว (ไม่ใช่รหัสสินค้า)
+        productId: item.productId || "",
         sku: item.sku || "",
         productName: item.name || "",
         description: item.description || "",
@@ -789,6 +797,7 @@ export default function QuotationEditPage() {
         discountString: item.discount || "",
         discountType: item.discountType || "PERCENT",
         discountValue: Number(item.discountValue) || 0,
+        whtRate: Number(item.whtRate) || 0,
         glAccountId: item.incomeAccountId || "411100",
         isOptional: !!item.isOptional,
       }));

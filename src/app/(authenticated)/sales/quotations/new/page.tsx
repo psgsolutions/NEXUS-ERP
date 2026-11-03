@@ -653,6 +653,8 @@ export default function QuotationCreationPage() {
         sku: item.sku || "",
         productName: item.name || "",
         description: item.details || item.description || "",
+        details: item.details || "",
+        discountString: item.discount || "",
         qty: Number(item.qty) || 0,
         uom: item.unit || "ชิ้น",
         costPrice: Number(item.cost ?? item.costPrice) || 0,

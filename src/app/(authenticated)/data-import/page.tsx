@@ -17,6 +17,7 @@ import { isDupWarning, markPartyDuplicates } from "@/lib/import/party-dups";
 import { useCustomers, useSuppliers } from "@/hooks/useCustomers";
 import { ImportRowEditor } from "@/components/import/ImportRowEditor";
 import { ImportedRecordsManager } from "@/components/import/ImportedRecordsManager";
+import { useUrlTab } from "@/hooks/useUrlTab";
 
 /**
  * นำเข้า/ส่งออกข้อมูลด้วย Excel
@@ -185,7 +186,7 @@ export default function DataImportPage() {
   const { companyId, roles } = useAuth();
   const { showConfirm } = useSystemDialog();
   const allowed = TAB_ORDER.filter((t) => can(roles, TEMPLATES[t].permission));
-  const [tab, setTab] = useState<TabId>(allowed[0] || "customers");
+  const [tab, setTab] = useUrlTab<TabId>(allowed[0] || "customers", (t) => allowed.includes(t as TabId));
   const [batches, setBatches] = useState<Batch[]>([]);
   const [selected, setSelected] = useState("");
   const [error, setError] = useState("");

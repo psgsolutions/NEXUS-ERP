@@ -25,6 +25,9 @@ import { DocumentPdfViewer } from "@/components/documents/DocumentPdfViewer";
 import { FreeLayoutEditor } from "./FreeLayoutEditor";
 import { DataChecklist } from "./DataChecklist";
 import { usePdfPageImage, useThumbnail } from "./usePdfPageImage";
+import { RangeNumber } from "@/components/ui/RangeNumber";
+import { SignSlotsEditor } from "@/components/settings/SignSlotsEditor";
+import type { SignSlot } from "@/lib/documents/design";
 
 /**
  * ออกแบบหน้าเอกสาร (ตั้งค่า › ออกแบบเอกสาร) — 2 แบบ สลับได้ตลอด
@@ -407,7 +410,13 @@ export function DocumentDesigner() {
   const groups = isLetter ? [] : dataGroups(curLayout, { ...dataCtx, head: letterhead?.blocks });
   const toggle = (key: string, on: boolean) => setFree(toggleData(curLayout, key, on, { ...dataCtx, head: letterhead?.blocks }));
   const signBlock = curLayout.blocks.find((b) => b.kind === "signatures");
-  const setSignLabels = (labels: string[] | undefined) => setFree({ ...curLayout, blocks: curLayout.blocks.map((b) => { if (b !== signBlock) return b; const n = { ...b, labels }; if (!labels) delete n.labels; return n; }) });
+  // เครื่องมือสร้างช่องลงนาม: ตั้งค่ารายช่อง (labels ตามชื่อช่องเพื่อให้ลายเซ็น/ตราจับคู่ช่องเดิม)
+  const setSignSlots = (slots: SignSlot[] | undefined) => setFree({ ...curLayout, blocks: curLayout.blocks.map((b) => {
+    if (b !== signBlock) return b;
+    const n: any = { ...b, signSlots: slots, labels: slots?.map((x) => x.label).filter(Boolean) };
+    if (!slots) { delete n.signSlots; delete n.labels; }
+    return n;
+  }) });
   const model = useMemo(() => {
     if (!profile || !preview) return null;
     if (realModel) return { ...realModel, seller: { ...realModel.seller, design: preview } };
@@ -551,8 +560,8 @@ export function DocumentDesigner() {
         </details>
         <div className="grid grid-cols-2 gap-2">
           <Row label="ฟอนต์"><PillSelect value={theme.font} onChange={(e) => setTheme({ font: e.target.value as FontFamily })} className="h-9 w-full">{(Object.keys(FONT_LABELS) as FontFamily[]).map((f) => <option key={f} value={f}>{FONT_LABELS[f]}</option>)}</PillSelect></Row>
-          <Row label={`ขนาดตัวอักษร ${theme.fontSize} pt`}><input type="range" min={7.5} max={12} step={0.5} value={theme.fontSize} onChange={(e) => setTheme({ fontSize: Number(e.target.value) })} className="w-full accent-[#0d9488] h-9" /></Row>
-          <Row label={`ขนาดโลโก้ ${theme.logoSize} pt`}><input type="range" min={32} max={200} step={4} value={theme.logoSize} onChange={(e) => setTheme({ logoSize: Number(e.target.value) })} className="w-full accent-[#0d9488] h-9" /></Row>
+          <Row label={`ขนาดตัวอักษร ${theme.fontSize} pt`}><RangeNumber min={7.5} max={12} step={0.5} value={theme.fontSize} onChange={(e) => setTheme({ fontSize: Number(e.target.value) })} className="w-full accent-[#0d9488] h-9" /></Row>
+          <Row label={`ขนาดโลโก้ ${theme.logoSize} pt`}><RangeNumber min={32} max={200} step={4} value={theme.logoSize} onChange={(e) => setTheme({ logoSize: Number(e.target.value) })} className="w-full accent-[#0d9488] h-9" /></Row>
           <Row label="ตาราง"><PillSelect value={theme.table} onChange={(e) => setTheme({ table: e.target.value as any })} className="h-9 w-full"><option value="tint">หัวสีอ่อน</option><option value="solid">หัวสีทึบ</option><option value="lines">เส้นบาง</option><option value="grid">เส้นครบ</option><option value="zebra">แถวสลับสี</option></PillSelect></Row>
         </div>
       </fieldset>
@@ -565,9 +574,8 @@ export function DocumentDesigner() {
       <p className="text-[12px] text-white/55">ติ๊กเฉพาะที่ต้องการ — ตอนพิมพ์ระบบเติมข้อมูลจริงให้เอง · 🔒 กฎหมายกำหนด แสดงเสมอ</p>
       <DataChecklist groups={groups} onToggle={toggle} canEdit={canEdit} />
       {signBlock && (
-        <Row label="ชื่อช่องลงนาม (คั่นด้วย , สูงสุด 4 ช่อง)">
-          <PillInput value={(signBlock.labels || []).join(", ")} placeholder={def.signatures.join(", ")} disabled={!canEdit}
-            onChange={(e) => { const l = e.target.value.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 4); setSignLabels(l.length ? l : undefined); }} className="h-9 w-full text-sm" />
+        <Row label="ช่องลงนาม (สูงสุด 4 ช่อง · ตั้งค่าทีละช่อง)">
+          <SignSlotsEditor slots={signBlock.signSlots} fallbackLabels={signBlock.labels?.length ? signBlock.labels : def.signatures} disabled={!canEdit} onChange={setSignSlots} />
         </Row>
       )}
     </Step>
@@ -599,7 +607,7 @@ export function DocumentDesigner() {
             <Row label="กรอบลูกค้า"><PillSelect value={theme.party} onChange={(e) => setTheme({ party: e.target.value as any })} className="h-9 w-full"><option value="accent-bar">แถบสีซ้าย</option><option value="boxed">กรอบเต็ม</option><option value="plain">เส้นใต้</option><option value="none">ไม่มีกรอบ</option></PillSelect></Row>
             <Row label="ช่องลงนาม"><PillSelect value={theme.signatures} onChange={(e) => setTheme({ signatures: e.target.value as any })} className="h-9 w-full"><option value="line">เส้นลงนาม</option><option value="box">กรอบลงนาม</option></PillSelect></Row>
             <Row label="ลายน้ำ"><PillInput value={theme.watermark} onChange={(e) => setTheme({ watermark: e.target.value })} placeholder="ไม่มี" className="h-9 w-full" /></Row>
-            <Row label={`ขอบกระดาษ ${theme.margin} pt`}><input type="range" min={20} max={60} step={2} value={theme.margin} onChange={(e) => setTheme({ margin: Number(e.target.value) })} className="w-full accent-[#0d9488] h-9" /></Row>
+            <Row label={`ขอบกระดาษ ${theme.margin} pt`}><RangeNumber min={20} max={60} step={2} value={theme.margin} onChange={(e) => setTheme({ margin: Number(e.target.value) })} className="w-full accent-[#0d9488] h-9" /></Row>
           </div>
           <div className="grid grid-cols-2 gap-x-2 gap-y-1">
             <PillCheckbox label="มุมโค้ง" checked={theme.rounded} onChange={(e) => setTheme({ rounded: e.target.checked })} />

@@ -2,36 +2,42 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { Loader2, Minus, Plus } from "lucide-react";
-import { cn } from "@/components/ui/Base";
+import { PillButton, cn } from "@/components/ui/Base";
 
 /**
  * แสดงหน้า PDF ตามขนาดจริงของกระดาษ (100% = 96 px ต่อนิ้ว เท่ากับเอกสารที่พิมพ์) — แทนตัวแสดง PDF ของเบราว์เซอร์ที่ย่อหน้าให้พอดีช่อง
- * ปรับได้: พอดีความกว้าง · ซูม 50–200% · คมชัดตามความละเอียดจอ
+ * ปรับได้: พอดีหน้า (เห็นกระดาษเต็มแผ่นในกรอบ — ค่าเริ่มต้น) · พอดีความกว้าง · ซูม 50–200% · คมชัดตามความละเอียดจอ
  */
-export type PdfZoom = "fit" | number;
+export type PdfZoom = "page" | "fit" | number;
+const ZOOM_KEY = "nexus.pdf.zoom.v2";
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const PX_PER_PT = 96 / 72;
 
 export function PdfPages({ url, className }: { url: string; className?: string }) {
-  const [zoom, setZoom] = useState<PdfZoom>(() => { try { const v = localStorage.getItem("nexus.pdf.zoom"); return v === "fit" ? "fit" : Number(v) || 1; } catch { return 1; } });
+  const [zoom, setZoom] = useState<PdfZoom>(() => { try { const v = localStorage.getItem(ZOOM_KEY); return v === "fit" || v === "page" ? v : Number(v) || "page"; } catch { return "page"; } });
   const [pages, setPages] = useState<{ src: string; w: number; h: number }[]>([]);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [boxW, setBoxW] = useState(0);
+  const [boxH, setBoxH] = useState(0);
   const box = useRef<HTMLDivElement>(null);
   const shown = useRef<{ src: string }[]>([]);
-  useEffect(() => { try { localStorage.setItem("nexus.pdf.zoom", String(zoom)); } catch { /* ไม่สำคัญ */ } }, [zoom]);
+  useEffect(() => { try { localStorage.setItem(ZOOM_KEY, String(zoom)); } catch { /* ไม่สำคัญ */ } }, [zoom]);
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setBoxW(e.contentRect.width));
+    const ro = new ResizeObserver(([e]) => { setBoxW(e.contentRect.width); setBoxH(e.contentRect.height); });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
   // ขนาดหน้า (pt) จากหน้าแรก — ใช้คำนวณ "พอดีความกว้าง"
   const [pt, setPt] = useState<{ w: number; h: number } | null>(null);
-  const scale = zoom === "fit" ? (pt && boxW ? Math.max(0.2, (boxW - 32) / pt.w) : PX_PER_PT) : zoom * PX_PER_PT; // px ต่อ pt บนจอ
+  // px ต่อ pt บนจอ · พอดีหน้า = ทั้งกว้างและสูงอยู่ในกรอบ (เว้นขอบรอบกระดาษ)
+  const fitW = pt && boxW ? (boxW - 32) / pt.w : 0;
+  const fitH = pt && boxH ? (boxH - 48) / pt.h : 0;
+  const scale = zoom === "page" ? (fitW && fitH ? Math.max(0.2, Math.min(fitW, fitH)) : PX_PER_PT)
+    : zoom === "fit" ? (fitW ? Math.max(0.2, fitW) : PX_PER_PT) : zoom * PX_PER_PT;
 
   useEffect(() => {
     if (!url) return;
@@ -68,7 +74,7 @@ export function PdfPages({ url, className }: { url: string; className?: string }
   }, [url, scale]);
   useEffect(() => () => shown.current.forEach((p) => URL.revokeObjectURL(p.src)), []);
 
-  const step = (d: number) => { const cur = zoom === "fit" ? scale / PX_PER_PT : zoom; const i = ZOOMS.findIndex((z) => z >= cur - 0.001); setZoom(ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, (i < 0 ? ZOOMS.length - 1 : i) + d))]); };
+  const step = (d: number) => { const cur = typeof zoom === "number" ? zoom : scale / PX_PER_PT; const i = ZOOMS.findIndex((z) => z >= cur - 0.001); setZoom(ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, (i < 0 ? ZOOMS.length - 1 : i) + d))]); };
   const pct = Math.round((scale / PX_PER_PT) * 100);
 
   return (
@@ -80,6 +86,7 @@ export function PdfPages({ url, className }: { url: string; className?: string }
         <span className="w-12 text-center text-[12px] text-white/80 tabular-nums">{pct}%</span>
         <button type="button" title="ขยาย" aria-label="ขยาย" onClick={() => step(1)} className="h-7 w-7 rounded-full text-white/70 hover:bg-white/10 flex items-center justify-center"><Plus size={14} /></button>
         <button type="button" onClick={() => setZoom(1)} className={cn("h-7 px-2.5 rounded-full text-[12px]", zoom === 1 ? "bg-nexus-teal/20 text-nexus-teal font-semibold" : "text-white/70 hover:bg-white/10")}>ขนาดจริง</button>
+        <PillButton variant="ghost" onClick={() => setZoom("page")} className={cn("h-8 px-2.5 text-[12px] normal-case tracking-normal font-normal bg-transparent", zoom === "page" ? "bg-nexus-teal/20 text-nexus-teal font-semibold" : "text-white/70")}>พอดีหน้า</PillButton>
         <button type="button" onClick={() => setZoom("fit")} className={cn("h-7 px-2.5 rounded-full text-[12px]", zoom === "fit" ? "bg-nexus-teal/20 text-nexus-teal font-semibold" : "text-white/70 hover:bg-white/10")}>พอดีความกว้าง</button>
         </div>
       </div>

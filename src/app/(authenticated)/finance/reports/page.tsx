@@ -7,6 +7,7 @@ import { GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillI
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api-client";
+import { useUrlTab } from "@/hooks/useUrlTab";
 
 type ReportId = "tb" | "gl" | "pl" | "bs" | "cf" | "sales-customer" | "sales-product" | "sales-salesperson" | "anomalies" | "vat-out" | "vat-in" | "pnd3" | "pnd53";
 const TABS: { id: ReportId; label: string; icon: React.ReactNode }[] = [
@@ -51,7 +52,7 @@ function downloadCsv(filename: string, rows: (string | number)[][]) {
 export default function FinancialReportsPage() {
   const router = useRouter();
   const { companyId } = useAuth();
-  const [tab, setTab] = useState<ReportId>("tb");
+  const [tab, setTab] = useUrlTab<ReportId>("tb");
   const [from, setFrom] = useState(() => `${thisMonth().slice(0, 4)}-01`);
   const [to, setTo] = useState(thisMonth);
   const [account, setAccount] = useState("");

@@ -60,6 +60,7 @@ import { SupplierModal } from "@/components/commerce/SupplierModal";
 import { PurchaseRequestModal } from "@/components/commerce/PurchaseRequestModal";
 import { ExpenseModal } from "@/components/commerce/ExpenseModal";
 import { WHTModal } from "@/components/commerce/WHTModal";
+import { useUrlTab } from "@/hooks/useUrlTab";
 
 type ProcSubModule = "suppliers" | "pr" | "po" | "receipt" | "expense" | "wht";
 
@@ -78,7 +79,7 @@ export default function ProcurementPage() {
     if (!res.ok || !d.success) return void showAlert(d.error || "ยกเลิกไม่สำเร็จ", "แจ้งเตือน", "error");
     showToast(`ยกเลิก ${w.id} แล้ว`);
   };
-  const [activeTab, setActiveTab] = useState<ProcSubModule>("pr");
+  const [activeTab, setActiveTab] = useUrlTab<ProcSubModule>("pr");
   const [modalActiveTab, setModalActiveTab] = useState("header");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<any>(null);

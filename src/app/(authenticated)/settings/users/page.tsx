@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api-client";
 import { ASSIGNABLE_ROLES, getPermissions, roleLabel, type Permission } from "@/lib/permissions";
 import { RoleAssignDialog } from "@/components/settings/RoleAssignDialog";
+import { useUrlTab } from "@/hooks/useUrlTab";
 
 interface ManagedUser {
   uid: string;
@@ -80,7 +81,7 @@ export default function UsersPage() {
   const isSuper = role === "SUPERADMIN";
   const canManage = checkPermission("users:manage");
 
-  const [tab, setTab] = useState<"users" | "pending" | "roles">("users");
+  const [tab, setTab] = useUrlTab<"users" | "pending" | "roles">("users", (t) => ["users", "pending", "roles"].includes(t));
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);

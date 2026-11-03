@@ -2,7 +2,7 @@ import React from "react";
 import { Document, Ellipse, Font, Image, Page, Polygon, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import type { ColumnKey, CopyMode, DocumentModel } from "@/lib/documents/model";
 import { amountInWords, branchLabel, formatTaxId, money, qtyText, thaiDate } from "@/lib/documents/format";
-import { gridSizes, fitTotalLabel, textWidth, visibleLen, totalsRowHeights, totalsTableHeight, visibleTotals, blockPad, FONT_MAX, FONT_MIN, FONT_SCALE, SIGN_SIZE, docHasCopy, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign } from "@/lib/documents/design";
+import { gridSizes, fitTotalLabel, textWidth, visibleLen, totalsRowHeights, totalsTableHeight, visibleTotals, blockPad, FONT_MAX, FONT_MIN, FONT_SCALE, SIGN_SIZE, docHasCopy, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign, type SignSlot } from "@/lib/documents/design";
 
 /**
  * เทมเพลตเอกสาร A4 (ใช้ร่วมทุกประเภทเอกสาร) — หน้าตาตามธีมของบริษัท (ตั้งค่า › ออกแบบเอกสาร)
@@ -95,7 +95,7 @@ export type ThemeStyles = ReturnType<typeof themeStyles>;
  */
 export type Ctx = {
   doc: DocumentModel; t: DocTheme; s: ThemeStyles; per: PerDocDesign; copy: CopyMode; lh?: Letterhead;
-  hide: Set<string>; cols?: ItemColumn[]; colSpec?: ColumnSpec[]; labels?: string[];
+  hide: Set<string>; cols?: ItemColumn[]; colSpec?: ColumnSpec[]; labels?: string[]; signSlots?: SignSlot[];
   /** กล่องเลขที่: ข้อมูลเพิ่ม · ช่องลงนาม: ระยะห่าง · ตาราง: ยืดเต็มกล่อง (ต้องรู้ขนาดกล่อง) */
   fields?: string[]; gap?: number; fill?: boolean; box?: { w: number; h: number };
   /** ป้ายของข้อมูลที่วางแยกแล้ว (หมายเหตุไม่แสดงซ้ำ) */
@@ -613,13 +613,27 @@ export function SectionSignatures({ c }: { c: Ctx }) {
             {/* eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt */}
             {/* ลายเซ็นขนาดจริงตามที่ตั้ง (มม.) — ช่องแคบกว่าลายเซ็นจึงย่อให้พอดีช่อง */}
             {sg?.image && !c.signPlaced?.has(label) && !c.signPlaced?.has(real) ? <Image src={sg.image} style={[c.s.signImage, { width: (c.doc.signSize || SIGN_SIZE).w, height: (c.doc.signSize || SIGN_SIZE).h, maxWidth: "100%" }]} /> : <View style={c.s.signLine} />}
-            {sg?.name ? <T style={{ marginTop: 3 }}>({sg.name})</T> : null}
-            {sg?.title ? <T style={c.s.small}>{sg.title}</T> : null}
+            {(() => {
+              // ชื่อ/ตำแหน่งใต้เส้น: ลายเซ็นจริงก่อน แล้วตามที่ตั้งในเครื่องมือสร้างช่องลงนาม
+              const slot = c.signSlots?.[i];
+              const nm = sg?.name || (slot?.name === "customer" ? c.doc.party?.name : slot?.name === "seller" ? c.doc.seller?.name : slot?.name === "text" ? slot.nameText : "");
+              const blank = !nm && slot?.name === "blank";
+              return <>
+                {nm ? <T style={{ marginTop: 3 }}>{slot?.prefix ? `${slot.prefix} ` : ""}({nm})</T> : blank ? <T style={{ marginTop: 3 }}>{slot?.prefix ? `${slot.prefix} ` : ""}(........................................)</T> : null}
+                {sg?.title || slot?.title ? <T style={c.s.small}>{sg?.title || slot?.title}</T> : null}
+              </>;
+            })()}
             {/* ตราประทับอิเล็กทรอนิกส์: ทับมุมขวาของลายเซ็น (เหมือนประทับจริง) */}
             {/* eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt */}
             {st ? <Image src={st.image} style={{ position: "absolute", width: st.size, height: st.size, objectFit: "contain", top: 0, right: 4, opacity: 0.92 }} /> : null}
             <View style={{ marginTop: sg?.name ? 0 : 3, alignItems: "center" }}><Lbl c={c} th={label} align="center" style={{ fontWeight: c.t.formStyle ? "bold" : undefined }} /></View>
-            {c.hide.has("date") ? null : <T style={c.s.small}>{sg?.date ? `วันที่ ${thaiDate(sg.date)}` : "วันที่ ........../........../.........."}</T>}
+            {(() => {
+              const mode = c.signSlots?.[i]?.date;
+              if (c.hide.has("date") || mode === "none") return null;
+              if (sg?.date) return <T style={c.s.small}>{`วันที่ ${thaiDate(sg.date)}`}</T>;
+              if (mode === "doc" && c.doc.date) return <T style={c.s.small}>{`วันที่ ${/^\d{4}-/.test(c.doc.date) ? thaiDate(c.doc.date) : c.doc.date}`}</T>;
+              return <T style={c.s.small}>วันที่ ........../........../..........</T>;
+            })()}
           </View>
         );
       })}
@@ -673,7 +687,7 @@ export function blockContext(c: Ctx, raw: FreeBlock): Ctx {
     ...(b.radius !== undefined ? { rounded: b.radius > 0 } : {}),
   } : c.t;
   return {
-    ...c, t, s: own ? themeStyles(t, b.lineHeight ?? 1.35, b.radius) : c.s, hide: new Set(b.hide || []), cols: b.cols, colSpec: b.colSpec, labels: b.labels, fields: b.fields, gap: b.gap, fill: b.fill, box: { w: b.w, h: b.h },
+    ...c, t, s: own ? themeStyles(t, b.lineHeight ?? 1.35, b.radius) : c.s, hide: new Set(b.hide || []), cols: b.cols, colSpec: b.colSpec, labels: b.signSlots?.length ? b.signSlots.map((x) => x.label) : b.labels, signSlots: b.signSlots, fields: b.fields, gap: b.gap, fill: b.fill, box: { w: b.w, h: b.h },
     radius: b.radius, lineColor: b.lineColor, lineWidth: b.borderWidth, headBg: b.headBg, labelGap: b.labelGap, labelWidth: b.labelWidth, rowGap: b.rowGap, rowPad: b.rowPad, order: b.order, boxPad: blockPad(b), subGap: b.subGap,
   };
 }

@@ -10,6 +10,7 @@ import { GlassCard, NexusSearchInput, NexusTable, NexusTableCell, NexusTableRow,
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { EMPLOYEE_STATUS, bkkParts, employeeName, employeeStatus } from "@/lib/hr";
+import { useUrlTab } from "@/hooks/useUrlTab";
 
 type Tab = "profiles" | "attendance" | "payroll" | "expenses";
 
@@ -26,7 +27,7 @@ const PAYROLL_STATUS: Record<string, { label: string; badge: "active" | "pending
 export default function HRPage() {
   const router = useRouter();
   const { companyId } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>("profiles");
+  const [activeTab, setActiveTab] = useUrlTab<Tab>("profiles");
   const [searchQuery, setSearchQuery] = useState("");
   const [filesOf, setFilesOf] = useState<{ id: string; no: string } | null>(null);
   const today = bkkParts(Date.now()).date;

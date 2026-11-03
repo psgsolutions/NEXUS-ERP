@@ -24,6 +24,8 @@ import {
 } from "@/lib/documents/design";
 import { fileToPageImage } from "./usePdfPageImage";
 import { useLayerSprites } from "./useLayerSprites";
+import { RangeNumber } from "@/components/ui/RangeNumber";
+import { SignSlotsEditor } from "@/components/settings/SignSlotsEditor";
 
 /**
  * ผังลากวางอิสระ — แก้บนหน้าเอกสารจริง
@@ -1029,7 +1031,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
   const rowPadEditor = (it: Item, def: number) => (
     <Field label={`ความสูงแถว: ระยะบน-ล่าง ${it.b.rowPad ?? def} pt`}>
       <div className="flex items-center gap-2">
-        <input type="range" min={0} max={20} step={0.5} value={it.b.rowPad ?? def} onChange={(e) => update(it, { rowPad: Number(e.target.value) })} className="flex-1 accent-[#0d9488] h-7" />
+        <RangeNumber min={0} max={20} step={0.5} value={it.b.rowPad ?? def} onChange={(e) => update(it, { rowPad: Number(e.target.value) })} className="flex-1 accent-[#0d9488] h-7" />
         {it.b.rowPad !== undefined && <button type="button" className="text-[11px] text-white/50 hover:text-white" onClick={() => unset(it, "rowPad")}>ค่าเดิม</button>}
       </div>
     </Field>
@@ -1084,14 +1086,14 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     <>
       <Field label={`ระยะบรรทัด ${it.b.lineHeight ?? 1.35} เท่า`}>
         <div className="flex items-center gap-2">
-          <input type="range" min={LINE_HEIGHT.min} max={LINE_HEIGHT.max} step={0.05} value={it.b.lineHeight ?? 1.35} onChange={(e) => update(it, { lineHeight: Number(e.target.value) })} className="flex-1 accent-[#0d9488] h-7" />
+          <RangeNumber min={LINE_HEIGHT.min} max={LINE_HEIGHT.max} step={0.05} value={it.b.lineHeight ?? 1.35} onChange={(e) => update(it, { lineHeight: Number(e.target.value) })} className="flex-1 accent-[#0d9488] h-7" />
           {it.b.lineHeight !== undefined && <button type="button" className="text-[11px] text-white/50 hover:text-white" onClick={() => unset(it, "lineHeight")}>ค่าเดิม</button>}
         </div>
       </Field>
       {theme.bilingual && (
         <Field label={`ระยะภายในหัวข้อ (ไทย → อังกฤษ) ${it.b.subGap ?? 0} pt`}>
           <div className="flex items-center gap-2">
-            <input type="range" min={SUB_GAP.min} max={SUB_GAP.max} step={0.5} value={it.b.subGap ?? 0} onChange={(e) => update(it, { subGap: Number(e.target.value) || undefined })} className="flex-1 accent-[#0d9488] h-7" />
+            <RangeNumber min={SUB_GAP.min} max={SUB_GAP.max} step={0.5} value={it.b.subGap ?? 0} onChange={(e) => update(it, { subGap: Number(e.target.value) || undefined })} className="flex-1 accent-[#0d9488] h-7" />
             {it.b.subGap !== undefined && <button type="button" className="text-[11px] text-white/50 hover:text-white" onClick={() => unset(it, "subGap")}>ค่าเดิม</button>}
           </div>
         </Field>
@@ -1105,7 +1107,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     const slider = (key: "labelGap" | "labelWidth" | "rowGap", label: string, value: number, min: number, max: number, step: number, unit = "pt") => (
       <Field label={`${label} ${value} ${unit}`}>
         <div className="flex items-center gap-2">
-          <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => update(it, { [key]: Number(e.target.value) })} className="flex-1 accent-[#0d9488] h-7" />
+          <RangeNumber min={min} max={max} step={step} value={value} onChange={(e) => update(it, { [key]: Number(e.target.value) })} className="flex-1 accent-[#0d9488] h-7" />
           {b[key] !== undefined && <button type="button" className="text-[11px] text-white/50 hover:text-white" onClick={() => unset(it, key)}>ค่าเดิม</button>}
         </div>
       </Field>
@@ -1163,7 +1165,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             <p className="text-[12px] font-bold text-white/70">ระยะบรรทัด</p>
             {b.kind === "party" && (
               <Field label={`ระยะห่างระหว่างหัวข้อ ${b.rowGap ?? 0} pt`}>
-                <input type="range" min={0} max={30} step={0.5} value={b.rowGap ?? 0} onChange={(e) => update(it, { rowGap: Number(e.target.value) })} className="w-full accent-[#0d9488] h-7" />
+                <RangeNumber min={0} max={30} step={0.5} value={b.rowGap ?? 0} onChange={(e) => update(it, { rowGap: Number(e.target.value) })} className="w-full accent-[#0d9488] h-7" />
               </Field>
             )}
             {lineSliders(it)}
@@ -1237,9 +1239,12 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
 
         {b.kind === "signatures" && (
           <>
-            <Field label="ชื่อช่องลงนาม (คั่นด้วย , สูงสุด 4 ช่อง)">{sigInput(b.labels || [], (v) => (v ? update(it, { labels: v }) : unset(it, "labels")))}</Field>
+            <Field label="ช่องลงนาม (สูงสุด 4 ช่อง · ตั้งค่าทีละช่อง)">
+              <SignSlotsEditor slots={b.signSlots} fallbackLabels={b.labels?.length ? b.labels : defaultSignatures} disabled={!canEdit}
+                onChange={(next) => (next ? update(it, { signSlots: next, labels: next.map((x) => x.label).filter(Boolean) }) : unset(it, "signSlots", "labels"))} />
+            </Field>
             <Field label={`ระยะห่างระหว่างช่อง ${b.gap ?? 16} pt (เว้นกลางวางโลโก้/ตราประทับได้)`}>
-              <input type="range" min={0} max={300} step={2} value={b.gap ?? 16} onChange={(e) => update(it, { gap: Number(e.target.value) })} className="w-full accent-[#0d9488] h-8" />
+              <RangeNumber min={0} max={300} step={2} value={b.gap ?? 16} onChange={(e) => update(it, { gap: Number(e.target.value) })} className="w-full accent-[#0d9488] h-8" />
             </Field>
           </>
         )}
@@ -1305,7 +1310,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             {<>
             <Field label={`มุม ${b.radii ? "แยกแต่ละมุม" : (b.radius ?? (theme.rounded ? 4 : 0)) === 0 ? "เหลี่ยม" : `โค้ง ${b.radius ?? (theme.rounded ? 4 : 0)} pt`}${!b.radii && b.radius === undefined ? " (แม่แบบ)" : ""}`}>
               <div className="flex items-center gap-2">
-                <input type="range" min={0} max={30} step={1} value={b.radius ?? (theme.rounded ? 4 : 0)} onChange={(e) => update(it, { radius: Number(e.target.value) })} className="flex-1 accent-[#0d9488] h-8" />
+                <RangeNumber min={0} max={30} step={1} value={b.radius ?? (theme.rounded ? 4 : 0)} onChange={(e) => update(it, { radius: Number(e.target.value) })} className="flex-1 accent-[#0d9488] h-8" />
                 <button type="button" className="text-[11px] text-white/50 hover:text-white" onClick={() => update(it, { radius: 0 })}>เหลี่ยม</button>
                 {b.radius !== undefined && <button type="button" className="text-[11px] text-white/50 hover:text-white" onClick={() => unset(it, "radius")}>ตามแม่แบบ</button>}
               </div>
@@ -1815,7 +1820,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             </RGroup>
           )}
           <RGroup label={`ความทึบ ${Math.round((s0.opacity ?? 1) * 100)}%`}>
-            <input type="range" min={10} max={100} step={5} value={Math.round((s0.opacity ?? 1) * 100)} onChange={(e) => { const v = Number(e.target.value) / 100; patchSel(boxSel, { opacity: v >= 1 ? undefined : v }); }} className="w-[110px] accent-[#0d9488]" />
+            <RangeNumber min={10} max={100} step={5} value={Math.round((s0.opacity ?? 1) * 100)} onChange={(e) => { const v = Number(e.target.value) / 100; patchSel(boxSel, { opacity: v >= 1 ? undefined : v }); }} className="w-[110px] accent-[#0d9488]" />
           </RGroup>
         </>
       ) : null;

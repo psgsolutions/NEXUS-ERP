@@ -260,7 +260,7 @@ export function adaptForm(free: FreeLayout, s: DocDef, t: DocDef): FreeLayout {
         delete n.cols;
         return n;
       }
-      case "signatures": delete n.labels; return n;
+      case "signatures": delete n.labels; delete n.signSlots; return n;
       case "sign": {
         if (!b.slot) return n;
         const i = s.signatures.indexOf(b.slot);

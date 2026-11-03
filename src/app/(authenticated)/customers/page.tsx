@@ -7,11 +7,12 @@ import { useCustomers } from "@/hooks/useCustomers";
 import { PillButton, NexusTable, NexusTableRow, NexusTableCell, NexusSearchInput, StatusBadge, GlassCard, PillTabs } from "@/components/ui/Base";
 import { Building2, Plus, Users, Phone, Mail, MapPin, Crown, ShieldCheck, UserCheck } from "lucide-react";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
+import { useUrlTab } from "@/hooks/useUrlTab";
 
 export default function CustomerDashboardPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useUrlTab<string>("all");
   
   const { data: customers, loading } = useCustomers();
 

@@ -72,6 +72,20 @@ export interface DocumentDesign {
 }
 
 // ---------- ผังลากวางอิสระ ----------
+/**
+ * ช่องลงนาม 1 ช่อง (เครื่องมือสร้างช่องลงนาม)
+ * name: ชื่อใต้เส้น — blank = (.............) · customer = ชื่อคู่ค้าในเอกสาร · seller = ชื่อบริษัทเรา · text = ข้อความที่ตั้ง
+ * date: none = ไม่แสดง · blank = วันที่ ....../....../...... · doc = วันที่เอกสาร
+ * มีลายเซ็นจริงของช่อง (ผู้ลงนาม/เซ็นบนมือถือ) = ใช้ชื่อ ตำแหน่ง วันที่จากลายเซ็นนั้นก่อน
+ */
+export interface SignSlot { label: string; name?: "blank" | "customer" | "seller" | "text"; nameText?: string; title?: string; date?: "none" | "blank" | "doc"; prefix?: string }
+export const SIGN_NAME_MODES: { key: NonNullable<SignSlot["name"]>; label: string }[] = [
+  { key: "blank", label: "ช่องว่าง (......)" }, { key: "customer", label: "ชื่อลูกค้า/คู่ค้าในเอกสาร" }, { key: "seller", label: "ชื่อบริษัทเรา" }, { key: "text", label: "พิมพ์เอง" },
+];
+export const SIGN_DATE_MODES: { key: NonNullable<SignSlot["date"]>; label: string }[] = [
+  { key: "blank", label: "ช่องว่างให้เขียน" }, { key: "doc", label: "วันที่เอกสาร" }, { key: "none", label: "ไม่แสดง" },
+];
+
 export type BlockKind = "logo" | "seller" | "title" | "meta" | "party" | "info" | "items" | "totals" | "words" | "notes" | "payment" | "signatures" | "field" | "text" | "line" | "rect" | "shape" | "image" | "stamp" | "sign" | "grid" | "copy";
 /** ป้ายต้นฉบับ/สำเนา (kind=copy): กรอบเหลี่ยม · กรอบมน · พื้นทึบ · แบบตรายาง (กรอบคู่ เอียง) · ตัวอักษรอย่างเดียว */
 export type CopyStyle = "box" | "pill" | "solid" | "stamp" | "text";
@@ -132,6 +146,8 @@ export interface FreeBlock {
   names?: Record<string, string>;
   /** ช่องลงนาม: ชื่อช่อง */
   labels?: string[];
+  /** ช่องลงนาม: ตั้งค่ารายช่อง (ชื่อใต้เส้น ตำแหน่ง วันที่) — ไม่ตั้ง = ช่องว่างตามแบบเดิม */
+  signSlots?: SignSlot[];
   /** ช่องลงนาม: ระยะห่างระหว่างช่อง (pt) เช่น เว้นกลางไว้วางโลโก้/ตราประทับ */
   gap?: number;
   /** ตารางรายการ: ยืดตารางเต็มความสูงกล่อง (เส้นคอลัมน์ลากถึงล่าง แบบฟอร์ม) */
@@ -714,6 +730,16 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(hide.length ? { hide } : {}),
     ...(cols.length ? { cols: cols.includes("description") ? cols : (["description", ...cols] as ItemColumn[]) } : {}),
     ...(labels.length ? { labels } : {}),
+    ...(b.kind === "signatures" && Array.isArray(b.signSlots) && b.signSlots.length ? {
+      signSlots: b.signSlots.slice(0, 4).map((x: any) => ({
+        label: str(x?.label, 40) || "ผู้ลงนาม",
+        ...(["blank", "customer", "seller", "text"].includes(x?.name) ? { name: x.name } : {}),
+        ...(str(x?.nameText, 80) ? { nameText: str(x.nameText, 80) } : {}),
+        ...(str(x?.title, 80) ? { title: str(x.title, 80) } : {}),
+        ...(["none", "blank", "doc"].includes(x?.date) ? { date: x.date } : {}),
+        ...(str(x?.prefix, 20) ? { prefix: str(x.prefix, 20) } : {}),
+      })),
+    } : {}),
     ...(fields.length || b.kind === "info" ? { fields } : {}),
     ...(colSpec.length ? { colSpec } : {}),
     ...(b.kind === "info" && b.emphasizeFirst ? { emphasizeFirst: true } : {}),

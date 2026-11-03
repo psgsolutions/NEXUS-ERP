@@ -56,6 +56,7 @@ import Link from "next/link";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
+import { useUrlTab } from "@/hooks/useUrlTab";
 
 
 type FinanceSubModule = "overview" | "ar" | "ap" | "gl" | "tax" | "assets" | "bank" | "cheques";
@@ -64,7 +65,7 @@ export default function FinancePage() {
   const router = useRouter();
 
   const { user, companyId, role } = useAuth();
-  const [activeTab, setActiveTab] = useState<FinanceSubModule>("overview");
+  const [activeTab, setActiveTab] = useUrlTab<FinanceSubModule>("overview");
   const [searchQuery, setSearchQuery] = useState("");
 
   const [modalActiveTab, setModalActiveTab] = useState("basic");

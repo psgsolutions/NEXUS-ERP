@@ -16,6 +16,7 @@ import { useContractors } from "@/hooks/useCustomers";
 import { OPEN_STATUSES, PROJECT_STATUS_BADGE, PROJECT_STATUS_TH, normalizeProjectStatus, type ProjectStatus } from "@/lib/project-status";
 import { milestoneStatus } from "@/lib/project-milestones";
 import { compactBaht } from "@/lib/dashboard-metrics";
+import { useUrlTab } from "@/hooks/useUrlTab";
 
 type Tab = "list" | "planning" | "report" | "costing" | "contractors";
 
@@ -32,7 +33,7 @@ const WO_STATUS: Record<string, { label: string; badge: "active" | "pending" | "
 export default function ProjectsPage() {
   const router = useRouter();
   const { companyId } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>("list");
+  const [activeTab, setActiveTab] = useUrlTab<Tab>("list");
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: dbProjects } = useCompanyProjects();

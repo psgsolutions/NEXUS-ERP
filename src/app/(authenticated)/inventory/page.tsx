@@ -66,6 +66,7 @@ import { collection, query, where, onSnapshot, orderBy, limit } from "firebase/f
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { toMs as toSerialMs, warrantyState } from "@/lib/serials";
 import { apiFetch } from "@/lib/api-client";
+import { useUrlTab } from "@/hooks/useUrlTab";
 
 interface CreateKitModalProps {
   isOpen: boolean;
@@ -337,7 +338,7 @@ export default function InventoryPage() {
   const { user, companyId } = useAuth();
   const router = useRouter();
   
-  const [activeTab, setActiveTab] = useState("items");
+  const [activeTab, setActiveTab] = useUrlTab<string>("items");
   const inventoryTabs = useAdvancedTabs([
     { id: "items", label: "รายการพัสดุ", icon: <Package size={14} /> },
     { id: "assets", label: "ทะเบียนสินทรัพย์ถาวร", icon: <Box size={14} /> },

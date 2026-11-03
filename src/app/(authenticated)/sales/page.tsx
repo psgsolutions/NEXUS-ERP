@@ -82,6 +82,7 @@ import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
 import { quotationCanDelete, QUOTATION_STAGE, quotationStage, quotationValidUntil, type QuotationStage } from "@/lib/quotation-status";
+import { useUrlTab } from "@/hooks/useUrlTab";
 
 
 // ---------- แปลงเอกสารจาก Firestore เป็นแถวในตาราง (ข้อมูลจริงเท่านั้น ไม่มี mock) ----------
@@ -117,7 +118,7 @@ export default function SalesPage() {
   const router = useRouter();
 
   const { user, companyId, role: userRole, roles } = useAuth();
-  const [activeTab, setActiveTab] = useState<SalesSubModule>("quotations");
+  const [activeTab, setActiveTab] = useUrlTab<SalesSubModule>("quotations");
   const [quoteFilter, setQuoteFilter] = useState<"all" | QuotationStage>("all");
   // เปิดแท็บ/ตัวกรองจาก URL เช่น /sales?tab=quotations&status=pending (หน้า /sales/quotations เดิมส่งต่อมาที่นี่)
   useEffect(() => {

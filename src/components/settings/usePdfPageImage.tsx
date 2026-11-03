@@ -49,6 +49,7 @@ export async function printPdfActualSize(pdfUrl: string, dpi = 200): Promise<voi
   style.textContent = `#nexus-pdf-print{display:none}
 @media print{
   @page{size:${w}pt ${h}pt;margin:0}
+  html>*:not(head):not(body){display:none!important}
   html,body{margin:0!important;padding:0!important;width:${w}pt!important;height:auto!important;min-height:0!important;overflow:visible!important;background:#fff!important;zoom:1!important;transform:none!important}
   body>*:not(#nexus-pdf-print){display:none!important}
   #nexus-pdf-print{display:block!important;position:static!important;visibility:visible!important;margin:0;padding:0}
@@ -58,7 +59,21 @@ export async function printPdfActualSize(pdfUrl: string, dpi = 200): Promise<voi
   document.head.appendChild(style);
   document.body.appendChild(root);
   await Promise.all([...root.querySelectorAll("img")].map((im) => (im.complete ? Promise.resolve() : new Promise((ok) => { im.onload = ok; im.onerror = ok; }))));
-  const cleanup = () => { root.remove(); style.remove(); window.removeEventListener("afterprint", cleanup); };
+  // สิ่งที่ส่วนขยายของเบราว์เซอร์แทรกไว้นอก <body> (ลูกของ <html>) หรือใน body ที่ตั้ง display แบบ inline !important:
+  // ถ้ากว้างเกินกระดาษ Chrome จะย่อทั้งหน้าให้พอดี (เช่น กว้าง 990px → เหลือ 80% ชิดมุมซ้ายบน)
+  // ซ่อนด้วย style ที่ตัวองค์ประกอบระหว่างพิมพ์ (ชนะ CSS ทุกแบบ) แล้วคืนค่าเดิมหลังพิมพ์
+  const hidden: { el: HTMLElement; display: string; priority: string }[] = [];
+  for (const el of [...document.documentElement.children, ...document.body.children]) {
+    if (el === document.head || el === document.body || el === root || el === style || !(el instanceof HTMLElement)) continue;
+    // ใน body: CSS ด้านบนซ่อนให้แล้ว — ตั้งเฉพาะตัวที่ display เป็น inline !important (กัน CSS)
+    if (el.parentElement === document.body && el.style.getPropertyPriority("display") !== "important") continue;
+    hidden.push({ el, display: el.style.getPropertyValue("display"), priority: el.style.getPropertyPriority("display") });
+    el.style.setProperty("display", "none", "important");
+  }
+  const cleanup = () => {
+    root.remove(); style.remove(); window.removeEventListener("afterprint", cleanup);
+    for (const h of hidden.splice(0)) { if (h.display) h.el.style.setProperty("display", h.display, h.priority); else h.el.style.removeProperty("display"); }
+  };
   window.addEventListener("afterprint", cleanup);
   window.print();
   // บางเบราว์เซอร์ไม่ส่ง afterprint

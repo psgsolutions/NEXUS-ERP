@@ -63,6 +63,7 @@ import { apiFetch } from "@/lib/api-client";
 import { findBarcodeConflict } from "@/lib/product-validation";
 import { Product } from "@/types/database";
 import { RecordDeleteButton } from "@/components/shared/RecordDeleteButton";
+import { ProductSuppliersBox } from "@/components/shared/ProductSuppliersBox";
 
 const CATEGORIES = [
   "Network & Wireless",
@@ -759,6 +760,9 @@ export default function ProductDetailPage() {
         </div>
         <AttachmentPicker ownerType="product" ownerId={productId} hint="Datasheet คู่มือ ใบรับรอง (PDF หรือรูป) · คลิกไฟล์เพื่อเปิดดู" />
       </GlassCard>
+
+      {/* ผู้ขายสินค้านี้ (ผูกจากหน้าผู้ขาย › สินค้าที่ขาย) */}
+      <ProductSuppliersBox config={(product as any).supplierConfig} />
 
       {/* Actions Card */}
       <GlassCard className="p-4 border-white/5 space-y-3">

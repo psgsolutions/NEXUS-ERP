@@ -16,6 +16,7 @@ import {
   type BillingMethod, type DocProfile, type OrgType, type UndatedDoc,
 } from "@/lib/customer-doc-profile";
 import { RecordDeleteButton } from "@/components/shared/RecordDeleteButton";
+import { CustomerHistoryCard } from "@/components/shared/CustomerHistoryCard";
 
 /**
  * ข้อมูลลูกค้า + โปรไฟล์เอกสาร (รูปแบบเอกสาร/การวางบิล/รับเงิน ของลูกค้ารายนี้)
@@ -178,6 +179,9 @@ export default function CustomerDetailPage() {
               </Field>
             </div>
           </GlassCard>
+
+          {/* โครงการ งานบริการ และเอกสารขายที่เคยทำกับลูกค้ารายนี้ */}
+          <CustomerHistoryCard customerId={id} />
 
           <GlassCard accentColor="blue" className="p-5 space-y-5">
             <div className="flex items-start justify-between gap-3">

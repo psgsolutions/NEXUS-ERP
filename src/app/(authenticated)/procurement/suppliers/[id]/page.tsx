@@ -13,6 +13,7 @@ import { SpellHint } from "@/components/shared/SpellHint";
 import { useSuppliers } from "@/hooks/useCustomers";
 import { partyDocName, taxIdProblem } from "@/lib/party-identity";
 import { RecordDeleteButton } from "@/components/shared/RecordDeleteButton";
+import { SupplierProductsCard } from "@/components/shared/SupplierProductsCard";
 
 /**
  * ข้อมูลผู้ขาย/ผู้รับเหมา: ดูและแก้ไข (ฝ่ายจัดซื้อ procurement:edit)
@@ -161,6 +162,9 @@ export default function SupplierDetailPage() {
               <Field label="ชื่อบัญชี" className="md:col-span-2">{input("bankAccountName")}</Field>
             </div>
           </GlassCard>
+
+          {/* สินค้าที่ผู้ขายรายนี้ขาย (สินค้าหนึ่งตัวมีผู้ขายได้หลายราย) */}
+          <SupplierProductsCard supplierId={id} />
         </div>
       </div>
     </div>

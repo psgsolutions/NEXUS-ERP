@@ -7,6 +7,7 @@ import { prepareSequence } from "@/lib/sequence-server";
 import { sellerSnapshot } from "@/lib/documents/seller.server";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { auditServer } from "@/services/audit.server";
+import { computeDocTotals, normalizeVatMode } from "@/lib/doc-totals";
 
 /**
  * [API-SERVER] ออกใบกำกับภาษี/ใบแจ้งหนี้ + ใบวางบิล จากใบสั่งขาย
@@ -83,6 +84,19 @@ export async function POST(request: Request) {
       const customerName = so.customerName || so.customerSnapshot?.name || "";
       const isVatRegistered = (so.isVatRegistered ?? true) && vatType !== "Non-VAT";
       const ref = { referenceNo: so.referenceNo || so.customerPoNo || so.quotationRefNo || "", customerPoNo: so.customerPoNo || so.referenceNo || "" };
+      // หัก ณ ที่จ่ายที่ลูกค้าจะหัก (ค่าบริการ ฯลฯ) ตามใบสั่งขาย — ใบสั่งขายรุ่นเก่าคำนวณจากรายการ
+      const whtAmount = r2(Math.min(subTotal, Number.isFinite(Number(so.whtAmount)) && so.whtAmount !== undefined
+        ? Number(so.whtAmount)
+        : computeDocTotals(Array.isArray(so.items) ? so.items : [], normalizeVatMode(vatType), "lines", Number(so.docDiscountAmount) || 0).whtAmount));
+      const netPayable = r2(grandTotal - whtAmount);
+      // อัตราตั้งต้นตอนรับชำระ: ทุกบรรทัดหักอัตราเดียวกัน (เช่น งานบริการล้วน 3%) — รายการผสมให้ผู้รับเงินเลือกเอง
+      const soItems: any[] = Array.isArray(so.items) ? so.items : [];
+      const rates = new Set(soItems.map((l) => Number(l.whtRate) || 0));
+      const expectedWhtRate = whtAmount > 0 && rates.size === 1 ? Array.from(rates)[0] : 0;
+      const extra = {
+        quotationNo: so.quotationNo || "", contactPerson: so.contactPerson || "", contactPhone: so.contactPhone || "", contactEmail: so.contactEmail || "",
+        remark: so.remark || "", deliveryAddress: so.deliveryAddress || "", paymentTerms: so.paymentTerms || "", projectId: so.projectId || "", projectName: so.projectName || "",
+      };
 
       // ---- เขียน ----
       inv.commit();
@@ -96,9 +110,9 @@ export async function POST(request: Request) {
         // พนักงานขาย (จากใบเสนอราคา/ใบสั่งขาย) — รายงานกำไรรายพนักงานขาย
         salesPersonId: String(so.salesPersonId || so.createdBy || ""), salespersonName: String(so.salespersonName || so.createdByEmail || ""),
         issueDate, dueDate,
-        items: so.items || [],
+        items: so.items || [], ...extra,
         isVatRegistered, vatType,
-        subTotal, vatAmount, grandTotal,
+        subTotal, vatAmount, grandTotal, totalDiscount: Number(so.totalDiscount) || 0, whtAmount, netPayable, ...(expectedWhtRate ? { expectedWhtRate } : {}),
         paidAmount: 0, balance: grandTotal, paymentStatus: "unpaid",
         billingNoteNo: bn.number, journalId: journalRef.id,
         status: "issued",
@@ -110,7 +124,7 @@ export async function POST(request: Request) {
         invoiceRefNo: inv.number, invoiceDocId: invRef.id, salesOrderRefNo: soNo, ...ref,
         customerSnapshot: so.customerSnapshot || null, customerId: so.customerId || "", customerName,
         sellerSnapshot: seller,
-        issueDate, dueDate, totalAmount: grandTotal,
+        issueDate, dueDate, totalAmount: grandTotal, whtAmount, netPayable, ...extra,
         status: "issued",
         createdBy: apiUser.uid, updatedBy: apiUser.uid, createdAt: now, updatedAt: now, isDeleted: false,
       });

@@ -120,9 +120,10 @@ export async function loadInvoice(companyId: string, id: string): Promise<Docume
     party: partyOf("ลูกค้า", d.customerSnapshot, str(d.customerName)),
     columns: ["no", "description", "qty", "unit", "price", "discount", "amount"],
     lines,
-    totals: totalsRows({ lineTotal: lineSum || net, billDiscount, net, vat: num(d.vatAmount), grand: num(d.grandTotal), taxType }),
+    totals: totalsRows({ lineTotal: lineSum || net, billDiscount, net, vat: num(d.vatAmount), grand: num(d.grandTotal), taxType, wht: num(d.whtAmount), payable: num(d.netPayable) || undefined }),
     amountInWords: num(d.grandTotal),
     notes: [
+      ...(d.remark ? [str(d.remark)] : []),
       ...(d.replacesInvoiceNo ? [`ใบกำกับภาษีฉบับนี้ออกแทนฉบับเดิมเลขที่ ${d.replacesInvoiceNo}${d.replaceReason ? ` ซึ่งยกเลิกเนื่องจาก ${d.replaceReason}` : ""}`] : []),
       ...cancelNote(d),
       ...(d.billingNoteNo ? [`ใบวางบิลเลขที่ ${d.billingNoteNo}`] : []),

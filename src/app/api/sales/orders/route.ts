@@ -8,11 +8,14 @@ import { auditServer } from "@/services/audit.server";
 import { getCompanyCustomer, assertCreditAvailable } from "@/lib/credit-limit.server";
 import { computeDocTotals, normalizeVatMode, sanitizeLines } from "@/lib/doc-totals";
 import { partyDocName } from "@/lib/party-identity";
+import { salesOrderRefs } from "@/lib/sales-order.server";
 
 /**
  * [API-SERVER] สร้างใบสั่งขาย (SO)
  * Endpoint: POST /api/sales/orders
- * body: { companyId, status: "Draft" | "Confirmed", header: { customerId, docDate, projectId?, paymentTermDays, vatType, billingAddress, deliveryAddress }, items }
+ * body: { companyId, status: "Draft" | "Confirmed", header: { customerId, docDate, projectId?, paymentTermDays, vatType, billingAddress, deliveryAddress,
+ *         customerPoNo?, salesPersonId?, salespersonName?, contactPerson?, contactPhone?, contactEmail?, remark?, deliveryDate? }, items }
+ * - หัก ณ ที่จ่ายคิดรายบรรทัด (line.whtRate) → whtAmount / netPayable ส่งต่อไปใบแจ้งหนี้
  *
  * - เลข SO ออกในทรานแซกชัน (ไม่ข้าม), ยอดคำนวณที่ server
  * - ยืนยัน (Confirmed): ตรวจวงเงินเครดิตลูกค้าจากยอดค้างของใบกำกับภาษีจริง — เกินวงเงินบันทึกได้เฉพาะร่าง
@@ -35,7 +38,7 @@ export async function POST(request: Request) {
     const items = sanitizeLines(body.items);
     if (!items.length) throw new ApiAuthError(400, "กรุณาเพิ่มรายการสินค้าหรือบริการอย่างน้อย 1 รายการ");
     const vatMode = normalizeVatMode(h.vatType);
-    const t = computeDocTotals(items, vatMode);
+    const t = computeDocTotals(items, vatMode, "lines");
     const customerId = str(h.customerId, 120);
     if (!customerId) throw new ApiAuthError(400, "กรุณาเลือกลูกค้า");
 
@@ -65,9 +68,11 @@ export async function POST(request: Request) {
         billingAddress: billing, deliveryAddress: str(h.deliveryAddress, 1000) || billing,
         projectId: project?.exists ? projectId : "", projectName: project?.exists ? str(project.data()!.projectName || project.data()!.title, 200) : "",
         paymentTermDays: Math.max(0, Math.min(365, Number(h.paymentTermDays) || 0)),
+        ...salesOrderRefs({ ...h, salesPersonId: h.salesPersonId || apiUser.uid }),
         vatType: VAT_LABEL[vatMode], taxMode: VAT_LABEL[vatMode], isVatRegistered: vatMode !== "none",
         items,
         subTotal: t.subTotal, totalDiscount: t.discount, vatAmount: t.vatAmount, grandTotal: t.grandTotal, totalAmount: t.grandTotal, totalRevenue: t.grandTotal,
+        whtAmount: t.whtAmount, netPayable: t.netPayable,
         status, fulfillmentStatus: "pending",
         createdBy: apiUser.uid, createdByEmail: apiUser.email || "", updatedBy: apiUser.uid, createdAt: now, updatedAt: now, isDeleted: false,
       });

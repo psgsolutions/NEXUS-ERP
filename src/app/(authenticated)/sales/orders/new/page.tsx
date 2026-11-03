@@ -3,7 +3,8 @@
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, Send, Building2, Calendar, Percent, Plus, MapPin, Paperclip, AlertTriangle, ShieldCheck } from "lucide-react";
-import { PillButton, PillSelect, cn, NexusDatePicker, GlassCard } from "@/components/ui/Base";
+import { PillButton, PillSelect, PillInput, cn, NexusDatePicker, GlassCard } from "@/components/ui/Base";
+import { computeDocTotals } from "@/lib/doc-totals";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { formatCurrency } from "@/lib/erp-logic";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
@@ -49,6 +50,9 @@ export default function SalesOrderPage() {
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [projectId, setProjectId] = useState("");
   const [paymentTerm, setPaymentTerm] = useState("30"); // days
+  // อ้างอิงและผู้ติดต่อ — ส่งต่อไปใบกำกับภาษี/ใบแจ้งหนี้
+  const [refs, setRefs] = useState({ customerPoNo: "", contactPerson: "", contactPhone: "", deliveryDate: "", remark: "" });
+  const setRef = (k: keyof typeof refs, v: string) => setRefs((cur) => ({ ...cur, [k]: v }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -89,6 +93,8 @@ export default function SalesOrderPage() {
       .reduce((sum: number, inv: any) => sum + Number(inv.grandTotal || inv.totalAmount || 0), 0);
   }, [invoices, customer]);
   const creditRemaining = creditLimit - currentBalance;
+  // หัก ณ ที่จ่ายรายบรรทัด (สูตรเดียวกับ server)
+  const wht = useMemo(() => computeDocTotals(items.filter((it) => it.itemType !== "GROUP_HEADER"), taxType, "lines"), [items, taxType]);
   const isCreditExceeded = hasCreditLimit && summary.grandTotal > creditRemaining;
 
   const saveOrder = async (status: "Draft" | "Confirmed") => {
@@ -105,7 +111,7 @@ export default function SalesOrderPage() {
       const res = await apiFetch("/api/sales/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId, status, items: lines, header: { customerId: customer.id, docDate, projectId: projectId || "", paymentTermDays: Number(paymentTerm), vatType: VAT_TYPE_LABEL[taxType], billingAddress, deliveryAddress: isSameAsBilling ? billingAddress : deliveryAddress } }),
+        body: JSON.stringify({ companyId, status, items: lines, header: { customerId: customer.id, docDate, projectId: projectId || "", paymentTermDays: Number(paymentTerm), vatType: VAT_TYPE_LABEL[taxType], billingAddress, deliveryAddress: isSameAsBilling ? billingAddress : deliveryAddress, ...refs, contactPerson: refs.contactPerson || customer.contactPerson || customer.contactName || "", contactPhone: refs.contactPhone || customer.phone || customer.phoneNumber || "" } }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "บันทึกไม่สำเร็จ");
@@ -311,6 +317,30 @@ export default function SalesOrderPage() {
           </div>
         </div>
 
+        {/* อ้างอิงและผู้ติดต่อ */}
+        <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-nexus-teal hover:border-white/25">
+          <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
+            <ShieldCheck size={16} className="text-nexus-teal" /> อ้างอิงและผู้ติดต่อ
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Field label="เลขที่ใบสั่งซื้อ (PO) ลูกค้า">
+              <PillInput value={refs.customerPoNo} onChange={(e) => setRef("customerPoNo", e.target.value)} placeholder="พิมพ์บนใบกำกับภาษี" className="w-full h-9 text-[12px] font-mono" />
+            </Field>
+            <Field label="ผู้ติดต่อ">
+              <PillInput value={refs.contactPerson} onChange={(e) => setRef("contactPerson", e.target.value)} placeholder={customer?.contactPerson || customer?.contactName || "ชื่อผู้ติดต่อ"} className="w-full h-9 text-[12px]" />
+            </Field>
+            <Field label="เบอร์โทรผู้ติดต่อ">
+              <PillInput value={refs.contactPhone} onChange={(e) => setRef("contactPhone", e.target.value)} placeholder={customer?.phone || customer?.phoneNumber || "เบอร์โทร"} className="w-full h-9 text-[12px] font-mono" />
+            </Field>
+            <Field label="กำหนดส่งของ">
+              <NexusDatePicker value={refs.deliveryDate} onChange={(e) => setRef("deliveryDate", e.target.value)} className="w-full h-9 rounded-full px-6 bg-white/[0.02] text-[12px] font-bold" />
+            </Field>
+          </div>
+          <Field label="หมายเหตุ">
+            <PillInput value={refs.remark} onChange={(e) => setRef("remark", e.target.value)} placeholder="พิมพ์ท้ายใบสั่งขายและใบกำกับภาษี" className="w-full h-9 text-[12px]" />
+          </Field>
+        </div>
+
         {/* Line Items Table */}
         <div className="bg-neutral-900/90 border border-white/15 rounded-3xl overflow-hidden shadow-2xl p-4 space-y-4 border-l-4 border-l-emerald-500 hover:border-white/25">
           <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/10 pb-4">
@@ -409,6 +439,12 @@ export default function SalesOrderPage() {
           <div className="flex justify-between items-center text-[12px] pb-4 border-b border-white/5">
             <span className="text-white/40 font-bold uppercase tracking-widest text-[11px]">ภาษีมูลค่าเพิ่ม 7% (VAT)</span>
             <span className="text-white font-mono font-bold">{formatCurrency(summary.vat)} บาท</span>
+          </div>
+        )}
+        {wht.whtAmount > 0 && (
+          <div className="space-y-1 text-[12px]">
+            <div className="flex justify-between"><span className="text-white/60">หัก ณ ที่จ่าย (ตามรายการ)</span><span className="text-warning font-mono font-bold">-{formatCurrency(wht.whtAmount)} บาท</span></div>
+            <div className="flex justify-between"><span className="text-white/60">ยอดชำระสุทธิ</span><span className="text-white font-mono font-bold">{formatCurrency(wht.netPayable)} บาท</span></div>
           </div>
         )}
         <div className="flex justify-between items-end pt-4">

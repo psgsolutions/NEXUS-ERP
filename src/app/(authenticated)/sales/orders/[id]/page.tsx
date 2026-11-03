@@ -236,7 +236,11 @@ export default function SalesOrderDetailPage() {
           <Row label="เครดิต" value={so.paymentTermDays !== undefined ? `${so.paymentTermDays} วัน` : (so.paymentTerms || "-")} />
           <Row label="โครงการ" value={so.projectName || so.projectId || "-"} />
           <Row label="ประเภทภาษี" value={so.vatType || so.taxMode || "-"} />
-          <Row label="อ้างอิงใบเสนอราคา" value={so.quoteId || so.quotationRefNo || "-"} />
+          <Row label="อ้างอิงใบเสนอราคา" value={so.quotationNo || so.quotationRefNo || so.quoteId || "-"} />
+          {so.customerPoNo && <Row label="เลขที่ PO ลูกค้า" value={so.customerPoNo} />}
+          {so.contactPerson && <Row label="ผู้ติดต่อ" value={`${so.contactPerson}${so.contactPhone ? ` · ${so.contactPhone}` : ""}`} />}
+          {so.deliveryDate && <Row label="กำหนดส่งของ" value={so.deliveryDate} />}
+          {so.remark && <Row label="หมายเหตุ" value={so.remark} />}
           {so.invoiceNo && <Row label="ใบกำกับภาษี" value={so.invoiceNo} />}
           {so.billingNoteNo && <Row label="ใบวางบิล" value={so.billingNoteNo} />}
         </GlassCard>
@@ -292,6 +296,8 @@ export default function SalesOrderDetailPage() {
       <Row label="ยอดก่อนภาษี" value={`${formatCurrency(so.subTotal ?? so.netTotal ?? so.totalRevenue ?? 0)} บาท`} />
       {Number(so.totalDiscount || 0) > 0 && <Row label="ส่วนลดรวม" value={`-${formatCurrency(so.totalDiscount)} บาท`} />}
       <Row label="ภาษีมูลค่าเพิ่ม 7%" value={`${formatCurrency(so.vatAmount ?? 0)} บาท`} />
+      {Number(so.whtAmount || 0) > 0 && <Row label="หัก ณ ที่จ่าย (ลูกค้าหัก)" value={`-${formatCurrency(so.whtAmount)} บาท`} />}
+      {Number(so.whtAmount || 0) > 0 && <Row label="ยอดชำระสุทธิ" value={`${formatCurrency(so.netPayable ?? 0)} บาท`} />}
       <div className="flex justify-between items-end pt-4 border-t border-white/5">
         <span className="text-[12px] font-semibold text-white/70 uppercase tracking-widest">จำนวนเงินทั้งสิ้น</span>
         <span className="text-3xl font-black font-mono tracking-tighter text-cyan-400">

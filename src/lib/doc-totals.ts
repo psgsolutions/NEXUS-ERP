@@ -67,15 +67,25 @@ export interface DocTotals {
   cost: number;
 }
 
-export function computeDocTotals(lines: any[], vatMode: VatMode, whtRate = 0): DocTotals {
+/**
+ * whtRate: อัตราหัก ณ ที่จ่ายทั้งเอกสาร · "lines" = ใช้อัตรารายบรรทัด (line.whtRate) เช่น ค่าบริการ 3% ในใบเดียวกับสินค้า (ใบสั่งขาย)
+ * docDiscount: ส่วนลดท้ายบิล (บาท) หักก่อนคิด VAT — กระจายตามสัดส่วนเมื่อคิดหัก ณ ที่จ่ายรายบรรทัด
+ */
+export function computeDocTotals(lines: any[], vatMode: VatMode, whtRate: number | "lines" = 0, docDiscount = 0): DocTotals {
   const counted = lines.filter((l) => !l.isOptional);
   const gross = counted.reduce((s, l) => s + num(l.qty) * num(l.price), 0);
-  const discount = counted.reduce((s, l) => s + lineDiscount(l), 0);
-  const afterDiscount = Math.max(0, gross - discount);
+  const lineDisc = counted.reduce((s, l) => s + lineDiscount(l), 0);
+  const beforeDoc = Math.max(0, gross - lineDisc);
+  const docDisc = Math.min(beforeDoc, Math.max(0, num(docDiscount)));
+  const discount = lineDisc + docDisc;
+  const afterDiscount = Math.max(0, beforeDoc - docDisc);
   let subTotal = afterDiscount, vatAmount = 0, grandTotal = afterDiscount;
   if (vatMode === "exclusive") { vatAmount = afterDiscount * 0.07; grandTotal = afterDiscount + vatAmount; }
   else if (vatMode === "inclusive") { subTotal = afterDiscount / 1.07; vatAmount = afterDiscount - subTotal; }
-  const whtAmount = subTotal * (Math.max(0, num(whtRate)) / 100);
+  const toBase = (amt: number) => (vatMode === "inclusive" ? amt / 1.07 : amt) * (beforeDoc > 0 ? afterDiscount / beforeDoc : 0);
+  const whtAmount = whtRate !== "lines"
+    ? subTotal * (Math.max(0, num(whtRate)) / 100)
+    : counted.reduce((s, l) => s + toBase(Math.max(0, num(l.qty) * num(l.price) - lineDiscount(l))) * (Math.max(0, num(l.whtRate)) / 100), 0);
   return {
     gross: r2(gross), discount: r2(discount), afterDiscount: r2(afterDiscount),
     subTotal: r2(subTotal), vatAmount: r2(vatAmount), grandTotal: r2(grandTotal),

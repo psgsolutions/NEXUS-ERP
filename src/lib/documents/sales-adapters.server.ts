@@ -51,9 +51,11 @@ export async function loadSalesOrder(companyId: string, id: string): Promise<Doc
     party: partyOf("ลูกค้า", d.customerSnapshot, str(d.customerName)),
     columns: ["no", "code", "description", "qty", "unit", "price", "discount", "amount"],
     lines,
-    totals: totalsRows({ lineTotal: lineSum || net, billDiscount, net, vat: num(d.vatAmount), grand, taxType }),
+    totals: totalsRows({ lineTotal: lineSum || net, billDiscount, net, vat: num(d.vatAmount), grand, taxType, wht: num(d.whtAmount), payable: num(d.netPayable) || undefined }),
     amountInWords: grand,
     notes: [
+      d.contactPerson ? `ผู้ติดต่อ: ${str(d.contactPerson)}${d.contactPhone ? ` โทร ${str(d.contactPhone)}` : ""}` : "",
+      d.deliveryDate ? `กำหนดส่งของ: ${thaiDate(d.deliveryDate)}` : "",
       d.deliveryAddress ? `สถานที่ส่งมอบ: ${str(d.deliveryAddress)}` : "",
       dns.length ? `ใบส่งของ: ${dns.join(", ")}` : "",
       d.invoiceNo ? `ออกใบกำกับภาษีแล้ว เลขที่ ${str(d.invoiceNo)}` : "",

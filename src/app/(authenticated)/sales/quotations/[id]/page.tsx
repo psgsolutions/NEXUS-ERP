@@ -3,7 +3,7 @@
 import { useSystemDialog } from "@/context/DialogContext";
 import React, { useState, useMemo, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Save, Send, Building2, Calendar, Plus, Info, AlertTriangle, Search, Trash2, FileText, Mail, MessageSquare, Download, Edit3, ChevronDown, CheckCircle2, Lock, GitBranch, Copy, History, XCircle, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, Save, Send, Building2, Calendar, Plus, Info, AlertTriangle, Search, Trash2, FileText, Mail, MessageSquare, Download, Edit3, ChevronDown, CheckCircle2, Lock, GitBranch, Copy, History, XCircle, FileSpreadsheet, ClipboardCheck } from "lucide-react";
 import { PillButton, PillCheckbox, cn, NexusDatePicker, GlassCard, Modal, PillInput } from "@/components/ui/Base";
 import Link from "next/link";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
@@ -646,6 +646,24 @@ export default function QuotationEditPage() {
   // ส่งลูกค้าแล้ว = ล็อก ต้องออกฉบับแก้ไข (Revision), ได้งาน/ถูกแทนที่ = อ่านอย่างเดียว
   const isLocked = !["DRAFT", "PENDING_APPROVAL", "REJECTED"].includes(status);
   const canRevise = ["SENT", "ACCEPTED"].includes(status) && !linkedSo;
+  // ได้งาน: แปลงใบที่ส่งลูกค้าแล้วเป็นใบสั่งขาย (รายการ ส่วนลด หัก ณ ที่จ่าย เลข PO ผู้ติดต่อ ส่งต่อทั้งหมด)
+  const canConvert = status === "SENT" && !linkedSo && can(roles, "sales:edit");
+  const [converting, setConverting] = useState(false);
+  const convertToSo = async () => {
+    if (!(await showConfirm("ลูกค้าตอบรับใบเสนอราคานี้แล้ว? — ระบบจะสร้างใบสั่งขายจากรายการในใบนี้ จองสต็อกสินค้า และเปลี่ยนสถานะเป็น \"ได้งาน\" (แก้ใบเสนอราคาไม่ได้อีก)"))) return;
+    setConverting(true);
+    try {
+      const res = await apiFetch("/api/sales/convert-so", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, quoteId: params.id }) });
+      const d = await res.json();
+      if (!res.ok || !d.success) throw new Error(d.error || "แปลงเป็นใบสั่งขายไม่สำเร็จ");
+      if (d.shortages?.length) await showAlert(`สร้างใบสั่งขาย ${d.soId} แล้ว แต่ยังไม่จองสต็อก เพราะสินค้าไม่พอ: ${d.shortages.join(", ")}`, "สต็อกไม่พอ", "warning");
+      router.push(`/sales/orders/${encodeURIComponent(d.soId)}`);
+    } catch (err: any) {
+      await showAlert(err.message, "แปลงไม่สำเร็จ", "error");
+    } finally {
+      setConverting(false);
+    }
+  };
 
   const saveInternalNotes = async () => {
     if (!companyId || !params.id) return;
@@ -903,6 +921,12 @@ export default function QuotationEditPage() {
           </div>
         )}
 
+        {canConvert && (
+          <PillButton variant="save" onClick={convertToSo} disabled={converting} className="h-8 px-4 text-xs font-bold" title="ลูกค้าตอบรับแล้ว — สร้างใบสั่งขายจากใบเสนอราคานี้">
+            <ClipboardCheck size={14} className="mr-1.5" /> {converting ? "กำลังแปลง…" : "แปลงเป็นใบสั่งขาย"}
+          </PillButton>
+        )}
+
         {/* Revision Trigger */}
         {canRevise && (
           <PillButton
@@ -941,7 +965,7 @@ export default function QuotationEditPage() {
             {status === "SUPERSEDED"
               ? <>ฉบับนี้ถูกแทนที่แล้ว (อ่านอย่างเดียว){supersededBy && <> · ฉบับล่าสุด <Link href={`/sales/quotations/${encodeURIComponent(supersededBy.id)}`} className="underline font-mono">{supersededBy.no || "เปิด"}</Link></>}</>
               : linkedSo
-                ? <>ได้งานแล้ว (แปลงเป็นใบสั่งขาย {linkedSo}) อ่านอย่างเดียว · การเปลี่ยนแปลงให้ทำที่ใบสั่งขายหรือใบลดหนี้/เพิ่มหนี้</>
+                ? <>ได้งานแล้ว (แปลงเป็นใบสั่งขาย <Link href={`/sales/orders/${encodeURIComponent(linkedSo)}`} className="underline font-mono">{linkedSo}</Link>) อ่านอย่างเดียว · การเปลี่ยนแปลงให้ทำที่ใบสั่งขายหรือใบลดหนี้/เพิ่มหนี้</>
                 : canRevise
                   ? <>ส่งลูกค้าแล้ว ข้อมูลถูกล็อกเพื่อให้ตรงกับเอกสารที่ลูกค้าได้รับ · ต้องการเปลี่ยนราคา รายการ หรือเงื่อนไข ให้สร้างฉบับแก้ไข</>
                   : <>เอกสารนี้แก้ไขไม่ได้แล้ว (อ่านอย่างเดียว)</>}

@@ -12,7 +12,8 @@ import { useSystemDialog } from "@/context/DialogContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
-import { CNDN_REASONS, CNDN_TYPE_TH, cndnAmounts, type CnDnType , applyArDelta } from "@/lib/cndn";
+import { CNDN_REASONS, CNDN_TYPE_TH, cndnAmounts, cndnLines, type CnDnType , applyArDelta } from "@/lib/cndn";
+import { PillCheckbox, NexusTable, NexusTableRow, NexusTableCell } from "@/components/ui/Base";
 
 const baht = (n: any) => (Number(n) || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const today = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
@@ -32,6 +33,10 @@ function CnDnForm() {
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [reasonDetail, setReasonDetail] = useState("");
+  // รายการจากใบกำกับเดิม: จำนวนที่ลด/คืน และราคาต่อหน่วย (ว่าง = ราคาเดิม) · รับคืนเข้าคลัง
+  const [qtyBy, setQtyBy] = useState<Record<number, string>>({});
+  const [priceBy, setPriceBy] = useState<Record<number, string>>({});
+  const [returnToStock, setReturnToStock] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -48,7 +53,11 @@ function CnDnForm() {
 
   const valueBefore = inv ? (Number(inv.subTotal) || 0) - (Number(inv.creditNoteTotal) || 0) + (Number(inv.debitNoteTotal) || 0) : 0;
   const balanceBefore = inv ? (inv.balance !== undefined ? Number(inv.balance) : (Number(inv.grandTotal) || 0) - (Number(inv.paidAmount) || 0)) : 0;
-  const calc = cndnAmounts(Number(amount) || 0, inv || {});
+  const invItems: any[] = Array.isArray(inv?.items) ? inv.items : [];
+  const lineInput = Object.entries(qtyBy).filter(([, q]) => Number(q) > 0).map(([n, q]) => ({ lineNo: Number(n), qty: Number(q), ...(priceBy[Number(n)] ? { unitPrice: Number(priceBy[Number(n)]) } : {}) }));
+  const byLines = inv && lineInput.length ? cndnLines(inv, lineInput, type) : null;
+  const calc = cndnAmounts(byLines ? byLines.amount : Number(amount) || 0, inv || {});
+  const stockable = (it: any) => it.productId && !["SERVICE", "LABOR"].includes(String(it.itemType || "PRODUCT").toUpperCase());
   const valueAfter = type === "CN" ? valueBefore - calc.amount : valueBefore + calc.amount;
   // ยอดค้างชำระกับยอดค้างคืนหักกลบกัน: ลดหนี้เกินยอดค้าง (ลูกค้าชำระแล้ว) -> ส่วนเกินเป็นยอดค้างคืนลูกค้า
   const arAfter = applyArDelta(balanceBefore, Number(inv?.refundDue) || 0, type === "CN" ? -calc.totalAmount : calc.totalAmount);
@@ -56,7 +65,9 @@ function CnDnForm() {
 
   const problems = [
     !inv && "เลือกใบกำกับภาษีที่อ้างอิง",
-    !(calc.amount > 0) && "ระบุจำนวนเงิน",
+    !(calc.amount > 0) && "ระบุจำนวนเงิน หรือจำนวนที่ลด/คืนในรายการ",
+    byLines?.error,
+    returnToStock && !lineInput.some((l) => stockable(invItems.find((it, i) => Number(it.lineNo ?? i + 1) === l.lineNo) || {})) && "เลือกจำนวนสินค้าที่รับคืน",
     type === "CN" && inv && calc.amount > valueBefore + 0.009 && "ลดเกินมูลค่าคงเหลือของใบกำกับ",
     !reason && "เลือกเหตุผล",
     reason === "อื่น ๆ" && !reasonDetail.trim() && "ระบุรายละเอียดเหตุผล",
@@ -72,7 +83,7 @@ function CnDnForm() {
       const res = await apiFetch("/api/sales/cndn", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId, type, invoiceDocId, amount: calc.amount, reason, reasonDetail, issueDate }),
+        body: JSON.stringify({ companyId, type, invoiceDocId, amount: calc.amount, reason, reasonDetail, issueDate, items: lineInput, returnToStock: type === "CN" && returnToStock }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || "ออกเอกสารไม่สำเร็จ");
@@ -133,7 +144,7 @@ function CnDnForm() {
         </div>
         <div className="space-y-1">
           {label("ใบกำกับภาษีที่อ้างอิง", true)}
-          <SmartSelect options={options} value={invoiceDocId} onChange={setInvoiceDocId} allowCustom={false} placeholder="ค้นหาเลขที่ใบกำกับ / ชื่อลูกค้า" />
+          <SmartSelect options={options} value={invoiceDocId} onChange={(v: string) => { setInvoiceDocId(v); setQtyBy({}); setPriceBy({}); setReturnToStock(false); }} allowCustom={false} placeholder="ค้นหาเลขที่ใบกำกับ / ชื่อลูกค้า" />
         </div>
         {inv && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
@@ -149,11 +160,38 @@ function CnDnForm() {
         )}
       </GlassCard>
 
+      {inv && invItems.length > 0 && (
+        <GlassCard className="p-5 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h4 className="text-[14px] font-bold text-white">รายการ{type === "CN" ? "ที่ลด/รับคืน" : "ที่เพิ่ม"} <span className="text-white/50 font-normal">(ใส่จำนวน — ไม่ใส่ = ระบุมูลค่ารวมเองด้านล่าง)</span></h4>
+            {type === "CN" && <PillCheckbox label="รับสินค้าคืนเข้าคลัง" checked={returnToStock} onChange={(e) => setReturnToStock(e.target.checked)} />}
+          </div>
+          <NexusTable headers={["ลำดับ", "รายการ", "จำนวนขาย", "ลดแล้ว", "จำนวน", "ราคาต่อหน่วย", "มูลค่า (ก่อน VAT)"]} itemCount={invItems.length}>
+            {invItems.map((it: any, i: number) => {
+              const n = Number(it.lineNo ?? i + 1);
+              const line = byLines?.lines.find((l) => l.lineNo === n);
+              return (
+                <NexusTableRow key={n}>
+                  <NexusTableCell className="font-mono text-[12px]">{n}</NexusTableCell>
+                  <NexusTableCell className="text-[12px] text-white/85">{it.name || it.productName}{returnToStock && type === "CN" && !stockable(it) ? <span className="text-white/40"> · ไม่คุมสต็อก</span> : null}</NexusTableCell>
+                  <NexusTableCell className="font-mono text-[12px] text-right">{Number(it.qty) || 0} {it.unit || ""}</NexusTableCell>
+                  <NexusTableCell className="font-mono text-[12px] text-right text-white/60">{Number(inv.returnedQty?.[n]) || 0}</NexusTableCell>
+                  <NexusTableCell><PillInput inputMode="decimal" value={qtyBy[n] || ""} onChange={(e) => setQtyBy({ ...qtyBy, [n]: e.target.value.replace(/[^\d.]/g, "") })} placeholder="0" className="w-[84px] h-8 text-[12px] text-right font-mono" /></NexusTableCell>
+                  <NexusTableCell><PillInput inputMode="decimal" value={priceBy[n] || ""} onChange={(e) => setPriceBy({ ...priceBy, [n]: e.target.value.replace(/[^\d.]/g, "") })} placeholder={baht(((Number(it.qty) || 0) * (Number(it.price) || 0) - (it.discountType === "AMOUNT" ? Number(it.discountValue) || 0 : (Number(it.qty) || 0) * (Number(it.price) || 0) * (Number(it.discountValue) || 0) / 100)) / (Number(it.qty) || 1))} className="w-[110px] h-8 text-[12px] text-right font-mono" /></NexusTableCell>
+                  <NexusTableCell className="font-mono text-[12px] text-right">{line ? baht(line.amount) : "-"}</NexusTableCell>
+                </NexusTableRow>
+              );
+            })}
+          </NexusTable>
+          {byLines?.error && <p className="text-[12px] text-danger">{byLines.error}</p>}
+        </GlassCard>
+      )}
+
       <GlassCard className="p-5 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
             {label(type === "CN" ? "มูลค่าที่ลด (ก่อน VAT)" : "มูลค่าที่เพิ่ม (ก่อน VAT)", true)}
-            <PillInput inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1"))} placeholder="0.00" className="w-full h-9 text-sm text-right font-mono" />
+            <PillInput inputMode="decimal" disabled={!!byLines} value={byLines ? String(byLines.amount) : amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1"))} placeholder="0.00" className="w-full h-9 text-sm text-right font-mono" />
           </div>
           <div className="space-y-1">
             {label("เหตุผล", true)}
@@ -178,6 +216,7 @@ function CnDnForm() {
         inv && `ปรับยอดค้างของใบกำกับเดิมเป็น ฿${baht(balanceAfter)}`,
         calc.vatAmount > 0 && `ภาษีขายของเดือนที่ออกเอกสาร${type === "CN" ? "ลดลง" : "เพิ่มขึ้น"} ฿${baht(calc.vatAmount)}`,
         inv && arAfter.refundDue > 0 && `ลูกค้าชำระเกินแล้ว ต้องคืนเงิน ฿${baht(arAfter.refundDue)}`,
+        type === "CN" && returnToStock && "รับสินค้าคืนเข้าคลัง และกลับต้นทุนขาย (Dr สินค้าคงเหลือ / Cr ต้นทุนขาย)",
         "ส่งรายการบัญชีให้ฝ่ายบัญชีอนุมัติ",
       ]} />
       <GlassCard className="p-4">

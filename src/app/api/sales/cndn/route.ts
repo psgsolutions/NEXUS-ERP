@@ -7,12 +7,16 @@ import { prepareSequence } from "@/lib/sequence-server";
 import { sellerSnapshot } from "@/lib/documents/seller.server";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { auditServer } from "@/services/audit.server";
-import { CNDN_REASONS, CNDN_TYPE_TH, applyArDelta, arPaymentStatus, cndnAmounts, type CnDnType } from "@/lib/cndn";
+import { CNDN_REASONS, CNDN_TYPE_TH, applyArDelta, arPaymentStatus, cndnAmounts, cndnLines, type CnDnLine, type CnDnType } from "@/lib/cndn";
+import { processStockMovements } from "@/lib/stock-service";
+import { isStockItem } from "@/lib/product-kind";
 
 /**
  * [API-SERVER] ออกใบลดหนี้ / ใบเพิ่มหนี้ อ้างอิงใบกำกับภาษีเดิม
  * Endpoint: POST /api/sales/cndn
- * body: { companyId, type: "CN" | "DN", invoiceDocId, amount (ผลต่างก่อน VAT), reason, reasonDetail?, issueDate? }
+ * body: { companyId, type: "CN" | "DN", invoiceDocId, amount (ผลต่างก่อน VAT), reason, reasonDetail?, issueDate?,
+ *         items?: [{ lineNo, qty, unitPrice? }]  รายการจากใบกำกับเดิม (มีรายการ = คิดยอดจากรายการ ไม่ใช้ amount)
+ *         returnToStock?: boolean               ใบลดหนี้ที่รับสินค้าคืน: รับเข้าคลัง + กลับต้นทุนขาย (Dr สินค้าคงเหลือ / Cr ต้นทุนขาย) }
  *
  * ทำในทรานแซกชันเดียว:
  *  - เลขที่ (ชุด CN / DBN ตั้งรูปแบบได้ที่ ตั้งค่า > รูปแบบเลขที่) ออกพร้อมการบันทึก เรียงต่อเนื่อง ไม่ข้าม
@@ -55,7 +59,19 @@ export async function POST(request: Request) {
     const now = admin.firestore.FieldValue.serverTimestamp();
     const label = CNDN_TYPE_TH[type];
 
-    const result = await adminDb.runTransaction(async (tx) => {
+    // รายการที่ลด/เพิ่ม + สินค้าที่รับคืน (อ่านใบกำกับก่อนเพื่อสร้างรายการเคลื่อนไหวสต็อก ตรวจซ้ำในทรานแซกชัน)
+    const rawItems = Array.isArray(body.items) ? body.items.slice(0, 300) : [];
+    const pre = (await invRef.get()).data() || {};
+    const preLines = rawItems.length ? cndnLines(pre, rawItems, type) : { lines: [] as CnDnLine[], amount: 0, error: "" };
+    if (preLines.error) throw new ApiAuthError(400, preLines.error);
+    const returnToStock = type === "CN" && body.returnToStock === true && preLines.lines.length > 0;
+    const stockLines = returnToStock ? preLines.lines.filter((l) => l.productId && isStockItem({ itemType: l.itemType })) : [];
+    if (returnToStock && !stockLines.length) throw new ApiAuthError(400, "ไม่มีรายการสินค้าที่คุมสต็อกให้รับคืน");
+    const returnCost = r2(stockLines.reduce((s, l) => s + l.qty * l.unitCost, 0));
+    const cogsRef = adminDb.collection(`companies/${companyId}/journal_entries`).doc();
+
+    let result: any;
+    const reads = async (tx: admin.firestore.Transaction) => {
       // ---- อ่าน ----
       const snap = await tx.get(invRef);
       if (!snap.exists) throw new ApiAuthError(404, "ไม่พบใบกำกับภาษีที่อ้างอิง");
@@ -69,7 +85,9 @@ export async function POST(request: Request) {
       const seq = await take(tx);
 
       // ---- คำนวณ ----
-      const { amount, vatAmount, totalAmount, vatRate } = cndnAmounts(Number(body.amount), inv);
+      const byLines = rawItems.length ? cndnLines(inv, rawItems, type) : null;
+      if (byLines?.error) throw new ApiAuthError(400, byLines.error);
+      const { amount, vatAmount, totalAmount, vatRate } = cndnAmounts(byLines ? byLines.amount : Number(body.amount), inv);
       if (amount <= 0) throw new ApiAuthError(400, "จำนวนเงินต้องมากกว่า 0");
       const originalAmount = r2(Number(inv.subTotal) || 0);
       const creditedBefore = r2(Number(inv.creditNoteTotal) || 0);   // ผลรวมใบลดหนี้ก่อนหน้า (ก่อน VAT)
@@ -89,6 +107,10 @@ export async function POST(request: Request) {
       const docNo = seq.number;
       const customerName = inv.customerName || inv.customerSnapshot?.name || "";
 
+      result = { seq, inv, invNo, byLines, amount, vatAmount, totalAmount, vatRate, valueBefore, valueAfter, creditedBefore, debitedBefore, paid, balanceAfter, ar, refundCreated, docNo, customerName };
+    };
+    const writes = (tx: admin.firestore.Transaction) => {
+      const { seq, inv, invNo, byLines, amount, vatAmount, totalAmount, vatRate, valueBefore, valueAfter, creditedBefore, debitedBefore, paid, balanceAfter, ar, refundCreated, docNo, customerName } = result;
       // ---- เขียน ----
       seq.commit();
       tx.create(docRef, {
@@ -99,6 +121,8 @@ export async function POST(request: Request) {
         sellerSnapshot: seller,
         issueDate, reason, reasonDetail,
         originalAmount: valueBefore, correctAmount: valueAfter, amount, vatRate, vatAmount, totalAmount,
+        items: byLines?.lines || [],
+        ...(returnToStock ? { stockReturned: true, returnCost, cogsJournalId: returnCost > 0 ? cogsRef.id : "" } : {}),
         journalId: journalRef.id, status: "issued", refundCreated,
         createdBy: apiUser.uid, createdAt: now, updatedAt: now, isDeleted: false,
       });
@@ -108,8 +132,23 @@ export async function POST(request: Request) {
         paymentStatus: arPaymentStatus(balanceAfter, paid),
         ...(type === "CN" ? { creditNoteTotal: r2(creditedBefore + amount) } : { debitNoteTotal: r2(debitedBefore + amount) }),
         adjustmentRefs: admin.firestore.FieldValue.arrayUnion(docNo),
+        // จำนวนที่ลดหนี้แล้วต่อบรรทัด (กันลด/คืนเกินจำนวนที่ขาย)
+        ...(type === "CN" ? Object.fromEntries((byLines?.lines || []).map((l: CnDnLine) => [`returnedQty.${l.lineNo}`, admin.firestore.FieldValue.increment(l.qty)])) : {}),
         updatedAt: now, updatedBy: apiUser.uid,
       });
+      if (returnToStock && returnCost > 0) {
+        // สินค้ากลับเข้าคลัง: กลับต้นทุนขายที่บันทึกตอนเบิกส่งลูกค้า
+        tx.set(cogsRef, {
+          companyId, date: issueDate, bookType: "JV",
+          description: `[AUTO] รับคืนสินค้าตาม${label} ${docNo} อ้างอิง ${invNo}`,
+          reference: docNo, totalDebit: returnCost, totalCredit: returnCost, status: "draft", isOfficialTax: false,
+          items: [
+            { accountCode: "1141-00", accountName: "สินค้าคงเหลือ", debit: returnCost, credit: 0 },
+            { accountCode: "5111-00", accountName: "ต้นทุนขาย", debit: 0, credit: returnCost },
+          ],
+          createdBy: apiUser.uid, createdAt: now, updatedAt: now, isDeleted: false,
+        });
+      }
       const items = type === "CN"
         ? [
             { accountCode: "4113-00", accountName: "รับคืนและส่วนลดจ่าย", debit: amount, credit: 0 },
@@ -128,8 +167,17 @@ export async function POST(request: Request) {
         isOfficialTax: vatAmount > 0, status: "draft",
         createdBy: apiUser.uid, createdAt: now, updatedAt: now, isDeleted: false,
       });
-      return { id: docRef.id, docNo, invoiceNo: invNo, amount, vatAmount, totalAmount, balanceAfter, refundDue: ar.refundDue };
-    });
+      result.out = { id: docRef.id, docNo, invoiceNo: invNo, amount, vatAmount, totalAmount, balanceAfter, refundDue: ar.refundDue, stockReturned: returnToStock };
+    };
+    if (stockLines.length) {
+      await processStockMovements(stockLines.map((l) => ({
+        companyId, productId: l.productId!, type: "IN" as const, quantity: l.qty, unitCost: l.unitCost,
+        referenceId: `CN:${docRef.id}`, userId: apiUser.email || apiUser.uid,
+      })), writes, reads);
+    } else {
+      await adminDb.runTransaction(async (tx) => { await reads(tx); writes(tx); });
+    }
+    result = result.out;
 
     await auditServer.logCreate(apiUser.uid, companyId, type === "CN" ? "CREDIT_NOTE" : "DEBIT_NOTE", result.docNo, { invoice: result.invoiceNo, totalAmount: result.totalAmount, reason });
     return NextResponse.json({ success: true, type, ...result });

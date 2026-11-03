@@ -177,7 +177,9 @@ export async function POST(request: Request) {
         cashReceived,
         amount: totalApplied,
         // เป็นใบกำกับภาษีด้วย (งานบริการ VAT เกิดตอนรับเงิน) — ข้อมูลผู้ซื้อตาม ม.86/4
-        ...(taxLines.length ? { isTaxInvoice: true, taxBase, vatAmount: vatRealized, customerSnapshot: taxLines[0].customerSnapshot } : {}),
+        // ผู้ชำระ ณ วันออกใบเสร็จ (ชื่อ ที่อยู่ เลขผู้เสียภาษี สาขา) — พิมพ์ซ้ำได้ตรงเดิมแม้แก้ข้อมูลลูกค้าภายหลัง
+        customerSnapshot: (taxLines[0] || lines.find((l) => l.customerSnapshot) || lines[0])?.customerSnapshot || null,
+        ...(taxLines.length ? { isTaxInvoice: true, taxBase, vatAmount: vatRealized } : {}),
         journalId: journalRef.id,
         status: "posted",
         isSample: false,

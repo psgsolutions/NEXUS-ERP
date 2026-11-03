@@ -216,8 +216,8 @@
     "textarea": 0
   },
   "src/app/(authenticated)/sales/quotations/new/page.tsx": {
-    "button": 22,
-    "input": 1,
+    "button": 20,
+    "input": 0,
     "select": 0,
     "textarea": 3
   },

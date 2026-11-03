@@ -8,6 +8,7 @@ import { PillButton, PillCheckbox, cn, NexusDatePicker, GlassCard, Modal, PillIn
 import Link from "next/link";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
 import { DocumentAttachmentsCard } from "@/components/commerce/DocumentAttachmentsCard";
+import { QuotationTermsCards, type PaymentSchedule } from "@/components/commerce/QuotationTermsCards";
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { quotationLines, quotationModel } from "@/lib/documents/build";
 import { documentProfileOf } from "@/lib/documents/profile";
@@ -253,6 +254,11 @@ export default function QuotationEditPage() {
 
   // Table State
   const [items, setItems] = useState<any[]>([]);
+  // งวดชำระ + ข้อกำหนด (แก้ได้เหมือนหน้าสร้าง)
+  const [paymentSchedules, setPaymentSchedules] = useState<PaymentSchedule[]>([]);
+  const [warrantyTerms, setWarrantyTerms] = useState("");
+  const [scopeOfWork, setScopeOfWork] = useState("");
+  const [exclusions, setExclusions] = useState("");
 
   // Summary State
   const [taxType, setTaxType] = useState<VatTypeV3>("EXCLUSIVE");
@@ -505,6 +511,10 @@ export default function QuotationEditPage() {
           setExpectedDeliveryDays(data.expectedDeliveryDays || 30);
           setShippingAddress(data.shippingAddress || data.deliveryAddress || "");
           setInternalNotes(data.internalNotes || "");
+          setPaymentSchedules(Array.isArray(data.paymentSchedules) ? data.paymentSchedules.map((p: any, i: number) => ({ id: String(p.id || i + 1), name: String(p.name || ""), percent: Number(p.percent) || 0, amount: Number(p.amount) || 0 })) : []);
+          setWarrantyTerms(data.warrantyTerms || "");
+          setScopeOfWork(data.scopeOfWork || "");
+          setExclusions(data.exclusions || "");
           setStatus(normalizedStatus);
           if (data.salesPersonId) {
              setSelectedSalespersonId(data.salesPersonId);
@@ -690,6 +700,11 @@ export default function QuotationEditPage() {
       showAlert(canRevise ? "ใบเสนอราคานี้ส่งลูกค้าแล้ว แก้ไขได้โดยสร้างฉบับแก้ไข" : "ใบเสนอราคานี้แก้ไขไม่ได้แล้ว");
       return;
     }
+    const totalPaymentPercent = paymentSchedules.reduce((sum, p) => sum + (Number(p.percent) || 0), 0);
+    if (paymentSchedules.length > 0 && Math.abs(totalPaymentPercent - 100) > 0.01) {
+      showAlert("ผลรวมสัดส่วนงวดชำระต้องเท่ากับ 100%", "ข้อมูลไม่ครบ", "warning");
+      return;
+    }
     if (!selectedCustomerId && !customerSearchTerm.trim()) {
       showAlert("กรุณาระบุชื่อลูกค้า", "ข้อมูลไม่ครบ", "warning");
       return;
@@ -798,6 +813,10 @@ export default function QuotationEditPage() {
         expectedDeliveryDays,
         shippingAddress,
         internalNotes,
+        paymentSchedules,
+        warrantyTerms,
+        scopeOfWork,
+        exclusions,
       };
 
       const linesPayload = items.map((item) => ({
@@ -1415,6 +1434,10 @@ export default function QuotationEditPage() {
           priceDeviationWarningPercent={priceDeviationWarningPercent}
         />
       </div>
+
+      {/* งวดชำระ + ข้อกำหนดและการรับประกัน */}
+      <QuotationTermsCards grandTotal={summary.grandTotal} schedules={paymentSchedules} onSchedules={setPaymentSchedules} readOnly={isLocked}
+        warrantyTerms={warrantyTerms} onWarranty={setWarrantyTerms} scopeOfWork={scopeOfWork} onScope={setScopeOfWork} exclusions={exclusions} onExclusions={setExclusions} />
 
       {/* File Attachments Card */}
       <DocumentAttachmentsCard

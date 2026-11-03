@@ -45,3 +45,48 @@ export function applyArDelta(balance: number, refundDue: number, delta: number):
 export function arPaymentStatus(balance: number, paid: number): "paid" | "partial" | "unpaid" {
   return balance <= 0.009 ? "paid" : paid > 0 ? "partial" : "unpaid";
 }
+
+/** รายการที่ลดหนี้/เพิ่มหนี้ อ้างอิงบรรทัดของใบกำกับเดิม */
+export interface CnDnLineInput { lineNo: number; qty: number; unitPrice?: number }
+export interface CnDnLine { lineNo: number; productId: string | null; sku: string; name: string; unit: string; itemType: string; qty: number; unitPrice: number; amount: number; unitCost: number }
+
+/**
+ * มูลค่าก่อน VAT ของรายการที่ลด/เพิ่ม (ใช้ทั้งหน้าจอและ server)
+ * - ราคาต่อหน่วยตั้งต้น = ราคาสุทธิหลังส่วนลดบรรทัดของใบกำกับเดิม (แก้ได้ เช่น ลดราคาบางส่วน)
+ * - ราคารวม VAT → แปลงเป็นก่อน VAT · ส่วนลดท้ายบิลของใบเดิมเฉลี่ยตามสัดส่วน
+ * - จำนวนรวมที่ลด (รวมใบลดหนี้ก่อนหน้า returnedQty) ต้องไม่เกินจำนวนในใบกำกับ
+ */
+export function cndnLines(invoice: any, input: CnDnLineInput[], type: CnDnType): { lines: CnDnLine[]; amount: number; error: string } {
+  const items: any[] = Array.isArray(invoice?.items) ? invoice.items : [];
+  const inclusive = String(invoice?.vatType || "").toLowerCase().startsWith("incl");
+  const netOf = (it: any) => {
+    const gross = Math.max(0, Number(it.qty) || 0) * Math.max(0, Number(it.price ?? it.unitPrice) || 0);
+    const v = Math.max(0, Number(it.discountValue) || 0);
+    const disc = Math.min(gross, it.discountType === "AMOUNT" ? v : gross * (v / 100));
+    return gross - disc;
+  };
+  const sumNet = items.reduce((s, it) => s + netOf(it), 0);
+  const preVat = (n: number) => (inclusive ? n / 1.07 : n);
+  // ส่วนลดท้ายบิล: ยอดก่อน VAT ของใบ ÷ ผลรวมรายการ (ไม่เกิน 1)
+  const factor = sumNet > 0 ? Math.min(1, (Number(invoice?.subTotal) || preVat(sumNet)) / preVat(sumNet)) : 1;
+  const returned = invoice?.returnedQty && typeof invoice.returnedQty === "object" ? invoice.returnedQty : {};
+  const out: CnDnLine[] = [];
+  for (const row of input || []) {
+    const qty = r2(Math.max(0, Number(row.qty) || 0));
+    if (!qty) continue;
+    const idx = items.findIndex((it, i) => Number(it.lineNo ?? i + 1) === Number(row.lineNo));
+    if (idx < 0) return { lines: [], amount: 0, error: `ไม่พบรายการที่ ${row.lineNo} ในใบกำกับภาษี` };
+    const it = items[idx];
+    const lineNo = Number(it.lineNo ?? idx + 1);
+    const origQty = Number(it.qty) || 0;
+    if (type === "CN" && qty + (Number(returned[lineNo]) || 0) > origQty + 1e-9) {
+      return { lines: [], amount: 0, error: `${it.name || "รายการ"}: ลดได้ไม่เกิน ${r2(origQty - (Number(returned[lineNo]) || 0))} ${it.unit || ""}`.trim() };
+    }
+    const defaultUnit = origQty > 0 ? netOf(it) / origQty : 0;
+    const unitShown = row.unitPrice !== undefined && row.unitPrice !== null && String(row.unitPrice) !== "" ? Math.max(0, Number(row.unitPrice) || 0) : defaultUnit;
+    const amount = r2(preVat(qty * unitShown) * factor);
+    out.push({ lineNo, productId: it.productId || null, sku: String(it.sku || ""), name: String(it.name || it.productName || ""), unit: String(it.unit || ""), itemType: String(it.itemType || "PRODUCT").toUpperCase(),
+      qty, unitPrice: r2(unitShown), amount, unitCost: r2(Math.max(0, Number(it.cost) || 0)) });
+  }
+  return { lines: out, amount: r2(out.reduce((s, l) => s + l.amount, 0)), error: "" };
+}

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Save, Send, Building2, Calendar, Plus, Info, AlertTriangle, Search, Trash2, FileText, Mail, MessageSquare, Download, Edit3, ChevronDown, CheckCircle2, Lock, Share2 } from 'lucide-react';
 import { PillButton, PillCheckbox, cn, NexusDatePicker, GlassCard, Modal, PillInput } from "@/components/ui/Base";
 import { DocumentItemsTable } from "@/components/commerce/DocumentItemsTable";
+import { QuotationTermsCards } from "@/components/commerce/QuotationTermsCards";
 import { DocumentAttachmentsCard } from "@/components/commerce/DocumentAttachmentsCard";
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { quotationLines, quotationModel } from "@/lib/documents/build";
@@ -1338,120 +1339,9 @@ export default function QuotationCreationPage() {
         onChange={setAttachments}
       />
 
-      {/* Payment Schedule & Additional Terms Cards (Patch 10) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Payment Schedule Card */}
-        <div className="bg-surface-1 border border-white/10 rounded-3xl p-4 shadow-2xl space-y-3">
-          <div className="flex items-center justify-between border-b border-white/10 pb-2">
-            <h3 className="text-base font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2">
-              เงื่อนไขการชำระเงิน (งวดชำระ)
-            </h3>
-            <button
-              type="button"
-              onClick={() => {
-                setPaymentSchedules(prev => [
-                  ...prev,
-                  { id: Date.now().toString(), name: `งวดที่ ${prev.length + 1}`, percent: 0, amount: 0 }
-                ]);
-              }}
-              className="text-[11px] text-nexus-teal hover:text-white font-bold bg-nexus-teal/10 hover:bg-nexus-teal/20 px-2.5 py-1 rounded-full border border-nexus-teal/30 transition-all"
-            >
-              + เพิ่มงวดชำระ
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            {paymentSchedules.map((sch) => {
-              const calcAmt = summary.grandTotal * ((Number(sch.percent) || 0) / 100);
-              return (
-                <div key={sch.id} className="grid grid-cols-12 gap-2 items-center bg-black/20 p-2 rounded-xl border border-white/5">
-                  <PillInput
-                    type="text"
-                    value={sch.name}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setPaymentSchedules(prev => prev.map(p => p.id === sch.id ? { ...p, name: val } : p));
-                    }}
-                    className="col-span-5 bg-transparent border border-white/10 rounded-full px-3 h-8 text-[12px] text-white focus:outline-none focus:border-nexus-teal font-bold"
-                    placeholder="ชื่องวด..."
-                  />
-                  <div className="col-span-3 flex items-center bg-black/40 border border-white/10 rounded-full h-8 px-2">
-                    <input
-                      type="number"
-                      value={sch.percent || ''}
-                      onChange={(e) => {
-                        const val = Number(e.target.value) || 0;
-                        setPaymentSchedules(prev => prev.map(p => p.id === sch.id ? { ...p, percent: val } : p));
-                      }}
-                      className="w-full bg-transparent text-right font-mono text-[12px] text-white focus:outline-none"
-                      placeholder="0"
-                    />
-                    <span className="text-[11px] text-white/50 ml-1 font-bold">%</span>
-                  </div>
-                  <div className="col-span-3 text-right font-mono text-[12px] font-bold text-nexus-teal">
-                    {formatCurrency(calcAmt)}
-                  </div>
-                  <div className="col-span-1 text-center">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentSchedules(prev => prev.filter(p => p.id !== sch.id))}
-                      className="text-danger/60 hover:text-danger p-1 rounded-full hover:bg-danger/10"
-                      title="ลบงวดชำระ"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            <div className="flex justify-between items-center text-[11px] font-bold px-2 pt-1">
-              <span className="text-white/60">รวมสัดส่วนงวดชำระ:</span>
-              <span className={cn("font-mono font-black", paymentSchedules.reduce((sum, p) => sum + (Number(p.percent) || 0), 0) === 100 ? "text-nexus-teal" : "text-danger")}>
-                {paymentSchedules.reduce((sum, p) => sum + (Number(p.percent) || 0), 0)}%
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Warranty & Scope Card */}
-        <div className="bg-surface-1 border border-white/10 rounded-3xl p-4 shadow-2xl space-y-3">
-          <h3 className="text-base font-semibold uppercase tracking-widest text-white/80 border-b border-white/10 pb-2">
-            ข้อกำหนดและการรับประกัน
-          </h3>
-          <div className="space-y-2">
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-white/70">การรับประกัน</label>
-              <PillInput
-                type="text"
-                value={warrantyTerms}
-                onChange={(e) => setWarrantyTerms(e.target.value)}
-                placeholder="การรับประกันสินค้า 1 ปี..."
-                className="w-full h-8 bg-black/20 border border-white/10 rounded-full px-3 text-[12px] text-white focus:outline-none focus:border-nexus-teal"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-white/70">ขอบเขตงาน</label>
-              <PillInput
-                type="text"
-                value={scopeOfWork}
-                onChange={(e) => setScopeOfWork(e.target.value)}
-                placeholder="ขอบเขตการติดตั้งและทดสอบ..."
-                className="w-full h-8 bg-black/20 border border-white/10 rounded-full px-3 text-[12px] text-white focus:outline-none focus:border-nexus-teal"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-white/70">ข้อยกเว้น</label>
-              <PillInput
-                type="text"
-                value={exclusions}
-                onChange={(e) => setExclusions(e.target.value)}
-                placeholder="ไม่รวมงานเดินสายระบบไฟฟ้าหลัก..."
-                className="w-full h-8 bg-black/20 border border-white/10 rounded-full px-3 text-[12px] text-white focus:outline-none focus:border-nexus-teal"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* งวดชำระ + ข้อกำหนดและการรับประกัน (ส่วนกลาง ใช้ร่วมกับหน้าแก้ไข) */}
+      <QuotationTermsCards grandTotal={summary.grandTotal} schedules={paymentSchedules} onSchedules={setPaymentSchedules}
+        warrantyTerms={warrantyTerms} onWarranty={setWarrantyTerms} scopeOfWork={scopeOfWork} onScope={setScopeOfWork} exclusions={exclusions} onExclusions={setExclusions} />
 
       {/* T&C, Remarks, and Internal Notes */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

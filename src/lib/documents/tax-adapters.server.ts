@@ -227,8 +227,12 @@ export async function loadCnDn(companyId: string, id: string): Promise<DocumentM
     ],
     seller,
     party: partyOf("ลูกค้า", d.customerSnapshot, str(d.customerName)),
-    columns: ["no", "description", "amount"],
-    lines: [{ description: `${isCN ? "ลดหนี้" : "เพิ่มหนี้"}ตามใบกำกับภาษีเลขที่ ${str(d.invoiceNo)}`, detail: `เหตุผล: ${reason || "-"}`, amount }],
+    // มีรายการ (รับคืน/ลดราคาบางรายการ) = แสดงชื่อ จำนวน ราคา ตามรายการที่ลด/เพิ่ม (ม.86/10)
+    ...(Array.isArray(d.items) && d.items.length
+      ? { columns: ["no", "description", "qty", "unit", "price", "amount"] as any,
+          lines: d.items.map((l: any) => ({ code: str(l.sku), description: str(l.name), qty: num(l.qty), unit: str(l.unit), price: num(l.unitPrice), amount: num(l.amount) })) }
+      : { columns: ["no", "description", "amount"] as any,
+          lines: [{ description: `${isCN ? "ลดหนี้" : "เพิ่มหนี้"}ตามใบกำกับภาษีเลขที่ ${str(d.invoiceNo)}`, detail: `เหตุผล: ${reason || "-"}`, amount }] }),
     totals: [
       { label: "มูลค่าสินค้า/บริการตามใบกำกับเดิม", amount: num(d.originalAmount) },
       { label: "มูลค่าที่ถูกต้อง", amount: num(d.correctAmount) },
@@ -237,7 +241,7 @@ export async function loadCnDn(companyId: string, id: string): Promise<DocumentM
       { label: `รวม${isCN ? "ลดหนี้" : "เพิ่มหนี้"}ทั้งสิ้น`, amount: num(d.totalAmount), strong: true },
     ],
     amountInWords: num(d.totalAmount),
-    notes: [`เหตุผลในการออก${isCN ? "ใบลดหนี้" : "ใบเพิ่มหนี้"}: ${reason || "-"}`, ...cancelNote(d)],
+    notes: [`เหตุผลในการออก${isCN ? "ใบลดหนี้" : "ใบเพิ่มหนี้"}: ${reason || "-"}`, ...(d.stockReturned ? ["รับสินค้าคืนเข้าคลังแล้ว"] : []), ...cancelNote(d)],
     signatures: ["ผู้รับเอกสาร", "ผู้มีอำนาจลงนาม"],
     watermark: cancelled(d) ? "ยกเลิก" : undefined,
   };

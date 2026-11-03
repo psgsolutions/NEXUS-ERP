@@ -5,6 +5,8 @@ import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { assertPeriodOpen } from "@/lib/period-close-service";
 import { voidOrReverseJournal } from "@/lib/journal-reversal.server";
+import { processStockMovements } from "@/lib/stock-service";
+import { isStockItem } from "@/lib/product-kind";
 import { auditServer } from "@/services/audit.server";
 import { CNDN_TYPE_TH, applyArDelta, arPaymentStatus } from "@/lib/cndn";
 
@@ -43,7 +45,15 @@ export async function POST(request: Request) {
     const docRef = adminDb.doc(`companies/${companyId}/cndn/${cndnId}`);
     const now = admin.firestore.FieldValue.serverTimestamp();
 
-    const result = await adminDb.runTransaction(async (tx) => {
+    // ใบลดหนี้ที่รับสินค้าคืนเข้าคลัง: ยกเลิก = ตัดสินค้าออกจากคลังกลับ (ทรานแซกชันเดียวกับการยกเลิก)
+    const pre = (await docRef.get()).data() || {};
+    const backOut = pre.stockReturned === true && String(pre.status || "").toLowerCase() !== "cancelled"
+      ? (Array.isArray(pre.items) ? pre.items : []).filter((l: any) => l.productId && isStockItem({ itemType: l.itemType }) && Number(l.qty) > 0)
+      : [];
+
+    let result: any;
+    let pending: ((tx: admin.firestore.Transaction) => void) | null = null;
+    const reads = async (tx: admin.firestore.Transaction) => {
       // ---- อ่าน ----
       const snap = await tx.get(docRef);
       if (!snap.exists) throw new ApiAuthError(404, "ไม่พบใบลดหนี้/ใบเพิ่มหนี้");
@@ -61,6 +71,7 @@ export async function POST(request: Request) {
       const inv = invSnap.data()!;
       if (inv.isDeleted === true || String(inv.status || "").toLowerCase() === "cancelled") throw new ApiAuthError(409, `ใบกำกับภาษี ${d.invoiceNo} ถูกยกเลิกแล้ว`);
       const journalSnap = d.journalId ? await tx.get(adminDb.doc(`companies/${companyId}/journal_entries/${d.journalId}`)) : null;
+      const cogsSnap = d.cogsJournalId ? await tx.get(adminDb.doc(`companies/${companyId}/journal_entries/${d.cogsJournalId}`)) : null;
 
       // ---- คำนวณ ----
       const amount = r2(Number(d.amount) || 0);          // ก่อน VAT
@@ -70,7 +81,8 @@ export async function POST(request: Request) {
       const ar = applyArDelta(balanceBefore, Number(inv.refundDue) || 0, type === "CN" ? total : -total);
       const balanceAfter = ar.balance;
 
-      // ---- เขียน ----
+      // ---- เขียน (หลังการอ่านของการตัดสต็อก) ----
+      pending = (tx) => {
       tx.update(invRef, {
         balance: balanceAfter,
         refundDue: ar.refundDue,
@@ -79,8 +91,10 @@ export async function POST(request: Request) {
           ? { creditNoteTotal: r2(Math.max(0, (Number(inv.creditNoteTotal) || 0) - amount)) }
           : { debitNoteTotal: r2(Math.max(0, (Number(inv.debitNoteTotal) || 0) - amount)) }),
         adjustmentRefs: admin.firestore.FieldValue.arrayRemove(docNo),
+        ...(type === "CN" ? Object.fromEntries((Array.isArray(d.items) ? d.items : []).map((l: any) => [`returnedQty.${l.lineNo}`, admin.firestore.FieldValue.increment(-(Number(l.qty) || 0))])) : {}),
         updatedAt: now, updatedBy: apiUser.uid,
       });
+      const cogs = cogsSnap ? voidOrReverseJournal(tx, companyId, cogsSnap, { date: cancelDate, description: `[AUTO] ยกเลิกการรับคืนสินค้าตาม${label} ${docNo}`, reference: docNo, uid: apiUser.uid, reason }) : null;
       const journal = voidOrReverseJournal(tx, companyId, journalSnap, {
         date: cancelDate,
         description: `[AUTO] ยกเลิก${label} ${docNo} อ้างอิง ${d.invoiceNo || ""} (${d.customerName || ""}): ${reason}`,
@@ -96,10 +110,22 @@ export async function POST(request: Request) {
         cancelledAt: now,
         journalAction: journal.mode,
         ...(journal.reversalId ? { reversalJournalId: journal.reversalId } : {}),
+        ...(cogs?.reversalId ? { cogsReversalJournalId: cogs.reversalId } : {}),
+        ...(backOut.length ? { stockReversed: true } : {}),
         updatedAt: now,
       });
-      return { docNo, type, invoiceNo: d.invoiceNo, balanceAfter, refundDue: ar.refundDue, journal: journal.mode, reversalJournalId: journal.reversalId || null };
-    });
+      result = { docNo, type, invoiceNo: d.invoiceNo, balanceAfter, refundDue: ar.refundDue, journal: journal.mode, reversalJournalId: journal.reversalId || null, stockReversed: backOut.length > 0 };
+      };
+    };
+    const writes = (tx: admin.firestore.Transaction) => pending!(tx);
+    if (backOut.length) {
+      await processStockMovements(backOut.map((l: any) => ({
+        companyId, productId: l.productId, type: "OUT" as const, quantity: Number(l.qty), unitCost: Number(l.unitCost) || 0,
+        referenceId: `CN-CANCEL:${cndnId}`, userId: apiUser.email || apiUser.uid, skipGl: true,
+      })), writes, reads);
+    } else {
+      await adminDb.runTransaction(async (tx) => { await reads(tx); writes(tx); });
+    }
 
     await auditServer.logUpdate(apiUser.uid, companyId, result.type === "CN" ? "CREDIT_NOTE" : "DEBIT_NOTE", result.docNo, { status: "issued" }, { status: "cancelled", reason, journal: result.journal });
     return NextResponse.json({ success: true, ...result });

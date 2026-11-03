@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Loader2, Minus, Plus } from "lucide-react";
 import { PillButton, cn } from "@/components/ui/Base";
 
@@ -12,8 +13,11 @@ export type PdfZoom = "page" | "fit" | number;
 const ZOOM_KEY = "nexus.pdf.zoom.v2";
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const PX_PER_PT = 96 / 72;
+/** ระยะรอบกระดาษในกรอบแสดงผล (px) — แถบซูมลอยอยู่บนพื้นที่ว่าง ไม่กินความสูงกระดาษ */
+const PAD = 12;
 
-export function PdfPages({ url, className }: { url: string; className?: string }) {
+/** toolbarHost = ที่วางแถบซูม (เช่น แถวปุ่มพิมพ์ของตัวแสดง) — ไม่ส่ง = ลอยมุมขวาบนของกรอบ */
+export function PdfPages({ url, className, toolbarHost }: { url: string; className?: string; toolbarHost?: HTMLElement | null }) {
   const [zoom, setZoom] = useState<PdfZoom>(() => { try { const v = localStorage.getItem(ZOOM_KEY); return v === "fit" || v === "page" ? v : Number(v) || "page"; } catch { return "page"; } });
   const [pages, setPages] = useState<{ src: string; w: number; h: number }[]>([]);
   const [busy, setBusy] = useState(true);
@@ -34,8 +38,8 @@ export function PdfPages({ url, className }: { url: string; className?: string }
   // ขนาดหน้า (pt) จากหน้าแรก — ใช้คำนวณ "พอดีความกว้าง"
   const [pt, setPt] = useState<{ w: number; h: number } | null>(null);
   // px ต่อ pt บนจอ · พอดีหน้า = ทั้งกว้างและสูงอยู่ในกรอบ (เว้นขอบรอบกระดาษ)
-  const fitW = pt && boxW ? (boxW - 32) / pt.w : 0;
-  const fitH = pt && boxH ? (boxH - 48) / pt.h : 0;
+  const fitW = pt && boxW ? (boxW - 2 * PAD) / pt.w : 0;
+  const fitH = pt && boxH ? (boxH - 2 * PAD) / pt.h : 0;
   const scale = zoom === "page" ? (fitW && fitH ? Math.max(0.2, Math.min(fitW, fitH)) : PX_PER_PT)
     : zoom === "fit" ? (fitW ? Math.max(0.2, fitW) : PX_PER_PT) : zoom * PX_PER_PT;
 
@@ -77,11 +81,10 @@ export function PdfPages({ url, className }: { url: string; className?: string }
   const step = (d: number) => { const cur = typeof zoom === "number" ? zoom : scale / PX_PER_PT; const i = ZOOMS.findIndex((z) => z >= cur - 0.001); setZoom(ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, (i < 0 ? ZOOMS.length - 1 : i) + d))]); };
   const pct = Math.round((scale / PX_PER_PT) * 100);
 
-  return (
-    <div className={cn("relative flex flex-col min-h-0", className)}>
-      <div className="flex items-center justify-end gap-2 px-4 py-2 border-b border-white/10">
-        {busy && <span className="mr-auto flex items-center gap-1.5 text-[12px] text-white/60"><Loader2 size={12} className="animate-spin" /> กำลังแสดงเอกสาร…</span>}
-        <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
+  const zoomBar = (
+    <div className="flex items-center gap-2">
+        {busy && <span className="flex items-center gap-1.5 text-[12px] text-white/70"><Loader2 size={12} className="animate-spin" /> กำลังแสดงเอกสาร…</span>}
+        <div className="flex items-center gap-1 rounded-full border border-white/10 bg-surface-0/90 p-1">
         <button type="button" title="ย่อ" aria-label="ย่อ" onClick={() => step(-1)} className="h-7 w-7 rounded-full text-white/70 hover:bg-white/10 flex items-center justify-center"><Minus size={14} /></button>
         <span className="w-12 text-center text-[12px] text-white/80 tabular-nums">{pct}%</span>
         <button type="button" title="ขยาย" aria-label="ขยาย" onClick={() => step(1)} className="h-7 w-7 rounded-full text-white/70 hover:bg-white/10 flex items-center justify-center"><Plus size={14} /></button>
@@ -90,8 +93,13 @@ export function PdfPages({ url, className }: { url: string; className?: string }
         <button type="button" onClick={() => setZoom("fit")} className={cn("h-7 px-2.5 rounded-full text-[12px]", zoom === "fit" ? "bg-nexus-teal/20 text-nexus-teal font-semibold" : "text-white/70 hover:bg-white/10")}>พอดีความกว้าง</button>
         </div>
       </div>
+  );
+
+  return (
+    <div className={cn("relative flex flex-col min-h-0", className)}>
+      {toolbarHost ? createPortal(zoomBar, toolbarHost) : <div className="absolute top-2 right-3 z-10">{zoomBar}</div>}
       <div ref={box} className="flex-1 min-h-0 overflow-auto">
-        <div className="flex flex-col items-center gap-4 py-6 px-4 w-max min-w-full">
+        <div className="flex flex-col items-center gap-4 w-max min-w-full" style={{ padding: PAD }}>
           {pages.map((p, i) => (
             // eslint-disable-next-line @next/next/no-img-element -- หน้าเอกสารที่วาดในเบราว์เซอร์ (blob URL)
             <img key={i} src={p.src} alt={`หน้า ${i + 1}`} className="block bg-white shadow-2xl max-w-none" style={{ width: p.w * scale, height: p.h * scale }} />

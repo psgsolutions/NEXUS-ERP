@@ -98,6 +98,7 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
 
   // พิมพ์เต็มกระดาษ (100%) — ตัวแสดง PDF ของเบราว์เซอร์ย่อหน้าให้พอดีพื้นที่พิมพ์ (หน้าเล็กกว่ากระดาษ)
   const [printing, setPrinting] = useState(false);
+  const [zoomHost, setZoomHost] = useState<HTMLDivElement | null>(null);
   const print = async () => {
     if (!url) return;
     setPrinting(true);
@@ -148,7 +149,8 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
             {learnMsg && <span className="text-[12px] text-white/60">{learnMsg}</span>}
           </div>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <div ref={setZoomHost} className="contents" />
           {/* ส่งได้เฉพาะเอกสารที่บันทึกแล้ว (มีเลขที่) */}
           {shareDoc && (
             <PillButton variant={shareOpen ? "confirm" : "glass"} className="h-9 px-4 text-xs" onClick={() => setShareOpen((v) => !v)}><Send size={14} /> ส่ง / แชร์</PillButton>
@@ -164,7 +166,7 @@ export function DocumentPdfViewer({ source, model, className, title = "", shareS
           {loading && <div className="absolute inset-0 flex items-center justify-center gap-2 text-white/50 text-sm"><Loader2 size={16} className="animate-spin" /> กำลังสร้างเอกสาร…</div>}
           {error && !loading && <div className="absolute inset-0 flex items-center justify-center text-danger text-sm px-6 text-center">{error}</div>}
           {/* หน้าเอกสารขนาดจริง 100% (ไม่ใช้ตัวแสดง PDF ของเบราว์เซอร์ที่ย่อหน้าให้พอดีช่อง) · พิมพ์ด้วยปุ่มพิมพ์ด้านบน */}
-          {url && <PdfPages url={url} className={cn("absolute inset-0", loading && "opacity-0")} />}
+          {url && <PdfPages url={url} toolbarHost={zoomHost} className={cn("absolute inset-0", loading && "opacity-0")} />}
         </div>
         {shareOpen && shareDoc && (
           <aside className="w-[340px] max-w-[85vw] shrink-0 border-l border-white/10 overflow-y-auto bg-surface-0">

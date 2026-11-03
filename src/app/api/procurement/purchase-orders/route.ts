@@ -45,7 +45,8 @@ export async function POST(request: Request) {
       const currency = str(h.currency, 5) || "THB";
       const rate = currency === "THB" ? 1 : Math.max(0.0001, Number(h.exchangeRate) || 1);
       const vatType = normalizeVatMode(h.vatType);
-      const t = computeDocTotals(items, vatType);
+      // หัก ณ ที่จ่ายรายบรรทัด (ค่าบริการ/ค่าแรงในใบสั่งซื้อ) — ใช้ตั้งเบิกและจ่ายเงิน
+      const t = computeDocTotals(items, vatType, "lines");
       const prId = str(body.prId, 120);
       const sup = (await getRecord("suppliers", companyId, str(h.supplierId, 120)))?.data || null;
       const take = await prepareSequence("PO", companyId);
@@ -75,9 +76,17 @@ export async function POST(request: Request) {
           currency, exchangeRate: rate,
           incoterm: str(h.incoterm, 20), incotermPlace: str(h.incotermPlace, 120), paymentTerm: str(h.paymentTerm, 60),
           shippingMethod: str(h.shippingMethod, 60), terms: str(h.terms, 2000),
+          deliveryAddress: str(h.deliveryAddress, 1000), contactPerson: str(h.contactPerson, 120), contactPhone: str(h.contactPhone, 40), remark: str(h.remark, 2000),
+          // ผู้ขาย ณ วันออกใบสั่งซื้อ (พิมพ์ซ้ำตรงเดิมแม้แก้ข้อมูลผู้ขายภายหลัง)
+          supplierSnapshot: sup ? {
+            name: str(sup.taxInvoiceName || sup.name || sup.supplierName, 200), taxId: str(sup.taxId || sup.tax_id, 20), branchCode: str(sup.branchCode || sup.branch_code, 20),
+            address: str(sup.address || [sup.addressNo, sup.subDistrict, sup.district, sup.province, sup.zipCode].filter(Boolean).join(" "), 1000),
+            phone: str(sup.phone || sup.phoneNumber, 40), email: str(sup.email, 160), contactName: str(sup.contactPerson || sup.contactName || sup.contact_name, 120),
+          } : null,
           items,
           subTotal: r2(t.subTotal * rate), vatAmount: r2(t.vatAmount * rate), totalAmount: r2(t.grandTotal * rate),
           totalAmountForeign: t.grandTotal, discountTotal: r2(t.discount * rate),
+          whtAmount: r2(t.whtAmount * rate), netPayable: r2(t.netPayable * rate),
           status: "PENDING_APPROVAL",
           createdBy: apiUser.uid, createdByEmail: apiUser.email || "", createdAt: now, updatedAt: now, isDeleted: false,
         });
@@ -106,7 +115,11 @@ export async function POST(request: Request) {
           return "Approved";
         }
         if (["CANCELLED", "RECEIVED", "COMPLETED", "CLOSED"].includes(st) || received || po.expenseId) throw new ApiAuthError(409, "ใบสั่งซื้อนี้รับสินค้า/ตั้งเบิกแล้ว หรือถูกยกเลิกแล้ว ยกเลิกไม่ได้");
-        tx.update(ref, { status: "CANCELLED", cancelledAt: now, cancelledBy: apiUser.uid, updatedAt: now, updatedBy: apiUser.uid });
+        const prRef = po.prRef ? adminDb.doc(`companies/${companyId}/purchase_requests/${po.prRef}`) : null;
+        const prSnap = prRef ? await tx.get(prRef) : null;
+        tx.update(ref, { status: "CANCELLED", cancelReason: str(body.reason, 300), cancelledAt: now, cancelledBy: apiUser.uid, updatedAt: now, updatedBy: apiUser.uid });
+        // ใบขอซื้อที่แปลงมา กลับเป็น "อนุมัติแล้ว" เพื่อออกใบสั่งซื้อใหม่ได้
+        if (prRef && prSnap?.exists && prSnap.data()!.poCode === poId) tx.update(prRef, { status: "APPROVED", poCode: "", cancelledPoCode: poId, updatedAt: now, updatedBy: apiUser.uid });
         return "CANCELLED";
       });
       await auditServer.logUpdate(apiUser.uid, companyId, "PURCHASE_ORDER", poId, {}, { status });

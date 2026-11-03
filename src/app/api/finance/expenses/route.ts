@@ -64,6 +64,9 @@ export async function POST(request: Request) {
           supplierId: po.supplierId || "", supplierName: po.supplierName || "", vendor: po.supplierName || "",
           projectId: po.projectId || "", items: po.items || [],
           subTotal: r2(Number(po.subTotal) || 0), vatAmount: r2(Number(po.vatAmount) || 0), totalAmount: r2(Number(po.totalAmount) || 0),
+          ...(po.supplierSnapshot ? { supplierSnapshot: po.supplierSnapshot } : {}),
+          ...(Number(po.whtAmount) > 0 ? { whtAmount: r2(Number(po.whtAmount)), netPayable: r2(Number(po.netPayable) || (Number(po.totalAmount) || 0) - Number(po.whtAmount)) } : {}),
+          poDate: po.date || "", reference: po.reference || "",
           issuedAt: now, dueDate: addDays(todayBkk(), term),
         });
         tx.update(poRef, { expenseId: code, updatedAt: now, updatedBy: apiUser.uid });

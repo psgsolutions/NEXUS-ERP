@@ -43,6 +43,9 @@ import { useSuppliers } from "@/hooks/useCustomers";
 import { apiFetch } from "@/lib/api-client";
 import { db } from "@/lib/firebase-client";
 import { doc, getDoc } from "firebase/firestore";
+import { ChoiceInput } from "@/components/ui/ChoiceInput";
+import { PAYMENT_TERMS } from "@/lib/choices";
+import { DEPARTMENTS } from "@/lib/hr";
 
 const ORDER_TYPES: { id: POType, label: string, icon: any }[] = [
   { id: 'STOCK', label: 'สต็อกพัสดุ', icon: <Package size={14} /> },
@@ -64,7 +67,12 @@ const INITIAL_FORM = {
   exchange_rate: 1.0,
   incoterm: "EXW",
   incoterm_place: "",
-  payment_term: "Net 30",
+  payment_term: "เครดิต 30 วัน",
+  warehouse_code: "",
+  delivery_address: "",
+  contact_person: "",
+  contact_phone: "",
+  remark: "",
   shipping_method: "Road Freight",
   terms: "1. สินค้าต้องจัดส่งในสภาพสมบูรณ์และถูกต้องตามรุ่นที่สั่งซื้อ\n2. บรรจุภัณฑ์ต้องเหมาะสมกับการขนส่งเพื่อป้องกันการชำรุดเสียหาย\n3. กรุณาแนบใบกำกับภาษี/ใบส่งสินค้าและสำเนาใบสั่งซื้อมาพร้อมกับสินค้า"
 };
@@ -162,7 +170,8 @@ function NewPurchaseOrderScreen() {
             orderType: form.order_type, supplierId: form.supplier, supplierName: supplier?.name || supplier?.supplierName || "",
             reference: form.reference, projectId: form.project_id || "",
             projectName: project ? (project.title || project.name || project.projectId || "") : "",
-            department: form.department || "", warehouseCode: form.order_type === "STOCK" ? (warehouses[0]?.code || "") : "",
+            department: form.department || "", warehouseCode: form.order_type === "STOCK" ? (form.warehouse_code || warehouses[0]?.code || "") : "",
+            deliveryAddress: form.delivery_address, contactPerson: form.contact_person, contactPhone: form.contact_phone, remark: form.remark,
             date: form.date, expectedDate: form.delivery_date, vatType: form.vat_type, currency: form.currency,
             exchangeRate: form.exchange_rate, incoterm: form.incoterm, incotermPlace: form.incoterm_place,
             paymentTerm: form.payment_term, shippingMethod: form.shipping_method, terms: form.terms,
@@ -293,22 +302,14 @@ function NewPurchaseOrderScreen() {
           )}
           {form.order_type === 'CONSUMABLE' && (
             <Field label="แผนกที่ทำรายการเบิก *">
-              <PillInput
-                value={form.department}
-                onChange={(e) => setForm({...form, department: e.target.value})}
-                placeholder="ระบุแผนก เช่น ฝ่ายไอที"
-                className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[12px] font-bold"
-              />
+              <ChoiceInput value={form.department} onChange={(v) => setForm({ ...form, department: v })} options={DEPARTMENTS} placeholder="เลือกหรือพิมพ์แผนก" className="w-full" />
             </Field>
           )}
           {form.order_type === 'STOCK' && (
             <Field label="คลังพัสดุปลายทาง">
-              <PillInput
-                value={warehouses[0] ? `${warehouses[0].code || warehouses[0].id} : ${warehouses[0].name || ""}` : "ยังไม่ได้ตั้งค่าคลังสินค้า"}
-                disabled
-                readOnly
-                className="w-full h-9 px-6 rounded-full bg-white/[0.01] border-cyan-500/20 text-cyan-400/60 cursor-not-allowed font-bold text-[12px]" 
-              />
+              <PillSelect value={form.warehouse_code || warehouses[0]?.code || ""} onChange={(e) => setForm({ ...form, warehouse_code: e.target.value })} className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[12px] font-bold">
+                {warehouses.length ? warehouses.map((w: any) => <option key={w.code || w.id} value={w.code || w.id}>{w.code || w.id} : {w.name || ""}</option>) : <option value="">ยังไม่ได้ตั้งค่าคลังสินค้า</option>}
+              </PillSelect>
             </Field>
           )}
         </div>
@@ -393,16 +394,28 @@ function NewPurchaseOrderScreen() {
             </PillSelect>
           </Field>
           <Field label="การชำระเงิน *">
-            <PillSelect 
-              value={form.payment_term} 
-              onChange={(e) => setForm({...form, payment_term: e.target.value})} 
-              className="w-full h-9 px-6 rounded-full bg-white/[0.02] border-white/10 text-[12px] font-bold"
-            >
-              <option value="Net 30">Net 30 Days</option>
-              <option value="Advanced 100%">Advanced 100%</option>
-            </PillSelect>
+            <ChoiceInput value={form.payment_term} onChange={(v) => setForm({ ...form, payment_term: v })} options={PAYMENT_TERMS} placeholder="เช่น เครดิต 30 วัน" className="w-full" />
           </Field>
         </div>
+      </div>
+
+      {/* สถานที่ส่งของ ผู้ติดต่อ และหมายเหตุ (พิมพ์บนใบสั่งซื้อ) */}
+      <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
+        <h3 className="text-[12px] font-semibold uppercase tracking-widest text-white/80 border-b border-white/5 pb-4">การส่งของและผู้ติดต่อ</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Field label="สถานที่ส่งของ">
+            <PillInput value={form.delivery_address} onChange={(e) => setForm({ ...form, delivery_address: e.target.value })} placeholder="ว่าง = ที่อยู่บริษัท / คลังสินค้า" className="w-full h-9 text-[12px]" />
+          </Field>
+          <Field label="ผู้ติดต่อรับของ">
+            <PillInput value={form.contact_person} onChange={(e) => setForm({ ...form, contact_person: e.target.value })} placeholder="ชื่อผู้รับของ" className="w-full h-9 text-[12px]" />
+          </Field>
+          <Field label="เบอร์โทรผู้ติดต่อ">
+            <PillInput value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} placeholder="เบอร์โทร" className="w-full h-9 text-[12px] font-mono" />
+          </Field>
+        </div>
+        <Field label="หมายเหตุถึงผู้ขาย">
+          <PillInput value={form.remark} onChange={(e) => setForm({ ...form, remark: e.target.value })} placeholder="เช่น โทรแจ้งก่อนส่ง 1 วัน" className="w-full h-9 text-[12px]" />
+        </Field>
       </div>
 
       {/* Smart Document Table */}

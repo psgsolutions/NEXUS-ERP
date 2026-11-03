@@ -8,6 +8,21 @@ import { auditServer } from "@/services/audit.server";
 import { normalizePoStatus } from "@/lib/procurement-status";
 import { companyLocations } from "@/lib/warehouse.server";
 import { prepareSequence } from "@/lib/sequence-server";
+import { can } from "@/lib/permissions";
+import { lineDiscount } from "@/lib/doc-totals";
+
+/** ราคาทุนต่อหน่วยตามใบสั่งซื้อ (หลังส่วนลดบรรทัด ก่อน VAT เป็นบาท) — ไม่เชื่อราคาที่หน้าจอส่งมา */
+function poUnitCost(po: any, idx: number): number | null {
+  const pi = (po?.items || [])[idx];
+  if (!pi) return null;
+  const qty = Number(pi.qty ?? pi.qtyOrdered) || 0;
+  if (qty <= 0) return null;
+  const net = (qty * (Number(pi.price ?? pi.unitPrice) || 0) - lineDiscount(pi)) / qty;
+  const inclusive = String(po.vatType || "").toLowerCase().startsWith("incl");
+  const rate = Number(po.exchangeRate) || 1;
+  return Math.round((inclusive ? net / 1.07 : net) * rate * 10000) / 10000;
+}
+const isStockLine = (pi: any) => !!pi?.productId && !["SERVICE", "LABOR"].includes(String(pi?.itemType || "PRODUCT").toUpperCase());
 
 /**
  * [API-SERVER] Goods Receipt & Real-time WAC / GL Posting API
@@ -32,6 +47,11 @@ export async function POST(request: Request) {
     } = body;
     const apiUser = await requireApiUser(request, companyId);
     const userId = apiUser.email || apiUser.uid;
+    // รับสินค้าเข้าคลัง: เฉพาะฝ่ายคลัง/จัดซื้อ
+    if (!can(apiUser.roles, "inventory:edit") && !can(apiUser.roles, "procurement:edit")) {
+      return NextResponse.json({ success: false, error: "สิทธิ์การใช้งานไม่เพียงพอสำหรับการรับสินค้า" }, { status: 403 });
+    }
+    const supplierIdIn = String(body.supplierId || "").slice(0, 120);
 
     // 1. Tenant & Field Validation
     if (!companyId) {
@@ -47,7 +67,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const postingDate = receiptDate || new Date().toISOString();
+    const postingDate = /^\d{4}-\d{2}-\d{2}/.test(String(receiptDate || "")) ? String(receiptDate).slice(0, 10) : new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
+    // ใบสั่งซื้อที่อ้างอิง (อ่านก่อนเพื่อใช้ราคาทุนตามใบสั่งซื้อ · ตรวจสถานะ/จำนวนซ้ำในทรานแซกชัน)
+    const poPath = String(poDocPath || "");
+    const poPre = /^companies\/[^/]+\/purchase_orders\/[^/]+$/.test(poPath) && poPath.split("/")[1] === companyId ? (await adminDb.doc(poPath).get()).data() || null : null;
 
     // 2. Period Lock Check
     await assertPeriodOpen(companyId, postingDate);
@@ -66,7 +89,9 @@ export async function POST(request: Request) {
     const movements: StockMovement[] = [];
     for (const item of items) {
       const qty = Number(item.qtyReceived || item.qty || 0);
-      const unitPrice = Number(item.unitPrice || item.price || item.cost || 0);
+      const fromPo = poPre && item.poLineIndex !== null && item.poLineIndex !== undefined ? poUnitCost(poPre, Number(item.poLineIndex)) : null;
+      const unitPrice = fromPo ?? Math.max(0, Number(item.unitPrice || item.price || item.cost || 0));
+      item.unitCost = unitPrice;
       if (qty > 0 && item.productId) {
         totalReceiptAmount += qty * unitPrice;
         movements.push({
@@ -100,6 +125,7 @@ export async function POST(request: Request) {
       poDocRef = adminDb.doc(p);
     }
     let poUpdate: Record<string, any> | null = null;
+    let supplierFromPo: { id: string; name: string } | null = null;
     // เลขที่ใบรับสินค้า (GR) ออกในทรานแซกชันเดียวกับสต็อก: บันทึกไม่สำเร็จ = ไม่เสียเลข
     const takeNo = await prepareSequence("GR", companyId);
     let grNo = "";
@@ -122,7 +148,10 @@ export async function POST(request: Request) {
         if (got > 0 && prev + got > ordered + 1e-9) throw new Error(`รับเกินจำนวนคงค้างในใบสั่งซื้อ (${pi.name || pi.description || "รายการ " + (idx + 1)})`);
         return { ...pi, qtyReceived: prev + got };
       });
-      const allReceived = poItems.every((pi: any) => (Number(pi.qtyReceived) || 0) >= (Number(pi.qty ?? pi.qtyOrdered) || 0));
+      // ครบ = รายการสินค้าที่คุมสต็อกรับครบทุกตัว (ค่าบริการ/ค่าแรงไม่ต้องรับเข้าคลัง)
+      const stockItems = poItems.filter(isStockLine);
+      const allReceived = (stockItems.length ? stockItems : poItems).every((pi: any) => (Number(pi.qtyReceived) || 0) >= (Number(pi.qty ?? pi.qtyOrdered) || 0));
+      supplierFromPo = { id: String(po.supplierId || ""), name: String(po.supplierName || "") };
       poUpdate = { items: poItems, status: allReceived ? "RECEIVED" : "PARTIAL_RECEIVED", updatedAt: admin.firestore.FieldValue.serverTimestamp(), updatedBy: apiUser.uid };
     };
 
@@ -132,18 +161,25 @@ export async function POST(request: Request) {
       grNo: no,
       companyId,
       poRef: poRef || "",
-      supplier: supplier || "",
+      supplierId: supplierFromPo?.id || supplierIdIn,
+      supplier: supplierFromPo?.name || supplier || "",
       receiptDate: postingDate,
       deliveryNote: deliveryNote || "",
       receivedBy,
       warehouse: warehouseCode || warehouse || "",
       location: warehouse || "",
-      items,
-      totalAmount: totalReceiptAmount,
+      // เก็บเฉพาะฟิลด์ที่ใช้ (ไม่เก็บข้อมูลดิบจากหน้าจอ)
+      items: items.map((it: any) => ({
+        productId: String(it.productId || ""), sku: String(it.sku || "").slice(0, 120), name: String(it.name || "").slice(0, 300), unit: String(it.unit || "").slice(0, 40),
+        qtyReceived: Number(it.qtyReceived || it.qty || 0), unitCost: Number(it.unitCost) || 0,
+        poLineIndex: it.poLineIndex === null || it.poLineIndex === undefined ? null : Number(it.poLineIndex),
+      })),
+      totalAmount: Math.round(totalReceiptAmount * 100) / 100,
       status: "received",
       createdBy: userId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdByUid: apiUser.uid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       isDeleted: false
     });
 
@@ -159,7 +195,7 @@ export async function POST(request: Request) {
         const now = admin.firestore.FieldValue.serverTimestamp();
         transaction.set(adminDb.collection(`companies/${companyId}/journal_entries`).doc(), {
           companyId,
-          date: now,
+          date: postingDate,
           bookType: "PV_INTERNAL",
           reference: grNo,
           description: `[AUTO] รับสินค้า ${grNo}${poRef ? ` ตามใบสั่งซื้อ ${poRef}` : ""} จาก ${supplier || "ผู้ขาย"} เข้า ${warehouse || "คลังสินค้า (ไม่ระบุตำแหน่ง)"}`,

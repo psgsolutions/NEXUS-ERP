@@ -84,7 +84,7 @@ export async function POST(request: Request) {
           requester: str(h.requester, 120), requesterUid: apiUser.uid,
           department: str(h.department, 120),
           requestDate: isDate(h.requestDate) ? h.requestDate : new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10),
-          requiredDate: h.requiredDate, priority: str(h.priority, 30),
+          requiredDate: isDate(h.requiredDate) ? h.requiredDate : "", priority: str(h.priority, 30),
           projectId: str(h.projectId, 120), projectName: str(h.projectName, 200),
           reason: str(h.reason, 1000),
           suggestedSupplierId: str(h.suggestedSupplierId, 120), suggestedSupplierName: str(h.suggestedSupplierName, 200),

@@ -132,6 +132,7 @@ function NewInventoryInScreen() {
           poRef: activeTab === "po" ? header.poRef : "",
           poDocPath: activeTab === "po" ? header.poDocPath : "",
           supplier: supplierName(header.supplierId) || header.supplierId,
+          supplierId: header.supplierId || "",
           receiptDate: header.date,
           deliveryNote: header.reference,
           receivedBy: user.email || user.uid,

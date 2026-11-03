@@ -28,7 +28,7 @@ async function load(companyId: string, col: string, id: string, notFound: string
 
 /** ผู้ขายจากข้อมูลหลัก (snapshot บนเอกสารก่อน ถ้ามี) */
 async function supplierParty(companyId: string, label: string, supplierId: any, name: any, snap?: any): Promise<DocumentParty> {
-  if (snap && typeof snap === "object" && snap.name) return { label, name: str(snap.name), taxId: str(snap.taxId), branchCode: str(snap.branchCode), address: str(snap.address) };
+  if (snap && typeof snap === "object" && snap.name) return { label, name: str(snap.name), taxId: str(snap.taxId), branchCode: str(snap.branchCode || snap.branch), address: str(snap.address), contact: str(snap.contactName), phone: str(snap.phone), email: str(snap.email) };
   const rec = supplierId ? (await getRecord("suppliers", companyId, str(supplierId)))?.data : null;
   const p = partySnapshot(rec, { name: str(name) });
   return {
@@ -98,9 +98,12 @@ export async function loadPurchaseOrder(companyId: string, id: string): Promise<
     party: await supplierParty(companyId, "ผู้ขาย", d.supplierId, d.supplierName, d.supplierSnapshot),
     columns: ["no", "code", "description", "qty", "unit", "price", "discount", "amount"],
     lines,
-    totals: totalsRows({ lineTotal: lineSum || net, billDiscount, net, vat: num(d.vatAmount), grand: num(d.totalAmount), taxType }),
+    totals: totalsRows({ lineTotal: lineSum || net, billDiscount, net, vat: num(d.vatAmount), grand: num(d.totalAmount), taxType, wht: num(d.whtAmount), payable: num(d.netPayable) || undefined }),
     amountInWords: num(d.totalAmount),
     notes: [
+      d.deliveryAddress ? `สถานที่ส่งของ: ${str(d.deliveryAddress)}` : "",
+      d.contactPerson ? `ผู้ติดต่อรับของ: ${str(d.contactPerson)}${d.contactPhone ? ` โทร ${str(d.contactPhone)}` : ""}` : "",
+      str(d.remark),
       str(d.terms),
       d.currency && d.currency !== "THB" ? `สกุลเงิน ${str(d.currency)} อัตราแลกเปลี่ยน ${num(d.exchangeRate)}` : "",
       "กรุณาแนบสำเนาใบสั่งซื้อนี้พร้อมใบส่งสินค้าและใบกำกับภาษี",

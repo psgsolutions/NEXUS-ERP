@@ -8,7 +8,7 @@ import {
   Bold, Type, Stamp as StampIcon, MoreHorizontal, Image as ImageIcon, TextCursorInput, BringToFront, SendToBack, ChevronLeft, PanelBottom,
   Circle, Triangle, RotateCcw, StretchHorizontal, StretchVertical,
   Italic, Underline, Strikethrough, AlignJustify, ChevronUp, ChevronDown, ChevronRight, PanelRightClose, PanelRightOpen,
-  ArrowUpToLine, ArrowDownToLine, BoxSelect, Sigma, PenLine, RectangleHorizontal, RectangleVertical, Scan, Move, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Ruler as RulerIcon, Grid3x3, Paintbrush, ZoomIn, Merge, ListChecks,
+  ArrowUpToLine, ArrowDownToLine, Signature as SignatureIcon, RotateCw, BoxSelect, Sigma, PenLine, RectangleHorizontal, RectangleVertical, Scan, Move, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, Ruler as RulerIcon, Grid3x3, Paintbrush, ZoomIn, Merge, ListChecks,
 } from "lucide-react";
 import { templateLayout } from "@/lib/documents/layout-templates";
 import { DESIGNABLE_DOCS } from "@/lib/documents/build";
@@ -25,6 +25,7 @@ import {
 import { fileToPageImage } from "./usePdfPageImage";
 import { useLayerSprites } from "./useLayerSprites";
 import { RangeNumber } from "@/components/ui/RangeNumber";
+import { ChoiceInput } from "@/components/ui/ChoiceInput";
 import { SignSlotsEditor } from "@/components/settings/SignSlotsEditor";
 
 /**
@@ -41,7 +42,8 @@ import { SignSlotsEditor } from "@/components/settings/SignSlotsEditor";
  *  - กล่องที่เอกสารภาษีต้องมี ย้าย/ปรับได้แต่ลบไม่ได้
  */
 const SNAP_PT = 4;
-const SINGLE: BlockKind[] = ["seller", "title", "meta", "party", "items", "totals", "words", "notes", "payment", "signatures", "copy"];
+// ช่องลงนามวางได้หลายชุด (เช่น ผู้ขายซ้ายล่าง ผู้รับขวาล่าง) — ชุดแรก (id "signatures") จับลายเซ็นตามลำดับช่องได้ ชุดที่เพิ่มจับตามชื่อช่อง
+const SINGLE: BlockKind[] = ["seller", "title", "meta", "party", "items", "totals", "words", "notes", "payment", "copy"];
 const DEDUP: BlockKind[] = ["seller", "title", "meta", "party"];
 /** กล่องข้อมูลสำเร็จรูป (สร้างแล้วติ๊กเพิ่ม/ลด/เรียงหัวข้อเองได้) */
 const INFO_PRESETS: { id: string; label: string }[] = [
@@ -162,11 +164,31 @@ const READY_TABLES: { kind: BlockKind; label: string; hint: string; icon: React.
 ];
 const menuItem = "w-full text-left px-3 py-2 rounded-xl text-[12px] text-white/85 hover:bg-white/10 hover:text-white";
 /** กลุ่มในริบบอน (ป้ายชื่อกลุ่มด้านล่าง เหมือน Office) */
-const RGroup = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className="flex flex-col px-2 border-r border-white/10 last:border-r-0 flex-shrink-0">
-    <div className="flex items-center gap-1 flex-1 min-h-[62px]">{children}</div>
-    <p className="text-[11px] text-white/40 text-center pt-0.5">{label}</p>
-  </div>
+/** ชุดเครื่องมือรูปแบบเดียวกันใช้ทั้งแถบด้านบนและแผงขวา — ในแผงขวาเรียงเป็นหัวข้อย่อยแนวตั้ง */
+const PanelMode = React.createContext(false);
+const RGroup = ({ label, children }: { label: string; children: React.ReactNode }) => {
+  const panel = React.useContext(PanelMode);
+  if (panel) return (
+    <div className="space-y-1">
+      <p className="text-[11px] text-white/45">{label}</p>
+      <div className="flex flex-wrap items-center gap-1">{children}</div>
+    </div>
+  );
+  return (
+    <div className="flex flex-col px-2 border-r border-white/10 last:border-r-0 flex-shrink-0">
+      <div className="flex items-center gap-1 flex-1 min-h-[62px]">{children}</div>
+      <p className="text-[11px] text-white/40 text-center pt-0.5">{label}</p>
+    </div>
+  );
+};
+/** หัวข้อของแผงขวา (พับได้) — ไม่มีเนื้อหา = ไม่แสดง */
+const PSection = ({ title, children, open = true }: { title: string; children: React.ReactNode; open?: boolean }) => (
+  <details open={open} className="group rounded-xl border border-white/10 bg-white/[0.015] [&:not(:has(.psec>*))]:hidden">
+    <summary className="cursor-pointer select-none list-none px-2.5 py-2 text-[12px] font-bold text-white/80 flex items-center gap-1.5">
+      <ChevronRight size={13} className="text-white/45 transition-transform group-open:rotate-90" />{title}
+    </summary>
+    <div className="psec px-2.5 pb-2.5 space-y-2.5">{children}</div>
+  </details>
 );
 /** ไม้บรรทัด (ซม.) ตามขนาดกระดาษบนจอ · hl = ช่วงของกล่องที่เลือก */
 function Ruler({ axis, S, hl, P }: { axis: "x" | "y"; S: number; hl?: [number, number] | null; P: { w: number; h: number } }) {
@@ -795,6 +817,14 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     // ลายเซ็น: เริ่มที่ช่องลงนามแรก แสดงเฉพาะรูปลายเซ็น (ชื่อ/วันที่อยู่ในช่องลงนามอยู่แล้ว)
     if (kind === "grid") extra = { rows: 3, cols2: 3, ...extra };
     if (kind === "sign") extra = { slot: defaultSignatures[0], hide: ["name", "title", "date"], ...extra };
+    if (kind === "signatures") {
+      const others = items.filter((i) => i.b.kind === "signatures");
+      if (!others.length) return { id: "signatures", kind, x: def?.x ?? 32, y: def?.y ?? 712, w: def?.w ?? 530, h: def?.h ?? 80, ...extra };
+      // ชุดเพิ่ม: ช่องเดียว ชื่อช่องที่ยังไม่มีในชุดอื่น
+      const used = new Set(others.flatMap((i) => i.b.signSlots?.map((x) => x.label) || i.b.labels || defaultSignatures));
+      const label = [...defaultSignatures, "ผู้รับสินค้า", "ผู้ส่งสินค้า", "ผู้ตรวจสอบ", "พยาน"].find((l) => !used.has(l)) || "ผู้ลงนาม";
+      return { id, kind, x: 60, y: 160, w: 180, h: 80, signSlots: [{ label, name: "blank", date: "blank" }], labels: [label], ...extra };
+    }
     return { id, kind, x: def?.x ?? 60, y: def?.y ?? (addZone === "head" ? 30 : 160), w, h, ...(kind === "text" ? { text: "ข้อความ {{number}}", fontSize: 10 } : {}), ...(kind === "field" ? { field: "number" } : {}), ...extra };
   };
   const presetFields = (id: string) => id === "seller" ? ["seller.name", "seller.address", "seller.taxId", "seller.contact"]
@@ -1130,16 +1160,22 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     const cols = b.cols?.length ? b.cols : defaultColumns;
     const reqCols = requiredColumnsFor(docType);
     return (
-      <fieldset disabled={!canEdit} className="space-y-3">
+      <fieldset disabled={!canEdit} className="space-y-3 min-w-0">
         <div className="flex items-center gap-1.5">
           <p className="text-[12px] font-bold text-white">{BLOCK_LABELS[b.kind]}</p>
           {isLocked(it) && <Lock size={12} className="text-white/50" />}
           <span className={cn("ml-auto text-[11px] px-2 py-0.5 rounded-full", it.zone === "head" ? "bg-purple-500/15 text-purple-200" : "bg-nexus-teal/15 text-nexus-teal")}>{it.zone === "head" ? "หัวกระดาษ" : "เนื้อเอกสาร"}</span>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Field label="ซ้าย (pt)">{numInput(it, "x")}</Field><Field label="บน (pt)">{numInput(it, "y")}</Field>
-          <Field label="กว้าง">{numInput(it, "w")}</Field><Field label="สูง">{numInput(it, "h")}</Field>
-        </div>
+        {canEdit && (
+          <div className="flex items-center gap-1 -mt-1">
+            <ToolBtn title="ทำสำเนา (Ctrl+D)" disabled={SINGLE.includes(b.kind)} onClick={duplicate}><CopyPlus size={14} /></ToolBtn>
+            <ToolBtn title={b.locked ? "ปลดล็อกตำแหน่ง" : "ล็อกตำแหน่ง"} on={!!b.locked} onClick={toggleLock}>{b.locked ? <PinOff size={14} /> : <Pin size={14} />}</ToolBtn>
+            <ToolBtn title="ขึ้นบนสุด" onClick={() => zEnd(it, "front")}><ArrowUpToLine size={14} /></ToolBtn>
+            <ToolBtn title="ลงล่างสุด" onClick={() => zEnd(it, "back")}><ArrowDownToLine size={14} /></ToolBtn>
+            <ToolBtn title="ลบ (Delete)" disabled={isLocked(it)} onClick={() => remove([it])}><Trash2 size={14} /></ToolBtn>
+          </div>
+        )}
+        <PSection title="ข้อมูลที่แสดง">
 
         {b.kind === "field" && (
           <div className="space-y-2 rounded-xl border border-white/10 p-2.5">
@@ -1246,6 +1282,21 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             <Field label={`ระยะห่างระหว่างช่อง ${b.gap ?? 16} pt (เว้นกลางวางโลโก้/ตราประทับได้)`}>
               <RangeNumber min={0} max={300} step={2} value={b.gap ?? 16} onChange={(e) => update(it, { gap: Number(e.target.value) })} className="w-full accent-[#0d9488] h-8" />
             </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="กรอบแต่ละช่อง">
+                <PillSelect value={b.slotFrame || ""} onChange={(e) => (e.target.value ? update(it, { slotFrame: e.target.value as FreeBlock["slotFrame"] }) : unset(it, "slotFrame"))} className="h-8 w-full text-[12px]">
+                  <option value="">ตามแม่แบบ ({theme.signatures === "box" ? "มีกรอบ" : "ไม่มีกรอบ"})</option>
+                  <option value="none">ไม่มีกรอบ</option><option value="solid">กรอบเส้นทึบ</option><option value="dashed">กรอบเส้นประ</option><option value="dotted">กรอบเส้นจุด</option>
+                </PillSelect>
+              </Field>
+              <Field label="จัดวางในช่อง">
+                <div className="flex items-center gap-0.5">
+                  {(["left", "center", "right"] as const).map((a) => { const I = ALIGN_ICON[a]; return <ToolBtn key={a} title={a === "left" ? "ชิดซ้าย" : a === "center" ? "กึ่งกลาง" : "ชิดขวา"} on={(b.align || "center") === a} onClick={() => (a === "center" ? unset(it, "align") : update(it, { align: a }))}><I size={14} /></ToolBtn>; })}
+                </div>
+              </Field>
+            </div>
+            {colorRow(it, "สีเส้น · กรอบ", "lineColor")}
+            <p className="text-[11px] text-white/45 leading-relaxed">กรอบรอบทั้งชุด สีพื้น และรูปแบบตัวอักษร ตั้งที่หัวข้อ &quot;กรอบ · พื้น&quot; และ &quot;ตัวอักษร&quot; ด้านล่าง · วางช่องลงนามได้หลายชุดจากแท็บ แทรก</p>
           </>
         )}
 
@@ -1298,15 +1349,48 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             <input ref={fileRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) update(it, { src: await shrinkImage(f) }); }} />
           </>
         )}
+        {b.kind === "words" && (
+          <div className="space-y-2 rounded-xl border border-white/10 p-2.5">
+            <PillCheckbox label="ใส่วงเล็บ ( ... )" checked={!!b.bracket} onChange={(e) => (e.target.checked ? update(it, { bracket: true }) : unset(it, "bracket"))} />
+            <Field label="คำนำหน้า">
+              <ChoiceInput value={b.prefix || ""} onChange={(v) => (v ? update(it, { prefix: v.slice(0, 30) }) : unset(it, "prefix"))} options={["ตัวอักษร", "จำนวนเงิน (ตัวอักษร)", "บาท"]} placeholder="ไม่มี" className="w-full" />
+            </Field>
+          </div>
+        )}
+        {(b.kind === "image" || b.kind === "logo") && (
+          <Field label="การวางรูปในกรอบ">
+            <PillSelect value={b.fit || ""} onChange={(e) => (e.target.value ? update(it, { fit: e.target.value as FreeBlock["fit"] }) : unset(it, "fit"))} className="h-8 w-full text-[12px]">
+              <option value="">พอดีกรอบ (เห็นทั้งรูป)</option><option value="cover">เต็มกรอบ (ตัดส่วนเกิน)</option><option value="fill">ยืดเต็มกรอบ</option>
+            </PillSelect>
+          </Field>
+        )}
+        {["stamp", "image", "text", "logo"].includes(b.kind) && (
+          <Field label={`หมุน ${b.rotate ?? 0}°`}>
+            <div className="flex items-center gap-2">
+              <RangeNumber min={-180} max={180} step={1} value={b.rotate ?? 0} onChange={(e) => { const v = Number(e.target.value); if (v) update(it, { rotate: v }); else unset(it, "rotate"); }} className="flex-1 accent-[#0d9488] h-8" />
+              <ToolBtn title="เอียงแบบตรายาง (-12°)" onClick={() => update(it, { rotate: -12 })}><RotateCw size={14} /></ToolBtn>
+            </div>
+          </Field>
+        )}
+        {b.kind === "line" && (
+          <Field label="หัวลูกศร">
+            <PillSelect value={b.arrow || ""} onChange={(e) => (e.target.value ? update(it, { arrow: e.target.value as FreeBlock["arrow"] }) : unset(it, "arrow"))} className="h-8 w-full text-[12px]">
+              <option value="">ไม่มี</option><option value="end">ปลายทาง →</option><option value="start">ต้นทาง ←</option><option value="both">สองทาง ↔</option>
+            </PillSelect>
+          </Field>
+        )}
         {b.kind === "line" && (() => {
           const vertical = b.h > b.w, thick = vertical ? b.w : b.h;
           return <PillButton variant="ghost" className="h-8 px-3 text-xs w-full" onClick={() => update(it, vertical ? { w: b.h, h: thick } : { w: thick, h: Math.max(20, b.w) })}>{vertical ? "เปลี่ยนเป็นแนวนอน" : "เปลี่ยนเป็นแนวตั้ง"}</PillButton>;
         })()}
+        </PSection>
+        {TEXT_BLOCKS.includes(b.kind) && <PSection title="ตัวอักษร"><PanelMode.Provider value>{bodyFor("ftext")}</PanelMode.Provider></PSection>}
+        <PSection title={b.kind === "line" ? "เส้น" : "กรอบ · พื้น"}>
+        <PanelMode.Provider value>{bodyFor("fshape")}</PanelMode.Provider>
         {/* สี เส้น ความหนา รูปทรง ขอบใน อยู่ที่แท็บรูปแบบบนแถบเครื่องมือ · ที่นี่เหลือมุมโค้ง (ปรับแยกแต่ละมุมได้) */}
         {!["line", "shape"].includes(b.kind) && (
           <div className="space-y-2 rounded-xl border border-white/10 p-2.5">
             <p className="text-[12px] font-bold text-white/70">{["image", "logo", "stamp", "sign"].includes(b.kind) ? "กรอบ · พื้น · มุม" : "มุม"}</p>
-            {["image", "logo", "stamp", "sign"].includes(b.kind) && <>{colorRow(it, "พื้นหลัง", "bg")}{colorRow(it, "กรอบ", "border")}</>}
             {<>
             <Field label={`มุม ${b.radii ? "แยกแต่ละมุม" : (b.radius ?? (theme.rounded ? 4 : 0)) === 0 ? "เหลี่ยม" : `โค้ง ${b.radius ?? (theme.rounded ? 4 : 0)} pt`}${!b.radii && b.radius === undefined ? " (แม่แบบ)" : ""}`}>
               <div className="flex items-center gap-2">
@@ -1330,9 +1414,16 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
           </div>
         )}
 
+        </PSection>
+        <PSection title="ตำแหน่งและขนาด">
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="ซ้าย (pt)">{numInput(it, "x")}</Field><Field label="บน (pt)">{numInput(it, "y")}</Field>
+          <Field label="กว้าง">{numInput(it, "w")}</Field><Field label="สูง">{numInput(it, "h")}</Field>
+        </div>
         {letterhead && !letterOnly && HEAD_KINDS.includes(b.kind) && (
           <PillCheckbox label="อยู่ในหัวกระดาษ (ใช้ร่วมกับเอกสารที่ใช้หัวนี้)" checked={it.zone === "head"} onChange={() => moveZone(it)} />
         )}
+        </PSection>
         {canEdit && (SPLITTABLE.includes(b.kind) || b.kind === "info") && (
           <div className="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] p-2.5 space-y-1.5">
             <p className="text-[12px] text-white/65 leading-relaxed">จัดวางเอง: แยกหัวข้อกับข้อมูลเป็นคนละชิ้น (ข้อมูลยังดึงจากฐานข้อมูลเหมือนเดิม) · หัวข้อกับข้อมูลแถวเดียวกันจับคู่กัน: ลาก = ย้ายไปด้วยกัน · ดับเบิลคลิกแล้วลาก = ย้ายชิ้นเดียว · กรอบ/พื้นหลังแยกเป็นกรอบอีกชิ้น</p>
@@ -1519,8 +1610,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
     ...(textSel.length ? [{ id: "ftext", label: "รูปแบบข้อความ", ctx: true }] : []),
     ...(boxSel.length ? [{ id: "fshape", label: "กรอบ · พื้น", ctx: true }] : []),
   ];
-  const ribbonBody = (() => {
-    switch (rtab) {
+  const bodyFor = (tab: string) => {
+    switch (tab) {
       case "home": return (
         <>
           {bodyOn && canEdit && (
@@ -1610,6 +1701,7 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
             {addable.includes("logo") && <RBtn icon={<ImagePlus size={18} />} label="โลโก้" drag="logo" disabled={!canEdit} onClick={() => addAt("logo", visibleCenter())} />}
             {addable.includes("sign") && <RBtn icon={<PenLine size={18} />} label="ลายเซ็น" drag="sign" disabled={!canEdit} onClick={() => addAt("sign", visibleCenter())} />}
             {addable.includes("stamp") && <RBtn icon={<StampIcon size={18} />} label="ตราประทับ" drag="stamp" disabled={!canEdit} onClick={() => addAt("stamp", visibleCenter())} />}
+            {addable.includes("signatures") && <RBtn icon={<SignatureIcon size={18} />} label="ช่องลงนาม" drag="signatures" disabled={!canEdit} title="ช่องลงนาม: เส้นเซ็น หน้าที่ ชื่อ ตำแหน่ง วันที่ — วางได้หลายชุด คลิกแล้วตั้งค่าที่แผงขวา" onClick={() => { addAt("signatures", { x: P.w / 2, y: P.h - M[2] - 60 }); setUiPart({ right: true }); }} />}
             {addable.includes("copy") && <RBtn icon={<BadgeCheck size={18} />} label="ต้นฉบับ/สำเนา" drag="copy" disabled={!canEdit} onClick={() => addAt("copy", visibleCenter())} />}
           </RGroup>
           {bodyOn && (
@@ -1826,7 +1918,8 @@ export function FreeLayoutEditor({ docType, theme, layout, onChange, letterhead,
       ) : null;
       default: return null;
     }
-  })();
+  };
+  const ribbonBody = bodyFor(rtab);
   const ribbon = (
     <div ref={ribbonRef} data-ribbon className={cn(ui.pin && "sticky z-40")} style={ui.pin ? { top: pinTop } : undefined}>
     <GlassCard className={cn("rounded-2xl hover:border-white/15", ui.pin && "shadow-[0_12px_30px_-10px_rgba(0,0,0,0.9)] bg-surface-2")}>

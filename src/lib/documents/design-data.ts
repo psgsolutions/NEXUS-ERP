@@ -260,7 +260,8 @@ export function adaptForm(free: FreeLayout, s: DocDef, t: DocDef): FreeLayout {
         delete n.cols;
         return n;
       }
-      case "signatures": delete n.labels; delete n.signSlots; return n;
+      // ชุดหลักใช้ชื่อช่องของเอกสารปลายทาง · ชุดที่เพิ่มเอง (เช่น ผู้รับสินค้า) คงชื่อช่องไว้
+      case "signatures": if (!/^signatures-/.test(b.id)) { delete n.labels; delete n.signSlots; } return n;
       case "sign": {
         if (!b.slot) return n;
         const i = s.signatures.indexOf(b.slot);

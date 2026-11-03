@@ -1,8 +1,8 @@
 import React from "react";
-import { Document, Ellipse, Font, Image, Page, Polygon, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
+import { Document, Ellipse, Font, Image, Line, Page, Polygon, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import type { ColumnKey, CopyMode, DocumentModel } from "@/lib/documents/model";
 import { amountInWords, branchLabel, formatTaxId, money, qtyText, thaiDate } from "@/lib/documents/format";
-import { gridSizes, fitTotalLabel, textWidth, visibleLen, totalsRowHeights, totalsTableHeight, visibleTotals, blockPad, FONT_MAX, FONT_MIN, FONT_SCALE, SIGN_SIZE, docHasCopy, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign, type SignSlot } from "@/lib/documents/design";
+import { gridSizes, fitTotalLabel, textWidth, visibleLen, totalsRowHeights, totalsTableHeight, visibleTotals, blockPad, FONT_MAX, FONT_MIN, FONT_SCALE, SIGN_SIZE, docHasCopy, enLabel, legalFieldVisible, requiredSatisfied, resolveBlockColors, resolveDesign, themeLine, tint, resolveColumns, type ColumnSpec, type DocTheme, type FreeBlock, type ItemColumn, type Letterhead, type PerDocDesign, type SignSlot, type SlotFrame } from "@/lib/documents/design";
 
 /**
  * เทมเพลตเอกสาร A4 (ใช้ร่วมทุกประเภทเอกสาร) — หน้าตาตามธีมของบริษัท (ตั้งค่า › ออกแบบเอกสาร)
@@ -96,6 +96,8 @@ export type ThemeStyles = ReturnType<typeof themeStyles>;
 export type Ctx = {
   doc: DocumentModel; t: DocTheme; s: ThemeStyles; per: PerDocDesign; copy: CopyMode; lh?: Letterhead;
   hide: Set<string>; cols?: ItemColumn[]; colSpec?: ColumnSpec[]; labels?: string[]; signSlots?: SignSlot[];
+  /** ช่องลงนาม: กรอบแต่ละช่อง · จับลายเซ็นตามลำดับช่องเมื่อชื่อช่องไม่ตรง (เฉพาะชุดหลัก — ชุดที่เพิ่มเองจับตามชื่อช่องเท่านั้น) */
+  slotFrame?: SlotFrame; sigByIndex?: boolean;
   /** กล่องเลขที่: ข้อมูลเพิ่ม · ช่องลงนาม: ระยะห่าง · ตาราง: ยืดเต็มกล่อง (ต้องรู้ขนาดกล่อง) */
   fields?: string[]; gap?: number; fill?: boolean; box?: { w: number; h: number };
   /** ป้ายของข้อมูลที่วางแยกแล้ว (หมายเหตุไม่แสดงซ้ำ) */
@@ -498,9 +500,11 @@ export function SectionItems({ c }: { c: Ctx }) {
   );
 }
 
-export function SectionWords({ c, align }: { c: Ctx; align?: "left" | "center" | "right" }) {
-  // จำนวนเงินตัวอักษร: ข้อความล้วน ไม่มีวงเล็บ/กรอบ (รูปแบบตัวอักษร กรอบ พื้น ตั้งที่กล่องเอง)
-  return c.doc.amountInWords !== undefined ? <T style={[c.s.words, align ? { textAlign: align } : {}]}>{amountInWords(c.doc.amountInWords)}</T> : null;
+export function SectionWords({ c, align, bracket, prefix }: { c: Ctx; align?: "left" | "center" | "right"; bracket?: boolean; prefix?: string }) {
+  // จำนวนเงินตัวอักษร: ข้อความล้วน (ตั้งวงเล็บ/คำนำหน้าได้ · รูปแบบตัวอักษร กรอบ พื้น ตั้งที่กล่องเอง)
+  if (c.doc.amountInWords === undefined) return null;
+  const w = amountInWords(c.doc.amountInWords);
+  return <T style={[c.s.words, align ? { textAlign: align } : {}]}>{prefix ? `${prefix} ` : ""}{bracket ? `(${w})` : w}</T>;
 }
 
 export function SectionNotes({ c, align }: { c: Ctx; align?: "left" | "center" | "right" }) {
@@ -597,42 +601,51 @@ export function SectionTotals({ c: c0 }: { c: Ctx }) {
   );
 }
 
-export function SectionSignatures({ c }: { c: Ctx }) {
+export function SectionSignatures({ c, align }: { c: Ctx; align?: "left" | "center" | "right" }) {
   const labels = sigLabels(c);
   if (!labels.length) return null;
-  const boxed = c.t.signatures === "box";
+  // กรอบแต่ละช่อง: ตั้งที่กล่อง (ไม่มี/ทึบ/ประ/จุด) หรือตามแม่แบบ · สีกรอบและเส้นเซ็น = สีเส้นของกล่อง
+  const frame: SlotFrame = c.slotFrame || (c.t.signatures === "box" ? "solid" : "none");
+  const ink = c.lineColor || "#888888";
+  const items = align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center";
+  const ta = align ? { textAlign: align } : {};
   return (
     <View style={{ flexDirection: "row", gap: c.gap ?? 16 }} wrap={false}>
       {labels.map((label, i) => {
-        // ช่องที่เปลี่ยนชื่อในหน้าออกแบบ: ใช้ลายเซ็นของช่องลำดับเดียวกันในเอกสาร
-        const real = c.doc.signatures.includes(label) ? label : c.doc.signatures[i] || label;
+        const slot = c.signSlots?.[i];
+        // ช่องที่เปลี่ยนชื่อในหน้าออกแบบ: ใช้ลายเซ็นของช่องลำดับเดียวกันในเอกสาร (เฉพาะชุดหลัก)
+        const real = c.doc.signatures.includes(label) ? label : c.sigByIndex !== false ? c.doc.signatures[i] || label : label;
         const sg = c.doc.signed?.[label] || c.doc.signed?.[real];
         const st = c.doc.stamp && !c.stampPlaced && (c.doc.stamp.slots.includes(label) || c.doc.stamp.slots.includes(real)) ? c.doc.stamp : null;
+        const lineStyle = slot?.line === "none" ? { borderBottomWidth: 0 } : { borderColor: ink, ...(slot?.line ? { borderStyle: slot.line } : {}) };
+        const nm = sg?.name || (slot?.name === "customer" ? c.doc.party?.name : slot?.name === "seller" ? c.doc.seller?.name : slot?.name === "text" ? slot.nameText : "");
+        const blank = !nm && slot?.name === "blank";
+        const wrapName = (x: string) => (slot?.noBracket ? x : `(${x})`);
+        const above = slot?.labelPos === "above";
+        const lbl = slot?.hideLabel ? null : (
+          <View style={{ marginTop: above || sg?.name ? 0 : 3, marginBottom: above ? 2 : 0, alignItems: items }}>
+            <Lbl c={c} th={label} align={align || "center"} style={{ fontWeight: c.t.formStyle ? "bold" : undefined }} />
+          </View>
+        );
         return (
-          <View key={label} style={[c.s.signBox, { position: "relative" }, boxed ? { borderWidth: 0.8, borderColor: c.t.formStyle ? c.t.primary : lineOf(c), borderRadius: rad(c), paddingVertical: 6 } : {}]}>
-            {/* eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt */}
+          <View key={`${label}-${i}`} style={[c.s.signBox, { position: "relative", alignItems: items }, frame !== "none" ? { borderWidth: 0.8, borderColor: c.lineColor || (c.t.formStyle ? c.t.primary : lineOf(c)), borderRadius: rad(c), paddingVertical: 6, paddingHorizontal: align && align !== "center" ? 6 : 0, ...(frame !== "solid" ? { borderStyle: frame } : {}) } : {}]}>
+            {above ? lbl : null}
             {/* ลายเซ็นขนาดจริงตามที่ตั้ง (มม.) — ช่องแคบกว่าลายเซ็นจึงย่อให้พอดีช่อง */}
-            {sg?.image && !c.signPlaced?.has(label) && !c.signPlaced?.has(real) ? <Image src={sg.image} style={[c.s.signImage, { width: (c.doc.signSize || SIGN_SIZE).w, height: (c.doc.signSize || SIGN_SIZE).h, maxWidth: "100%" }]} /> : <View style={c.s.signLine} />}
-            {(() => {
-              // ชื่อ/ตำแหน่งใต้เส้น: ลายเซ็นจริงก่อน แล้วตามที่ตั้งในเครื่องมือสร้างช่องลงนาม
-              const slot = c.signSlots?.[i];
-              const nm = sg?.name || (slot?.name === "customer" ? c.doc.party?.name : slot?.name === "seller" ? c.doc.seller?.name : slot?.name === "text" ? slot.nameText : "");
-              const blank = !nm && slot?.name === "blank";
-              return <>
-                {nm ? <T style={{ marginTop: 3 }}>{slot?.prefix ? `${slot.prefix} ` : ""}({nm})</T> : blank ? <T style={{ marginTop: 3 }}>{slot?.prefix ? `${slot.prefix} ` : ""}(........................................)</T> : null}
-                {sg?.title || slot?.title ? <T style={c.s.small}>{sg?.title || slot?.title}</T> : null}
-              </>;
-            })()}
+            {/* eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt */}
+            {sg?.image && !c.signPlaced?.has(label) && !c.signPlaced?.has(real) ? <Image src={sg.image} style={[c.s.signImage, lineStyle, { width: (c.doc.signSize || SIGN_SIZE).w, height: (c.doc.signSize || SIGN_SIZE).h, maxWidth: "100%" }]} /> : <View style={[c.s.signLine, lineStyle]} />}
+            {/* ชื่อ/ตำแหน่งใต้เส้น: ลายเซ็นจริงก่อน แล้วตามที่ตั้งในเครื่องมือสร้างช่องลงนาม */}
+            {nm || blank ? <T style={[{ marginTop: 3 }, ta]}>{slot?.prefix ? `${slot.prefix} ` : ""}{wrapName(nm || "........................................")}</T> : null}
+            {sg?.title || slot?.title ? <T style={[c.s.small, ta]}>{sg?.title || slot?.title}</T> : null}
             {/* ตราประทับอิเล็กทรอนิกส์: ทับมุมขวาของลายเซ็น (เหมือนประทับจริง) */}
             {/* eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt */}
             {st ? <Image src={st.image} style={{ position: "absolute", width: st.size, height: st.size, objectFit: "contain", top: 0, right: 4, opacity: 0.92 }} /> : null}
-            <View style={{ marginTop: sg?.name ? 0 : 3, alignItems: "center" }}><Lbl c={c} th={label} align="center" style={{ fontWeight: c.t.formStyle ? "bold" : undefined }} /></View>
+            {above ? null : lbl}
             {(() => {
-              const mode = c.signSlots?.[i]?.date;
+              const mode = slot?.date;
               if (c.hide.has("date") || mode === "none") return null;
-              if (sg?.date) return <T style={c.s.small}>{`วันที่ ${thaiDate(sg.date)}`}</T>;
-              if (mode === "doc" && c.doc.date) return <T style={c.s.small}>{`วันที่ ${/^\d{4}-/.test(c.doc.date) ? thaiDate(c.doc.date) : c.doc.date}`}</T>;
-              return <T style={c.s.small}>วันที่ ........../........../..........</T>;
+              if (sg?.date) return <T style={[c.s.small, ta]}>{`วันที่ ${thaiDate(sg.date)}`}</T>;
+              if (mode === "doc" && c.doc.date) return <T style={[c.s.small, ta]}>{`วันที่ ${/^\d{4}-/.test(c.doc.date) ? thaiDate(c.doc.date) : c.doc.date}`}</T>;
+              return <T style={[c.s.small, ta]}>วันที่ ........../........../..........</T>;
             })()}
           </View>
         );
@@ -687,7 +700,7 @@ export function blockContext(c: Ctx, raw: FreeBlock): Ctx {
     ...(b.radius !== undefined ? { rounded: b.radius > 0 } : {}),
   } : c.t;
   return {
-    ...c, t, s: own ? themeStyles(t, b.lineHeight ?? 1.35, b.radius) : c.s, hide: new Set(b.hide || []), cols: b.cols, colSpec: b.colSpec, labels: b.signSlots?.length ? b.signSlots.map((x) => x.label) : b.labels, signSlots: b.signSlots, fields: b.fields, gap: b.gap, fill: b.fill, box: { w: b.w, h: b.h },
+    ...c, t, s: own ? themeStyles(t, b.lineHeight ?? 1.35, b.radius) : c.s, hide: new Set(b.hide || []), cols: b.cols, colSpec: b.colSpec, labels: b.signSlots?.length ? b.signSlots.map((x) => x.label) : b.labels, signSlots: b.signSlots, slotFrame: b.slotFrame, sigByIndex: !/^signatures-/.test(b.id), fields: b.fields, gap: b.gap, fill: b.fill, box: { w: b.w, h: b.h },
     radius: b.radius, lineColor: b.lineColor, lineWidth: b.borderWidth, headBg: b.headBg, labelGap: b.labelGap, labelWidth: b.labelWidth, rowGap: b.rowGap, rowPad: b.rowPad, order: b.order, boxPad: blockPad(b), subGap: b.subGap,
   };
 }
@@ -752,17 +765,17 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
     switch (b.kind) {
       // โลโก้ในผังลากวาง: ขยายเต็มกล่อง (คงสัดส่วน · PNG โปร่งใสคงพื้นโปร่ง)
       // eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt
-      case "logo": return c.doc.seller.logo ? <Image src={c.doc.seller.logo} style={{ width: b.w, height: b.h, objectFit: "contain" }} /> : null;
+      case "logo": return c.doc.seller.logo ? <Image src={c.doc.seller.logo} style={{ width: b.w, height: b.h, objectFit: b.fit || "contain" }} /> : null;
       case "seller": return <SectionSeller c={bc} align={a3} />;
       case "title": return letter ? null : <SectionTitle c={bc} align={a3 || "right"} />;
       case "meta": return letter ? null : <SectionMeta c={bc} align={a3 || "right"} />;
       case "party": return <SectionParty c={bc} />;
       case "items": return items ?? <SectionItems c={bc} />;
       case "totals": return <SectionTotals c={bc} />;
-      case "words": return <SectionWords c={bc} align={a3} />;
+      case "words": return <SectionWords c={bc} align={a3} bracket={b.bracket} prefix={b.prefix} />;
       case "notes": return <SectionNotes c={bc} align={a3} />;
       case "payment": return <SectionPayment c={bc} align={a3} />;
-      case "signatures": return <SectionSignatures c={bc} />;
+      case "signatures": return <SectionSignatures c={bc} align={b.align ? a3 : undefined} />;
       case "field": return <SectionField c={bc} b={b} />;
       case "info": return <SectionInfo c={bc} b={b} />;
       case "sign": {
@@ -784,7 +797,7 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
       case "stamp": return c.doc.stamp ? <Image src={c.doc.stamp.image} style={{ width: c.doc.stamp.size, height: c.doc.stamp.size, objectFit: "contain", opacity: 0.92 }} /> : null;
       case "text": return <T style={{ fontSize: (b.fontSize || 10) * FONT_SCALE[b.font || c.t.font], lineHeight: b.lineHeight ?? 1.35, color: b.color || c.t.text, textAlign: b.align, fontWeight: b.bold ? "bold" : undefined, ...textDeco(b) }}>{fillVars(b.text || "", c.doc)}</T>;
       // eslint-disable-next-line jsx-a11y/alt-text -- Image ของ react-pdf (PDF) ไม่มี alt
-      case "image": return b.src ? <Image src={b.src} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : null;
+      case "image": return b.src ? <Image src={b.src} style={{ width: "100%", height: "100%", objectFit: b.fit || "contain" }} /> : null;
       default: return null;
     }
   })();
@@ -793,6 +806,21 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
   if (b.kind === "line") {
     // เส้น: แนวนอนเมื่อกว้างกว่าสูง (ความหนา = สูง) · แนวตั้งเมื่อสูงกว่า (ความหนา = กว้าง) · เส้นประ/จุดวาดด้วยขอบ
     const vertical = b.h > b.w, thick = Math.max(0.25, vertical ? b.w : b.h), color = b.color || c.t.primary;
+    if (b.arrow) {
+      // เส้นมีหัวลูกศร: วาดเป็นเวกเตอร์ (หัวลูกศรกว้างตามความหนาเส้น)
+      const hd = Math.max(5, thick * 4), L = vertical ? b.h : b.w, mid = hd / 2;
+      const at = (a: number, cr: number) => (vertical ? `${cr},${a}` : `${a},${cr}`);
+      const s0 = b.arrow !== "end" ? hd * 0.8 : 0, e0 = L - (b.arrow !== "start" ? hd * 0.8 : 0);
+      const dash = b.dash === "dashed" ? `${thick * 4} ${thick * 2.5}` : b.dash === "dotted" ? `${thick} ${thick * 1.8}` : undefined;
+      const p1 = vertical ? { x1: mid, y1: s0, x2: mid, y2: e0 } : { x1: s0, y1: mid, x2: e0, y2: mid };
+      return (
+        <Svg style={{ position: "absolute", ...(vertical ? { left: b.x + thick / 2 - mid, top: b.y, width: hd, height: L } : { left: b.x, top: b.y + thick / 2 - mid, width: L, height: hd }), ...(b.opacity ? { opacity: b.opacity } : {}) }} viewBox={vertical ? `0 0 ${hd} ${L}` : `0 0 ${L} ${hd}`}>
+          <Line {...p1} stroke={color} strokeWidth={thick} {...(dash ? { strokeDasharray: dash } : {})} />
+          {b.arrow !== "start" ? <Polygon points={`${at(L, mid)} ${at(L - hd, 0)} ${at(L - hd, hd)}`} fill={color} /> : null}
+          {b.arrow !== "end" ? <Polygon points={`${at(0, mid)} ${at(hd, 0)} ${at(hd, hd)}`} fill={color} /> : null}
+        </Svg>
+      );
+    }
     const style = !b.dash || b.dash === "solid" ? { backgroundColor: color, width: vertical ? thick : b.w, height: vertical ? b.h : thick }
       : vertical ? { width: 0, height: b.h, borderLeftWidth: thick, borderLeftColor: color, borderStyle: b.dash } : { height: 0, width: b.w, borderTopWidth: thick, borderTopColor: color, borderStyle: b.dash };
     return <View style={{ position: "absolute", left: b.x, top: b.y, ...style }} />;
@@ -833,6 +861,8 @@ export function BlockView({ c, b: raw, items, letter = false }: { c: Ctx; b: Fre
     <View style={{
       position: "absolute", left: b.x, top: b.y, width: b.w, height: b.h,
       ...(b.opacity ? { opacity: b.opacity } : {}),
+      ...(b.rotate ? { transform: `rotate(${b.rotate}deg)`, transformOrigin: "center" } : {}),
+      ...(b.fit === "cover" ? { overflow: "hidden" as const } : {}),
       ...(b.bg ? { backgroundColor: b.bg, ...corners } : {}),
       ...(b.border ? { borderWidth: b.borderWidth ?? 1, borderColor: b.border, ...corners, ...(b.dash && b.dash !== "solid" ? { borderStyle: b.dash } : {}) } : {}),
     }}>

@@ -78,7 +78,20 @@ export interface DocumentDesign {
  * date: none = ไม่แสดง · blank = วันที่ ....../....../...... · doc = วันที่เอกสาร
  * มีลายเซ็นจริงของช่อง (ผู้ลงนาม/เซ็นบนมือถือ) = ใช้ชื่อ ตำแหน่ง วันที่จากลายเซ็นนั้นก่อน
  */
-export interface SignSlot { label: string; name?: "blank" | "customer" | "seller" | "text"; nameText?: string; title?: string; date?: "none" | "blank" | "doc"; prefix?: string }
+export interface SignSlot {
+  label: string; name?: "blank" | "customer" | "seller" | "text"; nameText?: string; title?: string; date?: "none" | "blank" | "doc"; prefix?: string;
+  /** เส้นเซ็น: ไม่ตั้ง = เส้นทึบ · none = ไม่มีเส้น */
+  line?: "dashed" | "dotted" | "none";
+  /** ชื่อใต้เส้นไม่ใส่วงเล็บ */
+  noBracket?: boolean;
+  /** หน้าที่ (ชื่อช่อง) ไว้เหนือเส้นเซ็น · ไม่แสดงหน้าที่ */
+  labelPos?: "above"; hideLabel?: boolean;
+}
+export const SIGN_LINE_STYLES: { key: "solid" | NonNullable<SignSlot["line"]>; label: string }[] = [
+  { key: "solid", label: "เส้นทึบ" }, { key: "dashed", label: "เส้นประ" }, { key: "dotted", label: "เส้นจุด" }, { key: "none", label: "ไม่มีเส้น" },
+];
+/** กรอบของแต่ละช่องลงนาม: ไม่ตั้ง = ตามแม่แบบ */
+export type SlotFrame = "none" | "solid" | "dashed" | "dotted";
 export const SIGN_NAME_MODES: { key: NonNullable<SignSlot["name"]>; label: string }[] = [
   { key: "blank", label: "ช่องว่าง (......)" }, { key: "customer", label: "ชื่อลูกค้า/คู่ค้าในเอกสาร" }, { key: "seller", label: "ชื่อบริษัทเรา" }, { key: "text", label: "พิมพ์เอง" },
 ];
@@ -196,6 +209,16 @@ export interface FreeBlock {
   rowH?: number[];
   /** ป้ายต้นฉบับ/สำเนา: รูปแบบ (ไม่ตั้ง = กรอบเหลี่ยม) · ขนาดตัวอักษรใช้ fontSize (ไม่ตั้ง = พอดีกล่อง) */
   copyStyle?: CopyStyle;
+  /** ช่องลงนาม: กรอบแต่ละช่อง (ไม่ตั้ง = ตามแม่แบบ) · สีกรอบ/เส้นเซ็นใช้ lineColor */
+  slotFrame?: SlotFrame;
+  /** เงินตัวอักษร: ใส่วงเล็บ · คำนำหน้า เช่น "ตัวอักษร" */
+  bracket?: boolean; prefix?: string;
+  /** รูปภาพ/โลโก้: พอดีกรอบ (ค่าเดิม) · เต็มกรอบ (ครอบตัด) · ยืดเต็มกรอบ */
+  fit?: "cover" | "fill";
+  /** หมุน (องศา) — ตราประทับ รูปภาพ ข้อความ */
+  rotate?: number;
+  /** เส้น: หัวลูกศร */
+  arrow?: "end" | "start" | "both";
 }
 export interface FreeLayout {
   enabled: boolean; blocks: FreeBlock[];
@@ -738,6 +761,10 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
         ...(str(x?.title, 80) ? { title: str(x.title, 80) } : {}),
         ...(["none", "blank", "doc"].includes(x?.date) ? { date: x.date } : {}),
         ...(str(x?.prefix, 20) ? { prefix: str(x.prefix, 20) } : {}),
+        ...(["dashed", "dotted", "none"].includes(x?.line) ? { line: x.line } : {}),
+        ...(x?.noBracket ? { noBracket: true } : {}),
+        ...(x?.labelPos === "above" ? { labelPos: "above" as const } : {}),
+        ...(x?.hideLabel ? { hideLabel: true } : {}),
       })),
     } : {}),
     ...(fields.length || b.kind === "info" ? { fields } : {}),
@@ -755,6 +782,12 @@ function normalizeBlock(b: any, index: number): FreeBlock | null {
     ...(b.kind === "grid" ? { rows: Math.round(num(b.rows, 1, 40, 3)), cols2: Math.round(num(b.cols2, 1, 20, 3)) } : {}),
     ...(b.kind === "sign" && str(b.signer, 40) ? { signer: str(b.signer, 40) } : b.kind === "sign" && str(b.slot, 60) ? { slot: str(b.slot, 60) } : {}),
     ...(b.kind === "signatures" && b.gap !== undefined && b.gap !== null ? { gap: num(b.gap, 0, 300, 16) } : {}),
+    ...(b.kind === "signatures" && ["none", "solid", "dashed", "dotted"].includes(b.slotFrame) ? { slotFrame: b.slotFrame } : {}),
+    ...(b.kind === "words" && b.bracket ? { bracket: true } : {}),
+    ...(b.kind === "words" && str(b.prefix, 30) ? { prefix: str(b.prefix, 30) } : {}),
+    ...(["image", "logo"].includes(b.kind) && (b.fit === "cover" || b.fit === "fill") ? { fit: b.fit } : {}),
+    ...(["stamp", "image", "text", "logo"].includes(b.kind) && Number(b.rotate) ? { rotate: Math.round(num(b.rotate, -180, 180, 0)) } : {}),
+    ...(b.kind === "line" && ["end", "start", "both"].includes(b.arrow) ? { arrow: b.arrow } : {}),
     ...(b.kind === "items" && b.fill ? { fill: true } : {}),
     ...(b.kind === "field" ? { field: FIELD_KEY.test(String(b.field || "")) ? String(b.field) : "number" } : {}),
     ...((b.kind === "field" || b.kind === "info") && b.hideLabel ? { hideLabel: true } : {}),

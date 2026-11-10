@@ -1,4 +1,5 @@
 import * as admin from "firebase-admin";
+import { recipeRequirement } from "@/lib/service-recipe";
 import { adminDb } from "./firebase-admin";
 import { prepareSequence } from "./sequence-server";
 import { assertPeriodOpen } from "./period-close-service";
@@ -87,6 +88,8 @@ export async function convertToSalesOrder(quoteId: string, companyId: string, us
     }
     const need = new Map<string, number>();
     for (const it of items) if (it.productId && it.itemType === "PRODUCT") need.set(it.productId, (need.get(it.productId) || 0) + it.qty);
+    // วัสดุตามสูตรงานบริการจองพร้อมสินค้า (เบิกตอนส่งของ)
+    for (const it of items) for (const m of recipeRequirement(it.recipe, it.qty)) need.set(m.productId, (need.get(m.productId) || 0) + Math.ceil(m.qty - 1e-9));
     const reserve: { ref: admin.firestore.DocumentReference; qty: number }[] = [];
     const short: string[] = [];
     for (const [productId, qty] of Array.from(need.entries())) {

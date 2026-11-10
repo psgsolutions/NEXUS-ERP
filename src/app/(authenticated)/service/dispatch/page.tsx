@@ -9,6 +9,7 @@ import { useSystemDialog } from "@/context/DialogContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { useProducts } from "@/hooks/useProducts";
 import { apiFetch } from "@/lib/api-client";
+import { normalizeRecipe } from "@/lib/service-recipe";
 import { JOB_PRIORITY, JOB_STATUS, JOB_TYPES, jobTypeLabel, toolsOut, type Job, type JobItem, type JobPriority, type JobType } from "@/lib/jobs";
 
 /** ศูนย์จ่ายงาน: สร้างงาน มอบหมายผู้รับงาน และติดตามสถานะ (ข้อมูลผ่าน /api/jobs) */
@@ -183,8 +184,15 @@ function JobForm({ initial, people, busy, onClose, onSave }: { initial: any; peo
   const locked = isEdit && ["ACCEPTED", "IN_PROGRESS"].includes(f.status);
   const set = (patch: any) => setF((x: any) => ({ ...x, ...patch }));
   const setType = (t: JobType) => set({ type: t, checklist: JOB_TYPES.find((x) => x.value === t)!.checklist });
-  const matches = pq.trim().length >= 1 ? products.filter((p: any) => (p.itemType || "PRODUCT") === "PRODUCT" && [p.name, p.sku].some((v: any) => String(v || "").toLowerCase().includes(pq.trim().toLowerCase()))).slice(0, 8) : [];
+  // ค้นได้ทั้งสินค้า และงานบริการที่มีสูตร (เลือกงานบริการ = เพิ่มวัสดุตามสูตรต่อ 1 หน่วย แล้วแก้จำนวนได้)
+  const matches = pq.trim().length >= 1 ? products.filter((p: any) => ((p.itemType || "PRODUCT") === "PRODUCT" || ((p.itemType || "") === "SERVICE" && normalizeRecipe(p.serviceRecipe)?.materials.length)) && [p.name, p.sku].some((v: any) => String(v || "").toLowerCase().includes(pq.trim().toLowerCase()))).slice(0, 8) : [];
   const addItem = (item: JobItem) => { set({ equipment: [...f.equipment, item] }); setPq(""); };
+  const addRecipe = (p: any) => {
+    const r = normalizeRecipe(p.serviceRecipe);
+    if (!r) return;
+    const extra: JobItem[] = r.materials.map((m) => ({ kind: "MATERIAL", productId: m.productId, sku: m.sku, name: `${m.name} (${p.name})`, qty: m.qty, unit: m.unit }));
+    set({ equipment: [...f.equipment, ...extra] }); setPq("");
+  };
   const valid = String(f.title || "").trim().length > 0;
   return (
     <Drawer title={isEdit ? `แก้ไขงาน ${f.jobNo}` : "สร้างงาน"} onClose={onClose}
@@ -240,9 +248,9 @@ function JobForm({ initial, people, busy, onClose, onSave }: { initial: any; peo
               {matches.length > 0 && (
                 <div className="rounded-xl border border-white/10 divide-y divide-white/5">
                   {matches.map((p: any) => (
-                    <button key={p.id} type="button" onClick={() => addItem({ kind: "MATERIAL", productId: p.id, sku: p.sku, name: p.name || p.sku, qty: 1, unit: p.unit })} className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/5">
+                    <button key={p.id} type="button" onClick={() => ((p.itemType || "") === "SERVICE" ? addRecipe(p) : addItem({ kind: "MATERIAL", productId: p.id, sku: p.sku, name: p.name || p.sku, qty: 1, unit: p.unit }))} className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/5">
                       <span className="text-[12px] text-white truncate">{p.sku ? `${p.sku} · ` : ""}{p.name}</span>
-                      <span className="text-[12px] text-white/50 whitespace-nowrap">คงเหลือ {Number(p.stockStatus?.onHand ?? 0).toLocaleString("th-TH")} {p.unit || ""}</span>
+                      {(p.itemType || "") === "SERVICE" ? <span className="text-[12px] text-nexus-teal whitespace-nowrap">งานบริการ · เพิ่มวัสดุ {normalizeRecipe(p.serviceRecipe)?.materials.length || 0} รายการ</span> : <span className="text-[12px] text-white/50 whitespace-nowrap">คงเหลือ {Number(p.stockStatus?.onHand ?? 0).toLocaleString("th-TH")} {p.unit || ""}</span>}
                     </button>
                   ))}
                 </div>

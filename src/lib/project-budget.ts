@@ -1,3 +1,4 @@
+import { normalizeRecipe, type ServiceRecipe } from "@/lib/service-recipe";
 import { expenseAmount, type ProjectExpense } from "./project-templates";
 
 /**
@@ -26,6 +27,7 @@ export interface ProjectLine {
   amount: number;
   /** ต้นทุนรวมของบรรทัด */
   costAmount: number;
+  recipe?: ServiceRecipe | null;
   /** รายการจากส่วน "งานบริการและค่าแรง" ของหน้าโครงการ (ใช้คืนค่าตอนแก้ไขฉบับร่าง) */
   origin?: "labor";
   laborType?: "lump-sum" | "per-point";
@@ -82,6 +84,8 @@ export function normalizeItemLine(item: any, index: number): ProjectLine {
     isOptional: !!item.isOptional,
     amount: round2(Math.max(0, qty * unitPrice - disc.amount)),
     costAmount: round2(qty * unitCost),
+    // สูตรงานบริการ (วัสดุต่อหน่วย + ค่าแรง) — เบิกวัสดุตามสูตร × จำนวน
+    recipe: kind === "SERVICE" ? normalizeRecipe(item.recipe) : null,
   };
 }
 
@@ -152,6 +156,7 @@ export function linesToForm(lines: any[]): { items: any[]; labors: any[] } {
       discountValue: l.discountValue || 0,
       whtRate: l.whtRate || 0,
       isOptional: !!l.isOptional,
+      recipe: l.recipe || null,
     });
   });
   return { items, labors };

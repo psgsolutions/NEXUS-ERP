@@ -421,6 +421,7 @@ export default function NewProjectPage() {
           discountType: l.discountType === "AMOUNT" ? "AMOUNT" : "PERCENT",
           discountValue: Number(l.discountValue) || 0,
           whtRate: Number(l.whtRate) || 0,
+          recipe: l.recipe || null,
         }));
         if (imported.length > 0) setDocumentItems(imported);
         showToast(`นำเข้าข้อมูลจากใบเสนอราคา ${docNo} แล้ว (${imported.length} รายการ)`, false);
@@ -503,7 +504,7 @@ export default function NewProjectPage() {
         itemType: it.itemType || "PRODUCT", productId: it.productId || "", sku: it.sku || "", productName: it.name || "",
         description: it.details || "", details: it.details || "", qty: Number(it.qty) || 0, uom: it.unit || "ชิ้น",
         costPrice: Number(it.cost) || 0, unitPrice: Number(it.price) || 0,
-        discountType: it.discountType || "PERCENT", discountValue: Number(it.discountValue) || 0, whtRate: Number(it.whtRate) || 0, isOptional: !!it.isOptional,
+        discountType: it.discountType || "PERCENT", discountValue: Number(it.discountValue) || 0, whtRate: Number(it.whtRate) || 0, isOptional: !!it.isOptional, recipe: it.recipe || null,
       })),
       ...projectLabors.filter((l: any) => l.name).map((l: any) => ({
         itemType: "LABOR", productName: l.name, description: "", qty: l.type === "per-point" ? Number(l.points) || 1 : 1,

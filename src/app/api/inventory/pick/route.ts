@@ -103,7 +103,10 @@ export async function POST(request: Request) {
     const [takeDn, seller] = await Promise.all([prepareSequence("DN", companyId), sellerSnapshot(companyId)]);
     let dn: { number: string; commit: () => void } | null = null;
     const dnLines = Array.from(byKey.values()).map(({ productId, location, qty }) => {
-      const it = soItemOf(so, productId);
+      // วัสดุตามสูตรงานบริการไม่มีบรรทัดของตัวเองในใบสั่งขาย — ใช้ชื่อ/หน่วยจากสูตร
+      const own = soItemOf(so, productId);
+      const mat = own.productId ? null : (so.items || []).flatMap((i: any) => i.recipe?.materials || []).find((m: any) => m.productId === productId);
+      const it = own.productId ? own : mat ? { sku: mat.sku, name: mat.name, unit: mat.unit } : own;
       return { productId, sku: String(it.sku || ""), name: String(it.name || it.productName || productId), unit: String(it.unit || it.uom || ""), qty, ...(location === UNASSIGNED ? {} : { location }) };
     });
 

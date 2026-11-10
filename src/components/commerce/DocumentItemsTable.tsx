@@ -6,6 +6,7 @@ import { PillButton, Modal, cn, PillInput } from "@/components/ui/Base";
 import { formatCurrency, calculateLineGP } from "@/lib/erp-logic";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { useProducts } from "@/hooks/useProducts";
+import { normalizeRecipe, recipeCost, recipeDetails } from "@/lib/service-recipe";
 import { useAuth } from "@/context/AuthContext";
 import { can, canViewCost } from "@/lib/permissions";
 import { SupplierPriceSelector } from "@/components/inventory/SupplierPriceSelector";
@@ -198,7 +199,9 @@ const InlineRow = ({
       itemType: pItemType,
       whtRate: pItemType === 'SERVICE' || pItemType === 'LABOR' ? 3 : 0,
       details: product.details || product.description || "",
-      datasheetUrl: product.datasheetUrl || ""
+      datasheetUrl: product.datasheetUrl || "",
+      // สูตรงานบริการ (วัสดุต่อหน่วย + ค่าแรง) — ใช้ตัดวัสดุตอนส่งของ/เบิกงาน · ไม่มีสูตร = ล้างของเดิม
+      recipe: product.recipe || null,
     };
 
     if (onProductSelected) {
@@ -706,6 +709,14 @@ export function DocumentItemsTable({
 
   const availableProducts = useMemo(() => {
     const map = new Map<string, any>();
+    // งานบริการที่มีสูตร: ต้นทุน = วัสดุ (ต้นทุนเฉลี่ยล่าสุด) + ค่าแรง · เก็บสำเนาสูตรพร้อมทุนวัสดุ ณ ตอนเลือก
+    const costById = new Map<string, number>(companyProducts.map((p: any) => [p.id, Number(p.cost ?? p.costPrice ?? p.costWAC ?? p.pricing?.costWAC ?? 0) || 0]));
+    const recipeOf = (p: any) => {
+      const r = String(p.itemType || "").toUpperCase() === "SERVICE" ? normalizeRecipe(p.serviceRecipe) : null;
+      if (!r) return null;
+      const c = recipeCost(r, (id) => costById.get(id) || 0);
+      return { recipe: { ...r, materials: r.materials.map((m) => ({ ...m, cost: costById.get(m.productId) || 0 })) }, cost: c.total, details: recipeDetails(r) };
+    };
     companyProducts.forEach((p) => {
       if (p && p.id && !map.has(p.id)) {
         map.set(p.id, {
@@ -718,7 +729,8 @@ export function DocumentItemsTable({
           currentStock: p.stockStatus?.available ?? p.stockStatus?.onHand ?? p.currentStock ?? p.stock ?? p.quantity ?? 0,
           itemType: p.itemType || "PRODUCT",
           details: p.details || p.description || "",
-          datasheetUrl: p.datasheetUrl || ""
+          datasheetUrl: p.datasheetUrl || "",
+          ...(() => { const r = recipeOf(p); return r ? { cost: r.cost, recipe: r.recipe, details: [r.details, p.details || p.description || ""].filter(Boolean).join("\n"), unit: r.recipe.unit || p.unit || "งาน" } : {}; })(),
         });
       }
     });

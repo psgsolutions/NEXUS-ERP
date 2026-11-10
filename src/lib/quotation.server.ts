@@ -1,4 +1,5 @@
 import * as admin from "firebase-admin";
+import { normalizeRecipe } from "@/lib/service-recipe";
 import { adminDb } from "@/lib/firebase-admin";
 import { calculateERPDocument, canWriteBackToProductMaster, type VatTypeV3 } from "@/lib/erp-logic";
 import { notifyInTx } from "@/lib/notifications.server";
@@ -62,6 +63,8 @@ export function normalizeLines(raw: any): Record<string, any>[] {
       glAccountId: str(l.glAccountId || "411100", 20),
       isOptional: !!l.isOptional,
       margin: r2(unitPrice - costPrice),
+      // สูตรงานบริการ (วัสดุต่อหน่วย + ค่าแรง) — ตัดวัสดุตอนส่งของ/เบิกงาน
+      recipe: isHeader ? null : normalizeRecipe(l.recipe),
     };
   });
 }
@@ -175,5 +178,7 @@ export function notifyPendingApproval(tx: admin.firestore.Transaction, companyId
 
 /** รหัสสินค้าในใบ (เก็บที่หัวเอกสาร) — ใช้ค้นใบเสนอราคาที่ได้รับผลเมื่อราคาทุนเปลี่ยน (array-contains) */
 export function productIdsOf(lines: Record<string, any>[]): string[] {
-  return Array.from(new Set(lines.filter((l) => l.itemType !== "GROUP_HEADER" && l.productId).map((l) => String(l.productId)))).slice(0, 300);
+  // รวมวัสดุในสูตรงานบริการ (ราคาวัสดุเปลี่ยน = ต้นทุนงานบริการเปลี่ยน)
+  const ids = lines.filter((l) => l.itemType !== "GROUP_HEADER").flatMap((l) => [l.productId, ...((l.recipe?.materials || []) as any[]).map((m) => m.productId)]).filter(Boolean).map(String);
+  return Array.from(new Set(ids)).slice(0, 300);
 }

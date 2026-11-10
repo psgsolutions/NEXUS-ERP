@@ -1,3 +1,4 @@
+import { normalizeRecipe } from "./service-recipe";
 /**
  * ยอดเอกสารซื้อ/ขายจากรายการ — server คำนวณซ้ำเสมอ (ไม่เชื่อตัวเลขจากหน้าจอ)
  * ใช้กับ ใบขอซื้อ / ใบสั่งซื้อ / ใบสั่งขาย
@@ -51,6 +52,8 @@ export function sanitizeLines(raw: any, max = 300): any[] {
       discountValue: r2(Math.max(0, num(it.discountValue ?? (str(it.discount).endsWith("%") ? str(it.discount).slice(0, -1) : 0)))),
       whtRate: [0, 1, 2, 3, 5].includes(num(it.whtRate)) ? num(it.whtRate) : 0,
       isOptional: !!it.isOptional,
+      // สูตรงานบริการ: วัสดุต่อหน่วย (เบิกตอนส่งของ = สูตร × จำนวน)
+      recipe: str(it.itemType).toUpperCase() === "SERVICE" ? normalizeRecipe(it.recipe) : null,
     }))
     .filter((it) => it.name);
 }

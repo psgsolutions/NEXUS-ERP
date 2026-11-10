@@ -55,9 +55,10 @@ export function PriceAlertBanner({ companyId, docType, docId, onApplied }: { com
             <div key={a.id} className="rounded-xl border border-white/10 bg-surface-0/60 p-3 flex flex-wrap items-center gap-x-4 gap-y-2">
               <div className="min-w-0 flex-1 space-y-0.5">
                 <p className="text-[14px] font-semibold text-white truncate">{a.productName || a.productId}</p>
+                {a.viaRecipe && <p className="text-[12px] text-white/60">วัสดุในสูตรงานบริการ: {a.materialName} ราคาซื้อล่าสุด <b className="font-mono text-white/85">{money(a.materialCost)}</b></p>}
                 <p className="text-[12px] text-white/70 flex flex-wrap items-center gap-x-2">
-                  <span>ทุนในเอกสาร <b className="font-mono text-white/90">{money(a.lineCost)}</b></span>
-                  <span>→ ราคาซื้อล่าสุด <b className="font-mono text-white/90">{money(a.newCost)}</b></span>
+                  <span>{a.viaRecipe ? "ต้นทุนงานในเอกสาร" : "ทุนในเอกสาร"} <b className="font-mono text-white/90">{money(a.lineCost)}</b></span>
+                  <span>→ {a.viaRecipe ? "ต้นทุนใหม่" : "ราคาซื้อล่าสุด"} <b className="font-mono text-white/90">{money(a.newCost)}</b></span>
                   <span className={cn("inline-flex items-center gap-1 font-bold", up ? "text-danger" : "text-success")}><Trend size={12} /> {pct(a.changePct)}</span>
                   <span>· GP <b className="text-white/90">{a.gpBefore ?? "-"}%</b> → <b className={cn(up ? "text-danger" : "text-success")}>{a.gpAfter ?? "-"}%</b></span>
                 </p>

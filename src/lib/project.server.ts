@@ -160,7 +160,7 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
     teamUids: resources.map((r) => r.userId),
     items: lines,
     // รหัสสินค้าใน BOQ — ใช้ค้นโครงการที่ได้รับผลเมื่อราคาทุนเปลี่ยน (array-contains)
-    productIds: Array.from(new Set(lines.filter((l) => l.productId).map((l) => String(l.productId)))).slice(0, 300),
+    productIds: Array.from(new Set(lines.flatMap((l) => [l.productId, ...(l.recipe?.materials || []).map((m) => m.productId)]).filter(Boolean).map(String))).slice(0, 300),
     expenses,
     targetMargin: Math.min(90, Math.max(0, Number(body.targetMargin) || 0)),
     warrantyMonths: Math.min(120, Math.max(0, Math.round(Number(body.warrantyMonths) || 0))),

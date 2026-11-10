@@ -542,6 +542,7 @@ export default function QuotationEditPage() {
               unit: lData.uom || "ชิ้น",
               price: lData.unitPrice || 0,
               cost: lData.costPrice || 0,
+              recipe: lData.recipe || null,
               discount: lData.discountString || "",
               discountType: lData.discountType || 'PERCENT',
               discountValue: lData.discountValue || 0,
@@ -566,6 +567,7 @@ export default function QuotationEditPage() {
               unit: it.unit || it.uom || "ชิ้น",
               price: Number(it.price ?? it.unitPrice) || 0,
               cost: Number(it.cost ?? it.costPrice) || 0,
+              recipe: it.recipe || null,
               discount: "",
               discountType: 'PERCENT',
               discountValue: 0,
@@ -840,6 +842,7 @@ export default function QuotationEditPage() {
         whtRate: Number(item.whtRate) || 0,
         glAccountId: item.incomeAccountId || "411100",
         isOptional: !!item.isOptional,
+        recipe: item.recipe || null,
       }));
       const productWritebacks = items
         .filter((item) => item.saveToProductMaster && item.productId)

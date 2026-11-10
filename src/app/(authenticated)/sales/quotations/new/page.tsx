@@ -666,6 +666,7 @@ export default function QuotationCreationPage() {
         whtRate: Number(item.whtRate) || 0,
         glAccountId: item.incomeAccountId || "411100",
         isOptional: !!item.isOptional,
+        recipe: item.recipe || null,
       }));
       const productWritebacks = items
         .filter((item) => item.saveToProductMaster && item.productId)

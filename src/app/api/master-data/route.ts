@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { normalizeRecipe } from "@/lib/service-recipe";
 import * as admin from "firebase-admin";
 import { PRODUCT_THUMB_MAX } from "@/lib/attachments";
 import { isStockItem } from "@/lib/product-kind";
@@ -308,6 +309,11 @@ export async function POST(request: Request) {
     if (entity === "customers" && body.changes?.docProfile !== undefined) {
       // ตรวจค่าที่ server และบันทึกผู้แก้ล่าสุด (โปรไฟล์อยู่ที่ข้อมูลของบริษัทเสมอ)
       body.changes.docProfile = { ...normalizeDocProfile(body.changes.docProfile), updatedBy: apiUser.email || apiUser.uid, updatedAt: new Date().toISOString() };
+      body.scope = "company";
+    }
+    // สูตรงานบริการ (วัสดุ + ค่าแรงต่อหน่วย): ตรวจค่าที่ server เก็บเป็นข้อมูลของบริษัท
+    if (entity === "products" && body.changes && "serviceRecipe" in body.changes) {
+      body.changes.serviceRecipe = normalizeRecipe(body.changes.serviceRecipe);
       body.scope = "company";
     }
 

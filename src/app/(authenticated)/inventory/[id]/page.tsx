@@ -65,6 +65,8 @@ import { Product } from "@/types/database";
 import { RecordDeleteButton } from "@/components/shared/RecordDeleteButton";
 import { ProductSuppliersBox } from "@/components/shared/ProductSuppliersBox";
 import { ProductCostHistory } from "@/components/shared/ProductCostHistory";
+import { ServiceRecipeCard } from "@/components/inventory/ServiceRecipeCard";
+import { can } from "@/lib/permissions";
 
 const CATEGORIES = [
   "Network & Wireless",
@@ -83,7 +85,7 @@ const UNITS = ["EA", "Unit", "Pcs", "Box", "Set", "Roll", "Meter", "License"];
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, companyId } = useAuth();
+  const { user, companyId, roles } = useAuth();
   const productId = params.id as string;
 
   const [activeTab, setActiveTab] = useState("overview");
@@ -766,7 +768,9 @@ export default function ProductDetailPage() {
       <ProductSuppliersBox config={(product as any).supplierConfig} />
 
       {/* ราคาทุนแต่ละล็อตที่รับเข้า เทียบต้นทุนเฉลี่ย */}
-      {companyId && <ProductCostHistory companyId={companyId} productId={productId} />}
+      {companyId && String((product as any).itemType || "").toUpperCase() === "SERVICE"
+        ? <ServiceRecipeCard companyId={companyId} product={product} canEdit={can(roles, "inventory:edit")} />
+        : companyId && <ProductCostHistory companyId={companyId} productId={productId} />}
 
       {/* Actions Card */}
       <GlassCard className="p-4 border-white/5 space-y-3">

@@ -70,14 +70,49 @@ async function updateSupplierCost(ctx: GrContext, it: ReceivedItem) {
 
 interface Affected { docType: PriceAlertDocType; docId: string; docNo: string }
 
-function alertDoc(ctx: GrContext, it: ReceivedItem, wac: number, a: Affected & { title: string; ownerUid: string; lineCost: number; unitPrice: number; gpBefore: number | null; gpAfter: number | null }) {
+/**
+ * บรรทัดเอกสารเมื่อวัสดุ/สินค้า pid มีต้นทุนใหม่ matCost (null = บรรทัดนี้ไม่เกี่ยว)
+ *  - สินค้าตัวนั้นเอง: ต้นทุน = matCost
+ *  - งานบริการที่มีวัสดุนี้ในสูตร: ต้นทุน + จำนวนวัสดุต่อหน่วย × (matCost − ทุนวัสดุตอนเลือกลงเอกสาร)
+ */
+function reprice(line: any, pid: string, matCost: number, costKey: "costPrice" | "unitCost"): any | null {
+  if (!line || line.itemType === "GROUP_HEADER" || line.kind === "GROUP") return null;
+  if (line.productId === pid) return { ...line, [costKey]: r2(matCost) };
+  const mats: any[] = Array.isArray(line.recipe?.materials) ? line.recipe.materials : [];
+  const m = mats.find((x) => x.productId === pid);
+  if (!m || m.cost === undefined || m.cost === null) return null;
+  const cost = r2(Math.max(0, (Number(line[costKey]) || 0) + (Number(m.qty) || 0) * (matCost - (Number(m.cost) || 0))));
+  return { ...line, [costKey]: cost, recipe: { ...line.recipe, materials: mats.map((x) => (x.productId === pid ? { ...x, cost: r2(matCost) } : x)) } };
+}
+
+function alertDoc(ctx: GrContext, it: ReceivedItem, wac: number, a: Affected & { title: string; ownerUid: string; line: any; next: any; costKey: "costPrice" | "unitCost"; gpBefore: number | null; gpAfter: number | null }) {
+  const lineCost = Number(a.line[a.costKey]) || 0, newCost = Number(a.next[a.costKey]) || 0;
+  const viaRecipe = a.line.productId !== it.productId;
   return {
     companyId: ctx.companyId, docType: a.docType, docId: a.docId, docNo: a.docNo, title: a.title, ownerUid: a.ownerUid,
-    productId: it.productId, productName: it.name, lineCost: r2(a.lineCost), unitPrice: r2(a.unitPrice), newCost: r2(it.unitCost), wac: r2(wac),
-    changePct: changePct(a.lineCost, it.unitCost), gpBefore: a.gpBefore, gpAfter: a.gpAfter,
+    productId: it.productId, productName: viaRecipe ? String(a.line.productName || a.line.name || "") : it.name,
+    // วัสดุในสูตรงานบริการ: ชื่อวัสดุและราคาซื้อล่าสุดของวัสดุ
+    viaRecipe, materialName: it.name, materialCost: r2(it.unitCost),
+    lineCost: r2(lineCost), unitPrice: r2(Number(a.line.unitPrice) || 0), newCost: r2(newCost), wac: r2(wac),
+    changePct: changePct(lineCost, newCost), gpBefore: a.gpBefore, gpAfter: a.gpAfter,
     grNo: ctx.grNo, supplierId: ctx.supplierId, supplierName: ctx.supplierName,
     status: "open", createdAt: admin.firestore.FieldValue.serverTimestamp(), resolvedAt: null, resolvedBy: "", resolution: "",
   };
+}
+
+const describe = (al: ReturnType<typeof alertDoc>) => al.viaRecipe
+  ? `${al.productName}: วัสดุ ${al.materialName} ราคาใหม่ ${fmt(al.materialCost)} → ต้นทุนงาน ${fmt(al.lineCost)} → ${fmt(al.newCost)} (${pctText(al.changePct)})`
+  : `${al.productName}: ทุนในเอกสาร ${fmt(al.lineCost)} → ราคาซื้อล่าสุด ${fmt(al.newCost)} (${pctText(al.changePct)})`;
+
+/** บรรทัดแรกที่ต้นทุนเปลี่ยนเกินเกณฑ์ (ต้นทุนเดิม 0 = เทียบไม่ได้ ถือว่าเปลี่ยน) */
+function firstImpact(lines: any[], it: ReceivedItem, costKey: "costPrice" | "unitCost") {
+  for (const l of lines) {
+    const next = reprice(l, it.productId, it.unitCost, costKey);
+    if (!next) continue;
+    const before = Number(l[costKey]) || 0, after = Number(next[costKey]) || 0;
+    if (before > 0 ? isSignificant(before, after) : after > 0) return { line: l, next };
+  }
+  return null;
 }
 
 async function affectedQuotations(ctx: GrContext, it: ReceivedItem, wac: number): Promise<Affected[]> {
@@ -87,19 +122,17 @@ async function affectedQuotations(ctx: GrContext, it: ReceivedItem, wac: number)
     const q = d.data();
     if (q.isDeleted || !OPEN_QUOTATION_STATUSES.includes(String(q.status))) continue;
     const lines = (await d.ref.collection("lines").get()).docs.map((x) => x.data());
-    const mine = lines.filter((l) => l.productId === it.productId && l.itemType !== "GROUP_HEADER");
-    if (!mine.length) continue;
-    const lineCost = Number(mine[0].costPrice) || 0;
-    if (lineCost > 0 && !isSignificant(lineCost, it.unitCost)) continue; // ต้นทุนในใบใกล้ราคาใหม่อยู่แล้ว
+    const hit = firstImpact(lines, it, "costPrice");
+    if (!hit) continue; // ต้นทุนในใบใกล้ราคาใหม่อยู่แล้ว
     const gpBefore = grossProfitPercent(lines as any, q.docDiscountAmount);
-    const gpAfter = grossProfitPercent(lines.map((l) => (l.productId === it.productId ? { ...l, costPrice: it.unitCost } : l)) as any, q.docDiscountAmount);
+    const gpAfter = grossProfitPercent(lines.map((l) => reprice(l, it.productId, it.unitCost, "costPrice") || l) as any, q.docDiscountAmount);
     const a: Affected = { docType: "quotation", docId: d.id, docNo: String(q.documentNo || q.quotationNumber || d.id) };
     const ownerUid = String(q.createdBy || q.salesPersonId || "");
-    await adminDb.doc(`companies/${ctx.companyId}/price_alerts/${a.docType}_${a.docId}_${it.productId}`)
-      .set(alertDoc(ctx, it, wac, { ...a, title: String(q.customerName || q.projectName || ""), ownerUid, lineCost, unitPrice: Number(mine[0].unitPrice) || 0, gpBefore, gpAfter }));
+    const al = alertDoc(ctx, it, wac, { ...a, title: String(q.customerName || q.projectName || ""), ownerUid, ...hit, costKey: "costPrice", gpBefore, gpAfter });
+    await adminDb.doc(`companies/${ctx.companyId}/price_alerts/${a.docType}_${a.docId}_${it.productId}`).set(al);
     if (ownerUid) await notify(ctx.companyId, {
       type: "PRICE_CHANGE_DOC", title: `ต้นทุนเปลี่ยนในใบเสนอราคา ${a.docNo}`,
-      message: `${it.name}: ทุนในใบ ${fmt(lineCost)} → ราคาซื้อล่าสุด ${fmt(it.unitCost)} (${pctText(changePct(lineCost, it.unitCost))}) · GP ${gpBefore}% → ${gpAfter}%`,
+      message: `${describe(al)} · GP ${gpBefore}% → ${gpAfter}%`,
       link: `/sales/quotations/${encodeURIComponent(d.id)}`, targetUserId: ownerUid, documentNo: a.docNo,
       dedupeKey: `price_quotation_${d.id}_${it.productId}`.slice(0, 300),
     }, ctx.userUid);
@@ -108,8 +141,9 @@ async function affectedQuotations(ctx: GrContext, it: ReceivedItem, wac: number)
   return out;
 }
 
-/** บรรทัด BOQ ที่ใช้ต้นทุนใหม่ (ยอดต้นทุนของบรรทัดคำนวณใหม่ด้วย — งบโครงการรวมจาก costAmount) */
-const withCost = (l: ProjectLine, cost: number): ProjectLine => ({ ...l, unitCost: cost, costAmount: r2((Number(l.qty) || 0) * cost) });
+/** บรรทัด BOQ ที่ต้นทุนเปลี่ยน: ยอดต้นทุนของบรรทัดคำนวณใหม่ด้วย (งบโครงการรวมจาก costAmount) */
+const withCostAmount = (l: ProjectLine): ProjectLine => ({ ...l, costAmount: r2((Number(l.qty) || 0) * (Number(l.unitCost) || 0)) });
+const repriceProject = (items: ProjectLine[], pid: string, cost: number) => items.map((l) => { const n = reprice(l, pid, cost, "unitCost"); return n ? withCostAmount(n) : l; });
 
 const projectBudget = (p: any, items: ProjectLine[]) =>
   computeProjectBudget(items, { startDate: p.startDate, endDate: p.endDate, ...(Array.isArray(p.expenses) ? { expenses: p.expenses } : {}) });
@@ -121,19 +155,17 @@ async function affectedProjects(ctx: GrContext, it: ReceivedItem, wac: number): 
     const p = d.data();
     if (p.isDeleted || CLOSED_PROJECT_STATUSES.includes(String(p.status))) continue;
     const items: ProjectLine[] = Array.isArray(p.items) ? p.items : [];
-    const mine = items.find((l) => l.productId === it.productId);
-    if (!mine) continue;
-    const lineCost = Number(mine.unitCost) || 0;
-    if (lineCost > 0 && !isSignificant(lineCost, it.unitCost)) continue;
-    const gpBefore = projectBudget(p, items).gpPercent;
-    const gpAfter = projectBudget(p, items.map((l) => (l.productId === it.productId ? withCost(l, it.unitCost) : l))).gpPercent;
+    const hit = firstImpact(items, it, "unitCost");
+    if (!hit) continue;
+    const gpBefore = r2(projectBudget(p, items).gpPercent);
+    const gpAfter = r2(projectBudget(p, repriceProject(items, it.productId, it.unitCost)).gpPercent);
     const a: Affected = { docType: "project", docId: d.id, docNo: String(p.projectId || d.id) };
     const ownerUid = String(p.projectManagerUid || p.createdBy || "");
-    await adminDb.doc(`companies/${ctx.companyId}/price_alerts/${a.docType}_${a.docId}_${it.productId}`)
-      .set(alertDoc(ctx, it, wac, { ...a, title: String(p.projectName || p.name || ""), ownerUid, lineCost, unitPrice: Number(mine.unitPrice) || 0, gpBefore: r2(gpBefore), gpAfter: r2(gpAfter) }));
+    const al = alertDoc(ctx, it, wac, { ...a, title: String(p.projectName || p.name || ""), ownerUid, ...hit, costKey: "unitCost", gpBefore, gpAfter });
+    await adminDb.doc(`companies/${ctx.companyId}/price_alerts/${a.docType}_${a.docId}_${it.productId}`).set(al);
     if (ownerUid) await notify(ctx.companyId, {
       type: "PRICE_CHANGE_DOC", title: `ต้นทุนเปลี่ยนในโครงการ ${a.docNo}`,
-      message: `${it.name}: ทุนใน BOQ ${fmt(lineCost)} → ราคาซื้อล่าสุด ${fmt(it.unitCost)} (${pctText(changePct(lineCost, it.unitCost))}) · GP ${r2(gpBefore)}% → ${r2(gpAfter)}%`,
+      message: `${describe(al)} · GP ${gpBefore}% → ${gpAfter}%`,
       link: `/projects/${encodeURIComponent(d.id)}`, targetUserId: ownerUid, documentNo: a.docNo,
       dedupeKey: `price_project_${d.id}_${it.productId}`.slice(0, 300),
     }, ctx.userUid);
@@ -142,32 +174,31 @@ async function affectedProjects(ctx: GrContext, it: ReceivedItem, wac: number): 
   return out;
 }
 
-/** ใช้ราคาซื้อล่าสุดเป็นต้นทุนในเอกสาร (ราคาขายคงเดิม) — คืนข้อความผลลัพธ์ */
+/** ใช้ราคาซื้อล่าสุดเป็นต้นทุนในเอกสาร (สินค้าตัวนั้น และงานบริการที่ใช้เป็นวัสดุ) — ราคาขายคงเดิม */
 export async function applyAlert(companyId: string, alertId: string, uid: string): Promise<{ gpAfter: number | null }> {
   const alertRef = adminDb.doc(`companies/${companyId}/price_alerts/${alertId}`);
   return adminDb.runTransaction(async (tx) => {
     const a = (await tx.get(alertRef)).data();
     if (!a) throw new Error("ไม่พบรายการแจ้งเตือน");
     if (a.status !== "open") throw new Error("รายการนี้จัดการไปแล้ว");
-    const newCost = Number(a.newCost) || 0;
+    const matCost = Number(a.materialCost ?? a.newCost) || 0;
     let gpAfter: number | null = null;
     if (a.docType === "quotation") {
       const ref = adminDb.doc(`companies/${companyId}/quotations/${a.docId}`);
       const [q, lines] = await Promise.all([tx.get(ref), tx.get(ref.collection("lines"))]);
       if (!q.exists) throw new Error("ไม่พบใบเสนอราคา");
       if (!OPEN_QUOTATION_STATUSES.includes(String(q.data()!.status))) throw new Error("ใบเสนอราคานี้ปิดแล้ว แก้ต้นทุนไม่ได้");
-      const all = lines.docs.map((d) => ({ ref: d.ref, data: d.data() }));
-      const next = all.map((l) => (l.data.productId === a.productId && l.data.itemType !== "GROUP_HEADER" ? { ...l.data, costPrice: newCost, margin: r2((Number(l.data.unitPrice) || 0) - newCost) } : l.data));
-      gpAfter = grossProfitPercent(next as any, q.data()!.docDiscountAmount);
-      all.forEach((l, i) => { if (l.data.productId === a.productId) tx.update(l.ref, { costPrice: next[i].costPrice, margin: next[i].margin }); });
+      const all = lines.docs.map((d) => ({ ref: d.ref, data: d.data(), next: reprice(d.data(), a.productId, matCost, "costPrice") }));
+      gpAfter = grossProfitPercent(all.map((l) => l.next || l.data) as any, q.data()!.docDiscountAmount);
+      all.forEach((l) => { if (l.next) tx.update(l.ref, { costPrice: l.next.costPrice, margin: r2((Number(l.next.unitPrice) || 0) - l.next.costPrice), ...(l.next.recipe ? { recipe: l.next.recipe } : {}) }); });
       tx.update(ref, { updatedAt: admin.firestore.FieldValue.serverTimestamp(), updatedBy: uid });
-      tx.set(ref.collection("audit_logs").doc(), { action: "COST_UPDATED", productId: a.productId, from: a.lineCost, to: newCost, reason: `ราคาซื้อล่าสุด (${a.grNo})`, by: uid, at: admin.firestore.FieldValue.serverTimestamp() });
+      tx.set(ref.collection("audit_logs").doc(), { action: "COST_UPDATED", productId: a.productId, from: a.lineCost, to: a.newCost, reason: `ราคาซื้อล่าสุด ${a.materialName || ""} (${a.grNo})`, by: uid, at: admin.firestore.FieldValue.serverTimestamp() });
     } else {
       const ref = adminDb.doc(`companies/${companyId}/projects/${a.docId}`);
       const p = (await tx.get(ref)).data();
       if (!p) throw new Error("ไม่พบโครงการ");
       if (CLOSED_PROJECT_STATUSES.includes(String(p.status))) throw new Error("โครงการนี้ปิดแล้ว แก้ต้นทุนไม่ได้");
-      const items: ProjectLine[] = (Array.isArray(p.items) ? p.items : []).map((l: ProjectLine) => (l.productId === a.productId ? withCost(l, newCost) : l));
+      const items = repriceProject(Array.isArray(p.items) ? p.items : [], a.productId, matCost);
       const b = projectBudget(p, items);
       gpAfter = r2(b.gpPercent);
       tx.update(ref, { items, budget: b.totalRev, allocatedCost: b.totalCost, grossProfit: b.grossProfit, gpPercent: b.gpPercent, budgetSummary: b, updatedAt: admin.firestore.FieldValue.serverTimestamp(), updatedBy: uid });

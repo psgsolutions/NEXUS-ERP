@@ -172,3 +172,8 @@ export function notifyPendingApproval(tx: admin.firestore.Transaction, companyId
     documentNo: docNo,
   }, by);
 }
+
+/** รหัสสินค้าในใบ (เก็บที่หัวเอกสาร) — ใช้ค้นใบเสนอราคาที่ได้รับผลเมื่อราคาทุนเปลี่ยน (array-contains) */
+export function productIdsOf(lines: Record<string, any>[]): string[] {
+  return Array.from(new Set(lines.filter((l) => l.itemType !== "GROUP_HEADER" && l.productId).map((l) => String(l.productId)))).slice(0, 300);
+}

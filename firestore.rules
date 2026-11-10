@@ -260,14 +260,16 @@ service cloud.firestore {
           // รหัสคำขอกันบันทึกซ้ำ (เน็ตหลุดแล้วกดซ้ำ): server เท่านั้น
           'request_keys',
           // ใบตรวจนับสต็อก: บันทึกผ่าน /api/inventory/stock-count (ปรับสต็อกและลงบัญชีพร้อมกัน)
-          'stock_counts'];
+          'stock_counts',
+          // แจ้งเตือนราคาทุนเปลี่ยน (มีต้นทุน/GP): สร้างตอนรับสินค้า จัดการผ่าน /api/price-alerts เท่านั้น
+          'price_alerts'];
       }
       // ข้อมูลการเงินอ่านได้เฉพาะตำแหน่งที่เกี่ยวข้อง (ส่วนอื่นอ่านได้ทุกคนในบริษัท)
       function restrictedRead(collection) {
         return collection in ['journal_entries', 'payments', 'financialLedgers', 'tax_filing_locks', 'customer_refunds', 'payrolls', 'expenses', 'withholding_taxes', 'cheques', 'bank_reconciliations'];
       }
       function canReadCollection(collection) {
-        return !(collection in ['document_assets', 'attachments', 'request_keys']) && (!restrictedRead(collection) || (
+        return !(collection in ['document_assets', 'attachments', 'request_keys', 'price_alerts']) && (!restrictedRead(collection) || (
           collection == 'payrolls' ? hasRole(['ACCOUNTANT', 'EXECUTIVE', 'HR'])
           : collection in ['expenses', 'withholding_taxes'] ? hasRole(['ACCOUNTANT', 'EXECUTIVE', 'PURCHASING', 'WAREHOUSE', 'HR'])
           : financeReader()

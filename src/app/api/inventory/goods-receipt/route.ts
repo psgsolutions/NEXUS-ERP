@@ -10,6 +10,7 @@ import { companyLocations } from "@/lib/warehouse.server";
 import { prepareSequence } from "@/lib/sequence-server";
 import { can } from "@/lib/permissions";
 import { lineDiscount } from "@/lib/doc-totals";
+import { afterGoodsReceipt, costsBefore } from "@/lib/price-alerts.server";
 
 /** ราคาทุนต่อหน่วยตามใบสั่งซื้อ (หลังส่วนลดบรรทัด ก่อน VAT เป็นบาท) — ไม่เชื่อราคาที่หน้าจอส่งมา */
 function poUnitCost(po: any, idx: number): number | null {
@@ -103,6 +104,7 @@ export async function POST(request: Request) {
           // ไม่ระบุตำแหน่ง (ยังไม่มีผังชั้นวาง) = สต็อกเข้าระดับคลัง ไม่สร้างยอดตามตำแหน่ง
           ...(warehouse ? { toLocation: warehouse } : {}),
           referenceId: poRef || deliveryNote,
+          ...(supplier ? { partyName: String(supplier).slice(0, 200) } : {}),
           userId
         });
       }
@@ -165,7 +167,7 @@ export async function POST(request: Request) {
       supplier: supplierFromPo?.name || supplier || "",
       receiptDate: postingDate,
       deliveryNote: deliveryNote || "",
-      receivedBy,
+      receivedBy: String(receivedBy || userId).slice(0, 200),
       warehouse: warehouseCode || warehouse || "",
       location: warehouse || "",
       // เก็บเฉพาะฟิลด์ที่ใช้ (ไม่เก็บข้อมูลดิบจากหน้าจอ)
@@ -186,6 +188,8 @@ export async function POST(request: Request) {
     // 5. Stock/WAC updates, GR document and its GL entry commit in one transaction (all-or-nothing)
     //    Journal: Dr สินค้าคงเหลือ / Cr เจ้าหนี้การค้า (โครงสร้างเดียวกับ AccountingEngine.postGoodsReceipt แบบ Non-VAT)
     let grData: ReturnType<typeof grDataOf> | null = null;
+    // ต้นทุนเฉลี่ยก่อนรับเข้า — ใช้เทียบราคาล็อตใหม่ (แจ้งเตือนราคาเปลี่ยน)
+    const costBefore = await costsBefore(companyId, movements.map((m) => m.productId)).catch(() => new Map<string, number>());
     await processStockMovements(movements, (transaction) => {
       seqCommit?.();
       grData = grDataOf(grNo);
@@ -212,6 +216,14 @@ export async function POST(request: Request) {
         });
       }
     }, readPO);
+
+    // 5.1 ราคาทุนล่าสุดของผู้ขาย + แจ้งเตือนเมื่อราคาล็อตใหม่ต่างจากเดิมเกินเกณฑ์ (ไม่ทำให้การรับสินค้าล้มเหลว)
+    const gr: any = grData;
+    await afterGoodsReceipt(
+      { companyId, grNo, supplierId: String(gr?.supplierId || ""), supplierName: String(gr?.supplier || ""), userUid: apiUser.uid },
+      (gr?.items || []).filter((it: any) => it.productId && it.qtyReceived > 0).map((it: any) => ({ productId: it.productId, name: it.name, unitCost: Number(it.unitCost) || 0 })),
+      costBefore,
+    ).catch((err) => console.error("[PRICE_ALERT]", err));
 
     // 6. Write Audit Log
     await auditServer.logCreate(

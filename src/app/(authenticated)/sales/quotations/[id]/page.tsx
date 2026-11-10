@@ -11,6 +11,7 @@ import { DocumentAttachmentsCard } from "@/components/commerce/DocumentAttachmen
 import { ChoiceInput } from "@/components/ui/ChoiceInput";
 import { PAYMENT_TERMS, LEAD_SOURCES, DELIVERY_TERMS } from "@/lib/choices";
 import { QuotationTermsCards, type PaymentSchedule } from "@/components/commerce/QuotationTermsCards";
+import { PriceAlertBanner } from "@/components/shared/PriceAlertBanner";
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { quotationLines, quotationModel } from "@/lib/documents/build";
 import { documentProfileOf } from "@/lib/documents/profile";
@@ -979,6 +980,8 @@ export default function QuotationEditPage() {
 
   const leftContent = (
     <div className="space-y-4 pr-2 pb-10">
+      {/* ต้นทุนสินค้าเปลี่ยนหลังสร้างใบ (รับสินค้าล็อตใหม่ราคาต่างเกิน 5%) — ปรับต้นทุนแล้วโหลดใบใหม่ (กันบันทึกทับด้วยต้นทุนเดิม) */}
+      {companyId && params.id && <PriceAlertBanner companyId={companyId} docType="quotation" docId={String(params.id)} onApplied={() => window.location.reload()} />}
       {isLocked && status !== "" && (
         <div className={cn("p-3 rounded-2xl text-[12px] border flex flex-wrap items-center justify-between gap-3",
           status === "SUPERSEDED" ? "bg-white/[0.04] border-white/15 text-white/70" : "bg-purple-500/10 border-purple-500/25 text-purple-200")}>

@@ -252,6 +252,8 @@ async function main() {
     ['admin cannot read request keys', () => assertFails(getDoc(doc(adminA, 'companies/A/request_keys/quotation_abc')))],
     ['admin cannot write a company document template directly', () => assertFails(setDoc(doc(adminA, 'companies/A/design_templates/t1'), { name: 'x' }))],
     ['member cannot write a stock count directly', () => assertFails(setDoc(doc(userA, 'companies/A/stock_counts/SC-1'), { lines: [] }))],
+    ['admin cannot read price alerts directly (cost/GP)', () => assertFails(getDoc(doc(adminA, 'companies/A/price_alerts/quotation_Q1_P1')))],
+    ['member cannot write price alerts directly', () => assertFails(setDoc(doc(userA, 'companies/A/price_alerts/quotation_Q1_P1'), { status: 'dismissed' }))],
     ['member cannot forge a request key', () => assertFails(setDoc(doc(userA, 'companies/A/request_keys/quotation_abc'), { result: { id: 'x' } }))],
     ['member cannot reset rate limits', () => assertFails(setDoc(doc(userA, 'rate_limits/portal_ip_h_x_1'), { count: 0 }))],
     // ข้อมูลกลางของเครือ

@@ -13,6 +13,7 @@ import {
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
+import { PriceAlertBanner } from "@/components/shared/PriceAlertBanner";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { ChangeOrdersPanel } from "@/components/projects/ChangeOrdersPanel";
 import { ContractPanel } from "@/components/projects/ContractPanel";
@@ -356,6 +357,8 @@ export default function ProjectDetailPage() {
 
   const leftContent = (
     <div className="space-y-4 pb-10">
+      {/* ต้นทุนสินค้าใน BOQ เปลี่ยน (รับสินค้าล็อตใหม่ราคาต่างเกิน 5%) — ข้อมูลโครงการอัปเดตเองแบบเรียลไทม์ */}
+      {companyId && docId && <PriceAlertBanner companyId={companyId} docType="project" docId={docId} />}
       {message && (
         <div className={cn("p-3 rounded-xl text-xs font-bold border", message.error ? "bg-danger/10 border-danger/20 text-danger" : "bg-nexus-teal/10 border-nexus-teal/20 text-nexus-teal")}>
           {message.text}

@@ -64,6 +64,7 @@ import { findBarcodeConflict } from "@/lib/product-validation";
 import { Product } from "@/types/database";
 import { RecordDeleteButton } from "@/components/shared/RecordDeleteButton";
 import { ProductSuppliersBox } from "@/components/shared/ProductSuppliersBox";
+import { ProductCostHistory } from "@/components/shared/ProductCostHistory";
 
 const CATEGORIES = [
   "Network & Wireless",
@@ -763,6 +764,9 @@ export default function ProductDetailPage() {
 
       {/* ผู้ขายสินค้านี้ (ผูกจากหน้าผู้ขาย › สินค้าที่ขาย) */}
       <ProductSuppliersBox config={(product as any).supplierConfig} />
+
+      {/* ราคาทุนแต่ละล็อตที่รับเข้า เทียบต้นทุนเฉลี่ย */}
+      {companyId && <ProductCostHistory companyId={companyId} productId={productId} />}
 
       {/* Actions Card */}
       <GlassCard className="p-4 border-white/5 space-y-3">

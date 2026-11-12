@@ -57,3 +57,6 @@ recovered_page.tsx
 
 # Firestore backups (contain all company data) — never commit
 /backups/
+
+# ไฟล์ข้อมูลธุรกิจจริง (สต็อก ราคาทุน ลูกค้า) — ห้าม commit
+/Stock PSG*.xlsx

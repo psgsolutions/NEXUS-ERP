@@ -3,12 +3,16 @@ import { requireApiUser, authErrorResponse } from "@/lib/api-auth";
 import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { fifoOrder } from "@/lib/stock-lots";
+import { processStockMovements, type StockMovement } from "@/lib/stock-service";
+import { auditServer } from "@/services/audit.server";
 
 /**
  * Lot สินค้า — POST /api/inventory/lots { companyId, action, ... }
  *  open    { productId }  Lot ที่ยังมีของ เรียงเข้าก่อนออกก่อน (ใช้ตอนเบิก/ขาย)
  *  product { productId }  ทุก Lot ของสินค้า (รวมที่หมดแล้ว)
  *  trace   { lotNo }      ติดตาม Lot: ที่มา (ผู้ขาย ใบรับ ใบสั่งซื้อ) และตัดออกให้ใครไปเท่าไร
+ *  importOpening { ref, lots: [{ productId, qty, unitCost, receivedDate, supplierName, projectName, sourceRef }] }
+ *          ยอดยกมาเป็น Lot (คงวันที่รับเดิม → FIFO ถูกลำดับ) · ไม่ลงบัญชี (มูลค่าอยู่ในงบทดลองยกมา) · ต้องมี inventory:edit
  * ต้นทุนของ Lot แสดงเฉพาะผู้มีสิทธิ์ดูต้นทุน (inventory:edit / procurement:view / sales:cost)
  */
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -52,6 +56,25 @@ export async function POST(request: Request) {
         qty: Number((m.lots || []).find((a: any) => a.lotNo === lotNo)?.qty) || 0, movementId: String(m.transactionId || ""),
       })).sort((a, b) => (a.at < b.at ? -1 : 1));
       return NextResponse.json({ success: true, lot: view(snap.id, snap.data()), issues });
+    }
+
+    if (action === "importOpening") {
+      if (!can(user.roles, "inventory:edit")) return NextResponse.json({ success: false, error: "นำเข้ายอดยกมาได้เฉพาะผู้มีสิทธิ์คลังสินค้า" }, { status: 403 });
+      const ref = String(body.ref || "OPENING").replace(/[^\w-]/g, "").slice(0, 60) || "OPENING";
+      const raw: any[] = Array.isArray(body.lots) ? body.lots.slice(0, 300) : [];
+      const s = (v: any, n = 200) => String(v ?? "").trim().slice(0, n);
+      const moves: StockMovement[] = raw.map((l) => ({
+        companyId, productId: s(l.productId, 120), type: "IN" as const, quantity: Math.round((Number(l.qty) || 0) * 10000) / 10000,
+        unitCost: Math.max(0, Math.round((Number(l.unitCost) || 0) * 10000) / 10000), referenceId: ref, partyName: s(l.supplierName), userId: user.email || user.uid,
+        lotInfo: { supplierId: s(l.supplierId, 120), supplierName: s(l.supplierName), projectName: s(l.projectName), poRef: s(l.sourceRef, 300), receivedDate: /^\d{4}-\d{2}-\d{2}$/.test(String(l.receivedDate)) ? String(l.receivedDate) : undefined, source: "OPENING" as const },
+      })).filter((m) => m.productId && !m.productId.includes("/") && m.quantity > 0);
+      if (!moves.length) return NextResponse.json({ success: false, error: "ไม่มีรายการยกมา" }, { status: 400 });
+      // นำเข้าซ้ำด้วยเลขอ้างอิงเดิม = ปฏิเสธ (กันยอดยกมาเบิ้ล)
+      const dup = await adminDb.collection(`companies/${companyId}/stock_movements`).where("referenceId", "==", ref).limit(1).get();
+      if (!dup.empty) return NextResponse.json({ success: false, error: `นำเข้ายอดยกมา ${ref} ไปแล้ว` }, { status: 409 });
+      const ids = await processStockMovements(moves);
+      await auditServer.logCreate(user.uid, companyId, "OPENING_LOTS", ref, { lots: moves.length, qty: moves.reduce((t, m) => t + m.quantity, 0), value: r2(moves.reduce((t, m) => t + m.quantity * (m.unitCost || 0), 0)) });
+      return NextResponse.json({ success: true, imported: ids.length });
     }
 
     return NextResponse.json({ success: false, error: "ไม่รู้จักคำสั่ง" }, { status: 400 });

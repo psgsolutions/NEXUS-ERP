@@ -1,4 +1,5 @@
 ﻿# สำรองข้อมูล Firestore ประจำวัน (ฟรี ไม่ต้องใช้แพ็กเกจ Blaze) — เรียกจาก Windows Task Scheduler
+#   ปลุกเครื่องมาทำงาน และลองใหม่ 3 ครั้งเมื่อล้มเหลว
 #   1) node scripts/backup-firestore.mjs  -> backups/firestore-<project>-<วันเวลา>.jsonl.gz (อ่านอย่างเดียว)
 #   2) คัดลอกไฟล์ใหม่ไปโฟลเดอร์สำรองนอกเครื่อง (เช่น Google Drive)
 #   3) ลบไฟล์สำรองที่เก่ากว่า -KeepDays วัน (เฉพาะไฟล์ชื่อ firestore-*.jsonl.gz ในสองโฟลเดอร์นี้)
@@ -18,7 +19,8 @@ if ($Register) {
   $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Repo\scripts\scheduled-backup.ps1`" -Repo `"$Repo`" -CopyTo `"$CopyTo`" -KeepDays $KeepDays"
   $trigger = New-ScheduledTaskTrigger -Daily -At $At
   # เครื่องปิดอยู่ตอนถึงเวลา = รันทันทีเมื่อเปิดเครื่อง · ใช้ไฟฟ้าแบตก็รัน · จำกัดเวลา 30 นาที
-  $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
+  # ปลุกเครื่องจาก sleep มาสำรอง · ล้มเหลว (เช่น เครื่องเพิ่งตื่นแล้วถูกตัด) ลองใหม่ทุก 10 นาที 3 ครั้ง
+  $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -WakeToRun -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 10) -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
   Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Description "สำรองข้อมูล NEXUS ERP ทุกวัน เก็บ $KeepDays วัน ที่ $Repo\backups และ $CopyTo" -Force | Out-Null
   Write-Output "ตั้งเวลาแล้ว: '$taskName' ทุกวัน $At"
   exit 0

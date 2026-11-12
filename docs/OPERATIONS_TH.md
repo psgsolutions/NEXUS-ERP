@@ -43,7 +43,7 @@ node scripts/restore-firestore.mjs <ไฟล์> --only=... --apply --overwrite
 
 ### สำรองอัตโนมัติแบบฟรี (ใช้อยู่ตอนนี้ — ไม่ใช้แพ็กเกจ Blaze ไม่ผูกบัตร)
 ตั้งไว้แล้วเมื่อ 6 พ.ย. 2569 บนเครื่องที่มีโปรเจกต์ `D:\NEXUS-ERP`
-- Windows Task Scheduler งานชื่อ **NEXUS-ERP Firestore Backup** รันทุกวัน **12:30 น.** — เครื่องปิดอยู่ตอนนั้น = รันทันทีที่เปิดเครื่อง
+- Windows Task Scheduler งานชื่อ **NEXUS-ERP Firestore Backup** รันทุกวัน **12:30 น.** — ปลุกเครื่องจาก sleep มาสำรอง · เครื่องปิดอยู่ = รันทันทีที่เปิดเครื่อง · ล้มเหลวลองใหม่ทุก 10 นาที 3 ครั้ง
 - สคริปต์ `scripts/scheduled-backup.ps1`: สำรองทั้งระบบลง `D:\NEXUS-ERP\backups` → คัดลอกไป `G:\My Drive\NEXUS-ERP-Backup` (Google Drive) → ลบไฟล์ `firestore-*.jsonl.gz` ที่เก่ากว่า 14 วันในสองที่นี้
 - ผลแต่ละรอบอยู่ที่ `backups/backup-log.txt` (บรรทัด "สำเร็จ" หรือ "ล้มเหลว") — ควรเปิดดูสัปดาห์ละครั้ง
 - ตั้งใหม่/ย้ายเครื่อง: `powershell -ExecutionPolicy Bypass -File scripts\scheduled-backup.ps1 -Register` (เปลี่ยนเวลา `-At 17:30` · ที่เก็บ `-CopyTo "E:\Backup"` · จำนวนวัน `-KeepDays 30`)

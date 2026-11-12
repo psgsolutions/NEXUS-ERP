@@ -11,6 +11,7 @@ import { prepareSequence } from "@/lib/sequence-server";
 import { can } from "@/lib/permissions";
 import { lineDiscount } from "@/lib/doc-totals";
 import { afterGoodsReceipt, costsBefore } from "@/lib/price-alerts.server";
+import { spreadOtherCosts } from "@/lib/stock-lots";
 
 /** ราคาทุนต่อหน่วยตามใบสั่งซื้อ (หลังส่วนลดบรรทัด ก่อน VAT เป็นบาท) — ไม่เชื่อราคาที่หน้าจอส่งมา */
 function poUnitCost(po: any, idx: number): number | null {
@@ -88,10 +89,22 @@ export async function POST(request: Request) {
     // 3. Collect Stock Movements for all received items
     let totalReceiptAmount = 0;
     const movements: StockMovement[] = [];
+    // ราคาซื้อต่อหน่วย: ราคาในใบสั่งซื้อก่อน แล้วจึงราคาที่กรอก
+    for (const item of items) {
+      const fromPo = poPre && item.poLineIndex !== null && item.poLineIndex !== undefined ? poUnitCost(poPre, Number(item.poLineIndex)) : null;
+      item.buyPrice = fromPo ?? Math.max(0, Number(item.unitPrice || item.price || item.cost || 0));
+      item.priceSource = fromPo !== null ? "PO" : "MANUAL";
+    }
+    // ต้นทุนอื่นๆ ของบิล (ค่าส่ง ค่าขนย้าย ก่อน VAT): กระจายเข้าต้นทุนต่อหน่วยตามสัดส่วนมูลค่าของรายการที่เข้าคลัง
+    const otherCosts = Math.round(Math.max(0, Number(body.otherCosts) || 0) * 100) / 100;
+    const stockIdx = items.map((it: any, i: number) => i).filter((i: number) => items[i].productId && Number(items[i].qtyReceived || items[i].qty || 0) > 0);
+    const landed = spreadOtherCosts(stockIdx.map((i: number) => ({ qty: Number(items[i].qtyReceived || items[i].qty || 0), unitCost: items[i].buyPrice })), otherCosts);
+    stockIdx.forEach((i: number, k: number) => { items[i].landedCost = landed[k]; });
+    const lotBase = { supplierId: String(poPre?.supplierId || supplierIdIn), supplierName: String(poPre?.supplierName || supplier || "").slice(0, 200), poRef: String(poRef || "").slice(0, 120),
+      projectId: String(body.projectId || poPre?.projectId || "").slice(0, 120), projectName: String(body.projectName || poPre?.projectName || "").slice(0, 200), receivedDate: postingDate, source: "GR" as const };
     for (const item of items) {
       const qty = Number(item.qtyReceived || item.qty || 0);
-      const fromPo = poPre && item.poLineIndex !== null && item.poLineIndex !== undefined ? poUnitCost(poPre, Number(item.poLineIndex)) : null;
-      const unitPrice = fromPo ?? Math.max(0, Number(item.unitPrice || item.price || item.cost || 0));
+      const unitPrice = item.landedCost ?? item.buyPrice;
       item.unitCost = unitPrice;
       if (qty > 0 && item.productId) {
         totalReceiptAmount += qty * unitPrice;
@@ -105,10 +118,12 @@ export async function POST(request: Request) {
           ...(warehouse ? { toLocation: warehouse } : {}),
           referenceId: poRef || deliveryNote,
           ...(supplier ? { partyName: String(supplier).slice(0, 200) } : {}),
+          lotInfo: { ...lotBase },
           userId
         });
       }
     }
+    totalReceiptAmount = Math.round(totalReceiptAmount * 100) / 100;
     if (movements.length === 0) {
       return NextResponse.json(
         { success: false, error: "[Validation Error] No receivable items (productId and qty > 0 required)." },
@@ -137,6 +152,8 @@ export async function POST(request: Request) {
       const seq = await takeNo(transaction);
       grNo = seq.number;
       seqCommit = seq.commit;
+      // Lot ที่สร้างอ้างถึงใบรับสินค้าใบนี้
+      for (const m of movements) if (m.lotInfo) m.lotInfo.grNo = grNo;
       if (!poDocRef) return;
       const snap = await transaction.get(poDocRef);
       const po: any = snap.data();
@@ -174,9 +191,13 @@ export async function POST(request: Request) {
       items: items.map((it: any) => ({
         productId: String(it.productId || ""), sku: String(it.sku || "").slice(0, 120), name: String(it.name || "").slice(0, 300), unit: String(it.unit || "").slice(0, 40),
         qtyReceived: Number(it.qtyReceived || it.qty || 0), unitCost: Number(it.unitCost) || 0,
+        // ราคาซื้อก่อนกระจายต้นทุนอื่น และที่มาของราคา (PO = ตามใบสั่งซื้อ)
+        buyPrice: Number(it.buyPrice) || 0, priceSource: String(it.priceSource || "MANUAL"),
         poLineIndex: it.poLineIndex === null || it.poLineIndex === undefined ? null : Number(it.poLineIndex),
       })),
       totalAmount: Math.round(totalReceiptAmount * 100) / 100,
+      otherCosts,
+      projectId: lotBase.projectId, projectName: lotBase.projectName,
       status: "received",
       createdBy: userId,
       createdByUid: apiUser.uid,

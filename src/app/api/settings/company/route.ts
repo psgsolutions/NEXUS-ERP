@@ -53,6 +53,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
+    if (body.action === "costMethod") {
+      // วิธีคิดต้นทุนสินค้า: FIFO (ราย Lot) หรือ WAC — เปลี่ยนได้เฉพาะตอนยังไม่มีการเคลื่อนไหวสต็อก (เปลี่ยนกลางทางทำให้ต้นทุนขายไม่ต่อเนื่อง)
+      const method = String(body.method || "").toUpperCase() === "WAC" ? "WAC" : "FIFO";
+      const ref = adminDb.doc(`companies/${companyId}`);
+      const before = (await ref.get()).data()?.settings?.costMethod || "FIFO";
+      if (before !== method) {
+        const used = await adminDb.collection(`companies/${companyId}/stock_movements`).limit(1).get();
+        if (!used.empty && body.confirmChange !== true) throw new ApiAuthError(409, "มีการเคลื่อนไหวสต็อกแล้ว การเปลี่ยนวิธีคิดต้นทุนกระทบต้นทุนขายตั้งแต่วันนี้ และต้องปรึกษาผู้ทำบัญชีก่อน");
+        await ref.update({ "settings.costMethod": method, updatedAt: now, updatedBy: apiUser.uid });
+        await auditServer.logUpdate(apiUser.uid, companyId, "COMPANY_COST_METHOD", companyId, { costMethod: before }, { costMethod: method });
+      }
+      return NextResponse.json({ success: true, costMethod: method });
+    }
+
     throw new ApiAuthError(400, "คำสั่งไม่ถูกต้อง");
   } catch (err: any) {
     const authRes = authErrorResponse(err);

@@ -6,6 +6,7 @@ import { auditServer } from "@/services/audit.server";
 import { assertPeriodOpen } from "./period-close-service";
 import { getProductTx } from "./product-store.server";
 import { groupIdOfCompany } from "./company-group.server";
+import { allocateLots, allocationCost, costMethodOf, type LotAllocation, type LotPick } from "./stock-lots";
 
 type DocumentReference = admin.firestore.DocumentReference;
 type Transaction = admin.firestore.Transaction;
@@ -36,7 +37,14 @@ export interface StockMovement {
   skipGl?: boolean;
   /** ผู้ขาย/ผู้รับ (เก็บไว้ในประวัติการเคลื่อนไหว — หน้าประวัติราคาทุนรายล็อต) */
   partyName?: string;
+  /** OUT: Lot ที่เลือกเอง (ที่เหลือระบบเติมแบบ FIFO) */
+  lots?: LotPick[];
+  /** IN: ข้อมูลของ Lot ที่สร้าง (ผู้ขาย เอกสารต้นทาง โปรเจกต์) — ผู้เรียกเติม grNo ในช่วงอ่านของทรานแซกชันได้ */
+  lotInfo?: { supplierId?: string; supplierName?: string; poRef?: string; grNo?: string; projectId?: string; projectName?: string; receivedDate?: string; source?: "GR" | "OPENING" | "RETURN" | "ADJUST" };
 }
+
+const bangkokToday = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
+type LotState = { ref: DocumentReference; lotNo: string; remaining: number; unitCost: number; receivedDate: string; dirty: boolean; fresh?: Record<string, any> };
 
 /**
  * [WAC-CALC-V1.0] Real-time Weighted Average Cost (WAC) Formula
@@ -103,6 +111,12 @@ export async function processStockMovements(
     transactionIds.push(await nexusSequenceServer("INV", companyId));
   }
 
+  // เลข Lot ของรายการรับเข้า (LOT-YYMM-0001) และวิธีคิดต้นทุนของบริษัท
+  const lotNos: string[] = [];
+  for (const m of movements) lotNos.push(m.type === "IN" ? await nexusSequenceServer("LOT", companyId) : "");
+  const costMethod = costMethodOf((await adminDb.doc(`companies/${companyId}`).get()).data());
+  const lotCol = adminDb.collection(`companies/${companyId}/stock_lots`);
+
   const auditEntries: Array<{ userId: string; productId: string; before: any; after: any }> = [];
 
   await adminDb.runTransaction(async (transaction) => {
@@ -119,6 +133,7 @@ export async function processStockMovements(
       reservedDelta: number;
       availableDelta: number;
       wacChanged: boolean;
+      lots: LotState[];
     }>();
     for (const productId of Array.from(new Set(movements.map(m => m.productId)))) {
       // สินค้าของบริษัท (ข้อมูลกลาง+ของบริษัท หรือ root รุ่นเก่า) — ref = เอกสารที่เก็บสต็อก
@@ -134,8 +149,15 @@ export async function processStockMovements(
         onHandDelta: 0,
         reservedDelta: 0,
         availableDelta: 0,
-        wacChanged: false
+        wacChanged: false,
+        lots: []
       });
+    }
+    // Lot ที่ยังมีของ ของสินค้าที่มีการตัดออก (อ่านในทรานแซกชัน: สองรายการตัด Lot เดียวกันพร้อมกันไม่ได้)
+    for (const productId of Array.from(new Set(movements.filter((m) => m.type === "OUT").map((m) => m.productId)))) {
+      const snap = await transaction.get(lotCol.where("productId", "==", productId).where("status", "==", "open"));
+      products.get(productId)!.lots = snap.docs.map((d) => ({ ref: d.ref, lotNo: d.id, remaining: Number(d.get("qtyRemaining")) || 0, unitCost: Number(d.get("unitCost")) || 0, receivedDate: String(d.get("receivedDate") || ""), dirty: false }))
+        .filter((l) => l.remaining > 0);
     }
 
     const balanceKeys = new Map<string, { location: string; productId: string }>();
@@ -158,7 +180,16 @@ export async function processStockMovements(
       const previousOnHand = product.onHand;
       const previousWAC = product.wac;
 
-      const currentUnitCost = unitCost !== undefined ? unitCost : previousWAC;
+      // ตัดออก: จัดสรร Lot (ที่เลือกเอง + FIFO) — FIFO ใช้ต้นทุนจริงของ Lot · ส่วนที่ไม่มี Lot (สต็อกเดิม) ใช้ต้นทุนเฉลี่ย
+      let allocations: LotAllocation[] = [];
+      let lotCostUnit: number | null = null;
+      if (type === "OUT") {
+        const r = allocateLots(product.lots.filter((l) => l.remaining > 0), quantity, movement.lots);
+        allocations = r.allocations;
+        for (const a of allocations) { const l = product.lots.find((x) => x.lotNo === a.lotNo)!; l.remaining = Math.round((l.remaining - a.qty) * 10000) / 10000; l.dirty = true; }
+        if (costMethod === "FIFO") lotCostUnit = (allocationCost(allocations) + r.short * previousWAC) / quantity;
+      }
+      const currentUnitCost = unitCost !== undefined ? unitCost : lotCostUnit ?? previousWAC;
       const totalValue = currentUnitCost * quantity;
 
       // 3.1 Source / Destination Location Balance
@@ -178,12 +209,30 @@ export async function processStockMovements(
         product.onHandDelta -= quantity;
         if (movement.fromReserved) product.reservedDelta -= quantity; // ยอดพร้อมใช้ถูกหักไปแล้วตอนจอง
         else product.availableDelta -= quantity;
+        if (costMethod === "FIFO" && product.onHand > 0) {
+          // ต้นทุนเฉลี่ยของที่เหลือ (ใช้อ้างอิงตอนเสนอราคา): Lot ที่เหลือ + สต็อกเดิมที่ไม่มี Lot
+          const lotQty = product.lots.reduce((t, l) => t + l.remaining, 0), lotVal = product.lots.reduce((t, l) => t + l.remaining * l.unitCost, 0);
+          const legacy = Math.max(0, product.onHand - lotQty);
+          product.wac = Number(((lotVal + legacy * previousWAC) / (lotQty + legacy)).toFixed(4));
+          product.wacChanged = true;
+        }
       } else if (type === "IN") {
         product.wac = calculateWAC(previousOnHand, previousWAC, quantity, currentUnitCost);
         product.wacChanged = true;
         product.onHand += quantity;
         product.onHandDelta += quantity;
         product.availableDelta += quantity;
+        // รับเข้า 1 รายการ = 1 Lot
+        const info = movement.lotInfo || {};
+        const receivedDate = /^\d{4}-\d{2}-\d{2}/.test(String(info.receivedDate || "")) ? String(info.receivedDate).slice(0, 10) : bangkokToday();
+        product.lots.push({
+          ref: lotCol.doc(lotNos[index]), lotNo: lotNos[index], remaining: quantity, unitCost: currentUnitCost, receivedDate, dirty: false,
+          fresh: {
+            lotNo: lotNos[index], companyId, productId, sku: String((product.data as any).sku || ""), name: String(product.data.name || ""), unit: String((product.data as any).unit || ""),
+            unitCost: currentUnitCost, qtyReceived: quantity, receivedDate, info, movementId: transactionId,
+            location: toLocation || "", referenceId: movement.referenceId || "", partyName: movement.partyName || "", createdBy: userId || "SYSTEM",
+          },
+        });
       }
 
       // 3.3 Automated Double-Entry GL Posting (stock issue -> COGS)
@@ -231,10 +280,14 @@ export async function processStockMovements(
       const moveRef = adminDb.collection(`companies/${companyId}/stock_movements`).doc(transactionId);
       transaction.set(moveRef, {
         // Firestore ไม่รับค่า undefined (เช่น fromLocation/snList ที่ไม่ได้ส่งมา)
-        ...Object.fromEntries(Object.entries(movement).filter(([, v]) => v !== undefined)),
+        ...Object.fromEntries(Object.entries(movement).filter(([k, v]) => v !== undefined && k !== "lotInfo" && k !== "lots")),
         transactionId,
         unitCost: currentUnitCost,
         totalValue,
+        costMethod,
+        ...(type === "IN" ? { lotNo: lotNos[index] } : {}),
+        // Lot ที่ตัดออก (ติดตามไปข้างหน้า: Lot นี้ขายให้ใคร) — lotNos ใช้ค้นแบบ array-contains
+        ...(allocations.length ? { lots: allocations, lotNos: allocations.map((a) => a.lotNo) } : {}),
         oldWAC: previousWAC,
         newWAC: product.wac,
         previousOnHand,
@@ -278,6 +331,20 @@ export async function processStockMovements(
         update.costPrice = product.wac;
       }
       transaction.update(product.ref, update);
+    }
+
+    // 4.1 Lot: สร้าง Lot ใหม่ของรายการรับเข้า · อัปเดตคงเหลือของ Lot ที่ถูกตัด (หมด = ปิด)
+    for (const product of Array.from(products.values())) {
+      for (const l of product.lots) {
+        if (l.fresh) {
+          // lotInfo อ่านตอนเขียน: ผู้เรียกเติมเลขใบรับ (grNo) ในช่วงอ่านของทรานแซกชัน
+          const { info, ...rest } = l.fresh;
+          const clean = Object.fromEntries(Object.entries({ supplierId: "", supplierName: rest.partyName || "", poRef: "", grNo: "", projectId: "", projectName: "", source: "GR", ...info }).filter(([k]) => k !== "receivedDate").map(([k, v]) => [k, String(v ?? "").slice(0, 300)]));
+          transaction.set(l.ref, { ...rest, ...clean, qtyRemaining: l.remaining, status: l.remaining > 0 ? "open" : "closed", receivedAt: serverTimestamp(), updatedAt: serverTimestamp(), isDeleted: false });
+        } else if (l.dirty) {
+          transaction.update(l.ref, { qtyRemaining: l.remaining, status: l.remaining > 0 ? "open" : "closed", updatedAt: serverTimestamp() });
+        }
+      }
     }
 
     await extraWrites?.(transaction);

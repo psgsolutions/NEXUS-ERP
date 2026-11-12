@@ -45,14 +45,16 @@ export async function POST(request: Request) {
 
     // รวมรายการตาม (สินค้า, ตำแหน่ง) และตรวจไม่ให้เกินจำนวนที่ยังค้างเบิก
     const remaining = soPickRemaining(so);
-    const byKey = new Map<string, { productId: string; location: string; qty: number }>();
+    const byKey = new Map<string, { productId: string; location: string; qty: number; lots: { lotNo: string; qty: number }[] }>();
     const byProduct = new Map<string, number>();
     for (const line of lines) {
       const qty = Math.floor(Number(line?.qty) || 0);
       if (!line?.productId || !line?.location || qty <= 0) continue;
       const key = `${line.location}|${line.productId}`;
       const prev = byKey.get(key);
-      byKey.set(key, { productId: line.productId, location: line.location, qty: (prev?.qty || 0) + qty });
+      // Lot ที่เลือกเอง (ไม่เลือก = ระบบตัดแบบเข้าก่อนออกก่อน)
+      const picks = (Array.isArray(line.lots) ? line.lots : []).slice(0, 50).map((l: any) => ({ lotNo: String(l?.lotNo || "").slice(0, 60), qty: Number(l?.qty) || 0 })).filter((l: any) => l.lotNo && l.qty > 0);
+      byKey.set(key, { productId: line.productId, location: line.location, qty: (prev?.qty || 0) + qty, lots: [...(prev?.lots || []), ...picks] });
       byProduct.set(line.productId, (byProduct.get(line.productId) || 0) + qty);
     }
     if (byKey.size === 0) return NextResponse.json({ success: false, error: "ไม่มีรายการที่จะเบิก" }, { status: 400 });
@@ -84,13 +86,15 @@ export async function POST(request: Request) {
     }
 
     const fromReserved = so.stockReserved ?? Boolean(so.quoteId);
-    const movements: StockMovement[] = Array.from(byKey.values()).map(({ productId, location, qty }) => ({
+    const movements: StockMovement[] = Array.from(byKey.values()).map(({ productId, location, qty, lots }) => ({
       companyId,
       productId,
       type: "OUT",
       quantity: qty,
       ...(location === UNASSIGNED ? {} : { fromLocation: location }),
       referenceId: soId,
+      partyName: String(so.customerName || "").slice(0, 200),
+      ...(lots.length ? { lots } : {}),
       userId,
       fromReserved,
     }));

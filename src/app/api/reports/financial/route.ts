@@ -6,20 +6,21 @@ import { balanceSheet, generalLedger, monthEnd, postingLines, profitAndLoss, tri
 import { inputVatRows, outputVatRows, vatTotals } from "@/lib/vat-reports";
 import { buildWhtRecords, computePP30 } from "@/lib/tax-calc";
 import { getRecords } from "@/lib/master-store.server";
-import { cashFlow, findAnomalies, salesProfit } from "@/lib/management-reports";
+import { cashFlow, findAnomalies, salesProfit, salesYears, type SalesBy } from "@/lib/management-reports";
+import { listProducts } from "@/lib/product-store.server";
 
 /**
  * [API-SERVER] รายงานบัญชีและภาษี (คำนวณที่ server จากข้อมูลจริง)
  * Endpoint: POST /api/reports/financial
  * body: { companyId, report, from?: "YYYY-MM", to?: "YYYY-MM", account? }
  *  report: "tb" งบทดลอง | "gl" บัญชีแยกประเภท | "pl" งบกำไรขาดทุน | "bs" งบแสดงฐานะการเงิน (ณ สิ้นเดือน to)
- *          "cf" งบกระแสเงินสด | "sales-customer" / "sales-product" ยอดขายและกำไรขั้นต้น รายลูกค้า/รายสินค้า (ช่วงเดือน)
+ *          "cf" งบกระแสเงินสด | "sales-customer" / "sales-product" / "sales-salesperson" / "sales-brand" / "sales-project" ยอดขายและกำไรขั้นต้น (ช่วงเดือน) + ปีที่มีข้อมูล
  *          "vat-out" รายงานภาษีขาย | "vat-in" รายงานภาษีซื้อ | "pnd3" / "pnd53" รายงานภาษีหัก ณ ที่จ่าย (เดือน to)
  * - เฉพาะผู้มีสิทธิ์ finance:view; งบการเงินใช้รายการที่ลงบัญชีแล้วเท่านั้น
  */
 
 const YM = /^\d{4}-(0[1-9]|1[0-2])$/;
-const REPORTS = ["tb", "gl", "pl", "bs", "cf", "sales-customer", "sales-product", "sales-salesperson", "anomalies", "vat-out", "vat-in", "pnd3", "pnd53"] as const;
+const REPORTS = ["tb", "gl", "pl", "bs", "cf", "sales-customer", "sales-product", "sales-salesperson", "sales-brand", "sales-project", "anomalies", "vat-out", "vat-in", "pnd3", "pnd53"] as const;
 type Report = (typeof REPORTS)[number];
 const thisMonth = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 7);
 
@@ -51,15 +52,16 @@ export async function POST(request: Request) {
       const rows = findAnomalies({ invoices, expenses, payments, journals: jes }, fromDate, toDate, companyId);
       return NextResponse.json({ ...base, rows, high: rows.filter((r) => r.severity === "high").length });
     }
-    if (report === "sales-customer" || report === "sales-product" || report === "sales-salesperson") {
-      const [invoices, notes] = await Promise.all([col("invoices"), col("cndn")]);
+    if (report.startsWith("sales-")) {
+      const [invoices, notes, products] = await Promise.all([col("invoices"), col("cndn"), report === "sales-brand" ? listProducts(companyId) : Promise.resolve([])]);
       if (report === "sales-salesperson" && invoices.some((i) => !i.salesPersonId && i.salesOrderId)) {
         // ใบกำกับรุ่นก่อนที่ไม่ได้เก็บพนักงานขาย: ดึงจากใบสั่งขายต้นทาง
         const sos = new Map((await col("sales_orders")).map((s) => [String(s.id), s]));
         for (const i of invoices) if (!i.salesPersonId && i.salesOrderId) { const s: any = sos.get(String(i.salesOrderId)); if (s) { i.salesPersonId = s.salesPersonId || s.createdBy || ""; i.salespersonName = s.salespersonName || s.createdByEmail || ""; } }
       }
-      const by = report === "sales-customer" ? "customer" : report === "sales-product" ? "product" : "salesperson";
-      return NextResponse.json({ ...base, ...salesProfit(invoices, notes, fromDate, toDate, by) });
+      const by = report.slice("sales-".length) as SalesBy;
+      const brandOf = new Map(products.map((p: any) => [String(p.id), String(p.brand || "").trim()]).filter(([, b]) => b) as [string, string][]);
+      return NextResponse.json({ ...base, years: salesYears(invoices, notes), ...salesProfit(invoices, notes, fromDate, toDate, by, brandOf) });
     }
 
     if (report === "tb" || report === "gl" || report === "pl" || report === "bs") {

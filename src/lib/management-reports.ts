@@ -83,10 +83,34 @@ const inRange = (d: string, from: string, to: string) => !!d && d >= from && d <
  * - ใบลดหนี้/ใบเพิ่มหนี้: ปรับยอดขายของลูกค้า (รายสินค้าแสดงเป็นแถว "ลดหนี้/เพิ่มหนี้")
  * - ใบแจ้งหนี้งานโครงการที่ไม่มีรายการ: ทั้งใบเป็นหนึ่งแถว "งานตามสัญญา/งวดงาน"
  */
-export function salesProfit(invoices: any[], notes: any[], from: string, to: string, by: "customer" | "product" | "salesperson") {
+export type SalesBy = "customer" | "product" | "salesperson" | "brand" | "project";
+const SERVICE_TYPES = ["SERVICE", "LABOR", "LABOUR"];
+/** ปีที่มีใบกำกับ/ใบลดหนี้จริง (ใหม่ → เก่า) — ใช้ทำตัวเลือกปีของรายงานขาย */
+export function salesYears(invoices: any[], notes: any[]): number[] {
+  const ys = new Set<number>();
+  for (const d of [...invoices, ...notes]) {
+    if (!live(d)) continue;
+    const y = Number(String(d.issueDate || d.docDate || "").slice(0, 4));
+    if (y >= 2000 && y <= 2200) ys.add(y);
+  }
+  return [...ys].sort((a, b) => b - a);
+}
+
+/**
+ * by "brand": ยี่ห้อจากทะเบียนสินค้า (brandOf: productId → ยี่ห้อ) · บรรทัดบริการ/ค่าแรง = "งานบริการ/ค่าแรง" · ไม่มียี่ห้อ = "ไม่ระบุยี่ห้อ"
+ * by "project": โครงการของใบกำกับ (ใบลดหนี้/เพิ่มหนี้ใช้โครงการของใบที่อ้างถึง) · ไม่มี = "ขายทั่วไป (ไม่ผูกโครงการ)"
+ */
+export function salesProfit(invoices: any[], notes: any[], from: string, to: string, by: SalesBy, brandOf?: Map<string, string>) {
   // พนักงานขายของใบ (ใบลดหนี้ใช้พนักงานขายของใบกำกับที่อ้างถึง)
   const seller = (inv: any) => ({ key: String(inv?.salesPersonId || inv?.salespersonName || "-"), name: String(inv?.salespersonName || "ไม่ระบุพนักงานขาย") });
   const invById = new Map(invoices.map((i) => [String(i.id), i]));
+  const project = (inv: any) => (inv?.projectId || inv?.projectName ? { key: `p:${inv.projectId || inv.projectName}`, name: String(inv.projectName || inv.projectNo || inv.projectId) } : { key: "none", name: "ขายทั่วไป (ไม่ผูกโครงการ)" });
+  const brand = (it: any) => {
+    const b = String((it.productId && brandOf?.get(String(it.productId))) || it.brand || "").trim();
+    if (b) return { key: `b:${b.toLowerCase()}`, name: b };
+    if (SERVICE_TYPES.includes(String(it.itemType || it.productType || "").toUpperCase())) return { key: "service", name: "งานบริการ/ค่าแรง" };
+    return { key: "nobrand", name: "ไม่ระบุยี่ห้อ" };
+  };
   const rows = new Map<string, SalesRow & { docSet: Set<string> }>();
   const add = (key: string, name: string, doc: string, qty: number, revenue: number, cost: number, costMissing: boolean) => {
     const cur = rows.get(key) || { key, name, docs: 0, qty: 0, revenue: 0, cost: 0, profit: 0, margin: null, costMissing: false, docSet: new Set<string>() };
@@ -107,6 +131,12 @@ export function salesProfit(invoices: any[], notes: any[], from: string, to: str
       add(sp.key, sp.name, doc, 0, base, cost, !items.length || items.some((it) => !(Number(it.cost ?? it.costPrice) > 0)));
       continue;
     }
+    if (by === "project") {
+      const pj = project(inv);
+      const cost = items.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.cost ?? it.costPrice) || 0), 0);
+      add(pj.key, pj.name, doc, 0, base, cost, !items.length || items.some((it) => !(Number(it.cost ?? it.costPrice) > 0)));
+      continue;
+    }
     if (!items.length || total <= 0) {
       if (by === "customer") add(cust.key, cust.name, doc, 0, base, 0, true);
       else add("contract", "งานตามสัญญา / งวดงาน (ไม่มีรายการสินค้า)", doc, 0, base, 0, true);
@@ -117,6 +147,7 @@ export function salesProfit(invoices: any[], notes: any[], from: string, to: str
       const missing = !(unitCost > 0);
       const cost = missing ? 0 : qty * unitCost;
       if (by === "customer") add(cust.key, cust.name, doc, qty, revenue, cost, missing);
+      else if (by === "brand") { const b = brand(it); add(b.key, b.name, doc, qty, revenue, cost, missing); }
       else add(String(it.productId || it.sku || it.name), String(it.name || it.productName || it.sku || "-"), doc, qty, revenue, cost, missing);
     });
   }
@@ -127,6 +158,7 @@ export function salesProfit(invoices: any[], notes: any[], from: string, to: str
     const doc = String(n.documentNo || n.id || "");
     if (by === "salesperson") { const sp = seller(invById.get(String(n.invoiceDocId))); add(sp.key, sp.name, doc, 0, amount, 0, false); }
     else if (by === "customer") add(String(n.customerId || n.customerName || "-"), String(n.customerName || "-"), doc, 0, amount, 0, false);
+    else if (by === "project") { const pj = project(invById.get(String(n.invoiceDocId)) || n); add(pj.key, pj.name, doc, 0, amount, 0, false); }
     else add(n.type === "CN" ? "cn" : "dn", n.type === "CN" ? "ใบลดหนี้ (ลดยอดขาย)" : "ใบเพิ่มหนี้ (เพิ่มยอดขาย)", doc, 0, amount, 0, false);
   }
   const out: SalesRow[] = [...rows.values()].map(({ docSet, ...x }) => {
@@ -134,7 +166,7 @@ export function salesProfit(invoices: any[], notes: any[], from: string, to: str
     return { ...x, docs: docSet.size, qty: r2(x.qty), revenue, cost, profit, margin: revenue > 0 ? r2((profit / revenue) * 100) : null };
   }).sort((a, b) => b.revenue - a.revenue);
   const totals = { revenue: r2(out.reduce((s, x) => s + x.revenue, 0)), cost: r2(out.reduce((s, x) => s + x.cost, 0)) };
-  return { rows: out, totals: { ...totals, profit: r2(totals.revenue - totals.cost), margin: totals.revenue > 0 ? r2(((totals.revenue - totals.cost) / totals.revenue) * 100) : null }, costMissing: out.some((x) => x.costMissing) };
+  return { rows: out, totals: { ...totals, profit: r2(totals.revenue - totals.cost), margin: totals.revenue > 0 ? r2(((totals.revenue - totals.cost) / totals.revenue) * 100) : null }, costMissing: out.some((x) => x.costMissing), negative: out.filter((x) => x.profit < 0).length };
 }
 
 // ---------- สินค้าเคลื่อนไหวช้า / มูลค่าสต็อกตามอายุ ----------

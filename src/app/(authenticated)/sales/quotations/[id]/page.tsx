@@ -543,6 +543,7 @@ export default function QuotationEditPage() {
               price: lData.unitPrice || 0,
               cost: lData.costPrice || 0,
               recipe: lData.recipe || null,
+              priceBase: lData.priceBase || "",
               discount: lData.discountString || "",
               discountType: lData.discountType || 'PERCENT',
               discountValue: lData.discountValue || 0,
@@ -568,6 +569,7 @@ export default function QuotationEditPage() {
               price: Number(it.price ?? it.unitPrice) || 0,
               cost: Number(it.cost ?? it.costPrice) || 0,
               recipe: it.recipe || null,
+              priceBase: "",
               discount: "",
               discountType: 'PERCENT',
               discountValue: 0,
@@ -843,6 +845,7 @@ export default function QuotationEditPage() {
         glAccountId: item.incomeAccountId || "411100",
         isOptional: !!item.isOptional,
         recipe: item.recipe || null,
+        priceBase: item.priceBase || "",
       }));
       const productWritebacks = items
         .filter((item) => item.saveToProductMaster && item.productId)
@@ -1422,6 +1425,7 @@ export default function QuotationEditPage() {
           items={items}
           onChange={setItems}
           taxType={taxType}
+          customerId={selectedCustomerId}
           priceDeviationWarningPercent={priceDeviationWarningPercent}
         />
       </div>

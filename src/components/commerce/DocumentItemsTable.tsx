@@ -7,6 +7,7 @@ import { formatCurrency, calculateLineGP } from "@/lib/erp-logic";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { useProducts } from "@/hooks/useProducts";
 import { normalizeRecipe, recipeCost, recipeDetails } from "@/lib/service-recipe";
+import { PriceBasePanel } from "@/components/commerce/PriceBasePanel";
 import { useAuth } from "@/context/AuthContext";
 import { can, canViewCost } from "@/lib/permissions";
 import { SupplierPriceSelector } from "@/components/inventory/SupplierPriceSelector";
@@ -18,6 +19,8 @@ export interface DocumentItemsTableProps {
   isLocked?: boolean;
   taxType?: any;
   priceDeviationWarningPercent?: number;
+  /** ลูกค้าของเอกสาร — ใช้ฐานราคา "ราคาล่าสุดที่ขายลูกค้ารายนี้" */
+  customerId?: string;
 }
 
 /* ---------------------------------------------------------------------------
@@ -144,7 +147,8 @@ const InlineRow = ({
   duplicateItem,
   isLocked,
   availableProducts,
-  priceDeviationWarningPercent = 10
+  priceDeviationWarningPercent = 10,
+  customerId
 }: any) => {
   const { role, roles, checkPermission } = useAuth();
   const canEditProduct = checkPermission ? checkPermission("inventory:edit") : can(roles, "inventory:edit");
@@ -660,6 +664,10 @@ const InlineRow = ({
               </div>
             )}
 
+            {item.productId && item.itemType === "PRODUCT" && (
+              <PriceBasePanel productId={item.productId} qty={Number(item.qty) || 1} customerId={customerId} currentPrice={Number(item.price) || 0} currentBase={item.priceBase}
+                disabled={isLocked} onApply={(v) => updateItemFields(item.id, { price: v.price, priceBase: v.priceBase, ...(v.cost !== undefined ? { cost: v.cost, costPrice: v.cost } : {}) })} />
+            )}
             {canSeeCost && (
               <>
                 <div className="flex justify-between items-center gap-2">
@@ -687,7 +695,8 @@ export function DocumentItemsTable({
   items = [],
   onChange,
   isLocked = false,
-  priceDeviationWarningPercent = 10
+  priceDeviationWarningPercent = 10,
+  customerId
 }: DocumentItemsTableProps) {
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
 
@@ -880,6 +889,7 @@ export function DocumentItemsTable({
             isLocked={isLocked}
             availableProducts={availableProducts}
             priceDeviationWarningPercent={priceDeviationWarningPercent}
+            customerId={customerId}
           />
         ))}
         {items.length === 0 && (

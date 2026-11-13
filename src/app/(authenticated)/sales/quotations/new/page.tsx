@@ -667,6 +667,7 @@ export default function QuotationCreationPage() {
         glAccountId: item.incomeAccountId || "411100",
         isOptional: !!item.isOptional,
         recipe: item.recipe || null,
+        priceBase: item.priceBase || "",
       }));
       const productWritebacks = items
         .filter((item) => item.saveToProductMaster && item.productId)
@@ -1294,6 +1295,7 @@ export default function QuotationCreationPage() {
           items={items}
           onChange={setItems}
           taxType={taxType}
+          customerId={selectedCustomerId}
           priceDeviationWarningPercent={priceDeviationWarningPercent}
         />
       </div>

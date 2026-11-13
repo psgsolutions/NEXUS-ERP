@@ -66,6 +66,7 @@ import { RecordDeleteButton } from "@/components/shared/RecordDeleteButton";
 import { ProductSuppliersBox } from "@/components/shared/ProductSuppliersBox";
 import { ProductCostHistory } from "@/components/shared/ProductCostHistory";
 import { ServiceRecipeCard } from "@/components/inventory/ServiceRecipeCard";
+import { ProductLotsCard } from "@/components/inventory/ProductLotsCard";
 import { can } from "@/lib/permissions";
 
 const CATEGORIES = [
@@ -770,7 +771,7 @@ export default function ProductDetailPage() {
       {/* ราคาทุนแต่ละล็อตที่รับเข้า เทียบต้นทุนเฉลี่ย */}
       {companyId && String((product as any).itemType || "").toUpperCase() === "SERVICE"
         ? <ServiceRecipeCard companyId={companyId} product={product} canEdit={can(roles, "inventory:edit")} />
-        : companyId && <ProductCostHistory companyId={companyId} productId={productId} />}
+        : companyId && <><ProductLotsCard companyId={companyId} productId={productId} unit={(product as any).unit} /><ProductCostHistory companyId={companyId} productId={productId} /></>}
 
       {/* Actions Card */}
       <GlassCard className="p-4 border-white/5 space-y-3">

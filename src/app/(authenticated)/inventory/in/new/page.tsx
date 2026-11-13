@@ -1,4 +1,5 @@
 "use client";
+import { spreadOtherCosts } from "@/lib/stock-lots";
 import React, { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { normalizePoStatus } from "@/lib/procurement-status";
@@ -52,7 +53,9 @@ function NewInventoryInScreen() {
     warehouseId: "",
     date: new Date().toISOString().split('T')[0],
     reference: "",
-    note: ""
+    note: "",
+    // ต้นทุนอื่นๆ ของบิล (ค่าส่ง ค่าขนย้าย ก่อน VAT) — กระจายเข้าต้นทุนต่อชิ้นตามสัดส่วนมูลค่า
+    otherCosts: "",
   });
 
   // ตำแหน่งรับเข้า:
@@ -138,6 +141,7 @@ function NewInventoryInScreen() {
           receivedBy: user.email || user.uid,
           warehouse: receiveLocation,
           warehouseCode: receiveWarehouse,
+          otherCosts: Number(header.otherCosts) || 0,
           items: lines,
         }),
       });
@@ -191,7 +195,11 @@ function NewInventoryInScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poParam, openPOs.length]);
 
-  const totalCost = items.reduce((acc, i) => acc + ((Number(i.qty) || 0) * (Number(i.price) || 0)), 0);
+  const goodsCost = items.reduce((acc, i) => acc + ((Number(i.qty) || 0) * (Number(i.price) || 0)), 0);
+  const otherCosts = Math.max(0, Number(header.otherCosts) || 0);
+  const totalCost = goodsCost + otherCosts;
+  // ต้นทุนต่อชิ้นหลังกระจายต้นทุนอื่น (แสดงตัวอย่างก่อนบันทึก — server คำนวณซ้ำ)
+  const landed = spreadOtherCosts(receivableItems().map((l) => ({ qty: l.qtyReceived, unitCost: l.unitPrice })), otherCosts);
 
   const headerContent = (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
@@ -324,6 +332,29 @@ function NewInventoryInScreen() {
           />
         </div>
 
+        <div className="space-y-3 pt-6 border-t border-white/5">
+          <div className="grid grid-cols-2 gap-6">
+            <Field label="ต้นทุนอื่นๆ ของบิล (บาท ก่อน VAT)">
+              <PillInput inputMode="decimal" value={header.otherCosts} onChange={(e) => setHeader({ ...header, otherCosts: e.target.value.replace(/[^\d.]/g, "") })}
+                placeholder="ค่าส่ง ค่าขนย้าย ค่าภาษีนำเข้า" className="w-full h-9 rounded-full px-6 text-right font-mono" />
+            </Field>
+            <p className="text-[11px] text-white/45 self-end pb-2">กระจายเข้าต้นทุนต่อชิ้นของสินค้าในบิลนี้ตามสัดส่วนมูลค่า แล้วเก็บเป็นต้นทุนของ Lot (ใช้คิดต้นทุนขายตอนขาย)</p>
+          </div>
+          {otherCosts > 0 && receivableItems().length > 0 && (
+            <div className="rounded-2xl border border-white/10 p-3 space-y-1" data-landed-preview>
+              <p className="text-[12px] font-bold text-white/70">ต้นทุนต่อชิ้นหลังกระจาย</p>
+              {receivableItems().map((l, i) => (
+                <div key={`${l.productId}-${i}`} className="flex items-center gap-3 text-[12px]">
+                  <span className="flex-1 min-w-0 truncate text-white/80">{l.name || l.sku}</span>
+                  <span className="font-mono text-white/50">{formatCurrency(l.unitPrice)}</span>
+                  <span className="text-white/40">→</span>
+                  <span className="font-mono text-white font-bold w-[110px] text-right">{formatCurrency(landed[i] ?? l.unitPrice)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="space-y-6 pt-6 border-t border-white/5">
           <Field label="หมายเหตุ">
             <textarea
@@ -345,7 +376,8 @@ function NewInventoryInScreen() {
         <h5 className="text-[14px] font-bold text-white/80">สรุปการรับเข้า</h5>
       </div>
       <WhatHappens items={[
-        "เพิ่มจำนวนคงเหลือในคลัง และคำนวณต้นทุนเฉลี่ย (WAC) ของสินค้าใหม่",
+        "สร้าง Lot ใหม่ต่อรายการ (เลข LOT-) เก็บผู้ขาย ใบรับ และต้นทุนต่อชิ้นจริง ใช้ตัดแบบเข้าก่อนออกก่อนตอนขาย",
+        otherCosts > 0 && `กระจายต้นทุนอื่นๆ ${formatCurrency(otherCosts)} เข้าต้นทุนต่อชิ้นตามสัดส่วนมูลค่า`,
         activeTab === "po" && header.poRef && "ปรับสถานะใบสั่งซื้อเป็นรับครบ / รับบางส่วน",
         "ตั้งยอดเจ้าหนี้ผู้ขาย และส่งรายการบัญชี (สินค้าคงเหลือ / เจ้าหนี้) ให้ฝ่ายบัญชีอนุมัติ",
         "จ่ายเงินผู้ขายภายหลังที่ จัดซื้อ › บันทึกรายจ่าย แล้วไปที่ การเงินและบัญชี › จ่ายชำระ",
@@ -360,6 +392,12 @@ function NewInventoryInScreen() {
           <span className="text-[11px] text-white/60 font-semibold uppercase tracking-widest">จำนวนชิ้นรวม</span>
           <span className="text-[14px] font-mono font-bold text-white">{items.reduce((acc, i) => acc + (Number(i.qty) || 0), 0)} ชิ้น</span>
         </div>
+        {otherCosts > 0 && (
+          <div className="flex justify-between items-center pb-4 border-b border-white/5">
+            <span className="text-[11px] text-white/60 font-semibold uppercase tracking-widest">ค่าสินค้า + ต้นทุนอื่น</span>
+            <span className="text-[12px] font-mono text-white/80">{formatCurrency(goodsCost)} + {formatCurrency(otherCosts)}</span>
+          </div>
+        )}
         <div className="flex justify-between items-end pt-2">
           <span className="text-[12px] text-white/80 font-semibold uppercase tracking-widest">มูลค่าต้นทุนรวม</span>
           <span className="text-xl font-mono font-black text-emerald-400 drop-shadow-neon text-right">{formatCurrency(totalCost)}</span>

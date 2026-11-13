@@ -13,6 +13,8 @@ import { useProducts } from "@/hooks/useProducts";
 import { apiFetch } from "@/lib/api-client";
 import { findLocation, findProductByScan, UNASSIGNED } from "@/lib/warehouse-location";
 import { soPickRemaining } from "@/lib/picking";
+import { LotPicker, type OpenLotView } from "@/components/inventory/LotPicker";
+import type { LotPick } from "@/lib/stock-lots";
 
 type Line = { productId: string; location: string; qty: number };
 type Feedback = { type: "ok" | "error" | "info"; text: string } | null;
@@ -47,7 +49,22 @@ function PickingScreen() {
   const [dnOpen, setDnOpen] = useState(false);
   const scanRef = useRef<HTMLInputElement>(null);
   const focusScan = () => { setTimeout(() => scanRef.current?.focus(), 0); };
-  useEffect(() => { setLines([]); setLocation(""); setFeedback(null); focusScan(); }, [soId]);
+  // Lot ที่ยังมีของของสินค้าที่ค้างเบิก (โหลดใหม่หลังบันทึก) และ Lot ที่เลือกเองรายสินค้า
+  const [lotsByProduct, setLotsByProduct] = useState<Record<string, OpenLotView[]>>({});
+  const [lotPicks, setLotPicks] = useState<Record<string, LotPick[]>>({});
+  const [lotsTick, setLotsTick] = useState(0);
+  const remainingKey = Array.from(remaining.keys()).sort().join("|");
+  useEffect(() => {
+    if (!companyId || !remainingKey) return;
+    let off = false;
+    Promise.all(remainingKey.split("|").map(async (productId) => {
+      const r = await apiFetch("/api/inventory/lots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "open", productId }) });
+      const d = await r.json().catch(() => ({}));
+      return [productId, d.success ? d.lots || [] : []] as const;
+    })).then((rows) => { if (!off) setLotsByProduct(Object.fromEntries(rows)); }).catch(() => {});
+    return () => { off = true; };
+  }, [companyId, remainingKey, lotsTick]);
+  useEffect(() => { setLines([]); setLocation(""); setFeedback(null); setLotPicks({}); focusScan(); }, [soId]);
 
   const pickedInLines = (productId: string, loc?: string) =>
     lines.filter((l) => l.productId === productId && (loc === undefined || l.location === loc)).reduce((s, l) => s + l.qty, 0);
@@ -98,11 +115,13 @@ function PickingScreen() {
       const res = await apiFetch("/api/inventory/pick", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId, soId: so.id, lines }),
+        body: JSON.stringify({ companyId, soId: so.id, lines: lines.map((l) => (lotPicks[l.productId]?.length && lines.filter((x) => x.productId === l.productId).length === 1 ? { ...l, lots: lotPicks[l.productId] } : l)) }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "เบิกสินค้าไม่สำเร็จ");
       setLines([]);
+      setLotPicks({});
+      setLotsTick((t) => t + 1);
       if (data.deliveryNoteNo) setLastDn(data.deliveryNoteNo);
       if (data.allPicked) {
         setFeedback({ type: "ok", text: "เบิกครบทุกรายการแล้ว ใบสั่งขายเปลี่ยนเป็นส่งมอบแล้ว" });
@@ -201,6 +220,18 @@ function PickingScreen() {
             <button onClick={() => setLines((prev) => prev.filter((x) => x !== l))} className="w-8 h-8 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center"><Trash2 size={14} /></button>
           </div>
         ))}
+        {/* Lot ที่จะถูกตัด (ต่อสินค้า): ค่าตั้งต้นเข้าก่อนออกก่อน เลือกเองได้เมื่อหยิบจากตำแหน่งเดียว */}
+        {Array.from(new Set(lines.map((l) => l.productId))).map((pid) => {
+          const multi = lines.filter((l) => l.productId === pid).length > 1;
+          return (
+            <div key={`lots-${pid}`} className="rounded-xl border border-white/10 p-3 space-y-1.5">
+              <p className="text-[12px] font-bold text-white/80 truncate">Lot ที่ตัด: {productById.get(pid)?.name || pid} × {pickedInLines(pid)}</p>
+              <LotPicker lots={lotsByProduct[pid] || []} qty={pickedInLines(pid)} value={multi ? [] : lotPicks[pid] || []} disabled={multi || saving}
+                onChange={(v) => setLotPicks((x) => ({ ...x, [pid]: v }))} />
+              {multi && <p className="text-[11px] text-white/45">หยิบจากหลายตำแหน่ง — ระบบตัด Lot แบบเข้าก่อนออกก่อนให้</p>}
+            </div>
+          );
+        })}
         <div className="flex items-center justify-between pt-3 border-t border-white/5">
           <span className="text-[12px] text-white/60 font-bold">รวม {totalQty} ชิ้น</span>
           <PillButton variant="confirm" className="h-9 px-6 font-bold text-xs" disabled={saving || lines.length === 0} onClick={confirm}>
@@ -234,6 +265,11 @@ function PickingScreen() {
               {free > 0 && <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/5 text-white/50">ไม่ระบุตำแหน่ง: {free}</span>}
               {spots.length === 0 && free <= 0 && <span className="text-[11px] text-red-400">ไม่มีสต็อก</span>}
             </div>
+            {(lotsByProduct[productId] || []).length > 0 && (
+              <p className="text-[11px] text-white/50 pt-0.5" title="Lot ที่ระบบจะตัดก่อน (เข้าก่อนออกก่อน)">
+                Lot แนะนำ: {(lotsByProduct[productId] || []).slice(0, 3).map((l) => `${l.lotNo} (เหลือ ${l.qtyRemaining})`).join(" → ")}
+              </p>
+            )}
           </div>
         );
       })}

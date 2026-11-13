@@ -1,5 +1,6 @@
 "use client";
 
+import { STOCK_STATE_BADGE, STOCK_STATE_LABEL, stockState, stockValue } from "@/lib/stock-status";
 import React, { useState, useEffect, useMemo } from "react";
 import { 
   Package, 
@@ -36,7 +37,8 @@ import {
   MapPin,
   Sparkles,
   Trash2,
-  Copy
+  Copy,
+  Layers,
 } from "lucide-react";
 import { 
   PillButton, 
@@ -349,7 +351,8 @@ export default function InventoryPage() {
   ], ["serials", "kits", "layout"], activeTab);
   const [searchQuery, setSearchQuery] = useState("");
   // กรองเฉพาะสินค้าที่ต่ำกว่าเกณฑ์ (คลิกจากตัวเลขสรุป/การ์ดสินค้าใกล้หมด)
-  const [lowOnly, setLowOnly] = useState(false);
+  // ตัวกรองจากการ์ดสรุป: false = ทั้งหมด · true = หมด/ใกล้หมด · "instock" = มีสต็อก
+  const [lowOnly, setLowOnly] = useState<boolean | "instock">(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
@@ -417,8 +420,10 @@ export default function InventoryPage() {
 
   // Metric summaries (compact design to place directly on the header plane)
   const totalQty = products.reduce((acc, curr) => acc + (curr.stockStatus?.onHand || 0), 0);
-  const totalCost = products.reduce((acc, curr) => acc + ((curr.stockStatus?.onHand || 0) * (curr.pricing?.costWAC || 0)), 0);
-  const lowStockCount = products.filter(p => (p.stockStatus?.onHand || 0) <= ((p as any).minStock || 0)).length;
+  const totalCost = products.reduce((acc, curr) => acc + stockValue(curr), 0);
+  // ใกล้หมด/หมด ตามจุดสั่งซื้อซ้ำรายสินค้า (ไม่นับงานบริการ) · รายการที่มีสต็อก
+  const lowStockCount = products.filter((p) => ["low", "out"].includes(stockState(p))).length;
+  const inStockCount = products.filter((p) => (p.stockStatus?.onHand || 0) > 0).length;
 
 
   const { data: dbKits, loading: kitsLoading } = useRealtimeCollection<any>('kits');
@@ -450,7 +455,7 @@ export default function InventoryPage() {
 
   // Filtering calculations
   const filteredProducts = products.filter(p =>
-    (!lowOnly || (p.stockStatus?.onHand || 0) <= ((p as any).minStock || 0)) && (
+    (!lowOnly || (lowOnly === "instock" ? (p.stockStatus?.onHand || 0) > 0 : ["low", "out"].includes(stockState(p)))) && (
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (p.category && p.category.toLowerCase().includes(searchQuery.toLowerCase())))
@@ -525,12 +530,21 @@ export default function InventoryPage() {
               <span className="text-[17px] font-bold text-nexus-blue mt-0.5 mono-numbers leading-none">฿{totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
             </div>
           </div>
+          <div role="button" tabIndex={0} title="คลิกเพื่อแสดงเฉพาะสินค้าที่มีสต็อก" onClick={() => { setActiveTab("items"); setLowOnly("instock"); }} onKeyDown={(e) => { if (e.key === "Enter") { setActiveTab("items"); setLowOnly("instock"); } }} className="cursor-pointer px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-nexus-teal/30 hover:bg-white/[0.03]" data-kpi="instock">
+            <div className="w-8 h-8 rounded-lg bg-nexus-teal/10 flex items-center justify-center text-nexus-teal border border-nexus-teal/20 shrink-0">
+              <Layers size={16} />
+            </div>
+            <div className="flex flex-col justify-center">
+              <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">รายการที่มีสต็อก</span>
+              <span className="text-[17px] font-bold text-nexus-teal mt-0.5 mono-numbers leading-none">{inStockCount.toLocaleString()} รายการ</span>
+            </div>
+          </div>
           <div role="button" tabIndex={0} title="คลิกเพื่อแสดงเฉพาะสินค้าต่ำกว่าเกณฑ์" onClick={() => { setActiveTab("items"); setLowOnly(true); }} onKeyDown={(e) => { if (e.key === "Enter") (() => { setActiveTab("items"); setLowOnly(true); })(); }} className="cursor-pointer px-4 py-1.5 bg-black/40 border border-white/5 rounded-xl flex items-center gap-2.5 min-w-[130px] transition-all hover:border-warning/30 hover:bg-white/[0.03]">
             <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center text-warning border border-warning/20 shrink-0">
               <ShieldAlert size={16} />
             </div>
             <div className="flex flex-col justify-center">
-              <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">สต็อกต่ำกว่าเกณฑ์</span>
+              <span className="text-sm font-medium text-white/30 uppercase tracking-widest leading-none">หมด / ใกล้หมด</span>
               <span className="text-[17px] font-bold text-warning mt-0.5 mono-numbers leading-none">{lowStockCount} SKU</span>
             </div>
           </div>
@@ -683,7 +697,7 @@ export default function InventoryPage() {
                  />
                  <div className="flex items-center gap-4 pr-1.5">
                     {activeTab === "items" && lowOnly && (
-                      <button type="button" onClick={() => setLowOnly(false)} title="ยกเลิกตัวกรอง" className="h-7 px-3 rounded-full text-[12px] font-bold border bg-warning/15 border-warning/40 text-warning whitespace-nowrap">เฉพาะสินค้าต่ำกว่าเกณฑ์ ✕</button>
+                      <button type="button" onClick={() => setLowOnly(false)} title="ยกเลิกตัวกรอง" className="h-7 px-3 rounded-full text-[12px] font-bold border bg-warning/15 border-warning/40 text-warning whitespace-nowrap">{lowOnly === "instock" ? "เฉพาะที่มีสต็อก ✕" : "เฉพาะหมด / ใกล้หมด ✕"}</button>
                     )}
                     <span className="text-[11px] text-white/30 uppercase tracking-widest font-bold hidden sm:block px-2">
                       {activeTab === "items" ? `ค้นพบ ${filteredProducts.length} รายการ` :
@@ -706,24 +720,23 @@ export default function InventoryPage() {
                   {/* Items List Table */}
                   {activeTab === "items" && (
                     <NexusTable 
-                      headers={["รหัสสินค้า", "ชื่อพัสดุ / ทรัพยากร", "หมวดหมู่พัสดุ", "จำนวนคงเหลือ", "สถานะสต็อก", "ราคาทุนเฉลี่ย WAC"]}
+                      headers={["รหัสสินค้า", "ชื่อพัสดุ / ทรัพยากร", "หมวดหมู่พัสดุ", "จำนวนคงเหลือ", "สถานะสต็อก", "ต้นทุนเฉลี่ย", "มูลค่าคงเหลือ"]}
                       minWidth="min-w-[140px]"
                     >
                       {loading ? (
                         <NexusTableRow className="bg-transparent hover:bg-transparent pointer-events-none">
-                          <NexusTableCell colSpan={6} className="p-20 text-center text-white/20">
+                          <NexusTableCell colSpan={7} className="p-20 text-center text-white/20">
                             <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-nexus-teal" />
                             <span className="text-sm font-medium tracking-widest uppercase">กำลังดึงข้อมูลพัสดุ...</span>
                           </NexusTableCell>
                         </NexusTableRow>
                       ) : filteredProducts.length === 0 ? (
-                        <EmptyGuide cols={6} text="ไม่พบรายการสินค้า" hint="เพิ่มสินค้าที่ปุ่ม &quot;เพิ่มสินค้า&quot; หรือนำเข้าจาก Excel (เมนู นำเข้าข้อมูล Excel) · ถ้าค้นหาอยู่ ลองล้างคำค้น" />
+                        <EmptyGuide cols={7} text="ไม่พบรายการสินค้า" hint="เพิ่มสินค้าที่ปุ่ม &quot;เพิ่มสินค้า&quot; หรือนำเข้าจาก Excel (เมนู นำเข้าข้อมูล Excel) · ถ้าค้นหาอยู่ ลองล้างคำค้น" />
                       ) : (
                         filteredProducts.map((item, idx) => {
-                          const isLow = (item.stockStatus?.onHand || 0) <= ((item as any).minStock || 0);
-                          const isOut = (item.stockStatus?.onHand || 0) === 0;
-                          const statusLabel = isOut ? "สินค้าหมด" : isLow ? "สต็อกต่ำ" : "พร้อมใช้งาน";
-                          const statusType = isOut ? "danger" : isLow ? "pending" : "active";
+                          const st = stockState(item);
+                          const statusLabel = STOCK_STATE_LABEL[st];
+                          const statusType = STOCK_STATE_BADGE[st];
 
                           return (
                             <NexusTableRow 
@@ -753,6 +766,9 @@ export default function InventoryPage() {
                               </NexusTableCell>
                               <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white/60 font-bold" mono>
                                 ฿{(item.pricing?.costWAC || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </NexusTableCell>
+                              <NexusTableCell className="w-[1%] whitespace-nowrap text-right text-white/85 font-bold" mono>
+                                {stockValue(item) > 0 ? `฿${stockValue(item).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"}
                               </NexusTableCell>
                             </NexusTableRow>
                           );

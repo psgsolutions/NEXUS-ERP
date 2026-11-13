@@ -10,6 +10,7 @@ import { auditServer } from "@/services/audit.server";
  * Lot สินค้า — POST /api/inventory/lots { companyId, action, ... }
  *  open    { productId }  Lot ที่ยังมีของ เรียงเข้าก่อนออกก่อน (ใช้ตอนเบิก/ขาย)
  *  product { productId }  ทุก Lot ของสินค้า (รวมที่หมดแล้ว)
+ *  summary { productId }  รับเข้า/จ่ายออกรวม Lot ที่มีของ และอายุ Lot เก่าสุด
  *  trace   { lotNo }      ติดตาม Lot: ที่มา (ผู้ขาย ใบรับ ใบสั่งซื้อ) และตัดออกให้ใครไปเท่าไร
  *  importOpening { ref, lots: [{ productId, qty, unitCost, receivedDate, supplierName, projectName, sourceRef }] }
  *          ยอดยกมาเป็น Lot (คงวันที่รับเดิม → FIFO ถูกลำดับ) · ไม่ลงบัญชี (มูลค่าอยู่ในงบทดลองยกมา) · ต้องมี inventory:edit
@@ -43,6 +44,19 @@ export async function POST(request: Request) {
       if (action === "open") q = q.where("status", "==", "open");
       const lots = fifoOrder((await q.limit(500).get()).docs.filter((d) => d.get("isDeleted") !== true).map((d) => view(d.id, d.data())));
       return NextResponse.json({ success: true, lots: action === "open" ? lots.filter((l) => l.qtyRemaining > 0) : lots.reverse() });
+    }
+
+    if (action === "summary") {
+      // สรุปรายสินค้า: รับเข้า/จ่ายออกรวม (จำนวน มูลค่า/ต้นทุน) จากสมุดความเคลื่อนไหว
+      if (!productId || productId.includes("/")) return NextResponse.json({ success: false, error: "ไม่ระบุสินค้า" }, { status: 400 });
+      const moves = (await adminDb.collection(`companies/${companyId}/stock_movements`).where("productId", "==", productId).limit(2000).get()).docs.map((d) => d.data()).filter((m) => !m.isDeleted);
+      const sum = (t: string, k: "quantity" | "totalValue") => r2(moves.filter((m) => m.type === t).reduce((a, m) => a + (Number(m[k]) || 0), 0));
+      const lots = (await col.where("productId", "==", productId).where("status", "==", "open").get()).docs.map((d) => d.data());
+      const oldest = lots.map((l) => String(l.receivedDate || "")).filter(Boolean).sort()[0] || "";
+      return NextResponse.json({ success: true, summary: {
+        inQty: sum("IN", "quantity"), outQty: sum("OUT", "quantity"), openLots: lots.length, oldestLotDate: oldest,
+        ...(seeCost ? { inValue: sum("IN", "totalValue"), outCost: sum("OUT", "totalValue"), lotValue: r2(lots.reduce((a, l) => a + (Number(l.qtyRemaining) || 0) * (Number(l.unitCost) || 0), 0)) } : {}),
+      } });
     }
 
     if (action === "trace") {

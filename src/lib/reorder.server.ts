@@ -1,7 +1,30 @@
 import { adminDb } from "@/lib/firebase-admin";
 import { listProducts } from "@/lib/product-store.server";
+import { listRecords } from "@/lib/master-store.server";
 import { notify } from "@/lib/notifications.server";
-import { reorderSuggestions } from "@/lib/reorder";
+import { latestLotSupplier, reorderSuggestions, type ReorderLine } from "@/lib/reorder";
+
+/**
+ * รายการแนะนำสั่งซื้อของบริษัท (ใช้ร่วมกัน: หน้าสั่งซื้อตามจุดสั่งซื้อ · สร้างใบขอซื้อ/ใบสั่งซื้อ · แจ้งเตือนรายวัน)
+ * includeUnset: รวมสินค้าที่ยังไม่ตั้งจุดสั่งซื้อแต่หมดสต็อกและเคยมีของ (มี Lot)
+ * ชื่อผู้ขายเติมจากทะเบียนผู้ขาย (supplierConfig เก็บแค่รหัส)
+ */
+export async function loadReorder(companyId: string, opts: { includeUnset?: boolean } = {}): Promise<ReorderLine[]> {
+  const [products, prs, pos, lots, suppliers] = await Promise.all([
+    listProducts(companyId),
+    adminDb.collection(`companies/${companyId}/purchase_requests`).where("status", "in", ["PENDING_APPROVAL", "APPROVED"]).get(),
+    adminDb.collection(`companies/${companyId}/purchase_orders`).get(),
+    adminDb.collection(`companies/${companyId}/stock_lots`).select("productId", "supplierId", "supplierName", "receivedDate", "lotNo", "unitCost", "isDeleted").get(),
+    listRecords("suppliers", companyId),
+  ]);
+  const lotDocs = lots.docs.map((d) => d.data());
+  const names = new Map(suppliers.filter((s: any) => s.isDeleted !== true).map((s: any) => [String(s.id), String(s.name || s.supplierName || s.companyName || "")]));
+  return reorderSuggestions(products, prs.docs.map((d) => d.data()), pos.docs.map((d) => d.data()), {
+    includeUnset: !!opts.includeUnset,
+    everStocked: new Set(lotDocs.map((l) => String(l.productId || "")).filter(Boolean)),
+    lotSupplier: latestLotSupplier(lotDocs),
+  }).map((l) => (l.supplierId && names.has(l.supplierId) ? { ...l, supplierName: names.get(l.supplierId) || l.supplierName } : l.supplierId && !names.has(l.supplierId) && l.supplierSource === "lot" ? { ...l, supplierId: "" } : l));
+}
 
 /**
  * งานประจำวัน: สินค้าถึงจุดสั่งซื้อ → แจ้งเตือนฝ่ายจัดซื้อ/คลัง (วันละครั้งต่อบริษัท) พร้อมลิงก์ไปสร้างใบขอซื้อ
@@ -12,12 +35,7 @@ export async function runReorderAlerts(opts: { today: string; companyIds?: strin
   const out: { companyId: string; items: number }[] = [];
   for (const companyId of companies) {
     try {
-      const [products, prs, pos] = await Promise.all([
-        listProducts(companyId),
-        adminDb.collection(`companies/${companyId}/purchase_requests`).where("status", "in", ["PENDING_APPROVAL", "APPROVED"]).get(),
-        adminDb.collection(`companies/${companyId}/purchase_orders`).get(),
-      ]);
-      const lines = reorderSuggestions(products, prs.docs.map((d) => d.data()), pos.docs.map((d) => d.data()));
+      const lines = await loadReorder(companyId);
       if (!lines.length) continue;
       const names = lines.slice(0, 3).map((l) => l.name).join(", ");
       await notify(companyId, {

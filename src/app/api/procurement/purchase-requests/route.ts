@@ -6,15 +6,14 @@ import { can } from "@/lib/permissions";
 import { prepareSequence } from "@/lib/sequence-server";
 import { auditServer } from "@/services/audit.server";
 import { computeDocTotals, normalizeVatMode, sanitizeLines } from "@/lib/doc-totals";
-import { listProducts } from "@/lib/product-store.server";
-import { reorderSuggestions } from "@/lib/reorder";
+import { loadReorder } from "@/lib/reorder.server";
 
 /**
  * [API-SERVER] ใบขอซื้อ (PR)
  * Endpoint: POST /api/procurement/purchase-requests
  *  - { companyId, action: "create", header: {...}, items: [...] }  -> เลข PR ออกในทรานแซกชัน (ไม่ข้าม) ยอดคำนวณที่ server
  *  - { companyId, action: "approve" | "reject" | "cancel", prId, note? }
- *  - { companyId, action: "reorderPreview" }  สินค้าที่ถึงจุดสั่งซื้อ (หักที่กำลังขอซื้อ/สั่งซื้ออยู่แล้ว) พร้อมจำนวนที่ควรสั่ง
+ *  - { companyId, action: "reorderPreview", includeUnset? }  สินค้าที่ถึงจุดสั่งซื้อ (หักที่กำลังขอซื้อ/สั่งซื้ออยู่แล้ว) พร้อมจำนวนที่ควรสั่ง
  *  - { companyId, action: "reorderCreate", items: [{ productId, qty }] }  สร้างใบขอซื้อจากรายการที่เลือก (รออนุมัติตามปกติ)
  * ผู้ขอซื้ออนุมัติใบของตัวเองไม่ได้ (ยกเว้น SUPERADMIN)
  */
@@ -38,12 +37,7 @@ export async function POST(request: Request) {
     let reorder: { h: any; items: any[] } | null = null;
     if (action === "reorderPreview" || action === "reorderCreate") {
       if (!EDIT.some((p) => can(apiUser.roles, p))) throw new ApiAuthError(403, "สิทธิ์การใช้งานไม่เพียงพอ");
-      const [products, prs, pos] = await Promise.all([
-        listProducts(companyId),
-        adminDb.collection(`companies/${companyId}/purchase_requests`).where("status", "in", ["PENDING_APPROVAL", "APPROVED"]).get(),
-        adminDb.collection(`companies/${companyId}/purchase_orders`).get(),
-      ]);
-      const lines = reorderSuggestions(products, prs.docs.map((d) => d.data()), pos.docs.map((d) => d.data()));
+      const lines = await loadReorder(companyId, { includeUnset: action === "reorderCreate" || body.includeUnset === true });
       if (action === "reorderPreview") return NextResponse.json({ success: true, lines });
       const pick = new Map<string, number>((Array.isArray(body.items) ? body.items : []).map((x: any) => [str(x?.productId, 120), Math.min(1_000_000, Math.max(0, Math.ceil(Number(x?.qty) || 0)))]));
       const chosen = lines.filter((l) => (pick.get(l.productId) || 0) > 0);

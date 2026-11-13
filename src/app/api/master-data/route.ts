@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { normalizeRecipe } from "@/lib/service-recipe";
+import { suggestSku } from "@/lib/sku-scheme";
 import * as admin from "firebase-admin";
 import { PRODUCT_THUMB_MAX } from "@/lib/attachments";
 import { isStockItem } from "@/lib/product-kind";
@@ -259,6 +260,21 @@ async function nextAutoSku(groupId: string, companyId: string): Promise<string> 
   throw new ApiAuthError(409, "ออกรหัสสินค้าอัตโนมัติไม่สำเร็จ — ใส่รหัสสินค้าเองแล้วลองใหม่");
 }
 
+/**
+ * รหัสสินค้าตามรูปแบบระบบ [หมวด]-[ยี่ห้อ]-[รุ่นย่อ](-[ตัวแปร]) — รหัสผู้ผลิตอยู่ที่ partNumber
+ * ซ้ำ = เติม -2, -3 · สร้างไม่ได้ (ชื่อไม่มีข้อมูลพอ) = ใช้เลขลำดับ PRD
+ */
+async function schemeSku(groupId: string, companyId: string, data: Record<string, any>): Promise<string> {
+  const base = suggestSku({ name: String(data.name || ""), brand: String(data.brand || ""), category: String(data.skuCategory || ""), partNumber: String(data.partNumber || "") });
+  if (base.fallback) return nextAutoSku(groupId, companyId);
+  for (let i = 1; i < 50; i++) {
+    const sku = i === 1 ? base.sku : `${base.sku}-${i}`;
+    const used = (await findDuplicates(null, groupId, "products", { sku })).length || (await legacyDuplicates("products", companyId, { sku })).length;
+    if (!used) return sku;
+  }
+  return nextAutoSku(groupId, companyId);
+}
+
 const historyEntry = (u: ApiUser, companyId: string, action: string, changes: Record<string, any>) => ({
   at: admin.firestore.FieldValue.serverTimestamp(), by: u.uid, byName: u.email || u.uid, companyId, action, changes,
 });
@@ -320,7 +336,7 @@ export async function POST(request: Request) {
     if (action === "create") {
       const data = normalizeParty(entity, clean(body.data || {}));
       if (!str(data.name)) throw new ApiAuthError(400, `กรุณาระบุชื่อ${schema.label}`);
-      if (entity === "products" && body.autoSku === true && !str(data.sku)) data.sku = data.productCode = await nextAutoSku(groupId, companyId);
+      if (entity === "products" && body.autoSku === true && !str(data.sku)) data.sku = data.productCode = await schemeSku(groupId, companyId, data);
       let id = str(body.id, 120);
       if (id && !ID.test(id)) throw new ApiAuthError(400, "รหัสไม่ถูกต้อง");
       // สร้างรายการใหม่ = ค่าที่กรอกเป็นค่ากลาง (identity + shared) ส่วนที่เหลือเป็นของบริษัท

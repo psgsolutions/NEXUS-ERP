@@ -9,6 +9,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { normalizeRecipe, recipeCost, recipeDetails } from "@/lib/service-recipe";
 import { PriceBasePanel } from "@/components/commerce/PriceBasePanel";
 import { useAuth } from "@/context/AuthContext";
+import { CatalogMatches } from "@/components/commerce/CatalogMatches";
 import { can, canViewCost } from "@/lib/permissions";
 import { SupplierPriceSelector } from "@/components/inventory/SupplierPriceSelector";
 import { SciFiDropdownPortal } from "@/components/ui/SmartComponents";
@@ -335,6 +336,7 @@ const InlineRow = ({
       }
     >
       <ProductPickerList products={filteredProducts} onPick={handleSelectProduct} />
+      {activeSearchField && !(item.productId && searchTerm === (activeSearchField === 'sku' ? item.sku : item.name)) && <CatalogMatches q={searchTerm} onPick={handleSelectProduct} />}
     </SciFiDropdownPortal>
   ) : (
     <p className="font-mono text-[12px] text-nexus-teal px-1 not-italic break-all">{item.sku || "-"}</p>
@@ -385,6 +387,7 @@ const InlineRow = ({
       }
     >
       <ProductPickerList products={filteredProducts} onPick={handleSelectProduct} />
+      {activeSearchField && !(item.productId && searchTerm === (activeSearchField === 'sku' ? item.sku : item.name)) && <CatalogMatches q={searchTerm} onPick={handleSelectProduct} />}
     </SciFiDropdownPortal>
   ) : (
     <p className="font-bold text-[12px] text-white px-2 break-words leading-snug">{item.name}</p>

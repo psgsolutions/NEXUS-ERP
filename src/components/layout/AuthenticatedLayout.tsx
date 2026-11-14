@@ -288,9 +288,11 @@ export default function AuthenticatedLayout({
         </header>
 
         <main className="flex-1 overflow-y-auto bg-surface-0 bg-nexus-grid relative custom-scrollbar">
-          {/* Ambient Light Effect */}
-          <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-nexus-teal/5 blur-[120px] rounded-full pointer-events-none -translate-y-1/2" />
-          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-nexus-blue/5 blur-[120px] rounded-full pointer-events-none translate-y-1/2" />
+          {/* Ambient Light Effect — ตัดส่วนที่เลยกรอบ (ไม่ให้หน้าเลื่อนเกินเนื้อหา 250px) */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+            <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-nexus-teal/5 blur-[120px] rounded-full -translate-y-1/2" />
+            <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-nexus-blue/5 blur-[120px] rounded-full translate-y-1/2" />
+          </div>
           
           <div className="relative z-20">
             {pageAllowed ? children : <NoAccess />}

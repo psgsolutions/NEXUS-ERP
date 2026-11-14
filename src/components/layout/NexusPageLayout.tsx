@@ -17,8 +17,9 @@ export default function NexusPageLayout({
   className?: string;
 }) {
   return (
-    // 1. บังคับ Full-Page และคุมพื้นหลัง Dark Theme แต่อยู่ภายในขอบเขตของ Layout หลัก (ไม่ซ้อนทับ Sidebar)
-    <div className={cn("w-full h-full min-h-[100vh] flex flex-col bg-surface-0 overflow-hidden font-sans relative z-10", className)}>
+    // จอใหญ่ (xl): สูงเท่าพื้นที่ใต้แถบบนของแอป (h-16) → ฝั่งซ้ายและแผงขวาเลื่อนแยกกัน แผงขวาอยู่กับที่เสมอ
+    // (กรอบหน้าของแอปไม่มีความสูงตายตัว h-full จึงใช้ไม่ได้) · จอเล็ก: แผงขวาอยู่ใต้เนื้อหา เลื่อนทั้งหน้าตามปกติ
+    <div className={cn("w-full flex flex-col bg-surface-0 font-sans relative z-10 xl:h-[calc(100dvh-4rem)] xl:overflow-hidden", className)}>
       
       {/* Header: ตรึงนิ่งสนิทตามกฎ */}
       <header className="flex-none sticky top-0 z-50 bg-surface-0/80 backdrop-blur-md border-b border-white/10">
@@ -35,11 +36,11 @@ export default function NexusPageLayout({
       )}
 
       {/* Main Container: แบ่งพื้นที่และทำ Independent Scrolling */}
-      <div className="flex-1 flex flex-col xl:flex-row overflow-hidden w-full">
+      <div className="flex-1 flex flex-col xl:flex-row w-full xl:min-h-0 xl:overflow-hidden">
         
         {/* ฝั่งซ้าย: เลื่อนเฉพาะส่วนนี้ถ้าเนื้อหายาว */}
         <main className={cn(
-          "flex-1 overflow-y-auto p-4 xl:p-6 custom-scrollbar pb-32 xl:pb-6",
+          "flex-1 p-4 xl:p-6 custom-scrollbar pb-32 xl:pb-6 xl:overflow-y-auto",
           "min-w-0",
           rightSidebar ? "w-full xl:w-auto" : "w-full"
         )}>
@@ -49,7 +50,7 @@ export default function NexusPageLayout({
         {/* ฝั่งขวา: แผงสรุปยอดเกาะติดหน้าจอ หรือเลื่อนแยกอิสระ */}
         {rightSidebar && (
           // แผงขวา: ไม่แคบจนข้อมูลถูกตัด (13") และไม่กว้างเกินจำเป็น (27")
-          <aside className="w-full xl:w-[clamp(310px,24%,400px)] flex-none min-w-0 border-t xl:border-t-0 xl:border-l border-white/10 bg-white/[0.02] overflow-y-auto overflow-x-hidden custom-scrollbar">
+          <aside className="w-full xl:w-[clamp(310px,24%,400px)] flex-none min-w-0 border-t xl:border-t-0 xl:border-l border-white/10 bg-white/[0.02] overflow-x-hidden custom-scrollbar xl:overflow-y-auto" data-page-sidebar>
             {rightSidebar}
           </aside>
         )}

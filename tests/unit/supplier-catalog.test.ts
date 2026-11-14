@@ -27,5 +27,8 @@ describe("แคตตาล็อกผู้ขาย", () => {
     expect(p.supplierConfig).toEqual([{ supplierId: "SUP-1", supplierSku: "ARU-JL682A", latestCost: 800, leadTimeDays: 7, isPrimary: true }]);
     expect(p.sourceCatalog).toEqual({ key: "SIS", code: "ARU-JL682A", version: "v1" });
     expect(catalogToProduct({ ...items[0], t: "S" }, { key: "SIS", supplierId: "S", version: "1" }).itemType).toBe("SERVICE");
+    const withSpec = catalogToProduct({ ...items[0], d: "Ports: 24 · PoE: 195W", l: "https://example.com/ds.pdf" }, { key: "SIS", supplierId: "S", version: "1" });
+    expect([withSpec.description, withSpec.technicalSpecs, withSpec.datasheetUrl]).toEqual(["Ports: 24 · PoE: 195W", "Ports: 24 · PoE: 195W", "https://example.com/ds.pdf"]);
+    expect(p.unit).toBe("เครื่อง");
   });
 });

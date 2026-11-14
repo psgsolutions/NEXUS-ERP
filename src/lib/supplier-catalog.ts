@@ -3,8 +3,9 @@
  * เลือกใช้เมื่อไร ระบบจึงสร้างเป็นสินค้า (รหัสระบบ · ทุน · ผู้ขายหลัก) ทั้งระบบจึงมีเฉพาะสินค้าที่ใช้จริง
  * คีย์สั้นเพื่อให้ไฟล์เล็ก: c รหัสผู้ขาย · s SKU ที่เสนอ · n ชื่อ · b ยี่ห้อ · m รุ่น/Part number · g หมวด · h หมวดย่อย
  *                         u หน่วย · t P=สินค้า S=บริการ · p ราคาขายก่อน VAT · k ทุนก่อน VAT · w รับประกัน (เดือน) · bc บาร์โค้ด
+ *                         d สเปก/รายละเอียด (จากไฟล์ราคาของผู้ขาย) · l ลิงก์ datasheet
  */
-export interface CatalogItem { c: string; s: string; n: string; b: string; m: string; g: string; h: string; u: string; t: "P" | "S"; p: number; k: number; w: number; bc: string }
+export interface CatalogItem { c: string; s: string; n: string; b: string; m: string; g: string; h: string; u: string; t: "P" | "S"; p: number; k: number; w: number; bc: string; d?: string; l?: string }
 export interface CatalogMeta { key: string; name: string; supplierId: string; count: number; parts: number; version: string }
 
 const compact = (s: string) => s.toLowerCase().replace(/[\s\-_/.(),:]+/g, "");
@@ -39,6 +40,8 @@ export function catalogToProduct(it: CatalogItem, meta: Pick<CatalogMeta, "key" 
     pricing: { pricePOS: price, priceProject: price, priceWholesale: price }, unitPrice: price, costPrice: cost,
     taxType: "VAT_7", vatType: "VAT_7", lifecycleStatus: "ACTIVE",
     ...(it.w ? { warrantyMonths: it.w } : {}),
+    ...(it.d ? { description: it.d, technicalSpecs: it.d } : {}),
+    ...(it.l ? { datasheetUrl: it.l } : {}),
     supplierConfig: [{ supplierId: meta.supplierId, supplierSku: it.c, latestCost: cost, leadTimeDays: 7, isPrimary: true }],
     importedFrom: `catalog:${meta.key}`, sourceCatalog: { key: meta.key, code: it.c, version: meta.version },
   };

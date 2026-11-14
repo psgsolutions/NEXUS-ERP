@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { X, Sparkles, ChevronLeft, ChevronDown, Plus, Check } from "lucide-react";
+import { X, Sparkles, ChevronLeft, ChevronDown, Plus, Check, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { FloatingLayer } from "./FloatingLayer";
@@ -586,6 +586,31 @@ export function nexusColumnShrinkable(header: string): boolean {
 
 const FLEX_JUSTIFY: Record<NexusColumnAlign, string> = { left: "flex-start", center: "center", right: "flex-end" };
 
+// ---------- เรียงข้อมูลจากหัวตาราง + ดูรายละเอียดแถว (ใช้กับทุกตาราง NexusTable) ----------
+const NtCtx = React.createContext<{ open: (tr: HTMLTableRowElement) => void } | null>(null);
+/** ข้อความของช่อง (ช่องกรอกใช้ค่าที่กรอก) */
+const ntCellText = (td: Element | undefined): string => {
+  if (!td) return "";
+  const field = td.querySelector("input:not([type=checkbox]):not([type=radio]), select, textarea") as HTMLInputElement | null;
+  const txt = (td.textContent || "").replace(/\s+/g, " ").trim();
+  return txt || (field ? String(field.value || "").trim() : "");
+};
+/** ค่าที่ใช้เรียง: วันที่ (พ.ศ./ค.ศ.) → ตัวเลข · เงิน/จำนวน/% → ตัวเลข · อื่น ๆ → ข้อความ · ว่าง/"-" อยู่ท้ายเสมอ */
+const ntSortValue = (raw: string): { empty: boolean; n: number | null; s: string } => {
+  const t = raw.trim();
+  if (!t || t === "-" || t === "—" || t === "–") return { empty: true, n: null, s: "" };
+  const dm = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (dm) { let y = Number(dm[3]); if (y > 2400) y -= 543; return { empty: false, n: y * 10000 + Number(dm[2]) * 100 + Number(dm[1]), s: t }; }
+  const iso = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return { empty: false, n: Number(iso[1]) * 10000 + Number(iso[2]) * 100 + Number(iso[3]), s: t };
+  const num = t.replace(/[฿,%\s]|บาท/g, "").replace(/^\+/, "");
+  if (/^-?\d+(\.\d+)?$/.test(num)) return { empty: false, n: Number(num), s: t };
+  return { empty: false, n: null, s: t };
+};
+const NT_UNSORTABLE = /^(|จัดการ|การดำเนินการ|เครื่องมือ|#)$/;
+const ntPinned = (tr: Element) => !!tr.querySelector("td[colspan]") || (tr as HTMLElement).dataset.ntPin === "1" ||
+  /^(รวม|รวมทั้งสิ้น|ยอดรวม|รวมทั้งหมด)$/.test(Array.from(tr.children).map((c) => ntCellText(c)).find(Boolean) || "");
+
 export function NexusTable({
   headers,
   children,
@@ -613,6 +638,59 @@ export function NexusTable({
   const shrinkable = React.useMemo(() => headers.map(nexusColumnShrinkable), [headers]);
   const wrapRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
+  // เรียงข้อมูล: อ่านค่าจากช่องที่แสดงจริง แล้วให้ React จัดลำดับแถวใหม่ (ไม่แก้ DOM เอง)
+  const [sort, setSort] = useState<{ col: number; dir: 1 | -1 } | null>(null);
+  const [order, setOrder] = useState<string[] | null>(null);
+  const [sortable, setSortable] = useState(true);
+  const [detail, setDetail] = useState<{ title: string; href: string; items: { label: string; value: string }[] } | null>(null);
+  const items = React.Children.toArray(children) as React.ReactElement[];
+  const byKey = new Map(items.map((c) => [String(c.key), c]));
+  const shown = order ? [...order.filter((k) => byKey.has(k)).map((k) => byKey.get(k)!), ...items.filter((c) => !order.includes(String(c.key)))] : items;
+  const shownKeys = shown.map((c) => String(c.key));
+  const shownSig = shownKeys.join("|");
+  React.useLayoutEffect(() => {
+    if (!sort) { if (order) setOrder(null); return; }
+    const tbody = tableRef.current?.tBodies[0];
+    if (!tbody) return;
+    const trs = Array.from(tbody.rows);
+    // แถวที่แสดงไม่ตรงกับรายการ (เช่น หนึ่งรายการมีหลายแถว) → ตารางนี้เรียงไม่ได้
+    if (trs.length !== shownKeys.length) { setSortable(false); setSort(null); return; }
+    const entries = trs.map((tr, i) => ({ key: shownKeys[i], pin: ntPinned(tr), v: ntSortValue(ntCellText(tr.cells[sort.col])), i }));
+    const firstRow = entries.findIndex((e) => !e.pin);
+    const lead = firstRow < 0 ? entries : entries.slice(0, firstRow);
+    const rows = entries.filter((e) => !e.pin);
+    const tail = firstRow < 0 ? [] : entries.slice(firstRow).filter((e) => e.pin);
+    rows.sort((a, b) => {
+      if (a.v.empty !== b.v.empty) return a.v.empty ? 1 : -1;
+      const d = a.v.n !== null && b.v.n !== null ? a.v.n - b.v.n : a.v.s.localeCompare(b.v.s, "th", { numeric: true, sensitivity: "base" });
+      return d ? d * sort.dir : a.i - b.i;
+    });
+    const next = [...lead, ...rows, ...tail].map((e) => e.key);
+    if (next.join("|") !== shownSig) setOrder(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sort, shownSig, children]);
+  const clickHeader = (i: number) => {
+    if (!sortable || NT_UNSORTABLE.test(String(headers[i] || "").trim())) return;
+    setSort((cur) => (!cur || cur.col !== i ? { col: i, dir: 1 } : cur.dir === 1 ? { col: i, dir: -1 } : null));
+  };
+  const ctx = React.useMemo(() => ({
+    open: (tr: HTMLTableRowElement) => {
+      if (ntPinned(tr)) return;
+      const list = headers.map((h, i) => ({ label: String(h || "").trim(), value: ntCellText(tr.cells[i]) })).filter((x) => x.label && !NT_UNSORTABLE.test(x.label));
+      if (!list.some((x) => x.value)) return;
+      // หัวข้อ: คอลัมน์ "ชื่อ…" ก่อน → ข้อความแรกที่ไม่ใช่ตัวเลข · ลิงก์ในแถว (ถ้ามี) = ปุ่มเปิดหน้ารายละเอียด
+      const title = list.find((x) => /ชื่อ|รายการ|สินค้า|ลูกค้า|ผู้ขาย/.test(x.label) && x.value)?.value
+        || list.find((x) => x.value && !/^[\d.,\s฿%-]+$/.test(x.value) && x.value.length > 2)?.value || list[0].value;
+      const href = tr.querySelector<HTMLAnchorElement>("a[href^='/']")?.getAttribute("href") || "";
+      setDetail({ title, href, items: list });
+    },
+  }), [headers]);
+  useEffect(() => {
+    if (!detail) return;
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setDetail(null); };
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [detail]);
 
   const alignCss = React.useMemo(() => {
     const sel = `table[data-nt="${tableId}"]>tbody>tr>td:not([colspan])`;
@@ -696,24 +774,63 @@ export function NexusTable({
       <table ref={tableRef} data-nt={tableId} className={cn("nexus-table w-full table-auto border-collapse", className)}>
         <thead className="sticky top-0 z-20">
           <tr className="bg-surface-0/95 border-b border-white/5 shadow-sm">
-            {headers.map((header, i) => (
-              <th
-                key={i}
-                className={cn(
-                  "px-2.5 2xl:px-4 py-2.5 text-[12px] 2xl:text-[12px] font-medium text-white/60 tracking-wide leading-tight whitespace-nowrap align-middle",
-                  "first:rounded-tl-2xl last:rounded-tr-2xl first:pl-4 last:pr-4",
-                  aligns[i] === "right" ? "text-right" : aligns[i] === "center" ? "text-center" : "text-left"
-                )}
-              >
-                {header}
-              </th>
-            ))}
+            {headers.map((header, i) => {
+              const canSort = sortable && !NT_UNSORTABLE.test(String(header || "").trim());
+              const on = sort?.col === i;
+              return (
+                <th
+                  key={i}
+                  onClick={canSort ? () => clickHeader(i) : undefined}
+                  aria-sort={on ? (sort!.dir === 1 ? "ascending" : "descending") : undefined}
+                  title={canSort ? "คลิกเพื่อเรียงข้อมูล" : undefined}
+                  className={cn(
+                    "px-2.5 2xl:px-4 py-2.5 text-[12px] 2xl:text-[12px] font-medium text-white/60 tracking-wide leading-tight whitespace-nowrap align-middle",
+                    "first:rounded-tl-2xl last:rounded-tr-2xl first:pl-4 last:pr-4",
+                    aligns[i] === "right" ? "text-right" : aligns[i] === "center" ? "text-center" : "text-left",
+                    canSort && "cursor-pointer select-none hover:text-white group/th",
+                    on && "text-nexus-teal"
+                  )}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    {header}
+                    {canSort && (on
+                      ? (sort!.dir === 1 ? <ArrowUp size={11} className="shrink-0" /> : <ArrowDown size={11} className="shrink-0" />)
+                      : <ArrowUpDown size={11} className="shrink-0 opacity-0 group-hover/th:opacity-50 transition-opacity" />)}
+                  </span>
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
-          {children}
+          <NtCtx.Provider value={ctx}>{shown}</NtCtx.Provider>
         </tbody>
       </table>
+      {detail && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="รายละเอียด" data-nt-detail>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDetail(null)} />
+          <div className="relative w-[min(560px,94vw)] max-h-[80vh] flex flex-col rounded-2xl border border-white/10 bg-surface-1 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-3 px-5 py-4 border-b border-white/10">
+              <p className="flex-1 text-[14px] font-bold text-white leading-snug break-words">{detail.title}</p>
+              <PillButton variant="ghost" className="h-8 w-8 px-0 shrink-0" aria-label="ปิด" onClick={() => setDetail(null)}><X size={16} /></PillButton>
+            </div>
+            <dl className="overflow-y-auto custom-scrollbar px-5 py-3 divide-y divide-white/5">
+              {detail.items.map((x, i) => (
+                <div key={i} className="grid grid-cols-[minmax(0,38%)_1fr] gap-3 py-2">
+                  <dt className="text-[12px] text-white/50">{x.label}</dt>
+                  <dd className="text-[14px] text-white break-words whitespace-pre-wrap">{x.value || "-"}</dd>
+                </div>
+              ))}
+            </dl>
+            {detail.href && (
+              <div className="px-5 py-3 border-t border-white/10 flex justify-end">
+                <a href={detail.href} className="text-[12px] font-bold text-nexus-teal hover:underline">เปิดหน้ารายละเอียด</a>
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
       {(itemCount !== undefined || totalCount !== undefined) && (
         <div className="px-4 py-2.5 border-t border-white/5 flex items-center justify-between">
           <p className="text-xs text-slate-400 font-medium">
@@ -725,11 +842,19 @@ export function NexusTable({
   );
 }
 
-export function NexusTableRow({ children, onClick, className, title }: { children: React.ReactNode, onClick?: () => void, className?: string, title?: string }) {
+export function NexusTableRow({ children, onClick, className, title, pin }: { children: React.ReactNode, onClick?: () => void, className?: string, title?: string, pin?: boolean }) {
+  // แถวที่ไม่มีปลายทางให้กด: กดแล้วเปิดรายละเอียดทุกคอลัมน์ (ยกเว้นกดปุ่ม/ช่องกรอก/ลิงก์ในแถว หรือกำลังเลือกข้อความ)
+  const nt = React.useContext(NtCtx);
+  const openDetail = !onClick && nt ? (e: React.MouseEvent<HTMLTableRowElement>) => {
+    if ((e.target as HTMLElement).closest("button,a,input,select,textarea,label,[role=button],[role=checkbox],[data-no-detail]")) return;
+    if (window.getSelection()?.toString()) return;
+    nt.open(e.currentTarget);
+  } : undefined;
   return (
     <tr
-      onClick={onClick}
+      onClick={onClick || openDetail}
       title={title}
+      data-nt-pin={pin ? "1" : undefined}
       className={cn(
         "group cursor-pointer transition-all duration-300 h-12 hover:bg-white/[0.03]",
         className

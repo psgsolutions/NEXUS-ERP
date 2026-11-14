@@ -314,7 +314,7 @@ export default function NewProductPage() {
 
   const productTypeOptions = [
     { value: "PHYSICAL", label: "สินค้าทั่วไป" },
-    { value: "SERVICE", label: "งานบริการ" },
+    { value: "SERVICE", label: "งานบริการ / งานติดตั้ง" },
     { value: "ASSET", label: "สินทรัพย์" },
     { value: "BOM", label: "ชุดประกอบ" },
   ];
@@ -746,6 +746,12 @@ export default function NewProductPage() {
           document.getElementById("sec-main")?.scrollIntoView({ behavior: "smooth", block: "start" });
           return;
         }
+        if (formData.productType === "SERVICE") {
+          // งานบริการ: ไปหน้าสินค้าเพื่อใส่สูตร (วัสดุ + ค่าแรง) ต่อทันที
+          showAlert("บันทึกงานบริการแล้ว — ใส่วัสดุและค่าแรงต่อได้ที่การ์ด \"สูตรงานบริการ\"");
+          router.push(`/inventory/${prodId}#service-recipe`);
+          return;
+        }
         showAlert("เพิ่มสินค้าใหม่เข้าสู่ระบบเรียบร้อยแล้ว");
 
       } else {
@@ -1089,6 +1095,12 @@ export default function NewProductPage() {
                     />
                   </Field>
                 </div>
+                {formData.productType === "SERVICE" && (
+                  <p className="basis-full text-[12px] text-nexus-teal/90 leading-relaxed" data-service-hint>
+                    งานบริการ/งานติดตั้ง: บันทึกแล้วระบบพาไปหน้าสินค้านี้ — ใส่วัสดุ (ดึงจากรายการสินค้า) และค่าแรงต่อ 1 หน่วยงานได้ที่การ์ด &quot;สูตรงานบริการ&quot;
+                    เวลาเลือกงานนี้ในใบเสนอราคา ระบบคิดต้นทุนจากวัสดุ + ค่าแรง และตัดวัสดุตอนส่งของ/เบิกงาน
+                  </p>
+                )}
 
                 <div className="flex-1 min-w-[130px]">
                   <Field label="ประเภทภาษี">

@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       for (const key of keys) {
         const cat = await loadCatalog(groupId, key);
         if (!cat) continue;
-        for (const it of searchCatalog(cat.items, q, 30)) out.push({ key, catalog: cat.meta.name, code: it.c, sku: it.s, name: it.n, brand: it.b, model: it.m, category: it.h || it.g, unit: it.u, service: it.t === "S", price: it.p, ...(seeCost ? { cost: it.k } : {}) });
+        for (const it of searchCatalog(cat.items, q, 30)) out.push({ key, catalog: cat.meta.name, code: it.c, sku: it.s, name: it.n, brand: it.b, model: it.m, category: it.h || it.g, unit: it.u, service: it.t === "S", price: it.p, spec: it.d || "", ...(seeCost ? { cost: it.k } : {}) });
       }
       const items = out.slice(0, 30);
       // รายการที่มีเป็นสินค้าแล้ว (อ่านเฉพาะสินค้าที่ตรง)

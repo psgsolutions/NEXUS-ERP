@@ -770,7 +770,7 @@ export default function ProductDetailPage() {
 
       {/* ราคาทุนแต่ละล็อตที่รับเข้า เทียบต้นทุนเฉลี่ย */}
       {companyId && String((product as any).itemType || "").toUpperCase() === "SERVICE"
-        ? <ServiceRecipeCard companyId={companyId} product={product} canEdit={can(roles, "inventory:edit")} />
+        ? <div id="service-recipe" className="scroll-mt-4"><ServiceRecipeCard companyId={companyId} product={product} canEdit={can(roles, "inventory:edit")} /></div>
         : companyId && <><ProductLotsCard companyId={companyId} productId={productId} unit={(product as any).unit} /><ProductCostHistory companyId={companyId} productId={productId} /></>}
 
       {/* Actions Card */}

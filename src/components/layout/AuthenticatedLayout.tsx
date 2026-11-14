@@ -89,15 +89,17 @@ export default function AuthenticatedLayout({
     <div className="flex h-screen overflow-hidden bg-surface-0 text-white selection:bg-nexus-teal/30">
       <CommandPalette />
       
-      {/* [1] Sidebar - Full Intelligence OS Structure */}
-      <aside className="w-[240px] hidden lg:flex flex-col border-r border-white/5 bg-surface-0 relative flex-shrink-0 z-[100]">
-        <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
+      {/* [1] Sidebar — พับเหลือไอคอน (72px) · เอาเม้าวางขยายทับเนื้อหา (240px) · เอาเม้าออกพับทันที
+          ข้างในกว้าง 240px ตายตัว (แค่ถูกตัดตอนพับ) → ไม่มีการจัดวางใหม่ระหว่างขยาย ลื่นและเร็ว */}
+      <aside className="w-[72px] hidden lg:block relative flex-shrink-0 z-[100]" data-app-sidebar>
+       <div className="group/sb absolute inset-y-0 left-0 w-[72px] hover:w-[240px] hover:delay-[60ms] transition-[width,box-shadow] duration-[120ms] hover:duration-150 ease-out overflow-hidden flex flex-col border-r border-white/5 bg-surface-0 hover:shadow-[12px_0_40px_rgba(0,0,0,0.55)]">
+        <div className="w-[240px] px-3 py-4 flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
           {/* Brand Header */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-4 px-1">
             <div className="w-10 h-10 bg-nexus-teal/15 rounded-xl flex items-center justify-center shadow-neon-teal border border-nexus-teal/20">
               <Zap size={20} className="text-nexus-teal fill-current drop-shadow-md" />
             </div>
-            <div>
+            <div className="opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150 whitespace-nowrap">
               <h2 className="font-semibold text-lg leading-none tracking-tight">NEXUS ERP</h2>
               <p className="text-[14px] leading-none font-bold text-nexus-teal uppercase tracking-[0.2em] mt-1 drop-shadow-neon">Intelligence OS</p>
             </div>
@@ -146,27 +148,29 @@ export default function AuthenticatedLayout({
         </div>
 
         {/* User Intelligence Profile */}
-        <div className="p-4 pb-6 bg-white/[0.02] border-t border-white/5 space-y-2">
-          <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-white/15 border border-white/20 group hover:bg-white/20 transition-all cursor-pointer">
+        <div className="w-[240px] px-3 pt-3 pb-6 bg-white/[0.02] border-t border-white/5 space-y-2">
+          <div className="flex items-center gap-3 p-1.5 w-[50px] group-hover/sb:w-full overflow-hidden rounded-2xl bg-white/15 border border-white/20 group hover:bg-white/20 transition-[width,background-color] duration-150 cursor-pointer">
              <div className="w-9 h-9 rounded-xl bg-nexus-blue/15 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 flex-shrink-0">
                 <UserCog size={18} />
              </div>
-             <div className="flex-1 min-w-0">
+             <div className="flex-1 min-w-0 opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150">
                 <p className="text-[12px] font-semibold text-white truncate uppercase leading-none">{user?.email?.split('@')[0] || 'ผู้ใช้งาน'}</p>
                 <p className="text-[11px] font-bold text-nexus-teal tracking-wide mt-1 leading-normal truncate" title={roleText}>{roleText}</p>
              </div>
           </div>
           
-          <ConnectionStatus className="w-full justify-center text-[11px] py-1 bg-white/[0.02] border-white/5" />
+          <div className="opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150"><ConnectionStatus className="w-full justify-center text-[11px] py-1 bg-white/[0.02] border-white/5" /></div>
           
           <button 
             onClick={handleLogout}
-            className="flex items-center justify-center gap-2 w-full rounded-full text-[12px] leading-none font-bold text-white/40 hover:text-danger hover:bg-danger/15 transition-all uppercase tracking-widest py-1.5"
+            className="flex items-center gap-2 w-full rounded-full text-[12px] leading-none font-bold text-white/40 hover:text-danger hover:bg-danger/15 transition-all uppercase tracking-widest py-1.5 px-[17px]"
+            title="ออกจากระบบ"
           >
-            <LogOut size={14} />
-            ออกจากระบบ
+            <LogOut size={14} className="shrink-0" />
+            <span className="opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150 whitespace-nowrap">ออกจากระบบ</span>
           </button>
         </div>
+       </div>
       </aside>
 
       {/* Main Command Center Area */}
@@ -294,7 +298,9 @@ export default function AuthenticatedLayout({
             <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-nexus-blue/5 blur-[120px] rounded-full translate-y-1/2" />
           </div>
           
-          <div className="relative z-20">
+          {/* สูงเต็มพื้นที่ใต้แถบบน: หน้าที่ใช้ h-full + ส่วนเนื้อหาเลื่อนเอง (หัวหน้า/แผงข้างอยู่กับที่) ทำงานได้จริง
+              หน้าที่สูงเกินโดยไม่มีส่วนเลื่อนเอง ยังเลื่อนทั้งหน้าตามปกติ */}
+          <div className="relative z-20 h-full">
             {pageAllowed ? children : <NoAccess />}
             <Suspense fallback={null}><UnsavedChangesGuard /></Suspense>
           </div>
@@ -325,7 +331,7 @@ function NavGroup({ title, children }: { title: string; children: React.ReactNod
   if (!React.Children.toArray(children).some(Boolean)) return null;
   return (
     <div className="space-y-4">
-      <p className="tactical-label !text-white/20 px-4">{title}</p>
+      <p className="tactical-label !text-white/20 px-[15px] whitespace-nowrap opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150">{title}</p>
       <div className="space-y-1">
         {children}
       </div>
@@ -334,26 +340,14 @@ function NavGroup({ title, children }: { title: string; children: React.ReactNod
 }
 
 function SideLink({ href, icon, label, active, title }: { href: string; icon: any; label: string; active?: boolean; title?: string }) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [rect, setRect] = useState<DOMRect | null>(null);
-  const linkRef = useRef<HTMLAnchorElement>(null);
-
-  const handleMouseEnter = () => {
-    if (linkRef.current) {
-      setRect(linkRef.current.getBoundingClientRect());
-    }
-    setIsHovered(true);
-  };
 
   return (
     <>
       <Link 
-        ref={linkRef}
         href={href}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={() => setIsHovered(false)}
+        title={label}
         className={cn(
-          "flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all group relative",
+          "flex items-center gap-3 px-[15px] py-2.5 rounded-xl transition-colors group relative",
           active 
             ? "bg-nexus-teal/15 text-nexus-teal border border-nexus-teal/20" 
             : "text-white/40 hover:text-white hover:bg-white/15"
@@ -366,7 +360,7 @@ function SideLink({ href, icon, label, active, title }: { href: string; icon: an
           {React.cloneElement(icon as React.ReactElement, { size: 18 })}
         </div>
         <span className={cn(
-          "text-[14px] leading-none font-bold transition-all duration-300",
+          "text-[14px] leading-none font-bold whitespace-nowrap opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150",
           active ? "text-white" : "text-white/40 group-hover:text-white/60"
         )}>{label}</span>
         
@@ -375,19 +369,6 @@ function SideLink({ href, icon, label, active, title }: { href: string; icon: an
         )}
       </Link>
 
-      {title && isHovered && rect && typeof window !== "undefined" && createPortal(
-        <div 
-          className="fixed px-3 py-1.5 bg-slate-950/90 backdrop-blur-md border border-cyan-500/40 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.15)] pointer-events-none z-[9999] whitespace-nowrap animate-in fade-in zoom-in-95 duration-200 hidden lg:block"
-          style={{
-            top: rect.top + (rect.height / 2),
-            left: rect.right + 12,
-            transform: 'translateY(-50%)'
-          }}
-        >
-          <p className="text-[11px] font-mono text-cyan-100 uppercase tracking-widest leading-none drop-shadow-neon">{title}</p>
-        </div>,
-        document.body
-      )}
     </>
   );
 }

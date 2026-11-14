@@ -368,11 +368,11 @@ export default function FinancePage() {
       </section>
 
       {/* Main Content Scroll Area */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-      <div className="p-5 space-y-3 max-w-[1800px] mx-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto xl:overflow-hidden custom-scrollbar">
+      <div className="p-5 space-y-3 max-w-[1800px] mx-auto xl:h-full">
 
-      <div className="flex flex-col xl:flex-row items-start gap-4">
-        <div className="flex-1 w-full space-y-10">
+      <div className="flex flex-col xl:flex-row items-start xl:items-stretch gap-4 xl:h-full">
+        <div className="flex-1 w-full min-w-0 space-y-10 xl:h-full xl:overflow-y-auto custom-scrollbar xl:pr-2">
 
           <div className="space-y-3">
             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
@@ -540,7 +540,7 @@ export default function FinancePage() {
         </div>
 
         {/* Right Sidebar Status */}
-        <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-7 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
+        <div className="w-full xl:w-[25%] shrink-0 space-y-7 xl:h-full xl:overflow-y-auto custom-scrollbar pb-10 xl:pr-1">
            <GlassCard accentColor="blue" className="p-5">
               <h4 className="text-xs font-bold text-nexus-blue uppercase tracking-widest mb-4 flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded-full bg-nexus-blue/10 border border-nexus-blue/30 text-[11px] text-nexus-blue font-mono font-bold">01</span>

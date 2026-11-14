@@ -311,11 +311,11 @@ export default function ProcurementPage() {
       </section>
 
       {/* Main Content Scroll Area */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-      <div className="p-5 space-y-3 max-w-[1800px] mx-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto xl:overflow-hidden custom-scrollbar">
+      <div className="p-5 space-y-3 max-w-[1800px] mx-auto xl:h-full">
 
-      <div className="flex flex-col xl:flex-row items-start gap-4">
-        <div className="flex-1 w-full space-y-3">
+      <div className="flex flex-col xl:flex-row items-start xl:items-stretch gap-4 xl:h-full">
+        <div className="flex-1 w-full min-w-0 space-y-3 xl:h-full xl:overflow-y-auto custom-scrollbar xl:pr-2">
 
           <div className="space-y-3">
             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
@@ -436,7 +436,7 @@ export default function ProcurementPage() {
         </div>
 
         {/* Right Sidebar Status */}
-        <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-7 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
+        <div className="w-full xl:w-[25%] shrink-0 space-y-7 xl:h-full xl:overflow-y-auto custom-scrollbar pb-10 xl:pr-1">
            <GlassCard accentColor="blue" className="p-5">
               <h4 className="text-xs font-bold text-nexus-teal tracking-widest mb-4">ผู้จำหน่ายที่สั่งซื้อมากที่สุด (12 เดือน)</h4>
               <div className="space-y-2.5">

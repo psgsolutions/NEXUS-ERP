@@ -255,7 +255,7 @@ export default function NewExpenseClaimPage() {
   );
 
   const rightSidebar = (
-    <GlassCard className="p-6 sticky top-[96px] bg-surface-1 border-white/5 shadow-2xl flex flex-col min-h-[400px]">
+    <GlassCard className="p-6 bg-surface-1 border-white/5 shadow-2xl flex flex-col min-h-[400px]">
       <div className="flex items-center gap-2 mb-6 border-b border-white/5 pb-4">
         <Receipt size={16} className="text-cyan-400" />
         <h3 className="text-base font-black text-white/80 uppercase tracking-widest mb-0">Summary</h3>

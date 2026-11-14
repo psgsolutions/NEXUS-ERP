@@ -84,10 +84,10 @@ export default function SalesOrderDashboardPage() {
   };
 
   return (
-    <div className="p-5 lg:p-10 xl:flex xl:flex-row gap-4 min-h-[calc(100vh-64px)] animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-[1600px] mx-auto">
+    <div className="p-5 lg:p-10 xl:flex xl:flex-row gap-4 xl:h-full animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-[1600px] mx-auto">
       
       {/* ── Main Content (Left) ── */}
-      <div className="flex-1 flex flex-col gap-4">
+      <div className="flex-1 min-w-0 flex flex-col gap-4 xl:overflow-y-auto custom-scrollbar xl:pr-2">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/[0.02] border border-white/5 p-4 sm:p-6 rounded-3xl backdrop-blur-xl">
           <div className="flex items-center gap-4">
@@ -215,7 +215,7 @@ export default function SalesOrderDashboardPage() {
       </div>
 
       {/* ── Summary Column (Right) ── */}
-      <div className="xl:w-[25%] shrink-0 sticky top-[96px] space-y-4">
+      <div className="xl:w-[25%] shrink-0 space-y-4 xl:overflow-y-auto custom-scrollbar xl:pr-1">
         <GlassCard className="p-4 space-y-4">
           <h3 className="text-base font-semibold text-white/80 uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-4">
             <DollarSign size={16} className="text-nexus-teal" /> สรุปใบสั่งขาย

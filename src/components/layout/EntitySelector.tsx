@@ -46,13 +46,14 @@ export function EntitySelector() {
       <div
         ref={anchorRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="mb-2 p-3 rounded-xl bg-white/[0.03] border border-white/10 relative group cursor-pointer hover:bg-white/[0.06] transition-all overflow-hidden"
+        className="mb-2 py-3 px-1 w-[50px] group-hover/sb:w-full rounded-xl bg-white/[0.03] border border-white/10 relative group cursor-pointer hover:bg-white/[0.06] transition-[width,background-color] duration-150 overflow-hidden"
       >
         <div className="flex items-center gap-4 relative z-10">
           <div className="w-10 h-10 rounded-xl bg-nexus-teal/10 text-nexus-teal border border-nexus-teal/20 flex items-center justify-center flex-shrink-0">
             <ShieldCheck size={20} />
           </div>
-          <div className="flex-1 min-w-0 text-left">
+          {/* ข้อความแสดงเมื่อแถบเมนูขยาย (เอาเม้าวาง) */}
+          <div className="w-[132px] shrink-0 min-w-0 text-left opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150">
             <p className="text-[11px] font-bold text-white/40 tracking-wider mb-1">{type}</p>
             <p className="text-[14px] font-semibold text-white leading-tight line-clamp-2" title={name}>{name}</p>
           </div>

@@ -662,7 +662,7 @@ export default function InventoryPage() {
       </section>
 
       {/* Main Content Viewport */}
-      <main className="flex-1 overflow-y-auto relative custom-scrollbar">
+      <main className={cn("flex-1 min-h-0 overflow-y-auto relative custom-scrollbar", activeTab !== "layout" && "xl:overflow-hidden")}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(20,163,204,0.03)_0%,transparent_50%)] pointer-events-none" />
 
         {/* 3D Digital Twin Layout Tab */}
@@ -674,11 +674,11 @@ export default function InventoryPage() {
 
         {/* Non-layout Tabs (Items, Assets, Serials, History) wrapped in the exact identical dual-column container */}
         {activeTab !== "layout" && (
-          <div className="p-5 space-y-3 max-w-[1800px] mx-auto w-full relative z-10">
-            <div className="flex flex-col xl:flex-row gap-4 items-start w-full animate-in fade-in duration-500">
+          <div className="p-5 space-y-3 max-w-[1800px] mx-auto w-full relative z-10 xl:h-full">
+            <div className="flex flex-col xl:flex-row gap-4 items-start xl:items-stretch w-full xl:h-full animate-in fade-in duration-500">
               
               {/* Left Content Column */}
-            <div className="flex-1 w-full space-y-3">
+            <div className="flex-1 w-full min-w-0 space-y-3 xl:h-full xl:overflow-y-auto custom-scrollbar xl:pr-2">
               
               {/* Tactical Command Bar */}
               <div className="flex flex-col md:flex-row items-center gap-4 bg-white/[0.01] p-1.5 rounded-full border border-white/5 backdrop-blur-md">
@@ -963,7 +963,7 @@ export default function InventoryPage() {
             </div>
 
             {/* Right Sidebar Column - EXACT same structure and width w-full lg:w-[280px] as Warehouse3D */}
-            <div className="w-full xl:w-[25%] shrink-0 sticky top-[96px] space-y-3 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar pb-10">
+            <div className="w-full xl:w-[25%] shrink-0 space-y-3 xl:h-full xl:overflow-y-auto custom-scrollbar pb-10 xl:pr-1">
               
               {/* SIDEBAR FOR TABS */}
 

@@ -119,7 +119,11 @@ const ProductPickerList = ({ products, onPick }: { products: any[], onPick: (p: 
               <div className="flex-1 min-w-0">
                 <span className="font-bold text-white group-hover/item:text-nexus-teal flex items-center gap-2 flex-wrap">
                   <span>{displayName}</span>
-                  {displayStock !== undefined && (
+                  {String(p.itemType || "").toUpperCase() === "SERVICE" ? (
+                    <span className="text-[12px] font-normal border px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 text-amber-300 bg-amber-400/10 border-amber-400/30">
+                      {p.recipe?.materials?.length ? `งานบริการ · วัสดุ ${p.recipe.materials.length} รายการ` : "งานบริการ"}
+                    </span>
+                  ) : displayStock !== undefined && (
                     <span className={cn("text-[12px] font-normal border px-2 py-0.5 rounded-full whitespace-nowrap shrink-0", displayStock === 0 ? "text-danger bg-danger/10 border-danger/30 font-bold" : "text-nexus-teal/70 bg-nexus-teal/10 border-nexus-teal/20")}>
                       {displayStock === 0 ? "สินค้าหมดคลัง" : `คลัง: ${displayStock}`}
                     </span>

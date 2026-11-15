@@ -41,8 +41,17 @@ const VIEW_ALL: Permission[] = ["sales:view", "inventory:view", "procurement:vie
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   SUPERADMIN: ALL_PERMISSIONS,
-  // ผู้บริหาร: ดูได้ทุกโมดูล + แดชบอร์ดผู้บริหาร + อนุมัติ (ซื้อทุกวงเงิน ใบเสนอราคา โครงการ)
-  EXECUTIVE: [...VIEW_ALL, "dashboard:executive", "sales:cost", "sales:approve", "procurement:approve", "projects:approve", "logs:view"],
+  // ผู้บริหาร (ตัดสินใจ 2026-11-15): ทำได้ทุกอย่างยกเว้นงานบัญชี + อำนาจอนุมัติทุกวงเงิน/ลงนาม
+  // - ทำงาน: ขาย (ใบเสนอราคา/ใบสั่งขาย เห็นต้นทุน) คลัง จัดซื้อ โครงการ บุคคล ผู้ใช้ ตั้งค่า
+  // - อนุมัติ: ใบเสนอราคา ใบสั่งซื้อ (ไม่จำกัดวงเงิน) โครงการ
+  // - ไม่รวม: งานบัญชี (บันทึก/ลงบัญชี/ลบเอกสารบัญชี รับ-จ่ายเงิน ยื่นภาษี) และการออกใบกำกับ/วางบิล/ใบเสร็จ — ดูได้อย่างเดียว
+  // - ลายเซ็นในเอกสาร (ผู้อนุมัติ/ผู้มีอำนาจลงนาม) ตั้งที่ ตั้งค่า › ตราประทับและช่องลงนาม
+  EXECUTIVE: [...VIEW_ALL, "dashboard:executive",
+    "sales:edit", "sales:delete", "sales:cost", "sales:approve",
+    "inventory:edit", "inventory:delete",
+    "procurement:edit", "procurement:approve",
+    "projects:edit", "projects:delete", "projects:approve",
+    "hr:edit", "users:manage", "settings:manage", "logs:view"],
   // ผู้ดูแลระบบ: งานจัดการระบบเท่านั้น (ไม่เห็นตัวเลขการเงิน)
   ADMIN: ["users:manage", "settings:manage", "logs:view"],
   // บัญชี: เอกสารบัญชีทั้งหมด ลงบัญชี ยื่นภาษี อนุมัติซื้อ (ไม่เกินวงเงินบัญชี)
@@ -65,7 +74,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 
 /** ตำแหน่งที่กำหนดให้ผู้ใช้ได้ (เรียงตามที่แสดงในหน้าจอ) — ADMIN มีบริษัทละ 1 คน กำหนดโดย SUPERADMIN */
 export const ASSIGNABLE_ROLES: { value: Role; label: string; description: string }[] = [
-  { value: "EXECUTIVE", label: "ผู้บริหาร", description: "ดูทุกโมดูล แดชบอร์ดผู้บริหาร อนุมัติซื้อทุกวงเงิน" },
+  { value: "EXECUTIVE", label: "ผู้บริหาร", description: "ทำได้ทุกอย่างยกเว้นงานบัญชี · อนุมัติทุกวงเงิน (ใบเสนอราคา ใบสั่งซื้อ โครงการ) · ผู้มีอำนาจลงนาม" },
   { value: "ADMIN", label: "ผู้ดูแลระบบ", description: "จัดการผู้ใช้และตั้งค่าระบบ" },
   { value: "ACCOUNTANT", label: "บัญชี", description: "เอกสารบัญชี รับ-จ่ายเงิน ลงบัญชี ยื่นภาษี อนุมัติซื้อ" },
   { value: "PURCHASING", label: "จัดซื้อ", description: "ใบขอซื้อ ใบสั่งซื้อ คู่ค้า รับสินค้า" },

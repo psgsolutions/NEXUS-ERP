@@ -77,6 +77,12 @@ export default function EmployeeDetailPage() {
       </div>
       <div className="flex items-center gap-2">
         <RecordDeleteButton kind="employees" id={e.id} name={employeeName(e)} record={e} onDeleted={() => router.push("/hr")} />
+        {can(roles, "users:manage") && (
+          <PillButton variant="glass" className="h-9 px-4 text-xs" title="สร้างบัญชีเข้าระบบ (รหัสเริ่มต้น 0000 · เลือกได้หลายตำแหน่ง)"
+            onClick={() => router.push(`/settings/users?create=1&name=${encodeURIComponent(employeeName(e))}&email=${encodeURIComponent(e.email || "")}`)} data-create-login>
+            สร้างบัญชีเข้าระบบ
+          </PillButton>
+        )}
         {canEdit && (
           <PillButton variant="confirm" onClick={() => router.push(`/hr/employees/new?edit=${encodeURIComponent(e.id)}`)} className="h-9 px-4 text-xs font-bold">
             <Edit3 size={14} className="mr-1.5" /> แก้ไขข้อมูล

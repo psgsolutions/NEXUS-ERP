@@ -95,6 +95,11 @@ export default function UsersPage() {
   const [creating, setCreating] = useState<{ name: string; email: string } | null>(null);
   const [createBusy, setCreateBusy] = useState(false);
   const [issued, setIssued] = useState<{ name: string; email: string; password: string } | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("create") === "1") setCreating({ name: q.get("name") || "", email: q.get("email") || "" });
+  }, []);
   // ตำแหน่งผู้ดูแลระบบมีบริษัทละ 1 คน — กำหนดได้เฉพาะ SUPERADMIN
   const excludeRoles = isSuper ? [] : ["ADMIN"];
   const isCompanyAdmin = (u: ManagedUser) => u.roles.includes("ADMIN");
@@ -154,7 +159,8 @@ export default function UsersPage() {
       const res = await apiFetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "create", name: creating.name.trim(), email: creating.email.trim(), roles }),
+        // SUPERADMIN: สร้างให้บริษัทที่เลือกอยู่ (ตัวเลือกบริษัทมุมซ้ายบน)
+        body: JSON.stringify({ action: "create", name: creating.name.trim(), email: creating.email.trim(), roles, ...(isSuper ? { companyId } : {}) }),
       });
       const result = await res.json();
       if (!res.ok || !result.success) throw new Error(result.error || "สร้างบัญชีไม่สำเร็จ");
@@ -221,8 +227,8 @@ export default function UsersPage() {
             คัดลอกลิงก์สมัครผู้ใช้
           </PillButton>
         )}
-        {!isSuper && canManage && (
-          <PillButton variant="confirm" onClick={() => { setIssued(null); setCreating({ name: "", email: "" }); }} className="h-8 px-5 font-bold text-xs">
+        {(isSuper || canManage) && (
+          <PillButton variant="confirm" onClick={() => { setIssued(null); setCreating({ name: "", email: "" }); }} className="h-8 px-5 font-bold text-xs" data-add-user>
             <UserPlus size={14} className="mr-1.5" />
             เพิ่มผู้ใช้
           </PillButton>
@@ -460,7 +466,7 @@ export default function UsersPage() {
       <RoleAssignDialog
         open={!!creating}
         title="เพิ่มผู้ใช้"
-        subtitle="สร้างบัญชีพนักงานพร้อมตำแหน่งงาน — เข้าระบบครั้งแรกด้วยรหัส 0000 แล้วระบบให้ตั้งรหัสใหม่"
+        subtitle={`${isSuper ? `บริษัท ${companyId || "-"} · ` : ""}เลือกได้หลายตำแหน่ง — เข้าระบบครั้งแรกด้วยรหัส 0000 แล้วระบบให้ตั้งรหัสใหม่`}
         initialRoles={EMPTY_ROLES}
         confirmLabel="สร้างบัญชี"
         busy={createBusy}

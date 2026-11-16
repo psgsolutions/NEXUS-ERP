@@ -149,7 +149,7 @@ export default function AuthenticatedLayout({
 
         {/* User Intelligence Profile */}
         <div className="w-[240px] px-3 pt-3 pb-6 bg-white/[0.02] border-t border-white/5 space-y-2">
-          <div className="flex items-center gap-3 p-1.5 w-[50px] group-hover/sb:w-full overflow-hidden rounded-2xl bg-white/15 border border-white/20 group hover:bg-white/20 transition-[width,background-color] duration-150 cursor-pointer">
+          <Link href="/account" title="บัญชีของฉัน · เปลี่ยนรหัสผ่าน" className="flex items-center gap-3 p-1.5 w-[50px] group-hover/sb:w-full overflow-hidden rounded-2xl bg-white/15 border border-white/20 group hover:bg-white/20 transition-[width,background-color] duration-150 cursor-pointer">
              <div className="w-9 h-9 rounded-xl bg-nexus-blue/15 flex items-center justify-center text-nexus-blue border border-nexus-blue/20 flex-shrink-0">
                 <UserCog size={18} />
              </div>
@@ -157,7 +157,7 @@ export default function AuthenticatedLayout({
                 <p className="text-[12px] font-semibold text-white truncate uppercase leading-none">{user?.email?.split('@')[0] || 'ผู้ใช้งาน'}</p>
                 <p className="text-[11px] font-bold text-nexus-teal tracking-wide mt-1 leading-normal truncate" title={roleText}>{roleText}</p>
              </div>
-          </div>
+          </Link>
           
           <div className="opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150"><ConnectionStatus className="w-full justify-center text-[11px] py-1 bg-white/[0.02] border-white/5" /></div>
           

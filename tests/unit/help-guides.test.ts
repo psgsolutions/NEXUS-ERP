@@ -48,7 +48,11 @@ describe("in-app help", () => {
 
   it("onboarding merges roles without duplicates, help last", () => {
     const ids = tasksForRoles(["SALES", "ACCOUNTANT", "sales"]).map((t) => t.id);
-    expect(ids).toEqual(["customer", "quotation", "salesOrder", "postJournal", "receipt", "payment", "reports", "help"]);
+    expect(ids).toEqual(["mySignature", "productCheck", "customer", "quotation", "salesOrder", "openingTb", "postJournal", "receipt", "payment", "reports", "help"]);
+    // งานตั้งต้นเมื่อเริ่มใช้จริง: บัญชีนำเข้างบทดลองยกมา (ใครทำก็นับ) · คลังตรวจนับ · ผู้บริหารตั้งลายเซ็น/ช่องลงนาม/กฎราคา
+    expect(tasksForRoles(["ACCOUNTANT"]).find((t) => t.id === "openingTb")?.check).toMatchObject({ anyone: true, where: { field: "reference", value: "OPENING-TB" } });
+    expect(tasksForRoles(["WAREHOUSE"])[0].id).toBe("stockCount");
+    expect(tasksForRoles(["EXECUTIVE"]).map((t) => t.id)).toEqual(["users", "mySignature", "signSlots", "pricingRules", "executive", "help"]);
     expect(tasksForRoles(["CUSTOMER"])).toEqual([]);
     expect(introsForRoles(["SALES", "SALES", "UNKNOWN"]).map((i) => i.role)).toEqual(["ฝ่ายขาย"]);
     expect(visitTargets([{ check: { kind: "visit", path: "/hr" }, done: false }, { check: { kind: "visit", path: "/x" }, done: true }])).toEqual(["/hr"]);

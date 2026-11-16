@@ -2,7 +2,8 @@
  * การเริ่มใช้งานตามตำแหน่ง (ฟังก์ชันล้วน — ใช้ทั้งหน้าจอ, /api/onboarding และ unit test)
  *  - intro: ข้อความต้อนรับครั้งแรก "หน้าที่ของคุณในระบบ"
  *  - tasks: รายการเริ่มต้นใช้งาน ติ๊กให้อัตโนมัติเมื่อทำจริง
- *      doc   = พบเอกสารที่ผู้ใช้คนนี้สร้าง (ตามฟิลด์ผู้สร้างของเอกสารนั้น)
+ *      doc   = พบเอกสารที่ผู้ใช้คนนี้สร้าง (ตามฟิลด์ผู้สร้างของเอกสารนั้น) · anyone = ใครในบริษัทก็ได้ (งานตั้งต้นที่ทำครั้งเดียว)
+ *              where = เงื่อนไขเพิ่ม เช่น ใบสำคัญงบทดลองยกมา (reference = OPENING-TB)
  *      visit = ผู้ใช้เปิดหน้านั้นแล้ว (งานที่เป็นการดู/เรียนรู้)
  *      help  = เคยเปิดแผง "วิธีใช้หน้านี้"
  * ผู้ใช้หลายตำแหน่งเห็นงานของทุกตำแหน่งรวมกัน (งานซ้ำนับครั้งเดียว)
@@ -10,12 +11,23 @@
 import { ROLE_LABELS } from "@/lib/permissions";
 
 export type TaskCheck =
-  | { kind: "doc"; col: string; scope: "company" | "group"; field: string; byEmail?: boolean }
+  | { kind: "doc"; col: string; scope: "company" | "group"; field: string; byEmail?: boolean; anyone?: boolean; where?: { field: string; value: string } }
   | { kind: "visit"; path: string }
   | { kind: "help" };
 
 export interface OnboardingTask { id: string; label: string; href: string; check: TaskCheck }
 export interface RoleIntro { role: string; duties: string; daily: string[] }
+
+// งานตั้งต้นเมื่อเริ่มใช้จริง (1 ธ.ค. 2569) — ผู้ใช้แต่ละตำแหน่งทำเองในระบบ
+const GO = {
+  openingTb: { id: "openingTb", label: "เริ่มใช้จริง: นำเข้างบทดลองยกมา ณ 30 พ.ย. (นำเข้า Excel › งบทดลองยกมา) แล้วตรวจกระทบยอด 1131/2111/1141", href: "/data-import", check: { kind: "doc", col: "journal_entries", scope: "company", field: "createdBy", anyone: true, where: { field: "reference", value: "OPENING-TB" } } },
+  stockCount: { id: "stockCount", label: "เริ่มใช้จริง: ตรวจนับสต็อกจริง (30 พ.ย.) แล้วบันทึกผลต่างในหน้าตรวจนับ", href: "/inventory/stock-count", check: { kind: "doc", col: "stock_counts", scope: "company", field: "createdBy", anyone: true } },
+  reorderSetup: { id: "reorderSetup", label: "เริ่มใช้จริง: ตั้งจุดสั่งซื้อ/ผู้ขายหลักของสินค้าที่ขายประจำ", href: "/procurement/reorder", check: { kind: "visit", path: "/procurement/reorder" } },
+  mySignature: { id: "mySignature", label: "เริ่มใช้จริง: ตั้งลายเซ็นของฉัน (ใช้ในช่องลงนามของเอกสาร)", href: "/my-signature", check: { kind: "visit", path: "/my-signature" } },
+  signSlots: { id: "signSlots", label: "เริ่มใช้จริง: เลือกลายเซ็นในช่อง \"ผู้อนุมัติ/ผู้มีอำนาจลงนาม\" ของเอกสารแต่ละชนิด", href: "/settings?tab=esign", check: { kind: "visit", path: "/settings" } },
+  pricingRules: { id: "pricingRules", label: "เริ่มใช้จริง: ตั้งกฎราคาขาย (markup ตามหมวด/ยี่ห้อ GP เป้าหมาย)", href: "/settings?tab=pricing", check: { kind: "visit", path: "/settings" } },
+  productCheck: { id: "productCheck", label: "เริ่มใช้จริง: ตรวจราคาขาย/สเปกสินค้าที่ขายประจำ (แก้ได้ที่หน้าสินค้า)", href: "/inventory", check: { kind: "visit", path: "/inventory" } },
+} satisfies Record<string, OnboardingTask>;
 
 const T = {
   help: { id: "help", label: "เปิดดู \"วิธีใช้หน้านี้\" (ปุ่ม ? มุมขวาบน) สักหน้า", href: "/dashboard", check: { kind: "help" } },
@@ -47,27 +59,27 @@ const ROLE_SETUP: Record<string, { duties: string; daily: string[]; tasks: Onboa
   SALES: {
     duties: "ดูแลลูกค้า ทำใบเสนอราคา ติดตามจนเป็นใบสั่งขาย และออกใบกำกับภาษี",
     daily: ["ดูใบเสนอราคาที่รอลูกค้าตอบ/ใกล้หมดอายุ", "อนุมัติ/ติดตามใบสั่งขายจนส่งมอบ", "ออกใบกำกับภาษีเมื่อส่งมอบแล้ว"],
-    tasks: [T.customer, T.quotation, T.salesOrder, T.help],
+    tasks: [GO.mySignature, GO.productCheck, T.customer, T.quotation, T.salesOrder, T.help],
   },
   PURCHASING: {
     duties: "ซื้อสินค้าและบริการตามใบขอซื้อ ดูแลผู้ขาย และติดตามการรับของ",
     daily: ["ตรวจใบขอซื้อที่อนุมัติแล้ว ออกใบสั่งซื้อ", "ติดตามของที่ยังไม่มาส่ง", "ตั้งเบิกเมื่อได้ใบแจ้งหนี้จากผู้ขาย"],
-    tasks: [T.supplier, T.pr, T.po, T.help],
+    tasks: [GO.reorderSetup, GO.mySignature, T.supplier, T.pr, T.po, T.help],
   },
   WAREHOUSE: {
     duties: "รับสินค้าเข้า จัดเก็บ เบิกจ่ายตามใบสั่งขาย/โครงการ และดูแลจำนวนคงเหลือให้ตรง",
     daily: ["รับของตามใบสั่งซื้อ", "จัดของตามใบสั่งขายที่อนุมัติแล้ว พิมพ์ใบส่งของ", "ตรวจสินค้าใกล้หมด"],
-    tasks: [T.goodsIn, T.pick, T.stockCard, T.help],
+    tasks: [GO.stockCount, GO.reorderSetup, T.goodsIn, T.pick, T.stockCard, T.help],
   },
   ACCOUNTANT: {
     duties: "ตรวจและอนุมัติรายการบัญชีที่ระบบสร้างจากเอกสาร รับ-จ่ายเงิน ภาษี และปิดงวด",
     daily: ["อนุมัติรายการบัญชีร่าง (กล่องงานรอดำเนินการ)", "รับชำระ/จ่ายชำระ", "สิ้นเดือน: รายงานภาษี แล้วปิดงวด"],
-    tasks: [T.postJournal, T.receipt, T.payment, T.reports, T.help],
+    tasks: [GO.openingTb, GO.mySignature, T.postJournal, T.receipt, T.payment, T.reports, T.help],
   },
   ENGINEER: {
     duties: "ทำงานตั้งแต่รับความต้องการจนส่งมอบ: ลูกค้า ใบเสนอราคา (เห็นต้นทุน อนุมัติได้ไม่เกิน 1 ล้าน) โครงการ ขอซื้อ งานบริการ/MA — ส่วนการออก PO วางบิล รับเงิน และบัญชี แอดมินการเงินเป็นผู้ทำ",
     daily: ["ทำ/อนุมัติใบเสนอราคา และติดตามลูกค้า", "อัปเดตงวดงาน ขอซื้อของเข้าโครงการ", "ส่งมอบงานแล้วแจ้งแอดมินวางบิล"],
-    tasks: [T.customer, T.quotation, T.projectsView, T.project, T.help],
+    tasks: [GO.mySignature, GO.productCheck, T.customer, T.quotation, T.projectsView, T.project, T.help],
   },
   TECHNICIAN: {
     duties: "รับงานที่ได้รับมอบหมายบนมือถือ เช็คอินหน้างาน บันทึกผลและปิดงาน",
@@ -80,9 +92,9 @@ const ROLE_SETUP: Record<string, { duties: string; daily: string[]; tasks: Onboa
     tasks: [T.users, T.hrView, T.help],
   },
   EXECUTIVE: {
-    duties: "ดูภาพรวมธุรกิจ และอนุมัติเอกสารตามวงเงิน",
+    duties: "ทำได้ทุกอย่างยกเว้นงานบัญชี · อนุมัติทุกวงเงินและเป็นผู้มีอำนาจลงนาม",
     daily: ["ดูงานรออนุมัติที่หน้าภาพรวม", "ดูแดชบอร์ดผู้บริหาร: รายได้ กำไร เงินสด ลูกหนี้"],
-    tasks: [T.executive, T.help],
+    tasks: [T.users, GO.mySignature, GO.signSlots, GO.pricingRules, T.executive, T.help],
   },
   ADMIN: {
     duties: "ผู้ดูแลระบบของบริษัท (บริษัทละ 1 คน): ผู้ใช้ ตำแหน่งงาน และการตั้งค่าระบบ — ฝ่ายบุคคลช่วยกำหนดตำแหน่งได้",

@@ -49,7 +49,11 @@ export async function POST(request: Request) {
         if (c.kind === "visit") return visited.has(c.path);
         const base = c.scope === "group" ? `groups/${groupId}/${c.col}` : `companies/${companyId}/${c.col}`;
         const ids = c.byEmail && apiUser.email ? [apiUser.uid, apiUser.email] : [apiUser.uid];
-        const snap = await adminDb.collection(base).where(c.field, "in", ids).limit(1).get().catch(() => null);
+        // anyone: งานตั้งต้นของบริษัท ใครทำก็นับว่าเสร็จ · where: เงื่อนไขเพิ่ม (เช่น ใบสำคัญงบทดลองยกมา)
+        let q: admin.firestore.Query = adminDb.collection(base);
+        if (!c.anyone) q = q.where(c.field, "in", ids);
+        if (c.where) q = q.where(c.where.field, "==", c.where.value);
+        const snap = await q.limit(1).get().catch(() => null);
         return !!snap && !snap.empty;
       }));
       return NextResponse.json({

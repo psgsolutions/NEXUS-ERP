@@ -1099,6 +1099,7 @@ export default function NewProductPage() {
                   <p className="basis-full text-[12px] text-nexus-teal/90 leading-relaxed" data-service-hint>
                     งานบริการ/งานติดตั้ง: บันทึกแล้วระบบพาไปหน้าสินค้านี้ — ใส่วัสดุ (ดึงจากรายการสินค้า) และค่าแรงต่อ 1 หน่วยงานได้ที่การ์ด &quot;สูตรงานบริการ&quot;
                     เวลาเลือกงานนี้ในใบเสนอราคา ระบบคิดต้นทุนจากวัสดุ + ค่าแรง และตัดวัสดุตอนส่งของ/เบิกงาน
+                    {" "}<a href="/inventory/services/new" className="underline font-bold">หรือใช้หน้าสร้างงานบริการ (ทำครบในหน้าเดียว)</a>
                   </p>
                 )}
 

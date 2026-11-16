@@ -651,13 +651,18 @@ export default function InventoryPage() {
                 <Plus size={14} /> สร้างชุดอุปกรณ์
               </PillButton>
             ) : (
-              <PillButton 
-                variant="primary"
-                className="gap-1.5 shadow-neon-teal"
-                onClick={() => router.push("/inventory/products/new")}
-              >
-                <Plus size={14} /> เพิ่มสินค้า
-              </PillButton>
+              <>
+                <PillButton variant="glass" className="gap-1.5" onClick={() => router.push("/inventory/services/new")} title="งานบริการ/งานติดตั้ง: ค่าแรง + วัสดุ → ต้นทุน กำไร ราคา" data-new-service-btn>
+                  <Plus size={14} /> งานบริการ/ติดตั้ง
+                </PillButton>
+                <PillButton 
+                  variant="primary"
+                  className="gap-1.5 shadow-neon-teal"
+                  onClick={() => router.push("/inventory/products/new")}
+                >
+                  <Plus size={14} /> เพิ่มสินค้า
+                </PillButton>
+              </>
             )}
           </div>
         )}

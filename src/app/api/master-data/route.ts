@@ -338,6 +338,9 @@ export async function POST(request: Request) {
       body.changes.serviceRecipe = normalizeRecipe(body.changes.serviceRecipe);
       body.scope = "company";
     }
+    if (entity === "products" && action === "create" && body.data && typeof body.data === "object" && "serviceRecipe" in body.data) {
+      body.data.serviceRecipe = normalizeRecipe(body.data.serviceRecipe);
+    }
 
     if (action === "create") {
       const data = normalizeParty(entity, clean(body.data || {}));

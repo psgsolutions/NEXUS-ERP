@@ -18,7 +18,7 @@ async function login(page, uid) {
   const record = { uid, email: rec.email, emailVerified: false, isAnonymous: false, providerData: [], stsTokenManager: { refreshToken: r.refreshToken, accessToken: r.idToken, expirationTime: Date.now() + 3500e3 }, createdAt: String(Date.now()), lastLoginAt: String(Date.now()), apiKey: KEY, appName: "[DEFAULT]" };
   await page.goto(E2E_BASE + "/login", { waitUntil: "domcontentloaded", timeout: 240000 });
   await page.evaluate(async ({ record, key }) => {
-    localStorage.setItem("selectedCompanyId", "COM-NEXUS-01");
+    localStorage.setItem("selectedCompanyId", "COM-NEXUS-01"); sessionStorage.setItem("nx_tab_session", "1");
     await new Promise((res, rej) => {
       const req = indexedDB.open("firebaseLocalStorageDb", 1);
       req.onupgradeneeded = () => req.result.createObjectStore("firebaseLocalStorage", { keyPath: "fbase_key" });

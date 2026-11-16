@@ -88,7 +88,7 @@ const signIn = async (uid) => (await (await fetch(`https://identitytoolkit.googl
     const record = { uid: UID, email: `${UID}@example.com`, emailVerified: false, isAnonymous: false, providerData: [], stsTokenManager: { refreshToken: auth.refreshToken, accessToken: auth.idToken, expirationTime: Date.now() + 3500e3 }, createdAt: String(s), lastLoginAt: String(s), apiKey: KEY, appName: "[DEFAULT]" };
     await page.goto(E2E_BASE + "/login", { waitUntil: "domcontentloaded", timeout: 240000 });
     await page.evaluate(async ({ record, key }) => {
-      localStorage.setItem("selectedCompanyId", "COM-NEXUS-01");
+      localStorage.setItem("selectedCompanyId", "COM-NEXUS-01"); sessionStorage.setItem("nx_tab_session", "1");
       await new Promise((res, rej) => { const req = indexedDB.open("firebaseLocalStorageDb", 1); req.onupgradeneeded = () => req.result.createObjectStore("firebaseLocalStorage", { keyPath: "fbase_key" }); req.onsuccess = () => { const tx = req.result.transaction("firebaseLocalStorage", "readwrite"); tx.objectStore("firebaseLocalStorage").put({ fbase_key: key, value: record }); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); }; req.onerror = () => rej(req.error); });
     }, { record, key: `firebase:authUser:${KEY}:[DEFAULT]` });
     await page.goto(E2E_BASE + "/data-import", { waitUntil: "domcontentloaded", timeout: 240000 });

@@ -1,11 +1,11 @@
 "use client";
 import React, { useState } from "react";
-import { PillButton, GlassCard, PillCheckbox, PillInput } from "@/components/ui/Base";
+import { PillButton, GlassCard, PillInput } from "@/components/ui/Base";
+import { markSessionStart } from "@/lib/session-guard";
 import { Cpu, Lock, Mail, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
 import { auth, db } from "@/lib/firebase-client";
 import {
   browserLocalPersistence,
-  browserSessionPersistence,
   sendPasswordResetEmail,
   setPersistence,
   signInWithEmailAndPassword,
@@ -41,7 +41,6 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
 
   // Status
@@ -56,7 +55,9 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      // นโยบาย: จำการเข้าระบบเฉพาะระหว่างที่ยังเปิดระบบอยู่ — ปิดทุกแท็บแล้วต้องล็อกอินใหม่ (lib/session-guard)
+      await setPersistence(auth, browserLocalPersistence);
+      markSessionStart();
       const { user } = await signInWithEmailAndPassword(auth, email.trim(), password);
 
       if (isSuperAdminAccount(user.uid, user.email, (await user.getIdTokenResult()).claims)) {
@@ -219,11 +220,7 @@ export default function LoginPage() {
               </div>
 
               <div className="flex items-center justify-between px-2 pt-2">
-                <PillCheckbox
-                  label="จดจำฉันไว้"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                />
+                <span className="text-[11px] text-white/45">ปิดหน้าระบบทั้งหมดแล้วต้องเข้าสู่ระบบใหม่</span>
                 <button type="button" onClick={handleForgotPassword} className="text-[11px] font-bold text-nexus-teal hover:text-white transition-colors">
                   ลืมรหัสผ่าน?
                 </button>

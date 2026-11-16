@@ -29,7 +29,7 @@ module.exports.shoot = async function shoot(outDir, pages, widths = [1280, 1920]
     const p = await ctx.newPage();
     await p.goto((process.env.E2E_BASE || "http://localhost:3000") + "/login", { waitUntil: "domcontentloaded", timeout: 240000 });
     await p.evaluate(async ({ record, key }) => {
-      localStorage.setItem("selectedCompanyId", "COM-NEXUS-01");
+      localStorage.setItem("selectedCompanyId", "COM-NEXUS-01"); sessionStorage.setItem("nx_tab_session", "1");
       await new Promise((res, rej) => {
         const req = indexedDB.open("firebaseLocalStorageDb", 1);
         req.onupgradeneeded = () => req.result.createObjectStore("firebaseLocalStorage", { keyPath: "fbase_key" });

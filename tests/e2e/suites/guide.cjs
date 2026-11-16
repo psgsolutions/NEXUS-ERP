@@ -22,7 +22,7 @@ let fails = 0; const ok = (l, c, x = "") => { if (!c) fails++; console.log(`${c 
     const errors = []; p.on("pageerror", (e) => errors.push(e.message));
     await p.goto(B + "/login", { waitUntil: "domcontentloaded", timeout: 300000 });
     await p.evaluate(async ({ record, key }) => {
-      localStorage.setItem("selectedCompanyId", "COM-NEXUS-01");
+      localStorage.setItem("selectedCompanyId", "COM-NEXUS-01"); sessionStorage.setItem("nx_tab_session", "1");
       await new Promise((res, rej) => { const q = indexedDB.open("firebaseLocalStorageDb", 1); q.onupgradeneeded = () => q.result.createObjectStore("firebaseLocalStorage", { keyPath: "fbase_key" }); q.onsuccess = () => { const tx = q.result.transaction("firebaseLocalStorage", "readwrite"); tx.objectStore("firebaseLocalStorage").put({ fbase_key: key, value: record }); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); }; q.onerror = () => rej(q.error); });
     }, { record, key: `firebase:authUser:${KEY}:[DEFAULT]` });
     const shot = (n) => p.screenshot({ path: path.join(OUT, `guide-${n}.png`) });

@@ -11,6 +11,7 @@ import { collection, doc, getDoc, getDocs, limit, query } from "firebase/firesto
 
 import { can, Permission, primaryRole, resolveRoles } from "@/lib/permissions";
 import { inactiveReason, isSuperAdminAccount } from "@/lib/user-status";
+import { sessionAllowed, startTabHeartbeat } from "@/lib/session-guard";
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -90,6 +91,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      // ปิดทุกแท็บของระบบไปแล้ว (ไม่มีแท็บไหนเปิดอยู่ และแท็บนี้ไม่ได้ล็อกอินเอง) → ต้องล็อกอินใหม่
+      if (user && !sessionAllowed()) {
+        await signOut(auth);
+        return;
+      }
       if (user) {
         setUser(user);
         const claims = (await user.getIdTokenResult().catch(() => null))?.claims || null;
@@ -158,6 +164,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => unsubscribe();
   }, []);
+
+  // ลงทะเบียนแท็บนี้ระหว่างที่ล็อกอินอยู่ (ใช้ตัดสินว่า "ปิดทุกแท็บแล้ว" หรือยัง)
+  useEffect(() => {
+    if (!user?.uid) return;
+    return startTabHeartbeat();
+  }, [user?.uid]);
 
   return (
     <AuthContext.Provider value={{ user, loading, companyId, role, roles, displayName, profile, checkPermission, switchCompany }}>

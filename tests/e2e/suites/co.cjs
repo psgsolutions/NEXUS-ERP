@@ -75,7 +75,7 @@ const { authUserRecord } = require("../tools/auth-shots.cjs");
     const pg = await (await b.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
     pg.on("pageerror", (e) => console.log("PAGEERROR", e.message));
     await pg.goto(E2E_BASE + "/login", { waitUntil: "domcontentloaded", timeout: 240000 });
-    await pg.evaluate(async ({ record, key }) => { localStorage.setItem("selectedCompanyId", "COM-NEXUS-01");
+    await pg.evaluate(async ({ record, key }) => { localStorage.setItem("selectedCompanyId", "COM-NEXUS-01"); sessionStorage.setItem("nx_tab_session", "1");
       await new Promise((res) => { const req = indexedDB.open("firebaseLocalStorageDb", 1); req.onupgradeneeded = () => req.result.createObjectStore("firebaseLocalStorage", { keyPath: "fbase_key" });
         req.onsuccess = () => { const tx = req.result.transaction("firebaseLocalStorage", "readwrite"); tx.objectStore("firebaseLocalStorage").put({ fbase_key: key, value: record }); tx.oncomplete = () => res(); }; }); }, { record, key: `firebase:authUser:${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}:[DEFAULT]` });
     await pg.goto(`${E2E_BASE}/projects/${prj}?tab=changes`, { waitUntil: "domcontentloaded", timeout: 240000 });

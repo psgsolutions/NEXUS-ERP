@@ -68,20 +68,34 @@ import { ProductCostHistory } from "@/components/shared/ProductCostHistory";
 import { ServiceRecipeCard } from "@/components/inventory/ServiceRecipeCard";
 import { ProductLotsCard } from "@/components/inventory/ProductLotsCard";
 import { can } from "@/lib/permissions";
+import { ChoiceInput } from "@/components/ui/ChoiceInput";
 
-const CATEGORIES = [
-  "Network & Wireless",
-  "Server & Datacenter",
-  "Fiber & Cabling",
-  "Security Systems",
-  "Power & UPS",
-  "Computing & Workstation",
-  "Software & Licensing",
-  "Consumables",
-  "General"
+/** ช่องที่ฝ่ายขาย/วิศวกร (ไม่มีสิทธิ์คลัง) แก้ได้ — ตรงกับ PRODUCT_SALES_FIELDS ที่ server */
+const SALES_FIELDS = ["description", "datasheetUrl", "warrantyMonths"];
+const LIFECYCLE: { value: string; label: string }[] = [
+  { value: "ACTIVE", label: "ใช้งาน" }, { value: "DRAFT", label: "ร่าง (ยังไม่ขาย)" }, { value: "PHASE_OUT", label: "ทยอยยกเลิก" },
 ];
+const blankForm = {
+  sku: "", barcode: "", name: "", description: "", category: "", subCategory: "", brand: "", model: "", partNumber: "",
+  unit: "ชิ้น", warrantyMonths: 0, datasheetUrl: "", lifecycleStatus: "ACTIVE",
+  minStock: 0, reorderPoint: 0, maxStock: 0, costWAC: 0, pricePOS: 0, priceProject: 0, priceWholesale: 0, onHand: 0, reserved: 0,
+};
+/** ข้อมูลสินค้า → ฟอร์ม (อ่านทั้งชื่อฟิลด์ใหม่และรุ่นเก่า) */
+function formFromProduct(p: any): typeof blankForm {
+  const ic = p?.inventoryControl || {};
+  const n = (v: any) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  return {
+    sku: p?.sku || "", barcode: p?.barcode || "", name: p?.name || "", description: p?.description || p?.technicalSpecs || "",
+    category: p?.category || "", subCategory: p?.subCategory || "", brand: p?.brand || "", model: p?.model || p?.mainModel || "",
+    partNumber: p?.partNumber || "", unit: p?.unit || "ชิ้น", warrantyMonths: n(p?.warrantyMonths), datasheetUrl: p?.datasheetUrl || "",
+    lifecycleStatus: p?.lifecycleStatus || "ACTIVE",
+    minStock: n(ic.minStock ?? p?.minStock), reorderPoint: n(ic.reorderPoint ?? p?.reorderPoint), maxStock: n(ic.maxStock ?? p?.maxStock),
+    costWAC: n(p?.pricing?.costWAC ?? p?.costPrice), pricePOS: n(p?.pricing?.pricePOS ?? p?.unitPrice), priceProject: n(p?.pricing?.priceProject),
+    priceWholesale: n(p?.pricing?.priceWholesale ?? p?.wholesalePrice), onHand: n(p?.stockStatus?.onHand), reserved: n(p?.stockStatus?.reserved),
+  };
+}
 
-const UNITS = ["EA", "Unit", "Pcs", "Box", "Set", "Roll", "Meter", "License"];
+
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -96,22 +110,14 @@ export default function ProductDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [movements, setMovements] = useState<any[]>([]);
 
+  // สิทธิ์: คลัง/จัดซื้อ/วิศวกร/ผู้บริหาร แก้ได้ทั้งหมด (ยกเว้นค่าที่ระบบสร้าง) · ฝ่ายขายแก้ได้เฉพาะข้อมูลประกอบการขาย
+  const canFull = can(roles, "inventory:edit");
+  const canSalesInfo = !canFull && (can(roles, "sales:edit") || can(roles, "projects:edit"));
+  const canSku = can(roles, "settings:manage");
+  const ed = (field: string) => isEditMode && (canFull || (canSalesInfo && SALES_FIELDS.includes(field)));
+
   // Form state
-  const [form, setForm] = useState({
-    sku: "",
-    barcode: "",
-    name: "",
-    description: "",
-    category: "",
-    brand: "",
-    unit: "EA",
-    minStock: 0,
-    costWAC: 0,
-    pricePOS: 0,
-    priceProject: 0,
-    onHand: 0,
-    reserved: 0
-  });
+  const [form, setForm] = useState(blankForm);
 
   const [toast, setToast] = useState({
     message: "",
@@ -135,24 +141,16 @@ export default function ProductDetailPage() {
     if (found && !isEditMode) {
       const data = found as Product;
       setProduct(data);
-      setForm({
-        sku: data.sku || "",
-        barcode: (data as any).barcode || "",
-        name: data.name || "",
-        description: data.description || "",
-        category: data.category || "",
-        brand: data.brand || "",
-        unit: data.unit || "EA",
-        minStock: (data as any).minStock || 0,
-        costWAC: data.pricing?.costWAC || 0,
-        pricePOS: data.pricing?.pricePOS || 0,
-        priceProject: data.pricing?.priceProject || 0,
-        onHand: data.stockStatus?.onHand || 0,
-        reserved: data.stockStatus?.reserved || 0
-      });
+      setForm(formFromProduct(data));
     }
     if (!productsLoading) setLoading(false);
   }, [productId, companyProducts, productsLoading, isEditMode]);
+
+  useEffect(() => {
+    if (!product || typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("edit") === "1" && (canFull || canSalesInfo)) setIsEditMode(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id]);
 
   // Real-time stock movements
   useEffect(() => {
@@ -176,6 +174,12 @@ export default function ProductDetailPage() {
     return () => unsubscribe();
   }, [companyId, productId]);
 
+  // ตัวเลือกจากสินค้าที่มีอยู่จริง (หมวด หมวดย่อย หน่วย ยี่ห้อ)
+  const choices = useMemo(() => {
+    const uniq = (k: string) => Array.from(new Set(companyProducts.map((x: any) => String(x?.[k] || "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, "th"));
+    return { category: uniq("category"), subCategory: uniq("subCategory"), unit: uniq("unit"), brand: uniq("brand") };
+  }, [companyProducts]);
+
   // ตรวจบาร์โค้ดซ้ำกับสินค้าอื่นในบริษัท (เทียบทั้งบาร์โค้ดและ SKU)
   const barcodeConflict = useMemo(
     () => findBarcodeConflict(form.barcode, companyProducts, companyId || "", productId as string),
@@ -195,8 +199,8 @@ export default function ProductDetailPage() {
       setToast({ message: "ระบบขัดข้อง: ไม่พบข้อมูลผู้ใช้งานหรือรหัสองค์กร กรุณาเข้าสู่ระบบใหม่", isVisible: true, type: "error" });
       return;
     }
-    if (!form.sku.trim() || !form.name.trim()) {
-      setToast({ message: "กรุณาระบุรหัส SKU และชื่อพัสดุ", isVisible: true, type: "warning" });
+    if (canFull && !form.name.trim()) {
+      setToast({ message: "กรุณาระบุชื่อสินค้า", isVisible: true, type: "warning" });
       return;
     }
     if (barcodeConflict) {
@@ -207,16 +211,21 @@ export default function ProductDetailPage() {
     try {
       // เครือบริษัทเดียว: แก้ค่ากลางได้เลย / หลายบริษัท: ชื่อ รายละเอียด หมวด เป็นค่าของบริษัท เว้นแต่ผู้ดูแลเครือเลือกบันทึกเป็นค่ากลาง
       // ไม่บันทึก costWAC / stockStatus จากหน้านี้: เปลี่ยนผ่าน stock engine เท่านั้น
-      const scope = masterCtx && (masterCtx.companyCount <= 1 || saveToGroup) && masterCtx.canEditMaster ? "group" : "company";
+      const scope = canFull && masterCtx && (masterCtx.companyCount <= 1 || saveToGroup) && masterCtx.canEditMaster ? "group" : "company";
       const res = await apiFetch("/api/master-data", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           companyId, action: "update", entity: "products", id: productId, scope,
-          changes: {
-            sku: form.sku.trim(), name: form.name.trim(), description: form.description, category: form.category,
-            brand: form.brand, unit: form.unit, barcode: form.barcode.trim(), barcodes: form.barcode.trim() ? [form.barcode.trim()] : [],
-            pricing: { pricePOS: form.pricePOS, priceProject: form.priceProject },
-          },
+          changes: canFull ? {
+            ...(canSku && form.sku.trim() && form.sku.trim() !== String(product?.sku || "") ? { sku: form.sku.trim(), productCode: form.sku.trim() } : {}),
+            name: form.name.trim(), description: form.description, technicalSpecs: form.description,
+            category: form.category, subCategory: form.subCategory, brand: form.brand, model: form.model, mainModel: form.model, partNumber: form.partNumber.trim(),
+            unit: form.unit, barcode: form.barcode.trim(), barcodes: form.barcode.trim() ? [form.barcode.trim()] : [],
+            warrantyMonths: Number(form.warrantyMonths) || 0, datasheetUrl: form.datasheetUrl.trim(), lifecycleStatus: form.lifecycleStatus,
+            pricing: { pricePOS: form.pricePOS, priceProject: form.priceProject, priceWholesale: form.priceWholesale },
+            unitPrice: form.pricePOS, wholesalePrice: form.priceWholesale,
+            inventoryControl: { ...((product as any)?.inventoryControl || {}), minStock: form.minStock, reorderPoint: form.reorderPoint, maxStock: form.maxStock },
+          } : { description: form.description, technicalSpecs: form.description, datasheetUrl: form.datasheetUrl.trim(), warrantyMonths: Number(form.warrantyMonths) || 0 },
         }),
       });
       const d = await res.json();
@@ -233,21 +242,7 @@ export default function ProductDetailPage() {
 
   const handleCancel = () => {
     if (product) {
-      setForm({
-        sku: product.sku || "",
-        barcode: (product as any).barcode || "",
-        name: product.name || "",
-        description: product.description || "",
-        category: product.category || "",
-        brand: product.brand || "",
-        unit: product.unit || "EA",
-        minStock: (product as any).minStock || 0,
-        costWAC: product.pricing?.costWAC || 0,
-        pricePOS: product.pricing?.pricePOS || 0,
-        priceProject: product.pricing?.priceProject || 0,
-        onHand: product.stockStatus?.onHand || 0,
-        reserved: product.stockStatus?.reserved || 0
-      });
+      setForm(formFromProduct(product));
     }
     setIsEditMode(false);
   };
@@ -344,14 +339,17 @@ export default function ProductDetailPage() {
           </>
         ) : (
           <>
-          <RecordDeleteButton kind="products" id={productId} name={product.name} record={product} onDeleted={() => router.push("/inventory")} className="h-8 px-4 text-xs" />
-          <PillButton
-            variant="confirm"
-            className="h-8 px-4 text-xs font-bold flex items-center gap-1.5"
-            onClick={() => setIsEditMode(true)}
-          >
-            <Edit3 size={14} /> แก้ไขข้อมูล
-          </PillButton>
+          {canFull && <RecordDeleteButton kind="products" id={productId} name={product.name} record={product} onDeleted={() => router.push("/inventory")} className="h-8 px-4 text-xs" />}
+          {(canFull || canSalesInfo) && (
+            <PillButton
+              variant="confirm"
+              className="h-8 px-4 text-xs font-bold flex items-center gap-1.5"
+              onClick={() => setIsEditMode(true)}
+              data-product-edit
+            >
+              <Edit3 size={14} /> {canFull ? "แก้ไขข้อมูล" : "แก้ไขรายละเอียด/สเปก"}
+            </PillButton>
+          )}
           </>
         )}
       </div>
@@ -392,7 +390,7 @@ export default function ProductDetailPage() {
           <div className="flex items-center gap-3 p-4 rounded-2xl bg-nexus-blue/5 border border-nexus-blue/20">
             <Unlock size={16} className="text-nexus-blue shrink-0" />
             <p className="text-[12px] font-medium text-nexus-blue uppercase tracking-widest">
-              โหมดแก้ไข — แก้ไขข้อมูลแล้วกด "บันทึกข้อมูล" เพื่อยืนยัน
+              {canFull ? "โหมดแก้ไข — แก้ได้ทุกช่องยกเว้นค่าที่ระบบสร้าง (รหัสสินค้า สต็อก ต้นทุน Lot) แล้วกด \"บันทึกข้อมูล\"" : "แก้ได้เฉพาะรายละเอียด/สเปก ลิงก์ datasheet และระยะประกัน — ช่องอื่นแก้โดยฝ่ายคลัง/จัดซื้อ"}
             </p>
           </div>
         )}
@@ -408,8 +406,8 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <FormField label="รหัสสินค้า *">
-                {isEditMode ? (
+              <FormField label={canSku ? "รหัสสินค้า (ระบบกำหนด · ผู้ดูแลแก้ได้)" : "รหัสสินค้า (ระบบกำหนด)"}>
+                {isEditMode && canSku ? (
                   <PillInput
                     value={form.sku}
                     onChange={(e) => setForm({ ...form, sku: e.target.value })}
@@ -424,7 +422,7 @@ export default function ProductDetailPage() {
               </FormField>
 
               <FormField label="บาร์โค้ด (ยิงจากสินค้า หรือว่างไว้ใช้ SKU)">
-                {isEditMode ? (
+                {ed("barcode") ? (
                   <>
                     <PillInput
                       value={form.barcode}
@@ -442,7 +440,7 @@ export default function ProductDetailPage() {
               </FormField>
 
               <FormField label="ชื่อพัสดุ / สินค้า *">
-                {isEditMode ? (
+                {ed("name") ? (
                   <PillInput
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -457,17 +455,8 @@ export default function ProductDetailPage() {
               </FormField>
 
               <FormField label="หมวดหมู่สินค้า">
-                {isEditMode ? (
-                  <PillSelect
-                    value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    className="w-full"
-                  >
-                    <option value="">เลือกหมวดหมู่...</option>
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </PillSelect>
+                {ed("category") ? (
+                  <ChoiceInput value={form.category} onChange={(v) => setForm({ ...form, category: v })} options={choices.category} placeholder="เลือกหรือพิมพ์หมวดหมู่" className="w-full" />
                 ) : (
                   <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white/70">
                     {form.category || "—"}
@@ -476,7 +465,7 @@ export default function ProductDetailPage() {
               </FormField>
 
               <FormField label="แบรนด์ / ผู้ผลิต">
-                {isEditMode ? (
+                {ed("brand") ? (
                   <PillInput
                     value={form.brand}
                     onChange={(e) => setForm({ ...form, brand: e.target.value })}
@@ -491,16 +480,8 @@ export default function ProductDetailPage() {
               </FormField>
 
               <FormField label="หน่วยนับ">
-                {isEditMode ? (
-                  <PillSelect
-                    value={form.unit}
-                    onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                    className="w-full"
-                  >
-                    {UNITS.map((u) => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </PillSelect>
+                {ed("unit") ? (
+                  <ChoiceInput value={form.unit} onChange={(v) => setForm({ ...form, unit: v })} options={choices.unit} placeholder="เลือกหรือพิมพ์หน่วย" className="w-full" />
                 ) : (
                   <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white/70">
                     {form.unit || "—"}
@@ -509,17 +490,43 @@ export default function ProductDetailPage() {
               </FormField>
 
               <FormField label="คำอธิบายสินค้า">
-                {isEditMode ? (
+                {ed("description") ? (
                   <textarea
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     placeholder="รายละเอียดสินค้าสำหรับเอกสาร..."
-                    rows={3}
+                    rows={5}
                     className="w-full px-4 py-3 rounded-2xl bg-white/15 border border-white/10 text-sm font-bold text-white focus:outline-none focus:border-nexus-teal/30 resize-none"
                   />
                 ) : (
                   <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm text-white/60 min-h-[80px]">
                     {form.description || <span className="text-white/20">ยังไม่มีคำอธิบาย</span>}
+                  </div>
+                )}
+              </FormField>
+              <FormField label="หมวดย่อย">
+                {ed("subCategory") ? <ChoiceInput value={form.subCategory} onChange={(v) => setForm({ ...form, subCategory: v })} options={choices.subCategory} placeholder="เลือกหรือพิมพ์หมวดย่อย" className="w-full" /> : <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white/70">{form.subCategory || "—"}</div>}
+              </FormField>
+              <FormField label="รุ่น">
+                {ed("model") ? <PillInput value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder="รุ่นของผู้ผลิต" className="w-full" /> : <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white/70">{form.model || "—"}</div>}
+              </FormField>
+              <FormField label="Part number / รหัสผู้ผลิต">
+                {ed("partNumber") ? <PillInput value={form.partNumber} onChange={(e) => setForm({ ...form, partNumber: e.target.value })} placeholder="รหัสสินค้าของผู้ผลิต/แบรนด์" className="w-full font-mono" /> : <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white/70 font-mono">{form.partNumber || "—"}</div>}
+              </FormField>
+              <FormField label="รับประกัน (เดือน)">
+                {ed("warrantyMonths") ? <PillInput inputMode="numeric" value={String(form.warrantyMonths || "")} onChange={(e) => setForm({ ...form, warrantyMonths: Number(e.target.value.replace(/[^\d]/g, "")) || 0 })} placeholder="เช่น 12" className="w-full font-mono" /> : <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white/70">{form.warrantyMonths ? `${form.warrantyMonths} เดือน` : "—"}</div>}
+              </FormField>
+              <FormField label="สถานะสินค้า">
+                {ed("lifecycleStatus") ? (
+                  <PillSelect value={form.lifecycleStatus} onChange={(e) => setForm({ ...form, lifecycleStatus: e.target.value })} className="w-full">
+                    {LIFECYCLE.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
+                  </PillSelect>
+                ) : <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm font-bold text-white/70">{LIFECYCLE.find((x) => x.value === form.lifecycleStatus)?.label || form.lifecycleStatus}</div>}
+              </FormField>
+              <FormField label="ลิงก์ datasheet">
+                {ed("datasheetUrl") ? <PillInput value={form.datasheetUrl} onChange={(e) => setForm({ ...form, datasheetUrl: e.target.value })} placeholder="https://..." className="w-full" /> : (
+                  <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm truncate">
+                    {form.datasheetUrl ? <a href={form.datasheetUrl} target="_blank" rel="noreferrer" className="text-nexus-teal hover:underline">เปิด datasheet</a> : <span className="text-white/30">—</span>}
                   </div>
                 )}
               </FormField>
@@ -538,9 +545,9 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="col-span-full p-4 rounded-2xl bg-white/[0.02] border border-white/5 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="col-span-full p-4 rounded-2xl bg-white/[0.02] border border-white/5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 <FormField label="ราคาเสนอโครงการ">
-                  {isEditMode ? (
+                  {ed("priceProject") ? (
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-bold">฿</span>
                       <PillInput
@@ -558,7 +565,7 @@ export default function ProductDetailPage() {
                 </FormField>
 
                 <FormField label="ราคาขายปลีก">
-                  {isEditMode ? (
+                  {ed("pricePOS") ? (
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm font-bold">฿</span>
                       <PillInput
@@ -572,6 +579,14 @@ export default function ProductDetailPage() {
                     <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-white">
                       ฿{form.pricePOS.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </div>
+                  )}
+                </FormField>
+
+                <FormField label="ราคาส่ง">
+                  {ed("priceWholesale") ? (
+                    <PillInput inputMode="decimal" value={String(form.priceWholesale || "")} onChange={(e) => setForm({ ...form, priceWholesale: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 })} className="w-full font-mono mono-numbers" />
+                  ) : (
+                    <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-white">฿{form.priceWholesale.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                   )}
                 </FormField>
 
@@ -639,8 +654,24 @@ export default function ProductDetailPage() {
                 </div>
               </FormField>
 
+              <FormField label="จุดสั่งซื้อ (ใช้กับหน้าสั่งซื้อตามจุดสั่งซื้อ)">
+                {ed("reorderPoint") ? (
+                  <PillInput inputMode="numeric" value={String(form.reorderPoint || "")} onChange={(e) => setForm({ ...form, reorderPoint: Number(e.target.value.replace(/[^\d]/g, "")) || 0 })} className="w-full font-mono mono-numbers" />
+                ) : (
+                  <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-white/60">{form.reorderPoint ? `${form.reorderPoint} ${form.unit}` : "ยังไม่ตั้ง"}</div>
+                )}
+              </FormField>
+
+              <FormField label="สต็อกสูงสุด (เติมให้ถึง)">
+                {ed("maxStock") ? (
+                  <PillInput inputMode="numeric" value={String(form.maxStock || "")} onChange={(e) => setForm({ ...form, maxStock: Number(e.target.value.replace(/[^\d]/g, "")) || 0 })} className="w-full font-mono mono-numbers" />
+                ) : (
+                  <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold text-white/60">{form.maxStock ? `${form.maxStock} ${form.unit}` : "ยังไม่ตั้ง"}</div>
+                )}
+              </FormField>
+
               <FormField label="ระดับแจ้งเตือนขั้นต่ำ">
-                {isEditMode ? (
+                {ed("minStock") ? (
                   <PillInput
                     type="number"
                     value={form.minStock}
@@ -776,13 +807,15 @@ export default function ProductDetailPage() {
       {/* Actions Card */}
       <GlassCard className="p-4 border-white/5 space-y-3">
         <h4 className="text-sm font-medium text-white/30 uppercase tracking-widest">การดำเนินการด่วน</h4>
-        <PillButton
-          className="w-full text-xs shadow-neon-teal"
-          onClick={() => setIsEditMode(true)}
-          disabled={isEditMode}
-        >
-          <Edit3 size={14} /> แก้ไขข้อมูลสินค้า
-        </PillButton>
+        {(canFull || canSalesInfo) && (
+          <PillButton
+            className="w-full text-xs shadow-neon-teal"
+            onClick={() => { setActiveTab("overview"); setIsEditMode(true); }}
+            disabled={isEditMode}
+          >
+            <Edit3 size={14} /> {canFull ? "แก้ไขข้อมูลสินค้า" : "แก้ไขรายละเอียด/สเปก"}
+          </PillButton>
+        )}
         <PillButton
           variant="glass"
           className="w-full text-xs border-nexus-blue/20 text-nexus-blue hover:"

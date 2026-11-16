@@ -39,7 +39,9 @@ import {
   Trash2,
   Copy,
   Layers,
+  Edit3,
 } from "lucide-react";
+import { can } from "@/lib/permissions";
 import { 
   PillButton, 
   GlassCard, 
@@ -337,7 +339,7 @@ function CreateKitModal({ isOpen, onClose, products, onSave }: CreateKitModalPro
 
 export default function InventoryPage() {
   const { products, loading } = useInventory();
-  const { user, companyId } = useAuth();
+  const { user, companyId, roles } = useAuth();
   const router = useRouter();
   
   const [activeTab, setActiveTab] = useUrlTab<string>("items");
@@ -993,7 +995,7 @@ export default function InventoryPage() {
                         </div>
                         <div className="p-4 rounded-xl bg-white/5 border border-white/5 flex flex-col justify-between">
                           <span className="text-sm font-medium text-white/30 uppercase tracking-widest">ต้นทุน</span>
-                          <span className="text-sm font-medium text-white mt-2 truncate mono-numbers">฿{(selectedProduct.pricing?.costWAC || 0).toLocaleString()}</span>
+                          <span className="text-sm font-medium text-white mt-2 truncate mono-numbers">฿{Number(selectedProduct.pricing?.costWAC || (selectedProduct as any).costPrice || 0).toLocaleString("th-TH", { minimumFractionDigits: 2 })}</span>
                         </div>
                       </div>
 
@@ -1001,18 +1003,34 @@ export default function InventoryPage() {
                         <p className="text-sm font-medium text-white/30 uppercase tracking-widest border-b border-white/5 pb-2">รายละเอียดทางเทคนิค</p>
                         <NexusDataField label="SKU / ID" value={selectedProduct.sku} />
                         <NexusDataField label="หมวดหมู่หลัก" value={selectedProduct.category} />
-                        <NexusDataField label="แบรนด์สินค้า" value={selectedProduct.brand || "ARUBA"} />
+                        <NexusDataField label="แบรนด์สินค้า" value={selectedProduct.brand || "—"} />
+                        <NexusDataField label="Part number" value={(selectedProduct as any).partNumber || (selectedProduct as any).model || "—"} />
+                        <NexusDataField label="ราคาขาย" value={`฿${Number((selectedProduct as any).pricing?.priceProject ?? (selectedProduct as any).pricing?.pricePOS ?? 0).toLocaleString("th-TH", { minimumFractionDigits: 2 })}`} />
                         <NexusDataField label="หน่วยจัดเก็บ" value={selectedProduct.unit || "ชิ้น"} />
-                        <NexusDataField label="จองการติดตั้ง" value={`${selectedProduct.stockStatus?.reserved || 0} EA`} />
+                        <NexusDataField label="จองไว้" value={`${selectedProduct.stockStatus?.reserved || 0} ${selectedProduct.unit || ""}`} />
+                        {String((selectedProduct as any).description || "").trim() && String((selectedProduct as any).description).trim() !== selectedProduct.name && (
+                          <p className="text-[12px] text-white/60 leading-relaxed line-clamp-4" title={(selectedProduct as any).description}>{(selectedProduct as any).description}</p>
+                        )}
                       </div>
 
                       <div className="space-y-3 pt-4 border-t border-white/5">
-                        <PillButton 
-                          className="w-full shadow-neon-teal text-xs" 
+                        <PillButton
+                          className="w-full shadow-neon-teal text-xs"
                           onClick={() => router.push(`/inventory/${selectedProduct.id}`)}
+                          data-product-open
                         >
-                          <Warehouse size={14} /> วิเคราะห์ความเคลื่อนไหวลึก
+                          <Warehouse size={14} /> ดูรายละเอียด / ตั้งค่าทั้งหมด
                         </PillButton>
+                        {(can(roles, "inventory:edit") || can(roles, "sales:edit") || can(roles, "projects:edit")) && (
+                          <PillButton
+                            variant="glass"
+                            className="w-full text-xs"
+                            onClick={() => router.push(`/inventory/${selectedProduct.id}?edit=1`)}
+                            data-product-edit-link
+                          >
+                            <Edit3 size={14} /> {can(roles, "inventory:edit") ? "แก้ไขสินค้า" : "แก้ไขรายละเอียด/สเปก"}
+                          </PillButton>
+                        )}
                         <PillButton
                           variant="glass"
                           className="w-full text-xs"

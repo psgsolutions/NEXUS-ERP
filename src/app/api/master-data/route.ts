@@ -49,6 +49,9 @@ const PARTY_CODE: Partial<Record<MasterEntity, { prefix: SequencePrefix; field: 
   contractors: { prefix: "SUB", field: "contractorId", asId: true },
 };
 /** ฟิลด์ของบริษัทที่ระบบคำนวณเอง (สต็อก ต้นทุน ยอดหนี้) ห้ามแก้ผ่าน API นี้ */
+/** ช่องข้อมูลประกอบการขายของสินค้า (ฝ่ายขาย/วิศวกรแก้ได้โดยไม่ต้องมีสิทธิ์คลัง) */
+const PRODUCT_SALES_FIELDS = ["description", "technicalSpecs", "specs", "datasheetUrl", "warrantyMonths"];
+
 const PROTECTED: Record<MasterEntity, string[]> = {
   products: ["stock", "currentStock", "stockStatus", "cost", "wac", "averageCost", "lastCost", "stockValue"],
   customers: ["arBalance", "outstanding", "balance"],
@@ -321,7 +324,10 @@ export async function POST(request: Request) {
     // โปรไฟล์เอกสารลูกค้า (เฉพาะฟิลด์ docProfile ของบริษัท): แอดมินการเงินตั้งรูปแบบวางบิล/รับเงินได้ แม้ไม่มีสิทธิ์งานขาย
     const changeKeys = body.changes && typeof body.changes === "object" ? Object.keys(body.changes) : [];
     const profileOnly = action === "update" && entity === "customers" && changeKeys.length === 1 && changeKeys[0] === "docProfile";
-    if (!can(apiUser.roles, schema.editPermission) && !(profileOnly && can(apiUser.roles, "finance:edit"))) throw new ApiAuthError(403, `ไม่มีสิทธิ์แก้ไขข้อมูล${schema.label}`);
+    // ข้อมูลประกอบการขายของสินค้า: ฝ่ายขาย/วิศวกร (ไม่มีสิทธิ์คลัง) แก้ได้เฉพาะรายละเอียด/สเปก ลิงก์ datasheet ระยะประกัน
+    const salesInfoOnly = action === "update" && entity === "products" && changeKeys.length > 0 && changeKeys.every((k) => PRODUCT_SALES_FIELDS.includes(k))
+      && (can(apiUser.roles, "sales:edit") || can(apiUser.roles, "projects:edit"));
+    if (!can(apiUser.roles, schema.editPermission) && !(profileOnly && can(apiUser.roles, "finance:edit")) && !salesInfoOnly) throw new ApiAuthError(403, `ไม่มีสิทธิ์แก้ไขข้อมูล${schema.label}`);
     if (entity === "customers" && body.changes?.docProfile !== undefined) {
       // ตรวจค่าที่ server และบันทึกผู้แก้ล่าสุด (โปรไฟล์อยู่ที่ข้อมูลของบริษัทเสมอ)
       body.changes.docProfile = { ...normalizeDocProfile(body.changes.docProfile), updatedBy: apiUser.email || apiUser.uid, updatedAt: new Date().toISOString() };
@@ -446,6 +452,10 @@ export async function POST(request: Request) {
         if (!m.exists && !l.exists) throw new ApiAuthError(404, `ไม่พบ${schema.label}`);
         if (Object.keys(master).length) {
           if (!m.exists) throw new ApiAuthError(409, `${schema.label}นี้ยังไม่ได้ย้ายเข้าข้อมูลกลาง`);
+          // รหัสสินค้าระบบกำหนด: เปลี่ยนได้เฉพาะผู้ดูแลระบบ/ผู้บริหาร (ส่งรหัสเดิมมาได้ เช่น นำเข้าไฟล์ที่ส่งออกไป)
+          if (entity === "products" && "sku" in master && String(master.sku || "").trim() !== String(m.data()!.sku || "").trim() && !can(apiUser.roles, "settings:manage")) {
+            throw new ApiAuthError(403, "รหัสสินค้า (SKU) ระบบเป็นผู้กำหนด — เปลี่ยนได้เฉพาะผู้ดูแลระบบหรือผู้บริหาร");
+          }
           const after = { ...m.data(), ...master };
           const hits = await findDuplicates(tx, groupId, entity, after, id);
           if (hits.length) throw new ApiAuthError(409, dupMessage(entity, hits));

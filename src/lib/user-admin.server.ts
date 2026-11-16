@@ -5,6 +5,7 @@ import { isPendingExpired, normalizeUserStatus } from "./user-status";
 import { ASSIGNABLE_ROLES as ROLE_OPTIONS, FULL_ACCESS_ROLES, can, primaryRole, resolveRoles } from "./permissions";
 import { auditServer } from "@/services/audit.server";
 import { randomBytes } from "crypto";
+import { INITIAL_PASSWORD, INITIAL_PASSWORD_AUTH } from "./initial-password";
 
 /**
  * [SERVER-ONLY: Admin SDK] สมัครใช้งาน / อนุมัติผู้ใช้
@@ -222,7 +223,7 @@ async function nextCompanyId(): Promise<string> {
   return `COM-NEXUS-${String(max + 1).padStart(2, "0")}`;
 }
 
-export type UserAction = "approve" | "reject" | "suspend" | "reactivate" | "setRoles";
+export type UserAction = "approve" | "reject" | "suspend" | "reactivate" | "setRoles" | "resetPassword";
 
 /**
  * อนุมัติ/ระงับ/กำหนดตำแหน่งผู้ใช้ — ผู้ดูแลระบบและ HR ของบริษัท (users:manage) ทำได้กับคนในบริษัทตัวเอง
@@ -247,7 +248,7 @@ export async function applyUserAction(caller: ApiUser, uid: string, action: User
     if (!mine || u.registrationId) throw new ApiAuthError(403, "ไม่มีสิทธิ์จัดการผู้ใช้นี้");
   }
 
-  if (!isSuper && isCompanyAdmin(u) && ["suspend", "setRoles", "reject"].includes(action)) {
+  if (!isSuper && isCompanyAdmin(u) && ["suspend", "setRoles", "reject", "resetPassword"].includes(action)) {
     throw new ApiAuthError(403, "บัญชีผู้ดูแลระบบของบริษัท เปลี่ยนแปลงได้โดยผู้ดูแลระบบกลาง (SUPERADMIN) เท่านั้น");
   }
 
@@ -284,6 +285,16 @@ export async function applyUserAction(caller: ApiUser, uid: string, action: User
       await ref.update({ status: "SUSPENDED", ...stamp });
       await adminAuth.revokeRefreshTokens(uid);
       return {};
+    }
+    case "resetPassword": {
+      // ลืมรหัสผ่าน: กลับเป็นรหัสเริ่มต้น "0000" ออกจากระบบทุกเครื่อง และบังคับตั้งรหัสใหม่เมื่อเข้าครั้งถัดไป
+      if (status !== "ACTIVE") bad("รีเซ็ตรหัสผ่านได้เฉพาะบัญชีที่ใช้งานอยู่");
+      if (!isSuper && resolveRoles(u).includes("SUPERADMIN")) throw new ApiAuthError(403, "ไม่มีสิทธิ์");
+      await adminAuth.updateUser(uid, { password: INITIAL_PASSWORD_AUTH });
+      await adminAuth.revokeRefreshTokens(uid);
+      await ref.update({ mustChangePassword: true, passwordResetAt: now(), passwordResetBy: caller.uid, ...stamp });
+      await auditServer.logUpdate(caller.uid, u.companyId || caller.companyId || "", "USER_PASSWORD_RESET", uid, {}, { reset: true });
+      return { tempPassword: INITIAL_PASSWORD };
     }
     case "reactivate": {
       if (status !== "SUSPENDED") bad("เปิดใช้งานได้เฉพาะบัญชีที่ถูกระงับ");
@@ -327,15 +338,15 @@ export async function createStaffUser(caller: ApiUser, input: CreateStaffInput) 
   const email = String(input.email || "").trim().toLowerCase();
   const roles = cleanRoles(input.roles, isSuper);
   if (isSuper) await assertSingleAdmin(companyId, "", roles);
-  const password = tempPassword();
-  validateAccount(email, password, name);
-  const user = await createAuthUser(email, password, name);
+  // รหัสเริ่มต้น "0000" (เก็บใน Firebase เป็น INITIAL_PASSWORD_AUTH) — บังคับตั้งรหัสใหม่เมื่อเข้าครั้งแรก
+  validateAccount(email, tempPassword(), name);
+  const user = await createAuthUser(email, INITIAL_PASSWORD_AUTH, name);
   await adminDb.collection("users").doc(user.uid).set({
     email, name, roles, role: primaryRole(roles), status: "ACTIVE", companyId,
     mustChangePassword: true, createdBy: caller.uid, createdAt: now(), approvedAt: now(), approvedBy: caller.uid,
   });
   await auditServer.logCreate(caller.uid, companyId, "USER_ROLES", user.uid, { name, email, roles });
-  return { uid: user.uid, companyId, tempPassword: password };
+  return { uid: user.uid, companyId, tempPassword: INITIAL_PASSWORD };
 }
 
 /** ผู้ใช้ตั้งรหัสผ่านใหม่ (บังคับเมื่อเข้าระบบครั้งแรกด้วยรหัสชั่วคราว) */

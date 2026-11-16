@@ -6,7 +6,7 @@ import { can } from "@/lib/permissions";
 /**
  * [API-SERVER] จัดการผู้ใช้ (ผู้ดูแลระบบ/HR: บริษัทตัวเอง, SUPERADMIN: ทั้งหมด)
  * GET  /api/admin/users                 -> { users, registrations }
- * POST /api/admin/users { uid, action, roles? }  action: approve | reject | suspend | reactivate | setRoles
+ * POST /api/admin/users { uid, action, roles? }  action: approve | reject | suspend | reactivate | setRoles | resetPassword (กลับเป็น 0000)
  * POST /api/admin/users { action: "create", name, email, roles, companyId? }  -> { uid, tempPassword } (แสดงครั้งเดียว)
  * - ตำแหน่งผู้ดูแลระบบ (บริษัทละ 1 คน) กำหนดได้เฉพาะ SUPERADMIN
  */

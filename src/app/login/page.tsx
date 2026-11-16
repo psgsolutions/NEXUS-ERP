@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { PillButton, GlassCard, PillInput } from "@/components/ui/Base";
 import { markSessionStart } from "@/lib/session-guard";
+import { authPassword } from "@/lib/initial-password";
 import { Cpu, Lock, Mail, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
 import { auth, db } from "@/lib/firebase-client";
 import {
@@ -58,7 +59,8 @@ export default function LoginPage() {
       // นโยบาย: จำการเข้าระบบเฉพาะระหว่างที่ยังเปิดระบบอยู่ — ปิดทุกแท็บแล้วต้องล็อกอินใหม่ (lib/session-guard)
       await setPersistence(auth, browserLocalPersistence);
       markSessionStart();
-      const { user } = await signInWithEmailAndPassword(auth, email.trim(), password);
+      // รหัสเริ่มต้น "0000" ของบัญชีใหม่/ที่ถูกรีเซ็ต (lib/initial-password)
+      const { user } = await signInWithEmailAndPassword(auth, email.trim(), authPassword(password));
 
       if (isSuperAdminAccount(user.uid, user.email, (await user.getIdTokenResult()).claims)) {
         router.push("/settings/users");

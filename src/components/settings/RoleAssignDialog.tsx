@@ -11,6 +11,15 @@ import { ASSIGNABLE_ROLES } from "@/lib/permissions";
  * - excludeRoles: ตำแหน่งที่ผู้กำหนดให้ไม่ได้ (ผู้ดูแลระบบ/HR ของบริษัทให้ตำแหน่งผู้ดูแลระบบไม่ได้)
  * - account: แสดงช่องชื่อและอีเมล (สร้างบัญชีใหม่)
  */
+/** ชุดตำแหน่งสำหรับบริษัทขนาดเล็ก (คนหนึ่งทำหลายหน้าที่) — คลิกแล้วติ๊ก/เอาออกต่อเองได้ */
+const ROLE_PRESETS: { label: string; hint: string; roles: string[] }[] = [
+  { label: "ผู้บริหาร / เจ้าของ", hint: "ทำได้ทุกอย่างยกเว้นบัญชี อนุมัติและลงนามทุกเอกสาร", roles: ["EXECUTIVE"] },
+  { label: "วิศวกร ทำทุกงานยกเว้นบัญชี", hint: "ขาย โครงการ จัดซื้อ คลัง งานช่าง", roles: ["ENGINEER", "SALES", "PURCHASING", "WAREHOUSE", "TECHNICIAN"] },
+  { label: "บัญชี + ธุรการ", hint: "บัญชี ขาย/วางบิล จัดซื้อ คลัง บุคคล", roles: ["ACCOUNTANT", "SALES", "PURCHASING", "WAREHOUSE", "HR"] },
+  { label: "ขาย + จัดซื้อ", hint: "ลูกค้า ใบเสนอราคา ออกใบกำกับ ใบสั่งซื้อ", roles: ["SALES", "PURCHASING"] },
+  { label: "คลัง + ช่าง", hint: "รับ-เบิกของ ตรวจนับ งานหน้างาน", roles: ["WAREHOUSE", "TECHNICIAN"] },
+];
+
 export function RoleAssignDialog({
   open,
   title,
@@ -80,7 +89,20 @@ export function RoleAssignDialog({
               </label>
             </div>
           )}
-          <p className="text-[12px] text-white/50 pb-3">เลือกได้หลายตำแหน่ง สิทธิ์จะรวมกันตามทุกตำแหน่งที่เลือก</p>
+          <p className="text-[12px] text-white/50 pb-2">เลือกได้หลายตำแหน่ง สิทธิ์จะรวมกันตามทุกตำแหน่งที่เลือก · หรือเลือกชุดสำเร็จรูปสำหรับคนที่ทำหลายหน้าที่</p>
+          <div className="flex flex-wrap gap-1.5 pb-3" data-role-presets>
+            {ROLE_PRESETS.map((p) => {
+              const roles = p.roles.filter((r) => options.some((o) => o.value === r));
+              const on = roles.length > 0 && roles.length === selected.filter((r) => !excludeRoles.includes(r)).length && roles.every((r) => selected.includes(r));
+              return (
+                <PillButton key={p.label} variant="ghost" title={p.hint} disabled={!roles.length}
+                  onClick={() => setSelected([...kept, ...roles])}
+                  className={cn("h-8 px-3 text-[12px] normal-case tracking-normal font-semibold", on ? "bg-nexus-teal/15 text-nexus-teal border border-nexus-teal/40" : "border border-white/10 text-white/75")}>
+                  {p.label}
+                </PillButton>
+              );
+            })}
+          </div>
           {kept.length > 0 && <p className="text-[12px] text-warning pb-3">ผู้ใช้นี้เป็นผู้ดูแลระบบของบริษัทอยู่แล้ว ตำแหน่งนี้คงไว้ตามเดิม</p>}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {options.map((r) => {

@@ -47,7 +47,7 @@ export function ForcePasswordChange({ name }: { name?: string }) {
           </div>
           <div>
             <h3 className="text-[16px] font-semibold text-white leading-normal">ตั้งรหัสผ่านใหม่</h3>
-            <p className="text-[12px] text-white/60 leading-normal">{name ? `ยินดีต้อนรับ ${name} — ` : ""}เข้าระบบครั้งแรกด้วยรหัสชั่วคราว กรุณาตั้งรหัสผ่านของคุณเองก่อนใช้งาน</p>
+            <p className="text-[12px] text-white/60 leading-normal">{name ? `ยินดีต้อนรับ ${name} — ` : ""}เข้าระบบด้วยรหัสเริ่มต้น (0000) กรุณาตั้งรหัสผ่านของคุณเองก่อนใช้งาน</p>
           </div>
         </div>
         <label className="block space-y-1.5">

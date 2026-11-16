@@ -135,6 +135,7 @@ export default function UsersPage() {
       if (!res.ok || !result.success) throw new Error(result.error || "ดำเนินการไม่สำเร็จ");
       if (action === "approve" && result.companyId) setNotice(`อนุมัติแล้ว ผูกกับบริษัท ${result.companyId}`);
       if (action === "setRoles") setNotice("บันทึกตำแหน่งแล้ว ผู้ใช้จะได้สิทธิ์ใหม่เมื่อรีเฟรชหน้าเว็บ");
+      if (action === "resetPassword") setNotice("รีเซ็ตรหัสผ่านเป็น 0000 แล้ว — แจ้งพนักงานให้เข้าระบบด้วย 0000 แล้วตั้งรหัสใหม่ทันที");
       setAssign(null);
       await load();
     } catch (e: any) {
@@ -170,7 +171,7 @@ export default function UsersPage() {
 
   const copyIssued = async () => {
     if (!issued) return;
-    const text = [`เข้าระบบ NEXUS ERP: ${window.location.origin}/login`, `อีเมล: ${issued.email}`, `รหัสผ่านชั่วคราว: ${issued.password}`, "(ระบบจะให้ตั้งรหัสผ่านใหม่เมื่อเข้าครั้งแรก)"].join("\n");
+    const text = [`เข้าระบบ NEXUS ERP: ${window.location.origin}/login`, `อีเมล: ${issued.email}`, `รหัสผ่านเริ่มต้น: ${issued.password}`, "(ระบบจะให้ตั้งรหัสผ่านใหม่เมื่อเข้าครั้งแรก)"].join("\n");
     try { await navigator.clipboard.writeText(text); setNotice("คัดลอกข้อมูลเข้าระบบแล้ว ส่งให้พนักงานทางช่องทางส่วนตัว"); } catch { /* คัดลอกเองจากหน้าจอ */ }
   };
 
@@ -263,9 +264,14 @@ export default function UsersPage() {
     if (!isSuper && isCompanyAdmin(u)) return <span className="text-[11px] text-white/40">ผู้ดูแลระบบของบริษัท</span>;
     if (u.status === "ACTIVE") {
       return (
-        <SecurityGuard onConfirm={() => runAction(u.uid, "suspend")} actionLabel="ระงับบัญชี" message={`ระงับบัญชี ${u.email}? ผู้ใช้จะถูกออกจากระบบและเข้าใช้งานไม่ได้จนกว่าจะเปิดใช้งานอีกครั้ง`}>
-          <PillButton variant="ghost" className="h-8 px-4 text-xs text-danger">ระงับ</PillButton>
-        </SecurityGuard>
+        <div className="flex gap-1.5 justify-end">
+          <SecurityGuard onConfirm={() => runAction(u.uid, "resetPassword")} actionLabel="รีเซ็ตรหัสผ่าน" message={`รีเซ็ตรหัสผ่านของ ${u.email} เป็น 0000? ผู้ใช้จะถูกออกจากระบบทุกเครื่อง และต้องตั้งรหัสใหม่เมื่อเข้าระบบครั้งถัดไป`}>
+            <PillButton variant="ghost" className="h-8 px-3 text-xs" data-reset-password>รีเซ็ตรหัส</PillButton>
+          </SecurityGuard>
+          <SecurityGuard onConfirm={() => runAction(u.uid, "suspend")} actionLabel="ระงับบัญชี" message={`ระงับบัญชี ${u.email}? ผู้ใช้จะถูกออกจากระบบและเข้าใช้งานไม่ได้จนกว่าจะเปิดใช้งานอีกครั้ง`}>
+            <PillButton variant="ghost" className="h-8 px-3 text-xs text-danger">ระงับ</PillButton>
+          </SecurityGuard>
+        </div>
       );
     }
     return (
@@ -407,7 +413,7 @@ export default function UsersPage() {
           <p className="text-[14px] font-bold text-white flex items-center gap-2"><KeyRound size={14} className="text-nexus-teal" /> สร้างบัญชี {issued.name} แล้ว</p>
           <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[12px]">
             <span className="text-white/60">อีเมล</span><span className="font-mono text-white">{issued.email}</span>
-            <span className="text-white/60">รหัสผ่านชั่วคราว</span><span className="font-mono text-[14px] font-bold text-nexus-teal tracking-wider select-all">{issued.password}</span>
+            <span className="text-white/60">รหัสผ่านเริ่มต้น</span><span className="font-mono text-[14px] font-bold text-nexus-teal tracking-wider select-all">{issued.password}</span>
           </div>
           <p className="text-[12px] text-warning">แสดงครั้งเดียว — ส่งให้พนักงานทางช่องทางส่วนตัว เข้าระบบครั้งแรกจะต้องตั้งรหัสผ่านใหม่</p>
           <div className="flex gap-2">
@@ -454,7 +460,7 @@ export default function UsersPage() {
       <RoleAssignDialog
         open={!!creating}
         title="เพิ่มผู้ใช้"
-        subtitle="สร้างบัญชีพนักงานพร้อมตำแหน่งงาน — ใช้งานได้ทันทีด้วยรหัสผ่านชั่วคราว"
+        subtitle="สร้างบัญชีพนักงานพร้อมตำแหน่งงาน — เข้าระบบครั้งแรกด้วยรหัส 0000 แล้วระบบให้ตั้งรหัสใหม่"
         initialRoles={EMPTY_ROLES}
         confirmLabel="สร้างบัญชี"
         busy={createBusy}

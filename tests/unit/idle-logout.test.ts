@@ -15,3 +15,14 @@ describe("ปล่อยหน้าจอทิ้งไว้ 30 นาที
     expect(idleRemaining(now, 0)).toBe(IDLE_LIMIT);
   });
 });
+
+import { idleExempt } from "@/lib/session-guard";
+describe("เครื่อง POS ไม่ออกอัตโนมัติ", () => {
+  it("ยกเว้นเฉพาะหน้าขาย POS", () => {
+    expect(idleExempt("/pos")).toBe(true);
+    expect(idleExempt("/pos/x")).toBe(true);
+    expect(idleExempt("/possible")).toBe(false);
+    expect(idleExempt("/sales")).toBe(false);
+    expect(idleExempt(null)).toBe(false);
+  });
+});

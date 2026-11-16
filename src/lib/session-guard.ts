@@ -77,6 +77,12 @@ export const IDLE_WARN = 2 * 60_000;
 const LAST_ACTIVE = "nx_last_active";
 export const LOGOUT_REASON = "nx_logout_reason";
 
+/** หน้าที่ไม่ออกอัตโนมัติ: เครื่อง POS หน้าร้านเปิดหน้าขายค้างทั้งวัน (ตัดสินใจ 2026-11-16) */
+export function idleExempt(pathname: string | null | undefined): boolean {
+  const p = String(pathname || "");
+  return p === "/pos" || p.startsWith("/pos/");
+}
+
 export function lastActivity(): number {
   return safe(() => Number(localStorage.getItem(LAST_ACTIVE)) || 0, 0);
 }

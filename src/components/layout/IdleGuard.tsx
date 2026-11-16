@@ -1,19 +1,24 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { Clock } from "lucide-react";
 import { PillButton } from "@/components/ui/Base";
 import { auth } from "@/lib/firebase-client";
-import { clearTabSession, idleRemaining, IDLE_WARN, LOGOUT_REASON, markActivity } from "@/lib/session-guard";
+import { clearTabSession, idleExempt, lastActivity, idleRemaining, IDLE_WARN, LOGOUT_REASON, markActivity } from "@/lib/session-guard";
 
 const EVENTS = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart", "scroll"] as const;
 
 /**
  * ออกจากระบบอัตโนมัติเมื่อปล่อยหน้าจอทิ้งไว้ 30 นาที (นับรวมทุกแท็บ) · เตือนล่วงหน้า 2 นาที
  * ขยับเมาส์/กดแป้น/แตะจอ = ใช้งานต่อ
+ * หน้าขาย POS: ไม่ออกอัตโนมัติ และนับเป็นการใช้งานตลอด (แท็บอื่นในเครื่องเดียวกันจึงไม่ทำให้หลุดด้วย)
  */
 export function IdleGuard() {
+  const pathname = usePathname();
+  const exempt = useRef(false);
+  exempt.current = idleExempt(pathname);
   const [left, setLeft] = useState<number | null>(null);
   const lastWrite = useRef(0);
   const out = useRef(false);
@@ -34,6 +39,10 @@ export function IdleGuard() {
       window.location.href = "/login";
     };
     const check = () => {
+      if (exempt.current) {
+        if (Date.now() - lastActivity() >= 30_000) markActivity();
+        return void setLeft(null);
+      }
       const r = idleRemaining();
       if (r <= 0) return void logout();
       setLeft(r <= IDLE_WARN ? r : null);

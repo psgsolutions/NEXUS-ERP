@@ -11,7 +11,7 @@ import { collection, doc, getDoc, getDocs, limit, query } from "firebase/firesto
 
 import { can, Permission, primaryRole, resolveRoles } from "@/lib/permissions";
 import { inactiveReason, isSuperAdminAccount } from "@/lib/user-status";
-import { idleRemaining, LOGOUT_REASON, sessionAllowed, startTabHeartbeat } from "@/lib/session-guard";
+import { idleExempt, idleRemaining, LOGOUT_REASON, sessionAllowed, startTabHeartbeat } from "@/lib/session-guard";
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
       // ปล่อยทิ้งไว้เกิน 30 นาที (เช่น พับจอ/เครื่องหลับ แล้วกลับมา) → ออกจากระบบ
-      if (user && idleRemaining() <= 0) {
+      if (user && idleRemaining() <= 0 && !idleExempt(window.location.pathname)) {
         try { sessionStorage.setItem(LOGOUT_REASON, "idle"); sessionStorage.removeItem("nx_tab_session"); } catch { /* ไม่มี storage */ }
         await signOut(auth);
         return;

@@ -11,6 +11,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { useContractors } from "@/hooks/useCustomers";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { apiFetch } from "@/lib/api-client";
+import { createLaborRate } from "@/lib/labor-rate-client";
 import { addKitMaterials, isLaborItem, recipeCost, recipeDetails, recipeMargin, suggestServicePrice, SERVICE_MARGIN, type RecipeLabor, type RecipeMaterial, type ServiceRecipe } from "@/lib/service-recipe";
 
 export const SERVICE_UNITS = ["จุด", "งาน", "ระบบ", "ชุด", "ตัว", "เครื่อง", "เมตร", "ครั้ง"];
@@ -76,6 +77,16 @@ export function ServiceRecipeEditor({ companyId, draft, onChange, canEdit, exclu
     setLq("");
   };
   const patchLabor = (i: number, p: Partial<RecipeLabor>) => set({ labors: draft.labors.map((l, k) => (k === i ? { ...l, ...p } : l)) });
+  const [savingRate, setSavingRate] = useState(-1);
+  const saveAsRate = async (i: number) => {
+    const l = draft.labors[i];
+    if (!l?.contractorId) return;
+    setSavingRate(i);
+    try {
+      const r = await createLaborRate(companyId, { id: l.contractorId, name: l.contractorName || "" }, { serviceType: l.name, unit: l.unit || draft.unit, ratePerUnit: l.rate });
+      patchLabor(i, { productId: r.productId });
+    } catch (e: any) { showAlert(e.message, "บันทึกอัตราค่าแรงไม่สำเร็จ", "error"); } finally { setSavingRate(-1); }
+  };
 
   // ---- วัสดุ ----
   const hits = useMemo(() => {
@@ -128,10 +139,23 @@ export function ServiceRecipeEditor({ companyId, draft, onChange, canEdit, exclu
               {canEdit && !l.productId
                 ? <PillInput value={l.name} onChange={(e) => patchLabor(i, { name: e.target.value })} aria-label="ชื่อค่าแรง" className="h-8 flex-1 min-w-0 text-[12px]" />
                 : <span className="truncate flex-1 text-[12px] text-white/85" title={l.name}>{l.name}</span>}
-              <span className={cn("shrink-0 rounded-full px-2 text-[11px] leading-5", l.contractorId ? "bg-nexus-teal/10 text-nexus-teal" : "bg-warning/10 text-warning")} title={l.contractorId ? "ผูกกับช่างแล้ว" : "ยังไม่ผูกช่าง — สร้างช่างและอัตราค่าแรงได้ที่ \"+ เพิ่มช่างและอัตราค่าแรง\""}>
-                {l.contractorId ? l.contractorName || "ช่าง" : "ยังไม่ผูกช่าง"}
-              </span>
+              {canEdit && !l.productId ? (
+                // ค่าแรงที่พิมพ์เอง: ยังไม่รู้จะจ้างใครก็ใช้ราคานี้เสนอลูกค้าได้ — ผูกช่างเมื่อได้ตัวแล้ว
+                <div className="w-[150px] shrink-0" title="ยังไม่รู้จะจ้างใคร ใช้ราคานี้ทำใบเสนอราคาได้ · เลือกช่างเมื่อได้ตัวแล้ว" data-labor-link>
+                  <SmartSelect options={[{ value: "", label: "ยังไม่ผูกช่าง" }, ...contractorOptions]} value={l.contractorId || ""} allowCustom={false} placeholder="ยังไม่ผูกช่าง" className="h-8"
+                    onChange={(v) => { const c = contractors.find((x: any) => x.id === v); patchLabor(i, c ? { contractorId: c.id, contractorName: c.name || "" } : { contractorId: undefined, contractorName: undefined }); }} />
+                </div>
+              ) : (
+                <span className={cn("shrink-0 rounded-full px-2 text-[11px] leading-5", l.contractorId ? "bg-nexus-teal/10 text-nexus-teal" : "bg-warning/10 text-warning")} title={l.contractorId ? "ผูกกับช่างแล้ว" : "ยังไม่ผูกช่าง"}>
+                  {l.contractorId ? l.contractorName || "ช่าง" : "ยังไม่ผูกช่าง"}
+                </span>
+              )}
             </div>
+            {canEdit && !l.productId && l.contractorId && l.rate > 0 && (
+              <PillButton variant="ghost" className="h-8 px-2 text-[11px] text-nexus-teal normal-case tracking-normal" disabled={savingRate === i} onClick={() => saveAsRate(i)} data-save-as-rate>
+                {savingRate === i ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} บันทึกเป็นอัตราค่าแรงของ {l.contractorName || "ช่าง"} (ใช้ซ้ำงานอื่นได้)
+              </PillButton>
+            )}
             <div className="flex items-center gap-2">
               <span className="flex-1 text-[11px] text-white/45">อัตรา</span>
               <PillInput inputMode="decimal" value={String(l.rate)} disabled={!canEdit} aria-label={`อัตรา ${l.name}`} onChange={(e) => patchLabor(i, { rate: num(e.target.value) })} className="h-8 w-[84px] text-right font-mono text-[12px]" />
@@ -156,7 +180,7 @@ export function ServiceRecipeEditor({ companyId, draft, onChange, canEdit, exclu
                     <Plus size={12} className="text-nexus-teal shrink-0" /><span className="truncate flex-1 text-left">{p.name}</span><span className="font-mono text-white/50">{money(laborRateOf(p))}/{p.unit || "หน่วย"}</span>
                   </PillButton>
                 ))}
-                {contractorId && !laborHits.length && !lq.trim() && <p className="px-3 py-2 text-[12px] text-white/45">ช่างคนนี้ยังไม่มีอัตราค่าแรง — เพิ่มที่ &quot;+ เพิ่มช่างและอัตราค่าแรง&quot; หรือพิมพ์ชื่อค่าแรงเพื่อใส่เอง</p>}
+                {contractorId && !laborHits.length && !lq.trim() && <p className="px-3 py-2 text-[12px] text-white/45">ช่างคนนี้ยังไม่มีอัตราค่าแรง — <Link href={`/procurement/suppliers/${encodeURIComponent(contractorId)}`} className="text-nexus-teal hover:underline">เพิ่มอัตราที่หน้าช่าง</Link> หรือพิมพ์ชื่อค่าแรงเพื่อใส่เอง</p>}
                 {lq.trim() && (
                   <PillButton variant="ghost" onClick={addLaborFree} className="h-8 w-full justify-start rounded-none px-3 text-[12px] normal-case tracking-normal font-normal text-warning" data-add-labor-free>
                     <Plus size={12} className="shrink-0" /><span className="truncate text-left">ใส่ค่าแรงใหม่ &quot;{lq.trim()}&quot; (กรอกอัตราเอง ผูกช่างทีหลังได้)</span>

@@ -30,6 +30,7 @@ import { useSuppliers } from "@/hooks/useCustomers";
 import { taxIdProblem } from "@/lib/party-identity";
 import { ChoiceInput } from "@/components/ui/ChoiceInput";
 import { THAI_BANKS } from "@/lib/choices";
+import { createLaborRate } from "@/lib/labor-rate-client";
 
 interface LaborRateItem {
   id: string;
@@ -157,49 +158,13 @@ export default function NewSupplierPage() {
       const supplierRef = { id: await createParty("suppliers") };
       await createParty("contractors", supplierRef.id);
 
-      // Save labor wage rates to subcontractor_rates AND products collections for seamless integration with Quotation & BOQ
-      if (form.labor_rates && form.labor_rates.length > 0) {
-        for (const rate of form.labor_rates) {
-          if (rate.serviceType && rate.ratePerUnit > 0) {
-            const costVal = Number(rate.ratePerUnit);
-            const sellVal = Number(rate.standardSellingPrice || rate.ratePerUnit * 1.3); // Default 30% margin if unspecified
-            const itemCode = rate.itemCode || `SRV-${Math.floor(1000 + Math.random() * 9000)}`;
-
-            // 1. Subcontractor Rate record
-            const rateRes = await apiFetch("/api/procurement/subcontractor-rates", {
-              method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ companyId: currentCompanyId, action: "create", rate: {
-                subcontractorId: supplierRef.id, subcontractorName: form.name, itemCode, serviceType: rate.serviceType,
-                unit: rate.unit || "จุด", ratePerUnit: costVal, standardSellingPrice: sellVal, remarks: rate.remarks || "",
-              } }),
-            });
-            const savedRate = await rateRes.json().catch(() => ({}));
-            if (!rateRes.ok || !savedRate.success) throw new Error(savedRate.error || `บันทึกอัตราค่าแรง ${rate.serviceType} ไม่สำเร็จ`);
-
-            // 2. Service Item Catalog record in products (searchable in Quotation & Project BOQ)
-            const productData = {
-              sku: itemCode,
-              name: `[ค่าแรง] ${rate.serviceType} (${form.name})`,
-              category: "SERVICES",
-              type: "SERVICE",
-              unit: rate.unit || "จุด",
-              costPrice: costVal,               // ต้นทุนจ่ายช่าง
-              price: sellVal,                   // ราคาขายเสนอสั่งซื้อ/เสนอราคา
-              sellingPrice: sellVal,
-              subcontractorId: supplierRef.id,
-              subcontractorName: form.name,
-              whtRate: 3,                       // หัก ณ ที่จ่าย 3% สำหรับบริการ
-              isActive: true,
-              itemType: "SERVICE",
-            };
-
-            const res = await apiFetch("/api/master-data", {
-              method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ companyId: currentCompanyId, action: "create", entity: "products", data: productData }),
-            });
-            const created = await res.json();
-            if (!res.ok || !created.success) throw new Error(created.error || `สร้างรายการค่าแรง ${itemCode} ไม่สำเร็จ`);
-          }
+      // อัตราค่าแรง → รายการค่าแรงของช่าง (เลือกได้ในงานบริการ ใบเสนอราคา BOQ) + subcontractor_rates · ราคาขายเริ่มต้นกำไร 20%
+      for (const rate of form.labor_rates || []) {
+        if (rate.serviceType && rate.ratePerUnit > 0) {
+          await createLaborRate(currentCompanyId, { id: supplierRef.id, name: form.name }, {
+            serviceType: rate.serviceType, unit: rate.unit || "จุด", ratePerUnit: Number(rate.ratePerUnit),
+            standardSellingPrice: Number(rate.standardSellingPrice) || undefined, remarks: rate.remarks || "", itemCode: rate.itemCode || undefined,
+          });
         }
       }
 

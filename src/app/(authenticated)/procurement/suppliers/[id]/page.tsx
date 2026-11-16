@@ -14,6 +14,7 @@ import { useSuppliers } from "@/hooks/useCustomers";
 import { partyDocName, taxIdProblem } from "@/lib/party-identity";
 import { RecordDeleteButton } from "@/components/shared/RecordDeleteButton";
 import { SupplierProductsCard } from "@/components/shared/SupplierProductsCard";
+import { LaborRatesCard } from "@/components/shared/LaborRatesCard";
 import { ChoiceInput } from "@/components/ui/ChoiceInput";
 import { THAI_BANKS } from "@/lib/choices";
 import { ThaiAddressAutocomplete } from "@/components/ui/ThaiAddressAutocomplete";
@@ -167,6 +168,9 @@ export default function SupplierDetailPage() {
               <Field label="ชื่อบัญชี" className="md:col-span-2">{input("bankAccountName")}</Field>
             </div>
           </GlassCard>
+
+          {/* อัตราค่าแรง: ผู้ขายและผู้รับเหมาใช้รหัสเดียวกัน — เพิ่ม/แก้อัตราให้ช่างที่มีอยู่แล้วได้ */}
+          <LaborRatesCard contractorId={id} contractorName={form.name} />
 
           {/* สินค้าที่ผู้ขายรายนี้ขาย (สินค้าหนึ่งตัวมีผู้ขายได้หลายราย) */}
           <SupplierProductsCard supplierId={id} />

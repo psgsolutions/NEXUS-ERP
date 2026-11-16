@@ -61,8 +61,9 @@ export function CatalogMatches({ q, onPick }: { q: string; onPick: (product: any
             className={cn("w-full px-3 py-2 rounded-xl text-[12px] border border-transparent hover:bg-amber-400/10 hover:border-amber-400/30 flex items-center gap-2 cursor-pointer", busy === x.code && "opacity-60")}>
             <div className="w-[110px] shrink-0 font-mono text-[12px] text-amber-300 font-bold break-all">{x.model || x.code}</div>
             <div className="flex-1 min-w-0">
-              <span className="font-bold text-white block truncate" title={x.spec ? `${x.name}\n${x.spec}` : x.name}>{x.name}</span>
-              <span className="text-[11px] text-white/45">{x.catalog} · {x.category}{x.productId ? " · มีในระบบแล้ว" : ""}</span>
+              <span className="font-bold text-white line-clamp-2 leading-snug" title={x.spec ? `${x.name}\n${x.spec}` : x.name}>{x.name}</span>
+              {x.spec && <span className="text-[11px] text-white/60 line-clamp-2 leading-snug mt-0.5" title={x.spec}>{x.spec}</span>}
+              <span className="text-[11px] text-white/40">{x.catalog} · {x.category}{x.productId ? " · มีในระบบแล้ว" : ""}</span>
             </div>
             <div className="text-right shrink-0 font-mono text-[12px]">
               <div className="font-bold text-white/90">{money(x.price)}</div>

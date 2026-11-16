@@ -129,6 +129,11 @@ const ProductPickerList = ({ products, onPick }: { products: any[], onPick: (p: 
                     </span>
                   )}
                 </span>
+                {(() => {
+                  // สเปก/รายละเอียดย่อ — ไว้ดูคร่าว ๆ ว่าเลือกรุ่นถูก (ไม่แสดงถ้าซ้ำกับชื่อ)
+                  const spec = String(p.details || p.description || "").replace(/\s+/g, " ").trim();
+                  return spec && spec !== displayName ? <span className="text-[11px] font-normal text-white/55 line-clamp-2 leading-snug mt-0.5" title={spec}>{spec}</span> : null;
+                })()}
               </div>
               <div className="text-right shrink-0 font-mono text-[12px] font-bold text-white/90">{formatCurrency(displayPrice)}</div>
             </button>

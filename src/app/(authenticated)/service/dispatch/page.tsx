@@ -11,6 +11,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { apiFetch } from "@/lib/api-client";
 import { matQty, matUnit, normalizeRecipe } from "@/lib/service-recipe";
 import { JOB_PRIORITY, JOB_STATUS, JOB_TYPES, jobTypeLabel, toolsOut, type Job, type JobItem, type JobPriority, type JobType } from "@/lib/jobs";
+import { FieldHistory } from "@/components/ui/FieldHistory";
 
 /** ศูนย์จ่ายงาน: สร้างงาน มอบหมายผู้รับงาน และติดตามสถานะ (ข้อมูลผ่าน /api/jobs) */
 const COLUMNS: { id: string; title: string; statuses: string[]; hint: string }[] = [
@@ -209,7 +210,7 @@ function JobForm({ initial, people, busy, onClose, onSave }: { initial: any; peo
         </div>
       </Field>
       <Field label="ชื่องาน *"><PillInput value={f.title || ""} onChange={(e) => set({ title: e.target.value })} placeholder="เช่น ซ่อมกล้องวงจรปิด ร้านสาขา 3" className="w-full h-9 text-sm" /></Field>
-      <Field label="รายละเอียด"><textarea value={f.description || ""} onChange={(e) => set({ description: e.target.value })} rows={3} className="w-full rounded-2xl bg-white/[0.03] border border-white/10 p-3 text-sm text-white leading-relaxed outline-none focus:border-nexus-teal/50" /></Field>
+      <Field label="รายละเอียด"><FieldHistory k="job.description" value={f.description || ""} onPick={(v) => set({ description: v })}><textarea value={f.description || ""} onChange={(e) => set({ description: e.target.value })} rows={3} className="w-full rounded-2xl bg-white/[0.03] border border-white/10 p-3 text-sm text-white leading-relaxed outline-none focus:border-nexus-teal/50" /></FieldHistory></Field>
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
         <Field label="วันที่นัด"><PillInput type="date" value={f.scheduledDate || ""} onChange={(e) => set({ scheduledDate: e.target.value })} className="w-full h-9 text-sm" /></Field>
         <Field label="เวลา"><PillInput type="time" value={f.scheduledTime || ""} onChange={(e) => set({ scheduledTime: e.target.value })} className="w-full h-9 text-sm" /></Field>

@@ -39,6 +39,7 @@ import { db } from "@/lib/firebase-client";
 import { apiFetch } from "@/lib/api-client";
 import { docProfileSummary, effectiveDocProfile, quotationDefaults } from "@/lib/customer-doc-profile";
 import { partyDocName } from "@/lib/party-identity";
+import { FieldHistory } from "@/components/ui/FieldHistory";
 
 export default function QuotationCreationPage() {
   const { showAlert } = useSystemDialog();
@@ -1191,7 +1192,7 @@ export default function QuotationCreationPage() {
             </div>
             <div className="space-y-1 col-span-6 relative">
               <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เงื่อนไขการส่ง</label>
-              <ChoiceInput value={incoTerms} onChange={setIncoTerms} options={["จัดส่งฟรี", "คิดค่าจัดส่งตามระยะทาง", "จัดส่งผ่านขนส่งเอกชน", "ลูกค้ารับสินค้าเอง", ...DELIVERY_TERMS]} placeholder="เช่น ส่งถึงหน้างานลูกค้า" className="w-full" />
+              <ChoiceInput historyKey="sales.deliveryTerms" value={incoTerms} onChange={setIncoTerms} options={["จัดส่งฟรี", "คิดค่าจัดส่งตามระยะทาง", "จัดส่งผ่านขนส่งเอกชน", "ลูกค้ารับสินค้าเอง", ...DELIVERY_TERMS]} placeholder="เช่น ส่งถึงหน้างานลูกค้า" className="w-full" />
             </div>
             <div className="space-y-1 col-span-6">
               <div className="flex items-center justify-between">
@@ -1251,7 +1252,7 @@ export default function QuotationCreationPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เงื่อนไขชำระ</label>
-                <ChoiceInput value={paymentTerms} onChange={setPaymentTerms} options={PAYMENT_TERMS} placeholder="เลือกหรือพิมพ์เงื่อนไขชำระ" className="w-full" />
+                <ChoiceInput historyKey="sales.paymentTerms" value={paymentTerms} onChange={setPaymentTerms} options={PAYMENT_TERMS} placeholder="เลือกหรือพิมพ์เงื่อนไขชำระ" className="w-full" />
               </div>
             </div>
 
@@ -1316,11 +1317,13 @@ export default function QuotationCreationPage() {
           <h3 className="text-base font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-2">
             เงื่อนไขการค้า
           </h3>
-          <textarea
-            value={termsAndConditions}
-            onChange={(e) => setTermsAndConditions(e.target.value)}
-            className="w-full h-32 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[12px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed transition-all"
-          />
+          <FieldHistory k="quotation.terms" value={termsAndConditions} onPick={setTermsAndConditions}>
+            <textarea
+              value={termsAndConditions}
+              onChange={(e) => setTermsAndConditions(e.target.value)}
+              className="w-full h-32 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[12px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed transition-all"
+            />
+          </FieldHistory>
         </div>
         <div className="bg-surface-1 border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-white/5 pb-2">
@@ -1332,12 +1335,14 @@ export default function QuotationCreationPage() {
               <button type="button" onClick={() => setRemark(prev => prev + (prev ? "\n" : "") + "- บัญชีโอนเงิน: ธ.กสิกรไทย สาขาxxx เลขที่ 123-4-56789-0 บจก. เน็กซัส")} className="text-[11px] bg-white/5 hover:bg-white/10 text-white/60 hover:text-white px-2 py-1 rounded transition-colors font-bold tracking-wider">บัญชีโอนเงิน</button>
             </div>
           </div>
-          <textarea
-            value={remark}
-            onChange={(e) => setRemark(e.target.value)}
-            placeholder="หมายเหตุเพิ่มเติมที่ต้องการแสดงบนเอกสาร..."
-            className="w-full h-24 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[12px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed transition-all"
-          />
+          <FieldHistory k="quotation.remark" value={remark} onPick={setRemark}>
+            <textarea
+              value={remark}
+              onChange={(e) => setRemark(e.target.value)}
+              placeholder="หมายเหตุเพิ่มเติมที่ต้องการแสดงบนเอกสาร..."
+              className="w-full h-24 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[12px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed transition-all"
+            />
+          </FieldHistory>
           <div className="flex flex-wrap gap-2 pt-1">
             {['#รับประกัน 1 ปี', '#ชำระมัดจำ 50%', '#ส่งมอบภายใน 30 วัน', '#ราคานี้ยืนระยะเวลา 15 วัน'].map(tag => (
               <button
@@ -1355,12 +1360,14 @@ export default function QuotationCreationPage() {
           <h3 className="text-base font-semibold uppercase tracking-widest text-warning flex items-center gap-2 border-b border-warning/20 pb-2">
             หมายเหตุภายใน (ไม่พิมพ์)
           </h3>
-          <textarea
-            value={internalNotes}
-            onChange={(e) => setInternalNotes(e.target.value)}
-            placeholder="ระบุเหตุผลการให้ส่วนลด หรือข้อความสำหรับผู้อนุมัติ (ลูกค้าจะไม่เห็นข้อความนี้)..."
-            className="w-full h-32 bg-black/40 border border-warning/10 rounded-xl p-3 text-[12px] text-warning/80 focus:outline-none focus:border-warning/50 resize-none leading-relaxed"
-          />
+          <FieldHistory k="quotation.internal" value={internalNotes} onPick={setInternalNotes}>
+            <textarea
+              value={internalNotes}
+              onChange={(e) => setInternalNotes(e.target.value)}
+              placeholder="ระบุเหตุผลการให้ส่วนลด หรือข้อความสำหรับผู้อนุมัติ (ลูกค้าจะไม่เห็นข้อความนี้)..."
+              className="w-full h-32 bg-black/40 border border-warning/10 rounded-xl p-3 text-[12px] text-warning/80 focus:outline-none focus:border-warning/50 resize-none leading-relaxed"
+            />
+          </FieldHistory>
         </div>
       </div>
     </div>

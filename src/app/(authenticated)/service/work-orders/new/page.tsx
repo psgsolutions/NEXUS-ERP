@@ -14,6 +14,7 @@ import { apiFetch } from "@/lib/api-client";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
 import { useRouter } from "next/navigation";
+import { FieldHistory } from "@/components/ui/FieldHistory";
 
 export default function CreateWorkOrderPage() {
   const { showAlert } = useSystemDialog();
@@ -251,12 +252,14 @@ export default function CreateWorkOrderPage() {
           <label className="block text-[12px] font-bold text-white/70 mb-2 not-italic">
             หมายเหตุถึงทีมช่าง <span className="text-white/40 ml-1 font-normal uppercase tracking-widest text-[11px]">(Remarks)</span>
           </label>
-          <textarea
-            value={formData.remarks}
-            onChange={e => setFormData({...formData, remarks: e.target.value})}
-            className="w-full h-24 p-4 bg-white/[0.03] border border-white/10 rounded-2xl text-[12px] text-white font-bold resize-none outline-none focus:border-nexus-teal/40 transition-all"
-            placeholder="ข้อควรระวัง หรือ รายละเอียดเพิ่มเติมสำหรับหน้างาน..."
-          />
+          <FieldHistory k="wo.remarks" value={formData.remarks} onPick={(v) => setFormData({ ...formData, remarks: v })}>
+            <textarea
+              value={formData.remarks}
+              onChange={e => setFormData({...formData, remarks: e.target.value})}
+              className="w-full h-24 p-4 bg-white/[0.03] border border-white/10 rounded-2xl text-[12px] text-white font-bold resize-none outline-none focus:border-nexus-teal/40 transition-all"
+              placeholder="ข้อควรระวัง หรือ รายละเอียดเพิ่มเติมสำหรับหน้างาน..."
+            />
+          </FieldHistory>
         </div>
       </div>
     </div>

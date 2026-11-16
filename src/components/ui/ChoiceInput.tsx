@@ -3,19 +3,23 @@
 import React, { useMemo } from "react";
 import { SmartSelect } from "@/components/ui/SmartComponents";
 import { mergeChoices } from "@/lib/choices";
+import { useFieldHistory } from "@/components/ui/FieldHistory";
 
 /**
  * ช่องข้อความที่มีรายการให้เลือก และพิมพ์ค่าใหม่เองได้ (เช่น ชื่อธนาคาร ตำแหน่ง แผนก เงื่อนไขชำระ)
  * ค่าปัจจุบันที่ไม่อยู่ในรายการยังแสดงและเลือกได้เสมอ
  */
-export function ChoiceInput({ value, onChange, options, placeholder = "เลือกหรือพิมพ์เพิ่มเอง", disabled, className }: {
+export function ChoiceInput({ value, onChange, options, placeholder = "เลือกหรือพิมพ์เพิ่มเอง", disabled, className, historyKey }: {
   value: string;
   onChange: (value: string) => void;
   options: Array<string | undefined | null>;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** แสดงค่าที่เคยบันทึกในช่องนี้ (ทุกคนในบริษัท) ต่อท้ายรายการ */
+  historyKey?: string;
 }) {
-  const list = useMemo(() => mergeChoices(options, [value]).map((v) => ({ value: v, label: v })), [options, value]);
+  const history = useFieldHistory(historyKey, value);
+  const list = useMemo(() => mergeChoices(options, [value], history).map((v) => ({ value: v, label: v })), [options, value, history]);
   return <SmartSelect options={list} value={value || ""} onChange={onChange} allowCustom placeholder={placeholder} disabled={disabled} className={className} />;
 }

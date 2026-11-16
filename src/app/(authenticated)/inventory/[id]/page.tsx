@@ -69,6 +69,7 @@ import { ServiceRecipeCard } from "@/components/inventory/ServiceRecipeCard";
 import { ProductLotsCard } from "@/components/inventory/ProductLotsCard";
 import { can } from "@/lib/permissions";
 import { ChoiceInput } from "@/components/ui/ChoiceInput";
+import { FieldHistory } from "@/components/ui/FieldHistory";
 
 /** ช่องที่ฝ่ายขาย/วิศวกร (ไม่มีสิทธิ์คลัง) แก้ได้ — ตรงกับ PRODUCT_SALES_FIELDS ที่ server */
 const SALES_FIELDS = ["description", "datasheetUrl", "warrantyMonths"];
@@ -491,13 +492,15 @@ export default function ProductDetailPage() {
 
               <FormField label="คำอธิบายสินค้า">
                 {ed("description") ? (
-                  <textarea
-                    value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    placeholder="รายละเอียดสินค้าสำหรับเอกสาร..."
-                    rows={5}
-                    className="w-full px-4 py-3 rounded-2xl bg-white/15 border border-white/10 text-sm font-bold text-white focus:outline-none focus:border-nexus-teal/30 resize-none"
-                  />
+                  <FieldHistory k="product.description" value={form.description} onPick={(v) => setForm({ ...form, description: v })}>
+                    <textarea
+                      value={form.description}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      placeholder="รายละเอียดสินค้าสำหรับเอกสาร..."
+                      rows={5}
+                      className="w-full px-4 py-3 rounded-2xl bg-white/15 border border-white/10 text-sm font-bold text-white focus:outline-none focus:border-nexus-teal/30 resize-none"
+                    />
+                  </FieldHistory>
                 ) : (
                   <div className="px-4 py-3 rounded-2xl bg-white/15 border border-white/5 text-sm text-white/60 min-h-[80px]">
                     {form.description || <span className="text-white/20">ยังไม่มีคำอธิบาย</span>}

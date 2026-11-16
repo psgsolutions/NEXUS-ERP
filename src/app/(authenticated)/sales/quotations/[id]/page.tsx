@@ -40,6 +40,7 @@ import { db } from "@/lib/firebase-client";
 import { doc, collection, getDoc, getDocs } from "firebase/firestore";
 import { apiFetch } from "@/lib/api-client";
 import { partyDocName } from "@/lib/party-identity";
+import { FieldHistory } from "@/components/ui/FieldHistory";
 
 export default function QuotationEditPage() {
   const { showAlert, showConfirm, showPrompt } = useSystemDialog();
@@ -1347,7 +1348,7 @@ export default function QuotationEditPage() {
             </div>
             <div className="space-y-1 col-span-6">
               <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เงื่อนไขการส่งมอบ</label>
-              <ChoiceInput value={incoTerms} onChange={setIncoTerms} options={DELIVERY_TERMS} placeholder="เช่น ส่งถึงหน้างานลูกค้า" className="w-full" />
+              <ChoiceInput historyKey="sales.deliveryTerms" value={incoTerms} onChange={setIncoTerms} options={DELIVERY_TERMS} placeholder="เช่น ส่งถึงหน้างานลูกค้า" className="w-full" />
             </div>
             <div className="space-y-1 col-span-6">
               <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">สถานที่จัดส่ง</label>
@@ -1382,7 +1383,7 @@ export default function QuotationEditPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เงื่อนไขชำระ</label>
-                <ChoiceInput value={paymentTerms} onChange={setPaymentTerms} options={PAYMENT_TERMS} placeholder="เลือกหรือพิมพ์เงื่อนไขชำระ" className="w-full" />
+                <ChoiceInput historyKey="sales.paymentTerms" value={paymentTerms} onChange={setPaymentTerms} options={PAYMENT_TERMS} placeholder="เลือกหรือพิมพ์เงื่อนไขชำระ" className="w-full" />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-semibold uppercase tracking-widest text-white/40">เลขอ้างอิง</label>
@@ -1474,34 +1475,40 @@ export default function QuotationEditPage() {
           <h3 className="text-base font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-2">
             เงื่อนไขการค้า
           </h3>
-          <textarea
-            value={termsAndConditions}
-            onChange={(e) => setTermsAndConditions(e.target.value)}
-            className="w-full h-32 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[12px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed transition-all"
-          />
+          <FieldHistory k="quotation.terms" value={termsAndConditions} onPick={setTermsAndConditions}>
+            <textarea
+              value={termsAndConditions}
+              onChange={(e) => setTermsAndConditions(e.target.value)}
+              className="w-full h-32 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[12px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed transition-all"
+            />
+          </FieldHistory>
         </div>
         <div className="bg-surface-1 border border-white/5 rounded-3xl p-4 shadow-2xl space-y-4">
           <h3 className="text-base font-semibold uppercase tracking-widest text-white/80 flex items-center gap-2 border-b border-white/5 pb-2">
             หมายเหตุ
           </h3>
-          <textarea
-            value={remark}
-            onChange={(e) => setRemark(e.target.value)}
-            placeholder="หมายเหตุเพิ่มเติมที่ต้องการแสดงบนเอกสาร..."
-            className="w-full h-32 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[12px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed transition-all"
-          />
+          <FieldHistory k="quotation.remark" value={remark} onPick={setRemark}>
+            <textarea
+              value={remark}
+              onChange={(e) => setRemark(e.target.value)}
+              placeholder="หมายเหตุเพิ่มเติมที่ต้องการแสดงบนเอกสาร..."
+              className="w-full h-32 bg-black/20 focus:bg-surface-0/90 focus:backdrop-blur-md border border-white/10 focus:border-nexus-teal/50 rounded-xl p-3 text-[12px] text-white focus:text-nexus-teal focus:outline-none resize-none leading-relaxed transition-all"
+            />
+          </FieldHistory>
         </div>
         {!isLocked && (
         <div className="bg-surface-1 border border-warning/20 rounded-3xl p-4 shadow-[0_0_15px_rgba(234,179,8,0.05)] space-y-4">
           <h3 className="text-base font-semibold uppercase tracking-widest text-warning flex items-center gap-2 border-b border-warning/20 pb-2">
             หมายเหตุภายใน (ไม่พิมพ์)
           </h3>
-          <textarea
-            value={internalNotes}
-            onChange={(e) => setInternalNotes(e.target.value)}
-            placeholder="ระบุเหตุผลการให้ส่วนลด หรือข้อความสำหรับผู้อนุมัติ (ลูกค้าจะไม่เห็นข้อความนี้)..."
-            className="w-full h-32 bg-black/40 border border-warning/10 rounded-xl p-3 text-[12px] text-warning/80 focus:outline-none focus:border-warning/50 resize-none leading-relaxed"
-          />
+          <FieldHistory k="quotation.internal" value={internalNotes} onPick={setInternalNotes}>
+            <textarea
+              value={internalNotes}
+              onChange={(e) => setInternalNotes(e.target.value)}
+              placeholder="ระบุเหตุผลการให้ส่วนลด หรือข้อความสำหรับผู้อนุมัติ (ลูกค้าจะไม่เห็นข้อความนี้)..."
+              className="w-full h-32 bg-black/40 border border-warning/10 rounded-xl p-3 text-[12px] text-warning/80 focus:outline-none focus:border-warning/50 resize-none leading-relaxed"
+            />
+          </FieldHistory>
         </div>
         )}
       </div>
@@ -1513,13 +1520,15 @@ export default function QuotationEditPage() {
           <h3 className="text-base font-semibold uppercase tracking-widest text-warning flex items-center gap-2 border-b border-warning/20 pb-2">
             หมายเหตุภายใน (ไม่พิมพ์)
           </h3>
-          <textarea
-            value={internalNotes}
-            onChange={(e) => { setInternalNotes(e.target.value); setNotesDirty(true); }}
-            disabled={status === "SUPERSEDED"}
-            placeholder="ระบุเหตุผลการให้ส่วนลด หรือข้อความสำหรับผู้อนุมัติ (ลูกค้าจะไม่เห็นข้อความนี้)..."
-            className="w-full h-32 bg-black/40 border border-warning/10 rounded-xl p-3 text-[12px] text-warning/80 focus:outline-none focus:border-warning/50 resize-none leading-relaxed"
-          />
+          <FieldHistory k="quotation.internal" value={internalNotes} onPick={setInternalNotes}>
+            <textarea
+              value={internalNotes}
+              onChange={(e) => { setInternalNotes(e.target.value); setNotesDirty(true); }}
+              disabled={status === "SUPERSEDED"}
+              placeholder="ระบุเหตุผลการให้ส่วนลด หรือข้อความสำหรับผู้อนุมัติ (ลูกค้าจะไม่เห็นข้อความนี้)..."
+              className="w-full h-32 bg-black/40 border border-warning/10 rounded-xl p-3 text-[12px] text-warning/80 focus:outline-none focus:border-warning/50 resize-none leading-relaxed"
+            />
+          </FieldHistory>
           {status !== "SUPERSEDED" && (
             <div className="flex items-center justify-end gap-3">
               {notesDirty && <span className="text-[12px] text-warning/70">ยังไม่ได้บันทึก</span>}

@@ -4,6 +4,7 @@ import React from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { PillButton, PillInput, cn } from "@/components/ui/Base";
 import { formatCurrency } from "@/lib/erp-logic";
+import { FieldHistory } from "@/components/ui/FieldHistory";
 
 /** งวดชำระของใบเสนอราคา (สัดส่วน % ของยอดรวม) */
 export interface PaymentSchedule { id: string; name: string; percent: number; amount: number }
@@ -30,10 +31,13 @@ export function QuotationTermsCards({
 }) {
   const total = schedules.reduce((s, p) => s + (Number(p.percent) || 0), 0);
   const set = (id: string, patch: Partial<PaymentSchedule>) => onSchedules(schedules.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  const HK: Record<string, string> = { "การรับประกัน": "quotation.warranty", "ขอบเขตงาน": "quotation.scope", "ข้อยกเว้น": "quotation.exclusions" };
   const field = (label: string, value: string, onChange: (v: string) => void, placeholder: string) => (
     <div className="space-y-1">
       <label className="text-[11px] font-bold text-white/70">{label}</label>
-      <PillInput value={value} disabled={readOnly} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full h-8 text-[12px]" />
+      <FieldHistory k={HK[label] || "quotation.term"} value={value} onPick={readOnly ? () => undefined : onChange}>
+        <PillInput value={value} disabled={readOnly} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full h-8 text-[12px]" />
+      </FieldHistory>
     </div>
   );
   return (

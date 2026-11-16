@@ -13,6 +13,7 @@ import { CatalogMatches } from "@/components/commerce/CatalogMatches";
 import { can, canViewCost } from "@/lib/permissions";
 import { SupplierPriceSelector } from "@/components/inventory/SupplierPriceSelector";
 import { SciFiDropdownPortal } from "@/components/ui/SmartComponents";
+import { FieldHistory } from "@/components/ui/FieldHistory";
 
 export interface DocumentItemsTableProps {
   items: any[];
@@ -596,14 +597,16 @@ const InlineRow = ({
             <label className="text-[12px] text-nexus-teal font-semibold tracking-wider flex items-center gap-1">
               <AlignLeft size={12} /> รายละเอียดสินค้าเพิ่มเติม
             </label>
-            <textarea
-              value={item.details || ""}
-              onChange={(e) => updateItem(item.id, "details", e.target.value)}
-              disabled={isLocked}
-              className="w-full bg-white/[0.02] border border-white/10 rounded-xl p-3 text-[12px] text-white/80 focus:outline-none focus:border-nexus-teal/50 transition-colors custom-scrollbar"
-              rows={3}
-              placeholder="ระบุสเปก, รุ่น, สี, ขนาด หรือรายละเอียดอื่นๆ..."
-            />
+            <FieldHistory k="item.details" value={item.details || ""} onPick={(v) => updateItem(item.id, "details", v)}>
+              <textarea
+                value={item.details || ""}
+                onChange={(e) => updateItem(item.id, "details", e.target.value)}
+                disabled={isLocked}
+                className="w-full bg-white/[0.02] border border-white/10 rounded-xl p-3 text-[12px] text-white/80 focus:outline-none focus:border-nexus-teal/50 transition-colors custom-scrollbar"
+                rows={3}
+                placeholder="ระบุสเปก, รุ่น, สี, ขนาด หรือรายละเอียดอื่นๆ..."
+              />
+            </FieldHistory>
           </div>
 
           <div className="space-y-2 min-w-0">

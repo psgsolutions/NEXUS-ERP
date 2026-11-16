@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from "@/lib/api-client";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { DocumentStepper } from "@/components/ui/DocumentStepper";
+import { FieldHistory } from "@/components/ui/FieldHistory";
 
 export default function CreatePayoutPage() {
   const { showAlert } = useSystemDialog();
@@ -241,12 +242,14 @@ export default function CreatePayoutPage() {
         <label className="block text-[11px] font-semibold text-white/40 uppercase tracking-widest not-italic">
           หมายเหตุ
         </label>
-        <textarea
-          value={formData.remarks}
-          onChange={e => setFormData({...formData, remarks: e.target.value})}
-          className="w-full h-24 p-4 bg-black/40 border border-white/10 rounded-2xl text-[12px] font-bold text-white resize-none outline-none focus:border-cyan-400/50 custom-scrollbar"
-          placeholder="หมายเหตุการจ่ายเงิน..."
-        />
+        <FieldHistory k="payout.remarks" value={formData.remarks} onPick={(v) => setFormData({ ...formData, remarks: v })}>
+          <textarea
+            value={formData.remarks}
+            onChange={e => setFormData({...formData, remarks: e.target.value})}
+            className="w-full h-24 p-4 bg-black/40 border border-white/10 rounded-2xl text-[12px] font-bold text-white resize-none outline-none focus:border-cyan-400/50 custom-scrollbar"
+            placeholder="หมายเหตุการจ่ายเงิน..."
+          />
+        </FieldHistory>
       </div>
 
       <div className="space-y-4 pt-4 relative z-10">

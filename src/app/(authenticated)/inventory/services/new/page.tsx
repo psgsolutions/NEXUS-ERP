@@ -10,6 +10,7 @@ import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
 import { normalizeRecipe } from "@/lib/service-recipe";
 import { ServiceRecipeEditor, recipeFromDraft, type RecipeDraft } from "@/components/inventory/ServiceRecipeEditor";
+import { FieldHistory } from "@/components/ui/FieldHistory";
 
 /**
  * สร้างงานบริการ/งานติดตั้งในหน้าเดียว: ชื่อ รายละเอียด หน่วย ค่าแรง (เลือกช่าง) วัสดุ/ชุดอุปกรณ์ ราคาขาย (กำไรมาตรฐาน 20%)
@@ -66,10 +67,14 @@ export default function NewServicePage() {
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] gap-4 items-start">
         <GlassCard className="p-5 space-y-3">
           <label className="space-y-1 block"><span className="text-[12px] text-white/60">ชื่องาน *</span>
-            <PillInput value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น เดินสายแลน แบบที่ 1 (ตั้ง Outlet)" className="h-9 w-full" data-service-name />
+            <FieldHistory k="service.name" value={name} onPick={setName}>
+              <PillInput value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น เดินสายแลน แบบที่ 1 (ตั้ง Outlet)" className="h-9 w-full" data-service-name />
+            </FieldHistory>
           </label>
           <label className="space-y-1 block"><span className="text-[12px] text-white/60">รายละเอียด (แสดงในเอกสารลูกค้า)</span>
-            <PillInput value={description} onChange={(e) => setDescription(e.target.value)} placeholder="เช่น ต้นทางเข้า Patch Panel + ปลายทางตั้ง Outlet" className="h-9 w-full" data-service-desc />
+            <FieldHistory k="product.description" value={description} onPick={setDescription}>
+              <PillInput value={description} onChange={(e) => setDescription(e.target.value)} placeholder="เช่น ต้นทางเข้า Patch Panel + ปลายทางตั้ง Outlet" className="h-9 w-full" data-service-desc />
+            </FieldHistory>
           </label>
           <div className="rounded-xl bg-white/[0.03] p-3 text-[12px] text-white/55 leading-relaxed space-y-1">
             <p className="font-bold text-white/70">วิธีใช้</p>

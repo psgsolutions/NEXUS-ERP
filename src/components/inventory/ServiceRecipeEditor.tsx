@@ -13,6 +13,7 @@ import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { apiFetch } from "@/lib/api-client";
 import { createLaborRate } from "@/lib/labor-rate-client";
 import { addKitMaterials, isLaborItem, matQty, matUnit, setMatQty, setMatUnit, recipeCost, recipeDetails, recipeMargin, suggestServicePrice, SERVICE_MARGIN, type RecipeLabor, type RecipeMaterial, type ServiceRecipe } from "@/lib/service-recipe";
+import { FieldHistory } from "@/components/ui/FieldHistory";
 
 export const SERVICE_UNITS = ["จุด", "งาน", "ระบบ", "ชุด", "ตัว", "เครื่อง", "เมตร", "ครั้ง"];
 const money = (n: number) => Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -166,7 +167,7 @@ export function ServiceRecipeEditor({ companyId, draft, onChange, canEdit, exclu
           <div key={i} className="rounded-lg px-2 py-1.5 bg-white/[0.03] space-y-1">
             <div className="flex items-center gap-2 min-w-0">
               {canEdit && !l.productId
-                ? <PillInput value={l.name} onChange={(e) => patchLabor(i, { name: e.target.value })} aria-label="ชื่อค่าแรง" className="h-8 flex-1 min-w-0 text-[12px]" />
+                ? <FieldHistory k="labor.name" value={l.name} onPick={(v) => patchLabor(i, { name: v })} className="flex-1 min-w-0"><PillInput value={l.name} onChange={(e) => patchLabor(i, { name: e.target.value })} aria-label="ชื่อค่าแรง" className="h-8 w-full text-[12px]" /></FieldHistory>
                 : <span className="truncate flex-1 text-[12px] text-white/85" title={l.name}>{l.name}</span>}
               {canEdit && !l.productId ? (
                 // ค่าแรงที่พิมพ์เอง: ยังไม่รู้จะจ้างใครก็ใช้ราคานี้เสนอลูกค้าได้ — ผูกช่างเมื่อได้ตัวแล้ว

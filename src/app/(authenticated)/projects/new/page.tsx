@@ -61,6 +61,7 @@ import {
   type DocSectionKey, type ExpenseContext, type MaintenanceEquipment, type MaintenanceLevel, type ProjectExpense, type ProjectStage, type Sector, type TimelinePhase,
 } from "@/lib/project-templates";
 import { mergeSpecLibrary, specClausesFor, suggestSpec, type SpecChoice } from "@/lib/spec-library";
+import { FieldHistory } from "@/components/ui/FieldHistory";
 
 const STEPS = [
   { title: "ข้อมูลโครงการ" },
@@ -926,7 +927,9 @@ export default function NewProjectPage() {
               <PillInput value={pvtCustomerPO} onChange={(e) => setPvtCustomerPO(e.target.value)} placeholder="เช่น PO-2026-9912" className="w-full h-9 text-sm font-mono" />
             </Field>
             <Field label="เงื่อนไขการชำระเงิน" w={300} grow>
-              <PillInput value={pvtPaymentTerms} onChange={(e) => setPvtPaymentTerms(e.target.value)} placeholder="เว้นว่าง = ตามงวดงาน" className="w-full h-9 text-sm" />
+              <FieldHistory k="sales.paymentTerms" value={pvtPaymentTerms} onPick={setPvtPaymentTerms}>
+                <PillInput value={pvtPaymentTerms} onChange={(e) => setPvtPaymentTerms(e.target.value)} placeholder="เว้นว่าง = ตามงวดงาน" className="w-full h-9 text-sm" />
+              </FieldHistory>
             </Field>
           </>)
         )}

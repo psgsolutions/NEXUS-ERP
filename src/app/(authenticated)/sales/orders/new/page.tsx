@@ -15,6 +15,7 @@ import { useCustomers } from "@/hooks/useCustomers";
 import { apiFetch } from "@/lib/api-client";
 import { db } from "@/lib/firebase-client";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { FieldHistory } from "@/components/ui/FieldHistory";
 
 type TaxType = "exclusive" | "inclusive" | "none";
 
@@ -337,7 +338,9 @@ export default function SalesOrderPage() {
             </Field>
           </div>
           <Field label="หมายเหตุ">
-            <PillInput value={refs.remark} onChange={(e) => setRef("remark", e.target.value)} placeholder="พิมพ์ท้ายใบสั่งขายและใบกำกับภาษี" className="w-full h-9 text-[12px]" />
+            <FieldHistory k="so.remark" value={refs.remark} onPick={(v) => setRef("remark", v)}>
+              <PillInput value={refs.remark} onChange={(e) => setRef("remark", e.target.value)} placeholder="พิมพ์ท้ายใบสั่งขายและใบกำกับภาษี" className="w-full h-9 text-[12px]" />
+            </FieldHistory>
           </Field>
         </div>
 

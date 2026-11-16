@@ -50,6 +50,7 @@ import { cn, PillButton, NexusSearchInput } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { auth as firebaseAuth } from "@/lib/firebase-client";
 import { signOut } from "firebase/auth";
+import { IdleGuard } from "@/components/layout/IdleGuard";
 import { EntitySelector } from "@/components/layout/EntitySelector";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { HelpButton } from "@/components/guide/HelpPanel";
@@ -87,6 +88,7 @@ export default function AuthenticatedLayout({
   return (
     <OnboardingHost>
     <div className="flex h-screen overflow-hidden bg-surface-0 text-white selection:bg-nexus-teal/30">
+      {user && <IdleGuard />}
       <CommandPalette />
       
       {/* [1] Sidebar — พับเหลือไอคอน (72px) · เอาเม้าวางขยายทับเนื้อหา (240px) · เอาเม้าออกพับทันที

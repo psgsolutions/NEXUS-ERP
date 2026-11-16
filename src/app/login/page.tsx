@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { PillButton, GlassCard, PillInput } from "@/components/ui/Base";
 import { markSessionStart } from "@/lib/session-guard";
 import { authPassword } from "@/lib/initial-password";
@@ -48,6 +48,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  // ออกอัตโนมัติเพราะไม่มีการใช้งาน 30 นาที — แจ้งให้รู้ (แสดงครั้งเดียว)
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("nx_logout_reason") === "idle") { setNotice("ออกจากระบบอัตโนมัติ เพราะไม่มีการใช้งานนาน 30 นาที — กรุณาเข้าสู่ระบบอีกครั้ง"); sessionStorage.removeItem("nx_logout_reason"); }
+    } catch { /* ไม่มี storage */ }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

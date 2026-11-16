@@ -22,6 +22,7 @@ export function otherTabsAlive(selfId = "", now = Date.now(), tabs = readTabs())
 /** เรียกก่อนล็อกอิน: แท็บนี้กำลังเริ่ม session ใหม่ */
 export function markSessionStart() {
   safe(() => sessionStorage.setItem(TAB_FLAG, "1"), undefined);
+  safe(() => localStorage.setItem("nx_last_active", String(Date.now())), undefined);
 }
 
 /** ผู้ใช้ที่ล็อกอินค้างไว้ ใช้ต่อในแท็บนี้ได้ไหม (แท็บนี้เคยผ่าน หรือยังมีแท็บของระบบเปิดอยู่) */
@@ -64,4 +65,26 @@ export function startTabHeartbeat(): () => void {
 /** ออกจากระบบ: ล้างสถานะของแท็บนี้ (แท็บอื่นจะถูก Firebase ออกจากระบบตามกันอยู่แล้ว) */
 export function clearTabSession() {
   safe(() => { sessionStorage.removeItem(TAB_FLAG); }, undefined);
+}
+
+/**
+ * ปล่อยหน้าจอทิ้งไว้ 30 นาที (ไม่ขยับเมาส์/คีย์บอร์ด/แตะจอ ในทุกแท็บของระบบ) → ออกจากระบบอัตโนมัติ (ตัดสินใจ 2026-11-16)
+ * เวลาใช้งานล่าสุดเก็บใน localStorage (nx_last_active) ร่วมกันทุกแท็บ — ทำงานอยู่แท็บหนึ่ง แท็บอื่นไม่หลุด
+ * เตือนล่วงหน้า 2 นาที · เครื่องหลับ/พับจอนานเกิน 30 นาที กลับมาแล้วออกทันที
+ */
+export const IDLE_LIMIT = 30 * 60_000;
+export const IDLE_WARN = 2 * 60_000;
+const LAST_ACTIVE = "nx_last_active";
+export const LOGOUT_REASON = "nx_logout_reason";
+
+export function lastActivity(): number {
+  return safe(() => Number(localStorage.getItem(LAST_ACTIVE)) || 0, 0);
+}
+export function markActivity(now = Date.now()) {
+  safe(() => localStorage.setItem(LAST_ACTIVE, String(now)), undefined);
+}
+/** เหลือเวลาอีกกี่ ms ก่อนออกอัตโนมัติ (ไม่เคยบันทึก = เต็มเวลา) */
+export function idleRemaining(now = Date.now(), last = lastActivity()): number {
+  if (!last) return IDLE_LIMIT;
+  return Math.max(0, IDLE_LIMIT - (now - last));
 }

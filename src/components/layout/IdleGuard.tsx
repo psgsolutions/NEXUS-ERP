@@ -17,8 +17,8 @@ const EVENTS = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart", 
  */
 export function IdleGuard() {
   const pathname = usePathname();
-  const exempt = useRef(false);
-  exempt.current = idleExempt(pathname);
+  const path = useRef(pathname);
+  path.current = pathname;
   const [left, setLeft] = useState<number | null>(null);
   const lastWrite = useRef(0);
   const out = useRef(false);
@@ -39,7 +39,7 @@ export function IdleGuard() {
       window.location.href = "/login";
     };
     const check = () => {
-      if (exempt.current) {
+      if (idleExempt(path.current)) {
         if (Date.now() - lastActivity() >= 30_000) markActivity();
         return void setLeft(null);
       }

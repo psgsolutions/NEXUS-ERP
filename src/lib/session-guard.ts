@@ -77,10 +77,22 @@ export const IDLE_WARN = 2 * 60_000;
 const LAST_ACTIVE = "nx_last_active";
 export const LOGOUT_REASON = "nx_logout_reason";
 
-/** หน้าที่ไม่ออกอัตโนมัติ: เครื่อง POS หน้าร้านเปิดหน้าขายค้างทั้งวัน (ตัดสินใจ 2026-11-16) */
+/**
+ * เครื่อง POS (ตั้งที่เครื่องนั้นโดยผู้ดูแล: ขายหน้าร้าน › ตั้งค่าหน้าร้าน) — ทั้งเครื่องไม่ออกอัตโนมัติไม่ว่าเปิดหน้าไหน
+ * เก็บใน localStorage ของเบราว์เซอร์เครื่องนั้น (ล้างข้อมูลเบราว์เซอร์ = ต้องตั้งใหม่)
+ */
+const POS_DEVICE = "nx_pos_device";
+export function isPosDevice(): boolean {
+  return safe(() => localStorage.getItem(POS_DEVICE) === "1", false);
+}
+export function setPosDevice(on: boolean) {
+  safe(() => (on ? localStorage.setItem(POS_DEVICE, "1") : localStorage.removeItem(POS_DEVICE)), undefined);
+}
+
+/** ไม่ออกอัตโนมัติ: เครื่องที่ตั้งเป็นเครื่อง POS หรือกำลังเปิดหน้าขาย POS (ตัดสินใจ 2026-11-16) */
 export function idleExempt(pathname: string | null | undefined): boolean {
   const p = String(pathname || "");
-  return p === "/pos" || p.startsWith("/pos/");
+  return p === "/pos" || p.startsWith("/pos/") || isPosDevice();
 }
 
 export function lastActivity(): number {

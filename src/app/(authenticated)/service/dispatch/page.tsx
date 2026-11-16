@@ -9,7 +9,7 @@ import { useSystemDialog } from "@/context/DialogContext";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { useProducts } from "@/hooks/useProducts";
 import { apiFetch } from "@/lib/api-client";
-import { normalizeRecipe } from "@/lib/service-recipe";
+import { matQty, matUnit, normalizeRecipe } from "@/lib/service-recipe";
 import { JOB_PRIORITY, JOB_STATUS, JOB_TYPES, jobTypeLabel, toolsOut, type Job, type JobItem, type JobPriority, type JobType } from "@/lib/jobs";
 
 /** ศูนย์จ่ายงาน: สร้างงาน มอบหมายผู้รับงาน และติดตามสถานะ (ข้อมูลผ่าน /api/jobs) */
@@ -190,7 +190,7 @@ function JobForm({ initial, people, busy, onClose, onSave }: { initial: any; peo
   const addRecipe = (p: any) => {
     const r = normalizeRecipe(p.serviceRecipe);
     if (!r) return;
-    const extra: JobItem[] = r.materials.map((m) => ({ kind: "MATERIAL", productId: m.productId, sku: m.sku, name: `${m.name} (${p.name})`, qty: m.qty, unit: m.unit }));
+    const extra: JobItem[] = r.materials.map((m) => ({ kind: "MATERIAL", productId: m.productId, sku: m.sku, name: `${m.name}${m.useUnit ? ` ${matQty(m)} ${matUnit(m)}` : ""} (${p.name})`, qty: m.qty, unit: m.unit }));
     set({ equipment: [...f.equipment, ...extra] }); setPq("");
   };
   const valid = String(f.title || "").trim().length > 0;

@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Banknote, BarChart3, History, Check, CreditCard, HelpCircle, Keyboard, Loader2, Minus, PauseCircle, PlayCircle, Plus, Printer, QrCode, ScanLine, Search, Settings, ShoppingCart, Trash2, User, X, ArrowRightLeft } from "lucide-react";
+import { Banknote, BarChart3, History, Check, CreditCard, HelpCircle, Keyboard, Loader2, Minus, PauseCircle, PlayCircle, Plus, Printer, QrCode, ScanLine, Search, Settings, ShoppingCart, Trash2, User, X, ArrowRightLeft, Monitor } from "lucide-react";
 import { PillButton, PillInput, cn } from "@/components/ui/Base";
 import { QrCode as QrSvg } from "@/components/ui/QrCode";
 import { DailySummaryModal } from "@/components/pos/DailySummaryModal";
@@ -17,6 +17,7 @@ import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { usePOSHardware } from "@/hooks/usePOSHardware";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
+import { isPosDevice, setPosDevice } from "@/lib/session-guard";
 import { findProductByScan } from "@/lib/warehouse-location";
 import { normalizePromptPayId, promptPayPayload } from "@/lib/promptpay";
 
@@ -472,11 +473,31 @@ function PosSettings({ company, companyId, onClose, onSaved }: { company: any; c
   };
   return (
     <Modal title="ตั้งค่าหน้าร้าน" onClose={onClose}>
+      <PosDeviceToggle />
       <label className="block text-[12px] text-white/70">รหัสพร้อมเพย์ของร้าน (เบอร์มือถือ 10 หลัก หรือเลขประจำตัวผู้เสียภาษี 13 หลัก)</label>
       <PillInput value={pp} onChange={(e) => setPp(e.target.value)} placeholder={company?.taxId ? `เว้นว่าง = ใช้เลขผู้เสียภาษี ${company.taxId}` : "0812345678"} className={cn("w-full h-9 text-sm font-mono", !valid && "border-danger")} />
       {!valid && <p className="text-[12px] text-danger">รูปแบบไม่ถูกต้อง</p>}
       {error && <p className="text-[12px] text-danger">{error}</p>}
       <div className="flex justify-end gap-2"><PillButton variant="ghost" className="h-9 px-5 text-xs" onClick={onClose}>ยกเลิก</PillButton><PillButton variant="confirm" className="h-9 px-5 text-xs font-bold" disabled={busy || !valid} onClick={save}>บันทึก</PillButton></div>
     </Modal>
+  );
+}
+
+/** ตั้งเครื่องนี้เป็นเครื่อง POS: ไม่ออกจากระบบอัตโนมัติเมื่อไม่มีการใช้งาน 30 นาที (มีผลเฉพาะเบราว์เซอร์เครื่องนี้ ทันที) */
+function PosDeviceToggle() {
+  const [on, setOn] = useState(false);
+  useEffect(() => { setOn(isPosDevice()); }, []);
+  const toggle = () => { setPosDevice(!on); setOn(!on); };
+  return (
+    <div className={cn("rounded-xl border p-3 flex items-center gap-3", on ? "border-nexus-teal/30 bg-nexus-teal/[0.06]" : "border-white/10")} data-pos-device>
+      <Monitor size={18} className={on ? "text-nexus-teal shrink-0" : "text-white/50 shrink-0"} />
+      <div className="flex-1 min-w-0">
+        <p className="text-[14px] font-bold text-white">{on ? "เครื่องนี้เป็นเครื่อง POS" : "เครื่องนี้ยังไม่ใช่เครื่อง POS"}</p>
+        <p className="text-[12px] text-white/55">{on ? "ไม่ออกจากระบบอัตโนมัติ ไม่ว่าจะเปิดหน้าไหน (ปิดทุกแท็บแล้วยังต้องล็อกอินใหม่)" : "เครื่องทั่วไป: ไม่มีการใช้งาน 30 นาที ระบบออกให้อัตโนมัติ (ยกเว้นตอนเปิดหน้าขาย POS)"}</p>
+      </div>
+      <PillButton variant={on ? "ghost" : "confirm"} className="h-9 px-4 text-xs font-bold" onClick={toggle} data-pos-device-btn>
+        {on ? "ยกเลิกเครื่อง POS" : "ทำเครื่องนี้เป็นเครื่อง POS"}
+      </PillButton>
+    </div>
   );
 }

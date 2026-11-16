@@ -12,13 +12,27 @@ import { useContractors } from "@/hooks/useCustomers";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { apiFetch } from "@/lib/api-client";
 import { createLaborRate } from "@/lib/labor-rate-client";
-import { addKitMaterials, isLaborItem, recipeCost, recipeDetails, recipeMargin, suggestServicePrice, SERVICE_MARGIN, type RecipeLabor, type RecipeMaterial, type ServiceRecipe } from "@/lib/service-recipe";
+import { addKitMaterials, isLaborItem, matQty, matUnit, setMatQty, setMatUnit, recipeCost, recipeDetails, recipeMargin, suggestServicePrice, SERVICE_MARGIN, type RecipeLabor, type RecipeMaterial, type ServiceRecipe } from "@/lib/service-recipe";
 
 export const SERVICE_UNITS = ["จุด", "งาน", "ระบบ", "ชุด", "ตัว", "เครื่อง", "เมตร", "ครั้ง"];
 const money = (n: number) => Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export const costOfProduct = (p: any) => Number(p?.pricing?.costWAC ?? p?.costPrice ?? p?.cost ?? 0) || 0;
 const laborRateOf = (p: any) => Number(p?.costPrice ?? p?.pricing?.costWAC ?? p?.cost ?? 0) || 0;
 const num = (v: string) => Number(v.replace(/[^\d.]/g, "")) || 0;
+
+/** หน่วยที่เลือกใช้ได้ของวัสดุ: หน่วยหลัก · หน่วยแพ็ค (ใหญ่กว่า) · หน่วยย่อยที่เคยตั้งไว้ที่สินค้า (subUnits) */
+export function materialUnitOptions(p: any, m: RecipeMaterial): { unit: string; perBase?: number; label: string }[] {
+  const base = m.unit || p?.unit || "หน่วย";
+  const out: { unit: string; perBase?: number; label: string }[] = [{ unit: base, label: `${base} (หน่วยหลัก)` }];
+  const push = (unit: string, perBase: number, label: string) => {
+    if (unit && unit !== base && perBase > 0 && !out.some((o) => o.unit === unit)) out.push({ unit, perBase, label });
+  };
+  for (const su of Array.isArray(p?.subUnits) ? p.subUnits : []) push(String(su?.unit || ""), Number(su?.perBase) || 0, `${su.unit} (1 ${base} = ${su.perBase} ${su.unit})`);
+  const rate = Number(p?.conversionRate || p?.conversionFactor) || 0;
+  if (p?.packageUnit && rate > 1) push(String(p.packageUnit), 1 / rate, `${p.packageUnit} (1 ${p.packageUnit} = ${rate} ${base})`);
+  if (m.useUnit && m.perBase) push(m.useUnit, m.perBase, `${m.useUnit} (1 ${base} = ${m.perBase} ${m.useUnit})`);
+  return out;
+}
 
 export interface RecipeDraft { unit: string; labors: RecipeLabor[]; materials: RecipeMaterial[] }
 
@@ -49,6 +63,21 @@ export function ServiceRecipeEditor({ companyId, draft, onChange, canEdit, exclu
   const [q, setQ] = useState("");
   const [kitId, setKitId] = useState("");
   const [kitSets, setKitSets] = useState("1");
+  const [unitEdit, setUnitEdit] = useState(-1);
+  const [newSub, setNewSub] = useState({ unit: "เมตร", per: "" });
+  const patchMat = (i: number, fn: (m: RecipeMaterial) => RecipeMaterial) => set({ materials: draft.materials.map((y, k) => (k === i ? fn(y) : y)) });
+  /** หน่วยย่อยใหม่ (เช่น 1 กล่อง = 305 เมตร): ใช้กับบรรทัดนี้ และจำไว้ที่สินค้าเพื่อใช้ครั้งต่อไป */
+  const addSubUnit = async (i: number) => {
+    const m = draft.materials[i]; const per = num(newSub.per); const unit = newSub.unit.trim();
+    if (!m || !unit || !(per > 0)) return;
+    patchMat(i, (x) => setMatUnit(x, unit, per));
+    setUnitEdit(-1); setNewSub({ unit: "เมตร", per: "" });
+    const p = byId.get(m.productId);
+    if (!canCreateProducts || !p) return;
+    const subUnits = [...(Array.isArray(p.subUnits) ? p.subUnits : []).filter((x: any) => x?.unit !== unit), { unit, perBase: per }].slice(0, 10);
+    const res = await apiFetch("/api/master-data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "update", entity: "products", id: m.productId, scope: "company", changes: { subUnits } }) }).catch(() => null);
+    if (!res?.ok) showAlert("ใช้หน่วยนี้ในสูตรได้ แต่จำหน่วยย่อยไว้ที่สินค้าไม่สำเร็จ", "แจ้งเตือน", "warning");
+  };
   const [creating, setCreating] = useState(false);
   const set = (patch: Partial<RecipeDraft>) => onChange({ ...draft, ...patch });
 
@@ -205,13 +234,33 @@ export function ServiceRecipeEditor({ companyId, draft, onChange, canEdit, exclu
                 {String(p?.lifecycleStatus || "").toUpperCase() === "DRAFT" && <Link href={`/inventory/${m.productId}?edit=1`} className="shrink-0 rounded-full px-2 text-[11px] leading-5 bg-warning/10 text-warning" title="สินค้าใหม่แบบร่าง — กดเพื่อเติมรายละเอียด/ต้นทุน">รอเติมข้อมูล</Link>}
               </div>
               <div className="flex items-center gap-2">
-                <span className="flex-1 text-[11px] text-white/45">ทุน {money(c)} / {m.unit || "หน่วย"}</span>
-                <PillInput inputMode="decimal" value={String(m.qty)} disabled={!canEdit} aria-label={`จำนวน ${m.name}`}
-                  onChange={(e) => set({ materials: draft.materials.map((y, k) => (k === i ? { ...y, qty: num(e.target.value) } : y)) })} className="h-8 w-[72px] text-right font-mono text-[12px]" />
-                <span className="w-10 text-[11px] text-white/50 truncate">{m.unit}</span>
+                <span className="flex-1 min-w-0 truncate text-[11px] text-white/45" title={m.useUnit && m.perBase ? `ทุน ${money(c)} / ${m.unit} · 1 ${m.unit} = ${m.perBase} ${m.useUnit}` : ""}>
+                  ทุน {money(m.useUnit && m.perBase ? c / m.perBase : c)} / {matUnit(m) || "หน่วย"}{m.useUnit && m.perBase ? ` (1 ${m.unit} = ${m.perBase} ${m.useUnit})` : ""}
+                </span>
+                <PillInput inputMode="decimal" value={String(matQty(m))} disabled={!canEdit} aria-label={`จำนวน ${m.name}`}
+                  onChange={(e) => patchMat(i, (y) => setMatQty(y, num(e.target.value)))} className="h-8 w-[72px] text-right font-mono text-[12px]" />
+                {canEdit
+                  ? <PillButton variant="ghost" className={cn("h-8 w-[64px] px-1 text-[11px] normal-case tracking-normal truncate", m.useUnit ? "text-nexus-teal" : "text-white/60")} title="เปลี่ยนหน่วย เช่น จากกล่องเป็นเมตร" onClick={() => setUnitEdit(unitEdit === i ? -1 : i)} data-mat-unit>{matUnit(m) || "หน่วย"} ▾</PillButton>
+                  : <span className="w-[64px] text-[11px] text-white/50 truncate">{matUnit(m)}</span>}
                 <span className="w-[76px] text-right font-mono text-[12px] text-white/70">{money(c * m.qty)}</span>
                 {canEdit && <PillButton variant="ghost" className="h-8 w-8 px-0 text-danger/80" aria-label="ลบวัสดุ" onClick={() => set({ materials: draft.materials.filter((_, k) => k !== i) })}><Trash2 size={12} /></PillButton>}
               </div>
+              {canEdit && unitEdit === i && (
+                <div className="rounded-lg border border-white/10 p-2 space-y-2" data-mat-unit-panel>
+                  <div className="flex flex-wrap gap-1.5">
+                    {materialUnitOptions(p, m).map((o) => (
+                      <PillButton key={o.unit} variant={(o.perBase ? m.useUnit === o.unit : !m.useUnit) ? "primary" : "glass"} className="h-8 px-3 text-[11px] normal-case tracking-normal"
+                        onClick={() => { patchMat(i, (x) => setMatUnit(x, o.perBase ? o.unit : undefined, o.perBase)); setUnitEdit(-1); }}>{o.label}</PillButton>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 text-[12px] text-white/60">
+                    <span className="shrink-0">หน่วยย่อยใหม่: 1 {m.unit || "หน่วย"} =</span>
+                    <PillInput inputMode="decimal" value={newSub.per} onChange={(e) => setNewSub({ ...newSub, per: e.target.value.replace(/[^\d.]/g, "") })} placeholder="305" aria-label="จำนวนหน่วยย่อยต่อหน่วยหลัก" className="h-8 w-[72px] text-right font-mono text-[12px]" />
+                    <PillInput value={newSub.unit} onChange={(e) => setNewSub({ ...newSub, unit: e.target.value })} aria-label="ชื่อหน่วยย่อย" className="h-8 w-[80px] text-[12px]" />
+                    <PillButton variant="confirm" className="h-8 px-3 text-xs" disabled={!(num(newSub.per) > 0) || !newSub.unit.trim()} onClick={() => addSubUnit(i)} data-add-subunit>ใช้หน่วยนี้</PillButton>
+                  </div>
+                </div>
+              )}
             </div>
           );
         }) : <p className="text-[12px] text-white/45 px-1">ยังไม่มีวัสดุ — ค้นหาสินค้า หรือเพิ่มจากชุดอุปกรณ์</p>}

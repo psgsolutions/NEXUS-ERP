@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const { uid, action, roles } = body;
     if (action === "create") return NextResponse.json({ success: true, ...(await createStaffUser(user, { name: body.name, email: body.email, roles, companyId: body.companyId })) });
     if (!uid || !action) throw new ApiAuthError(400, "ข้อมูลไม่ครบ");
-    const result = await applyUserAction(user, String(uid), action as UserAction, roles);
+    const result = await applyUserAction(user, String(uid), action as UserAction, roles, { email: body.email });
     return NextResponse.json({ success: true, ...result });
   } catch (error: any) {
     const authResponse = authErrorResponse(error);

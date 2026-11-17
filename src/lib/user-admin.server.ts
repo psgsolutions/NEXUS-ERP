@@ -1,7 +1,7 @@
 import * as admin from "firebase-admin";
 import { adminAuth, adminDb } from "./firebase-admin";
 import { ApiAuthError, type ApiUser } from "./api-auth";
-import { isPendingExpired, normalizeUserStatus } from "./user-status";
+import { isPendingExpired, isSuperAdminAccount, normalizeUserStatus } from "./user-status";
 import { ASSIGNABLE_ROLES as ROLE_OPTIONS, FULL_ACCESS_ROLES, can, primaryRole, resolveRoles } from "./permissions";
 import { auditServer } from "@/services/audit.server";
 import { randomBytes } from "crypto";
@@ -223,14 +223,14 @@ async function nextCompanyId(): Promise<string> {
   return `COM-NEXUS-${String(max + 1).padStart(2, "0")}`;
 }
 
-export type UserAction = "approve" | "reject" | "suspend" | "reactivate" | "setRoles" | "resetPassword";
+export type UserAction = "approve" | "reject" | "suspend" | "reactivate" | "setRoles" | "resetPassword" | "changeEmail";
 
 /**
  * อนุมัติ/ระงับ/กำหนดตำแหน่งผู้ใช้ — ผู้ดูแลระบบและ HR ของบริษัท (users:manage) ทำได้กับคนในบริษัทตัวเอง
  * - กำหนดตำแหน่งงาน (approve พร้อม roles / setRoles): ทุกตำแหน่ง ยกเว้นผู้ดูแลระบบ (บริษัทละ 1 คน)
  * - บัญชีผู้ดูแลระบบของบริษัท: เปลี่ยนตำแหน่ง/ระงับได้เฉพาะ SUPERADMIN · เปลี่ยนตำแหน่งของตัวเองไม่ได้
  */
-export async function applyUserAction(caller: ApiUser, uid: string, action: UserAction, roles?: any) {
+export async function applyUserAction(caller: ApiUser, uid: string, action: UserAction, roles?: any, extra: { email?: string } = {}) {
   const isSuper = caller.roles.includes("SUPERADMIN");
   if (!isSuper && !can(caller.roles, "users:manage")) throw new ApiAuthError(403, "ต้องเป็นผู้ดูแลระบบหรือฝ่ายบุคคลเท่านั้น");
   const assigning = roles !== undefined && roles !== null;
@@ -248,7 +248,7 @@ export async function applyUserAction(caller: ApiUser, uid: string, action: User
     if (!mine || u.registrationId) throw new ApiAuthError(403, "ไม่มีสิทธิ์จัดการผู้ใช้นี้");
   }
 
-  if (!isSuper && isCompanyAdmin(u) && ["suspend", "setRoles", "reject", "resetPassword"].includes(action)) {
+  if (!isSuper && isCompanyAdmin(u) && ["suspend", "setRoles", "reject", "resetPassword", "changeEmail"].includes(action)) {
     throw new ApiAuthError(403, "บัญชีผู้ดูแลระบบของบริษัท เปลี่ยนแปลงได้โดยผู้ดูแลระบบกลาง (SUPERADMIN) เท่านั้น");
   }
 
@@ -295,6 +295,32 @@ export async function applyUserAction(caller: ApiUser, uid: string, action: User
       await ref.update({ mustChangePassword: true, passwordResetAt: now(), passwordResetBy: caller.uid, ...stamp });
       await auditServer.logUpdate(caller.uid, u.companyId || caller.companyId || "", "USER_PASSWORD_RESET", uid, {}, { reset: true });
       return { tempPassword: INITIAL_PASSWORD };
+    }
+    case "changeEmail": {
+      // เปลี่ยนอีเมลที่ใช้เข้าระบบ: บัญชีเดิม (uid เดิม) ประวัติ ตำแหน่ง ลายเซ็นตามมาครบ · รหัสผ่านเดิม · ออกจากระบบทุกเครื่อง
+      if (status !== "ACTIVE" && status !== "SUSPENDED") bad("เปลี่ยนอีเมลได้เฉพาะบัญชีที่ใช้งานอยู่หรือถูกระงับ");
+      const oldEmail = String(u.email || "").trim().toLowerCase();
+      if (resolveRoles(u).includes("SUPERADMIN") || isSuperAdminAccount(uid, oldEmail)) throw new ApiAuthError(403, "เปลี่ยนอีเมลของผู้ดูแลระบบกลาง (SUPERADMIN) ที่หน้านี้ไม่ได้");
+      const email = String(extra.email || "").trim().toLowerCase();
+      if (!EMAIL_RE.test(email) || email.length > 200) bad("รูปแบบอีเมลไม่ถูกต้อง");
+      if (email === oldEmail) bad("อีเมลใหม่เหมือนอีเมลเดิม");
+      try {
+        await adminAuth.updateUser(uid, { email, emailVerified: false });
+      } catch (e: any) {
+        if (e?.code === "auth/email-already-exists") bad("อีเมลนี้มีผู้ใช้อื่นใช้อยู่แล้ว");
+        throw e;
+      }
+      await adminAuth.revokeRefreshTokens(uid);
+      await ref.update({ email, previousEmails: admin.firestore.FieldValue.arrayUnion(oldEmail), emailChangedAt: now(), emailChangedBy: caller.uid, ...stamp });
+      // ทะเบียนพนักงานที่ผูกด้วยอีเมลเดิม (ลงเวลา/ข้อมูลของฉัน) → อีเมลใหม่
+      const cid = u.companyId || caller.companyId || "";
+      let employees = 0;
+      if (cid && oldEmail) {
+        const emps = await adminDb.collection("employees").where("companyId", "==", cid).where("email", "==", oldEmail).limit(5).get();
+        for (const d of emps.docs) { await d.ref.update({ email, updatedAt: now() }); employees++; }
+      }
+      await auditServer.logUpdate(caller.uid, cid, "USER_EMAIL", uid, { email: oldEmail }, { email });
+      return { email, employees };
     }
     case "reactivate": {
       if (status !== "SUSPENDED") bad("เปิดใช้งานได้เฉพาะบัญชีที่ถูกระงับ");

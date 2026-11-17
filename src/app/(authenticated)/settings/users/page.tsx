@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Users, ShieldCheck, UserCheck, Link2, Loader2, RefreshCw, UserPlus, Copy, KeyRound } from "lucide-react";
-import { GlassCard, PillButton, StatusBadge, cn, NexusSearchInput, NexusTable, NexusTableRow, NexusTableCell } from "@/components/ui/Base";
+import { GlassCard, PillButton, PillInput, StatusBadge, cn, NexusSearchInput, NexusTable, NexusTableRow, NexusTableCell } from "@/components/ui/Base";
 import { SecurityGuard } from "@/components/shared/SecurityGuard";
 import NexusPageLayout from "@/components/layout/NexusPageLayout";
 import { useAuth } from "@/context/AuthContext";
@@ -93,6 +93,7 @@ export default function UsersPage() {
   const [assign, setAssign] = useState<{ user: ManagedUser; mode: "approve" | "setRoles" } | null>(null);
   // สร้างบัญชีพนักงาน + รหัสผ่านชั่วคราว (แสดงครั้งเดียว)
   const [creating, setCreating] = useState<{ name: string; email: string } | null>(null);
+  const [emailEdit, setEmailEdit] = useState<{ user: ManagedUser; email: string } | null>(null);
   const [createBusy, setCreateBusy] = useState(false);
   const [issued, setIssued] = useState<{ name: string; email: string; password: string } | null>(null);
   useEffect(() => {
@@ -126,7 +127,7 @@ export default function UsersPage() {
     if (user) load();
   }, [user, load]);
 
-  const runAction = async (uid: string, action: string, roles?: string[]) => {
+  const runAction = async (uid: string, action: string, roles?: string[], extra: Record<string, string> = {}) => {
     setBusyUid(uid);
     setError("");
     setNotice("");
@@ -134,12 +135,13 @@ export default function UsersPage() {
       const res = await apiFetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid, action, ...(roles ? { roles } : {}) }),
+        body: JSON.stringify({ uid, action, ...(roles ? { roles } : {}), ...extra }),
       });
       const result = await res.json();
       if (!res.ok || !result.success) throw new Error(result.error || "ดำเนินการไม่สำเร็จ");
       if (action === "approve" && result.companyId) setNotice(`อนุมัติแล้ว ผูกกับบริษัท ${result.companyId}`);
       if (action === "setRoles") setNotice("บันทึกตำแหน่งแล้ว ผู้ใช้จะได้สิทธิ์ใหม่เมื่อรีเฟรชหน้าเว็บ");
+      if (action === "changeEmail") { setNotice(`เปลี่ยนอีเมลเข้าระบบเป็น ${result.email} แล้ว — ผู้ใช้ถูกออกจากระบบทุกเครื่อง ให้เข้าใหม่ด้วยอีเมลใหม่และรหัสผ่านเดิม${result.employees ? " (อัปเดตอีเมลในทะเบียนพนักงานให้แล้ว)" : ""}`); setEmailEdit(null); }
       if (action === "resetPassword") setNotice("รีเซ็ตรหัสผ่านเป็น 0000 แล้ว — แจ้งพนักงานให้เข้าระบบด้วย 0000 แล้วตั้งรหัสใหม่ทันที");
       setAssign(null);
       await load();
@@ -271,6 +273,7 @@ export default function UsersPage() {
     if (u.status === "ACTIVE") {
       return (
         <div className="flex gap-1.5 justify-end">
+          <PillButton variant="ghost" className="h-8 px-3 text-xs" onClick={() => setEmailEdit({ user: u, email: u.email || "" })} data-change-email>เปลี่ยนอีเมล</PillButton>
           <SecurityGuard onConfirm={() => runAction(u.uid, "resetPassword")} actionLabel="รีเซ็ตรหัสผ่าน" message={`รีเซ็ตรหัสผ่านของ ${u.email} เป็น 0000? ผู้ใช้จะถูกออกจากระบบทุกเครื่อง และต้องตั้งรหัสใหม่เมื่อเข้าระบบครั้งถัดไป`}>
             <PillButton variant="ghost" className="h-8 px-3 text-xs" data-reset-password>รีเซ็ตรหัส</PillButton>
           </SecurityGuard>
@@ -463,6 +466,30 @@ export default function UsersPage() {
         onConfirm={(roles) => assign && runAction(assign.user.uid, assign.mode, roles)}
         excludeRoles={excludeRoles}
       />
+      {emailEdit && (
+        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="เปลี่ยนอีเมลเข้าระบบ" onMouseDown={(e) => { if (e.target === e.currentTarget) setEmailEdit(null); }}>
+          <div className="w-full max-w-[520px] rounded-3xl border border-white/10 bg-surface-1 p-6 space-y-3 shadow-2xl" data-email-dialog>
+            <h3 className="text-[16px] font-bold text-white">เปลี่ยนอีเมลเข้าระบบ</h3>
+            <p className="text-[14px] text-white/80">{emailEdit.user.name || "-"} · อีเมลเดิม <span className="font-mono">{emailEdit.user.email}</span></p>
+            <label className="space-y-1 block"><span className="text-[12px] text-white/60">อีเมลใหม่ (ใช้เข้าระบบ)</span>
+              <PillInput type="email" value={emailEdit.email} onChange={(e) => setEmailEdit({ ...emailEdit, email: e.target.value })} placeholder="name@company.com" className="h-9 w-full font-mono" data-new-email />
+            </label>
+            <ul className="text-[12px] text-white/55 list-disc pl-5 space-y-0.5">
+              <li>บัญชีเดิม — ประวัติเอกสาร ตำแหน่ง และลายเซ็นตามมาครบ</li>
+              <li>รหัสผ่านเดิม · ผู้ใช้ถูกออกจากระบบทุกเครื่อง แล้วเข้าใหม่ด้วยอีเมลใหม่</li>
+              <li>อีเมลในทะเบียนพนักงานที่ตรงกับอีเมลเดิมจะเปลี่ยนตามให้</li>
+            </ul>
+            <div className="flex justify-end gap-2 pt-1">
+              <PillButton variant="ghost" className="h-9 px-5 text-xs" onClick={() => setEmailEdit(null)}>ยกเลิก</PillButton>
+              <PillButton variant="confirm" className="h-9 px-5 text-xs font-bold" data-confirm-email
+                disabled={busyUid === emailEdit.user.uid || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEdit.email.trim()) || emailEdit.email.trim().toLowerCase() === String(emailEdit.user.email || "").toLowerCase()}
+                onClick={() => runAction(emailEdit.user.uid, "changeEmail", undefined, { email: emailEdit.email.trim() })}>
+                {busyUid === emailEdit.user.uid ? <Loader2 size={14} className="animate-spin" /> : null} บันทึกอีเมลใหม่
+              </PillButton>
+            </div>
+          </div>
+        </div>
+      )}
       <RoleAssignDialog
         open={!!creating}
         title="เพิ่มผู้ใช้"

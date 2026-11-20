@@ -4,6 +4,7 @@ import type { ApiUser } from "./api-auth";
 import { PROJECT_TYPE_CONFIGS, ProjectTypeCode } from "@/types/database";
 import { computeProjectBudget, normalizeItemLine, normalizeLaborLine } from "./project-budget";
 import { milestoneStatus } from "./project-milestones";
+import { checkPlan, generatePlan, methodCode, normalizeOverrides, normalizeProfile, timelineFromInstallments } from "./project-plan";
 import { normalizeSpecChoices } from "./spec-library";
 import {
   ALL_DOC_KEYS, BUDGET_SOURCES, PROCUREMENT_METHODS, fiscalYearOf, legalReferences, normalizeExpenses,
@@ -87,7 +88,31 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
   const budget = computeProjectBudget(lines, { startDate, endDate, expenses });
 
   // ---- แผนงาน -> งวดงาน (งวดเงิน = สัดส่วน × มูลค่ารวม VAT) ----
-  const timeline = normalizeTimeline(body.timeline);
+  // ---- แม่แบบแผนงาน (งานติดตั้ง): งวดงานกำหนดช่วงงาน · กฎระดับ "หยุด" ห้ามส่งอนุมัติ ----
+  const planInstallable = typeCode === null || typeCode === 3 || typeCode === 4;
+  const planProfile = planInstallable && body.planProfile ? normalizeProfile(body.planProfile, sectorType) : null;
+  const planOverrides = planProfile ? normalizeOverrides(body.planOverrides) : null;
+  const durationDays = Math.round((Date.parse(endDate) - Date.parse(startDate)) / 86400e3) + 1;
+  const warrantyMonthsN = Math.min(120, Math.max(0, Math.round(Number(body.warrantyMonths) || 0)));
+  let planSnapshot: any = null;
+  if (planProfile && planOverrides) {
+    const ctx = {
+      sector: sectorType as "Government" | "Private", contracted: sectorType === "Private" || projectStage === "CONTRACTED",
+      method: sectorType === "Government" ? methodCode(body.governmentDetails?.procurementMethod) : "specific" as const,
+      planStart: new Date().toISOString().slice(0, 10), contractStart: startDate, durationDays, warrantyMonths: warrantyMonthsN, installable: true,
+    };
+    const plan = generatePlan(planProfile, ctx, planOverrides);
+    const boqPoints = lines.filter((l: any) => l.kind !== "GROUP" && String(l.unit || "").trim() === "จุด").reduce((s: number, l: any) => s + (Number(l.qty) || 0), 0);
+    const rules = checkPlan(planProfile, ctx, plan, { boqPoints });
+    const stop = rules.find((r) => r.level === "stop");
+    if (stop && body.asDraft !== true) return { ok: false, error: `แผนงาน ${stop.id}: ${stop.message}` };
+    planSnapshot = {
+      contractStart: plan.contractStart, warrantyStart: plan.warrantyStart, warrantyEnd: plan.warrantyEnd,
+      tasks: plan.tasks.map((t) => ({ id: t.id, name: t.name, phase: t.phase, owner: t.owner, external: t.external, start: t.start, end: t.end, days: t.days, ...(t.gate ? { gate: t.gate } : {}), ...(t.deadline ? { deadline: t.deadline } : {}), ...(t.skipped ? { skipped: true } : {}) })),
+      rules: rules.map((r) => ({ id: r.id, level: r.level, message: r.message })),
+    };
+  }
+  const timeline = planProfile && planProfile.installments.length ? normalizeTimeline(timelineFromInstallments(planProfile.installments, startDate)) : normalizeTimeline(body.timeline);
   if (body.asDraft !== true) {
     const tErr = timelineError(timeline);
     if (tErr) return { ok: false, error: tErr };
@@ -165,6 +190,8 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
     targetMargin: Math.min(90, Math.max(0, Number(body.targetMargin) || 0)),
     warrantyMonths: Math.min(120, Math.max(0, Math.round(Number(body.warrantyMonths) || 0))),
     milestones,
+    // แม่แบบแผนงาน: ข้อมูลระบบ/หน้างาน การปรับแผนเอง และแผนงานที่สร้างได้ล่าสุด (ไว้ติดตามงาน)
+    ...(planProfile ? { planProfile, planOverrides, plan: planSnapshot } : {}),
     docSections,
     aiNotes: str(body.aiNotes, 4000),
     specChoices: normalizeSpecChoices(body.specChoices),

@@ -62,6 +62,8 @@ import {
 } from "@/lib/project-templates";
 import { mergeSpecLibrary, specClausesFor, suggestSpec, type SpecChoice } from "@/lib/spec-library";
 import { FieldHistory } from "@/components/ui/FieldHistory";
+import { ProjectPlanSection } from "@/components/projects/ProjectPlanSection";
+import { checkPlan, generatePlan, installmentsFromTimeline, methodCode, normalizeOverrides, normalizeProfile, timelineFromInstallments, type PlanContext, type PlanOverrides, type PlanProfile } from "@/lib/project-plan";
 
 const STEPS = [
   { title: "ข้อมูลโครงการ" },
@@ -158,6 +160,9 @@ export default function NewProjectPage() {
 
   // ---------- 3: แผนงาน ----------
   const [timelineEdited, setTimelineEdited] = useState<TimelinePhase[] | null>(null); // null = ตามรูปแบบงาน
+  // แม่แบบแผนงาน (lib/project-plan): ข้อมูลระบบ/หน้างาน งวดงาน และการปรับแผนเอง
+  const [planProfile, setPlanProfile] = useState<PlanProfile>(() => normalizeProfile(null));
+  const [planOverrides, setPlanOverrides] = useState<PlanOverrides>({ tasks: {}, custom: [] });
 
   // ---------- 4: รายละเอียดโครงการ ----------
   const [docEdited, setDocEdited] = useState<Partial<Record<DocSectionKey, string>>>({}); // หัวข้อที่แก้เอง/AI
@@ -216,7 +221,32 @@ export default function NewProjectPage() {
   const suggestedPrice = priceForMargin(budget.equipCost, budget.laborCost, expenses, targetMargin);
 
   const autoTimeline = useMemo(() => defaultTimeline(projectTypeCode, startDate, endDate), [projectTypeCode, startDate, endDate]);
-  const timeline = timelineEdited ?? autoTimeline;
+  // งานติดตั้ง (รูปแบบ 3/4 หรือยังไม่เลือก) ใช้แม่แบบแผนงาน: งวดงานเป็นตัวกำหนดช่วงงาน/งวดเงิน
+  const planInstallable = projectTypeCode === null || projectTypeCode === 3 || projectTypeCode === 4;
+  const baseTimeline = timelineEdited ?? autoTimeline;
+  const planInstallments = useMemo(
+    () => (planProfile.installments.length ? planProfile.installments : installmentsFromTimeline(baseTimeline, startDate)),
+    [planProfile.installments, baseTimeline, startDate]
+  );
+  const timeline = planInstallable && planProfile.installments.length ? timelineFromInstallments(planProfile.installments, startDate) : baseTimeline;
+  const planCtx: PlanContext = useMemo(() => ({
+    sector: sectorType, contracted: stage === "CONTRACTED", method: isGov ? methodCode(govMethod) : "specific",
+    planStart: today(), contractStart: startDate, durationDays, warrantyMonths, installable: planInstallable,
+  }), [sectorType, stage, isGov, govMethod, startDate, durationDays, warrantyMonths, planInstallable]);
+  const planInputs = useMemo(() => {
+    const names = [...lines.map((l) => l.name), ...expenses.map((e) => e.name)].join(" ");
+    return {
+      boqPoints: lines.filter((l) => l.kind !== "GROUP" && String(l.unit || "").trim() === "จุด").reduce((s, l) => s + (Number(l.qty) || 0), 0),
+      hasPmCost: /PM|บำรุงรักษา|ซ่อมบำรุง/i.test(names),
+      hasAdminCost: /admin|แอดมิน|ประจำหน้างาน|ผู้ดูแลระบบ/i.test(names),
+    };
+  }, [lines, expenses]);
+  const planFull = useMemo(() => ({ ...planProfile, installments: planInstallments }), [planProfile, planInstallments]);
+  const planStops = useMemo(() => {
+    if (!planInstallable) return [];
+    const plan = generatePlan(planFull, planCtx, planOverrides);
+    return checkPlan(planFull, planCtx, plan, planInputs).filter((r) => r.level === "stop");
+  }, [planInstallable, planFull, planCtx, planOverrides, planInputs]);
 
   const docDefs = useMemo(() => docSectionsFor(sectorType), [sectorType]);
   // คลังคุณลักษณะเฉพาะ: แม่แบบมาตรฐาน + ฉบับของบริษัท, จับคู่กับรายการอัตโนมัติ (เลือกเองได้)
@@ -308,6 +338,8 @@ export default function NewProjectPage() {
       setProjectLabors(form.labors);
       if (Array.isArray(d.expenses) && d.expenses.length) setExpenseRows(d.expenses);
       if (d.targetMargin) setTargetMargin(Number(d.targetMargin));
+      if (d.planProfile) setPlanProfile(normalizeProfile(d.planProfile, d.sectorType === "Private" ? "Private" : "Government"));
+      if (d.planOverrides) setPlanOverrides(normalizeOverrides(d.planOverrides));
       if (Array.isArray(d.milestones) && d.milestones.length) {
         setTimelineEdited(d.milestones.map((m: any) => ({ id: m.id, name: m.name, startDate: m.startDate, endDate: m.endDate, weight: Number(m.weight) || 0 })));
       }
@@ -445,7 +477,7 @@ export default function NewProjectPage() {
       if (budget.equipCount + budget.laborCount === 0) return "กรุณาเพิ่มรายการสินค้าหรืองานบริการอย่างน้อย 1 รายการ";
       if (!projectTypeCode) return "กรุณาเลือกรูปแบบงาน";
     }
-    if (i === 2) return timeline.length ? timelineError(timeline) : "กรุณากำหนดงวดงานอย่างน้อย 1 งวด";
+    if (i === 2) return timeline.length ? timelineError(timeline) || (planStops[0] ? `แผนงาน ${planStops[0].id}: ${planStops[0].message}` : null) : "กรุณากำหนดงวดงานอย่างน้อย 1 งวด";
     if (i === 4 && !projectManagerUid) return "กรุณาเลือกผู้จัดการโครงการ";
     return null;
   };
@@ -631,6 +663,7 @@ export default function NewProjectPage() {
         expenses,
         targetMargin,
         timeline,
+        ...(planInstallable ? { planProfile: planFull, planOverrides } : {}),
         docSections,
         docSources: docSource,
         aiNotes,
@@ -1098,7 +1131,14 @@ export default function NewProjectPage() {
   );
 
   // ---------- ขั้นที่ 3: แผนงานและงวดงาน ----------
-  const stepTimeline = (
+  const stepTimeline = planInstallable ? (
+    <ProjectPlanSection
+      profile={planProfile} onProfile={setPlanProfile}
+      overrides={planOverrides} onOverrides={setPlanOverrides}
+      ctx={planCtx} inputs={planInputs} contractValue={contractValue}
+      installments={planInstallments} onInstallments={(next) => setPlanProfile((p) => ({ ...p, installments: next }))}
+    />
+  ) : (
     <GlassCard className="p-5 space-y-3">
       {cardTitle(<CalendarRange size={16} className="text-nexus-teal" />, "แผนงานและงวดงาน",
         <span className="text-[11px] text-white/40">{timelineEdited ? "แก้ไขเอง" : `แผนมาตรฐาน: ${typeLabel} · ${durationDays} วัน`}</span>)}

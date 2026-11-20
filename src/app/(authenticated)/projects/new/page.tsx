@@ -63,7 +63,7 @@ import {
 import { mergeSpecLibrary, specClausesFor, suggestSpec, type SpecChoice } from "@/lib/spec-library";
 import { FieldHistory } from "@/components/ui/FieldHistory";
 import { ProjectPlanSection } from "@/components/projects/ProjectPlanSection";
-import { billingTimeline, checkPlan, EMPTY_TEMPLATE, generatePlan, installmentsFromTimeline, methodCode, normalizeOverrides, normalizeProfile, normalizeTemplate, timelineFromInstallments, type PlanContext, type PlanOverrides, type PlanProfile, type TemplateConfig } from "@/lib/project-plan";
+import { billingTimeline, checkPlan, docSla, EMPTY_TEMPLATE, generatePlan, installmentsFromTimeline, methodCode, normalizeOverrides, normalizeProfile, normalizeTemplate, timelineFromInstallments, type PlanContext, type PlanOverrides, type PlanProfile, type TemplateConfig } from "@/lib/project-plan";
 
 const STEPS = [
   { title: "ข้อมูลโครงการ" },
@@ -276,7 +276,8 @@ export default function NewProjectPage() {
     startDate, endDate, durationDays, budgetAmount, referencePrice: govReferencePrice,
     budgetSource: govBudgetSource, fiscalYear, warrantyMonths, lines, timeline, productSpecs, specClauses,
     maintenance: maintSource ? { level: maintLevel, rounds: maintRounds, sourceName: maintSource.name } : null,
-  }), [projectName, customerName, sectorType, projectTypeCode, stage, startDate, endDate, durationDays, budgetAmount, govReferencePrice, govBudgetSource, fiscalYear, warrantyMonths, lines, timeline, productSpecs, specClauses, maintSource, maintLevel, maintRounds]);
+    sla: planInstallable ? docSla(planProfile) : null,
+  }), [projectName, customerName, sectorType, projectTypeCode, stage, startDate, endDate, durationDays, budgetAmount, govReferencePrice, govBudgetSource, fiscalYear, warrantyMonths, lines, timeline, productSpecs, specClauses, maintSource, maintLevel, maintRounds, planInstallable, planProfile]);
   const lockedKeys = useMemo(() => new Set(docDefs.filter((d) => d.locked).map((d) => d.key)), [docDefs]);
   const docSections = useMemo(() => {
     const out = { ...autoDoc } as Record<DocSectionKey, string>;

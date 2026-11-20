@@ -85,13 +85,23 @@ export function ProjectPlanSection({ profile, onProfile, overrides, onOverrides,
               {CONTROL_ROOMS.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
             </PillSelect>
           </Field>
-          {profile.procurement === "rent" && (<>
-            <Field label="ระยะเช่า" w={FIELD_W.months}><NumCell value={profile.rent.months} onChange={(v) => set({ rent: { months: Math.max(0, Math.min(48, Math.round(v))) } })} suffix="เดือน" /></Field>
-            <Field label="SLA ตอบสนอง" w={FIELD_W.days}><NumCell value={profile.sla.responseHours} onChange={(v) => set({ sla: { ...profile.sla, responseHours: v } })} suffix="ชม." /></Field>
-            <Field label="SLA แก้ไขเสร็จ" w={FIELD_W.days}><NumCell value={profile.sla.fixHours} onChange={(v) => set({ sla: { ...profile.sla, fixHours: v } })} suffix="ชม." /></Field>
-            <Field label="ระบบพร้อมใช้" w={FIELD_W.pct}><NumCell kind="pct" value={profile.sla.uptimePct} onChange={(v) => set({ sla: { ...profile.sla, uptimePct: Math.min(100, v) } })} suffix="%" /></Field>
-          </>)}
+          {profile.procurement === "rent" && <Field label="ระยะเช่า" w={FIELD_W.months}><NumCell value={profile.rent.months} onChange={(v) => set({ rent: { months: Math.max(0, Math.min(48, Math.round(v))) } })} suffix="เดือน" /></Field>}
           <Field label={profile.procurement === "rent" ? "รอบบริการ SLA" : "รอบ PM"} w={FIELD_W.months}><NumCell value={profile.pmIntervalMonths} onChange={(v) => set({ pmIntervalMonths: Math.max(1, Math.min(24, Math.round(v))) })} suffix="เดือน" /></Field>
+        </div>
+        {/* SLA: เช่า = ใส่ในร่าง TOR/สัญญาเสมอ · ซื้อ/จ้างเหมา = เลือกใส่ */}
+        <div className="flex flex-wrap gap-3 items-end rounded-xl border border-white/10 p-3" data-plan-sla>
+          <div className="w-full flex items-center gap-3">
+            <span className="text-[12px] font-bold text-white/70">ระดับการให้บริการ (SLA)</span>
+            {profile.procurement === "rent"
+              ? <span className="text-[11px] text-nexus-teal">สัญญาเช่า: ใส่ในร่าง TOR/สัญญาอัตโนมัติ</span>
+              : <PillCheckbox label="ใส่ SLA ในร่าง TOR/สัญญา" checked={profile.sla.inDoc} onChange={(e) => set({ sla: { ...profile.sla, inDoc: e.target.checked } })} className="text-[12px] text-white/80" data-sla-indoc />}
+          </div>
+          {(profile.procurement === "rent" || profile.sla.inDoc) && (<>
+            <Field label="ตอบสนองภายใน" w={FIELD_W.days}><NumCell value={profile.sla.responseHours} onChange={(v) => set({ sla: { ...profile.sla, responseHours: v } })} suffix="ชม." /></Field>
+            <Field label="แก้ไขเสร็จภายใน" w={FIELD_W.days}><NumCell value={profile.sla.fixHours} onChange={(v) => set({ sla: { ...profile.sla, fixHours: v } })} suffix="ชม." /></Field>
+            <Field label="ระบบพร้อมใช้" w={FIELD_W.pct}><NumCell kind="pct" value={profile.sla.uptimePct} onChange={(v) => set({ sla: { ...profile.sla, uptimePct: Math.min(100, v) } })} suffix="%" /></Field>
+            <Field label="ค่าปรับแก้ไขเกินกำหนด (บาท/ชม.)" w={FIELD_W.money}><NumCell kind="money" value={profile.sla.penaltyPerHour} onChange={(v) => set({ sla: { ...profile.sla, penaltyPerHour: v } })} /></Field>
+          </>)}
         </div>
         <div className="flex flex-wrap gap-x-5 gap-y-2 items-center">
           <span className="text-[12px] font-bold text-white/70">งานประกอบ</span>

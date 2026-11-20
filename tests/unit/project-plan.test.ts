@@ -157,7 +157,7 @@ describe("เช่า / จ้างเหมา (T5)", () => {
     expect(checkPlan(p, ctx(), r).filter((x) => x.id === "R2")).toEqual([]);
   });
   it("เช่า: ไม่มี SLA = เตือน R13 · จ้างเหมา: ผลงานสะสมไม่ถึง 100% = เตือน R12", () => {
-    const rent = prof({ procurement: "rent", sla: { responseHours: 0, fixHours: 0, uptimePct: 99 } });
+    const rent = prof({ procurement: "rent", sla: { responseHours: 0, fixHours: 0, uptimePct: 99, penaltyPerHour: 0, inDoc: false } });
     expect(checkPlan(rent, ctx(), generatePlan(rent, ctx())).map((x) => x.id)).toContain("R13");
     const hire = prof({ procurement: "hire", installments: [{ no: 1, dueDay: 60, payPct: 40, points: 16, scope: "", progressPct: 40 }, { no: 2, dueDay: 120, payPct: 60, points: 24, scope: "", progressPct: 90 }] });
     expect(checkPlan(hire, ctx(), generatePlan(hire, ctx())).find((x) => x.id === "R12")?.level).toBe("warn");
@@ -184,5 +184,32 @@ describe("แม่แบบของบริษัท (T6)", () => {
     const cat = libraryCatalog();
     expect(cat.find((x) => x.id === "P4.6")?.owner).toBe("client");
     expect(cat.filter((x) => x.system === "cctv").length).toBe(4);
+  });
+});
+
+import { generateSection } from "@/lib/project-templates";
+import { docSla, slaClauses } from "@/lib/project-plan";
+describe("SLA ในร่าง TOR/สัญญา", () => {
+  const docCtx = (sla: any, timeline: any[] = []) => ({ projectName: "ระบบกล้อง", customerName: "โรงพยาบาล ก", sector: "Government" as const, typeCode: 4 as const, stage: "CONTRACTED" as const,
+    startDate: "2027-01-04", endDate: "2027-04-03", durationDays: 90, budgetAmount: 1_000_000, referencePrice: 0, budgetSource: "งบประมาณประจำปี", fiscalYear: 2570, warrantyMonths: 24, lines: [], timeline, sla });
+  it("เช่า: ใส่ SLA เสมอ · ซื้อ: ใส่เมื่อเลือก", () => {
+    expect(docSla(prof({ procurement: "rent" }))?.rentMonths).toBe(12);
+    expect(docSla(prof())).toBeNull();
+    expect(docSla(prof({ sla: { responseHours: 4, fixHours: 24, uptimePct: 99, penaltyPerHour: 500, inDoc: true } }))?.penaltyPerHour).toBe(500);
+  });
+  it("หัวข้อรับประกัน: เช่า = บริการตลอดระยะเช่าตาม SLA · มีค่าปรับรายชั่วโมง", () => {
+    const sla = docSla(prof({ procurement: "rent", sla: { responseHours: 2, fixHours: 8, uptimePct: 99.5, penaltyPerHour: 300, inDoc: false } }))!;
+    const w = generateSection("warranty", docCtx(sla));
+    expect(w).toMatch(/ตลอดระยะเวลาเช่า 12 เดือน ผู้ให้เช่า/);
+    expect(w).toMatch(/ภายใน 2 ชั่วโมง/);
+    expect(w).toMatch(/ภายใน 8 ชั่วโมง/);
+    expect(w).toMatch(/ร้อยละ 99.5/);
+    expect(w).toMatch(/ชั่วโมงละ 300.00 บาท/);
+    expect(generateSection("duration", docCtx(sla))).toMatch(/ระยะเวลาเช่า 12 เดือน/);
+    expect(generateSection("payment", docCtx(sla, [{ id: "RENT-1", name: "ค่าเช่าเดือนที่ 1", startDate: "", endDate: "", weight: 10 }]))).toMatch(/ค่าเช่าเดือนที่ 1 .*ตรวจรับการให้บริการประจำเดือน/);
+  });
+  it("ไม่มี SLA: ข้อความรับประกันเดิม", () => {
+    expect(generateSection("warranty", docCtx(null))).toMatch(/ภายใน 7 วัน/);
+    expect(slaClauses(docSla(prof({ procurement: "rent" }))!).some((t) => /ค่าปรับ/.test(t))).toBe(false);
   });
 });

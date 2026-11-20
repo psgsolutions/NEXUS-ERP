@@ -6,6 +6,7 @@ import { GlassCard, PillButton, PillCheckbox, PillInput, PillSelect, cn } from "
 import { InfoTip, WhatHappens } from "@/components/guide/Guidance";
 import { apiFetch } from "@/lib/api-client";
 import { LetterBuilder } from "./LetterBuilder";
+import { docSla, normalizeProfile, slaClauses } from "@/lib/project-plan";
 import {
   DEFAULT_GUARANTEE_PERCENT, EBIDDING_THRESHOLD, GUARANTEE_FORM_LABELS, GUARANTEE_LABELS, METHOD_LABELS, STAMP_LABELS,
   guaranteeAmount, normalizeContract, penaltyAccrued, stampDuty, suggestMethod, warrantyEnd,
@@ -28,6 +29,7 @@ const Field = ({ label, tip, children, className }: { label: string; tip?: strin
 );
 
 export function ContractPanel({ companyId, docId, project, canEdit }: { companyId: string; docId: string; project: any; canEdit: boolean }) {
+  const sla = project?.planProfile ? docSla(normalizeProfile(project.planProfile, project.sectorType === "Private" ? "Private" : "Government")) : null;
   const defaultValue = Number(project?.governmentDetails?.budgetAmount) || Number(project?.budgetSummary?.grandTotalWithVat) || 0;
   const fallback = useMemo(() => ({ sector: project?.sectorType, value: defaultValue, warrantyMonths: project?.warrantyMonths }), [project?.sectorType, defaultValue, project?.warrantyMonths]);
   const [c, setC] = useState<ProjectContract>(() => normalizeContract(project?.contract, fallback));
@@ -157,6 +159,18 @@ export function ContractPanel({ companyId, docId, project, canEdit }: { companyI
           ))}
         </GlassCard>
       </fieldset>
+
+      {sla && (
+        <GlassCard className="p-5 space-y-2" >
+          <div data-contract-sla className="space-y-2">
+            <h3 className="text-[14px] font-bold text-white">ระดับการให้บริการ (SLA) ตามสัญญา{sla.rentMonths ? ` · ระยะเช่า ${sla.rentMonths} เดือน` : ""}</h3>
+            <ol className="list-decimal pl-5 space-y-1 text-[14px] text-white/80 leading-relaxed">
+              {slaClauses(sla, sla.rentMonths ? "ผู้ให้เช่า" : "ผู้รับจ้าง").map((t, i) => <li key={i}>{t}</li>)}
+            </ol>
+            <p className="text-[12px] text-white/45">ข้อความเดียวกับในร่าง TOR หัวข้อการรับประกัน · แก้ค่าได้ที่ แก้ไขโครงการ › แผนงานและงวดงาน › ระดับการให้บริการ</p>
+          </div>
+        </GlassCard>
+      )}
 
       <LetterBuilder companyId={companyId} project={project} contract={c} />
     </div>

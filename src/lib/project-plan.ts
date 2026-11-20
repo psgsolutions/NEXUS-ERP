@@ -53,7 +53,8 @@ export interface PlanProfile {
   installments: PlanInstallment[];
   /** เช่า: ระยะเช่า (เดือน) นับจากตรวจรับ — วางบิลค่าเช่ารายเดือน · SLA แทนการรับประกัน */
   rent: { months: number };
-  sla: { responseHours: number; fixHours: number; uptimePct: number };
+  /** SLA: เช่า = ใส่ในเอกสารเสมอ · ซื้อ/จ้าง = ใส่เมื่อเลือก inDoc · penaltyPerHour = ค่าปรับต่อชั่วโมงที่แก้ไขเกินกำหนด (0 = ไม่กำหนด) */
+  sla: { responseHours: number; fixHours: number; uptimePct: number; penaltyPerHour: number; inDoc: boolean };
   pmIntervalMonths: number;
   onsiteAdmin: { count: number; hours: string };
   training: { sessions: number; hoursEach: number };
@@ -471,7 +472,7 @@ const s = (v: unknown, max = 200) => String(v ?? "").trim().slice(0, max);
 export function defaultProfile(sector: "Government" | "Private"): PlanProfile {
   return {
     systems: [], procurement: "purchase", sites: [], legacySystem: "", controlRoom: "none", civilWork: [], electricalWork: true,
-    installments: [], rent: { months: 12 }, sla: { responseHours: 4, fixHours: 24, uptimePct: 99 }, pmIntervalMonths: 6, onsiteAdmin: { count: 0, hours: "" }, training: { sessions: 2, hoursEach: 6 },
+    installments: [], rent: { months: 12 }, sla: { responseHours: 4, fixHours: 24, uptimePct: 99, penaltyPerHour: 0, inDoc: false }, pmIntervalMonths: 6, onsiteAdmin: { count: 0, hours: "" }, training: { sessions: 2, hoursEach: 6 },
     openQuestions: [], dayMode: sector === "Government" ? "calendar" : "calendar", defaults: { ...DEFAULT_PLAN_DEFAULTS },
   };
 }
@@ -493,7 +494,10 @@ export function normalizeProfile(raw: any, sector: "Government" | "Private" = "G
       ...(Number(x?.progressPct) > 0 ? { progressPct: Math.round(num(x.progressPct, 0, 100)) } : {}),
     })),
     rent: { months: Math.round(num(raw.rent?.months ?? 12, 0, 48)) }, // งวดเงินโครงการสูงสุด 60 งวด
-    sla: { responseHours: num(raw.sla?.responseHours ?? 4, 0, 720), fixHours: num(raw.sla?.fixHours ?? 24, 0, 2160), uptimePct: Math.min(100, num(raw.sla?.uptimePct ?? 99, 0, 100)) },
+    sla: {
+      responseHours: num(raw.sla?.responseHours ?? 4, 0, 720), fixHours: num(raw.sla?.fixHours ?? 24, 0, 2160), uptimePct: Math.min(100, num(raw.sla?.uptimePct ?? 99, 0, 100)),
+      penaltyPerHour: Math.round(num(raw.sla?.penaltyPerHour ?? 0, 0, 1e7) * 100) / 100, inDoc: raw.sla?.inDoc === true,
+    },
     pmIntervalMonths: Math.round(num(raw.pmIntervalMonths ?? 6, 1, 24)) || 6,
     onsiteAdmin: { count: Math.round(num(raw.onsiteAdmin?.count, 0, 20)), hours: s(raw.onsiteAdmin?.hours, 60) },
     training: { sessions: Math.round(num(raw.training?.sessions ?? 2, 0, 50)), hoursEach: num(raw.training?.hoursEach ?? 6, 0, 24) },
@@ -656,4 +660,26 @@ export function normalizeTemplate(raw: any): TemplateConfig {
   const out: TemplateConfig = { tasks, extra: uniq };
   if (raw?.defaults && typeof raw.defaults === "object") out.defaults = normalizeProfile({ defaults: raw.defaults }).defaults;
   return out;
+}
+
+/** SLA ที่ต้องใส่ในร่าง TOR/สัญญา (null = ไม่ใส่): เช่า = เสมอ · ซื้อ/จ้างเหมา = เมื่อเลือก "ใส่ SLA ในเอกสาร" */
+export interface DocSla { responseHours: number; fixHours: number; uptimePct: number; penaltyPerHour: number; pmIntervalMonths: number; rentMonths: number }
+export function docSla(p: PlanProfile | null | undefined): DocSla | null {
+  if (!p) return null;
+  const rent = p.procurement === "rent" && p.rent.months > 0;
+  if (!rent && !p.sla.inDoc) return null;
+  if (!(p.sla.responseHours > 0) && !(p.sla.fixHours > 0)) return null;
+  return { responseHours: p.sla.responseHours, fixHours: p.sla.fixHours, uptimePct: p.sla.uptimePct, penaltyPerHour: p.sla.penaltyPerHour, pmIntervalMonths: p.pmIntervalMonths, rentMonths: rent ? p.rent.months : 0 };
+}
+/** ข้อความ SLA เป็นข้อ ๆ (ใช้ในร่าง TOR และแท็บสัญญา) */
+export function slaClauses(x: DocSla, party = "ผู้รับจ้าง"): string[] {
+  const h = (v: number) => (Number.isInteger(v) ? String(v) : v.toLocaleString("th-TH", { maximumFractionDigits: 1 }));
+  return [
+    ...(x.responseHours > 0 ? [`${party}ต้องตอบรับและเริ่มดำเนินการแก้ไขภายใน ${h(x.responseHours)} ชั่วโมง นับจากเวลาที่ได้รับแจ้งเหตุขัดข้อง`] : []),
+    ...(x.fixHours > 0 ? [`${party}ต้องแก้ไขให้ระบบกลับมาใช้งานได้ตามปกติภายใน ${h(x.fixHours)} ชั่วโมง นับจากเวลาที่ได้รับแจ้ง หากไม่สามารถแก้ไขได้ต้องจัดหาอุปกรณ์สำรองที่มีคุณสมบัติไม่ต่ำกว่าเดิมมาใช้งานทดแทนภายในระยะเวลาเดียวกัน`] : []),
+    ...(x.uptimePct > 0 ? [`ระบบต้องพร้อมใช้งานไม่น้อยกว่าร้อยละ ${h(x.uptimePct)} ของเวลาในแต่ละเดือน (ไม่รวมเวลาหยุดตามแผนบำรุงรักษาที่แจ้งล่วงหน้า)`] : []),
+    ...(x.pmIntervalMonths > 0 ? [`${party}ต้องเข้าบำรุงรักษาเชิงป้องกัน (Preventive Maintenance) ทุก ${x.pmIntervalMonths} เดือน และส่งรายงานผลการบำรุงรักษาทุกครั้ง`] : []),
+    ...(x.penaltyPerHour > 0 ? [`หาก${party}แก้ไขเกินระยะเวลาที่กำหนด ต้องชำระค่าปรับในอัตราชั่วโมงละ ${x.penaltyPerHour.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท นับจากเวลาที่ครบกำหนดแก้ไขจนถึงเวลาที่ระบบกลับมาใช้งานได้`] : []),
+    `${party}ต้องจัดทำรายงานการแจ้งเหตุขัดข้องและการแก้ไขประจำเดือน (เวลารับแจ้ง เวลาแก้ไขเสร็จ และสาเหตุ) ส่งให้ผู้ว่าจ้างทุกเดือน`,
+  ];
 }

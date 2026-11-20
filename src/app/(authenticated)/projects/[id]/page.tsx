@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, Briefcase, Building2, CalendarDays, CheckCircle2, ClipboardList, FileText, History,
-  Loader2, MapPin, Package, Pencil, PlayCircle, Printer, GitPullRequest, Receipt, ShieldCheck, Users, Wallet, Wrench, XCircle,
+  Loader2, MapPin, Package, Pencil, PlayCircle, Printer, GitPullRequest, Receipt, ShieldCheck, Users, Wallet, Wrench, XCircle, ListChecks,
 } from "lucide-react";
 import {
   GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillInput, PillTabs, StatusBadge, cn,
@@ -23,6 +23,7 @@ import { ProjectCostPanel } from "@/components/projects/ProjectCostPanel";
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
+import { ProjectPlanTracker } from "@/components/projects/ProjectPlanTracker";
 import { computeProjectBudget } from "@/lib/project-budget";
 import {
   APPROVAL_STEPS, EDITABLE_STATUSES, PROJECT_STATUS_BADGE, PROJECT_STATUS_TH, canApproveStep, normalizeProjectStatus,
@@ -367,6 +368,7 @@ export default function ProjectDetailPage() {
       <PillTabs
         tabs={[
           { id: "overview", label: "ภาพรวม", icon: <Building2 size={14} /> },
+          ...(!isLegacy ? [{ id: "plan", label: "แผนงาน", icon: <ListChecks size={14} /> }] : []),
           { id: "boq", label: `รายการ (${lines.filter((l: any) => l.kind !== "GROUP").length})`, icon: <Package size={14} /> },
           { id: "finance", label: "งบประมาณ", icon: <Wallet size={14} /> },
           ...(!isLegacy ? [{ id: "billing", label: "เรียกเก็บเงิน", icon: <Receipt size={14} /> }] : []),
@@ -379,6 +381,10 @@ export default function ProjectDetailPage() {
         onTabChange={setTab}
       />
       {tab === "overview" && overview}
+      {tab === "plan" && !isLegacy && companyId && (
+        <ProjectPlanTracker companyId={companyId} docId={docId} project={p}
+          canManage={can(roles, "projects:edit") || p.projectManagerUid === user?.uid || (p.teamUids || []).includes(user?.uid)} />
+      )}
       {tab === "boq" && !isLegacy && companyId && can(roles, "projects:edit") && lines.some((l: any) => l.kind === "PRODUCT") && (
         showBoqPr
           ? <BoqPurchasePanel companyId={companyId} docId={docId} project={p} lines={lines} requester={displayName} onClose={() => setShowBoqPr(false)} />

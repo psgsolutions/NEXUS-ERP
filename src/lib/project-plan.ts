@@ -215,7 +215,7 @@ export const daysBetween = (a: string, b: string) => Math.round((toMs(b) - toMs(
 // ---------------------------------------------------------------------------
 export interface PlanTask {
   id: string; name: string; phase: number; owner: OwnerKey; ownerLabel: string; external: boolean;
-  start: string; end: string; days: number; after: string[]; gate?: string; checks?: string[];
+  start: string; end: string; days: number; after: string[]; deps?: string[]; gate?: string; checks?: string[];
   deadline?: string; late?: boolean; skipped?: boolean; custom?: boolean; recurring?: boolean; designDependent?: boolean;
   installment?: number; rainBuffer?: boolean;
 }
@@ -337,7 +337,7 @@ export function generatePlan(p: PlanProfile, c: PlanContext, ov: PlanOverrides =
     const owner = OWNERS[t.owner];
     const task: PlanTask = {
       id: t.id, name: t.name, phase: t.phase, owner: t.owner, ownerLabel: owner.label, external: !!owner.external,
-      start, end, days, after: t.after || [], ...(t.gate ? { gate: t.gate } : {}), ...(t.checks ? { checks: t.checks } : {}),
+      start, end, days, after: t.after || [], deps: (t.after || []).flatMap(resolve), ...(t.gate ? { gate: t.gate } : {}), ...(t.checks ? { checks: t.checks } : {}),
       ...(deadline ? { deadline, late: end > deadline } : {}), ...(o.skip ? { skipped: true } : {}),
       ...(t.designDependent ? { designDependent: true } : {}), ...(ov.custom?.some((x) => x.id === t.id) ? { custom: true } : {}),
       ...(t.id.startsWith("P5.") ? { installment: Number(t.id.split(".")[1]) } : {}), ...(rainBuffer ? { rainBuffer: true } : {}),
@@ -502,4 +502,61 @@ export function timelineFromInstallments(inst: PlanInstallment[], contractStart:
 /** ช่วงงานเดิม → งวดงาน (โครงการที่ยังไม่มีข้อมูลแผน) */
 export function installmentsFromTimeline(phases: { endDate: string; weight: number; name: string }[], contractStart: string): PlanInstallment[] {
   return phases.filter((p) => isDate(p.endDate)).map((p, i) => ({ no: i + 1, dueDay: Math.max(1, daysBetween(contractStart, p.endDate) + 1), payPct: p.weight, points: 0, scope: p.name.replace(/^งวดที่ \d+( — )?/, "") }));
+}
+
+// ---------------------------------------------------------------------------
+// ติดตามงานจริง (T4): สถานะต่องาน · งานที่ต้องรอ · ลิงก์ไปทำต่อในโมดูลอื่น · งานของใคร
+// ---------------------------------------------------------------------------
+export type TaskStatus = "todo" | "doing" | "done";
+export const TASK_STATUS_TH: Record<TaskStatus, string> = { todo: "ยังไม่เริ่ม", doing: "กำลังทำ", done: "เสร็จแล้ว" };
+export interface TaskState { status: TaskStatus; at?: string; by?: string; byName?: string; note?: string; assigneeUid?: string; assigneeName?: string }
+/** งานในแผนที่บันทึกไว้กับโครงการ (project.plan.tasks) */
+export interface SnapTask { id: string; name: string; phase: number; owner: OwnerKey; external?: boolean; start: string; end: string; days?: number; deps?: string[]; gate?: string; deadline?: string; skipped?: boolean }
+
+export const stateOf = (st: Record<string, TaskState> | undefined, id: string): TaskState => st?.[id] || { status: "todo" };
+
+/** งานก่อนหน้าที่ยังไม่เสร็จ (งานที่ข้ามไม่นับ) — ต้องเสร็จก่อนจึงเริ่มงานนี้ได้ */
+export function taskBlockers(t: SnapTask, tasks: SnapTask[], st: Record<string, TaskState> | undefined): SnapTask[] {
+  const byId = new Map(tasks.map((x) => [x.id, x]));
+  return (t.deps || []).map((id) => byId.get(id)).filter((d): d is SnapTask => !!d && !d.skipped && stateOf(st, d.id).status !== "done");
+}
+/** งานที่ต่อจากงานนี้และเริ่มไปแล้ว — ถ้ามี ห้ามย้อนงานนี้กลับเป็นยังไม่เสร็จ */
+export function startedDependents(id: string, tasks: SnapTask[], st: Record<string, TaskState> | undefined): SnapTask[] {
+  return tasks.filter((t) => (t.deps || []).includes(id) && stateOf(st, t.id).status !== "todo");
+}
+
+/** ไปทำต่อที่โมดูลไหน */
+export function taskAction(t: SnapTask, docId: string, projectName = "", customerName = ""): { label: string; href: string } | null {
+  const proj = `/projects/${encodeURIComponent(docId)}`;
+  const job = (type: string, label: string) => ({
+    label,
+    href: `/service/dispatch?new=1&type=${type}&project=${encodeURIComponent(docId)}&title=${encodeURIComponent(`${t.name} · ${projectName}`.slice(0, 180))}&customer=${encodeURIComponent(customerName)}&date=${t.start}`,
+  });
+  if (["P4.8", "P4.9", "M.cctv.vms"].includes(t.id)) return { label: "ขอซื้อตาม BOQ", href: `${proj}?tab=boq` };
+  if (/^P5\.\d+\.handover$/.test(t.id) || t.id === "P6.5") return { label: "วางบิลงวดนี้", href: `${proj}?tab=billing` };
+  if (/^P5\.\d+\.(cabling|civil|rack|devices)$/.test(t.id) || /^M\.dc\./.test(t.id) || t.id === "X.rent.removal") return job("INSTALL", "สร้างงานติดตั้ง");
+  if (/^P7\.2\.\d+$/.test(t.id)) return job("MA", "นัด PM");
+  if (["P3.3", "P7.4"].includes(t.id)) return { label: "สัญญา & หลักประกัน", href: `${proj}?tab=contract` };
+  if (["P2.1", "P2.2", "P2.4"].includes(t.id)) return { label: "แก้ร่าง TOR/แผน", href: `/projects/new?edit=${encodeURIComponent(docId)}` };
+  if (t.id === "P6.4") return { label: "เอกสารส่งมอบ", href: `${proj}?tab=docs` };
+  if (t.id === "X.rent.billing") return { label: "วางบิล", href: `${proj}?tab=billing` };
+  return null;
+}
+
+/** งานนี้อยู่ใน "งานตามแผน" ของผู้ใช้ไหม: มอบหมายให้ตรง ๆ · งานผู้จัดการ/งานรอหน่วยงาน → ผู้จัดการโครงการ · อื่น ๆ ตามตำแหน่ง */
+export function isMyTask(t: SnapTask, p: { projectManagerUid?: string }, uid: string, roles: string[], st: TaskState): boolean {
+  if (st.assigneeUid) return st.assigneeUid === uid;
+  const o = OWNERS[t.owner];
+  if (!o || t.owner === "pm" || o.external) return !!p.projectManagerUid && p.projectManagerUid === uid;
+  return !!o.role && roles.includes(o.role);
+}
+
+/** ความคืบหน้าของแผน (ไม่นับงานที่ข้าม/งานตามรอบหลังส่งมอบ) */
+export function planProgress(tasks: SnapTask[], st: Record<string, TaskState> | undefined, today: string): { done: number; total: number; overdue: number; doing: number } {
+  const live = tasks.filter((t) => !t.skipped && t.phase < 7);
+  const s = (t: SnapTask) => stateOf(st, t.id).status;
+  return {
+    total: live.length, done: live.filter((t) => s(t) === "done").length, doing: live.filter((t) => s(t) === "doing").length,
+    overdue: live.filter((t) => s(t) !== "done" && t.end < today).length,
+  };
 }

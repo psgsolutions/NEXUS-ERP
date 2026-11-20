@@ -32,6 +32,7 @@ export const PAGE_LABELS: [prefix: string, label: string][] = [
   ["/logs", "บันทึกการใช้งาน"],
   ["/my-signature", "ลายเซ็นของฉัน"],
   ["/account", "บัญชีของฉัน"],
+  ["/my-tasks", "งานตามแผน"],
   ["/inventory/services/new", "สร้างงานบริการ/งานติดตั้ง"],
   ["/documents/accounting", "ส่งเอกสารให้สำนักบัญชี"],
   ["/finance/expense-claims/photos", "ถ่ายบิลเบิกเงิน"],

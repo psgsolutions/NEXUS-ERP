@@ -40,7 +40,7 @@ import {
   FileSpreadsheet,
   HandCoins,
   FileStack,
-  Camera,
+  Camera, ListChecks
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import Link from "next/link";
@@ -115,6 +115,7 @@ export default function AuthenticatedLayout({
             <NavGroup title="บริการ">
               {show("/pos") && <SideLink href="/pos" icon={<Store size={20} />} label="ขายหน้าร้าน" active={pathname === "/pos"} title="POS" />}
               {show("/support") && <SideLink href="/support" icon={<Wrench size={20} />} label="งานบริการ" active={pathname === "/support"} title="Service" />}
+              <SideLink href="/my-tasks" icon={<ListChecks size={20} />} label="งานตามแผน" active={pathname === "/my-tasks"} title="งานตามแผนโครงการของฉัน" />
               {show("/service/dispatch") && <SideLink href="/service/dispatch" icon={<Layers size={20} />} label="ศูนย์จ่ายงาน" active={pathname === "/service/dispatch"} title="Dispatch" />}
               {show("/finance/expense-claims/photos") && <SideLink href="/finance/expense-claims/photos" icon={<Camera size={20} />} label="ถ่ายบิลเบิกเงิน" active={pathname === "/finance/expense-claims/photos"} title="Receipts" />}
               {show("/mobile/technician") && <SideLink href="/mobile/technician" icon={<HardHat size={20} />} label="งานของฉัน" active={pathname === "/mobile/technician"} title="Field" />}

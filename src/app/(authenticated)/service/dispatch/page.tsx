@@ -49,6 +49,18 @@ export default function DispatchPage() {
     catch (e: any) { showAlert(e.message); } finally { setLoading(false); }
   }, [companyId, call, showAlert]);
   useEffect(() => { load(); }, [load]);
+  // เปิดจากแผนงานโครงการ: /service/dispatch?new=1&type=INSTALL&project=<docId>&title=&customer=&date=
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("new") !== "1") return;
+    const type = (JOB_TYPES.find((t) => t.value === q.get("type"))?.value || "SERVICE") as JobType;
+    setForm({
+      type, priority: "NORMAL", scheduledDate: /^\d{4}-\d{2}-\d{2}$/.test(q.get("date") || "") ? q.get("date") : today(), equipment: [],
+      checklist: JOB_TYPES.find((t) => t.value === type)?.checklist || [], assignees: [], site: {},
+      title: q.get("title") || "", customerName: q.get("customer") || "", links: q.get("project") ? { projectId: q.get("project") } : {},
+    });
+  }, []);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();

@@ -108,3 +108,37 @@ describe("แปลงข้อมูล", () => {
     expect(n.dayMode).toBe("working");
   });
 });
+
+import { isMyTask, planProgress, startedDependents, taskAction, taskBlockers, type SnapTask } from "@/lib/project-plan";
+describe("ติดตามงานตามแผน (T4)", () => {
+  const tasks: SnapTask[] = generatePlan(prof(), ctx({ contracted: true })).tasks.map((t) => ({ ...t }));
+  const t = (id: string) => tasks.find((x) => x.id === id)!;
+  it("เดินสายต้องรออนุมัติแบบ · อนุมัติแบบเสร็จแล้วจึงเริ่มได้", () => {
+    expect(taskBlockers(t("P5.1.cabling"), tasks, {}).map((x) => x.id)).toContain("P4.6");
+    expect(taskBlockers(t("P5.1.cabling"), tasks, { "P4.6": { status: "done" } })).toEqual([]);
+  });
+  it("ย้อนสถานะไม่ได้ถ้างานถัดไปเริ่มแล้ว", () => {
+    expect(startedDependents("P4.1", tasks, { "P4.2": { status: "doing" } }).map((x) => x.id)).toContain("P4.2");
+    expect(startedDependents("P4.1", tasks, {})).toEqual([]);
+  });
+  it("งานของใคร: มอบหมายตรง > ผู้จัดการ (งาน pm/รอหน่วยงาน) > ตามตำแหน่ง", () => {
+    const p = { projectManagerUid: "PM" };
+    expect(isMyTask(t("P4.1"), p, "PM", [], { status: "todo" })).toBe(true);
+    expect(isMyTask(t("P4.6"), p, "PM", [], { status: "todo" })).toBe(true); // รอหน่วยงาน → ผู้จัดการติดตาม
+    expect(isMyTask(t("P5.1.cabling"), p, "T1", ["TECHNICIAN"], { status: "todo" })).toBe(true);
+    expect(isMyTask(t("P5.1.cabling"), p, "T1", ["TECHNICIAN"], { status: "todo", assigneeUid: "T2" })).toBe(false);
+    expect(isMyTask(t("P4.8"), p, "X", ["SALES"], { status: "todo" })).toBe(false);
+  });
+  it("ลิงก์ทำต่อ: ขอซื้อ / งานติดตั้ง / วางบิล / นัด PM", () => {
+    expect(taskAction(t("P4.8"), "D1")!.href).toBe("/projects/D1?tab=boq");
+    expect(taskAction(t("P5.1.cabling"), "D1", "โครงการ A")!.href).toMatch(/^\/service\/dispatch\?new=1&type=INSTALL&project=D1/);
+    expect(taskAction(t("P5.2.handover"), "D1")!.href).toBe("/projects/D1?tab=billing");
+    expect(taskAction(t("P7.2.1"), "D1")!.label).toBe("นัด PM");
+  });
+  it("ความคืบหน้า: ไม่นับงานช่วงประกัน", () => {
+    const p0 = planProgress(tasks, {}, "2099-01-01");
+    expect(p0.total).toBe(tasks.filter((x) => x.phase < 7).length);
+    expect(p0.overdue).toBe(p0.total);
+    expect(planProgress(tasks, { "P4.1": { status: "done" } }, "2000-01-01")).toMatchObject({ done: 1, overdue: 0 });
+  });
+});

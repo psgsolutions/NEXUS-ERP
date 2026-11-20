@@ -108,7 +108,7 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
     if (stop && body.asDraft !== true) return { ok: false, error: `แผนงาน ${stop.id}: ${stop.message}` };
     planSnapshot = {
       contractStart: plan.contractStart, warrantyStart: plan.warrantyStart, warrantyEnd: plan.warrantyEnd,
-      tasks: plan.tasks.map((t) => ({ id: t.id, name: t.name, phase: t.phase, owner: t.owner, external: t.external, start: t.start, end: t.end, days: t.days, ...(t.gate ? { gate: t.gate } : {}), ...(t.deadline ? { deadline: t.deadline } : {}), ...(t.skipped ? { skipped: true } : {}) })),
+      tasks: plan.tasks.map((t) => ({ id: t.id, name: t.name, phase: t.phase, owner: t.owner, external: t.external, start: t.start, end: t.end, days: t.days, deps: t.deps || [], ...(t.gate ? { gate: t.gate } : {}), ...(t.deadline ? { deadline: t.deadline } : {}), ...(t.skipped ? { skipped: true } : {}) })),
       rules: rules.map((r) => ({ id: r.id, level: r.level, message: r.message })),
     };
   }

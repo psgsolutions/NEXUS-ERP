@@ -3,12 +3,13 @@
 import { PricingRulesSettings } from "@/components/settings/PricingRulesSettings";
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { BookOpen, Building2, Fingerprint, Palette, Save, Settings as SettingsIcon, Stamp, Tags, Users } from "lucide-react";
+import { BookOpen, Building2, Fingerprint, ListChecks, Palette, Save, Settings as SettingsIcon, Stamp, Tags, Users } from "lucide-react";
 import { PillButton, PillInput, PillTabs, Toast } from "@/components/ui/Base";
 import { DocumentProfileSettings } from "@/components/settings/DocumentProfileSettings";
 import { DocumentDesigner } from "@/components/settings/DocumentDesigner";
 import { ESignSettings } from "@/components/settings/ESignSettings";
 import { SpecLibraryManager } from "@/components/projects/SpecLibraryManager";
+import { ProjectTemplateSettings } from "@/components/settings/ProjectTemplateSettings";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
 import { db } from "@/lib/firebase-client";
@@ -22,7 +23,7 @@ import UsersPage from "./users/page";
  * (เอกสารทุกประเภทใช้เทมเพลตมาตรฐานเดียวกัน ปรับหัวเอกสาร โลโก้ สี ได้ที่แท็บข้อมูลนิติบุคคล)
  */
 
-type SettingsTab = "company" | "design" | "esign" | "users" | "sequence" | "specs" | "pricing";
+type SettingsTab = "company" | "design" | "esign" | "users" | "sequence" | "specs" | "projectTemplate" | "pricing";
 const TABS: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   { id: "company", label: "ข้อมูลนิติบุคคล", icon: <Building2 size={14} /> },
   { id: "design", label: "ออกแบบเอกสาร", icon: <Palette size={14} /> },
@@ -30,6 +31,7 @@ const TABS: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   { id: "users", label: "จัดการผู้ใช้งาน", icon: <Users size={14} /> },
   { id: "sequence", label: "รูปแบบเลขที่", icon: <Fingerprint size={14} /> },
   { id: "specs", label: "คลังสเปก TOR", icon: <BookOpen size={14} /> },
+  { id: "projectTemplate", label: "แม่แบบโครงการ", icon: <ListChecks size={14} /> },
   { id: "pricing", label: "กฎราคาขาย", icon: <Tags size={14} /> },
 ];
 
@@ -134,6 +136,12 @@ export default function SettingsPage() {
       {activeTab === "users" && (
         <div className="animate-in slide-in-from-bottom duration-500 -mt-6 -ml-6">
           <UsersPage />
+        </div>
+      )}
+
+      {activeTab === "projectTemplate" && (
+        <div className="animate-in slide-in-from-bottom duration-500">
+          <ProjectTemplateSettings />
         </div>
       )}
 

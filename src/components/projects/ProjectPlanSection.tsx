@@ -14,7 +14,7 @@ import { GanttChart } from "@/components/projects/GanttChart";
 import { Field, NumCell, FIELD_W } from "@/components/projects/ProjectPlanEditors";
 import {
   CIVIL_WORKS, CONTROL_ROOMS, OWNERS, PHASE_LABELS, PROCUREMENT_KINDS, SYSTEM_TYPES, addDays, checkPlan, generatePlan,
-  type OwnerKey, type PlanContext, type PlanInstallment, type PlanOverrides, type PlanProfile, type RuleInputs,
+  EMPTY_TEMPLATE, type OwnerKey, type PlanContext, type PlanInstallment, type PlanOverrides, type PlanProfile, type RuleInputs, type TemplateConfig,
 } from "@/lib/project-plan";
 
 const baht = (n: number) => `฿${(Number(n) || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -24,16 +24,18 @@ const title = (icon: React.ReactNode, text: string, extra?: React.ReactNode) => 
 );
 const chip = (on: boolean) => cn("h-8 px-3 text-[12px] normal-case tracking-normal", on ? "" : "text-white/60");
 
-export function ProjectPlanSection({ profile, onProfile, overrides, onOverrides, ctx, inputs, contractValue, installments, onInstallments }: {
+export function ProjectPlanSection({ profile, onProfile, overrides, onOverrides, ctx, inputs, contractValue, installments, onInstallments, template = EMPTY_TEMPLATE }: {
   profile: PlanProfile; onProfile: (p: PlanProfile) => void;
   overrides: PlanOverrides; onOverrides: (o: PlanOverrides) => void;
   ctx: PlanContext; inputs: RuleInputs; contractValue: number;
   /** งวดงานที่แสดง (ยังไม่เคยแก้ = มาจากแผนมาตรฐานของรูปแบบงาน) */
   installments: PlanInstallment[]; onInstallments: (i: PlanInstallment[]) => void;
+  /** แม่แบบของบริษัท (ตั้งค่า › แม่แบบโครงการ) */
+  template?: TemplateConfig;
 }) {
   const set = (patch: Partial<PlanProfile>) => onProfile({ ...profile, ...patch });
   const full = { ...profile, installments };
-  const plan = useMemo(() => generatePlan(full, ctx, overrides), [full, ctx, overrides]); // eslint-disable-line react-hooks/exhaustive-deps
+  const plan = useMemo(() => generatePlan(full, ctx, overrides, template), [full, ctx, overrides, template]); // eslint-disable-line react-hooks/exhaustive-deps
   const rules = useMemo(() => checkPlan(full, ctx, plan, inputs), [full, ctx, plan, inputs]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showSettings, setShowSettings] = useState(false);
   const [phaseOpen, setPhaseOpen] = useState<Record<number, boolean>>({});
@@ -83,7 +85,13 @@ export function ProjectPlanSection({ profile, onProfile, overrides, onOverrides,
               {CONTROL_ROOMS.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
             </PillSelect>
           </Field>
-          <Field label="รอบ PM" w={FIELD_W.months}><NumCell value={profile.pmIntervalMonths} onChange={(v) => set({ pmIntervalMonths: Math.max(1, Math.min(24, Math.round(v))) })} suffix="เดือน" /></Field>
+          {profile.procurement === "rent" && (<>
+            <Field label="ระยะเช่า" w={FIELD_W.months}><NumCell value={profile.rent.months} onChange={(v) => set({ rent: { months: Math.max(0, Math.min(48, Math.round(v))) } })} suffix="เดือน" /></Field>
+            <Field label="SLA ตอบสนอง" w={FIELD_W.days}><NumCell value={profile.sla.responseHours} onChange={(v) => set({ sla: { ...profile.sla, responseHours: v } })} suffix="ชม." /></Field>
+            <Field label="SLA แก้ไขเสร็จ" w={FIELD_W.days}><NumCell value={profile.sla.fixHours} onChange={(v) => set({ sla: { ...profile.sla, fixHours: v } })} suffix="ชม." /></Field>
+            <Field label="ระบบพร้อมใช้" w={FIELD_W.pct}><NumCell kind="pct" value={profile.sla.uptimePct} onChange={(v) => set({ sla: { ...profile.sla, uptimePct: Math.min(100, v) } })} suffix="%" /></Field>
+          </>)}
+          <Field label={profile.procurement === "rent" ? "รอบบริการ SLA" : "รอบ PM"} w={FIELD_W.months}><NumCell value={profile.pmIntervalMonths} onChange={(v) => set({ pmIntervalMonths: Math.max(1, Math.min(24, Math.round(v))) })} suffix="เดือน" /></Field>
         </div>
         <div className="flex flex-wrap gap-x-5 gap-y-2 items-center">
           <span className="text-[12px] font-bold text-white/70">งานประกอบ</span>
@@ -135,8 +143,13 @@ export function ProjectPlanSection({ profile, onProfile, overrides, onOverrides,
       {/* ---------- งวดงาน ---------- */}
       <GlassCard className="p-5 space-y-3" >
         <div data-plan-installments className="space-y-3">
-        {title(<CalendarRange size={16} className="text-nexus-teal" />, "งวดงาน", <span className={cn("text-[12px] font-mono", instPct === 100 ? "text-white/50" : "text-warning")}>รวม {instPct}% · {instPts} จุด</span>)}
+        {title(<CalendarRange size={16} className="text-nexus-teal" />, "งวดงาน", <span className={cn("text-[12px] font-mono", instPct === 100 || (profile.procurement === "rent" && profile.rent.months > 0 && instPct < 100) ? "text-white/50" : "text-warning")}>รวม {instPct}% · {instPts} จุด</span>)}
         <p className="text-[12px] text-white/45 -mt-1">ครบกำหนด = จำนวนวันนับจากวันเริ่มสัญญา ({thDate(ctx.contractStart)}) · งวดเงินคิดจากมูลค่ารวม VAT {baht(contractValue)}</p>
+        {profile.procurement === "rent" && profile.rent.months > 0 && (
+          <p className="text-[12px] text-nexus-teal" data-rent-summary>
+            สัญญาเช่า: งวดติดตั้งรวม {instPct}% · ค่าเช่า {Math.round((100 - instPct) * 100) / 100}% แบ่ง {profile.rent.months} เดือน = เดือนละ {baht((contractValue * Math.max(0, 100 - instPct)) / 100 / profile.rent.months)} เริ่มเดือนแรกหลังตรวจรับ ({thDate(plan.warrantyStart)})
+          </p>
+        )}
         {installments.map((it, i) => (
           <div key={i} className="flex flex-wrap items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2">
             <span className="w-[56px] text-[12px] font-bold text-white/80">งวด {i + 1}</span>
@@ -145,6 +158,7 @@ export function ProjectPlanSection({ profile, onProfile, overrides, onOverrides,
             <div className="w-[100px]"><NumCell kind="pct" value={it.payPct} onChange={(v) => setInst(i, { payPct: v })} suffix="%" /></div>
             <span className="w-[130px] text-right font-mono text-[12px] text-white/70">{baht((contractValue * it.payPct) / 100)}</span>
             {ctx.installable && <div className="w-[100px]"><NumCell value={it.points} onChange={(v) => setInst(i, { points: Math.round(v) })} suffix="จุด" /></div>}
+            {profile.procurement === "hire" && <div className="w-[120px]" title="ผลงานสะสมที่ต้องถึงเพื่อเบิกงวดนี้"><NumCell value={it.progressPct || 0} onChange={(v) => setInst(i, { progressPct: Math.min(100, Math.round(v)) })} suffix="% ผลงาน" /></div>}
             <PillInput value={it.scope} onChange={(e) => setInst(i, { scope: e.target.value })} placeholder="ขอบเขตงวดนี้ เช่น อาคาร A" className="h-9 flex-1 min-w-[160px] text-sm" aria-label={`ขอบเขตงวด ${i + 1}`} />
             <PillButton variant="ghost" className="h-9 w-9 px-0 text-danger/80" aria-label="ลบงวด" disabled={installments.length <= 1} onClick={() => onInstallments(installments.filter((_, k) => k !== i).map((x, k) => ({ ...x, no: k + 1 })))}><Trash2 size={13} /></PillButton>
           </div>

@@ -35,7 +35,8 @@ export const CIVIL_WORKS: { code: string; label: string }[] = [
 export type DayMode = "calendar" | "working";
 
 export interface PlanSite { name: string; env: "indoor" | "outdoor"; points: number }
-export interface PlanInstallment { no: number; dueDay: number; payPct: number; points: number; scope: string }
+/** progressPct = ผลงานสะสมที่ต้องถึงเพื่อเบิกงวดนี้ (จ้างเหมา) */
+export interface PlanInstallment { no: number; dueDay: number; payPct: number; points: number; scope: string; progressPct?: number }
 export interface PlanQuestion { text: string; neededByTask: string }
 export interface PlanDefaults {
   pointsPerDay: number; leadTimeDays: number; clientDays: number; announcementDays: number; beforeContractDays: number;
@@ -50,6 +51,9 @@ export interface PlanProfile {
   civilWork: string[];
   electricalWork: boolean;
   installments: PlanInstallment[];
+  /** เช่า: ระยะเช่า (เดือน) นับจากตรวจรับ — วางบิลค่าเช่ารายเดือน · SLA แทนการรับประกัน */
+  rent: { months: number };
+  sla: { responseHours: number; fixHours: number; uptimePct: number };
   pmIntervalMonths: number;
   onsiteAdmin: { count: number; hours: string };
   training: { sessions: number; hoursEach: number };
@@ -257,20 +261,38 @@ function durOf(d: Dur | undefined, p: PlanProfile): number {
 const rainy = (date: string) => { const m = Number(date.slice(5, 7)); return m >= 5 && m <= 10; };
 
 /** สร้างแผนงานจากข้อมูลโครงการ + การปรับแผนเอง */
-export function generatePlan(p: PlanProfile, c: PlanContext, ov: PlanOverrides = { tasks: {}, custom: [] }): PlanResult {
+export function generatePlan(p: PlanProfile, c0: PlanContext, ov: PlanOverrides = { tasks: {}, custom: [] }, tpl: TemplateConfig = EMPTY_TEMPLATE): PlanResult {
+  // เช่า: ระยะเช่าแทนระยะประกัน (SLA/PM รื้อถอน วางบิลรายเดือน นับจากตรวจรับ)
+  const c: PlanContext = p.procurement === "rent" ? { ...c0, warrantyMonths: Math.max(0, p.rent.months) } : c0;
   const mode = p.dayMode;
   const C = c.contractStart;
   const tpls: TaskTpl[] = [];
   const pre = (t: TaskTpl) => t.phase <= 3;
 
   // คลังงาน + งานเฉพาะระบบ + ปรับตามรูปแบบจัดซื้อ
-  for (const t of LIB) {
+  const apply = (t: TaskTpl): TaskTpl | null => {
+    const o = tpl.tasks[t.id];
+    if (!o) return t;
+    if (o.disabled) return null;
+    return { ...t, ...(o.name ? { name: o.name } : {}), ...(o.days && typeof t.days === "number" ? { days: o.days } : {}), ...(o.owner ? { owner: o.owner } : {}) };
+  };
+  for (const t0 of LIB) {
+    const t = apply(t0);
+    if (!t) continue;
     if (pre(t) && c.contracted) continue;
     if (!c.installable && (t.id === "P4.9" || t.id === "P6.1")) continue;
     if (t.id === "P3.2" && (c.method === "specific" || c.method === "e-market")) continue;
     if (condOk(t.when, p, c)) tpls.push(t);
   }
-  for (const s of p.systems) for (const t of MODULES[s] || []) if (!(pre(t) && c.contracted) && (c.installable || t.phase !== 5)) tpls.push(t);
+  for (const s of p.systems) for (const t0 of MODULES[s] || []) { const t = apply(t0); if (t && !(pre(t) && c.contracted) && (c.installable || t.phase !== 5)) tpls.push(t); }
+  // งานที่บริษัทเพิ่มในแม่แบบ (ตั้งค่า › แม่แบบโครงการ)
+  const known = new Set([...LIB.map((t) => t.id), ...Object.values(MODULES).flat().map((t) => t.id)]);
+  for (const x of tpl.extra) {
+    if (known.has(x.id) || (x.systems?.length && !x.systems.some((sy) => p.systems.includes(sy)))) continue;
+    if (x.phase <= 3 && c.contracted) continue;
+    if (x.when === "gov" && c.sector !== "Government") continue;
+    tpls.push({ id: x.id, name: x.name, phase: x.phase, after: x.after, days: x.days, owner: x.owner });
+  }
   if (p.procurement === "rent") tpls.push({ id: "X.rent.removal", name: "รื้อถอนอุปกรณ์เมื่อสิ้นสุดสัญญาเช่า", phase: 7, start: { at: "W", warrantyEnd: true }, days: 5, owner: "install" });
   for (const t of ov.custom || []) tpls.push({ id: t.id, name: t.name, phase: t.phase, after: t.after, days: t.days, owner: t.owner });
 
@@ -364,8 +386,15 @@ export function generatePlan(p: PlanProfile, c: PlanContext, ov: PlanOverrides =
     }
     if (p.onsiteAdmin.count > 0) extra.push(mk("P7.3", `รายงาน Admin ประจำเดือน (${c.warrantyMonths} ครั้ง)`, "admin", addMonths(W, 1), warrantyEnd, { recurring: true }));
   }
-  if (p.procurement === "rent") extra.push({ ...mk("X.rent.billing", "วางบิลค่าเช่ารายเดือน", "accounting", addMonths(C, 1), c.warrantyMonths > 0 ? warrantyEnd : addDays(C, c.durationDays, "calendar"), { recurring: true }), phase: 7 });
-  if (p.procurement === "hire") extra.push({ ...mk("X.hire.report", "รายงานผู้ควบคุมงานประจำเดือน", "pm", addMonths(C, 1), addDays(C, Math.max(0, c.durationDays - 1), "calendar"), { recurring: true }), phase: 5 });
+  // เช่า: วางบิลค่าเช่าทุกเดือน (เดือนที่ k = สิ้นเดือนเช่าที่ k) · จ้างเหมา: รายงานผู้ควบคุมงานทุกเดือนระหว่างสัญญา
+  if (p.procurement === "rent") for (let k = 1; k <= c.warrantyMonths; k++) {
+    const d = addDays(addMonths(W, k), -1, "calendar");
+    extra.push({ ...mk(`X.rent.bill.${k}`, `วางบิลค่าเช่าเดือนที่ ${k}`, "accounting", d, d, { recurring: true }), phase: 7 });
+  }
+  if (p.procurement === "hire") {
+    const last = addDays(C, Math.max(0, c.durationDays - 1), "calendar");
+    for (let k = 1; addMonths(C, k) <= last && k <= 36; k++) { const d = addMonths(C, k); extra.push({ ...mk(`X.hire.report.${k}`, `รายงานผู้ควบคุมงานเดือนที่ ${k}`, "pm", d, d, { recurring: true }), phase: 5 }); }
+  }
 
   const tasks = [...out.values(), ...extra].sort((a, b) => a.phase - b.phase || (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
   const preTasks = tasks.filter((t) => t.phase <= 3 && !t.skipped);
@@ -378,10 +407,11 @@ export function generatePlan(p: PlanProfile, c: PlanContext, ov: PlanOverrides =
 export type RuleLevel = "stop" | "warn";
 export interface RuleResult { id: string; level: RuleLevel; message: string }
 /** ระดับเริ่มต้น — R3 (datasheet) และ R11 (ต้นทุน PM/Admin) เป็น "เตือน" ไว้ก่อน เพราะข้อมูลเดิมยังไม่ครบ */
-export const RULE_LEVELS: Record<string, RuleLevel> = { R1: "stop", R2: "stop", R3: "warn", R4: "stop", R5: "stop", R6: "warn", R7: "warn", R8: "stop", R9: "warn", R10: "warn", R11: "warn", LATE: "warn", PRE: "warn" };
+export const RULE_LEVELS: Record<string, RuleLevel> = { R12: "warn", R13: "warn", R1: "stop", R2: "stop", R3: "warn", R4: "stop", R5: "stop", R6: "warn", R7: "warn", R8: "stop", R9: "warn", R10: "warn", R11: "warn", LATE: "warn", PRE: "warn" };
 export interface RuleInputs { boqPoints?: number | null; missingDatasheets?: string[]; hasPmCost?: boolean; hasAdminCost?: boolean }
 
-export function checkPlan(p: PlanProfile, c: PlanContext, plan: PlanResult, x: RuleInputs = {}): RuleResult[] {
+export function checkPlan(p: PlanProfile, c0: PlanContext, plan: PlanResult, x: RuleInputs = {}): RuleResult[] {
+  const c: PlanContext = p.procurement === "rent" ? { ...c0, warrantyMonths: Math.max(0, p.rent.months) } : c0;
   const out: RuleResult[] = [];
   const add = (id: string, message: string) => out.push({ id, level: RULE_LEVELS[id] || "warn", message });
   const live = plan.tasks.filter((t) => !t.skipped);
@@ -395,7 +425,15 @@ export function checkPlan(p: PlanProfile, c: PlanContext, plan: PlanResult, x: R
     if (new Set(vals.map((v) => v[1])).size > 1) add("R1", `จำนวนจุดไม่ตรงกัน: ${vals.map(([k, v]) => `${k} ${v}`).join(" · ")}`);
   }
   const pct = Math.round(p.installments.reduce((s, i) => s + (Number(i.payPct) || 0), 0) * 100) / 100;
-  if (p.installments.length && pct !== 100) add("R2", `งวดเงินรวม ${pct}% ต้องเท่ากับ 100%`);
+  if (p.procurement === "rent" && p.rent.months > 0) {
+    if (pct > 100) add("R2", `งวดติดตั้งรวม ${pct}% เกิน 100% (ส่วนที่เหลือเป็นค่าเช่ารายเดือน)`);
+  } else if (p.installments.length && pct !== 100) add("R2", `งวดเงินรวม ${pct}% ต้องเท่ากับ 100%`);
+  if (p.procurement === "rent" && !(p.rent.months > 0)) add("R13", "สัญญาเช่ายังไม่ระบุระยะเช่า (เดือน)");
+  if (p.procurement === "rent" && (!(p.sla.responseHours > 0) || !(p.sla.fixHours > 0))) add("R13", "สัญญาเช่ายังไม่กำหนด SLA (เวลาตอบสนอง/แก้ไข)");
+  if (p.procurement === "hire" && p.installments.length) {
+    const prog = p.installments.map((i) => Number(i.progressPct) || 0);
+    if (prog.some((v, i) => i > 0 && v <= prog[i - 1]) || prog[prog.length - 1] !== 100) add("R12", `จ้างเหมา: ผลงานสะสมของงวดต้องเพิ่มขึ้นทุกงวดและงวดสุดท้าย = 100% (ตอนนี้ ${prog.join("/")}%)`);
+  }
   if (x.missingDatasheets?.length) add("R3", `สเปกยังไม่มี Datasheet ${x.missingDatasheets.length} รายการ: ${x.missingDatasheets.slice(0, 3).join(", ")}${x.missingDatasheets.length > 3 ? " …" : ""}`);
   const approved = get("P4.6");
   if (approved) for (const t of live.filter((t) => t.designDependent && t.start <= approved.end)) add("R4", `"${t.name}" เริ่มก่อนอนุมัติแบบ (${approved.end})`);
@@ -433,7 +471,7 @@ const s = (v: unknown, max = 200) => String(v ?? "").trim().slice(0, max);
 export function defaultProfile(sector: "Government" | "Private"): PlanProfile {
   return {
     systems: [], procurement: "purchase", sites: [], legacySystem: "", controlRoom: "none", civilWork: [], electricalWork: true,
-    installments: [], pmIntervalMonths: 6, onsiteAdmin: { count: 0, hours: "" }, training: { sessions: 2, hoursEach: 6 },
+    installments: [], rent: { months: 12 }, sla: { responseHours: 4, fixHours: 24, uptimePct: 99 }, pmIntervalMonths: 6, onsiteAdmin: { count: 0, hours: "" }, training: { sessions: 2, hoursEach: 6 },
     openQuestions: [], dayMode: sector === "Government" ? "calendar" : "calendar", defaults: { ...DEFAULT_PLAN_DEFAULTS },
   };
 }
@@ -452,7 +490,10 @@ export function normalizeProfile(raw: any, sector: "Government" | "Private" = "G
     electricalWork: raw.electricalWork !== false,
     installments: (Array.isArray(raw.installments) ? raw.installments : []).slice(0, 24).map((x: any, i: number) => ({
       no: i + 1, dueDay: Math.round(num(x?.dueDay, 0, 3650)), payPct: Math.round(num(x?.payPct, 0, 100) * 100) / 100, points: Math.round(num(x?.points, 0, 100000)), scope: s(x?.scope, 300),
+      ...(Number(x?.progressPct) > 0 ? { progressPct: Math.round(num(x.progressPct, 0, 100)) } : {}),
     })),
+    rent: { months: Math.round(num(raw.rent?.months ?? 12, 0, 48)) }, // งวดเงินโครงการสูงสุด 60 งวด
+    sla: { responseHours: num(raw.sla?.responseHours ?? 4, 0, 720), fixHours: num(raw.sla?.fixHours ?? 24, 0, 2160), uptimePct: Math.min(100, num(raw.sla?.uptimePct ?? 99, 0, 100)) },
     pmIntervalMonths: Math.round(num(raw.pmIntervalMonths ?? 6, 1, 24)) || 6,
     onsiteAdmin: { count: Math.round(num(raw.onsiteAdmin?.count, 0, 20)), hours: s(raw.onsiteAdmin?.hours, 60) },
     training: { sessions: Math.round(num(raw.training?.sessions ?? 2, 0, 50)), hoursEach: num(raw.training?.hoursEach ?? 6, 0, 24) },
@@ -539,7 +580,7 @@ export function taskAction(t: SnapTask, docId: string, projectName = "", custome
   if (["P3.3", "P7.4"].includes(t.id)) return { label: "สัญญา & หลักประกัน", href: `${proj}?tab=contract` };
   if (["P2.1", "P2.2", "P2.4"].includes(t.id)) return { label: "แก้ร่าง TOR/แผน", href: `/projects/new?edit=${encodeURIComponent(docId)}` };
   if (t.id === "P6.4") return { label: "เอกสารส่งมอบ", href: `${proj}?tab=docs` };
-  if (t.id === "X.rent.billing") return { label: "วางบิล", href: `${proj}?tab=billing` };
+  if (t.id.startsWith("X.rent.bill.")) return { label: "วางบิลค่าเช่า", href: `${proj}?tab=billing` };
   return null;
 }
 
@@ -559,4 +600,60 @@ export function planProgress(tasks: SnapTask[], st: Record<string, TaskState> | 
     total: live.length, done: live.filter((t) => s(t) === "done").length, doing: live.filter((t) => s(t) === "doing").length,
     overdue: live.filter((t) => s(t) !== "done" && t.end < today).length,
   };
+}
+
+/** งวดเงินของโครงการ: งวดงาน + (เช่า) ค่าเช่ารายเดือนตลอดระยะเช่านับจากตรวจรับ — ส่วนที่เหลือจากงวดติดตั้งแบ่งเท่ากันทุกเดือน */
+export function billingTimeline(p: PlanProfile, contractStart: string, warrantyStart: string): { id: string; name: string; startDate: string; endDate: string; weight: number }[] {
+  const base = timelineFromInstallments(p.installments, contractStart);
+  if (p.procurement !== "rent" || !(p.rent.months > 0) || !warrantyStart) return base;
+  const rest = Math.round((100 - p.installments.reduce((s2, i) => s2 + (Number(i.payPct) || 0), 0)) * 100) / 100;
+  if (rest <= 0) return base;
+  const n = p.rent.months, per = Math.floor((rest / n) * 100) / 100;
+  const months = Array.from({ length: n }, (_, i) => ({
+    id: `RENT-${i + 1}`, name: `ค่าเช่าเดือนที่ ${i + 1}`, startDate: addMonths(warrantyStart, i), endDate: addDays(addMonths(warrantyStart, i + 1), -1, "calendar"),
+    weight: i === n - 1 ? Math.round((rest - per * (n - 1)) * 100) / 100 : per,
+  }));
+  return [...base.map((b) => ({ ...b, name: b.name.replace(/^งวดที่/, "งวดติดตั้งที่") })), ...months];
+}
+
+// ---------------------------------------------------------------------------
+// แม่แบบของบริษัท (T6): แก้งานในคลัง (ชื่อ วัน ผู้รับผิดชอบ ปิดใช้) · เพิ่มงานเอง · ค่าเริ่มต้นการคำนวณ
+// เก็บที่ companies/{companyId}/settings/project_template
+// ---------------------------------------------------------------------------
+export interface TemplateTaskOverride { name?: string; days?: number; owner?: OwnerKey; disabled?: boolean }
+export interface TemplateExtraTask { id: string; name: string; phase: number; after: string[]; days: number; owner: OwnerKey; systems?: SystemType[]; when?: "always" | "gov" }
+export interface TemplateConfig { tasks: Record<string, TemplateTaskOverride>; extra: TemplateExtraTask[]; defaults?: PlanDefaults; updatedAt?: string; updatedBy?: string }
+export const EMPTY_TEMPLATE: TemplateConfig = { tasks: {}, extra: [] };
+
+/** รายการงานทั้งหมดในคลังมาตรฐาน (สำหรับหน้าตั้งค่า) */
+export function libraryCatalog(): { id: string; name: string; phase: number; days: number | null; owner: OwnerKey; system?: SystemType; after: string[]; when: string }[] {
+  const row = (t: TaskTpl, system?: SystemType) => ({ id: t.id, name: t.name, phase: t.phase, days: typeof t.days === "number" ? t.days : null, owner: t.owner, ...(system ? { system } : {}), after: t.after || [], when: (t.when || ["always"]).join(" & ") });
+  return [...LIB.map((t) => row(t)), ...(Object.entries(MODULES) as [SystemType, TaskTpl[]][]).flatMap(([sy, ts]) => ts.map((t) => row(t, sy)))];
+}
+
+export function normalizeTemplate(raw: any): TemplateConfig {
+  const owners = Object.keys(OWNERS) as OwnerKey[];
+  const ids = new Set(libraryCatalog().map((t) => t.id));
+  const tasks: Record<string, TemplateTaskOverride> = {};
+  for (const [id, v] of Object.entries(raw?.tasks && typeof raw.tasks === "object" ? raw.tasks : {})) {
+    if (!ids.has(id) || !v || typeof v !== "object") continue;
+    const o: TemplateTaskOverride = {};
+    const nm = s((v as any).name, 200); if (nm) o.name = nm;
+    if (Number((v as any).days) > 0) o.days = Math.round(num((v as any).days, 1, 3650));
+    if (owners.includes((v as any).owner)) o.owner = (v as any).owner;
+    if ((v as any).disabled === true) o.disabled = true;
+    if (Object.keys(o).length) tasks[id] = o;
+  }
+  const extra: TemplateExtraTask[] = (Array.isArray(raw?.extra) ? raw.extra : []).slice(0, 100).map((t: any, i: number) => ({
+    id: /^C\d{1,3}$/.test(String(t?.id)) ? String(t.id) : `C${i + 1}`, name: s(t?.name, 200), phase: Math.round(num(t?.phase, 1, 7)) || 4,
+    after: (Array.isArray(t?.after) ? t.after : []).map((x: any) => s(x, 40)).filter(Boolean).slice(0, 5), days: Math.round(num(t?.days, 1, 3650)) || 1,
+    owner: owners.includes(t?.owner) ? t.owner : "pm",
+    ...(Array.isArray(t?.systems) && t.systems.length ? { systems: t.systems.filter((x: any) => SYSTEM_TYPES.some((y) => y.code === x)) } : {}),
+    ...(t?.when === "gov" ? { when: "gov" as const } : {}),
+  })).filter((t: TemplateExtraTask) => t.name);
+  const seen = new Set<string>();
+  const uniq = extra.filter((t) => (seen.has(t.id) ? false : (seen.add(t.id), true)));
+  const out: TemplateConfig = { tasks, extra: uniq };
+  if (raw?.defaults && typeof raw.defaults === "object") out.defaults = normalizeProfile({ defaults: raw.defaults }).defaults;
+  return out;
 }

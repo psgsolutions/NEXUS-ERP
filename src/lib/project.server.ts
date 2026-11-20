@@ -4,7 +4,7 @@ import type { ApiUser } from "./api-auth";
 import { PROJECT_TYPE_CONFIGS, ProjectTypeCode } from "@/types/database";
 import { computeProjectBudget, normalizeItemLine, normalizeLaborLine } from "./project-budget";
 import { milestoneStatus } from "./project-milestones";
-import { checkPlan, generatePlan, methodCode, normalizeOverrides, normalizeProfile, timelineFromInstallments } from "./project-plan";
+import { billingTimeline, checkPlan, generatePlan, methodCode, normalizeOverrides, normalizeProfile, normalizeTemplate, timelineFromInstallments } from "./project-plan";
 import { normalizeSpecChoices } from "./spec-library";
 import {
   ALL_DOC_KEYS, BUDGET_SOURCES, PROCUREMENT_METHODS, fiscalYearOf, legalReferences, normalizeExpenses,
@@ -95,24 +95,30 @@ export async function buildProjectFields(body: any, apiUser: ApiUser, companyId:
   const durationDays = Math.round((Date.parse(endDate) - Date.parse(startDate)) / 86400e3) + 1;
   const warrantyMonthsN = Math.min(120, Math.max(0, Math.round(Number(body.warrantyMonths) || 0)));
   let planSnapshot: any = null;
+  let planWarrantyStart = "";
   if (planProfile && planOverrides) {
     const ctx = {
       sector: sectorType as "Government" | "Private", contracted: sectorType === "Private" || projectStage === "CONTRACTED",
       method: sectorType === "Government" ? methodCode(body.governmentDetails?.procurementMethod) : "specific" as const,
       planStart: new Date().toISOString().slice(0, 10), contractStart: startDate, durationDays, warrantyMonths: warrantyMonthsN, installable: true,
     };
-    const plan = generatePlan(planProfile, ctx, planOverrides);
+    const tpl = normalizeTemplate((await adminDb.doc(`companies/${companyId}/settings/project_template`).get()).data() || {});
+    const plan = generatePlan(planProfile, ctx, planOverrides, tpl);
     const boqPoints = lines.filter((l: any) => l.kind !== "GROUP" && String(l.unit || "").trim() === "จุด").reduce((s: number, l: any) => s + (Number(l.qty) || 0), 0);
     const rules = checkPlan(planProfile, ctx, plan, { boqPoints });
     const stop = rules.find((r) => r.level === "stop");
     if (stop && body.asDraft !== true) return { ok: false, error: `แผนงาน ${stop.id}: ${stop.message}` };
+    planWarrantyStart = plan.warrantyStart;
     planSnapshot = {
       contractStart: plan.contractStart, warrantyStart: plan.warrantyStart, warrantyEnd: plan.warrantyEnd,
       tasks: plan.tasks.map((t) => ({ id: t.id, name: t.name, phase: t.phase, owner: t.owner, external: t.external, start: t.start, end: t.end, days: t.days, deps: t.deps || [], ...(t.gate ? { gate: t.gate } : {}), ...(t.deadline ? { deadline: t.deadline } : {}), ...(t.skipped ? { skipped: true } : {}) })),
       rules: rules.map((r) => ({ id: r.id, level: r.level, message: r.message })),
     };
   }
-  const timeline = planProfile && planProfile.installments.length ? normalizeTimeline(timelineFromInstallments(planProfile.installments, startDate)) : normalizeTimeline(body.timeline);
+  // งวดเงิน: งวดงาน (+ ค่าเช่ารายเดือนเมื่อเป็นสัญญาเช่า)
+  const timeline = planProfile && (planProfile.installments.length || planProfile.procurement === "rent")
+    ? normalizeTimeline(planProfile.procurement === "rent" ? billingTimeline(planProfile, startDate, planWarrantyStart) : timelineFromInstallments(planProfile.installments, startDate))
+    : normalizeTimeline(body.timeline);
   if (body.asDraft !== true) {
     const tErr = timelineError(timeline);
     if (tErr) return { ok: false, error: tErr };

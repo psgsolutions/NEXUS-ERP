@@ -63,7 +63,7 @@ import {
 import { mergeSpecLibrary, specClausesFor, suggestSpec, type SpecChoice } from "@/lib/spec-library";
 import { FieldHistory } from "@/components/ui/FieldHistory";
 import { ProjectPlanSection } from "@/components/projects/ProjectPlanSection";
-import { checkPlan, generatePlan, installmentsFromTimeline, methodCode, normalizeOverrides, normalizeProfile, timelineFromInstallments, type PlanContext, type PlanOverrides, type PlanProfile } from "@/lib/project-plan";
+import { billingTimeline, checkPlan, EMPTY_TEMPLATE, generatePlan, installmentsFromTimeline, methodCode, normalizeOverrides, normalizeProfile, normalizeTemplate, timelineFromInstallments, type PlanContext, type PlanOverrides, type PlanProfile, type TemplateConfig } from "@/lib/project-plan";
 
 const STEPS = [
   { title: "ข้อมูลโครงการ" },
@@ -163,6 +163,7 @@ export default function NewProjectPage() {
   // แม่แบบแผนงาน (lib/project-plan): ข้อมูลระบบ/หน้างาน งวดงาน และการปรับแผนเอง
   const [planProfile, setPlanProfile] = useState<PlanProfile>(() => normalizeProfile(null));
   const [planOverrides, setPlanOverrides] = useState<PlanOverrides>({ tasks: {}, custom: [] });
+  const [planTemplate, setPlanTemplate] = useState<TemplateConfig>(EMPTY_TEMPLATE);
 
   // ---------- 4: รายละเอียดโครงการ ----------
   const [docEdited, setDocEdited] = useState<Partial<Record<DocSectionKey, string>>>({}); // หัวข้อที่แก้เอง/AI
@@ -228,7 +229,17 @@ export default function NewProjectPage() {
     () => (planProfile.installments.length ? planProfile.installments : installmentsFromTimeline(baseTimeline, startDate)),
     [planProfile.installments, baseTimeline, startDate]
   );
-  const timeline = planInstallable && planProfile.installments.length ? timelineFromInstallments(planProfile.installments, startDate) : baseTimeline;
+  const planWarrantyStart = useMemo(() => {
+    if (!planInstallable || planProfile.procurement !== "rent") return "";
+    return generatePlan({ ...planProfile, installments: planInstallments }, {
+      sector: sectorType, contracted: stage === "CONTRACTED", method: isGov ? methodCode(govMethod) : "specific",
+      planStart: today(), contractStart: startDate, durationDays, warrantyMonths, installable: true,
+    }, planOverrides, planTemplate).warrantyStart;
+  }, [planInstallable, planProfile, planInstallments, sectorType, stage, isGov, govMethod, startDate, durationDays, warrantyMonths, planOverrides, planTemplate]);
+  // งวดเงิน: งวดงาน (+ ค่าเช่ารายเดือนเมื่อเป็นสัญญาเช่า)
+  const timeline = planInstallable && (planProfile.installments.length || planProfile.procurement === "rent")
+    ? (planProfile.procurement === "rent" ? billingTimeline({ ...planProfile, installments: planInstallments }, startDate, planWarrantyStart) : timelineFromInstallments(planProfile.installments, startDate))
+    : baseTimeline;
   const planCtx: PlanContext = useMemo(() => ({
     sector: sectorType, contracted: stage === "CONTRACTED", method: isGov ? methodCode(govMethod) : "specific",
     planStart: today(), contractStart: startDate, durationDays, warrantyMonths, installable: planInstallable,
@@ -244,9 +255,9 @@ export default function NewProjectPage() {
   const planFull = useMemo(() => ({ ...planProfile, installments: planInstallments }), [planProfile, planInstallments]);
   const planStops = useMemo(() => {
     if (!planInstallable) return [];
-    const plan = generatePlan(planFull, planCtx, planOverrides);
+    const plan = generatePlan(planFull, planCtx, planOverrides, planTemplate);
     return checkPlan(planFull, planCtx, plan, planInputs).filter((r) => r.level === "stop");
-  }, [planInstallable, planFull, planCtx, planOverrides, planInputs]);
+  }, [planInstallable, planFull, planCtx, planOverrides, planInputs, planTemplate]);
 
   const docDefs = useMemo(() => docSectionsFor(sectorType), [sectorType]);
   // คลังคุณลักษณะเฉพาะ: แม่แบบมาตรฐาน + ฉบับของบริษัท, จับคู่กับรายการอัตโนมัติ (เลือกเองได้)
@@ -286,6 +297,17 @@ export default function NewProjectPage() {
 
   // ---------- แก้ไขฉบับร่าง / โครงการที่ถูกตีกลับ (?edit=<id เอกสารโครงการ>) ----------
   const editDocId = searchParams?.get("edit") || "";
+  // แม่แบบแผนงานของบริษัท (ตั้งค่า › แม่แบบโครงการ) · โครงการใหม่ใช้ค่าเริ่มต้นการคำนวณของบริษัท
+  useEffect(() => {
+    if (!currentCompanyId) return;
+    apiFetch("/api/settings/project-template", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId: currentCompanyId, action: "get" }) })
+      .then((r) => r.json()).then((d) => {
+        if (!d?.success) return;
+        const t = normalizeTemplate(d.template);
+        setPlanTemplate(t);
+        if (!editDocId && t.defaults) setPlanProfile((p) => ({ ...p, defaults: { ...t.defaults! } }));
+      }).catch(() => undefined);
+  }, [currentCompanyId, editDocId]);
   const [editLoaded, setEditLoaded] = useState(false);
   // เวอร์ชันตอนเปิดแก้ไข — เซิร์ฟเวอร์ปฏิเสธถ้ามีคนอื่นบันทึกไปก่อน (C-13)
   const [editVersion, setEditVersion] = useState(0);
@@ -1137,6 +1159,7 @@ export default function NewProjectPage() {
       overrides={planOverrides} onOverrides={setPlanOverrides}
       ctx={planCtx} inputs={planInputs} contractValue={contractValue}
       installments={planInstallments} onInstallments={(next) => setPlanProfile((p) => ({ ...p, installments: next }))}
+      template={planTemplate}
     />
   ) : (
     <GlassCard className="p-5 space-y-3">

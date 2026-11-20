@@ -56,8 +56,9 @@ describe("แผนงานโครงการจากแม่แบบ", (
   it("เช่า: SLA แทน PM + วางบิลรายเดือน + รื้อถอน · จ้างเหมา: รายงานผู้ควบคุมงาน", () => {
     const rent = generatePlan(prof({ procurement: "rent" }), ctx()).tasks;
     expect(rent.find((t) => t.id === "P7.2.1")!.name).toMatch(/SLA/);
-    expect(rent.map((t) => t.id)).toEqual(expect.arrayContaining(["X.rent.billing", "X.rent.removal"]));
-    expect(generatePlan(prof({ procurement: "hire" }), ctx()).tasks.map((t) => t.id)).toContain("X.hire.report");
+    expect(rent.map((t) => t.id)).toEqual(expect.arrayContaining(["X.rent.bill.1", "X.rent.bill.12", "X.rent.removal"]));
+    expect(rent.filter((t) => t.id.startsWith("X.rent.bill.")).length).toBe(12); // ระยะเช่าเริ่มต้น 12 เดือน (ไม่ใช่ระยะประกัน 24)
+    expect(generatePlan(prof({ procurement: "hire" }), ctx()).tasks.map((t) => t.id)).toEqual(expect.arrayContaining(["X.hire.report.1", "X.hire.report.3"]));
   });
   it("ปรับแผนเอง: แก้จำนวนวัน ข้ามงาน เพิ่มงานเอง", () => {
     const ov = normalizeOverrides({ tasks: { "P4.2": { days: 2 }, "P4.7": { skip: true } }, custom: [{ id: "U1", name: "ขออนุญาตเข้าพื้นที่", phase: 4, after: ["P4.1"], days: 2, owner: "pm" }] });
@@ -140,5 +141,48 @@ describe("ติดตามงานตามแผน (T4)", () => {
     expect(p0.total).toBe(tasks.filter((x) => x.phase < 7).length);
     expect(p0.overdue).toBe(p0.total);
     expect(planProgress(tasks, { "P4.1": { status: "done" } }, "2000-01-01")).toMatchObject({ done: 1, overdue: 0 });
+  });
+});
+
+import { billingTimeline, libraryCatalog, normalizeTemplate } from "@/lib/project-plan";
+describe("เช่า / จ้างเหมา (T5)", () => {
+  it("เช่า: งวดติดตั้ง 30% + ค่าเช่า 70% แบ่ง 12 เดือนนับจากตรวจรับ · รวม 100%", () => {
+    const p = prof({ procurement: "rent", installments: [{ no: 1, dueDay: 60, payPct: 30, points: 40, scope: "" }] });
+    const r = generatePlan(p, ctx());
+    const tl = billingTimeline(p, "2027-04-01", r.warrantyStart);
+    expect(tl).toHaveLength(13);
+    expect(tl[0].name).toMatch(/^งวดติดตั้งที่ 1/);
+    expect(tl[1]).toMatchObject({ name: "ค่าเช่าเดือนที่ 1", startDate: r.warrantyStart });
+    expect(Math.round(tl.reduce((s, x) => s + x.weight, 0) * 100) / 100).toBe(100);
+    expect(checkPlan(p, ctx(), r).filter((x) => x.id === "R2")).toEqual([]);
+  });
+  it("เช่า: ไม่มี SLA = เตือน R13 · จ้างเหมา: ผลงานสะสมไม่ถึง 100% = เตือน R12", () => {
+    const rent = prof({ procurement: "rent", sla: { responseHours: 0, fixHours: 0, uptimePct: 99 } });
+    expect(checkPlan(rent, ctx(), generatePlan(rent, ctx())).map((x) => x.id)).toContain("R13");
+    const hire = prof({ procurement: "hire", installments: [{ no: 1, dueDay: 60, payPct: 40, points: 16, scope: "", progressPct: 40 }, { no: 2, dueDay: 120, payPct: 60, points: 24, scope: "", progressPct: 90 }] });
+    expect(checkPlan(hire, ctx(), generatePlan(hire, ctx())).find((x) => x.id === "R12")?.level).toBe("warn");
+  });
+});
+
+describe("แม่แบบของบริษัท (T6)", () => {
+  it("แก้ชื่อ/วัน/ผู้รับผิดชอบ ปิดงาน และเพิ่มงานเฉพาะระบบ", () => {
+    const tpl = normalizeTemplate({
+      tasks: { "P4.2": { name: "สำรวจยืนยันจุดร่วมกับหน่วยงาน", days: 4, owner: "engineer" }, "P4.7": { disabled: true }, "XX": { days: 9 } },
+      extra: [{ id: "C1", name: "ขอใบอนุญาตเข้าพื้นที่", phase: 4, after: ["P4.1"], days: 2, owner: "pm" }, { id: "C2", name: "ตั้งค่า Door controller", phase: 6, after: ["P6.1"], days: 2, owner: "engineer", systems: ["access_control"] }],
+      defaults: { pointsPerDay: 12 },
+    });
+    expect(Object.keys(tpl.tasks)).toEqual(["P4.2", "P4.7"]);
+    expect(tpl.defaults?.pointsPerDay).toBe(12);
+    const r = generatePlan(prof(), ctx({ contracted: true }), { tasks: {}, custom: [] }, tpl);
+    const t = r.tasks.find((x) => x.id === "P4.2")!;
+    expect([t.name, t.days, t.owner]).toEqual(["สำรวจยืนยันจุดร่วมกับหน่วยงาน", 4, "engineer"]);
+    expect(r.tasks.map((x) => x.id)).not.toContain("P4.7");
+    expect(r.tasks.map((x) => x.id)).toContain("C1");
+    expect(r.tasks.map((x) => x.id)).not.toContain("C2"); // ไม่ได้เลือก Access Control
+  });
+  it("คลังงานมาตรฐานครบทั้งงานหลักและงานเฉพาะระบบ", () => {
+    const cat = libraryCatalog();
+    expect(cat.find((x) => x.id === "P4.6")?.owner).toBe("client");
+    expect(cat.filter((x) => x.system === "cctv").length).toBe(4);
   });
 });

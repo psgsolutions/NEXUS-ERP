@@ -58,7 +58,7 @@ export default function DispatchPage() {
     setForm({
       type, priority: "NORMAL", scheduledDate: /^\d{4}-\d{2}-\d{2}$/.test(q.get("date") || "") ? q.get("date") : today(), equipment: [],
       checklist: JOB_TYPES.find((t) => t.value === type)?.checklist || [], assignees: [], site: {},
-      title: q.get("title") || "", customerName: q.get("customer") || "", links: q.get("project") ? { projectId: q.get("project") } : {},
+      title: q.get("title") || "", customerName: q.get("customer") || "", links: q.get("project") ? { projectId: q.get("project"), ...(q.get("task") ? { planTaskId: q.get("task") } : {}) } : {},
     });
   }, []);
 

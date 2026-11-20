@@ -571,7 +571,7 @@ export function taskAction(t: SnapTask, docId: string, projectName = "", custome
   const proj = `/projects/${encodeURIComponent(docId)}`;
   const job = (type: string, label: string) => ({
     label,
-    href: `/service/dispatch?new=1&type=${type}&project=${encodeURIComponent(docId)}&title=${encodeURIComponent(`${t.name} · ${projectName}`.slice(0, 180))}&customer=${encodeURIComponent(customerName)}&date=${t.start}`,
+    href: `/service/dispatch?new=1&type=${type}&project=${encodeURIComponent(docId)}&task=${encodeURIComponent(t.id)}&title=${encodeURIComponent(`${t.name} · ${projectName}`.slice(0, 180))}&customer=${encodeURIComponent(customerName)}&date=${t.start}`,
   });
   if (["P4.8", "P4.9", "M.cctv.vms"].includes(t.id)) return { label: "ขอซื้อตาม BOQ", href: `${proj}?tab=boq` };
   if (/^P5\.\d+\.handover$/.test(t.id) || t.id === "P6.5") return { label: "วางบิลงวดนี้", href: `${proj}?tab=billing` };

@@ -4,9 +4,9 @@ import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth"
 import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { auditServer } from "@/services/audit.server";
-import { milestoneStatus, weightedProgress } from "@/lib/project-milestones";
 import { normalizeProjectStatus } from "@/lib/project-status";
-import { OWNERS, isMyTask, startedDependents, stateOf, taskBlockers, type SnapTask, type TaskState, type TaskStatus } from "@/lib/project-plan";
+import { OWNERS, isMyTask, stateOf, taskBlockers, type SnapTask, type TaskState, type TaskStatus } from "@/lib/project-plan";
+import { planStatusUpdate } from "@/lib/project-plan.server";
 
 /**
  * [API-SERVER] ติดตามแผนงานโครงการ — POST /api/projects/plan { companyId, action, ... }
@@ -82,40 +82,15 @@ export async function POST(request: Request) {
         const manager = can(user.roles, "projects:edit") || can(user.roles, "projects:approve") || member;
         if (action === "assign" ? !manager : !(manager || roleOwner || cur.assigneeUid === user.uid)) throw new ApiAuthError(403, "ไม่มีสิทธิ์แก้งานนี้");
 
-        const now = new Date().toISOString();
         let next: TaskState;
+        let update: Record<string, any>;
         if (action === "assign") {
           next = { ...cur, ...(assignee ? { assigneeUid: assignee.uid, assigneeName: assignee.name } : { assigneeUid: "", assigneeName: "" }) };
+          update = { planStatus: { ...(p.planStatus || {}), [t.id]: next }, updatedAt: admin.firestore.FieldValue.serverTimestamp(), updatedBy: user.uid };
         } else {
-          if (status !== "todo") {
-            const wait = taskBlockers(t, tasks, p.planStatus);
-            if (wait.length) throw new ApiAuthError(409, `ต้องรอ ${wait.slice(0, 3).map((w) => `${w.id} ${w.name}`).join(", ")} เสร็จก่อน`);
-          }
-          if (cur.status === "done" && status !== "done") {
-            const started = startedDependents(t.id, tasks, p.planStatus);
-            if (started.length) throw new ApiAuthError(409, `งานถัดไปเริ่มแล้ว (${started.slice(0, 2).map((x) => x.name).join(", ")}) — ย้อนสถานะไม่ได้`);
-          }
-          next = { ...cur, status, at: now, by: user.uid, byName: str(user.email || user.uid, 120), note: str(body.note, 500) };
-        }
-        // รหัสงานมีจุด (P4.1) — เขียนทั้งก้อน planStatus (ถ้าใช้ path "planStatus.P4.1" จะกลายเป็นฟิลด์ซ้อน)
-        const update: Record<string, any> = { planStatus: { ...(p.planStatus || {}), [t.id]: next }, updatedAt: admin.firestore.FieldValue.serverTimestamp(), updatedBy: user.uid };
-
-        // ส่งมอบงวด n → งวดงานที่ n 100% · ตรวจรับงวดสุดท้าย → วันเริ่มประกันจริง
-        if (action === "setStatus") {
-          const m = t.id.match(/^P5\.(\d+)\.handover$/);
-          const idx = m ? Number(m[1]) - 1 : t.id === "P6.5" ? (p.milestones || []).length - 1 : -1;
-          if (idx >= 0 && Array.isArray(p.milestones) && p.milestones[idx]) {
-            const ms = p.milestones.map((x: any, i: number) => {
-              if (i !== idx) return x;
-              const progress = status === "done" ? 100 : Number(x.progress) >= 100 ? 0 : Number(x.progress) || 0;
-              const y = { ...x, progress };
-              return { ...y, status: milestoneStatus(y) };
-            });
-            update.milestones = ms;
-            const prog = weightedProgress(ms);
-            if (prog !== null) update.progress = prog;
-          }
-          if (t.id === "P6.5") update["plan.warrantyStartActual"] = status === "done" ? todayBkk() : admin.firestore.FieldValue.delete();
+          const r = planStatusUpdate(p, t, status, { uid: user.uid, name: str(user.email || user.uid, 120) }, str(body.note, 500));
+          if ("error" in r) throw new ApiAuthError(409, r.error);
+          next = r.next; update = r.update;
         }
         tx.update(ref, update);
         return { projectId: p.projectId || docId, state: next };

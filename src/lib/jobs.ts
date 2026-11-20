@@ -68,7 +68,7 @@ export interface Job {
   assigneeNames: string[];
   equipment: JobItem[];
   checklist: { text: string; done: boolean; doneBy?: string; doneAt?: string }[];
-  links?: { soId?: string; woId?: string; ticketId?: string; projectId?: string; poId?: string };
+  links?: { soId?: string; woId?: string; ticketId?: string; projectId?: string; poId?: string; planTaskId?: string };
   warehouseLocation?: string;
   resultNote?: string;
   rejectReason?: string;

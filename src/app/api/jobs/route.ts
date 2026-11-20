@@ -5,6 +5,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { prepareSequence } from "@/lib/sequence-server";
 import { processStockMovements, type StockMovement } from "@/lib/stock-service";
 import { notifyInTx } from "@/lib/notifications.server";
+import { syncPlanFromJob } from "@/lib/project-plan.server";
 import { auditServer } from "@/services/audit.server";
 import { JOB_TYPES, OPEN_JOB_STATUSES, canDispatchJobs, type Job, type JobItem, type JobStatus } from "@/lib/jobs";
 
@@ -68,7 +69,7 @@ function cleanJobFields(j: any) {
     equipment: cleanEquipment(j?.equipment),
     checklist,
     warehouseLocation: str(j?.warehouseLocation, 60),
-    links: { soId: str(j?.links?.soId, 120), woId: str(j?.links?.woId, 120), ticketId: str(j?.links?.ticketId, 120), projectId: str(j?.links?.projectId, 120), poId: str(j?.links?.poId, 120) },
+    links: { soId: str(j?.links?.soId, 120), woId: str(j?.links?.woId, 120), ticketId: str(j?.links?.ticketId, 120), projectId: str(j?.links?.projectId, 120), poId: str(j?.links?.poId, 120), planTaskId: str(j?.links?.planTaskId, 40) },
   };
 }
 
@@ -305,7 +306,14 @@ export async function POST(request: Request) {
         return "DONE";
       });
       await auditServer.logUpdate(apiUser.uid, companyId, "JOB", jobNo, null, { action, status: result });
-      return NextResponse.json({ success: true, status: result });
+      // ใบสั่งงานที่สร้างจากแผนโครงการ: เริ่มงาน → งานในแผน "กำลังทำ" · ปิดครบทุกใบ → งานในแผน "เสร็จ"
+      let plan = "";
+      if ((action === "start" && result === "IN_PROGRESS") || (action === "complete" && result === "DONE")) {
+        const j = (await ref.get()).data();
+        plan = await syncPlanFromJob(companyId, { ...j, jobNo }, action === "start" ? "start" : "complete", { uid: apiUser.uid, name: str(apiUser.email || apiUser.uid, 120) }).catch((e) => { console.error("[JOB_PLAN_SYNC]", e); return ""; });
+        if (plan) await ref.update({ history: admin.firestore.FieldValue.arrayUnion(hist(apiUser, "อัปเดตแผนงานโครงการ", plan)) });
+      }
+      return NextResponse.json({ success: true, status: result, ...(plan ? { plan } : {}) });
     }
 
     throw new ApiAuthError(400, "คำสั่งไม่ถูกต้อง");

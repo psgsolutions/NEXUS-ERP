@@ -11,7 +11,9 @@ import { useSystemDialog } from "@/context/DialogContext";
 import { useProducts } from "@/hooks/useProducts";
 import { apiFetch } from "@/lib/api-client";
 import { can, canViewCost } from "@/lib/permissions";
-import { LAN_FIXED, LAN_VARIANTS, REF_STATUS_TH, isServiceCategory, parseRefRows, sameUnit, type MatchCandidate, type RefPriceRow, type RefStatus } from "@/lib/ref-prices";
+import { LAN_VARIANTS, REF_STATUS_TH, isServiceCategory, parseRefRows, sameUnit, type MatchCandidate, type RefPriceRow, type RefStatus } from "@/lib/ref-prices";
+import { BOM_SETTING_FIELDS, bomToRecipe, defaultInputs, expandBom, lanBomSpec, normalizeBomSettings, resolveCode, type BomSettings } from "@/lib/bom";
+import { useBom } from "@/hooks/useBom";
 
 const money = (n: number) => Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const TONE: Record<RefStatus, string> = { "": "text-white", WEB: "text-nexus-blue", Y: "text-danger" };
@@ -31,6 +33,7 @@ export default function RefPricesPage() {
   const canEdit = can(roles, "inventory:edit");
   const seeCost = canViewCost(roles) || canEdit;
   const { data: products = [] } = useProducts<any>();
+  const bom = useBom();
   const byId = useMemo(() => new Map(products.map((p: any) => [p.id, p])), [products]);
   const [items, setItems] = useState<any[]>([]);
   const [busy, setBusy] = useState("");
@@ -128,38 +131,44 @@ export default function RefPricesPage() {
 
   // ---------- งานบริการ LAN 3 รูปแบบ ----------
   const codeMap = useMemo(() => new Map(items.map((x) => [x.bomCode, x])), [items]);
+  // งานบริการ LAN 3 รูปแบบ: สูตร BOM แบบมีตัวแปร (ระยะสาย/ท่อกรอกต่อบรรทัดในใบเสนอราคา) — มีแล้ว = อัปเดตสูตร
   const seedLan = async () => {
-    const missing = LAN_FIXED.map(([c]) => c).filter((c) => !codeMap.has(c));
-    if (missing.length) return void showAlert(`ยังไม่มีราคากลางของ: ${missing.join(", ")} — นำเข้าราคากลางก่อน`);
-    const todo = LAN_VARIANTS.filter((v) => !codeMap.has(v.bomCode));
-    if (!todo.length) return void showAlert("มีงานบริการ LAN ครบ 3 รูปแบบแล้ว");
-    if (!(await showConfirm(`สร้างงานบริการ ${todo.map((v) => v.name).join(", ")}?`))) return;
+    const needed = Array.from(new Set(LAN_VARIANTS.flatMap((v) => lanBomSpec(v.key).comps.map((c) => resolveCode(c.code, {}, bom.settings)))));
+    const missing = needed.filter((c) => !codeMap.has(c));
+    if (missing.length) return void showAlert(`ยังไม่มีราคากลางของ: ${missing.join(", ")} — นำเข้าราคากลางก่อน (ขนาดท่อตามตั้งค่า BOM)`);
+    const exists = LAN_VARIANTS.filter((v) => codeMap.has(v.bomCode));
+    if (!(await showConfirm(exists.length ? `สร้าง/อัปเดตสูตร BOM ของงานบริการ LAN 3 รูปแบบ (มีอยู่แล้ว ${exists.length} งาน จะอัปเดตสูตร ราคาขายเดิมไม่เปลี่ยน)?` : "สร้างงานบริการ LAN 3 รูปแบบ พร้อมสูตร BOM แบบมีตัวแปร?"))) return;
     setBusy("seed");
     try {
-      const ports = 24;
-      for (const v of todo) {
-        const materials: any[] = [], labors: any[] = [];
-        for (const row of LAN_FIXED) {
-          const [code, , , , labor] = row;
-          const raw = row[1 + v.col] as number | "PP";
-          const qty = raw === "PP" ? 1 / ports : raw;
-          if (!(qty > 0)) continue;
-          const it = codeMap.get(code)!;
-          if (labor) labors.push({ productId: it.productId, name: it.name, unit: "จุด", qty, rate: it.refCost });
-          else materials.push({ productId: it.productId, sku: it.sku, name: it.name, unit: it.unit, qty: Math.round(qty * 1e6) / 1e6 });
-        }
-        const res = await apiFetch("/api/master-data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-          companyId, action: "create", entity: "products", autoSku: true,
-          data: { name: v.name, productName: v.name, description: v.desc, details: v.desc, category: "งานบริการ", unit: "จุด", baseUnit: "จุด", itemType: "SERVICE", productType: "SERVICE", type: "SERVICE",
-            lifecycleStatus: "ACTIVE", isActive: true, taxType: "VAT_7", vatType: "VAT_7", whtRate: 3, bomCode: v.bomCode,
-            serviceRecipe: { unit: "จุด", laborCost: 0, labors, materials } },
-        }) });
-        const d = await res.json().catch(() => ({}));
-        if (!res.ok || !d.success) throw new Error(`สร้าง ${v.name} ไม่สำเร็จ: ${d.error || ""}`);
+      for (const v of LAN_VARIANTS) {
+        const spec = lanBomSpec(v.key);
+        const inputs = defaultInputs(spec, bom.settings);
+        const res = expandBom(spec, inputs, bom.settings, bom.resolve);
+        const recipe = { ...bomToRecipe(spec, res.items, "จุด"), bomInputs: inputs };
+        const cur = codeMap.get(v.bomCode);
+        const body = cur
+          ? { companyId, action: "update", entity: "products", id: cur.productId, scope: "company", changes: { serviceRecipe: recipe } }
+          : { companyId, action: "create", entity: "products", autoSku: true, data: {
+              name: v.name, productName: v.name, description: v.desc, details: v.desc, category: "งานบริการ", unit: "จุด", baseUnit: "จุด", itemType: "SERVICE", productType: "SERVICE", type: "SERVICE",
+              lifecycleStatus: "ACTIVE", isActive: true, taxType: "VAT_7", vatType: "VAT_7", whtRate: 3, bomCode: v.bomCode, serviceRecipe: recipe,
+            } };
+        const r = await apiFetch("/api/master-data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || d.success === false) throw new Error(`${v.name}: ${d.error || "บันทึกไม่สำเร็จ"}`);
       }
-      showAlert("สร้างงานบริการ LAN แล้ว — ส่วนตามระยะสาย/ท่อ (สาย UTP ท่อ Flex/EMT และข้อต่อ) จะเพิ่มในเฟส 2 สูตรแบบมีตัวแปร", "สร้างแล้ว", "info");
+      showAlert("งานบริการ LAN 3 รูปแบบพร้อมสูตร BOM แล้ว — เปิดงานแต่ละตัวเพื่อกรอกระยะที่ใช้บ่อยและบันทึกราคาขายตาม markup", "เรียบร้อย", "info");
       await load();
     } catch (e: any) { showAlert(e.message, "สร้างไม่สำเร็จ", "error"); } finally { setBusy(""); }
+  };
+
+  // ---------- ตั้งค่า BOM ----------
+  const [bset, setBset] = useState<BomSettings | null>(null);
+  const editSet = bset || bom.settings;
+  const saveSettings = async () => {
+    if (!bset) return;
+    setBusy("settings");
+    try { const d = await post({ action: "saveSettings", settings: bset }); bom.setLocal(normalizeBomSettings(d.settings)); setBset(null); showAlert("บันทึกตั้งค่า BOM แล้ว", "บันทึกแล้ว", "info"); }
+    catch (e: any) { showAlert(e.message, "บันทึกไม่สำเร็จ", "error"); } finally { setBusy(""); }
   };
 
   const setRef = async (productId: string, patch: any) => {
@@ -184,7 +193,7 @@ export default function RefPricesPage() {
         </div>
         <span className="flex-1" />
         {canEdit && <>
-          <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={seedLan} disabled={!!busy} data-seed-lan>{busy === "seed" ? <Loader2 size={13} className="animate-spin" /> : <Wrench size={13} />} สร้างงานบริการ LAN 3 รูปแบบ</PillButton>
+          <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={seedLan} disabled={!!busy} data-seed-lan>{busy === "seed" ? <Loader2 size={13} className="animate-spin" /> : <Wrench size={13} />} สร้าง/อัปเดตงานบริการ LAN 3 รูปแบบ</PillButton>
           <PillButton variant="confirm" className="h-9 px-4 text-xs font-bold" onClick={() => fileRef.current?.click()} disabled={!!busy} data-import-ref>{busy === "read" ? <Loader2 size={13} className="animate-spin" /> : <FileSpreadsheet size={13} />} นำเข้าจาก Excel</PillButton>
           <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => pick(e.target.files?.[0])} data-ref-file />
         </>}
@@ -254,6 +263,35 @@ export default function RefPricesPage() {
           </div>
         </GlassCard>
       )}
+
+      <GlassCard className="p-4 space-y-3">
+        <details data-bom-settings>
+          <summary className="cursor-pointer text-[14px] font-bold text-white">ตั้งค่า BOM <span className="text-[12px] font-normal text-white/50">· markup {Math.round(editSet.markup * 100)}% · เผื่อสาย {Math.round(editSet.cableWaste * 100)}% · ท่อ Flex {editSet.flexSize} · EMT {editSet.emtSize} · Patch Panel {editSet.patchPorts} พอร์ต</span></summary>
+          <div className="mt-3 space-y-3">
+            {Array.from(new Set(BOM_SETTING_FIELDS.map((f) => f.group))).map((g) => (
+              <div key={g} className="space-y-1">
+                <p className="text-[12px] font-bold text-white/70">{g}</p>
+                <div className="flex flex-wrap gap-3">
+                  {BOM_SETTING_FIELDS.filter((f) => f.group === g).map((f) => (
+                    <label key={f.key} className="space-y-1 block w-[180px]">
+                      <span className="text-[11px] text-white/55">{f.label}</span>
+                      {f.options ? (
+                        <PillSelect value={String(editSet[f.key])} disabled={!canEdit} onChange={(e) => setBset({ ...editSet, [f.key]: e.target.value })} className="h-9 w-full text-sm">
+                          {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                        </PillSelect>
+                      ) : (
+                        <NumCell kind="pct" disabled={!canEdit} value={f.pct ? Math.round(Number(editSet[f.key]) * 10000) / 100 : Number(editSet[f.key])}
+                          onChange={(v) => setBset({ ...editSet, [f.key]: f.pct ? v / 100 : v })} suffix={f.unit} />
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {canEdit && <PillButton variant="confirm" className="h-9 px-5 text-xs font-bold" disabled={!bset || busy === "settings"} onClick={saveSettings} data-save-bom-settings><Save size={13} /> บันทึกตั้งค่า BOM</PillButton>}
+          </div>
+        </details>
+      </GlassCard>
 
       <GlassCard className="p-4 space-y-3">
         <div className="flex flex-wrap items-center gap-2">

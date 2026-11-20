@@ -6,6 +6,8 @@
  * - บรรทัดเอกสารเก็บสำเนาสูตร (recipe) ไว้ — ใช้ตัดวัสดุตอนส่งของ/เบิกงาน และแจ้งเตือนเมื่อราคาวัสดุเปลี่ยน
  * เก็บที่สินค้า: serviceRecipe (ข้อมูลของบริษัท)
  */
+import { normalizeBomSpec, type BomInputs, type BomSpec } from "./bom";
+
 /** cost = ต้นทุนเฉลี่ยของวัสดุ ณ ตอนเลือกลงเอกสาร (เฉพาะสำเนาสูตรในบรรทัดเอกสาร) */
 /**
  * qty = จำนวนในหน่วยหลักของสินค้า (ใช้คิดต้นทุนและตัดสต็อก) · unit = หน่วยหลัก
@@ -16,7 +18,8 @@ export interface RecipeMaterial { productId: string; sku?: string; name: string;
 /** ค่าแรงแต่ละรายการ: ผูกช่าง/อัตราค่าแรงที่สร้างไว้ (productId = รายการ "[ค่าแรง] ..." ของช่าง) หรือพิมพ์ใหม่โดยยังไม่ผูกช่าง */
 export interface RecipeLabor { productId?: string; contractorId?: string; contractorName?: string; name: string; unit?: string; qty: number; rate: number }
 /** laborCost = ค่าแรงรวมต่อ 1 หน่วยงาน (ถ้ามี labors คิดจาก Σ จำนวน × อัตรา) */
-export interface ServiceRecipe { unit?: string; laborCost: number; labors?: RecipeLabor[]; materials: RecipeMaterial[] }
+/** bom = สูตรแบบมีตัวแปร (lib/bom.ts) — materials/labors เป็นผลแตกตามค่าที่กรอกล่าสุด */
+export interface ServiceRecipe { unit?: string; laborCost: number; labors?: RecipeLabor[]; materials: RecipeMaterial[]; bom?: BomSpec; bomInputs?: BomInputs }
 /** กำไรมาตรฐานของงานบริการ (% ของราคาขาย) */
 export const SERVICE_MARGIN = 20;
 
@@ -62,12 +65,16 @@ export function normalizeRecipe(raw: any): ServiceRecipe | null {
     .map((l: any) => ({
       ...(s(l?.productId, 120) && !s(l?.productId).includes("/") ? { productId: s(l.productId, 120) } : {}),
       ...(s(l?.contractorId, 120) ? { contractorId: s(l.contractorId, 120), contractorName: s(l?.contractorName) } : {}),
-      name: s(l?.name, 300), unit: s(l?.unit, 30), qty: Math.max(0, r2(n(l?.qty))), rate: Math.max(0, r2(n(l?.rate))),
+      name: s(l?.name, 300), unit: s(l?.unit, 30), qty: Math.max(0, r6(n(l?.qty))), rate: Math.max(0, r2(n(l?.rate))),
     }))
     .filter((l: RecipeLabor) => l.name && l.qty > 0);
   const laborCost = labors.length ? r2(labors.reduce((t, l) => t + l.qty * l.rate, 0)) : Math.max(0, r2(n(raw.laborCost)));
-  if (!materials.length && !laborCost && !labors.length) return null;
-  return { unit: s(raw.unit, 30) || undefined, laborCost, ...(labors.length ? { labors } : {}), materials };
+  const bom = normalizeBomSpec(raw.bom);
+  if (!materials.length && !laborCost && !labors.length && !bom) return null;
+  const bomInputs = bom && raw.bomInputs && typeof raw.bomInputs === "object"
+    ? Object.fromEntries(Object.entries(raw.bomInputs).filter(([k, v]) => /^\w{1,30}$/.test(k) && (typeof v === "number" ? Number.isFinite(v) : typeof v === "string" && v.length <= 20)).slice(0, 20)) as BomInputs
+    : undefined;
+  return { unit: s(raw.unit, 30) || undefined, laborCost, ...(labors.length ? { labors } : {}), materials, ...(bom ? { bom } : {}), ...(bomInputs ? { bomInputs } : {}) };
 }
 
 /** ต้นทุนวัสดุต่อหน่วยงาน + ค่าแรง (costOf = ต้นทุนเฉลี่ยของวัสดุ) */

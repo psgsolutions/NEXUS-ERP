@@ -71,16 +71,10 @@ export function bomUnitCost(p: any): { cost: number; basis: "ref" | "wac" | "non
 }
 
 // ---------------------------------------------------------------------------
-// งานบริการ LAN 3 รูปแบบ (เฟส 1: ส่วนคงที่ต่อจุด — ส่วนตามระยะสาย/ท่อ เพิ่มในเฟส 2)
-// จาก build_template.py ชีต "สูตรต่อจุด"
+// งานบริการ LAN 3 รูปแบบ — สูตร BOM อยู่ที่ lib/bom.ts (lanBomSpec)
 // ---------------------------------------------------------------------------
 export const LAN_VARIANTS = [
   { key: "PB", bomCode: "SVC-LAN-PB", name: "เดินสาย LAN CAT6 แบบ Patch + Box", desc: "ต้นทางเข้า Patch Panel ปลายทางติดตั้งกล่อง + Modular Jack + Face Plate", col: 0 },
   { key: "PLUG2", bomCode: "SVC-LAN-2PLUG", name: "เดินสาย LAN CAT6 แบบเข้าหัวตัวผู้ 2 ฝั่ง", desc: "เข้าหัว RJ45 ตัวผู้ทั้ง 2 ปลาย", col: 1 },
   { key: "PPLUG", bomCode: "SVC-LAN-PPLUG", name: "เดินสาย LAN CAT6 แบบ Patch + ตัวผู้", desc: "ต้นทางเข้า Patch Panel ปลายทางเข้าหัว RJ45 ตัวผู้", col: 2 },
 ] as const;
-/** ส่วนคงที่ต่อ 1 จุด [รหัสราคากลาง, Patch+Box, ตัวผู้ 2 ฝั่ง, Patch+ตัวผู้, ค่าแรง?] — PP = 1/พอร์ตต่อ Patch Panel */
-export const LAN_FIXED: [code: string, pb: number | "PP", plug2: number | "PP", pplug: number | "PP", labor?: true][] = [
-  ["RJ45-PLUG", 0, 2, 1], ["RJ45-BOOT", 0, 2, 1], ["JACK-CAT6", 1, 0, 0], ["BOX-2x4", 1, 0, 0], ["FP-1P", 1, 0, 0], ["PC-2M", 1, 0, 0],
-  ["PP-24", "PP", 0, "PP"], ["PC-1M", 1, 0, 1], ["CONSUM", 1, 1, 1], ["LABEL", 2, 2, 2], ["LAB-UTP", 1, 1, 1, true], ["TEST", 1, 1, 1, true],
-];

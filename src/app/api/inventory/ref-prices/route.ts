@@ -6,6 +6,7 @@ import { can, canViewCost } from "@/lib/permissions";
 import { groupIdOfCompany } from "@/lib/company-group.server";
 import { auditServer } from "@/services/audit.server";
 import { matchCandidates, refCostPerBase, sameUnit, type RefPriceRow, type RefStatus } from "@/lib/ref-prices";
+import { normalizeBomSettings } from "@/lib/bom";
 
 /**
  * ราคากลาง (BOM) — POST /api/inventory/ref-prices { companyId, action, ... }
@@ -13,6 +14,7 @@ import { matchCandidates, refCostPerBase, sameUnit, type RefPriceRow, type RefSt
  *  match { rows }                        เสนอสินค้าเดิมที่น่าจะตรงกับแต่ละรายการ (ให้คนตรวจก่อนบันทึก)
  *  apply { items: [{ row, productId, per }] }   ผูกรหัส + บันทึกราคากลางที่สินค้า (per = หน่วยในราคากลางต่อ 1 หน่วยหลัก)
  *  setRef { productId, refCost?, status?, source? }  แก้ราคากลางรายตัว
+ *  settings / saveSettings { settings }  ตั้งค่า BOM ของบริษัท (ชีต "ตั้งค่า": เผื่อสาย ท่อต่อเส้น ระยะแคลมป์ markup ฯลฯ) ที่ companies/{id}/settings/bom
  * เขียนเฉพาะข้อมูลของบริษัท (companies/{id}/products) · ต้องมีสิทธิ์ inventory:edit
  */
 const str = (v: any, max = 300) => String(v ?? "").trim().slice(0, max);
@@ -36,6 +38,18 @@ export async function POST(request: Request) {
     const action = str(body.action, 20);
     const edit = () => { if (!can(user.roles, "inventory:edit")) throw new ApiAuthError(403, "ต้องมีสิทธิ์แก้ไขคลังสินค้า"); };
     const col = adminDb.collection(`companies/${companyId}/products`);
+
+    if (action === "settings") {
+      const snap = await adminDb.doc(`companies/${companyId}/settings/bom`).get();
+      return NextResponse.json({ success: true, settings: normalizeBomSettings(snap.data() || {}), updatedAt: snap.get("updatedAt") || "", updatedBy: snap.get("updatedBy") || "" });
+    }
+    if (action === "saveSettings") {
+      if (!can(user.roles, "settings:manage") && !can(user.roles, "inventory:edit")) throw new ApiAuthError(403, "ต้องมีสิทธิ์ตั้งค่าระบบหรือแก้ไขคลังสินค้า");
+      const settings = normalizeBomSettings(body.settings);
+      await adminDb.doc(`companies/${companyId}/settings/bom`).set({ ...settings, updatedAt: new Date().toISOString(), updatedBy: user.email || user.uid });
+      await auditServer.logUpdate(user.uid, companyId, "BOM_SETTINGS", "bom", {}, settings);
+      return NextResponse.json({ success: true, settings });
+    }
 
     if (action === "list") {
       const items = (await companyProducts(companyId)).filter((p) => str(p.bomCode, 40)).map((p) => ({

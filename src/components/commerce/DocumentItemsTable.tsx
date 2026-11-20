@@ -7,6 +7,7 @@ import { formatCurrency, calculateLineGP } from "@/lib/erp-logic";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { useProducts } from "@/hooks/useProducts";
 import { normalizeRecipe, recipeCost, recipeDetails } from "@/lib/service-recipe";
+import { bomUnitCost } from "@/lib/ref-prices";
 import { PriceBasePanel } from "@/components/commerce/PriceBasePanel";
 import { useAuth } from "@/context/AuthContext";
 import { CatalogMatches } from "@/components/commerce/CatalogMatches";
@@ -735,11 +736,14 @@ export function DocumentItemsTable({
     const map = new Map<string, any>();
     // งานบริการที่มีสูตร: ต้นทุน = วัสดุ (ต้นทุนเฉลี่ยล่าสุด) + ค่าแรง · เก็บสำเนาสูตรพร้อมทุนวัสดุ ณ ตอนเลือก
     const costById = new Map<string, number>(companyProducts.map((p: any) => [p.id, Number(p.cost ?? p.costPrice ?? p.costWAC ?? p.pricing?.costWAC ?? 0) || 0]));
+    const productById = new Map<string, any>(companyProducts.map((p: any) => [p.id, p]));
     const recipeOf = (p: any) => {
       const r = String(p.itemType || "").toUpperCase() === "SERVICE" ? normalizeRecipe(p.serviceRecipe) : null;
       if (!r) return null;
-      const c = recipeCost(r, (id) => costById.get(id) || 0);
-      return { recipe: { ...r, materials: r.materials.map((m) => ({ ...m, cost: costById.get(m.productId) || 0 })) }, cost: c.total, details: recipeDetails(r) };
+      // วัสดุในสูตรงานบริการ (BOM): ราคากลางก่อน ไม่มี → ต้นทุนเฉลี่ยจริง
+      const matCost = (id: string) => { const p = productById.get(id); return p ? bomUnitCost(p).cost : costById.get(id) || 0; };
+      const c = recipeCost(r, matCost);
+      return { recipe: { ...r, materials: r.materials.map((m) => ({ ...m, cost: matCost(m.productId) })) }, cost: c.total, details: recipeDetails(r) };
     };
     companyProducts.forEach((p) => {
       if (p && p.id && !map.has(p.id)) {

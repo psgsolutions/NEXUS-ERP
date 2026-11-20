@@ -652,6 +652,9 @@ export default function InventoryPage() {
               </PillButton>
             ) : (
               <>
+                <PillButton variant="glass" className="gap-1.5" onClick={() => router.push("/inventory/ref-prices")} title="ราคาอ้างอิงที่ใช้คิดต้นทุนงานบริการแบบ BOM" data-ref-prices-btn>
+                  ราคากลาง
+                </PillButton>
                 <PillButton variant="glass" className="gap-1.5" onClick={() => router.push("/inventory/services/new")} title="งานบริการ/งานติดตั้ง: ค่าแรง + วัสดุ → ต้นทุน กำไร ราคา" data-new-service-btn>
                   <Plus size={14} /> งานบริการ/ติดตั้ง
                 </PillButton>

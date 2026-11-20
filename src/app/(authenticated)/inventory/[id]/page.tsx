@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import React, { useState, useEffect, useMemo } from "react";
 import {
@@ -599,6 +600,17 @@ export default function ProductDetailPage() {
                     ฿{form.costWAC.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </div>
                 </FormField>
+                {/* ราคากลาง (BOM) — ใช้คิดต้นทุนงานบริการแบบ BOM ก่อนต้นทุนเฉลี่ย · แก้ที่ คลัง › ราคากลาง */}
+                {Number((product as any)?.refCost) > 0 && (() => { const rp = product as any; return (
+                  <FormField label={`ราคากลาง BOM (${rp.bomCode || "-"})`}>
+                    <Link href="/inventory/ref-prices" className={cn("block px-4 py-3 rounded-2xl bg-white/15 border border-white/5 font-mono font-bold hover:border-nexus-teal/40",
+                      rp.refCostStatus === "Y" ? "text-danger" : rp.refCostStatus === "WEB" ? "text-nexus-blue" : "text-white")}
+                      title={String(rp.refCostSource || "")} data-product-refcost>
+                      ฿{Number(rp.refCost).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      <span className="ml-2 text-[11px] font-normal text-white/50">{rp.refCostStatus === "Y" ? "ประมาณการ ต้องยืนยัน" : rp.refCostStatus === "WEB" ? "ราคาเว็บ" : "ไฟล์บริษัท"}{Number(rp.refCostPer) > 1 ? ` · 1 ${rp.unit} = ${rp.refCostPer} ${rp.refCostUnit}` : ""}</span>
+                    </Link>
+                  </FormField>
+                ); })()}
               </div>
 
               {/* Margin Indicator */}

@@ -34,6 +34,7 @@ export const PAGE_LABELS: [prefix: string, label: string][] = [
   ["/account", "บัญชีของฉัน"],
   ["/my-tasks", "งานตามแผน"],
   ["/inventory/services/new", "สร้างงานบริการ/งานติดตั้ง"],
+  ["/inventory/ref-prices", "ราคากลาง (BOM)"],
   ["/documents/accounting", "ส่งเอกสารให้สำนักบัญชี"],
   ["/finance/expense-claims/photos", "ถ่ายบิลเบิกเงิน"],
   ["/documents", "ประวัติเอกสาร"],

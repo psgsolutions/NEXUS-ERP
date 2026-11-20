@@ -12,12 +12,14 @@ import { useContractors } from "@/hooks/useCustomers";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { apiFetch } from "@/lib/api-client";
 import { createLaborRate } from "@/lib/labor-rate-client";
+import { bomUnitCost } from "@/lib/ref-prices";
 import { addKitMaterials, isLaborItem, matQty, matUnit, setMatQty, setMatUnit, recipeCost, recipeDetails, recipeMargin, suggestServicePrice, SERVICE_MARGIN, type RecipeLabor, type RecipeMaterial, type ServiceRecipe } from "@/lib/service-recipe";
 import { FieldHistory } from "@/components/ui/FieldHistory";
 
 export const SERVICE_UNITS = ["จุด", "งาน", "ระบบ", "ชุด", "ตัว", "เครื่อง", "เมตร", "ครั้ง"];
 const money = (n: number) => Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-export const costOfProduct = (p: any) => Number(p?.pricing?.costWAC ?? p?.costPrice ?? p?.cost ?? 0) || 0;
+/** ต้นทุนวัสดุในสูตร (BOM): ราคากลางก่อน ไม่มี → ต้นทุนเฉลี่ยจริง (ตัดสินใจ 2026-11-20) */
+export const costOfProduct = (p: any) => bomUnitCost(p).cost;
 const laborRateOf = (p: any) => Number(p?.costPrice ?? p?.pricing?.costWAC ?? p?.cost ?? 0) || 0;
 const num = (v: string) => Number(v.replace(/[^\d.]/g, "")) || 0;
 

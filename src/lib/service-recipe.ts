@@ -51,7 +51,8 @@ export function normalizeRecipe(raw: any): ServiceRecipe | null {
       const useQty = sub ? Math.max(0, r4(m?.useQty !== undefined && m?.useQty !== null ? n(m.useQty) : n(m?.qty) * perBase)) : 0;
       return {
         productId: s(m?.productId, 120), sku: s(m?.sku, 120), name: s(m?.name, 300), unit,
-        qty: sub ? r6(useQty / perBase) : Math.max(0, r4(n(m?.qty))),
+        // ทศนิยม 6 ตำแหน่ง: สัดส่วนเช่น Patch Panel 1/24 ต่อจุด ต้องคิดต้นทุนตรงกับ Excel
+        qty: sub ? r6(useQty / perBase) : Math.max(0, r6(n(m?.qty))),
         ...(sub ? { useUnit, perBase, useQty } : {}),
         ...(m?.cost !== undefined && m?.cost !== null ? { cost: Math.max(0, r2(n(m.cost))) } : {}),
       };

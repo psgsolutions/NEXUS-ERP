@@ -230,6 +230,10 @@ export function PillSelect({ className, children, value, onChange, placeholder =
     <div className="relative" ref={containerRef}>
       <div
         ref={triggerRef}
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-label={(props as any)["aria-label"]}
+        aria-disabled={props.disabled || undefined}
         tabIndex={props.disabled ? -1 : 0}
         onKeyDown={handleKeyDown}
         onClick={() => setIsOpen(!isOpen)}
@@ -261,6 +265,8 @@ export function PillSelect({ className, children, value, onChange, placeholder =
           {options.map((opt: any, idx: number) => (
             <div
               key={idx}
+              role="option"
+              aria-selected={String(opt.value) === String(value ?? "")}
               ref={(el) => { optionRefs.current[idx] = el; }}
               onClick={() => handleSelectOption(opt.value)}
               className={cn(
@@ -846,7 +852,9 @@ export function NexusTableRow({ children, onClick, className, title, pin }: { ch
   // แถวที่ไม่มีปลายทางให้กด: กดแล้วเปิดรายละเอียดทุกคอลัมน์ (ยกเว้นกดปุ่ม/ช่องกรอก/ลิงก์ในแถว หรือกำลังเลือกข้อความ)
   const nt = React.useContext(NtCtx);
   const openDetail = !onClick && nt ? (e: React.MouseEvent<HTMLTableRowElement>) => {
-    if ((e.target as HTMLElement).closest("button,a,input,select,textarea,label,[role=button],[role=checkbox],[data-no-detail]")) return;
+    // คลิกในชั้นลอย (dropdown/เมนูที่ portal ไป body) ส่งผ่าน React มาถึงแถว แต่ไม่ได้อยู่ในแถวจริง → ไม่เปิดรายละเอียด
+    if (!e.currentTarget.contains(e.target as Node)) return;
+    if ((e.target as HTMLElement).closest("button,a,input,select,textarea,label,[role=button],[role=checkbox],[role=combobox],[role=option],[data-no-detail]")) return;
     if (window.getSelection()?.toString()) return;
     nt.open(e.currentTarget);
   } : undefined;

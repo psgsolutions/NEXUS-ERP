@@ -31,7 +31,7 @@ const Field = ({ label, tip, children, className }: { label: string; tip?: strin
 export function ContractPanel({ companyId, docId, project, canEdit }: { companyId: string; docId: string; project: any; canEdit: boolean }) {
   const sla = project?.planProfile ? docSla(normalizeProfile(project.planProfile, project.sectorType === "Private" ? "Private" : "Government")) : null;
   const defaultValue = Number(project?.governmentDetails?.budgetAmount) || Number(project?.budgetSummary?.grandTotalWithVat) || 0;
-  const fallback = useMemo(() => ({ sector: project?.sectorType, value: defaultValue, warrantyMonths: project?.warrantyMonths }), [project?.sectorType, defaultValue, project?.warrantyMonths]);
+  const fallback = useMemo(() => ({ sector: project?.sectorType, value: defaultValue, warrantyMonths: project?.warrantyMonths, penaltyRatePct: Number(project?.planProfile?.penaltyRatePct) || 0 }), [project?.sectorType, defaultValue, project?.warrantyMonths, project?.planProfile?.penaltyRatePct]);
   const [c, setC] = useState<ProjectContract>(() => normalizeContract(project?.contract, fallback));
   const [msg, setMsg] = useState<{ text: string; error?: boolean } | null>(null);
   const [saving, setSaving] = useState(false);

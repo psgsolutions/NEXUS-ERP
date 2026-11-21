@@ -100,7 +100,8 @@ export function penaltyAccrued(c: ProjectContract, asOf: string): { daysLate: nu
 }
 
 /** ทำความสะอาดข้อมูลจากหน้าจอ (ใช้ที่ server) */
-export function normalizeContract(raw: any, fallback: { sector?: string; value?: number; warrantyMonths?: number } = {}): ProjectContract {
+/** fallback.penaltyRatePct = ค่าปรับจากแผนงานโครงการ (ใช้เมื่อสัญญายังไม่ได้กรอกเอง) */
+export function normalizeContract(raw: any, fallback: { sector?: string; value?: number; warrantyMonths?: number; penaltyRatePct?: number } = {}): ProjectContract {
   const r = raw && typeof raw === "object" ? raw : {};
   const contractValue = r2(num(r.contractValue ?? fallback.value));
   const methods = Object.keys(METHOD_LABELS) as ProcurementMethod[];
@@ -112,6 +113,7 @@ export function normalizeContract(raw: any, fallback: { sector?: string; value?:
   for (const k of ["contractNo", "orderNo"] as const) if (str(r[k])) c[k] = str(r[k]);
   for (const k of ["signDate", "startDate", "dueDate", "handoverDate"] as const) if (date(r[k])) c[k] = date(r[k]);
   if (r.penaltyRatePct !== undefined && r.penaltyRatePct !== "") c.penaltyRatePct = num(r.penaltyRatePct, 0, 10);
+  else if (num(fallback.penaltyRatePct) > 0) c.penaltyRatePct = num(fallback.penaltyRatePct, 0, 10);
   if (r.penaltyMinPerDay !== undefined && r.penaltyMinPerDay !== "") c.penaltyMinPerDay = r2(num(r.penaltyMinPerDay, 0, 1e7));
   const wm = r.warrantyMonths ?? fallback.warrantyMonths;
   if (wm !== undefined && wm !== "") c.warrantyMonths = Math.round(num(wm, 0, 120));

@@ -62,8 +62,10 @@ import {
 } from "@/lib/project-templates";
 import { mergeSpecLibrary, specClausesFor, suggestSpec, type SpecChoice } from "@/lib/spec-library";
 import { FieldHistory } from "@/components/ui/FieldHistory";
+import { useProducts } from "@/hooks/useProducts";
+import { hasDatasheet, productSpecText } from "@/lib/spec-items";
 import { ProjectPlanSection } from "@/components/projects/ProjectPlanSection";
-import { billingTimeline, checkPlan, docSla, EMPTY_TEMPLATE, generatePlan, installmentsFromTimeline, methodCode, normalizeOverrides, normalizeProfile, normalizeTemplate, timelineFromInstallments, type PlanContext, type PlanOverrides, type PlanProfile, type TemplateConfig } from "@/lib/project-plan";
+import { billingTimeline, checkPlan, docPlan, docSla, EMPTY_TEMPLATE, generatePlan, installmentsFromTimeline, methodCode, normalizeOverrides, normalizeProfile, normalizeTemplate, timelineFromInstallments, type PlanContext, type PlanOverrides, type PlanProfile, type TemplateConfig } from "@/lib/project-plan";
 
 const STEPS = [
   { title: "ข้อมูลโครงการ" },
@@ -199,6 +201,9 @@ export default function NewProjectPage() {
     [documentItems, projectLabors]
   );
   const inferredType = useMemo(() => inferProjectType(lines, manualTypeCode), [lines, manualTypeCode]);
+  // สินค้าของบริษัท (ข้อมูลกลาง + ของบริษัท): คุณลักษณะเฉพาะ และมี datasheet หรือยัง
+  const { data: allProducts = [] } = useProducts<any>();
+  const productById = useMemo(() => new Map(allProducts.map((p: any) => [p.id, p])), [allProducts]);
   const projectTypeCode: ProjectTypeCode | null = typeAuto ? inferredType ?? manualTypeCode : manualTypeCode;
 
   const isGov = sectorType === "Government";
@@ -246,12 +251,14 @@ export default function NewProjectPage() {
   }), [sectorType, stage, isGov, govMethod, startDate, durationDays, warrantyMonths, planInstallable]);
   const planInputs = useMemo(() => {
     const names = [...lines.map((l) => l.name), ...expenses.map((e) => e.name)].join(" ");
+    const missingDatasheets = Array.from(new Set(lines.filter((l) => l.kind === "PRODUCT" && l.name && !(l.productId && hasDatasheet(productById.get(l.productId)))).map((l) => l.name))).slice(0, 50);
     return {
+      missingDatasheets,
       boqPoints: lines.filter((l) => l.kind !== "GROUP" && String(l.unit || "").trim() === "จุด").reduce((s, l) => s + (Number(l.qty) || 0), 0),
       hasPmCost: /PM|บำรุงรักษา|ซ่อมบำรุง/i.test(names),
       hasAdminCost: /admin|แอดมิน|ประจำหน้างาน|ผู้ดูแลระบบ/i.test(names),
     };
-  }, [lines, expenses]);
+  }, [lines, expenses, productById]);
   const planFull = useMemo(() => ({ ...planProfile, installments: planInstallments }), [planProfile, planInstallments]);
   const planStops = useMemo(() => {
     if (!planInstallable) return [];
@@ -277,6 +284,7 @@ export default function NewProjectPage() {
     budgetSource: govBudgetSource, fiscalYear, warrantyMonths, lines, timeline, productSpecs, specClauses,
     maintenance: maintSource ? { level: maintLevel, rounds: maintRounds, sourceName: maintSource.name } : null,
     sla: planInstallable ? docSla(planProfile) : null,
+    plan: planInstallable ? docPlan(planProfile) : null,
   }), [projectName, customerName, sectorType, projectTypeCode, stage, startDate, endDate, durationDays, budgetAmount, govReferencePrice, govBudgetSource, fiscalYear, warrantyMonths, lines, timeline, productSpecs, specClauses, maintSource, maintLevel, maintRounds, planInstallable, planProfile]);
   const lockedKeys = useMemo(() => new Set(docDefs.filter((d) => d.locked).map((d) => d.key)), [docDefs]);
   const docSections = useMemo(() => {
@@ -285,16 +293,12 @@ export default function NewProjectPage() {
     return out;
   }, [autoDoc, docEdited, lockedKeys]);
 
-  // สเปกจากทะเบียนสินค้า ใช้สร้างคุณลักษณะเฉพาะเมื่อรายการไม่มีรายละเอียด
-  const productIdsKey = Array.from(new Set(documentItems.map((i: any) => i.productId).filter(Boolean))).sort().join("|");
+  // สเปกจากทะเบียนสินค้า (คุณลักษณะเป็นข้อ ๆ จาก datasheet/AI ก่อน) ใช้สร้างคุณลักษณะเฉพาะเมื่อรายการไม่มีรายละเอียด
   useEffect(() => {
-    if (!currentCompanyId || !productIdsKey) return;
-    const missing = productIdsKey.split("|").filter((id) => !(id in productSpecs));
-    if (!missing.length) return;
-    Promise.all(missing.map((id) => getDoc(doc(db, `companies/${currentCompanyId}/products`, id)).then((s) => [id, String(s.data()?.technicalSpecs || "")] as const).catch(() => [id, ""] as const)))
-      .then((pairs) => setProductSpecs((prev) => ({ ...prev, ...Object.fromEntries(pairs) })));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentCompanyId, productIdsKey]);
+    const ids = Array.from(new Set(documentItems.map((i: any) => i.productId).filter(Boolean))) as string[];
+    const next = Object.fromEntries(ids.map((id) => [id, productSpecText(productById.get(id))]));
+    setProductSpecs((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
+  }, [documentItems, productById]);
 
   // ---------- แก้ไขฉบับร่าง / โครงการที่ถูกตีกลับ (?edit=<id เอกสารโครงการ>) ----------
   const editDocId = searchParams?.get("edit") || "";
@@ -1161,6 +1165,7 @@ export default function NewProjectPage() {
       ctx={planCtx} inputs={planInputs} contractValue={contractValue}
       installments={planInstallments} onInstallments={(next) => setPlanProfile((p) => ({ ...p, installments: next }))}
       template={planTemplate}
+      projectDocId={editDocId}
     />
   ) : (
     <GlassCard className="p-5 space-y-3">

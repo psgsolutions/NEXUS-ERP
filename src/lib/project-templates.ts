@@ -12,7 +12,7 @@
 import type { ProjectTypeCode } from "@/types/database";
 import type { ProjectLine } from "./project-budget";
 import { arabicToThaiBaht } from "./erp-logic";
-import { slaClauses, type DocSla } from "./project-plan";
+import { slaClauses, type DocPlan, type DocSla } from "./project-plan";
 
 export type Sector = "Government" | "Private";
 
@@ -355,6 +355,8 @@ export interface DocContext {
   maintenance?: { level: MaintenanceLevel; rounds: number; sourceName: string } | null;
   /** ระดับการให้บริการ (SLA) จากแผนงาน — เช่า หรือเลือกใส่ในเอกสาร */
   sla?: DocSla | null;
+  /** ข้อมูลจากแผนงาน (ระบบ พื้นที่ อบรม Admin PM ค่าปรับ) */
+  plan?: DocPlan | null;
 }
 
 const OBJECTIVES: Record<ProjectTypeCode, string[]> = {
@@ -428,7 +430,7 @@ export function generateSection(key: DocSectionKey, c: DocContext): string {
       }
       return [
         `ผู้รับจ้างต้องดำเนินการ${name} ให้แล้วเสร็จครบถ้วนใช้งานได้ดี ประกอบด้วย`,
-        sub(c.timeline.length ? c.timeline.map((p) => p.name) : ["จัดหาและส่งมอบตามคุณลักษณะเฉพาะ"]),
+        sub([...(c.timeline.length ? c.timeline.map((p) => p.name) : ["จัดหาและส่งมอบตามคุณลักษณะเฉพาะ"]), ...planScope(c)]),
         `รายละเอียดอุปกรณ์และงานบริการเป็นไปตามข้อ ${sectionNumber(c.sector, "specs")} คุณลักษณะเฉพาะ`,
       ].join("\n");
     case "specs": {
@@ -437,6 +439,7 @@ export function generateSection(key: DocSectionKey, c: DocContext): string {
       for (const l of real) {
         if (l.kind === "GROUP") { out.push(`${out.length ? "\n" : ""}${l.name}`); continue; }
         i += 1;
+        // รายละเอียดของรายการ > คุณลักษณะเฉพาะของสินค้า (ข้อ ๆ จาก datasheet/AI หรือสเปกที่กรอก)
         const own = String(l.details || (l.productId && c.productSpecs?.[l.productId]) || "").split(/\r?\n/);
         // รายละเอียดของรายการแปลงเป็นภาษาข้อกำหนด; ข้อความจากคลังสเปกเป็นประโยคข้อกำหนดอยู่แล้ว
         const details = Array.from(new Set([...own.map(specSentence), ...(c.specClauses?.[l.lineId] || []).map((x) => x.trim())].filter(Boolean)));
@@ -472,6 +475,13 @@ export function generateSection(key: DocSectionKey, c: DocContext): string {
         : "ชำระเงินครั้งเดียวเมื่อผู้รับจ้างส่งมอบงานครบถ้วนและผ่านการตรวจรับแล้ว";
     }
     case "penalty":
+      // อัตราค่าปรับที่กำหนดในแผนงาน (ถ้ามี) — ไม่กำหนด = มาตรฐานตามประเภทงาน
+      if (c.plan && c.plan.penaltyRatePct > 0) {
+        const r = c.plan.penaltyRatePct.toLocaleString("th-TH", { maximumFractionDigits: 3 });
+        return isPurchase
+          ? `หากผู้ขายส่งมอบพัสดุล่าช้ากว่ากำหนด ต้องชำระค่าปรับเป็นรายวันในอัตราร้อยละ ${r} ของราคาพัสดุที่ยังไม่ได้รับมอบ นับถัดจากวันครบกำหนดส่งมอบจนถึงวันที่ส่งมอบถูกต้องครบถ้วน`
+          : `หากผู้รับจ้างส่งมอบงานล่าช้ากว่ากำหนด ต้องชำระค่าปรับเป็นรายวันในอัตราร้อยละ ${r} ของราคาค่าจ้างตามสัญญา แต่ไม่ต่ำกว่าวันละ 100 บาท นับถัดจากวันครบกำหนดจนถึงวันที่ทำงานแล้วเสร็จ`;
+      }
       return isPurchase
         ? `หากผู้ขายส่งมอบพัสดุล่าช้ากว่ากำหนด ต้องชำระค่าปรับเป็นรายวันในอัตราร้อยละ 0.20 ของราคาพัสดุที่ยังไม่ได้รับมอบ นับถัดจากวันครบกำหนดส่งมอบจนถึงวันที่ส่งมอบถูกต้องครบถ้วน`
         : `หากผู้รับจ้างส่งมอบงานล่าช้ากว่ากำหนด ต้องชำระค่าปรับเป็นรายวันในอัตราร้อยละ 0.10 ของราคาค่าจ้างตามสัญญา แต่ไม่ต่ำกว่าวันละ 100 บาท นับถัดจากวันครบกำหนดจนถึงวันที่ทำงานแล้วเสร็จ`;
@@ -575,5 +585,22 @@ export function buildMaintenanceLabors(equipment: MaintenanceEquipment[], level:
     const spare = Math.ceil((value * def.sparePct / 100) * y / 100) * 100;
     if (spare > 0) out.push({ id: "MT-SPARE", maint: true, name: "สำรองค่าอะไหล่และอุปกรณ์ทดแทน", type: "lump-sum", points: 1, materialCost: Math.round(spare * 0.85), laborCost: 0, cost: Math.round(spare * 0.85), price: spare });
   }
+  return out;
+}
+
+/** ขอบเขตงานเพิ่มจากแผนงาน: ระบบ พื้นที่/จุด ระบบเดิม ห้องควบคุม งานโยธา/ไฟฟ้า อบรม Admin PM */
+function planScope(c: DocContext): string[] {
+  const p = c.plan;
+  if (!p) return [];
+  const out: string[] = [];
+  if (p.systems.length) out.push(`ติดตั้งระบบ${p.systems.join(" ระบบ")} ให้ทำงานร่วมกันได้อย่างสมบูรณ์`);
+  if (p.sites.length) out.push(`พื้นที่ติดตั้ง ${p.sites.map((x) => `${x.name || "-"}${x.points ? ` ${x.points.toLocaleString("th-TH")} จุด` : ""}${x.env === "outdoor" ? " (นอกอาคาร)" : ""}`).join(", ")}${p.totalPoints ? ` รวม ${p.totalPoints.toLocaleString("th-TH")} จุด` : ""}`);
+  if (p.legacySystem) out.push(`เชื่อมต่อและทำงานร่วมกับระบบเดิม (${p.legacySystem}) โดยสำรองการตั้งค่าระบบเดิมก่อนดำเนินการทุกครั้ง`);
+  if (p.controlRoom) out.push(`จัดเตรียมห้องควบคุม (${p.controlRoom}) ให้พร้อมใช้งาน`);
+  if (p.civilWork.length) out.push(`งานโยธาประกอบ: ${p.civilWork.join(", ")} พร้อมซ่อมแซมพื้นที่ให้อยู่ในสภาพเดิม`);
+  if (p.electricalWork) out.push("งานระบบไฟฟ้าที่เกี่ยวข้อง โดยมีแบบไฟฟ้าลงนามรับรองโดยวิศวกรไฟฟ้าที่มีใบอนุญาตประกอบวิชาชีพ");
+  if (p.trainingSessions > 0) out.push(`ฝึกอบรมการใช้งานและการดูแลรักษาระบบ จำนวน ${p.trainingSessions} ครั้ง${p.trainingHours ? ` ครั้งละไม่น้อยกว่า ${p.trainingHours.toLocaleString("th-TH")} ชั่วโมง` : ""} พร้อมเอกสารประกอบการอบรม`);
+  if (p.onsiteAdminCount > 0) out.push(`จัดเจ้าหน้าที่ดูแลระบบประจำหน้างาน (Admin) จำนวน ${p.onsiteAdminCount} คน${p.onsiteAdminHours ? ` เวลาปฏิบัติงาน ${p.onsiteAdminHours}` : ""} ตลอดระยะเวลารับประกัน และรายงานผลการปฏิบัติงานทุกเดือน`);
+  if (!p.slaInDoc && p.pmIntervalMonths > 0 && c.warrantyMonths > 0) out.push(`บำรุงรักษาเชิงป้องกัน (Preventive Maintenance) ทุก ${p.pmIntervalMonths} เดือน ตลอดระยะเวลารับประกัน ${c.warrantyMonths} เดือน พร้อมรายงานผลทุกครั้ง`);
   return out;
 }

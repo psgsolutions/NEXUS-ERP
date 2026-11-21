@@ -50,7 +50,8 @@ const PARTY_CODE: Partial<Record<MasterEntity, { prefix: SequencePrefix; field: 
 };
 /** ฟิลด์ของบริษัทที่ระบบคำนวณเอง (สต็อก ต้นทุน ยอดหนี้) ห้ามแก้ผ่าน API นี้ */
 /** ช่องข้อมูลประกอบการขายของสินค้า (ฝ่ายขาย/วิศวกรแก้ได้โดยไม่ต้องมีสิทธิ์คลัง) */
-const PRODUCT_SALES_FIELDS = ["description", "technicalSpecs", "specs", "datasheetUrl", "warrantyMonths"];
+// specItems = คุณลักษณะเฉพาะเป็นข้อ ๆ (จาก datasheet/AI หรือพิมพ์เอง) ใช้ในร่าง TOR
+const PRODUCT_SALES_FIELDS = ["description", "technicalSpecs", "specs", "datasheetUrl", "warrantyMonths", "specItems", "specSource"];
 
 const PROTECTED: Record<MasterEntity, string[]> = {
   products: ["stock", "currentStock", "stockStatus", "cost", "wac", "averageCost", "lastCost", "stockValue"],

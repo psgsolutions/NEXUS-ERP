@@ -67,6 +67,7 @@ import { RecordDeleteButton } from "@/components/shared/RecordDeleteButton";
 import { ProductSuppliersBox } from "@/components/shared/ProductSuppliersBox";
 import { ProductCostHistory } from "@/components/shared/ProductCostHistory";
 import { ServiceRecipeCard } from "@/components/inventory/ServiceRecipeCard";
+import { SpecItemsCard } from "@/components/inventory/SpecItemsCard";
 import { ProductLotsCard } from "@/components/inventory/ProductLotsCard";
 import { can } from "@/lib/permissions";
 import { ChoiceInput } from "@/components/ui/ChoiceInput";
@@ -801,6 +802,9 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </GlassCard>
+
+      {/* คุณลักษณะเฉพาะเป็นข้อ ๆ (AI อ่าน datasheet ได้) — ใช้ในร่าง TOR */}
+      <SpecItemsCard product={product} />
 
       {/* เอกสารประกอบสินค้า (datasheet คู่มือ ใบรับรอง) — ทุกคนที่ดูสินค้าได้เปิดดูได้ แนบ/ลบโดยผู้มีสิทธิ์คลังสินค้า */}
       <GlassCard className="p-4 border-white/5 space-y-3">

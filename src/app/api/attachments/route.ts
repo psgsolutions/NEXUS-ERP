@@ -26,14 +26,15 @@ export async function POST(request: Request) {
     const col = adminDb.collection(`companies/${companyId}/attachments`);
     const finance = can(apiUser.roles, "finance:view");
     const isShared = (owner: unknown) => SHARED_ATTACHMENT_OWNERS.includes(owner as AttachmentOwner);
-    const canViewShared = can(apiUser.roles, "inventory:view") || can(apiUser.roles, "sales:view") || can(apiUser.roles, "procurement:view");
-    const canEditShared = can(apiUser.roles, "inventory:edit");
+    // สินค้า: ดู = คลัง/ขาย/จัดซื้อ แก้ = คลัง · โครงการ: ดู = โครงการ แก้ = แก้ไขโครงการ
+    const viewShared = (owner: unknown) => owner === "project" ? can(apiUser.roles, "projects:view") : can(apiUser.roles, "inventory:view") || can(apiUser.roles, "sales:view") || can(apiUser.roles, "procurement:view");
+    const editShared = (owner: unknown) => owner === "project" ? can(apiUser.roles, "projects:edit") : can(apiUser.roles, "inventory:edit");
 
     if (action === "upload") {
       const ownerType = str(body.ownerType, 30) as AttachmentOwner;
       const ownerId = str(body.ownerId, 120);
       if (!ATTACHMENT_OWNERS.includes(ownerType) || !/^[A-Za-z0-9_.-]{1,120}$/.test(ownerId)) throw new ApiAuthError(400, "ไม่ระบุว่าแนบกับรายการไหน");
-      if (isShared(ownerType) && !canEditShared) throw new ApiAuthError(403, "แนบไฟล์สินค้าได้เฉพาะผู้มีสิทธิ์แก้ไขคลังสินค้า");
+      if (isShared(ownerType) && !editShared(ownerType)) throw new ApiAuthError(403, ownerType === "project" ? "แนบไฟล์โครงการได้เฉพาะผู้มีสิทธิ์แก้ไขโครงการ" : "แนบไฟล์สินค้าได้เฉพาะผู้มีสิทธิ์แก้ไขคลังสินค้า");
       const f = body.file || {};
       const mime = str(f.mime, 60), data = String(f.data || "");
       if (!ATTACHMENT_TYPES.includes(mime)) throw new ApiAuthError(400, "รองรับเฉพาะรูป JPG/PNG/WebP และ PDF");
@@ -44,13 +45,15 @@ export async function POST(request: Request) {
         ownerType, ownerId, name: str(f.name, 120) || "ไฟล์แนบ", mime, size: Math.round(data.length * 0.74), data,
         companyId, uploadedBy: apiUser.uid, uploadedByName: str((apiUser as any).name || (apiUser as any).email, 80), createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+      // PDF ของสินค้า = มี datasheet (กฎตรวจแผนงาน R3)
+      if (ownerType === "product" && mime === "application/pdf") await adminDb.doc(`companies/${companyId}/products/${ownerId}`).set({ hasDatasheet: true }, { merge: true }).catch(() => undefined);
       return NextResponse.json({ success: true, id: ref.id });
     }
 
     if (action === "list") {
       const ownerType = str(body.ownerType, 30), ownerId = str(body.ownerId, 120);
       const snap = await col.where("ownerType", "==", ownerType).where("ownerId", "==", ownerId).limit(40).get();
-      const files = snap.docs.filter((d) => (isShared(ownerType) ? canViewShared : finance) || d.get("uploadedBy") === apiUser.uid)
+      const files = snap.docs.filter((d) => (isShared(ownerType) ? viewShared(ownerType) : finance) || d.get("uploadedBy") === apiUser.uid)
         .map((d) => ({ id: d.id, name: d.get("name"), mime: d.get("mime"), size: d.get("size"), uploadedByName: d.get("uploadedByName") || "", createdAt: d.get("createdAt")?.toDate?.()?.toISOString?.() || "" }));
       return NextResponse.json({ success: true, files });
     }
@@ -63,11 +66,11 @@ export async function POST(request: Request) {
     const mine = snap.get("uploadedBy") === apiUser.uid;
     const shared = isShared(snap.get("ownerType"));
     if (action === "get") {
-      if (!mine && !(shared ? canViewShared : finance)) throw new ApiAuthError(403, "ไม่มีสิทธิ์ดูไฟล์นี้");
+      if (!mine && !(shared ? viewShared(snap.get("ownerType")) : finance)) throw new ApiAuthError(403, "ไม่มีสิทธิ์ดูไฟล์นี้");
       return NextResponse.json({ success: true, file: { id, name: snap.get("name"), mime: snap.get("mime"), data: snap.get("data") } });
     }
     if (action === "remove") {
-      if (!mine && !(shared ? canEditShared : can(apiUser.roles, "finance:edit"))) throw new ApiAuthError(403, "ลบได้เฉพาะผู้อัปโหลดหรือฝ่ายบัญชี");
+      if (!mine && !(shared ? editShared(snap.get("ownerType")) : can(apiUser.roles, "finance:edit"))) throw new ApiAuthError(403, "ลบได้เฉพาะผู้อัปโหลดหรือฝ่ายบัญชี");
       await ref.delete();
       return NextResponse.json({ success: true });
     }

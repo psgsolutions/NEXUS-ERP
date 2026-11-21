@@ -38,6 +38,13 @@ export interface PlanSite { name: string; env: "indoor" | "outdoor"; points: num
 /** progressPct = ผลงานสะสมที่ต้องถึงเพื่อเบิกงวดนี้ (จ้างเหมา) */
 export interface PlanInstallment { no: number; dueDay: number; payPct: number; points: number; scope: string; progressPct?: number }
 export interface PlanQuestion { text: string; neededByTask: string }
+export type ClientKind = "" | "hospital" | "university" | "school" | "office" | "local_gov" | "other";
+export const CLIENT_KINDS: { code: ClientKind; label: string }[] = [
+  { code: "", label: "ไม่ระบุ" }, { code: "hospital", label: "โรงพยาบาล" }, { code: "university", label: "มหาวิทยาลัย" }, { code: "school", label: "โรงเรียน" },
+  { code: "office", label: "สำนักงาน/อาคาร" }, { code: "local_gov", label: "องค์กรปกครองส่วนท้องถิ่น" }, { code: "other", label: "อื่น ๆ" },
+];
+/** TOR ที่เกี่ยวข้อง (เช่น TOR เดิมของหน่วยงาน ระบบเดิม หรือโครงการคู่ขนาน) */
+export interface RelatedTor { title: string; ref: string }
 export interface PlanDefaults {
   pointsPerDay: number; leadTimeDays: number; clientDays: number; announcementDays: number; beforeContractDays: number;
   civilDays: number; rainBufferDays: number;
@@ -59,6 +66,10 @@ export interface PlanProfile {
   onsiteAdmin: { count: number; hours: string };
   training: { sessions: number; hoursEach: number };
   openQuestions: PlanQuestion[];
+  /** ประเภทลูกค้า (ข้อมูลประกอบ) · TOR ที่เกี่ยวข้อง · ค่าปรับต่อวัน (% · 0 = ตามประเภทงาน 0.20 ซื้อ / 0.10 จ้าง) */
+  clientKind: ClientKind;
+  relatedTors: RelatedTor[];
+  penaltyRatePct: number;
   dayMode: DayMode;
   defaults: PlanDefaults;
 }
@@ -473,7 +484,7 @@ export function defaultProfile(sector: "Government" | "Private"): PlanProfile {
   return {
     systems: [], procurement: "purchase", sites: [], legacySystem: "", controlRoom: "none", civilWork: [], electricalWork: true,
     installments: [], rent: { months: 12 }, sla: { responseHours: 4, fixHours: 24, uptimePct: 99, penaltyPerHour: 0, inDoc: false }, pmIntervalMonths: 6, onsiteAdmin: { count: 0, hours: "" }, training: { sessions: 2, hoursEach: 6 },
-    openQuestions: [], dayMode: sector === "Government" ? "calendar" : "calendar", defaults: { ...DEFAULT_PLAN_DEFAULTS },
+    openQuestions: [], clientKind: "", relatedTors: [], penaltyRatePct: 0, dayMode: sector === "Government" ? "calendar" : "calendar", defaults: { ...DEFAULT_PLAN_DEFAULTS },
   };
 }
 
@@ -502,6 +513,9 @@ export function normalizeProfile(raw: any, sector: "Government" | "Private" = "G
     onsiteAdmin: { count: Math.round(num(raw.onsiteAdmin?.count, 0, 20)), hours: s(raw.onsiteAdmin?.hours, 60) },
     training: { sessions: Math.round(num(raw.training?.sessions ?? 2, 0, 50)), hoursEach: num(raw.training?.hoursEach ?? 6, 0, 24) },
     openQuestions: (Array.isArray(raw.openQuestions) ? raw.openQuestions : []).slice(0, 50).map((q: any) => ({ text: s(q?.text, 500), neededByTask: s(q?.neededByTask, 40) })).filter((q: PlanQuestion) => q.text),
+    clientKind: CLIENT_KINDS.some((k) => k.code === raw.clientKind) ? raw.clientKind : "",
+    relatedTors: (Array.isArray(raw.relatedTors) ? raw.relatedTors : []).slice(0, 20).map((t: any) => ({ title: s(t?.title, 200), ref: s(t?.ref, 500) })).filter((t: RelatedTor) => t.title || t.ref),
+    penaltyRatePct: Math.round(num(raw.penaltyRatePct, 0, 10) * 1000) / 1000,
     dayMode: raw.dayMode === "working" ? "working" : "calendar",
     defaults: Object.fromEntries(Object.entries(DEFAULT_PLAN_DEFAULTS).map(([k, v]) => [k, raw.defaults && raw.defaults[k] !== undefined ? Math.round(num(raw.defaults[k], 0, 365)) || (k === "pointsPerDay" ? v : 0) : v])) as unknown as PlanDefaults,
   };
@@ -682,4 +696,22 @@ export function slaClauses(x: DocSla, party = "ผู้รับจ้าง"):
     ...(x.penaltyPerHour > 0 ? [`หาก${party}แก้ไขเกินระยะเวลาที่กำหนด ต้องชำระค่าปรับในอัตราชั่วโมงละ ${x.penaltyPerHour.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท นับจากเวลาที่ครบกำหนดแก้ไขจนถึงเวลาที่ระบบกลับมาใช้งานได้`] : []),
     `${party}ต้องจัดทำรายงานการแจ้งเหตุขัดข้องและการแก้ไขประจำเดือน (เวลารับแจ้ง เวลาแก้ไขเสร็จ และสาเหตุ) ส่งให้ผู้ว่าจ้างทุกเดือน`,
   ];
+}
+
+/** ข้อมูลจากแผนงานที่ร่าง TOR ใช้ (ขอบเขตงาน ค่าปรับ) */
+export interface DocPlan {
+  systems: string[]; sites: { name: string; env: string; points: number }[]; totalPoints: number; legacySystem: string; controlRoom: string;
+  civilWork: string[]; electricalWork: boolean; trainingSessions: number; trainingHours: number; onsiteAdminCount: number; onsiteAdminHours: string;
+  pmIntervalMonths: number; slaInDoc: boolean; penaltyRatePct: number; procurement: ProcurementKind;
+}
+export function docPlan(p: PlanProfile | null | undefined): DocPlan | null {
+  if (!p) return null;
+  const sys = SYSTEM_TYPES.filter((x) => p.systems.includes(x.code)).map((x) => x.label);
+  return {
+    systems: sys, sites: p.sites.filter((x) => x.name || x.points), totalPoints: p.sites.reduce((t, x) => t + (Number(x.points) || 0), 0),
+    legacySystem: p.legacySystem.trim(), controlRoom: p.controlRoom === "none" ? "" : CONTROL_ROOMS.find((c) => c.code === p.controlRoom)?.label || "",
+    civilWork: CIVIL_WORKS.filter((c) => p.civilWork.includes(c.code)).map((c) => c.label), electricalWork: p.electricalWork,
+    trainingSessions: p.training.sessions, trainingHours: p.training.hoursEach, onsiteAdminCount: p.onsiteAdmin.count, onsiteAdminHours: p.onsiteAdmin.hours,
+    pmIntervalMonths: p.pmIntervalMonths, slaInDoc: p.procurement === "rent" || p.sla.inDoc, penaltyRatePct: p.penaltyRatePct, procurement: p.procurement,
+  };
 }

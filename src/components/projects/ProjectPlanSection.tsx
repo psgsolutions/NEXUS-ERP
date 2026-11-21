@@ -8,13 +8,14 @@
  */
 
 import React, { useMemo, useState } from "react";
-import { AlertTriangle, CalendarRange, HelpCircle, ListChecks, MapPin, OctagonX, Plus, RotateCcw, Settings2, Trash2 } from "lucide-react";
+import { AlertTriangle, CalendarRange, FileText, HelpCircle, ListChecks, MapPin, OctagonX, Plus, RotateCcw, Settings2, Trash2 } from "lucide-react";
 import { GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillCheckbox, PillInput, PillSelect, cn } from "@/components/ui/Base";
 import { GanttChart } from "@/components/projects/GanttChart";
+import { AttachmentPicker } from "@/components/shared/AttachmentPicker";
 import { Field, NumCell, FIELD_W } from "@/components/projects/ProjectPlanEditors";
 import {
   CIVIL_WORKS, CONTROL_ROOMS, OWNERS, PHASE_LABELS, PROCUREMENT_KINDS, SYSTEM_TYPES, addDays, checkPlan, generatePlan,
-  EMPTY_TEMPLATE, type OwnerKey, type PlanContext, type PlanInstallment, type PlanOverrides, type PlanProfile, type RuleInputs, type TemplateConfig,
+  CLIENT_KINDS, EMPTY_TEMPLATE, type OwnerKey, type PlanContext, type PlanInstallment, type PlanOverrides, type PlanProfile, type RuleInputs, type TemplateConfig,
 } from "@/lib/project-plan";
 
 const baht = (n: number) => `฿${(Number(n) || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -24,7 +25,7 @@ const title = (icon: React.ReactNode, text: string, extra?: React.ReactNode) => 
 );
 const chip = (on: boolean) => cn("h-8 px-3 text-[12px] normal-case tracking-normal", on ? "" : "text-white/60");
 
-export function ProjectPlanSection({ profile, onProfile, overrides, onOverrides, ctx, inputs, contractValue, installments, onInstallments, template = EMPTY_TEMPLATE }: {
+export function ProjectPlanSection({ profile, onProfile, overrides, onOverrides, ctx, inputs, contractValue, installments, onInstallments, template = EMPTY_TEMPLATE, projectDocId = "" }: {
   profile: PlanProfile; onProfile: (p: PlanProfile) => void;
   overrides: PlanOverrides; onOverrides: (o: PlanOverrides) => void;
   ctx: PlanContext; inputs: RuleInputs; contractValue: number;
@@ -32,6 +33,8 @@ export function ProjectPlanSection({ profile, onProfile, overrides, onOverrides,
   installments: PlanInstallment[]; onInstallments: (i: PlanInstallment[]) => void;
   /** แม่แบบของบริษัท (ตั้งค่า › แม่แบบโครงการ) */
   template?: TemplateConfig;
+  /** id เอกสารโครงการ (แก้ไข) — แนบไฟล์อ้างอิงได้เมื่อบันทึกโครงการแล้ว */
+  projectDocId?: string;
 }) {
   const set = (patch: Partial<PlanProfile>) => onProfile({ ...profile, ...patch });
   const full = { ...profile, installments };
@@ -147,6 +150,41 @@ export function ProjectPlanSection({ profile, onProfile, overrides, onOverrides,
             </div>
           ))}
           <PillButton variant="ghost" className="h-8 px-3 text-[12px] text-nexus-teal normal-case tracking-normal" onClick={() => set({ openQuestions: [...profile.openQuestions, { text: "", neededByTask: "" }] })}><Plus size={12} /> เพิ่มคำถาม</PillButton>
+        </div>
+      </GlassCard>
+
+      {/* ---------- ข้อมูลอ้างอิง: ประเภทลูกค้า ค่าปรับ TOR ที่เกี่ยวข้อง ไฟล์อ้างอิง ---------- */}
+      <GlassCard className="p-5 space-y-3">
+        <div data-plan-refs className="space-y-3">
+        {title(<FileText size={16} className="text-nexus-teal" />, "ข้อมูลอ้างอิง")}
+        <div className="flex flex-wrap gap-3 items-end">
+          <Field label="ประเภทลูกค้า" w={220}>
+            <PillSelect value={profile.clientKind} onChange={(e) => set({ clientKind: e.target.value as any })} className="w-full h-9 text-sm">
+              {CLIENT_KINDS.map((k) => <option key={k.code} value={k.code}>{k.label}</option>)}
+            </PillSelect>
+          </Field>
+          <Field label="ค่าปรับต่อวัน (เว้นว่าง = มาตรฐาน)" w={FIELD_W.pct + 120}>
+            <NumCell kind="pct" value={profile.penaltyRatePct} onChange={(v) => set({ penaltyRatePct: Math.min(10, v) })} suffix="% /วัน" />
+          </Field>
+          <span className="text-[12px] text-white/45 pb-2">มาตรฐาน: ซื้อขาย 0.20% ของพัสดุที่ยังไม่ส่ง · จ้าง 0.10% ของค่าจ้าง (ขั้นต่ำ 100 บาท/วัน) — ใช้ในร่าง TOR หัวข้อค่าปรับ</span>
+        </div>
+        <div className="space-y-1.5">
+          <p className="text-[12px] font-bold text-white/70">TOR ที่เกี่ยวข้อง</p>
+          {profile.relatedTors.map((t, i) => (
+            <div key={i} className="flex flex-wrap items-center gap-2">
+              <PillInput value={t.title} onChange={(e) => set({ relatedTors: profile.relatedTors.map((x, k) => (k === i ? { ...x, title: e.target.value } : x)) })} placeholder="ชื่อ TOR เช่น TOR ระบบกล้องเดิม ปี 2566" className="h-9 flex-1 min-w-[200px] text-sm" aria-label="ชื่อ TOR" />
+              <PillInput value={t.ref} onChange={(e) => set({ relatedTors: profile.relatedTors.map((x, k) => (k === i ? { ...x, ref: e.target.value } : x)) })} placeholder="เลขที่ / ลิงก์ e-GP" className="h-9 w-[260px] text-sm" aria-label="เลขที่หรือลิงก์" />
+              <PillButton variant="ghost" className="h-9 w-9 px-0 text-danger/80" aria-label="ลบ TOR" onClick={() => set({ relatedTors: profile.relatedTors.filter((_, k) => k !== i) })}><Trash2 size={13} /></PillButton>
+            </div>
+          ))}
+          <PillButton variant="ghost" className="h-8 px-3 text-[12px] text-nexus-teal normal-case tracking-normal" onClick={() => set({ relatedTors: [...profile.relatedTors, { title: "", ref: "" }] })} data-add-tor><Plus size={12} /> เพิ่ม TOR ที่เกี่ยวข้อง</PillButton>
+        </div>
+        <div className="space-y-1.5">
+          <p className="text-[12px] font-bold text-white/70">ไฟล์อ้างอิง (TOR เดิม แบบ ใบเสนอราคาเดิม รูปหน้างาน)</p>
+          {projectDocId
+            ? <AttachmentPicker ownerType="project" ownerId={projectDocId} hint="PDF หรือรูป · คลิกไฟล์เพื่อเปิดดู" />
+            : <p className="text-[12px] text-white/45">บันทึกฉบับร่างก่อน แล้วจึงแนบไฟล์อ้างอิงได้</p>}
+        </div>
         </div>
       </GlassCard>
 

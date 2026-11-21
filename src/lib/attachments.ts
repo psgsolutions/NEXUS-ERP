@@ -4,13 +4,13 @@
  */
 export const ATTACHMENT_MAX = 760_000; // ความยาว data URL (base64)
 export const ATTACHMENT_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-/** รายการที่แนบไฟล์ได้: ค่าใช้จ่าย/ใบเบิก · รูปในกล่องรอยืนยัน · เงินทดรอง · ใบกำกับภาษีซื้อ · สินค้า (datasheet คู่มือ ใบรับรอง) */
-export const ATTACHMENT_OWNERS = ["expense", "photo_inbox", "cash_advance", "purchase_tax", "product"] as const;
+/** รายการที่แนบไฟล์ได้: ค่าใช้จ่าย/ใบเบิก · รูปในกล่องรอยืนยัน · เงินทดรอง · ใบกำกับภาษีซื้อ · สินค้า (datasheet คู่มือ ใบรับรอง) · โครงการ (ไฟล์อ้างอิง TOR แบบ) */
+export const ATTACHMENT_OWNERS = ["expense", "photo_inbox", "cash_advance", "purchase_tax", "product", "project"] as const;
 /** รูปสินค้าย่อ (เก็บในข้อมูลสินค้าโดยตรง ให้รายการสินค้าโหลดเร็ว) */
 export const PRODUCT_THUMB_MAX = 60_000;
 export type AttachmentOwner = (typeof ATTACHMENT_OWNERS)[number];
-/** ไฟล์ของสินค้า: ทุกคนที่ดูสินค้าได้เปิดดูได้ (ไม่ใช่เอกสารการเงินส่วนตัว) */
-export const SHARED_ATTACHMENT_OWNERS: readonly AttachmentOwner[] = ["product"];
+/** ไฟล์ของสินค้า/โครงการ: ทุกคนที่ดูรายการนั้นได้เปิดดูได้ (ไม่ใช่เอกสารการเงินส่วนตัว) */
+export const SHARED_ATTACHMENT_OWNERS: readonly AttachmentOwner[] = ["product", "project"];
 
 export interface PendingFile { name: string; mime: string; data: string; size: number }
 

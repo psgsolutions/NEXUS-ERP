@@ -276,12 +276,12 @@ export default function RefPricesPage() {
                     <label key={f.key} className="space-y-1 block w-[180px]">
                       <span className="text-[11px] text-white/55">{f.label}</span>
                       {f.options ? (
-                        <PillSelect value={String(editSet[f.key])} disabled={!canEdit} onChange={(e) => setBset({ ...editSet, [f.key]: e.target.value })} className="h-9 w-full text-sm">
+                        <PillSelect value={String(editSet[f.key])} disabled={!canEdit} onChange={(e) => setBset((cur) => ({ ...(cur || bom.settings), [f.key]: e.target.value }))} className="h-9 w-full text-sm">
                           {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
                         </PillSelect>
                       ) : (
                         <NumCell kind="pct" disabled={!canEdit} value={f.pct ? Math.round(Number(editSet[f.key]) * 10000) / 100 : Number(editSet[f.key])}
-                          onChange={(v) => setBset({ ...editSet, [f.key]: f.pct ? v / 100 : v })} suffix={f.unit} />
+                          onChange={(v) => setBset((cur) => ({ ...(cur || bom.settings), [f.key]: f.pct ? v / 100 : v }))} suffix={f.unit} />
                       )}
                     </label>
                   ))}

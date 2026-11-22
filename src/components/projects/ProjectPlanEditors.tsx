@@ -84,7 +84,12 @@ export function NumCell({ value, onChange, suffix, kind = "int", className, disa
         value={shown}
         disabled={disabled}
         onChange={(e) => accept(e.target.value)}
-        onFocus={(e) => { const el = e.target; setEditing(value ? String(value) : ""); requestAnimationFrame(() => el.select()); }}
+        onFocus={(e) => {
+          // เลือกทั้งช่องเพื่อพิมพ์ทับ — เลื่อน 1 เฟรม (รอ React ใส่ค่าที่กำลังแก้) แต่ถ้าพิมพ์ไปแล้วก่อนเฟรมนั้น ห้ามเลือก (ไม่งั้นตัวที่พิมพ์ถูกทับ)
+          const el = e.target; const init = value ? String(value) : "";
+          setEditing(init);
+          requestAnimationFrame(() => { if (document.activeElement === el && el.value === init) el.select(); });
+        }}
         onBlur={() => setEditing(null)}
         className={cn(
           "w-full h-9 rounded-full bg-white/[0.03] border text-white text-[12px] font-mono text-right focus:outline-none focus:border-nexus-teal/40 disabled:opacity-40",

@@ -5,7 +5,7 @@
  * ใช้ในหน้างานบริการ (ค่าเริ่มต้นของสูตร) และใบเสนอราคา (เฟส 3)
  */
 
-import React, { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import { AlertTriangle } from "lucide-react";
 import { NexusTable, NexusTableCell, NexusTableRow, PillSelect, cn } from "@/components/ui/Base";
 import { NumCell } from "@/components/projects/ProjectPlanEditors";
@@ -19,6 +19,10 @@ export function BomCalculator({ spec, inputs, onInputs, settings, resolve, unit 
   spec: BomSpec; inputs: BomInputs; onInputs: (v: BomInputs) => void; settings: BomSettings; resolve: CodeResolver; unit?: string; disabled?: boolean; showCost?: boolean;
 }) {
   const res = useMemo(() => expandBom(spec, inputs, settings, resolve), [spec, inputs, settings, resolve]);
+  // ค่าล่าสุดเสมอ (กรอก/กดแท็บเร็วต่อกันหลายช่อง ค่าช่องก่อนหน้าไม่หาย)
+  const latest = useRef(inputs);
+  latest.current = inputs;
+  const setInput = (k: string, v: number | string) => { latest.current = { ...latest.current, [k]: v }; onInputs(latest.current); };
   const sale = salePrice(res.costPerUnit, settings.markup);
   const est = res.items.filter((i) => i.status === "Y");
   return (
@@ -29,12 +33,12 @@ export function BomCalculator({ spec, inputs, onInputs, settings, resolve, unit 
             <span className="text-[11px] text-white/55">{d.label}{d.unit ? ` (${d.unit})` : ""}</span>
             {d.kind === "size" ? (
               <div className="w-[110px]">
-                <PillSelect value={String(inputs[d.key] ?? "")} disabled={disabled} onChange={(e) => onInputs({ ...inputs, [d.key]: e.target.value })} className="h-9 w-full text-sm" aria-label={d.label}>
+                <PillSelect value={String(inputs[d.key] ?? "")} disabled={disabled} onChange={(e) => setInput(d.key, e.target.value)} className="h-9 w-full text-sm" aria-label={d.label}>
                   {PIPE_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </PillSelect>
               </div>
             ) : (
-              <div className="w-[120px]"><NumCell kind="pct" value={Number(inputs[d.key]) || 0} disabled={disabled} onChange={(v) => onInputs({ ...inputs, [d.key]: v })} suffix={d.unit} /></div>
+              <div className="w-[120px]"><NumCell kind="pct" value={Number(inputs[d.key]) || 0} disabled={disabled} onChange={(v) => setInput(d.key, v)} suffix={d.unit} /></div>
             )}
           </label>
         ))}

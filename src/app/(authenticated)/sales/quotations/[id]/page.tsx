@@ -545,6 +545,8 @@ export default function QuotationEditPage() {
               cost: lData.costPrice || 0,
               recipe: lData.recipe || null,
               priceBase: lData.priceBase || "",
+              priceManual: !!lData.priceManual,
+              bomRounding: !!lData.bomRounding,
               discount: lData.discountString || "",
               discountType: lData.discountType || 'PERCENT',
               discountValue: lData.discountValue || 0,
@@ -571,6 +573,8 @@ export default function QuotationEditPage() {
               cost: Number(it.cost ?? it.costPrice) || 0,
               recipe: it.recipe || null,
               priceBase: "",
+              priceManual: false,
+              bomRounding: false,
               discount: "",
               discountType: 'PERCENT',
               discountValue: 0,
@@ -847,6 +851,8 @@ export default function QuotationEditPage() {
         isOptional: !!item.isOptional,
         recipe: item.recipe || null,
         priceBase: item.priceBase || "",
+        priceManual: !!item.priceManual,
+        bomRounding: !!item.bomRounding,
       }));
       const productWritebacks = items
         .filter((item) => item.saveToProductMaster && item.productId)

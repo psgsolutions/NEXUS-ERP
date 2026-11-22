@@ -68,6 +68,7 @@ import { ProductSuppliersBox } from "@/components/shared/ProductSuppliersBox";
 import { ProductCostHistory } from "@/components/shared/ProductCostHistory";
 import { ServiceRecipeCard } from "@/components/inventory/ServiceRecipeCard";
 import { SpecItemsCard } from "@/components/inventory/SpecItemsCard";
+import { RealModelsCard } from "@/components/inventory/RealModelsCard";
 import { ProductLotsCard } from "@/components/inventory/ProductLotsCard";
 import { can } from "@/lib/permissions";
 import { ChoiceInput } from "@/components/ui/ChoiceInput";
@@ -541,6 +542,8 @@ export default function ProductDetailPage() {
 
         {/* คุณลักษณะเฉพาะเป็นข้อ ๆ (AI อ่าน datasheet ได้) — ใช้ในร่าง TOR · คอลัมน์หลักให้เห็นประโยคเต็ม */}
         {activeTab === "overview" && <SpecItemsCard product={product} />}
+        {/* สินค้ากลาง (ราคากลาง BOM) ↔ รุ่นที่ซื้อจริง */}
+        {activeTab === "overview" && <RealModelsCard product={product} />}
 
         {/* Tab: Pricing */}
         {activeTab === "pricing" && (

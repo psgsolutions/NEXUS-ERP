@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useRef, useLayoutEffect } from "react";
 import { Plus, Trash2, Search, ChevronUp, ChevronDown, CornerDownRight, AlignLeft, Copy, AlertTriangle } from "lucide-react";
-import { PillButton, Modal, cn, PillInput } from "@/components/ui/Base";
+import { PillButton, Modal, cn, PillInput, PillSelect } from "@/components/ui/Base";
 import { formatCurrency, calculateLineGP } from "@/lib/erp-logic";
 import { useRealtimeCollection } from "@/hooks/useRealtimeCollection";
 import { useProducts } from "@/hooks/useProducts";
@@ -15,6 +15,10 @@ import { can, canViewCost } from "@/lib/permissions";
 import { SupplierPriceSelector } from "@/components/inventory/SupplierPriceSelector";
 import { SciFiDropdownPortal } from "@/components/ui/SmartComponents";
 import { FieldHistory } from "@/components/ui/FieldHistory";
+import { BomCalculator } from "@/components/inventory/BomCalculator";
+import { QuoteBomPanel } from "@/components/commerce/QuoteBomPanel";
+import { useBom } from "@/hooks/useBom";
+import { applyLineInputs, lineInputs, lineSpec, lineWarnings, linePriceByMarkup } from "@/lib/bom-quote";
 
 export interface DocumentItemsTableProps {
   items: any[];
@@ -160,7 +164,8 @@ const InlineRow = ({
   isLocked,
   availableProducts,
   priceDeviationWarningPercent = 10,
-  customerId
+  customerId,
+  bom
 }: any) => {
   const { role, roles, checkPermission } = useAuth();
   const canEditProduct = checkPermission ? checkPermission("inventory:edit") : can(roles, "inventory:edit");
@@ -177,7 +182,8 @@ const InlineRow = ({
 
   const standardPrice = matchedProduct ? Number(matchedProduct.price || 0) : 0;
   const thresholdPrice = standardPrice > 0 ? standardPrice * (1 - (priceDeviationWarningPercent || 10) / 100) : 0;
-  const isBelowStandard = standardPrice > 0 && Number(item.price || 0) > 0 && Number(item.price || 0) < thresholdPrice;
+  // งาน BOM มีตัวแปร: ราคาตามระยะของบรรทัด ไม่เทียบราคามาตรฐาน (ใช้เตือน markup แทน)
+  const isBelowStandard = !lineSpec(item) && standardPrice > 0 && Number(item.price || 0) > 0 && Number(item.price || 0) < thresholdPrice;
   const deviationPercent = isBelowStandard ? Math.round(((standardPrice - Number(item.price || 0)) / standardPrice) * 100) : 0;
 
   const filteredProducts = useMemo(() => {
@@ -240,6 +246,11 @@ const InlineRow = ({
     : lineDiscountVal;
   const lineFinalAmount = Math.max(0, lineSubtotal - lineDiscountAmt);
   const lineGP = calculateLineGP(item.price, item.cost ?? item.costPrice ?? 0);
+  // งานบริการแบบสูตร BOM มีตัวแปร: กรอกระยะต่อบรรทัด + เตือนกำไรต่ำกว่า markup / ราคาประมาณการ
+  const spec = bom ? lineSpec(item) : null;
+  const bomWarn = spec ? lineWarnings(item, bom.settings, bom.resolve) : [];
+  const lowMarkup = bomWarn.find((w: any) => w.kind === "lowMarkup");
+  const setPrice = (v: number) => (spec ? updateItemFields(item.id, { price: v, priceManual: true }) : updateItem(item.id, "price", v));
 
   const handleItemTypeChange = (newType: string) => {
     let defaultWht = item.whtRate;
@@ -289,16 +300,17 @@ const InlineRow = ({
   /* ---------- ตัวแก้ไขแต่ละช่อง (ใช้ได้ทั้งในแถวและในแผงรายละเอียด) ---------- */
 
   const renderType = () => !isLocked ? (
-    <select
+    <PillSelect
       value={item.itemType || 'PRODUCT'}
       onChange={(e) => handleItemTypeChange(e.target.value)}
-      className="w-full h-8 px-1 rounded-full bg-black/30 border border-white/15 text-center font-bold text-[12px] text-nexus-teal focus:outline-none focus:border-nexus-teal transition-colors"
+      className="h-8 px-2 pr-7 text-[12px] text-nexus-teal"
+      aria-label="ประเภทรายการ"
     >
-      <option value="PRODUCT" className="bg-neutral-900 text-white">สินค้า</option>
-      <option value="SERVICE" className="bg-neutral-900 text-white">บริการ</option>
-      <option value="LABOR" className="bg-neutral-900 text-white">ค่าแรง</option>
-      <option value="GROUP_HEADER" className="bg-neutral-900 text-white">หัวข้อกลุ่ม</option>
-    </select>
+      <option value="PRODUCT">สินค้า</option>
+      <option value="SERVICE">บริการ</option>
+      <option value="LABOR">ค่าแรง</option>
+      <option value="GROUP_HEADER">หัวข้อกลุ่ม</option>
+    </PillSelect>
   ) : (
     <span className="text-[12px] font-bold text-white/70">
       {item.itemType === 'SERVICE' ? 'บริการ' : item.itemType === 'LABOR' ? 'ค่าแรง' : 'สินค้า'}
@@ -428,7 +440,7 @@ const InlineRow = ({
         type="number"
         autoFocus
         value={item.price === 0 ? "" : item.price}
-        onChange={(e) => updateItem(item.id, "price", Number(e.target.value) || 0)}
+        onChange={(e) => setPrice(Number(e.target.value) || 0)}
         onFocus={(e) => e.target.select()}
         onBlur={() => setIsEditingPrice(false)}
         className={cn(
@@ -443,10 +455,11 @@ const InlineRow = ({
         value={priceText}
         onClick={() => setIsEditingPrice(true)}
         onFocus={() => setIsEditingPrice(true)}
-        title={isBelowStandard ? `ต่ำกว่าราคามาตรฐาน ${deviationPercent}%` : undefined}
+        title={lowMarkup && canSeeCost ? lowMarkup.text : isBelowStandard ? `ต่ำกว่าราคามาตรฐาน ${deviationPercent}%` : undefined}
+        data-low-markup={lowMarkup && canSeeCost ? "1" : undefined}
         className={cn(
           "w-full h-8 px-1.5 rounded-full bg-black/20 border hover:border-white/30 text-right font-mono text-[12px] focus:outline-none transition-colors not-italic cursor-text",
-          isBelowStandard ? "border-warning/60 text-warning" : "border-white/20 text-white/80"
+          isBelowStandard || (lowMarkup && canSeeCost) ? "border-warning/60 text-warning" : "border-white/20 text-white/80"
         )}
       />
     )
@@ -480,13 +493,14 @@ const InlineRow = ({
   );
 
   const renderWht = () => !isLocked ? (
-    <select
-      value={item.whtRate || 0}
+    <PillSelect
+      value={String(item.whtRate || 0)}
       onChange={(e) => updateItem(item.id, "whtRate", Number(e.target.value) || 0)}
-      className="w-full h-8 px-1 rounded-full bg-black/20 border border-white/20 hover:border-white/30 text-center font-mono text-[12px] text-white/80 focus:outline-none focus:border-nexus-teal transition-colors"
+      className="h-8 px-2 pr-7 font-mono text-[12px]"
+      aria-label="หัก ณ ที่จ่าย"
     >
-      {[0, 1, 2, 3, 5].map((r) => <option key={r} value={r} className="bg-neutral-900 text-white">{r}%</option>)}
-    </select>
+      {[0, 1, 2, 3, 5].map((r) => <option key={r} value={String(r)}>{`${r}%`}</option>)}
+    </PillSelect>
   ) : (
     <div className="text-center"><p className="font-mono text-[12px] text-white/60">{item.whtRate || 0}%</p></div>
   );
@@ -581,6 +595,23 @@ const InlineRow = ({
 
           {tier !== "full" && item.name && (
             <p className={cn("text-[12px] font-bold text-white leading-snug break-words", !narrowPanel && "col-span-3")}>{item.name}</p>
+          )}
+
+          {spec && (
+            <div className={cn("space-y-2 min-w-0 rounded-xl border border-nexus-teal/20 bg-nexus-teal/[0.03] p-3", !narrowPanel && "col-span-3")} data-line-bom>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <label className="text-[12px] text-nexus-teal font-semibold tracking-wider">ระยะและขนาดท่อต่อ 1 {item.unit || "จุด"} (คิดต้นทุน/ราคาใหม่ทันที)</label>
+                {item.priceManual && !isLocked && (
+                  <PillButton type="button" variant="glass" className="h-8 px-3 text-[12px]" data-reset-bom-price
+                    onClick={() => updateItemFields(item.id, { price: linePriceByMarkup(item, bom.settings, bom.resolve), priceManual: false })}>
+                    คืนราคาตามสูตร (markup {Math.round(bom.settings.markup * 1000) / 10}%)
+                  </PillButton>
+                )}
+              </div>
+              <BomCalculator spec={spec} inputs={lineInputs(item, bom.settings)} settings={bom.settings} resolve={bom.resolve} unit={item.unit || "จุด"}
+                disabled={isLocked} showCost={canSeeCost} onInputs={(v) => updateItemFields(item.id, applyLineInputs(item, v, bom.settings, bom.resolve))} />
+              {canSeeCost && lowMarkup && <p className="flex gap-2 text-[12px] text-warning" data-line-warning><AlertTriangle size={14} className="shrink-0 mt-0.5" />{lowMarkup.text} (ราคาต่อ{item.unit || "จุด"}หลังส่วนลด)</p>}
+            </div>
           )}
 
           {hiddenFields.length > 0 && (
@@ -731,6 +762,8 @@ export function DocumentItemsTable({
 
   // สินค้าจริงของบริษัท (ไม่มีรายการจำลอง: ถ้ายังไม่มีสินค้า ให้ค้นแล้วไม่พบ)
   const { data: companyProducts = [] } = useProducts();
+  const { settings: bomSettings, resolve: bomResolve } = useBom();
+  const bom = useMemo(() => ({ settings: bomSettings, resolve: bomResolve }), [bomSettings, bomResolve]);
 
   const availableProducts = useMemo(() => {
     const map = new Map<string, any>();
@@ -909,6 +942,7 @@ export function DocumentItemsTable({
             availableProducts={availableProducts}
             priceDeviationWarningPercent={priceDeviationWarningPercent}
             customerId={customerId}
+            bom={bom}
           />
         ))}
         {items.length === 0 && (
@@ -954,6 +988,10 @@ export function DocumentItemsTable({
           )}
         </div>
       )}
+
+      {/* BOM รวมทั้งใบ (เฉพาะผู้ดูต้นทุนได้) */}
+      <QuoteBomPanel items={items} settings={bomSettings} resolve={bomResolve} products={companyProducts} isLocked={isLocked}
+        onUpsertRounding={(line) => { const ex = items.find((i) => i.bomRounding); notifyChange(ex ? items.map((i) => (i.bomRounding ? { ...i, ...line } : i)) : [...items, { id: Date.now(), productId: null, sku: "", ...line }]); }} />
 
       {/* Clear All Confirmation Modal */}
       {isConfirmingClear && (

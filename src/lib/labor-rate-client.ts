@@ -38,9 +38,11 @@ export async function createLaborRate(companyId: string, contractor: { id: strin
   return { productId: created.id, sku: created.sku || "" };
 }
 
-/** แก้อัตรา/ราคาขายของรายการค่าแรงที่มีอยู่ */
-export async function updateLaborRate(companyId: string, productId: string, patch: { ratePerUnit?: number; standardSellingPrice?: number; unit?: string }) {
+/** แก้อัตรา/ราคาขาย/รหัสค่าแรงกลางของรายการค่าแรงที่มีอยู่ */
+export async function updateLaborRate(companyId: string, productId: string, patch: { ratePerUnit?: number; standardSellingPrice?: number; unit?: string; laborCode?: string }) {
   const changes: Record<string, any> = {};
+  // รหัสค่าแรงกลาง (ราคากลาง LAB-…) — "" = ยกเลิกการผูก
+  if (patch.laborCode !== undefined) changes.laborCode = patch.laborCode;
   if (patch.ratePerUnit !== undefined) changes.costPrice = Math.max(0, Number(patch.ratePerUnit) || 0);
   if (patch.standardSellingPrice !== undefined) {
     const s = Math.max(0, Number(patch.standardSellingPrice) || 0);

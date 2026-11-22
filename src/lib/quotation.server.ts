@@ -65,6 +65,9 @@ export function normalizeLines(raw: any): Record<string, any>[] {
       margin: r2(unitPrice - costPrice),
       // สูตรงานบริการ (วัสดุต่อหน่วย + ค่าแรง) — ตัดวัสดุตอนส่งของ/เบิกงาน
       recipe: isHeader ? null : normalizeRecipe(l.recipe),
+      // BOM: ราคาต่อจุดปรับเอง (กรอกระยะใหม่ไม่ทับราคา) · บรรทัดส่วนต่างการปัดเศษทั้งงาน
+      ...(l.priceManual ? { priceManual: true } : {}),
+      ...(l.bomRounding ? { bomRounding: true } : {}),
       // ฐานราคาที่ใช้ตั้งราคา (ดูย้อนหลังได้ว่าราคามาจากไหน) — ว่าง = พิมพ์เอง
       priceBase: ["lotsAvg", "lotsNew", "lotsOld", "lotsMax", "lastPurchase", "list", "lastSold", "targetGp"].includes(l.priceBase) ? l.priceBase : "",
     };

@@ -669,6 +669,9 @@ export default function QuotationCreationPage() {
         isOptional: !!item.isOptional,
         recipe: item.recipe || null,
         priceBase: item.priceBase || "",
+        // BOM: ราคาต่อจุดที่ปรับเอง (กรอกระยะใหม่ไม่ทับ) · บรรทัดส่วนต่างการปัดเศษทั้งงาน
+        priceManual: !!item.priceManual,
+        bomRounding: !!item.bomRounding,
       }));
       const productWritebacks = items
         .filter((item) => item.saveToProductMaster && item.productId)

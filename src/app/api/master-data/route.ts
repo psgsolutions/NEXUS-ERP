@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { normalizeRecipe } from "@/lib/service-recipe";
+import { normalizeRealModels } from "@/lib/bom-quote";
 import { suggestSku } from "@/lib/sku-scheme";
 import * as admin from "firebase-admin";
 import { PRODUCT_THUMB_MAX } from "@/lib/attachments";
@@ -269,7 +270,8 @@ async function nextAutoSku(groupId: string, companyId: string): Promise<string> 
  * ซ้ำ = เติม -2, -3 · สร้างไม่ได้ (ชื่อไม่มีข้อมูลพอ) = ใช้เลขลำดับ PRD
  */
 async function schemeSku(groupId: string, companyId: string, data: Record<string, any>): Promise<string> {
-  const base = suggestSku({ name: String(data.name || ""), brand: String(data.brand || ""), category: String(data.skuCategory || ""), partNumber: String(data.partNumber || "") });
+  // รหัสผู้ผลิต (partNumber) ก่อน ไม่มีใช้รุ่นที่กรอก — ตรงกับตัวอย่างในหน้าเพิ่มสินค้า
+  const base = suggestSku({ name: String(data.name || ""), brand: String(data.brand || ""), category: String(data.skuCategory || ""), partNumber: String(data.partNumber || data.model || "") });
   if (base.fallback) return nextAutoSku(groupId, companyId);
   for (let i = 1; i < 50; i++) {
     const sku = i === 1 ? base.sku : `${base.sku}-${i}`;
@@ -338,6 +340,12 @@ export async function POST(request: Request) {
     if (entity === "products" && body.changes && "serviceRecipe" in body.changes) {
       body.changes.serviceRecipe = normalizeRecipe(body.changes.serviceRecipe);
       body.scope = "company";
+    }
+    // สินค้ากลาง (ราคากลาง) → รุ่นที่ซื้อจริง · รายการค่าแรงของช่าง → รหัสค่าแรงกลาง (LAB-…)
+    for (const bag of [body.changes, body.data]) {
+      if (entity !== "products" || !bag || typeof bag !== "object") continue;
+      if ("realModels" in bag) bag.realModels = normalizeRealModels(bag.realModels, str(body.id, 120));
+      if ("laborCode" in bag) bag.laborCode = /^[\w\-./"]{1,60}$/.test(String(bag.laborCode ?? "").trim()) ? String(bag.laborCode).trim() : "";
     }
     if (entity === "products" && action === "create" && body.data && typeof body.data === "object" && "serviceRecipe" in body.data) {
       body.data.serviceRecipe = normalizeRecipe(body.data.serviceRecipe);

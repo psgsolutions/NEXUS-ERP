@@ -539,6 +539,9 @@ export default function ProductDetailPage() {
           </GlassCard>
         )}
 
+        {/* คุณลักษณะเฉพาะเป็นข้อ ๆ (AI อ่าน datasheet ได้) — ใช้ในร่าง TOR · คอลัมน์หลักให้เห็นประโยคเต็ม */}
+        {activeTab === "overview" && <SpecItemsCard product={product} />}
+
         {/* Tab: Pricing */}
         {activeTab === "pricing" && (
           <GlassCard className="p-4 border-white/5 bg-black/15 space-y-3">
@@ -802,9 +805,6 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </GlassCard>
-
-      {/* คุณลักษณะเฉพาะเป็นข้อ ๆ (AI อ่าน datasheet ได้) — ใช้ในร่าง TOR */}
-      <SpecItemsCard product={product} />
 
       {/* เอกสารประกอบสินค้า (datasheet คู่มือ ใบรับรอง) — ทุกคนที่ดูสินค้าได้เปิดดูได้ แนบ/ลบโดยผู้มีสิทธิ์คลังสินค้า */}
       <GlassCard className="p-4 border-white/5 space-y-3">

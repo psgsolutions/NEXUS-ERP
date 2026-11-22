@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileSpreadsheet, Loader2, Plus, RefreshCw, Save, Search, Wrench } from "lucide-react";
+import { Download, FileSpreadsheet, Loader2, Plus, RefreshCw, Save, Search, Wrench } from "lucide-react";
 import { GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillBackButton, PillButton, PillInput, PillSelect, cn } from "@/components/ui/Base";
 import { NumCell } from "@/components/projects/ProjectPlanEditors";
 import { useAuth } from "@/context/AuthContext";
@@ -12,7 +12,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { apiFetch } from "@/lib/api-client";
 import { can, canViewCost } from "@/lib/permissions";
 import { LAN_VARIANTS, REF_STATUS_TH, isServiceCategory, parseRefRows, sameUnit, type MatchCandidate, type RefPriceRow, type RefStatus } from "@/lib/ref-prices";
-import { BOM_SETTING_FIELDS, bomToRecipe, defaultInputs, expandBom, lanBomSpec, normalizeBomSettings, resolveCode, type BomSettings } from "@/lib/bom";
+import { BOM_SETTING_FIELDS, LAN_CODES, bomToRecipe, defaultInputs, expandBom, lanBomSpec, normalizeBomSettings, resolveCode, type BomSettings } from "@/lib/bom";
 import { useBom } from "@/hooks/useBom";
 
 const money = (n: number) => Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -129,6 +129,46 @@ export default function RefPricesPage() {
     } catch (e: any) { showAlert(e.message, "บันทึกไม่สำเร็จ", "error"); setProgress(""); } finally { setBusy(""); }
   };
 
+  // ---------- แม่แบบไฟล์ราคากลาง ----------
+  // ชีต "ราคากลาง" หัวตารางตรงกับที่ระบบอ่าน + ราคากลางที่มีอยู่ (แก้แล้วนำเข้ากลับได้ รหัสเดิมจับคู่ให้อัตโนมัติ)
+  // + รหัสที่สูตรงาน LAN ใช้แต่ยังไม่มีราคา (ชื่อ/ราคาว่างให้กรอก) · ชีต "วิธีกรอก"
+  const downloadTemplate = async () => {
+    setBusy("template");
+    try {
+      const XLSX = await import("xlsx");
+      const head = ["รหัส", "รายการ (ไทย)", "Description (EN)", "หมวด", "หน่วย", "ต้นทุน/หน่วย", "ที่มาของราคา", "สถานะราคา"];
+      const have = items.filter((x) => !String(x.bomCode).startsWith("SVC-"));
+      const rows: (string | number)[][] = have.map((x) => [x.bomCode, x.name, "", x.refCostCategory || "", x.refCostUnit || x.unit || "",
+        Math.round((Number(x.refCost) / (Number(x.refCostPer) || 1)) * 100) / 100, x.refCostSource || "", x.refCostStatus || ""]);
+      const missing = LAN_CODES.filter((c) => !have.some((x) => x.bomCode === c));
+      rows.push(...missing.map((c) => [c, "", "", /^LAB-|^TEST$/.test(c) ? "ค่าแรง" : "", /^(UTP|FLEX-|EMT-|LAB-FLEX|LAB-EMT)/.test(c) ? "ม." : "", "", "", ""]));
+      const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
+      ws["!cols"] = [{ wch: 16 }, { wch: 42 }, { wch: 30 }, { wch: 14 }, { wch: 8 }, { wch: 13 }, { wch: 36 }, { wch: 11 }];
+      const help = [
+        ["วิธีกรอกแม่แบบราคากลาง"],
+        [""],
+        ["คอลัมน์", "ความหมาย"],
+        ["รหัส", "รหัสในสูตร BOM (ห้ามซ้ำ) เช่น UTP-CAT6, EMT-3/4\", LAB-UTP — รหัสที่มีอยู่แล้วจะจับคู่สินค้าเดิมให้อัตโนมัติ"],
+        ["รายการ (ไทย)", "ชื่อกลาง ไม่ระบุยี่ห้อ (ใช้ในใบเสนอราคา/TOR) — แถวที่ไม่มีชื่อจะถูกข้าม"],
+        ["Description (EN)", "ชื่อภาษาอังกฤษ (ไม่บังคับ)"],
+        ["หมวด", "เช่น สาย, ท่อ, อุปกรณ์ · หมวด ค่าแรง / ทดสอบ/ส่งมอบ / บริหารโครงการ = งานบริการ (ไม่นับสต็อก)"],
+        ["หน่วย", "หน่วยของราคาในแถวนี้ เช่น ม., ตัว, เส้น, จุด — ต่างจากหน่วยสินค้า (เช่น สินค้าเป็นกล่อง) ระบบให้ระบุ 1 กล่อง = 305 ม. ตอนตรวจ"],
+        ["ต้นทุน/หน่วย", "ราคาทุนต่อหน่วยในคอลัมน์หน่วย (ไม่รวม VAT)"],
+        ["ที่มาของราคา", "เช่น ใบเสนอราคาผู้ขาย ก.ค. 69, เว็บไซต์…"],
+        ["สถานะราคา", "ว่าง = ราคาจากบริษัท/ผู้ขาย · WEB = ราคาเว็บ · Y = ประมาณการ ต้องยืนยัน (ระบบเตือนเมื่อใช้ในใบเสนอราคา)"],
+        [""],
+        ["ขั้นตอน", "กรอก/แก้ในชีต ราคากลาง → หน้า คลัง › ราคากลาง กด นำเข้าจาก Excel → ตรวจการจับคู่ → บันทึก"],
+        ["", `รหัสที่สูตรงาน LAN ใช้แต่ยังไม่มีราคา ${missing.length} รหัส อยู่ท้ายชีต (ชื่อ/ราคาว่าง) — กรอกให้ครบเพื่อคิดต้นทุนได้ทุกขนาดท่อ`],
+      ];
+      const wh = XLSX.utils.aoa_to_sheet(help);
+      wh["!cols"] = [{ wch: 18 }, { wch: 110 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "ราคากลาง");
+      XLSX.utils.book_append_sheet(wb, wh, "วิธีกรอก");
+      XLSX.writeFile(wb, `แม่แบบราคากลาง_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (e: any) { showAlert(e.message || "สร้างไฟล์ไม่สำเร็จ", "ดาวน์โหลดไม่สำเร็จ", "error"); } finally { setBusy(""); }
+  };
+
   // ---------- งานบริการ LAN 3 รูปแบบ ----------
   const codeMap = useMemo(() => new Map(items.map((x) => [x.bomCode, x])), [items]);
   // งานบริการ LAN 3 รูปแบบ: สูตร BOM แบบมีตัวแปร (ระยะสาย/ท่อกรอกต่อบรรทัดในใบเสนอราคา) — มีแล้ว = อัปเดตสูตร
@@ -192,6 +232,7 @@ export default function RefPricesPage() {
           <p className="text-xs text-white/55 mt-1">ราคาอ้างอิงที่ใช้คิดต้นทุนงานบริการแบบ BOM · {refItems.length} รายการ · <span className="text-danger">ประมาณการ {red}</span> · สีดำ = ไฟล์บริษัท <span className="text-nexus-blue">น้ำเงิน = ราคาเว็บ</span> <span className="text-danger">แดง = ประมาณการ ต้องยืนยัน</span></p>
         </div>
         <span className="flex-1" />
+        <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={downloadTemplate} disabled={!!busy} data-ref-template title="ไฟล์ Excel หัวตารางตรงกับที่ระบบอ่าน พร้อมราคากลางปัจจุบันและรหัสที่ยังขาด แก้แล้วนำเข้ากลับได้">{busy === "template" ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} ดาวน์โหลดแม่แบบ</PillButton>
         {canEdit && <>
           <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={seedLan} disabled={!!busy} data-seed-lan>{busy === "seed" ? <Loader2 size={13} className="animate-spin" /> : <Wrench size={13} />} สร้าง/อัปเดตงานบริการ LAN 3 รูปแบบ</PillButton>
           <PillButton variant="confirm" className="h-9 px-4 text-xs font-bold" onClick={() => fileRef.current?.click()} disabled={!!busy} data-import-ref>{busy === "read" ? <Loader2 size={13} className="animate-spin" /> : <FileSpreadsheet size={13} />} นำเข้าจาก Excel</PillButton>

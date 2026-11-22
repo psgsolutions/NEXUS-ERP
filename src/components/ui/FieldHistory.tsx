@@ -91,7 +91,7 @@ export function FieldHistory({ k, value, onPick, children, className }: {
   return (
     <div ref={wrap} className={className} onFocusCapture={onFocus} onBlurCapture={onBlur} onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }} data-field-history={k}>
       {children}
-      <FloatingLayer ref={layer} anchorRef={wrap} open={open && items.length > 0} maxHeight={280} className="rounded-xl border border-white/10 bg-surface-1 shadow-2xl overflow-y-auto">
+      <FloatingLayer ref={layer} anchorRef={wrap} open={open && items.length > 0} fit maxHeight={280} className="rounded-xl border border-white/10 bg-surface-1 shadow-2xl overflow-y-auto">
         <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 text-[11px] text-white/45"><History size={11} /> เคยบันทึก — เลือกแล้วแก้ต่อได้</div>
         {items.map((v) => (
           <button key={v} type="button" tabIndex={-1}

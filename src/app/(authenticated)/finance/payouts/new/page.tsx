@@ -3,7 +3,7 @@
 import { useSystemDialog } from "@/context/DialogContext";
 import React, { useState, useEffect } from 'react';
 import { useRealtimeCollection } from '@/hooks/useRealtimeCollection';
-import { PillInput, PillButton, GlassCard } from '@/components/ui/Base';
+import { PillInput, PillButton, GlassCard, PillSelect } from '@/components/ui/Base';
 import { Save, HardHat, FileText, ArrowLeft } from 'lucide-react';
 import { db } from '@/lib/firebase-client';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -131,18 +131,12 @@ export default function CreatePayoutPage() {
           </h3>
           
           <Field label="อ้างอิงใบสั่งขาย *" required>
-            <select
-              value={formData.soId}
-              onChange={handleSoChange}
-              className="h-10 px-5 rounded-full bg-black/50 border border-white/10 text-white text-[12px] font-bold focus:outline-none focus:border-cyan-400/40 w-full appearance-none transition-all"
-            >
-              <option value="" className="bg-slate-900 text-white/40">-- เลือกใบสั่งขาย --</option>
+            <PillSelect value={formData.soId} onChange={handleSoChange} placeholder="-- เลือกใบสั่งขาย --" className="h-9 text-[12px]" aria-label="ใบสั่งขาย">
+              <option value="">-- เลือกใบสั่งขาย --</option>
               {salesOrders.map(so => (
-                <option key={so.id} value={so.id} className="bg-slate-900 text-white">
-                  {so.soCode} : {so.customerName}
-                </option>
+                <option key={so.id} value={so.id}>{`${so.soCode} : ${so.customerName}`}</option>
               ))}
-            </select>
+            </PillSelect>
           </Field>
         </div>
 

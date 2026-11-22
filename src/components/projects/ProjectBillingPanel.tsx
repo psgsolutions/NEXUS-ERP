@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Loader2, Printer, Receipt, Save, ShieldCheck, XCircle } from "lucide-react";
-import { GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillInput, StatusBadge } from "@/components/ui/Base";
+import { GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillInput, PillSelect, StatusBadge } from "@/components/ui/Base";
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
 import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
@@ -126,9 +126,11 @@ export function ProjectBillingPanel({ companyId, docId, customerId }: { companyI
         </div>
         <div className="space-y-1">
           <label className="text-[12px] font-bold text-white/60 ml-1">ลูกค้าหัก ณ ที่จ่าย<InfoTip text="งานรับเหมา/บริการ ลูกค้านิติบุคคลมักหัก 3% จากยอดก่อน VAT — ตั้งไว้ที่นี่เพื่อให้ใบแจ้งหนี้แสดงยอดสุทธิที่ลูกค้าจะโอน และเป็นค่าเริ่มต้นตอนรับชำระ" /></label>
-          <select value={wht} onChange={(e) => setWht(e.target.value)} disabled={!st.canBill} className="h-9 px-4 rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] leading-[1.9]">
-            {[0, 1, 2, 3, 5].map((r) => <option key={r} value={r} className="bg-surface-1">{r === 0 ? "ไม่หัก" : `${r}%`}</option>)}
-          </select>
+          <div className="w-[120px]">
+            <PillSelect value={String(wht)} onChange={(e) => setWht(String(e.target.value))} disabled={!st.canBill} className="h-9 text-[14px]" aria-label="หัก ณ ที่จ่าย">
+              {[0, 1, 2, 3, 5].map((r) => <option key={r} value={String(r)}>{r === 0 ? "ไม่หัก" : `${r}%`}</option>)}
+            </PillSelect>
+          </div>
         </div>
         {st.canBill && (
           <PillButton variant="glass" className="h-9 px-4 text-xs font-bold" disabled={!!busy} onClick={() => run("settings", async () => { await call({ action: "settings", retentionPercent: Number(retention) || 0, advancePercent: Number(advance) || 0, whtRate: Number(wht) || 0 }); })}>

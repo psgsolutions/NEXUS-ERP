@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { suggestSku } from "@/lib/sku-scheme";
 import { 
   Package, 
   ShieldCheck, 
@@ -386,14 +387,19 @@ export default function NewProductPage() {
     }
   };
 
-  // Generate SKU on mount
+  // รหัสสินค้าแบบอ่านสเปก [หมวด]-[ยี่ห้อ]-[รุ่น](-[ตัวแปร]) จากชื่อ ยี่ห้อ รหัสผู้ผลิต/รุ่น — ตรงกับที่ server ออกตอนบันทึก
+  // ชื่อยังไม่พอย่อรุ่น = เลขลำดับตามตั้งค่ารูปแบบเลขที่ (PRD) · พิมพ์แก้เอง = ใช้รหัสที่พิมพ์
+  const [skuManual, setSkuManual] = useState(false);
+  const skuSuggest = React.useMemo(() => {
+    if (!formData.name.trim()) return null;
+    const taken = new Set<string>((products || []).map((p: any) => String(p?.sku || "")).filter(Boolean));
+    return suggestSku({ name: formData.name, brand: formData.brand, partNumber: formData.mpn || formData.model }, taken);
+  }, [formData.name, formData.brand, formData.mpn, formData.model, products]);
   useEffect(() => {
-    const generatedSku = computeNextSku(products);
-    setFormData(prev => ({
-      ...prev,
-      sku: prev.sku || generatedSku
-    }));
-  }, [products]);
+    if (skuManual) return;
+    const auto = skuSuggest && !skuSuggest.fallback ? skuSuggest.sku : computeNextSku(products);
+    setFormData(prev => (prev.sku === auto ? prev : { ...prev, sku: auto }));
+  }, [skuSuggest, skuManual, products]);
 
   const isFormDirty = () => {
     return (
@@ -627,7 +633,9 @@ export default function NewProductPage() {
             productName: formData.name,
             category: formData.category || "general",
             subCategory: formData.subCategory || "",
-            brand: formData.brand || "NEXUS",
+            // ไม่เลือกยี่ห้อ = ว่าง (รหัสสินค้าใช้ GEN) — เดิมใส่ NEXUS ทำให้รหัสเป็นยี่ห้อบริษัทผิด ๆ
+            brand: formData.brand || "",
+            partNumber: formData.mpn || "",
             model: formData.model || "",
             mainModel: formData.model || "",
             subModel: formData.subModel || "",
@@ -709,7 +717,7 @@ export default function NewProductPage() {
           const { stockStatus: _s, ...withoutStock } = productData as any; void _s;
           const res = await apiFetch("/api/master-data", {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ companyId, action: "create", entity: "products", id: prodId, autoSku: true, data: { ...withoutStock, sku: "", productCode: "" }, openingStock: { qty: totalQty, unitCost: formData.cost || 0, ...(formData.isSerialized && serialList.length ? { serials: serialList } : {}) } }),
+            body: JSON.stringify({ companyId, action: "create", entity: "products", id: prodId, autoSku: !skuManual, data: skuManual ? { ...withoutStock, sku: formData.sku.trim(), productCode: formData.sku.trim() } : { ...withoutStock, sku: "", productCode: "" }, openingStock: { qty: totalQty, unitCost: formData.cost || 0, ...(formData.isSerialized && serialList.length ? { serials: serialList } : {}) } }),
           });
           const d = await res.json();
           if (!res.ok || !d.success) throw new Error(d.error || "บันทึกสินค้าไม่สำเร็จ");
@@ -737,6 +745,7 @@ export default function NewProductPage() {
         if (saveAndContinue) {
           // ตัวถัดไปคงหมวด ยี่ห้อ หน่วย ภาษี ผู้ขาย คลัง และการติดตามไว้ — ล้างเฉพาะตัวสินค้า
           const nextSku = computeNextSku(products, [savedSku]);
+          setSkuManual(false);
           setFormData(prev => ({ ...carryOver(INITIAL_FORM_DATA, prev), sku: nextSku }));
           setErrors({});
           setPoItems([]);
@@ -932,15 +941,20 @@ export default function NewProductPage() {
                 <div className="flex-1 space-y-2 flex flex-col justify-between">
                   {/* บรรทัดที่ 1: รหัสสินค้า - ชื่อสินค้ามาตรฐาน */}
                   <div className="flex flex-wrap gap-2 items-end">
-                    <div className="w-[130px] shrink-0">
-                      <Field label="รหัสสินค้า">
-                        <PillInput 
-                          value={formData.sku} 
-                          readOnly 
-                          disabled
-                          tabIndex={-1}
-                          className="w-full h-8 px-3 rounded-full bg-white/5 border-white/5 text-nexus-teal/70 font-black cursor-default opacity-70 font-mono text-center pointer-events-none select-none text-[12px]" 
-                        />
+                    <div className="w-[200px] shrink-0" data-sku-field>
+                      <Field label={skuManual ? "รหัสสินค้า (กำหนดเอง)" : skuSuggest && !skuSuggest.fallback ? `รหัสสินค้า (อ่านสเปก${skuSuggest.confidence === "low" ? " · ควรตรวจ" : ""})` : "รหัสสินค้า (เลขลำดับ)"} error={errors.sku}>
+                        <div className="flex items-center gap-1">
+                          <PillInput
+                            value={formData.sku}
+                            onChange={(e) => { setSkuManual(true); setFormData(prev => ({ ...prev, sku: e.target.value.toUpperCase().replace(/[^A-Z0-9._-]/g, "").slice(0, 40) })); }}
+                            title={skuManual ? "รหัสที่พิมพ์เอง" : "ระบบตั้งจาก หมวด-ยี่ห้อ-รุ่น (พิมพ์แก้ได้) · รหัสจริงยืนยันตอนบันทึก ไม่ซ้ำในระบบ"}
+                            aria-label="รหัสสินค้า"
+                            className={cn("w-full h-8 px-3 rounded-full font-mono font-black text-center text-[12px] text-nexus-teal", skuSuggest?.confidence === "low" && !skuManual && "border-warning/50")}
+                          />
+                          {skuManual && (
+                            <PillButton type="button" variant="glass" className="h-8 px-2 text-[11px] shrink-0" title="กลับไปใช้รหัสอัตโนมัติ" onClick={() => { setSkuManual(false); setErrors(prev => ({ ...prev, sku: "" })); }}>อัตโนมัติ</PillButton>
+                          )}
+                        </div>
                       </Field>
                     </div>
                     

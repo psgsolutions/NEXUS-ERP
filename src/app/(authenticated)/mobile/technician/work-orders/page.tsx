@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { MapPin, Camera, CheckCircle, Navigation, X, Upload, ChevronLeft, ClipboardList, Loader2, Printer } from 'lucide-react';
 import { DocumentPdfModal } from "@/components/documents/DocumentPdfViewer";
-import { cn } from '@/components/ui/Base';
+import { cn, PillSelect } from '@/components/ui/Base';
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from '@/context/AuthContext';
 import { useRealtimeCollection } from '@/hooks/useRealtimeCollection';
@@ -521,15 +521,16 @@ export default function FieldTechnicianApp() {
 
                         <div className="space-y-1">
                           <label className="text-[11px] font-bold text-white/70">วิธีชำระเงิน</label>
-                          <select
+                          <PillSelect
                             value={paymentMethod}
                             onChange={(e) => setPaymentMethod(e.target.value)}
-                            className="w-full h-10 px-4 rounded-xl bg-black/40 border border-white/15 text-white text-xs font-bold focus:outline-none focus:border-nexus-teal/50"
+                            className="h-12 text-xs"
+                            aria-label="วิธีจ่าย"
                           >
                             <option value="cash">เงินสด (1111-00)</option>
                             <option value="ap">สำรองจ่าย / เจ้าหนี้ (2111-00)</option>
                             <option value="bank">เงินฝากธนาคาร (1112-00)</option>
-                          </select>
+                          </PillSelect>
                         </div>
 
                         <div className="space-y-1">

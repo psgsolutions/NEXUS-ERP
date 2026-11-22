@@ -8,6 +8,16 @@ import { X, Sparkles, ChevronLeft, ChevronDown, Plus, Check, ArrowUp, ArrowDown,
 
 import { cn } from "@/lib/utils";
 import { FloatingLayer } from "./FloatingLayer";
+import { OverflowTip, useOverflowTip } from "./OverflowTip";
+
+/** ข้อความล้วนของ label (string/ตัวเลข/องค์ประกอบซ้อน) — ใช้ tooltip ข้อความเต็ม */
+export function nodeText(n: React.ReactNode): string {
+  if (n === null || n === undefined || typeof n === "boolean") return "";
+  if (typeof n === "string" || typeof n === "number") return String(n);
+  if (Array.isArray(n)) return n.map(nodeText).join("");
+  if (React.isValidElement(n)) return nodeText((n.props as any)?.children);
+  return "";
+}
 export { cn };
 
 /** 
@@ -131,6 +141,8 @@ export function PillSelect({ className, children, value, onChange, placeholder =
   const triggerRef = React.useRef<HTMLDivElement>(null);
   const floatingRef = React.useRef<HTMLDivElement>(null);
   const optionRefs = React.useRef<(HTMLDivElement | null)[]>([]);
+  const labelRef = React.useRef<HTMLSpanElement>(null);
+  const tip = useOverflowTip(labelRef);
 
   // Parse children to get labels and values
   const options = React.Children.map(children, (child) => {
@@ -236,7 +248,9 @@ export function PillSelect({ className, children, value, onChange, placeholder =
         aria-disabled={props.disabled || undefined}
         tabIndex={props.disabled ? -1 : 0}
         onKeyDown={handleKeyDown}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => { tip.hide(); setIsOpen(!isOpen); }}
+        onMouseEnter={tip.onMouseEnter}
+        onMouseLeave={tip.onMouseLeave}
         className={cn(
           "h-8 w-full px-5 pr-9 py-1 leading-normal rounded-full bg-white/[0.03] border border-white/10 text-white text-[14px] font-bold focus:outline-none focus:border-nexus-teal/60 focus:ring-1 focus:ring-nexus-teal/40 transition-all cursor-pointer flex items-center justify-between group backdrop-blur-sm",
           (!value || !selectedOption) && "text-[color:var(--placeholder)] font-normal",
@@ -245,7 +259,7 @@ export function PillSelect({ className, children, value, onChange, placeholder =
           className
         )}
       >
-        <span className="truncate pr-2">{selectedOption?.label || placeholder}</span>
+        <span ref={labelRef} className="truncate min-w-0 flex-1 pr-2">{selectedOption?.label || placeholder}</span>
         <ChevronDown 
           className={cn(
             "absolute right-4 top-1/2 -translate-y-1/2 text-white/20 transition-all pointer-events-none",
@@ -259,6 +273,7 @@ export function PillSelect({ className, children, value, onChange, placeholder =
         ref={floatingRef}
         anchorRef={triggerRef}
         open={isOpen}
+        fit
         maxHeight={300}
         className="bg-surface-2 border border-white/10 rounded-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9)] p-1.5"
       >
@@ -278,11 +293,12 @@ export function PillSelect({ className, children, value, onChange, placeholder =
                     : "border-transparent text-white/90 hover:bg-white/10 hover:text-white"
               )}
             >
-              <span className="truncate pr-2">{opt.label}</span>
+              <span className="truncate pr-2" title={nodeText(opt.label) || undefined}>{opt.label}</span>
               {String(opt.value) === String(value ?? "") && <div className="w-1.5 h-1.5 rounded-full bg-nexus-teal shadow-neon-teal shrink-0" />}
             </div>
           ))}
       </FloatingLayer>
+      <OverflowTip anchorRef={triggerRef} open={tip.show && !isOpen} text={nodeText(selectedOption?.label)} />
     </div>
   );
 }
@@ -1354,6 +1370,8 @@ export function CreatableCombobox({
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const floatingRef = useRef<HTMLDivElement>(null);
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const tip = useOverflowTip(labelRef);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1376,16 +1394,19 @@ export function CreatableCombobox({
     <div className="relative w-full" ref={containerRef}>
       <div
         onClick={() => {
+          tip.hide();
           setIsOpen(!isOpen);
           setSearch("");
         }}
+        onMouseEnter={tip.onMouseEnter}
+        onMouseLeave={tip.onMouseLeave}
         className={cn(
           "h-9 w-full px-5 pr-10 rounded-full bg-white/[0.03] border border-white/10 text-white text-[12px] font-bold focus-within:border-nexus-teal/40 focus-within:bg-white/[0.06] transition-all cursor-pointer flex items-center justify-between group backdrop-blur-sm",
           isOpen && "border-nexus-teal/40 bg-white/[0.06]",
           className
         )}
       >
-        <span className={cn("truncate pr-2", !value && "text-white/40")}>{selectedLabel}</span>
+        <span ref={labelRef} className={cn("truncate min-w-0 flex-1 pr-2", !value && "text-white/40")}>{selectedLabel}</span>
         <ChevronDown 
           className={cn(
             "absolute right-4 top-1/2 -translate-y-1/2 text-white/20 transition-all pointer-events-none",
@@ -1399,6 +1420,7 @@ export function CreatableCombobox({
         ref={floatingRef}
         anchorRef={containerRef}
         open={isOpen}
+        fit
         maxHeight={300}
         className="bg-surface-0/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.9)] p-1.5 flex flex-col gap-1"
       >
@@ -1443,6 +1465,7 @@ export function CreatableCombobox({
             </div>
           )}
       </FloatingLayer>
+      <OverflowTip anchorRef={containerRef} open={tip.show && !isOpen} text={String(selectedLabel || "")} />
     </div>
   );
 }

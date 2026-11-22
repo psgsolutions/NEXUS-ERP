@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { FloatingLayer } from "./FloatingLayer";
+import { OverflowTip, useOverflowTip } from "./OverflowTip";
 import { cn, PillButton, PillInput, PillSelect, SignatureGlow } from "@/components/ui/Base";
 import { Search, Plus, ChevronDown, Minus, ChevronUp } from "lucide-react";
 
@@ -177,9 +178,12 @@ export function SmartSelect({
     setHighlightedIndex(-1);
   };
 
+  const tip = useOverflowTip(inputRef as React.RefObject<HTMLElement | null>);
+  const shownText = isFocused ? searchQuery : (selectedOption ? selectedOption.label : (value || searchQuery || ""));
   return (
     <div className={cn("relative w-full", className)} ref={dropdownRef}>
-      <div className="relative w-full flex items-center">
+      {/* ชี้ช่องที่ข้อความยาวเกินช่อง → แสดงข้อความเต็ม */}
+      <div className="relative w-full flex items-center" onMouseEnter={tip.onMouseEnter} onMouseLeave={tip.onMouseLeave}>
         <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-nexus-teal/60 pointer-events-none z-10" />
         <PillInput
           ref={inputRef}
@@ -321,6 +325,7 @@ export function SmartSelect({
         ref={floatingRef}
         anchorRef={dropdownRef}
         open={isOpen}
+        fit
         gap={4}
         maxHeight={360}
         className="bg-surface-2/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.9)] flex flex-col p-1.5"
@@ -382,6 +387,7 @@ export function SmartSelect({
             </div>
           )}
       </FloatingLayer>
+      <OverflowTip anchorRef={dropdownRef} open={tip.show && !isOpen} text={String(shownText || "")} />
     </div>
   );
 }

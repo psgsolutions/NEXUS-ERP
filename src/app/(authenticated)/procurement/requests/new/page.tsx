@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSystemDialog } from "@/context/DialogContext";
 import { 
@@ -85,8 +85,11 @@ export default function NewPurchaseRequestPage() {
 
   // รายการที่ส่งต่อมาจาก BOM ทั้งใบในใบเสนอราคา (?from=bom) — เติมครั้งเดียว ให้ตรวจ/แก้ก่อนส่ง
   const [draftNote, setDraftNote] = useState("");
+  const draftTaken = useRef(false);
   useEffect(() => {
-    if (!new URLSearchParams(window.location.search).has("from")) return;
+    // ร่างใช้ได้ครั้งเดียว: กัน effect รันซ้ำ (React StrictMode) อ่านรอบสองแล้วขึ้น "ไม่พบรายการ" ทับ
+    if (draftTaken.current || !new URLSearchParams(window.location.search).has("from")) return;
+    draftTaken.current = true;
     const d = takePrDraft();
     if (!d) { setDraftNote("ไม่พบรายการที่ส่งต่อมา (หมดอายุหรือใช้ไปแล้ว) — กดสร้างใบขอซื้อจากใบเสนอราคาอีกครั้ง"); return; }
     setItems(d.items);

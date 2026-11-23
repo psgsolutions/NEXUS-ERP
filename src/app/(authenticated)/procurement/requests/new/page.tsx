@@ -33,6 +33,7 @@ import { apiFetch } from "@/lib/api-client";
 import { ChoiceInput } from "@/components/ui/ChoiceInput";
 import { DEPARTMENTS } from "@/lib/hr";
 import { FieldHistory } from "@/components/ui/FieldHistory";
+import { takePrDraft } from "@/lib/pr-draft";
 
 function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
   return (
@@ -81,6 +82,17 @@ export default function NewPurchaseRequestPage() {
   // Vendor Auto-Inference
   const [vendorId, setVendorId] = useState("");
   const [vendorData, setVendorData] = useState<any>(null);
+
+  // รายการที่ส่งต่อมาจาก BOM ทั้งใบในใบเสนอราคา (?from=bom) — เติมครั้งเดียว ให้ตรวจ/แก้ก่อนส่ง
+  const [draftNote, setDraftNote] = useState("");
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has("from")) return;
+    const d = takePrDraft();
+    if (!d) { setDraftNote("ไม่พบรายการที่ส่งต่อมา (หมดอายุหรือใช้ไปแล้ว) — กดสร้างใบขอซื้อจากใบเสนอราคาอีกครั้ง"); return; }
+    setItems(d.items);
+    if (d.reason) setHeader((prev) => ({ ...prev, reason: prev.reason || d.reason || "" }));
+    setDraftNote(`เติมรายการจาก BOM${d.source ? ` ใบเสนอราคา ${d.source}` : ""} แล้ว ${d.items.length} รายการ — ราคาเป็นต้นทุนประมาณการ ตรวจ/แก้จำนวนและราคาก่อนส่ง`);
+  }, []);
 
   // File Attachments Vault
 
@@ -221,6 +233,11 @@ export default function NewPurchaseRequestPage() {
 
   const leftContent = (
     <div className="space-y-7">
+      {draftNote && (
+        <div data-pr-draft-note className="p-3 rounded-xl text-[12px] font-bold flex items-center gap-2 bg-nexus-teal/10 border border-nexus-teal/30 text-nexus-teal">
+          <CheckCircle2 size={14} className="shrink-0" /> <span>{draftNote}{items.length > 0 ? " · ระบุวันที่ต้องการใช้งานแล้วกดส่งขออนุมัติซื้อ" : ""}</span>
+        </div>
+      )}
       {activeTab === "header" && (
         <GlassCard accentColor="teal" className="p-6 space-y-10">
           {/* User & Request Info */}

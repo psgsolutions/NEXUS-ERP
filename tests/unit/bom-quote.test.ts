@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_BOM_SETTINGS, bomToRecipe, expandBom, lanBomSpec } from "@/lib/bom";
-import { applyLineInputs, crewRatesByCode, laborCompare, lineInputs, lineWarnings, normalizeRealModels, purchaseRows, quoteBom, roundingLine } from "@/lib/bom-quote";
+import { applyLineInputs, prDraftLines, crewRatesByCode, laborCompare, lineInputs, lineWarnings, normalizeRealModels, purchaseRows, quoteBom, roundingLine } from "@/lib/bom-quote";
 
 /** ราคากลางเดียวกับ bom-lan-excel.test (Excel จริง) */
 const PRICE: Record<string, number> = {
@@ -122,5 +122,29 @@ describe("ค่าแรงกลาง ↔ อัตราช่าง", () =>
     expect(cmp.length).toBe(1);
     expect(cmp[0].quotedCost).toBe(24000);
     expect(cmp[0].crews.map((c) => [c.contractorName, c.cost, c.diff])).toEqual([["ช่างบี", 21000, -3000], ["ช่างเอ", 27000, 3000]]);
+  });
+});
+
+describe("รายการที่ต้องซื้อ → ใบขอซื้อ", () => {
+  const byId = new Map<string, any>([
+    ["G-UTP", { id: "G-UTP", sku: "GEN-UTP", name: "สาย CAT6 (กลาง)", unit: "ม.", realModels: [{ productId: "R-UTP", primary: true, per: 305 }] }],
+    ["R-UTP", { id: "R-UTP", sku: "LINK-9116", name: "LINK US-9116 CAT6 305m", unit: "กล่อง" }],
+    ["G-PP", { id: "G-PP", name: "Patch panel", unit: "ชิ้น", realModels: [{ productId: "R-PP", primary: true }] }],
+    ["R-PP", { id: "R-PP", name: "PP 24 port", unit: "ชิ้น", pricing: { costWAC: 1650 } }],
+  ]);
+  const buy = purchaseRows([
+    { code: "UTP-CAT6", productId: "G-UTP", name: "สาย CAT6 (กลาง)", unit: "ม.", qty: 1034, rawQty: 1034, unitCost: 12.46, cost: 0, labor: false, group: "" },
+    { code: "PP-24", productId: "G-PP", name: "Patch panel", unit: "ชิ้น", qty: 1, rawQty: 1, unitCost: 1800, cost: 0, labor: false, group: "" },
+    { code: "BOX-2x4", productId: "G-BOX", name: "กล่อง 2x4", unit: "ชิ้น", qty: 20, rawQty: 20, unitCost: 13, cost: 0, labor: false, group: "" },
+  ], byId);
+  it("ต้นทุนประมาณ: ต้นทุนจริงของรุ่น ถ้าไม่มี = ราคากลาง × ต่อหน่วยซื้อ · ไม่ผูก = ราคากลาง", () => {
+    expect(buy.map((b) => [b.productId, b.qty, b.unitCost, b.sku])).toEqual([["R-UTP", 4, 3800.3, "LINK-9116"], ["R-PP", 1, 1650, ""], ["G-BOX", 20, 13, ""]]);
+  });
+  it("เป็นบรรทัดใบขอซื้อสินค้า ราคา = ต้นทุนประมาณ พร้อมที่มาจาก BOM", () => {
+    const lines = prDraftLines(buy);
+    expect(lines[0]).toMatchObject({ productId: "R-UTP", sku: "LINK-9116", qty: 4, unit: "กล่อง", price: 3800.3, itemType: "PRODUCT", whtRate: 0 });
+    expect(lines[0].details).toMatch(/สาย CAT6 \(กลาง\) 1034 ม\./);
+    expect(lines[2].details).toMatch(/ยังไม่ผูก/);
+    expect(new Set(lines.map((l) => l.id)).size).toBe(3);
   });
 });

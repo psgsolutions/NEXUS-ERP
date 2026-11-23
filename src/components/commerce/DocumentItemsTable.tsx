@@ -28,6 +28,8 @@ export interface DocumentItemsTableProps {
   priceDeviationWarningPercent?: number;
   /** ลูกค้าของเอกสาร — ใช้ฐานราคา "ราคาล่าสุดที่ขายลูกค้ารายนี้" */
   customerId?: string;
+  /** เลขเอกสาร (เช่น QT-…) — ส่งต่อเป็นที่มาเมื่อสร้างใบขอซื้อจาก BOM ทั้งใบ */
+  docRef?: string;
 }
 
 /* ---------------------------------------------------------------------------
@@ -743,7 +745,8 @@ export function DocumentItemsTable({
   onChange,
   isLocked = false,
   priceDeviationWarningPercent = 10,
-  customerId
+  customerId,
+  docRef
 }: DocumentItemsTableProps) {
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
 
@@ -990,7 +993,7 @@ export function DocumentItemsTable({
       )}
 
       {/* BOM รวมทั้งใบ (เฉพาะผู้ดูต้นทุนได้) */}
-      <QuoteBomPanel items={items} settings={bomSettings} resolve={bomResolve} products={companyProducts} isLocked={isLocked}
+      <QuoteBomPanel docRef={docRef} items={items} settings={bomSettings} resolve={bomResolve} products={companyProducts} isLocked={isLocked}
         onUpsertRounding={(line) => { const ex = items.find((i) => i.bomRounding); notifyChange(ex ? items.map((i) => (i.bomRounding ? { ...i, ...line } : i)) : [...items, { id: Date.now(), productId: null, sku: "", ...line }]); }} />
 
       {/* Clear All Confirmation Modal */}

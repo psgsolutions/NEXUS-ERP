@@ -144,7 +144,7 @@ export const primaryModel = (p: any): RealModel | null => {
   return list.find((m) => m.primary) || null;
 };
 
-export interface PurchaseRow { code: string; genericId: string; genericName: string; genericQty: number; genericUnit: string; productId: string; name: string; unit: string; qty: number; mapped: boolean; missing?: boolean }
+export interface PurchaseRow { code: string; genericId: string; genericName: string; genericQty: number; genericUnit: string; productId: string; sku: string; name: string; unit: string; qty: number; unitCost: number; mapped: boolean; missing?: boolean }
 
 /**
  * รายการขอซื้อจาก BOM ทั้งใบ (ไม่รวมค่าแรง): แปลงสินค้ากลางเป็นรุ่นหลักที่ซื้อจริง ปัดขึ้นตามหน่วยซื้อ
@@ -158,15 +158,29 @@ export function purchaseRows(rows: JobBomRow[], byId: Map<string, any>): Purchas
     const pm = g ? primaryModel(g) : null;
     const real = pm ? byId.get(pm.productId) : null;
     const key = real ? real.id : r.productId || r.code;
-    const qtyIn = real ? r.qty / (pm!.per || 1) : r.qty;
+    const per = pm?.per || 1;
+    const qtyIn = real ? r.qty / per : r.qty;
+    // ต้นทุนประมาณการต่อหน่วยซื้อ: ต้นทุนจริงของรุ่นที่ซื้อ ถ้ายังไม่มี = ราคากลาง × จำนวนต่อหน่วยซื้อ
+    const realCost = real ? num(real.pricing?.costWAC ?? real.costPrice ?? real.cost) : 0;
+    const unitCost = r2(real ? (realCost > 0 ? realCost : num(r.unitCost) * per) : num(r.unitCost));
     const cur = out.get(key);
     if (cur) { cur.qty += qtyIn; cur.genericQty += r.qty; continue; }
     out.set(key, {
       code: r.code, genericId: r.productId, genericName: r.name, genericQty: r.qty, genericUnit: r.unit,
-      productId: real?.id || r.productId, name: real?.name || r.name, unit: real?.unit || r.unit, qty: qtyIn, mapped: !!real, ...(r.missing ? { missing: true } : {}),
+      productId: real?.id || r.productId, sku: String(real?.sku || g?.sku || ""), name: real?.name || r.name, unit: real?.unit || r.unit, qty: qtyIn, unitCost, mapped: !!real, ...(r.missing ? { missing: true } : {}),
     });
   }
   return [...out.values()].map((p) => ({ ...p, qty: p.mapped ? Math.ceil(p.qty - 1e-9) : r2(p.qty) }));
+}
+
+/** บรรทัดใบขอซื้อ (PR) จากรายการที่ต้องซื้อ — ราคา = ต้นทุนประมาณการ ให้ฝ่ายจัดซื้อแก้ได้ */
+export function prDraftLines(buy: PurchaseRow[]): Record<string, any>[] {
+  const base = Date.now();
+  return buy.filter((b) => b.qty > 0).map((b, i) => ({
+    id: base + i, productId: b.productId || null, sku: b.sku, name: b.name, qty: b.qty, unit: b.unit, price: b.unitCost, cost: b.unitCost,
+    itemType: "PRODUCT", discountType: "PERCENT", discountValue: 0, whtRate: 0,
+    details: b.mapped ? `ตาม BOM: ${b.genericName} ${r2(b.genericQty)} ${b.genericUnit}` : "ยังไม่ผูกรุ่นที่ซื้อจริง (ซื้อตามสินค้ากลาง)",
+  }));
 }
 
 // ---------------------------------------------------------------------------

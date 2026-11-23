@@ -1434,6 +1434,7 @@ export default function QuotationEditPage() {
           taxType={taxType}
           customerId={selectedCustomerId}
           priceDeviationWarningPercent={priceDeviationWarningPercent}
+          docRef={quotationNumber}
         />
       </div>
 

@@ -9,21 +9,26 @@
  */
 
 import React, { useMemo } from "react";
-import { AlertTriangle, Layers } from "lucide-react";
+import { AlertTriangle, Layers, ShoppingCart } from "lucide-react";
 import { NexusTable, NexusTableCell, NexusTableRow, PillButton, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { canViewCost } from "@/lib/permissions";
 import type { BomSettings, CodeResolver } from "@/lib/bom";
-import { crewRatesByCode, laborCompare, purchaseRows, quoteBom, roundingLine } from "@/lib/bom-quote";
+import { crewRatesByCode, laborCompare, prDraftLines, purchaseRows, quoteBom, roundingLine } from "@/lib/bom-quote";
+import { savePrDraft } from "@/lib/pr-draft";
+import { useSystemDialog } from "@/context/DialogContext";
 
 const money = (n: number) => Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const qtyText = (n: number) => Number(n || 0).toLocaleString("th-TH", { maximumFractionDigits: 2 });
 const TONE: Record<string, string> = { WEB: "text-nexus-blue", Y: "text-danger" };
 
-export function QuoteBomPanel({ items, settings, resolve, products, isLocked, onUpsertRounding }: {
+export function QuoteBomPanel({ items, settings, resolve, products, isLocked, onUpsertRounding, docRef }: {
   items: any[]; settings: BomSettings; resolve: CodeResolver; products: any[]; isLocked?: boolean; onUpsertRounding: (line: Record<string, any>) => void;
+  /** เลขเอกสารต้นทาง (เช่น QT-…) ใส่ในเหตุผลของใบขอซื้อ */
+  docRef?: string;
 }) {
   const { roles } = useAuth();
+  const { showAlert } = useSystemDialog();
   const seeCost = canViewCost(roles);
   const q = useMemo(() => quoteBom(items, settings, resolve), [items, settings, resolve]);
   const byId = useMemo(() => new Map<string, any>(products.map((p: any) => [p.id, p])), [products]);
@@ -37,6 +42,14 @@ export function QuoteBomPanel({ items, settings, resolve, products, isLocked, on
   const totalCost = q.cost;
   const markup = totalCost > 0 ? otherSale / totalCost - 1 : null;
   const unmapped = buy.filter((b) => !b.mapped).length;
+  // ส่งรายการที่ต้องซื้อไปหน้าสร้างใบขอซื้อ (แท็บใหม่: งานในใบเสนอราคาที่ยังไม่บันทึกไม่หาย)
+  const toPr = () => {
+    const lines = prDraftLines(buy);
+    if (!lines.length) return void showAlert("ไม่มีรายการที่ต้องซื้อ");
+    const ok = savePrDraft({ items: lines, source: docRef || "", reason: `ซื้อวัสดุตาม BOM ใบเสนอราคา${docRef ? ` ${docRef}` : ""}` });
+    if (!ok) return void showAlert("เบราว์เซอร์นี้ไม่อนุญาตให้เก็บข้อมูลชั่วคราว จึงส่งต่อรายการไปใบขอซื้อไม่ได้");
+    window.open("/procurement/requests/new?from=bom", "_blank");
+  };
 
   return (
     <details className="border-t border-white/10 px-4 py-3" data-quote-bom>
@@ -85,16 +98,24 @@ export function QuoteBomPanel({ items, settings, resolve, products, isLocked, on
         </NexusTable>
 
         <div className="space-y-2" data-quote-bom-purchase>
-          <p className="text-[12px] font-bold text-white/80">รายการที่ต้องซื้อ (รุ่นจริง)
-            {unmapped > 0 && <span className="ml-2 font-normal text-warning">ยังไม่ผูกรุ่นจริง {unmapped} รายการ — ผูกได้ที่หน้าสินค้า › รุ่นที่ซื้อจริง</span>}
-          </p>
-          <NexusTable headers={["รายการในใบเสนอราคา", "รุ่นที่ซื้อ", "จำนวนซื้อ", "หน่วย"]}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[12px] font-bold text-white/80">รายการที่ต้องซื้อ (รุ่นจริง)
+              {unmapped > 0 && <span className="ml-2 font-normal text-warning">ยังไม่ผูกรุ่นจริง {unmapped} รายการ — ผูกได้ที่หน้าสินค้า › รุ่นที่ซื้อจริง</span>}
+            </p>
+            {buy.length > 0 && (
+              <PillButton type="button" variant="glass" className="h-8 px-3 text-[12px]" data-bom-to-pr onClick={toPr}>
+                <ShoppingCart size={13} /> สร้างใบขอซื้อจากรายการนี้
+              </PillButton>
+            )}
+          </div>
+          <NexusTable headers={["รายการในใบเสนอราคา", "รุ่นที่ซื้อ", "จำนวนซื้อ", "หน่วย", "ต้นทุนประมาณ/หน่วย"]}>
             {buy.map((b) => (
               <NexusTableRow key={b.productId || b.code}>
                 <NexusTableCell title={b.genericName}>{b.genericName} <span className="text-[11px] text-white/40 font-mono">{qtyText(b.genericQty)} {b.genericUnit}</span></NexusTableCell>
                 <NexusTableCell title={b.name}>{b.mapped ? b.name : <span className="text-warning">ยังไม่ผูก (ซื้อตามสินค้ากลาง)</span>}</NexusTableCell>
                 <NexusTableCell align="right" mono>{qtyText(b.qty)}</NexusTableCell>
                 <NexusTableCell>{b.unit}</NexusTableCell>
+                <NexusTableCell align="right" mono>{b.unitCost > 0 ? money(b.unitCost) : "-"}</NexusTableCell>
               </NexusTableRow>
             ))}
           </NexusTable>

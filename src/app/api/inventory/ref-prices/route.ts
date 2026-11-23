@@ -122,6 +122,8 @@ export async function POST(request: Request) {
     const authRes = authErrorResponse(err);
     if (authRes) return authRes;
     console.error("[REF_PRICES_API_ERROR]", err);
+    // โควตาฐานข้อมูลรายวันเต็ม: บอกสาเหตุตรง ๆ (ลองใหม่หลังรีเซ็ต) แทนข้อความกว้าง ๆ
+    if (/RESOURCE_EXHAUSTED|Quota exceeded/i.test(String(err?.message || err))) return NextResponse.json({ success: false, error: "โควตาฐานข้อมูลของวันนี้เต็ม — ลองใหม่หลัง 15:00 น." }, { status: 503 });
     return NextResponse.json({ success: false, error: "ดำเนินการราคากลางไม่สำเร็จ" }, { status: 500 });
   }
 }

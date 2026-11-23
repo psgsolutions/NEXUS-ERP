@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from "react";
+import React, { createContext, useCallback, useContext, useMemo, useState, ReactNode, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { PillButton } from "@/components/ui/Base";
 import { X, AlertTriangle, Info } from "lucide-react";
@@ -42,30 +42,33 @@ export function DialogProvider({ children }: { children: ReactNode }) {
 
   const [resolvePromise, setResolvePromise] = useState<((value: any) => void) | null>(null);
 
-  const showAlert = (message: string, title = "แจ้งเตือน", type: "info" | "warning" | "error" = "info"): Promise<void> => {
+  // ฟังก์ชันคงที่ตลอดอายุ provider (ใช้แต่ setState) — หน้าที่ใส่ showAlert ใน deps ของ useEffect/useCallback
+  // จะไม่โหลดซ้ำทุกครั้งที่กล่องแจ้งเตือนเปิด/ปิด (เดิมทำให้โหลดล้ม → เตือน → โหลดใหม่ วนไม่จบ)
+  const showAlert = useCallback((message: string, title = "แจ้งเตือน", type: "info" | "warning" | "error" = "info"): Promise<void> => {
     return new Promise((resolve) => {
       setConfig({ type: "alert", message, title, alertType: type });
       setResolvePromise(() => resolve);
       setIsOpen(true);
     });
-  };
+  }, []);
 
-  const showConfirm = (message: string, title = "ยืนยันการทำรายการ"): Promise<boolean> => {
+  const showConfirm = useCallback((message: string, title = "ยืนยันการทำรายการ"): Promise<boolean> => {
     return new Promise((resolve) => {
       setConfig({ type: "confirm", message, title, alertType: "warning" });
       setResolvePromise(() => resolve);
       setIsOpen(true);
     });
-  };
+  }, []);
 
-  const showPrompt = (message: string, title = "ระบุข้อมูล", placeholder = ""): Promise<string | null> => {
+  const showPrompt = useCallback((message: string, title = "ระบุข้อมูล", placeholder = ""): Promise<string | null> => {
     return new Promise((resolve) => {
       setText("");
       setConfig({ type: "prompt", message, title, alertType: "info", placeholder });
       setResolvePromise(() => resolve);
       setIsOpen(true);
     });
-  };
+  }, []);
+  const ctx = useMemo(() => ({ showAlert, showConfirm, showPrompt }), [showAlert, showConfirm, showPrompt]);
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -128,7 +131,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
   ) : null;
 
   return (
-    <DialogContext.Provider value={{ showAlert, showConfirm, showPrompt }}>
+    <DialogContext.Provider value={ctx}>
       {children}
       {dialogContent}
     </DialogContext.Provider>

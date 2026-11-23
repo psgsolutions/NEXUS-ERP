@@ -6,6 +6,9 @@ import { notify } from "@/lib/notifications.server";
 import { grossProfitPercent } from "@/lib/quotation.server";
 import { computeProjectBudget, type ProjectLine } from "@/lib/project-budget";
 import { CLOSED_PROJECT_STATUSES, OPEN_QUOTATION_STATUSES, changePct, isSignificant, type PriceAlertDocType } from "@/lib/price-alerts";
+import { normalizeBomSettings } from "@/lib/bom";
+import { followRefCost } from "@/lib/ref-prices";
+import { normalizeRealModels } from "@/lib/bom-quote";
 
 /**
  * ราคาทุนเปลี่ยนหลังรับสินค้า (เรียกหลังบันทึกรับสินค้าสำเร็จ — ล้มเหลวไม่กระทบใบรับสินค้า)
@@ -13,6 +16,7 @@ import { CLOSED_PROJECT_STATUSES, OPEN_QUOTATION_STATUSES, changePct, isSignific
  *  2) ราคาล็อตใหม่ต่างจากต้นทุนเฉลี่ยเดิมเกินเกณฑ์ → หาใบเสนอราคาที่ยังเปิด/โครงการที่ยังไม่จบที่ใช้สินค้านั้น
  *     ที่ต้นทุนในเอกสารต่างจากราคาซื้อล่าสุดเกินเกณฑ์ → บันทึก price_alerts + แจ้งผู้สร้างเอกสาร
  *  3) แจ้งฝ่ายจัดซื้อและผู้บริหาร (สรุปต่อสินค้า)
+ *  4) ราคาซื้อสูงกว่าราคากลาง (BOM) → ขยับราคากลางขึ้นตาม % ในตั้งค่า BOM (เปิด/ปิดได้) + แจ้งจัดซื้อ
  * price_alerts/{docType}_{docId}_{productId} — เอกสารเดียวต่อคู่ เหตุการณ์ใหม่เขียนทับ (สถานะกลับเป็น open)
  */
 export interface ReceivedItem { productId: string; name: string; unitCost: number }
@@ -21,6 +25,49 @@ export interface GrContext { companyId: string; grNo: string; supplierId: string
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const fmt = (n: number) => n.toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const pctText = (p: number | null) => (p === null ? "" : `${p > 0 ? "+" : ""}${p.toFixed(1)}%`);
+
+/**
+ * ราคากลางขยับขึ้นตามราคาซื้อจริง — เก็บราคาเดิมไว้ดูย้อนหลัง
+ *  - สินค้าที่รับมีราคากลางเอง: เทียบราคาซื้อต่อหน่วยหลักตรง ๆ
+ *  - รับ "รุ่นจริง" ของสินค้ากลาง (realModels): แปลงเป็นหน่วยสินค้ากลาง (ราคาซื้อ ÷ per เช่น กล่อง 305 ม.) แล้วเทียบราคากลาง
+ */
+async function followRefPrice(ctx: GrContext, it: ReceivedItem, bomSet: ReturnType<typeof normalizeBomSettings>) {
+  if (bomSet.refFollow === "ปิด") return;
+  await followOne(ctx, it.productId, it.name, it.unitCost, bomSet, "");
+  // รุ่นจริงเก็บเป็นข้อมูลของบริษัท (เหมือนราคากลาง) — ค้นจากดัชนี realModelIds ไม่อ่านสินค้าทั้งหมด
+  const parents = await adminDb.collection(`companies/${ctx.companyId}/products`).where("realModelIds", "array-contains", it.productId).limit(10).get();
+  for (const d of parents.docs) {
+    const m = normalizeRealModels(d.get("realModels"), d.id).find((x) => x.productId === it.productId);
+    if (!m) continue;
+    const gp = await getProduct(ctx.companyId, d.id);
+    await followOne(ctx, d.id, String(gp?.data?.name || d.get("name") || ""), it.unitCost / (m.per || 1), bomSet, ` (รุ่นจริง ${it.name || it.productId}${(m.per || 1) !== 1 ? ` ÷ ${m.per}` : ""})`);
+  }
+}
+
+async function followOne(ctx: GrContext, productId: string, name: string, buyCost: number, bomSet: ReturnType<typeof normalizeBomSettings>, via: string) {
+  const p = await getProduct(ctx.companyId, productId);
+  const ref = Number(p?.data?.refCost) || 0;
+  const next = followRefCost(ref, buyCost, bomSet);
+  if (next === null) return;
+  const it = { productId, name, unitCost: Math.round(buyCost * 10000) / 10000 };
+  const per = Number(p?.data?.refCostPer) || 1;
+  const pct = Math.round((bomSet.refFollowPct || 0) * 1000) / 10;
+  const source = `ปรับอัตโนมัติจากราคาซื้อ ${fmt(it.unitCost)}${via} ใบรับ ${ctx.grNo}${ctx.supplierName ? ` (${ctx.supplierName})` : ""}${pct ? ` + เผื่อ ${pct}%` : ""}`;
+  await adminDb.doc(`companies/${ctx.companyId}/products/${it.productId}`).set({
+    refCost: next, refCostStatus: "", refCostSource: source.slice(0, 500), refCostPrev: ref, refCostAt: new Date().toISOString(), refCostBy: `auto:${ctx.grNo}`.slice(0, 120),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+  const unitTxt = per > 1 && p?.data?.refCostUnit ? ` (= ${fmt(next / per)}/${p.data.refCostUnit})` : "";
+  await notify(ctx.companyId, {
+    type: "PRICE_CHANGE",
+    title: `ราคากลาง ${it.name || p?.data?.name || it.productId} ปรับขึ้นอัตโนมัติ`,
+    message: `${fmt(ref)} → ${fmt(next)} บาท${unitTxt} เพราะซื้อจริง ${fmt(it.unitCost)} บาท สูงกว่าราคากลาง · ใบรับ ${ctx.grNo}`,
+    link: "/inventory/ref-prices",
+    targetRoles: ["PURCHASING", "EXECUTIVE"],
+    documentNo: ctx.grNo,
+    dedupeKey: `refcost_${ctx.grNo}_${it.productId}`.replace(/[/\s]/g, "_").slice(0, 300),
+  }, ctx.userUid);
+}
 
 /** ต้นทุนเฉลี่ยก่อนรับเข้า (อ่านก่อนบันทึกรับสินค้า) */
 export async function costsBefore(companyId: string, productIds: string[]): Promise<Map<string, number>> {
@@ -32,9 +79,11 @@ export async function afterGoodsReceipt(ctx: GrContext, items: ReceivedItem[], b
   // รายการเดียวกันหลายบรรทัด: ใช้ราคาล่าสุด
   const byProduct = new Map<string, ReceivedItem>();
   for (const it of items) if (it.productId && it.unitCost > 0) byProduct.set(it.productId, it);
+  const bomSet = normalizeBomSettings((await adminDb.doc(`companies/${ctx.companyId}/settings/bom`).get().catch(() => null))?.data() || {});
   for (const it of Array.from(byProduct.values())) {
     try {
       if (ctx.supplierId) await updateSupplierCost(ctx, it);
+      await followRefPrice(ctx, it, bomSet).catch((err) => console.error("[REF_FOLLOW_FAILED]", it.productId, err));
       const prev = before.get(it.productId) || 0;
       if (!isSignificant(prev, it.unitCost)) continue;
       const after = await getProduct(ctx.companyId, it.productId);

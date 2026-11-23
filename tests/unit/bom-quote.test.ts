@@ -71,6 +71,8 @@ describe("เตือนกำไรต่ำ / ราคาประมาณ�
     expect(w.map((x) => x.kind)).toEqual(["lowMarkup"]);
     expect(w[0].markup!).toBeCloseTo(0.17, 2);
     expect(lineWarnings({ ...it0, price: 5000 }, s, resolve)[0].text).toMatch(/ต่ำกว่าเกณฑ์ 30%/);
+    // เกณฑ์เตือนตาม "เตือนเมื่อ markup ต่ำกว่า" (minMarkup) ไม่ใช่ markup ที่ใช้ตั้งราคา
+    expect(lineWarnings({ ...it0, discountValue: 10 }, { ...s, minMarkup: 0.15 }, resolve)).toEqual([]);
   });
   it("ราคาประมาณการ (Y) และรหัสที่ไม่มีราคากลาง", () => {
     EST.add("PP-24");

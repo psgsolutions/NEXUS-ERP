@@ -344,7 +344,8 @@ export async function POST(request: Request) {
     // สินค้ากลาง (ราคากลาง) → รุ่นที่ซื้อจริง · รายการค่าแรงของช่าง → รหัสค่าแรงกลาง (LAB-…)
     for (const bag of [body.changes, body.data]) {
       if (entity !== "products" || !bag || typeof bag !== "object") continue;
-      if ("realModels" in bag) bag.realModels = normalizeRealModels(bag.realModels, str(body.id, 120));
+      // realModelIds = ดัชนีค้นสินค้ากลางจากรุ่นจริง (รับสินค้ารุ่นจริง → ขยับราคากลางของสินค้ากลาง)
+      if ("realModels" in bag) { bag.realModels = normalizeRealModels(bag.realModels, str(body.id, 120)); bag.realModelIds = bag.realModels.map((m: any) => m.productId); }
       if ("laborCode" in bag) bag.laborCode = /^[\w\-./"]{1,60}$/.test(String(bag.laborCode ?? "").trim()) ? String(bag.laborCode).trim() : "";
     }
     if (entity === "products" && action === "create" && body.data && typeof body.data === "object" && "serviceRecipe" in body.data) {

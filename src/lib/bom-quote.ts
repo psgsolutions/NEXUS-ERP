@@ -76,8 +76,9 @@ export function lineWarnings(item: any, s: BomSettings, resolve: CodeResolver): 
   const est = b.items.filter((i) => i.status === "Y").map((i) => i.code);
   if (est.length) out.push({ kind: "estimated", itemId: item.id, name, codes: est, text: `มีราคาประมาณการ (ต้องยืนยัน) ${est.join(", ")}` });
   const m = markupOf(netUnitPrice(item), b.costPerUnit);
-  // เผื่อปัดเศษสตางค์: ราคาที่ระบบตั้งตาม markup พอดี ไม่ถือว่าต่ำ
-  if (m !== null && m < s.markup - 0.0005) out.push({ kind: "lowMarkup", itemId: item.id, name, markup: m, text: `กำไร (markup) ${pct(m)} ต่ำกว่าเกณฑ์ ${pct(s.markup)}` });
+  // เกณฑ์เตือน = "เตือนเมื่อ markup ต่ำกว่า" ในตั้งค่า BOM · เผื่อปัดเศษสตางค์: ราคาที่ตั้งตามเกณฑ์พอดี ไม่ถือว่าต่ำ
+  const floor = Number.isFinite(s.minMarkup) ? s.minMarkup : s.markup;
+  if (m !== null && m < floor - 0.0005) out.push({ kind: "lowMarkup", itemId: item.id, name, markup: m, text: `กำไร (markup) ${pct(m)} ต่ำกว่าเกณฑ์ ${pct(floor)}` });
   return out;
 }
 

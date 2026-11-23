@@ -51,11 +51,13 @@ export default function RefPricesPage() {
     if (!res.ok || !d.success) throw new Error(d.error || "ไม่สำเร็จ");
     return d;
   }, [companyId]);
+  // โหลดไม่สำเร็จ = แถบแจ้งในหน้า + ปุ่มลองใหม่ (ไม่เด้ง popup ซ้ำ ๆ และไม่โหลดซ้ำเอง)
+  const [loadErr, setLoadErr] = useState("");
   const load = useCallback(async () => {
     if (!companyId || !seeCost) return;
-    setBusy("load");
-    try { setItems((await post({ action: "list" })).items || []); } catch (e: any) { showAlert(e.message); } finally { setBusy(""); }
-  }, [companyId, seeCost, post, showAlert]);
+    setBusy("load"); setLoadErr("");
+    try { setItems((await post({ action: "list" })).items || []); } catch (e: any) { setLoadErr(e.message || "โหลดราคากลางไม่สำเร็จ"); } finally { setBusy(""); }
+  }, [companyId, seeCost, post]);
   useEffect(() => { load(); }, [load]);
 
   // ---------- นำเข้า ----------
@@ -239,6 +241,13 @@ export default function RefPricesPage() {
           <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => pick(e.target.files?.[0])} data-ref-file />
         </>}
       </div>
+
+      {loadErr && (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-danger/30 bg-danger/10 px-4 py-2.5 text-[12px] text-danger" data-ref-load-error>
+          <span className="flex-1 min-w-0">โหลดราคากลางไม่สำเร็จ: {loadErr}</span>
+          <PillButton variant="glass" className="h-8 px-3 text-xs" onClick={load} disabled={busy === "load"}><RefreshCw size={12} /> ลองใหม่</PillButton>
+        </div>
+      )}
 
       {rows && (
         <GlassCard className="p-4 space-y-3" >

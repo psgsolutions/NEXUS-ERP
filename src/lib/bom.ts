@@ -23,6 +23,8 @@ export interface BomSettings {
   outletsPerCircuit: number; lightsPerCircuit: number; panelW: number; panelsPerString: number;
   hangerSpacing: number; trayElbowPerM: number; trayTeePerM: number;
   minMarkup: number;
+  /** ราคาซื้อจริงสูงกว่าราคากลาง → ขยับราคากลาง = ราคาซื้อ × (1 + refFollowPct) · "ปิด" = ไม่ปรับ */
+  refFollow: string; refFollowPct: number;
 }
 export const DEFAULT_BOM_SETTINGS: BomSettings = {
   markup: 0.30, vat: 0.07,
@@ -33,6 +35,7 @@ export const DEFAULT_BOM_SETTINGS: BomSettings = {
   outletsPerCircuit: 6, lightsPerCircuit: 10, panelW: 550, panelsPerString: 10,
   hangerSpacing: 1.5, trayElbowPerM: 15, trayTeePerM: 30,
   minMarkup: 0.30,
+  refFollow: "เปิด", refFollowPct: 0.05,
 };
 export type BomNumKey = { [K in keyof BomSettings]: BomSettings[K] extends number ? K : never }[keyof BomSettings];
 export const PIPE_SIZES = ['1/2"', '3/4"', '1"'];
@@ -41,6 +44,8 @@ export const BOM_SETTING_FIELDS: { key: keyof BomSettings; label: string; unit: 
   { key: "markup", label: "กำไร (Markup) จากต้นทุน", unit: "%", group: "ราคาและภาษี", pct: true },
   { key: "minMarkup", label: "เตือนเมื่อ markup ต่ำกว่า", unit: "%", group: "ราคาและภาษี", pct: true },
   { key: "vat", label: "VAT", unit: "%", group: "ราคาและภาษี", pct: true },
+  { key: "refFollow", label: "ราคาซื้อสูงกว่าราคากลาง → ปรับราคากลางอัตโนมัติ", unit: "", group: "ราคาและภาษี", options: ["เปิด", "ปิด"] },
+  { key: "refFollowPct", label: "ราคากลางใหม่ = ราคาซื้อ + เผื่อ", unit: "%", group: "ราคาและภาษี", pct: true },
   { key: "cableWaste", label: "เผื่อสายเสีย/สายเหลือ", unit: "%", group: "สาย LAN และท่อ", pct: true },
   { key: "utpBoxM", label: "ความยาวสาย UTP ต่อกล่อง", unit: "ม.", group: "สาย LAN และท่อ" },
   { key: "flexSize", label: "ขนาดท่อ Flex (ค่าเริ่มต้น)", unit: "", group: "สาย LAN และท่อ", options: PIPE_SIZES },

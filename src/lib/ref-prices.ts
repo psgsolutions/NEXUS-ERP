@@ -63,6 +63,16 @@ export function matchCandidates(row: RefPriceRow, products: any[], limit = 5): M
 /** ราคากลางต่อหน่วยหลักของสินค้า: ราคาต่อหน่วยในชีต × จำนวนหน่วยนั้นใน 1 หน่วยหลัก (เช่น 12.46/ม. × 305 ม./กล่อง) */
 export const refCostPerBase = (cost: number, per: number) => Math.round(n(cost) * (n(per) > 0 ? n(per) : 1) * 10000) / 10000;
 
+/**
+ * ราคากลางขยับตามราคาซื้อจริง (หลังรับสินค้า): ซื้อแพงกว่าราคากลาง → ราคากลางใหม่ = ราคาซื้อ × (1 + เผื่อ)
+ * ขยับขึ้นอย่างเดียว (ซื้อถูกลงไม่ลดราคากลางเอง — ให้คนตัดสินใจ) · ไม่มีราคากลาง/ปิดอยู่ = null
+ */
+export function followRefCost(refCost: number, buyCost: number, s: { refFollow?: string; refFollowPct?: number }): number | null {
+  if (s.refFollow === "ปิด" || !(n(refCost) > 0) || !(n(buyCost) > n(refCost))) return null;
+  const next = Math.round(n(buyCost) * (1 + Math.max(0, n(s.refFollowPct))) * 100) / 100;
+  return next > n(refCost) ? next : null;
+}
+
 /** ต้นทุนที่ใช้คิด BOM: ราคากลาง (ถ้ามี) ไม่งั้นต้นทุนเฉลี่ยจริง */
 export function bomUnitCost(p: any): { cost: number; basis: "ref" | "wac" | "none"; status?: RefStatus } {
   if (p && Number(p.refCost) > 0) return { cost: Number(p.refCost), basis: "ref", status: (p.refCostStatus || "") as RefStatus };

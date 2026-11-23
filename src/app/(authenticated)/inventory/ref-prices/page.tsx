@@ -11,8 +11,9 @@ import { useSystemDialog } from "@/context/DialogContext";
 import { useProducts } from "@/hooks/useProducts";
 import { apiFetch } from "@/lib/api-client";
 import { can, canViewCost } from "@/lib/permissions";
-import { LAN_VARIANTS, REF_STATUS_TH, isServiceCategory, parseRefRows, sameUnit, type MatchCandidate, type RefPriceRow, type RefStatus } from "@/lib/ref-prices";
-import { BOM_SETTING_FIELDS, LAN_CODES, bomToRecipe, defaultInputs, expandBom, lanBomSpec, normalizeBomSettings, resolveCode, type BomSettings } from "@/lib/bom";
+import { REF_STATUS_TH, isServiceCategory, parseRefRows, sameUnit, type MatchCandidate, type RefPriceRow, type RefStatus } from "@/lib/ref-prices";
+import { BOM_SETTING_FIELDS, bomToRecipe, defaultInputs, expandBom, normalizeBomSettings, resolveCode, type BomSettings } from "@/lib/bom";
+import { BOM_KINDS, bomKind, kindCodes } from "@/lib/bom-kinds";
 import { useBom } from "@/hooks/useBom";
 
 const money = (n: number) => Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -133,7 +134,7 @@ export default function RefPricesPage() {
 
   // ---------- แม่แบบไฟล์ราคากลาง ----------
   // ชีต "ราคากลาง" หัวตารางตรงกับที่ระบบอ่าน + ราคากลางที่มีอยู่ (แก้แล้วนำเข้ากลับได้ รหัสเดิมจับคู่ให้อัตโนมัติ)
-  // + รหัสที่สูตรงาน LAN ใช้แต่ยังไม่มีราคา (ชื่อ/ราคาว่างให้กรอก) · ชีต "วิธีกรอก"
+  // + รหัสที่สูตรทุกหมวดงานใช้แต่ยังไม่มีราคา (ชื่อ/ราคาว่างให้กรอก) · ชีต "วิธีกรอก"
   const downloadTemplate = async () => {
     setBusy("template");
     try {
@@ -142,8 +143,10 @@ export default function RefPricesPage() {
       const have = items.filter((x) => !String(x.bomCode).startsWith("SVC-"));
       const rows: (string | number)[][] = have.map((x) => [x.bomCode, x.name, "", x.refCostCategory || "", x.refCostUnit || x.unit || "",
         Math.round((Number(x.refCost) / (Number(x.refCostPer) || 1)) * 100) / 100, x.refCostSource || "", x.refCostStatus || ""]);
-      const missing = LAN_CODES.filter((c) => !have.some((x) => x.bomCode === c));
-      rows.push(...missing.map((c) => [c, "", "", /^LAB-|^TEST$/.test(c) ? "ค่าแรง" : "", /^(UTP|FLEX-|EMT-|LAB-FLEX|LAB-EMT)/.test(c) ? "ม." : "", "", "", ""]));
+      // รหัสที่สูตรทุกหมวดใช้แต่ยังไม่มีราคา (หมวด = ชื่อหมวดงาน, ค่าแรงแยกไว้)
+      const missing: [string, string][] = [];
+      for (const k of BOM_KINDS) for (const c of kindCodes(k, bom.settings)) if (!have.some((x) => x.bomCode === c) && !missing.some((m) => m[0] === c)) missing.push([c, k.label]);
+      rows.push(...missing.map(([c, label]) => [c, "", "", /^LAB-|^TEST$/.test(c) ? "ค่าแรง" : label, /^(UTP|FLEX-|EMT-|LAB-FLEX|LAB-EMT|FO-CABLE|THW|HDPE|LAB-HDPE|TRENCH|LAB-FO|WW-|CABLE-LADDER|LAB-WW|LAB-LADDER|PV-CABLE|PV-RAIL$)/.test(c) ? "ม." : "", "", "", ""]));
       const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
       ws["!cols"] = [{ wch: 16 }, { wch: 42 }, { wch: 30 }, { wch: 14 }, { wch: 8 }, { wch: 13 }, { wch: 36 }, { wch: 11 }];
       const help = [
@@ -160,7 +163,7 @@ export default function RefPricesPage() {
         ["สถานะราคา", "ว่าง = ราคาจากบริษัท/ผู้ขาย · WEB = ราคาเว็บ · Y = ประมาณการ ต้องยืนยัน (ระบบเตือนเมื่อใช้ในใบเสนอราคา)"],
         [""],
         ["ขั้นตอน", "กรอก/แก้ในชีต ราคากลาง → หน้า คลัง › ราคากลาง กด นำเข้าจาก Excel → ตรวจการจับคู่ → บันทึก"],
-        ["", `รหัสที่สูตรงาน LAN ใช้แต่ยังไม่มีราคา ${missing.length} รหัส อยู่ท้ายชีต (ชื่อ/ราคาว่าง) — กรอกให้ครบเพื่อคิดต้นทุนได้ทุกขนาดท่อ`],
+        ["", `รหัสที่สูตรงานทุกหมวด (LAN ไฟเบอร์ CCTV ไฟฟ้า โซลาร์ ดาต้าเซ็นเตอร์ รางและโครงสร้าง) ใช้แต่ยังไม่มีราคา ${missing.length} รหัส อยู่ท้ายชีต (ชื่อ/ราคาว่าง) — กรอกให้ครบเพื่อคิดต้นทุนได้ทุกขนาดท่อ`],
       ];
       const wh = XLSX.utils.aoa_to_sheet(help);
       wh["!cols"] = [{ wch: 18 }, { wch: 110 }];
@@ -171,34 +174,37 @@ export default function RefPricesPage() {
     } catch (e: any) { showAlert(e.message || "สร้างไฟล์ไม่สำเร็จ", "ดาวน์โหลดไม่สำเร็จ", "error"); } finally { setBusy(""); }
   };
 
-  // ---------- งานบริการ LAN 3 รูปแบบ ----------
+  // ---------- งานบริการตามหมวด BOM (LAN ไฟเบอร์ CCTV ไฟฟ้า โซลาร์ ดาต้าเซ็นเตอร์ รางและโครงสร้าง) ----------
   const codeMap = useMemo(() => new Map(items.map((x) => [x.bomCode, x])), [items]);
-  // งานบริการ LAN 3 รูปแบบ: สูตร BOM แบบมีตัวแปร (ระยะสาย/ท่อกรอกต่อบรรทัดในใบเสนอราคา) — มีแล้ว = อัปเดตสูตร
-  const seedLan = async () => {
-    const needed = Array.from(new Set(LAN_VARIANTS.flatMap((v) => lanBomSpec(v.key).comps.map((c) => resolveCode(c.code, {}, bom.settings)))));
+  const [seedKind, setSeedKind] = useState("LAN");
+  // สูตร BOM แบบมีตัวแปร (ระยะ/จำนวนกรอกต่อบรรทัดในใบเสนอราคา) — มีแล้ว = อัปเดตสูตร ราคาขายเดิมไม่เปลี่ยน
+  const seedServices = async () => {
+    const k = bomKind(seedKind);
+    if (!k) return;
+    const needed = Array.from(new Set(k.variants.flatMap((v) => { const sp = k.spec(v.key); const inp = defaultInputs(sp, bom.settings); return sp.comps.map((c) => resolveCode(c.code, inp, bom.settings)); })));
     const missing = needed.filter((c) => !codeMap.has(c));
-    if (missing.length) return void showAlert(`ยังไม่มีราคากลางของ: ${missing.join(", ")} — นำเข้าราคากลางก่อน (ขนาดท่อตามตั้งค่า BOM)`);
-    const exists = LAN_VARIANTS.filter((v) => codeMap.has(v.bomCode));
-    if (!(await showConfirm(exists.length ? `สร้าง/อัปเดตสูตร BOM ของงานบริการ LAN 3 รูปแบบ (มีอยู่แล้ว ${exists.length} งาน จะอัปเดตสูตร ราคาขายเดิมไม่เปลี่ยน)?` : "สร้างงานบริการ LAN 3 รูปแบบ พร้อมสูตร BOM แบบมีตัวแปร?"))) return;
+    if (missing.length) return void showAlert(`ยังไม่มีราคากลางของ: ${missing.join(", ")} — นำเข้าราคากลางก่อน (ขนาดท่อ/ค่าเริ่มต้นตามตั้งค่า BOM)`);
+    const exists = k.variants.filter((v) => codeMap.has(v.bomCode));
+    if (!(await showConfirm(exists.length ? `สร้าง/อัปเดตสูตร BOM ของงานบริการ${k.label} ${k.variants.length} รูปแบบ (มีอยู่แล้ว ${exists.length} งาน จะอัปเดตสูตร ราคาขายเดิมไม่เปลี่ยน)?` : `สร้างงานบริการ${k.label} ${k.variants.length} รูปแบบ พร้อมสูตร BOM แบบมีตัวแปร?`))) return;
     setBusy("seed");
     try {
-      for (const v of LAN_VARIANTS) {
-        const spec = lanBomSpec(v.key);
+      for (const v of k.variants) {
+        const spec = k.spec(v.key);
         const inputs = defaultInputs(spec, bom.settings);
         const res = expandBom(spec, inputs, bom.settings, bom.resolve);
-        const recipe = { ...bomToRecipe(spec, res.items, "จุด"), bomInputs: inputs };
+        const recipe = { ...bomToRecipe(spec, res.items, k.unit), bomInputs: inputs };
         const cur = codeMap.get(v.bomCode);
         const body = cur
           ? { companyId, action: "update", entity: "products", id: cur.productId, scope: "company", changes: { serviceRecipe: recipe } }
           : { companyId, action: "create", entity: "products", autoSku: true, data: {
-              name: v.name, productName: v.name, description: v.desc, details: v.desc, category: "งานบริการ", unit: "จุด", baseUnit: "จุด", itemType: "SERVICE", productType: "SERVICE", type: "SERVICE",
+              name: v.name, productName: v.name, description: v.desc, details: v.desc, category: "งานบริการ", unit: k.unit, baseUnit: k.unit, itemType: "SERVICE", productType: "SERVICE", type: "SERVICE",
               lifecycleStatus: "ACTIVE", isActive: true, taxType: "VAT_7", vatType: "VAT_7", whtRate: 3, bomCode: v.bomCode, serviceRecipe: recipe,
             } };
         const r = await apiFetch("/api/master-data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
         const d = await r.json().catch(() => ({}));
         if (!r.ok || d.success === false) throw new Error(`${v.name}: ${d.error || "บันทึกไม่สำเร็จ"}`);
       }
-      showAlert("งานบริการ LAN 3 รูปแบบพร้อมสูตร BOM แล้ว — เปิดงานแต่ละตัวเพื่อกรอกระยะที่ใช้บ่อยและบันทึกราคาขายตาม markup", "เรียบร้อย", "info");
+      showAlert(`งานบริการ${k.label} ${k.variants.length} รูปแบบพร้อมสูตร BOM แล้ว — เปิดงานแต่ละตัวเพื่อกรอกค่าที่ใช้บ่อยและบันทึกราคาขายตาม markup`, "เรียบร้อย", "info");
       await load();
     } catch (e: any) { showAlert(e.message, "สร้างไม่สำเร็จ", "error"); } finally { setBusy(""); }
   };
@@ -236,7 +242,12 @@ export default function RefPricesPage() {
         <span className="flex-1" />
         <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={downloadTemplate} disabled={!!busy} data-ref-template title="ไฟล์ Excel หัวตารางตรงกับที่ระบบอ่าน พร้อมราคากลางปัจจุบันและรหัสที่ยังขาด แก้แล้วนำเข้ากลับได้">{busy === "template" ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} ดาวน์โหลดแม่แบบ</PillButton>
         {canEdit && <>
-          <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={seedLan} disabled={!!busy} data-seed-lan>{busy === "seed" ? <Loader2 size={13} className="animate-spin" /> : <Wrench size={13} />} สร้าง/อัปเดตงานบริการ LAN 3 รูปแบบ</PillButton>
+          <div className="w-[170px]" data-seed-kind>
+            <PillSelect value={seedKind} onChange={(e) => setSeedKind(e.target.value)} className="h-9 w-full text-xs" aria-label="หมวดงานบริการ">
+              {BOM_KINDS.map((k) => <option key={k.kind} value={k.kind}>{k.label} ({k.variants.length} รูปแบบ)</option>)}
+            </PillSelect>
+          </div>
+          <PillButton variant="glass" className="h-9 px-4 text-xs" onClick={seedServices} disabled={!!busy} data-seed-lan title="สร้าง/อัปเดตงานบริการทุกรูปแบบของหมวดที่เลือก พร้อมสูตร BOM">{busy === "seed" ? <Loader2 size={13} className="animate-spin" /> : <Wrench size={13} />} สร้าง/อัปเดตงานบริการ</PillButton>
           <PillButton variant="confirm" className="h-9 px-4 text-xs font-bold" onClick={() => fileRef.current?.click()} disabled={!!busy} data-import-ref>{busy === "read" ? <Loader2 size={13} className="animate-spin" /> : <FileSpreadsheet size={13} />} นำเข้าจาก Excel</PillButton>
           <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => pick(e.target.files?.[0])} data-ref-file />
         </>}

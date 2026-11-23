@@ -488,10 +488,10 @@ export default function QuotationCreationPage() {
       lines: quotationLines(items.map((it: any) => ({ ...it, itemType: it.itemType, productName: it.name, unitPrice: it.price, uom: it.unit }))),
       lineTotal: summary.subTotal + summary.docDiscountAmount, billDiscount: summary.docDiscountAmount, net: summary.subTotal,
       vat: summary.vatAmount, grand: summary.grandTotal, taxType, wht: summary.whtAmount, payable: summary.netPayable,
-      paymentTerms, deliveryDays: expectedDeliveryDays, terms: termsAndConditions, remark, projectName,
+      paymentTerms, deliveryDays: expectedDeliveryDays, terms: termsAndConditions, remark, projectName, scope: scopeOfWork, exclusions, warranty: warrantyTerms,
       noStamp: !useStamp, noSign: !useSignature,
     });
-  }, [quotationNumber, docDate, validUntil, companyDocs, effectiveCompanyId, selectedCustomer, customerSearchTerm, customerBranch, customerTaxId, addrLine1, addrLine2, subDistrict, district, province, postalCode, contactPerson, contactPhone, contactEmail, items, summary, taxType, paymentTerms, expectedDeliveryDays, termsAndConditions, remark, projectName, useStamp, useSignature]);
+  }, [quotationNumber, docDate, validUntil, companyDocs, effectiveCompanyId, selectedCustomer, customerSearchTerm, customerBranch, customerTaxId, addrLine1, addrLine2, subDistrict, district, province, postalCode, contactPerson, contactPhone, contactEmail, items, summary, taxType, paymentTerms, expectedDeliveryDays, termsAndConditions, remark, projectName, scopeOfWork, exclusions, warrantyTerms, useStamp, useSignature]);
 
   // Handle Save with Multi-channel Audit Trail (Patch 11 & 12)
   const handleSave = async (isSubmit: boolean = false, sendChannel?: 'EMAIL' | 'LINE' | 'DOWNLOAD' | 'SYSTEM') => {
@@ -1312,7 +1312,7 @@ export default function QuotationCreationPage() {
 
       {/* งวดชำระ + ข้อกำหนดและการรับประกัน (ส่วนกลาง ใช้ร่วมกับหน้าแก้ไข) */}
       <QuotationTermsCards grandTotal={summary.grandTotal} schedules={paymentSchedules} onSchedules={setPaymentSchedules}
-        warrantyTerms={warrantyTerms} onWarranty={setWarrantyTerms} scopeOfWork={scopeOfWork} onScope={setScopeOfWork} exclusions={exclusions} onExclusions={setExclusions} />
+        warrantyTerms={warrantyTerms} onWarranty={setWarrantyTerms} scopeOfWork={scopeOfWork} onScope={setScopeOfWork} exclusions={exclusions} onExclusions={setExclusions} items={items} />
 
       {/* T&C, Remarks, and Internal Notes */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -37,6 +37,12 @@ export function BomCalculator({ spec, inputs, onInputs, settings, resolve, unit 
                   {PIPE_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </PillSelect>
               </div>
+            ) : d.kind === "choice" ? (
+              <div className="w-[110px]">
+                <PillSelect value={String(inputs[d.key] ?? d.default ?? d.options?.[0] ?? "")} disabled={disabled} onChange={(e) => setInput(d.key, Number(e.target.value))} className="h-9 w-full text-sm" aria-label={d.label}>
+                  {(d.options || []).map((o) => <option key={o} value={String(o)}>{o}</option>)}
+                </PillSelect>
+              </div>
             ) : (
               <div className="w-[120px]"><NumCell kind="pct" value={Number(inputs[d.key]) || 0} disabled={disabled} onChange={(v) => setInput(d.key, v)} suffix={d.unit} /></div>
             )}

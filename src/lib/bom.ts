@@ -105,8 +105,21 @@ export interface BomComp {
   roundJob?: boolean;
   /** ค่าแรง/บริการ (ไม่ตัดสต็อก) */
   labor?: boolean;
+  /**
+   * จำนวนต่อหน่วยแบบนิพจน์ (บวกเพิ่มจาก fixed/terms) — ใช้ชื่อช่องกรอกและค่าตั้งค่าได้
+   * รองรับ + − × ÷ วงเล็บ และ ceil() floor() min() max() gt(a,b)=1 เมื่อ a > b
+   * เช่น ชุด Snap-in = 2 * ceil(cores / coresPerSnap), แผงโซลาร์ = ceil(kWp * 1000 / panelW)
+   */
+  expr?: string;
 }
-export interface BomInputDef { key: string; label: string; unit?: string; kind?: "number" | "size"; sizeSetting?: "flexSize" | "emtSize" }
+export interface BomInputDef {
+  key: string; label: string; unit?: string;
+  /** number = ตัวเลข · size = ขนาดท่อ · choice = เลือกจากตัวเลือก (เช่น จำนวน core 6/12/24) */
+  kind?: "number" | "size" | "choice"; sizeSetting?: "flexSize" | "emtSize";
+  options?: number[];
+  /** ค่าเริ่มต้นของช่องกรอก (ไม่ระบุ = 0 หรือตัวเลือกแรก) */
+  default?: number;
+}
 export interface BomSpec { kind: string; variant?: string; inputs: BomInputDef[]; comps: BomComp[] }
 export type BomInputs = Record<string, number | string>;
 
@@ -119,9 +132,73 @@ export function resolveCode(tpl: string, inputs: BomInputs, s: BomSettings): str
   return tpl.replace(/\{(\w+)\}/g, (_, k) => String(inputs[k] ?? (s as any)[k] ?? ""));
 }
 
+// ---------------------------------------------------------------------------
+// นิพจน์จำนวน (ไม่ใช้ eval): ตัวเลข ชื่อตัวแปร + - * / วงเล็บ ฟังก์ชัน
+// ---------------------------------------------------------------------------
+type ExprNode = { n: number } | { v: string } | { op: string; a: ExprNode; b: ExprNode } | { neg: ExprNode } | { fn: string; args: ExprNode[] };
+const FNS: Record<string, { arity: number[]; f: (...x: number[]) => number }> = {
+  ceil: { arity: [1], f: (x) => Math.ceil(x - 1e-9) },
+  floor: { arity: [1], f: (x) => Math.floor(x + 1e-9) },
+  min: { arity: [2, 3, 4], f: (...x) => Math.min(...x) },
+  max: { arity: [2, 3, 4], f: (...x) => Math.max(...x) },
+  gt: { arity: [2], f: (a, b) => (a > b ? 1 : 0) },
+};
+const exprCache = new Map<string, ExprNode | null>();
+/** แปลงนิพจน์เป็นต้นไม้ (ผิดรูปแบบ = null) */
+export function parseBomExpr(src: string): ExprNode | null {
+  if (exprCache.has(src)) return exprCache.get(src)!;
+  const toks = String(src).length <= 300 ? String(src).match(/\d+(?:\.\d+)?|[A-Za-z_]\w*|[-+*/(),]|\S/g) || [] : ["!"];
+  let i = 0;
+  const peek = () => toks[i];
+  const take = (t?: string) => { const x = toks[i]; if (t !== undefined && x !== t) throw 0; i++; return x; };
+  const primary = (): ExprNode => {
+    const t = peek();
+    if (t === undefined) throw 0;
+    if (t === "(") { take("("); const e = sum(); take(")"); return e; }
+    if (t === "-") { take(); return { neg: primary() }; }
+    if (/^\d/.test(t)) { take(); return { n: Number(t) }; }
+    if (/^[A-Za-z_]\w*$/.test(t)) {
+      take();
+      if (peek() !== "(") return { v: t };
+      const fn = FNS[t];
+      if (!fn) throw 0;
+      take("(");
+      const args: ExprNode[] = [sum()];
+      while (peek() === ",") { take(","); args.push(sum()); }
+      take(")");
+      if (!fn.arity.includes(args.length)) throw 0;
+      return { fn: t, args };
+    }
+    throw 0;
+  };
+  const prod = (): ExprNode => { let a = primary(); while (peek() === "*" || peek() === "/") { const op = take()!; a = { op, a, b: primary() }; } return a; };
+  const sum = (): ExprNode => { let a = prod(); while (peek() === "+" || peek() === "-") { const op = take()!; a = { op, a, b: prod() }; } return a; };
+  let out: ExprNode | null = null;
+  try { out = toks.length ? sum() : null; if (i !== toks.length) out = null; } catch { out = null; }
+  if (exprCache.size > 500) exprCache.clear();
+  exprCache.set(src, out);
+  return out;
+}
+/** ค่าของนิพจน์ — ตัวแปร = ช่องกรอกก่อน แล้วค่าตั้งค่า (ไม่พบ = 0) · หารศูนย์ = 0 */
+export function evalBomExpr(src: string, inputs: BomInputs, s: BomSettings): number {
+  const root = parseBomExpr(src);
+  if (!root) return 0;
+  const val = (k: string) => num(k in inputs ? inputs[k] : (s as any)[k]);
+  const ev = (x: ExprNode): number => {
+    if ("n" in x) return x.n;
+    if ("v" in x) return val(x.v);
+    if ("neg" in x) return -ev(x.neg);
+    if ("fn" in x) return FNS[x.fn].f(...x.args.map(ev));
+    const a = ev(x.a), b = ev(x.b);
+    return x.op === "+" ? a + b : x.op === "-" ? a - b : x.op === "*" ? a * b : b !== 0 ? a / b : 0;
+  };
+  const r = ev(root);
+  return Number.isFinite(r) ? r : 0;
+}
+
 /** จำนวนต่อ 1 หน่วยงาน (ไม่ปัด) */
 export function compQty(c: BomComp, inputs: BomInputs, s: BomSettings): number {
-  let q = 0;
+  let q = c.expr ? evalBomExpr(c.expr, inputs, s) : 0;
   const cond = !c.when || num(inputs[c.when]) > 0;
   if (cond && c.fixed !== undefined) {
     if (typeof c.fixed === "number") q += c.fixed;
@@ -247,7 +324,8 @@ export const LAN_CODES = Array.from(new Set(LAN_TABLE.flatMap((r) => (r[0].inclu
 /** ค่าเริ่มต้นของช่องกรอก (ขนาดท่อจากตั้งค่า) */
 export function defaultInputs(spec: BomSpec, s: BomSettings): BomInputs {
   const out: BomInputs = {};
-  for (const d of spec.inputs) out[d.key] = d.kind === "size" ? String((s as any)[d.sizeSetting || d.key] || "") : 0;
+  for (const d of spec.inputs) out[d.key] = d.kind === "size" ? String((s as any)[d.sizeSetting || d.key] || "")
+    : d.kind === "choice" ? (d.default ?? d.options?.[0] ?? 0) : (d.default ?? 0);
   return out;
 }
 
@@ -262,13 +340,16 @@ export function normalizeBomSpec(raw: any): BomSpec | null {
   const inputs: BomInputDef[] = (Array.isArray(raw.inputs) ? raw.inputs : []).slice(0, 12).map((d: any) => ({
     key: str(d?.key, 30), label: str(d?.label, 80), ...(d?.unit ? { unit: str(d.unit, 10) } : {}),
     ...(d?.kind === "size" ? { kind: "size" as const, sizeSetting: d?.sizeSetting === "emtSize" ? "emtSize" as const : "flexSize" as const } : {}),
+    ...(d?.kind === "choice" && Array.isArray(d?.options) ? { kind: "choice" as const, options: d.options.slice(0, 12).map(num).filter((x: number) => x >= 0) } : {}),
+    ...(d?.default !== undefined && Number.isFinite(Number(d.default)) ? { default: num(d.default) } : {}),
   })).filter((d: BomInputDef) => /^\w+$/.test(d.key));
   const comps: BomComp[] = raw.comps.slice(0, 80).map((c: any) => {
     const fixed = typeof c?.fixed === "number" ? Math.max(0, num(c.fixed)) : c?.fixed && sk(c.fixed.setting) ? { setting: sk(c.fixed.setting)!, ...(c.fixed.inv ? { inv: true } : {}) } : undefined;
     const terms: BomTerm[] = (Array.isArray(c?.terms) ? c.terms : []).slice(0, 4).map((t: any) => ({
       input: str(t?.input, 30), ...(t?.k !== undefined ? { k: num(t.k) } : {}), ...(sk(t?.mul) ? { mul: sk(t.mul) } : {}), ...(sk(t?.div) ? { div: sk(t.div) } : {}), ...(sk(t?.plus1) ? { plus1: sk(t.plus1) } : {}),
     })).filter((t: BomTerm) => /^\w+$/.test(t.input));
-    return { code: str(c?.code, 60), ...(c?.group ? { group: str(c.group, 40) } : {}), ...(fixed !== undefined ? { fixed } : {}), ...(c?.when && /^\w+$/.test(String(c.when)) ? { when: String(c.when) } : {}), ...(terms.length ? { terms } : {}), ...(c?.roundJob ? { roundJob: true } : {}), ...(c?.labor ? { labor: true } : {}) };
+    return { code: str(c?.code, 60), ...(c?.group ? { group: str(c.group, 40) } : {}), ...(fixed !== undefined ? { fixed } : {}), ...(c?.when && /^\w+$/.test(String(c.when)) ? { when: String(c.when) } : {}), ...(terms.length ? { terms } : {}), ...(c?.roundJob ? { roundJob: true } : {}), ...(c?.labor ? { labor: true } : {}),
+      ...(typeof c?.expr === "string" && c.expr.length <= 300 && parseBomExpr(c.expr) ? { expr: c.expr } : {}) };
   }).filter((c: BomComp) => c.code && /^[\w\-./"{}]+$/.test(c.code));
   if (!comps.length) return null;
   return { kind: str(raw.kind, 30) || "CUSTOM", ...(raw.variant ? { variant: str(raw.variant, 30) } : {}), inputs, comps };

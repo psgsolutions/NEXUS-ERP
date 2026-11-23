@@ -43,6 +43,10 @@ export interface QuotationInput {
   deliveryDays?: string | number;
   terms?: string;
   remark?: string;
+  /** ขอบเขตงาน / ข้อยกเว้น / การรับประกัน (หลายบรรทัดได้) */
+  scope?: string;
+  exclusions?: string;
+  warranty?: string;
   /** ไม่ใส่ตราประทับ / ลายเซ็นอิเล็กทรอนิกส์ (เลือกตอนสร้างใบเสนอราคา) */
   noStamp?: boolean;
   noSign?: boolean;
@@ -76,6 +80,10 @@ export function quotationModel(q: QuotationInput): DocumentModel {
     notes: [
       q.paymentTerms ? `เงื่อนไขการชำระเงิน: ${q.paymentTerms}` : "",
       q.deliveryDays ? `กำหนดส่งมอบ: ภายใน ${q.deliveryDays} วัน` : "",
+      q.scope?.trim() ? `ขอบเขตงาน:
+${q.scope.trim()}` : "",
+      q.exclusions?.trim() ? `ข้อยกเว้น: ${q.exclusions.trim()}` : "",
+      q.warranty?.trim() ? `การรับประกัน: ${q.warranty.trim()}` : "",
       q.terms || "", q.remark || "",
     ].filter(Boolean),
     signatures: ["ผู้เสนอราคา", "ผู้อนุมัติ", "ลูกค้ายืนยันการสั่งซื้อ"],

@@ -659,10 +659,10 @@ export default function QuotationEditPage() {
       lines: quotationLines(items.map((it: any) => ({ ...it, itemType: it.itemType, productName: it.name, unitPrice: it.price, uom: it.unit }))),
       lineTotal: summary.subTotal + summary.docDiscountAmount, billDiscount: summary.docDiscountAmount, net: summary.subTotal,
       vat: summary.vatAmount, grand: summary.grandTotal, taxType, wht: summary.whtAmount, payable: summary.netPayable,
-      paymentTerms, deliveryDays: expectedDeliveryDays, terms: termsAndConditions, remark, projectName,
+      paymentTerms, deliveryDays: expectedDeliveryDays, terms: termsAndConditions, remark, projectName, scope: scopeOfWork, exclusions, warranty: warrantyTerms,
       noStamp: !useStamp, noSign: !useSignature,
     });
-  }, [quotationNumber, docDate, validUntil, companyDocs, effectiveCompanyId, selectedCustomer, customerSearchTerm, customerBranch, customerTaxId, addrLine1, addrLine2, subDistrict, district, province, postalCode, contactPerson, contactPhone, contactEmail, items, summary, taxType, paymentTerms, expectedDeliveryDays, termsAndConditions, remark, projectName, status, useStamp, useSignature]);
+  }, [quotationNumber, docDate, validUntil, companyDocs, effectiveCompanyId, selectedCustomer, customerSearchTerm, customerBranch, customerTaxId, addrLine1, addrLine2, subDistrict, district, province, postalCode, contactPerson, contactPhone, contactEmail, items, summary, taxType, paymentTerms, expectedDeliveryDays, termsAndConditions, remark, projectName, scopeOfWork, exclusions, warrantyTerms, status, useStamp, useSignature]);
 
   // แก้ไขบนใบเดิมได้เฉพาะก่อนส่งลูกค้า (ร่าง / รออนุมัติ / ตีกลับ)
   // ส่งลูกค้าแล้ว = ล็อก ต้องออกฉบับแก้ไข (Revision), ได้งาน/ถูกแทนที่ = อ่านอย่างเดียว
@@ -1440,7 +1440,7 @@ export default function QuotationEditPage() {
 
       {/* งวดชำระ + ข้อกำหนดและการรับประกัน */}
       <QuotationTermsCards grandTotal={summary.grandTotal} schedules={paymentSchedules} onSchedules={setPaymentSchedules} readOnly={isLocked}
-        warrantyTerms={warrantyTerms} onWarranty={setWarrantyTerms} scopeOfWork={scopeOfWork} onScope={setScopeOfWork} exclusions={exclusions} onExclusions={setExclusions} />
+        warrantyTerms={warrantyTerms} onWarranty={setWarrantyTerms} scopeOfWork={scopeOfWork} onScope={setScopeOfWork} exclusions={exclusions} onExclusions={setExclusions} items={items} />
 
       {/* File Attachments Card */}
       <DocumentAttachmentsCard

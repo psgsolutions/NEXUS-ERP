@@ -56,6 +56,7 @@ const quotation: DocumentTypeDef = {
       lineTotal: num(q.subTotal) + billDiscount, billDiscount, net: num(q.netTotal ?? q.subTotal), vat: num(q.vatAmount), grand: num(q.grandTotal),
       taxType: str(q.taxType) || "EXCLUSIVE", wht: num(q.whtAmount), payable: num(q.netPayable),
       paymentTerms: str(q.paymentTerms), deliveryDays: str(q.expectedDeliveryDays), terms: str(q.termsAndConditions), remark: str(q.remark),
+      scope: str(q.scopeOfWork), exclusions: str(q.exclusions), warranty: str(q.warrantyTerms),
       customerPoNo: str(q.customerPoNo), projectName: str(q.projectName), salesperson: str(q.salespersonName),
       noStamp: q.useStamp === false, noSign: q.useSignature === false,
     });

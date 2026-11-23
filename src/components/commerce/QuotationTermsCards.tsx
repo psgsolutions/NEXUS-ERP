@@ -1,10 +1,13 @@
 "use client";
 
-import React from "react";
-import { Plus, Trash2 } from "lucide-react";
-import { PillButton, PillInput, cn } from "@/components/ui/Base";
+import React, { useMemo } from "react";
+import { Layers, Plus, Trash2 } from "lucide-react";
+import { PillButton, PillInput, PillTextarea, cn } from "@/components/ui/Base";
 import { formatCurrency } from "@/lib/erp-logic";
 import { FieldHistory } from "@/components/ui/FieldHistory";
+import { useBom } from "@/hooks/useBom";
+import { useSystemDialog } from "@/context/DialogContext";
+import { sowForLines } from "@/lib/bom-kinds";
 
 /** งวดชำระของใบเสนอราคา (สัดส่วน % ของยอดรวม) */
 export interface PaymentSchedule { id: string; name: string; percent: number; amount: number }
@@ -19,7 +22,7 @@ export const DEFAULT_PAYMENT_SCHEDULES: PaymentSchedule[] = [
  * รวมสัดส่วนงวดต้องได้ 100% (หน้าจอตรวจตอนบันทึก)
  */
 export function QuotationTermsCards({
-  grandTotal, schedules, onSchedules, warrantyTerms, onWarranty, scopeOfWork, onScope, exclusions, onExclusions, readOnly = false,
+  grandTotal, schedules, onSchedules, warrantyTerms, onWarranty, scopeOfWork, onScope, exclusions, onExclusions, readOnly = false, items,
 }: {
   grandTotal: number;
   schedules: PaymentSchedule[];
@@ -28,15 +31,31 @@ export function QuotationTermsCards({
   scopeOfWork: string; onScope: (v: string) => void;
   exclusions: string; onExclusions: (v: string) => void;
   readOnly?: boolean;
+  /** บรรทัดในใบเสนอราคา — มีงานบริการแบบ BOM = เติมขอบเขตงาน/ข้อยกเว้นตามหมวดและรูปแบบที่ใช้ได้ */
+  items?: any[];
 }) {
+  const { settings } = useBom();
+  const { showConfirm } = useSystemDialog();
+  const sow = useMemo(() => sowForLines((items || []).map((i) => i?.recipe?.bom || {}), settings), [items, settings]);
+  const fillSow = async () => {
+    if ((scopeOfWork.trim() || exclusions.trim()) && !(await showConfirm(`แทนที่ขอบเขตงานและข้อยกเว้นเดิมด้วยข้อความมาตรฐานของงาน${sow.kinds.join(", ")}?`, "เติมขอบเขตงานจาก BOM"))) return;
+    onScope(sow.scope);
+    onExclusions(sow.exclusions);
+  };
   const total = schedules.reduce((s, p) => s + (Number(p.percent) || 0), 0);
   const set = (id: string, patch: Partial<PaymentSchedule>) => onSchedules(schedules.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   const HK: Record<string, string> = { "การรับประกัน": "quotation.warranty", "ขอบเขตงาน": "quotation.scope", "ข้อยกเว้น": "quotation.exclusions" };
-  const field = (label: string, value: string, onChange: (v: string) => void, placeholder: string) => (
+  const field = (label: string, value: string, onChange: (v: string) => void, placeholder: string, multi = false) => (
     <div className="space-y-1">
       <label className="text-[11px] font-bold text-white/70">{label}</label>
       <FieldHistory k={HK[label] || "quotation.term"} value={value} onPick={readOnly ? () => undefined : onChange}>
-        <PillInput value={value} disabled={readOnly} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full h-8 text-[12px]" />
+        {multi ? (
+          // หลายบรรทัด (ขอบเขตงานจาก BOM เป็นรายข้อ) — พิมพ์ลงใบเสนอราคาตามบรรทัด
+          <PillTextarea value={value} disabled={readOnly} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={Math.min(12, Math.max(2, value.split(/\r?\n/).length + (value ? 1 : 0)))}
+            className="bg-black/20" />
+        ) : (
+          <PillInput value={value} disabled={readOnly} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full h-8 text-[12px]" />
+        )}
       </FieldHistory>
     </div>
   );
@@ -77,11 +96,18 @@ export function QuotationTermsCards({
       </div>
 
       <div className="bg-surface-1 border border-white/10 rounded-3xl p-4 shadow-2xl space-y-3">
-        <h3 className="text-base font-semibold uppercase tracking-widest text-white/80 border-b border-white/10 pb-2">ข้อกำหนดและการรับประกัน</h3>
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+          <h3 className="text-base font-semibold uppercase tracking-widest text-white/80">ข้อกำหนดและการรับประกัน</h3>
+          {!readOnly && sow.kinds.length > 0 && (
+            <PillButton variant="ghost" onClick={fillSow} className="h-8 px-3 text-[11px] text-nexus-teal normal-case tracking-normal" data-fill-sow title={`ขอบเขตงานมาตรฐานของงาน${sow.kinds.join(", ")} ตามรูปแบบที่ใช้ในใบนี้`}>
+              <Layers size={12} /> เติมขอบเขตงานจาก BOM
+            </PillButton>
+          )}
+        </div>
         <div className="space-y-2">
           {field("การรับประกัน", warrantyTerms, onWarranty, "การรับประกันสินค้า 1 ปี...")}
-          {field("ขอบเขตงาน", scopeOfWork, onScope, "ขอบเขตการติดตั้งและทดสอบ...")}
-          {field("ข้อยกเว้น", exclusions, onExclusions, "ไม่รวมงานเดินสายระบบไฟฟ้าหลัก...")}
+          {field("ขอบเขตงาน", scopeOfWork, onScope, "ขอบเขตการติดตั้งและทดสอบ...", true)}
+          {field("ข้อยกเว้น", exclusions, onExclusions, "ไม่รวมงานเดินสายระบบไฟฟ้าหลัก...", true)}
         </div>
       </div>
     </div>

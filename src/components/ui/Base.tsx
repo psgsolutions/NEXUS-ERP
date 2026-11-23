@@ -91,6 +91,21 @@ export const PillInput = React.forwardRef<HTMLInputElement, React.InputHTMLAttri
 );
 PillInput.displayName = "PillInput";
 
+/** ช่องกรอกหลายบรรทัดมาตรฐาน (ขอบเขตงาน เงื่อนไข หมายเหตุ) — line-height 1.9 กันวรรณยุกต์ไทยโดนตัด */
+export const PillTextarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
+  ({ className, ...props }, ref) => (
+    <textarea
+      ref={ref}
+      className={cn(
+        "w-full rounded-xl px-3 py-2 leading-[1.9] bg-white/[0.03] border border-white/10 text-white text-[12px] font-medium focus:outline-none focus:border-nexus-teal/40 focus:bg-white/[0.06] transition-all resize-y disabled:opacity-60",
+        className
+      )}
+      {...props}
+    />
+  )
+);
+PillTextarea.displayName = "PillTextarea";
+
 export function NexusSearchInput({ 
   placeholder = "ค้นหาข้อมูล...", 
   value, 

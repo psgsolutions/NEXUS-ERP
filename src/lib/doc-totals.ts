@@ -54,6 +54,9 @@ export function sanitizeLines(raw: any, max = 300): any[] {
       isOptional: !!it.isOptional,
       // สูตรงานบริการ: วัสดุต่อหน่วย (เบิกตอนส่งของ = สูตร × จำนวน)
       recipe: str(it.itemType).toUpperCase() === "SERVICE" ? normalizeRecipe(it.recipe) : null,
+      // BOM: ราคาที่ปรับเอง (ไม่ให้ราคาตาม markup ทับ) / บรรทัดเหมาส่วนต่างปัดทั้งงาน — ส่งต่อ QT → SO → ใบแจ้งหนี้
+      ...(it.priceManual ? { priceManual: true } : {}),
+      ...(it.bomRounding ? { bomRounding: true } : {}),
     }))
     .filter((it) => it.name);
 }

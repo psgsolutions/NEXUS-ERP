@@ -211,6 +211,39 @@ function sampleContent(type: string): Partial<DocumentModel> {
   }
 }
 
+/** รูปแบบแถวตัวอย่างในหน้าออกแบบ */
+export type SampleRowStyle = "detail" | "plain" | "heading";
+export const SAMPLE_ROW_COUNTS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30];
+export const SAMPLE_ROW_STYLES: { id: SampleRowStyle; label: string }[] = [
+  { id: "detail", label: "มีรายละเอียดใต้รายการ" },
+  { id: "plain", label: "บรรทัดเดียว" },
+  { id: "heading", label: "มีหัวข้อกลุ่มทุก 5 แถว" },
+];
+
+/**
+ * แถวรายการตัวอย่างตามจำนวนที่เลือก (หน้าออกแบบ: เห็นตาราง/ยอดรวม/ขึ้นหน้าใหม่ตามจำนวนแถวจริง)
+ * ใช้แถวตัวอย่างของเอกสารชนิดนั้นวนซ้ำ (ใบวางบิล = รายการใบกำกับ, ใบเสนอราคา = สินค้า) เลขที่/รหัสเรียงต่อกัน
+ */
+export function withSampleRows(model: DocumentModel, count: number, style: SampleRowStyle = "detail"): DocumentModel {
+  const base = (model.lines || []).filter((l) => !l.heading);
+  if (!(count > 0) || !base.length) return model;
+  const groups = ["หมวดอุปกรณ์ไฟฟ้า", "หมวดงานติดตั้ง", "หมวดอุปกรณ์เครือข่าย", "หมวดงานทดสอบและส่งมอบ"];
+  const maxNo = Math.max(0, ...base.map((l) => Number((l.code || "").match(/(\d+)(?!.*\d)/)?.[1] || 0)));
+  const lines: DocumentLine[] = [];
+  for (let i = 0; i < count; i++) {
+    if (style === "heading" && i % 5 === 0) lines.push({ heading: true, description: groups[(i / 5) % groups.length] });
+    const t = base[i % base.length];
+    const round = Math.floor(i / base.length);
+    // แถวที่วนซ้ำ: เลขที่/รหัสเรียงต่อจากเลขมากสุดของตัวอย่าง (ไม่ชนของเดิม)
+    const code = t.code ? (round ? t.code.replace(/(\d+)(?!.*\d)/, (d) => String(maxNo + i - base.length + 1).padStart(d.length, "0")) : t.code) : undefined;
+    const qty = t.qty !== undefined ? t.qty + (round % 3) : undefined;
+    const amount = t.amount !== undefined ? (t.price !== undefined && qty !== undefined ? qty * t.price : t.amount) : undefined;
+    const detail = style === "plain" ? undefined : t.detail || (i % 2 === 0 ? "รายละเอียดเพิ่มเติมของรายการ (บรรทัดที่ 2)" : undefined);
+    lines.push({ ...t, ...(code !== undefined ? { code } : {}), ...(qty !== undefined ? { qty } : {}), ...(amount !== undefined ? { amount } : {}), detail });
+  }
+  return { ...model, lines };
+}
+
 /** หนังสือ (ขอเข้าพื้นที่ / ส่งมอบงาน / ขอคืนหลักประกัน) — ออกแบบได้เฉพาะหัวกระดาษและฟอนต์ เนื้อหาตามรูปแบบหนังสือ */
 export const LETTER_DESIGN = { type: "letter", title: "หนังสือ (ขอเข้าพื้นที่ · ส่งมอบงาน ฯลฯ)" };
 

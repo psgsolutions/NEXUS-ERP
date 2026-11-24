@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
-import { DESIGNABLE_DOCS, LETTER_DESIGN, sampleModelFor } from "@/lib/documents/build";
+import { DESIGNABLE_DOCS, LETTER_DESIGN, SAMPLE_ROW_COUNTS, SAMPLE_ROW_STYLES, sampleModelFor, withSampleRows, type SampleRowStyle } from "@/lib/documents/build";
 import { EMPTY_SIGNING, applySigning, normalizeSigning, type SigningConfig } from "@/lib/documents/esign";
 import { toDateStr } from "@/lib/documents/format";
 import type { DocumentModel, DocumentProfile } from "@/lib/documents/model";
@@ -254,6 +254,20 @@ export function DocumentDesigner() {
   const [realDocs, setRealDocs] = useState<{ id: string; label: string }[]>([]);
   const [realId, setRealId] = useState("");
   const [realModel, setRealModel] = useState<DocumentModel | null>(null);
+  // จำนวนแถวรายการตัวอย่าง (0 = ตามตัวอย่างเดิม) + รูปแบบแถว — ดูตาราง/ยอดรวม/การขึ้นหน้าใหม่ตามจำนวนแถวจริง · จำไว้ในเครื่องนี้
+  const [sampleRows, setSampleRows] = useState(0);
+  const [sampleStyle, setSampleStyle] = useState<SampleRowStyle>("detail");
+  useEffect(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem("nexus.designer.rows") || "null");
+      if (v && SAMPLE_ROW_COUNTS.includes(v.n)) setSampleRows(v.n);
+      if (v && SAMPLE_ROW_STYLES.some((x) => x.id === v.style)) setSampleStyle(v.style);
+    } catch { /* ใช้ตัวอย่างเดิม */ }
+  }, []);
+  const setRows = (n: number, style: SampleRowStyle) => {
+    setSampleRows(n); setSampleStyle(style);
+    try { localStorage.setItem("nexus.designer.rows", JSON.stringify({ n, style })); } catch { /* ไม่เป็นไร */ }
+  };
   const [versions, setVersions] = useState<{ id: string; savedAt: string; savedByName: string; templateId: string }[] | null>(null);
 
   // ---------- ประวัติการแก้ทั้งการออกแบบ (ย้อนกลับ/ทำซ้ำ) — แก้ต่อเนื่องภายใน 0.6 วินาที นับเป็นขั้นเดียว ----------
@@ -420,8 +434,9 @@ export function DocumentDesigner() {
   const model = useMemo(() => {
     if (!profile || !preview) return null;
     if (realModel) return { ...realModel, seller: { ...realModel.seller, design: preview } };
-    return applySigning(sampleModelFor(docType, { ...profile, design: preview }, toDateStr(new Date())), signing, def.signatures);
-  }, [profile, preview, docType, realModel, signing, def.signatures]);
+    const m = applySigning(sampleModelFor(docType, { ...profile, design: preview }, toDateStr(new Date())), signing, def.signatures);
+    return sampleRows ? withSampleRows(m, sampleRows, sampleStyle) : m;
+  }, [profile, preview, docType, realModel, signing, def.signatures, sampleRows, sampleStyle]);
 
   // ---------- เอกสารต้นแบบ: เอกสารอื่นใช้รูปแบบตามต้นแบบเสมอ แต่ละเอกสารยังแก้เองได้ (ส่วนที่แก้เองต้นแบบไม่ทับ) ----------
   const master = shown.master;
@@ -697,6 +712,23 @@ export function DocumentDesigner() {
           </div>
           <span className="text-[12px] text-white/70">กำลังแก้: <b className="text-white">{def.title}</b></span>
           <div className="ml-auto flex flex-wrap items-center gap-2">
+            {!isLetter && !realId && (
+              <div className="flex items-center gap-2" data-sample-rows title="จำนวนแถวรายการในตัวอย่าง — ดูตาราง ยอดรวม และการขึ้นหน้าใหม่ตามจำนวนแถวจริงขณะจัดผัง (ไม่บันทึกลงเอกสาร)">
+                <div className="w-[150px]">
+                  <PillSelect value={String(sampleRows)} onChange={(e) => setRows(Number(e.target.value), sampleStyle)} className="h-8 w-full text-[12px]" aria-label="จำนวนแถวตัวอย่าง">
+                    <option value="0">แถวรายการ: ตามตัวอย่าง</option>
+                    {SAMPLE_ROW_COUNTS.map((n) => <option key={n} value={String(n)}>แถวรายการ: {n} แถว</option>)}
+                  </PillSelect>
+                </div>
+                {sampleRows > 0 && (
+                  <div className="w-[190px]">
+                    <PillSelect value={sampleStyle} onChange={(e) => setRows(sampleRows, e.target.value as SampleRowStyle)} className="h-8 w-full text-[12px]" aria-label="รูปแบบแถวตัวอย่าง">
+                      {SAMPLE_ROW_STYLES.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+                    </PillSelect>
+                  </div>
+                )}
+              </div>
+            )}
             {realDocs.length > 0 && (
               <div className="w-[230px]" title="ดูตัวอย่างการออกแบบด้วยเอกสารจริง">
                 <PillSelect value={realId} onChange={(e) => pickReal(String(e.target.value))} className="h-8 w-full text-[12px]">

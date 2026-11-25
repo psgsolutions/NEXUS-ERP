@@ -21,7 +21,8 @@ import {
   ShieldCheck,
   ClipboardList,
   UserPlus,
-  Filter
+  Filter,
+  FileSpreadsheet,
 } from "lucide-react";
 import {
   PillButton,
@@ -284,6 +285,11 @@ export default function ProcurementPage() {
           onTabChange={(id: any) => setActiveTab(id)}
         />
         <div className="module-toolbar-actions">
+           {activeTab === "suppliers" && (
+             <PillButton variant="glass" className="h-8 px-4" onClick={() => router.push("/procurement/supplier-prices")} title="นำเข้าตารางราคาซื้อแยกผู้ขายจาก Excel (ราคา List / ราคาที่ได้จริง)" data-sp-open>
+               <FileSpreadsheet size={14} className="mr-1.5" /> นำเข้าราคาผู้ขาย
+             </PillButton>
+           )}
            <PillButton
               variant="primary"
               className="h-8 px-5 shadow-neon-teal"

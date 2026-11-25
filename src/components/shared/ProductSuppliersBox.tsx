@@ -26,7 +26,9 @@ export function ProductSuppliersBox({ config }: { config?: any[] }) {
             <Link key={c.supplierId} href={`/procurement/suppliers/${encodeURIComponent(c.supplierId)}`} className="flex items-center gap-2 text-[12px] rounded-lg px-2 py-1.5 hover:bg-white/5">
               {c.isPrimary ? <Star size={12} className="text-amber-300 shrink-0" /> : <span className="w-3 shrink-0" />}
               <span className="truncate flex-1 text-white/85">{nameOf(c.supplierId)}</span>
-              <span className="font-mono text-white/60 shrink-0">{Number(c.latestCost || 0).toLocaleString("th-TH", { minimumFractionDigits: 2 })}</span>
+              {/* ต้นทุนล่าสุด (รับจริง/ราคาเสนอ) · ราคา List ของผู้ขายแสดงแยก (ไม่ใช่ต้นทุน) */}
+              {Number(c.listPrice) > 0 && <span className="font-mono text-[11px] text-white/40 shrink-0" title={`ราคา List${c.listPriceAt ? ` ณ ${c.listPriceAt}` : ""}${c.listPriceRef ? ` · ${c.listPriceRef}` : ""}`}>List {Number(c.listPrice).toLocaleString("th-TH", { minimumFractionDigits: 2 })}</span>}
+              <span className="font-mono text-white/60 shrink-0" title={c.quotedCost ? `ราคาเสนอ ${c.quotedCost}${c.quotedAt ? ` ณ ${c.quotedAt}` : ""}${c.quoteRef ? ` · ${c.quoteRef}` : ""}` : "ต้นทุนล่าสุด"}>{Number(c.latestCost || 0).toLocaleString("th-TH", { minimumFractionDigits: 2 })}</span>
             </Link>
           ))}
         </div>

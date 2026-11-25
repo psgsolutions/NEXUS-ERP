@@ -1,5 +1,6 @@
 "use client";
 
+import { ModuleActionMenu } from "@/components/ui/ModuleActions";
 import React, { useState } from "react";
 import {
   Wallet,
@@ -321,18 +322,11 @@ export default function FinancePage() {
           onTabChange={(id: any) => setActiveTab(id)}
         />
         <div className="module-toolbar-actions">
-           <PillButton variant="glass" className="h-8 px-5 rounded-full text-[11px] uppercase tracking-widest font-black" onClick={() => router.push("/finance/subledgers")}>
-             <BookOpen size={14} className="mr-1.5" />
-             บัญชีย่อยและทะเบียน
-           </PillButton>
-           <PillButton variant="glass" className="h-8 px-5 rounded-full text-[11px] uppercase tracking-widest font-black" onClick={() => router.push("/finance/reports")}>
-             <FileText size={14} className="mr-1.5" />
-             รายงานบัญชี
-           </PillButton>
-           <PillButton variant="confirm" className="h-8 px-5 rounded-full text-[11px] uppercase tracking-widest font-black" onClick={() => router.push("/finance/period-close/new")}>
-             <ShieldCheck size={14} className="mr-1.5" />
-             ปิดงวดบัญชี
-           </PillButton>
+           <ModuleActionMenu g={{ label: "บัญชีและรายงาน", icon: <BookOpen size={14} />, items: [
+             { label: "รายงานบัญชี", icon: <FileText size={14} />, desc: "งบการเงิน งบทดลอง ภาษีซื้อ-ขาย", onClick: () => router.push("/finance/reports") },
+             { label: "บัญชีย่อยและทะเบียน", icon: <BookOpen size={14} />, desc: "ลูกหนี้/เจ้าหนี้รายตัว ทะเบียนเช็ค ทะเบียนทรัพย์สิน", onClick: () => router.push("/finance/subledgers") },
+             { label: "ปิดงวดบัญชี", icon: <ShieldCheck size={14} />, desc: "ปิดเดือน — ห้ามแก้รายการย้อนหลังในงวดที่ปิด", onClick: () => router.push("/finance/period-close/new") },
+           ] }} />
 
            {(activeTab === "overview" || activeTab === "gl") && (
              <PillButton variant="primary" onClick={() => router.push("/finance/journal-entries/new")} className="h-8 px-5 rounded-full shadow-neon-teal text-[11px] uppercase tracking-widest font-black">

@@ -43,6 +43,7 @@ import {
   PackageOpen,
 } from "lucide-react";
 import { can } from "@/lib/permissions";
+import { ModuleActions } from "@/components/ui/ModuleActions";
 import { 
   PillButton, 
   GlassCard, 
@@ -572,111 +573,35 @@ export default function InventoryPage() {
         />
         
         {activeTab !== "layout" && (
-          <div className="module-toolbar-actions">
-            <PillButton
-              variant="glass"
-              className="gap-1.5"
-              onClick={() => router.push("/inventory/locations")}
-            >
-              <Layout size={14} /> ผังคลังและชั้นวาง
-            </PillButton>
-            <PillButton
-              variant="glass"
-              className="gap-1.5"
-              onClick={() => router.push("/inventory/stock-card")}
-            >
-              <History size={14} /> บัญชีคุมสินค้า
-            </PillButton>
-            <PillButton
-              variant="glass"
-              className="gap-1.5"
-              onClick={() => router.push("/inventory/stock-count")}
-            >
-              <ClipboardCheck size={14} /> ตรวจนับสต็อก
-            </PillButton>
-            <PillButton
-              variant="glass"
-              className="gap-1.5"
-              onClick={() => router.push("/inventory/aging")}
-            >
-              <Hourglass size={14} /> สินค้าเคลื่อนไหวช้า
-            </PillButton>
-            <PillButton
-              variant="glass"
-              className="gap-1.5"
-              onClick={() => router.push("/procurement/reorder")}
-            >
-              <PackagePlus size={14} /> สั่งซื้อตามจุดสั่งซื้อ
-            </PillButton>
-            <PillButton 
-              variant="confirm"
-              className="gap-1.5 shadow-neon-blue"
-              onClick={() => router.push("/inventory/putaway")}
-            >
-              <ArrowLeftRight size={14} /> โอนย้ายสต็อก
-            </PillButton>
-            <PillButton 
-              variant="primary"
-              className="gap-1.5 shadow-neon-teal"
-              onClick={() => router.push("/inventory/in/new")}
-            >
-              <Plus size={14} /> รับสินค้าเข้าคลัง
-            </PillButton>
-            <PillButton
-              variant="glass"
-              className="gap-1.5"
-              onClick={() => router.push("/inventory/putaway")}
-            >
-              <ScanLine size={14} /> จัดเก็บเข้าชั้น
-            </PillButton>
-            <PillButton
-              variant="glass"
-              className="gap-1.5"
-              onClick={() => router.push("/inventory/pick")}
-            >
-              <ScanBarcode size={14} /> เบิกสินค้า
-            </PillButton>
-            <PillButton
-              variant="glass"
-              className="gap-1.5"
-              onClick={() => router.push("/inventory/products/labels")}
-            >
-              <Printer size={14} /> ฉลากสินค้า
-            </PillButton>
-            <PillButton
-              variant="glass"
-              className="gap-1.5"
-              onClick={() => router.push("/inventory/repack")}
-              title="แกะสินค้าหน่วยใหญ่แบ่งเป็นห่อเล็กเข้าคลัง พร้อมพิมพ์ฉลากบาร์โค้ด"
-            >
-              <PackageOpen size={14} /> แบ่งบรรจุ
-            </PillButton>
-            {activeTab === "kits" ? (
-              <PillButton 
-                variant="primary"
-                className="gap-1.5 shadow-neon-teal"
-                onClick={() => setIsAddKitOpen(true)}
-              >
-                <Plus size={14} /> สร้างชุดอุปกรณ์
-              </PillButton>
-            ) : (
-              <>
-                <PillButton variant="glass" className="gap-1.5" onClick={() => router.push("/inventory/ref-prices")} title="ราคาอ้างอิงที่ใช้คิดต้นทุนงานบริการแบบ BOM" data-ref-prices-btn>
-                  ราคากลาง
-                </PillButton>
-                <PillButton variant="glass" className="gap-1.5" onClick={() => router.push("/inventory/services/new")} title="งานบริการ/งานติดตั้ง: ค่าแรง + วัสดุ → ต้นทุน กำไร ราคา" data-new-service-btn>
-                  <Plus size={14} /> งานบริการ/ติดตั้ง
-                </PillButton>
-                <PillButton 
-                  variant="primary"
-                  className="gap-1.5 shadow-neon-teal"
-                  onClick={() => router.push("/inventory/products/new")}
-                >
-                  <Plus size={14} /> เพิ่มสินค้า
-                </PillButton>
-              </>
-            )}
-          </div>
+          // งานหลัก/ใช้บ่อยแสดงเป็นปุ่ม · งานรองจัดเป็นหมวด (กดแล้วเลือกจากเมนู)
+          <ModuleActions
+            className="module-toolbar-actions"
+            groups={[
+              { label: "งานคลัง", icon: <Warehouse size={14} />, items: [
+                { label: "จัดเก็บเข้าชั้น / โอนย้ายสต็อก", icon: <ArrowLeftRight size={14} />, desc: "สแกนเก็บเข้าตำแหน่ง หรือย้ายระหว่างตำแหน่ง/คลัง", onClick: () => router.push("/inventory/putaway") },
+                { label: "ตรวจนับสต็อก", icon: <ClipboardCheck size={14} />, desc: "นับจริงเทียบยอดในระบบ ปรับผลต่าง", onClick: () => router.push("/inventory/stock-count") },
+                { label: "แบ่งบรรจุ", icon: <PackageOpen size={14} />, desc: "แกะหน่วยใหญ่แบ่งเป็นห่อเล็ก พร้อมฉลากบาร์โค้ด", onClick: () => router.push("/inventory/repack") },
+                { label: "ฉลากสินค้า", icon: <Printer size={14} />, desc: "พิมพ์ฉลากบาร์โค้ดของสินค้า", onClick: () => router.push("/inventory/products/labels") },
+                { label: "สั่งซื้อตามจุดสั่งซื้อ", icon: <PackagePlus size={14} />, desc: "สินค้าต่ำกว่าจุดสั่งซื้อ → ใบขอซื้อ", onClick: () => router.push("/procurement/reorder") },
+              ] },
+              { label: "รายงาน", icon: <BarChart3 size={14} />, items: [
+                { label: "บัญชีคุมสินค้า", icon: <History size={14} />, desc: "รับ-จ่าย-คงเหลือรายสินค้า", onClick: () => router.push("/inventory/stock-card") },
+                { label: "สินค้าเคลื่อนไหวช้า", icon: <Hourglass size={14} />, desc: "อายุสต็อก / ล็อตที่ค้างนาน", onClick: () => router.push("/inventory/aging") },
+                { label: "ผังคลังและชั้นวาง", icon: <Layout size={14} />, desc: "ตำแหน่งจัดเก็บ ชั้นวาง และ QR", onClick: () => router.push("/inventory/locations") },
+              ] },
+              { label: "งานบริการ / BOM", icon: <Layers size={14} />, items: [
+                { label: "งานบริการ/ติดตั้งใหม่", icon: <Plus size={14} />, desc: "ค่าแรง + วัสดุ → ต้นทุน กำไร ราคา", onClick: () => router.push("/inventory/services/new"), attrs: { "data-new-service-btn": true } },
+                { label: "ราคากลาง (BOM)", icon: <Layers size={14} />, desc: "ราคาอ้างอิงที่ใช้คิดต้นทุนงานบริการแบบ BOM", onClick: () => router.push("/inventory/ref-prices"), attrs: { "data-ref-prices-btn": true } },
+              ] },
+            ]}
+            primary={[
+              { label: "เบิกสินค้า", icon: <ScanBarcode size={14} />, onClick: () => router.push("/inventory/pick") },
+              { label: "รับสินค้าเข้าคลัง", icon: <Plus size={14} />, variant: "confirm", onClick: () => router.push("/inventory/in/new") },
+              activeTab === "kits"
+                ? { label: "สร้างชุดอุปกรณ์", icon: <Plus size={14} />, variant: "primary", onClick: () => setIsAddKitOpen(true) }
+                : { label: "เพิ่มสินค้า", icon: <Plus size={14} />, variant: "primary", onClick: () => router.push("/inventory/products/new") },
+            ]}
+          />
         )}
       </section>
 

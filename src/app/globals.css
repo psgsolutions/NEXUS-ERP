@@ -418,7 +418,8 @@ input, select, textarea, button, td, th {
 }
 .module-toolbar-actions > button,
 .module-toolbar-actions > a,
-.module-toolbar-actions > div > button {
+.module-toolbar-actions > div > button,
+.module-toolbar-actions > span > button {
   height: var(--control-h-md);
 }
 @media (max-width: 1023px) {

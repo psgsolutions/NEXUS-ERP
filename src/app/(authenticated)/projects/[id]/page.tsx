@@ -1,11 +1,12 @@
 "use client";
 
+import { ModuleActionMenu } from "@/components/ui/ModuleActions";
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, Briefcase, Building2, CalendarDays, CheckCircle2, ClipboardList, FileText, History,
-  Loader2, MapPin, Package, Pencil, PlayCircle, Printer, GitPullRequest, Receipt, ShieldCheck, Users, Wallet, Wrench, XCircle, ListChecks,
+  Loader2, MapPin, Package, Pencil, PlayCircle, Printer, GitPullRequest, Receipt, ShieldCheck, Users, Wallet, Wrench, XCircle, ListChecks, MoreHorizontal,
 } from "lucide-react";
 import {
   GlassCard, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillInput, PillTabs, StatusBadge, cn,
@@ -167,16 +168,6 @@ export default function ProjectDetailPage() {
         </div>
       </div>
       <div className="flex items-center gap-2 flex-wrap justify-end">
-        {!isLegacy && canEditProject && ["Approved", "In Progress", "Completed"].includes(status) && lines.some((l: any) => (l.kind || "PRODUCT") === "PRODUCT") && (
-          <PillButton variant="glass" onClick={() => router.push(`/projects/new?maintenanceFrom=${encodeURIComponent(docId)}`)} className="h-9 px-4 text-xs font-bold" title="นำอุปกรณ์ในโครงการนี้ไปตั้งโครงการบำรุงรักษา">
-            <Wrench size={14} className="mr-1.5" /> สร้างโครงการบำรุงรักษา
-          </PillButton>
-        )}
-        {p?.docSections && Object.values(p.docSections).some((v: any) => String(v || "").trim()) && (
-          <PillButton variant="glass" onClick={() => router.push(`/projects/${encodeURIComponent(docId)}/tor`)} className="h-9 px-4 text-xs font-bold">
-            <Printer size={14} className="mr-1.5" /> {p.sectorType === "Private" ? "พิมพ์รายละเอียดโครงการ" : "พิมพ์ร่าง TOR"}
-          </PillButton>
-        )}
         {canEditThis && (
           <PillButton variant="glass" onClick={() => router.push(`/projects/new?edit=${encodeURIComponent(docId)}`)} className="h-9 px-4 text-xs font-bold">
             <Pencil size={14} className="mr-1.5" /> {status === "Rejected" ? "แก้ไขและส่งอนุมัติใหม่" : "แก้ไข / ส่งอนุมัติ"}
@@ -192,11 +183,14 @@ export default function ProjectDetailPage() {
             <CheckCircle2 size={14} className="mr-1.5" /> ปิดโครงการ
           </PillButton>
         )}
-        {canCancel && (
-          <PillButton variant="glass" disabled={busy} onClick={() => { setPending("cancel"); setComment(""); }} className="h-9 px-4 text-xs font-bold text-danger">
-            <XCircle size={14} className="mr-1.5" /> ยกเลิกโครงการ
-          </PillButton>
-        )}
+        {/* งานรอง: รวมในเมนู "เพิ่มเติม" (ปุ่มหลัก แก้ไข/เริ่ม/ปิดโครงการ อยู่ด้านนอก) */}
+        <ModuleActionMenu g={{ label: "เพิ่มเติม", icon: <MoreHorizontal size={14} />, attrs: { "data-project-more": true }, items: [
+          { label: p?.sectorType === "Private" ? "พิมพ์รายละเอียดโครงการ" : "พิมพ์ร่าง TOR", icon: <Printer size={14} />, desc: "เอกสารรายละเอียด/ขอบเขตงานของโครงการ",
+            hidden: !(p?.docSections && Object.values(p.docSections).some((v: any) => String(v || "").trim())), onClick: () => router.push(`/projects/${encodeURIComponent(docId)}/tor`) },
+          { label: "สร้างโครงการบำรุงรักษา", icon: <Wrench size={14} />, desc: "นำอุปกรณ์ในโครงการนี้ไปตั้งโครงการบำรุงรักษา",
+            hidden: !(!isLegacy && canEditProject && ["Approved", "In Progress", "Completed"].includes(status) && lines.some((l: any) => (l.kind || "PRODUCT") === "PRODUCT")), onClick: () => router.push(`/projects/new?maintenanceFrom=${encodeURIComponent(docId)}`) },
+          { label: "ยกเลิกโครงการ", icon: <XCircle size={14} />, desc: "ต้องระบุเหตุผล", danger: true, hidden: !canCancel, disabled: busy, onClick: () => { setPending("cancel"); setComment(""); } },
+        ] }} />
       </div>
     </div>
   );

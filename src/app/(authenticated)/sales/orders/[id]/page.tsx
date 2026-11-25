@@ -1,5 +1,6 @@
 "use client";
 
+import { ModuleActionMenu } from "@/components/ui/ModuleActions";
 import React, { useState } from "react";
 import { apiFetch } from "@/lib/api-client";
 import { useRouter, useParams } from "next/navigation";
@@ -158,14 +159,17 @@ export default function SalesOrderDetailPage() {
       </div>
       <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
         {status !== "CANCELLED" && <DocumentStepper steps={STEPS} currentStep={view.step} />}
-        <PillButton variant="glass" className="h-8 px-4 text-xs font-bold" onClick={() => setPrintDoc({ type: "sales_order", id: soDocId, title: `ใบสั่งขาย ${docNo}` })}>
-          <Printer size={14} className="mr-1.5" /> พิมพ์
-        </PillButton>
-        {(Array.isArray(so.deliveryNotes) ? so.deliveryNotes : []).map((dn: string) => (
-          <PillButton key={dn} variant="glass" className="h-8 px-4 text-xs font-bold" onClick={() => setPrintDoc({ type: "delivery_note", id: dn, title: `ใบส่งของ ${dn}` })}>
-            <Printer size={14} className="mr-1.5" /> ใบส่งของ {dn}
+        {/* พิมพ์: ใบสั่งขาย + ใบส่งของทุกใบ รวมในเมนูเดียว (ส่งของหลายรอบปุ่มไม่ล้น) */}
+        {(Array.isArray(so.deliveryNotes) ? so.deliveryNotes : []).length > 0 ? (
+          <ModuleActionMenu g={{ label: "พิมพ์", icon: <Printer size={14} />, items: [
+            { label: `ใบสั่งขาย ${docNo}`, icon: <Printer size={14} />, onClick: () => setPrintDoc({ type: "sales_order", id: soDocId, title: `ใบสั่งขาย ${docNo}` }) },
+            ...(so.deliveryNotes as string[]).map((dn) => ({ key: dn, label: `ใบส่งของ ${dn}`, icon: <Truck size={14} />, onClick: () => setPrintDoc({ type: "delivery_note", id: dn, title: `ใบส่งของ ${dn}` }) })),
+          ] }} />
+        ) : (
+          <PillButton variant="glass" className="h-8 px-4 text-xs font-bold" onClick={() => setPrintDoc({ type: "sales_order", id: soDocId, title: `ใบสั่งขาย ${docNo}` })}>
+            <Printer size={14} className="mr-1.5" /> พิมพ์
           </PillButton>
-        ))}
+        )}
         <DocumentPdfModal open={!!printDoc} onClose={() => setPrintDoc(null)} source={printDoc ? { type: printDoc.type, id: printDoc.id } : undefined} title={printDoc?.title || ""} />
         {status === "DRAFT" && (
           <PillButton variant="confirm" className="h-8 px-5 font-bold text-xs" disabled={busy} onClick={() => setStatus("confirm")}>

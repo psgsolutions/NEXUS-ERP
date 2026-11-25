@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, CheckCheck, Download, FileDown, FileSpreadsheet, Files, Pencil, RefreshCw, RotateCcw, SpellCheck, Trash2, Undo2, Upload, X } from "lucide-react";
+import { AlertTriangle, CheckCheck, Download, FileDown, FileSpreadsheet, Files, Link2, Pencil, RefreshCw, RotateCcw, SpellCheck, Trash2, Undo2, Upload, X } from "lucide-react";
 import { GlassCard, NexusDatePicker, NexusTable, NexusTableCell, NexusTableRow, PillButton, PillCheckbox, PillSelect, PillTabs, cn } from "@/components/ui/Base";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemDialog } from "@/context/DialogContext";
@@ -14,6 +14,11 @@ import { detectEntity, sheetName } from "@/lib/import/detect";
 import { checkRowSpelling, type FieldFix } from "@/lib/import/row-check";
 import { buildAddressIndex, type AddressIndex } from "@/lib/spellcheck";
 import { isDupWarning, markPartyDuplicates } from "@/lib/import/party-dups";
+import { markProductDuplicates } from "@/lib/import/product-dups";
+import type { MatchCandidate } from "@/lib/product-match";
+import { useProducts } from "@/hooks/useProducts";
+import { useProductSynonyms } from "@/hooks/useProductSynonyms";
+import { ProductSynonymsCard } from "@/components/inventory/ProductSynonymsCard";
 import { useCustomers, useSuppliers } from "@/hooks/useCustomers";
 import { ImportRowEditor } from "@/components/import/ImportRowEditor";
 import { ImportedRecordsManager } from "@/components/import/ImportedRecordsManager";
@@ -34,7 +39,7 @@ import { useUrlTab } from "@/hooks/useUrlTab";
  */
 
 type TabId = ImportEntity | OpeningKind;
-type RowState = ParsedRow & { status: "ready" | "invalid" | "saving" | "done" | "failed" | "skipped" | "removed"; message?: string; fixes?: FieldFix[]; createdId?: string };
+type RowState = ParsedRow & { status: "ready" | "invalid" | "saving" | "done" | "failed" | "skipped" | "removed"; message?: string; fixes?: FieldFix[]; createdId?: string; /** สินค้าเดิมที่อาจเป็นตัวเดียวกัน */ dupOf?: MatchCandidate[] };
 /** ชุดข้อมูลหนึ่งชีตของไฟล์ที่เลือก */
 interface Batch {
   id: string; fileName: string; sheet: string; sheets: number;
@@ -98,6 +103,8 @@ let ADDRESS_INDEX: AddressIndex | null = null;
 
 /** ลูกค้า/ผู้ขายที่มีอยู่ในระบบ (โหลดเมื่อมีชุดข้อมูลชนิดนั้น) — ใช้ตรวจซ้ำก่อนนำเข้า */
 const EXISTING: Partial<Record<TabId, any[]>> = {};
+/** คำพ้องสินค้าของบริษัท (ตรวจสินค้าซ้ำ) */
+let SYNONYMS: string[][] = [];
 
 /** ยังไม่ผ่านการตรวจทาน: รูปแบบถูกแล้ว แต่มีคำเตือน (คำผิด/เลขผู้เสียภาษีซ้ำ) — แก้หรือปล่อยผ่านก่อนจึงนำเข้า */
 const isReview = (r: RowState) => r.status === "ready" && !!r.fixes?.length;
@@ -179,6 +186,7 @@ function parseBatch(aoa: any[][], entity: TabId | null, ignoreDup?: Set<number>)
     return { ...r, values: chk.values, fixes: chk.fixes, status: r.errors.length ? "invalid" : "ready" };
   });
   if (entity === "customers" || entity === "suppliers") markPartyDuplicates(template, rows, EXISTING[entity] || []);
+  if (entity === "products") markProductDuplicates(rows, EXISTING.products || [], SYNONYMS, template.columns.find((c) => c.key === "name")?.header);
   return { rows, notes: { missing, unknown, normalized }, error: "" };
 }
 
@@ -305,7 +313,7 @@ export default function DataImportPage() {
 
   // ตรวจที่อยู่: โหลดฐานข้อมูลที่อยู่ไทยเมื่อมีข้อมูลลูกค้า/ผู้ขาย แล้วตรวจทุกชุดใหม่
   const needsAddress = batches.some((b) => b.entity === "customers" || b.entity === "suppliers");
-  const hasCustomers = batches.some((b) => b.entity === "customers"), hasSuppliers = batches.some((b) => b.entity === "suppliers");
+  const hasCustomers = batches.some((b) => b.entity === "customers"), hasSuppliers = batches.some((b) => b.entity === "suppliers"), hasProducts = batches.some((b) => b.entity === "products");
   // ข้อมูลในระบบโหลดเสร็จ/เปลี่ยน → ตรวจซ้ำชุดชนิดนั้นใหม่ (แถวที่นำเข้าแล้ว/ข้าม/ลบ คงสถานะ)
   const onExistingLoaded = useCallback((entity: TabId) => setBatches((cur) => cur.map((b) => (b.entity === entity ? reparse(b, b.aoa) : b))), []);
   useEffect(() => {
@@ -331,6 +339,11 @@ export default function DataImportPage() {
     setBatches((cur) => cur.map((b) => (b.id === updated.id ? updated : b)));
     const nxt = goNext ? nextAttention(updated, editing.rowNo) : null;
     setEditing(nxt && nxt.rowNo !== editing.rowNo ? { batchId: updated.id, rowNo: nxt.rowNo } : null);
+  };
+  /** แถวที่อาจซ้ำ: ใช้สินค้าเดิม (แถวนี้เป็นการแก้ไขสินค้าเดิมด้วยรหัส/ชื่อเดิม ไม่สร้างใหม่) */
+  const adoptExisting = (b: Batch, r: RowState, c: MatchCandidate) => {
+    const updated = reparse(b, writeCells(b, r.rowNo, { _id: c.id, sku: c.sku, name: c.name }));
+    setBatches((cur) => cur.map((x) => (x.id === updated.id ? updated : x)));
   };
   // แก้คำผิดตามคำแนะนำทั้งชุด (เฉพาะแถวที่ยังไม่นำเข้า และคำแนะนำที่มีคำที่ถูก)
   const applyAllFixes = (b: Batch) => {
@@ -572,6 +585,8 @@ export default function DataImportPage() {
             1. ดาวน์โหลดแม่แบบ (ทีละชนิด หรือทุกชนิดในไฟล์เดียว) แล้วกรอกข้อมูล{!isOpening(tab) && <> หรือส่งออกเพื่อแก้ข้อมูลเดิม</>} · 2. เลือกไฟล์หรือลากมาวาง ได้ทีละหลายไฟล์ ระบบแยกชนิดข้อมูลจากหัวตารางให้และตรวจทุกแถว · 3. กดนำเข้า — {STEPS[tab]}
           </p>
 
+          {tab === "products" && <ProductSynonymsCard />}
+
           {wantsStatus && status && (
             <GlassCard accentColor="blue" className="p-2">
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-3 pt-2 pb-1 text-[12px] text-white/60">
@@ -670,6 +685,7 @@ export default function DataImportPage() {
 
           {hasCustomers && <CustomersLoader onLoad={onExistingLoaded} />}
           {hasSuppliers && <SuppliersLoader onLoad={onExistingLoaded} />}
+          {hasProducts && <ProductsLoader onLoad={onExistingLoaded} />}
           <ImportRowEditor
             open={!!editRow}
             template={editBatch?.entity ? TEMPLATES[editBatch.entity] : null}
@@ -741,6 +757,9 @@ export default function DataImportPage() {
                         {["ready", "invalid", "failed"].includes(r.status) && (
                           <PillButton variant={needsAttention(r) ? "glass" : "ghost"} onClick={() => setEditing({ batchId: batch.id, rowNo: r.rowNo })} disabled={busy} className="h-8 px-3 text-xs normal-case tracking-normal"><Pencil size={12} /> แก้ไข</PillButton>
                         )}
+                        {r.status === "ready" && !r.values._id && !!r.dupOf?.length && (
+                          <PillButton variant="glass" onClick={() => adoptExisting(batch, r, r.dupOf![0])} disabled={busy} className="h-8 px-3 text-xs normal-case tracking-normal" title={`แถวนี้จะแก้ไข ${r.dupOf[0].sku} ${r.dupOf[0].name} แทนการสร้างใหม่`} data-use-existing><Link2 size={12} /> ใช้สินค้าเดิม</PillButton>
+                        )}
                         {r.status === "ready" && !!r.fixes?.length && (
                           <PillButton variant="ghost" onClick={() => dismissFixes(batch, r.fixes!.map((fix) => ({ rowNo: r.rowNo, fix })))} disabled={busy} className="h-8 px-3 text-xs normal-case tracking-normal" title="คงค่าตามไฟล์"><CheckCheck size={12} /> ปล่อยผ่าน</PillButton>
                         )}
@@ -775,6 +794,14 @@ export default function DataImportPage() {
       </div>
     </div>
   );
+}
+
+/** โหลดสินค้าในระบบ + คำพ้องสินค้า (เฉพาะเมื่อมีชุดข้อมูลสินค้า) แล้วตรวจซ้ำใหม่ */
+function ProductsLoader({ onLoad }: { onLoad: (entity: TabId) => void }) {
+  const { data, loading } = useProducts<any>();
+  const { synonyms, loaded } = useProductSynonyms();
+  useEffect(() => { if (!loading && loaded) { EXISTING.products = data || []; SYNONYMS = synonyms; onLoad("products"); } }, [data, loading, synonyms, loaded, onLoad]);
+  return null;
 }
 
 /** โหลดลูกค้า/ผู้ขายในระบบ (เฉพาะเมื่อมีชุดข้อมูลชนิดนั้น) แล้วให้หน้าตรวจซ้ำใหม่ */

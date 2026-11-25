@@ -50,6 +50,7 @@ import { SupplierMatrix } from "@/components/inventory/SupplierMatrix";
 import { DocumentVaultUploader, DigitalDocumentItem } from "@/components/shared/DocumentVaultUploader";
 import { ProductConversion, ProductSupplierInfo } from "@/types/inventory";
 import { getRequiredFieldsStatus, checkSkuDuplicate, findBarcodeConflict } from "@/lib/product-validation";
+import { useProductSynonyms } from "@/hooks/useProductSynonyms";
 import { carryOver, findSimilarProducts, marginOf, productToForm, type MarginLevel } from "@/lib/product-form";
 import { useRealtimeDocument } from "@/hooks/useRealtimeDocument";
 import { makeThumbnail, prepareAttachment } from "@/lib/attachments";
@@ -464,9 +465,11 @@ export default function NewProductPage() {
   }, [formData]);
 
   // สินค้าที่อาจซ้ำ (ไม่บล็อกการบันทึก — ให้เปิดดูก่อน)
+  // ตัวตรวจกลาง: ชื่อเรียกต่างกัน (คำพ้องไทย/อังกฤษ + คำพ้องของบริษัท) · หมวดเดียวกันก่อน
+  const { synonyms: productSynonyms } = useProductSynonyms();
   const similarProducts = React.useMemo(
-    () => findSimilarProducts(formData, products || [], companyId || ""),
-    [formData.name, formData.mpn, formData.supplierSku, formData.brand, formData.model, products, companyId] // eslint-disable-line react-hooks/exhaustive-deps
+    () => findSimilarProducts(formData, products || [], companyId || "", 3, productSynonyms),
+    [formData.name, formData.mpn, formData.supplierSku, formData.brand, formData.model, formData.category, products, companyId, productSynonyms] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const posMargin = marginOf(formData.cost, formData.price, minGp);

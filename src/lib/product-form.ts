@@ -5,6 +5,8 @@
  *  - สร้างจากสินค้าเดิม และค่าที่คงไว้เมื่อ "บันทึกและเพิ่มตัวถัดไป"
  */
 
+import { findDuplicateCandidates } from "./product-match";
+
 export interface SimilarProduct { id: string; name: string; sku: string; reason: string }
 
 const norm = (v: unknown) => String(v ?? "").toLowerCase().replace(/[\s\-_/.,()]+/g, " ").trim();
@@ -29,39 +31,19 @@ export function nameSimilarity(a: string, b: string): number {
   return (2 * hit) / (ga.length + gb.length);
 }
 
-const mpnsOf = (p: Record<string, any>) =>
-  [p.mpn, ...(Array.isArray(p.supplierConfig) ? p.supplierConfig.map((s: any) => s?.mpn) : [])].map(norm).filter(Boolean);
-const supplierSkusOf = (p: Record<string, any>) =>
-  [p.supplierSku, ...(Array.isArray(p.supplierConfig) ? p.supplierConfig.map((s: any) => s?.supplierSku) : [])].map(norm).filter(Boolean);
-
-/** สินค้าที่อาจเป็นตัวเดียวกัน (สูงสุด limit รายการ) — ไม่บล็อกการบันทึก แค่ให้ผู้ใช้เปิดดูก่อน */
+/**
+ * สินค้าที่อาจเป็นตัวเดียวกัน (สูงสุด limit รายการ) — ไม่บล็อกการบันทึก แค่ให้ผู้ใช้เปิดดูก่อน
+ * ใช้ตัวตรวจกลาง (lib/product-match): รหัส/รุ่นตรงกัน + ชื่อเรียกต่างกัน (คำพ้องไทย/อังกฤษ สเปกเขียนต่างกัน) · หมวดเดียวกันก่อน
+ */
 export function findSimilarProducts(
-  form: { name?: string; mpn?: string; supplierSku?: string; brand?: string; model?: string },
+  form: { name?: string; mpn?: string; supplierSku?: string; brand?: string; model?: string; category?: string },
   products: Array<Record<string, any>>,
   companyId: string,
   limit = 3,
+  synonyms: string[][] = [],
 ): SimilarProduct[] {
-  const name = norm(form.name), mpn = norm(form.mpn), supSku = norm(form.supplierSku);
-  const brandModel = form.brand && form.model ? `${norm(form.brand)}|${norm(form.model)}` : "";
-  if (name.length < 3 && !mpn && !supSku && !brandModel) return [];
-  const out: Array<SimilarProduct & { score: number }> = [];
-  for (const p of products || []) {
-    if (!p || p.isDeleted || (p.companyId && p.companyId !== companyId)) continue;
-    const pName = String(p.name || p.productName || "");
-    let score = 0, reason = "";
-    if (mpn && mpnsOf(p).includes(mpn)) { score = 3; reason = "MPN ตรงกัน"; }
-    else if (supSku && supplierSkusOf(p).includes(supSku)) { score = 2.5; reason = "รหัสผู้ขายตรงกัน"; }
-    else if (brandModel && `${norm(p.brand)}|${norm(p.model || p.mainModel)}` === brandModel) { score = 2; reason = "ยี่ห้อและรุ่นเดียวกัน"; }
-    else if (name.length >= 3) {
-      if (norm(pName) === name) { score = 1.9; reason = "ชื่อเดียวกัน"; }
-      else {
-        const sim = nameSimilarity(name, pName);
-        if (sim >= 0.75) { score = sim; reason = `ชื่อคล้ายกัน ${Math.round(sim * 100)}%`; }
-      }
-    }
-    if (score > 0) out.push({ id: String(p.id), name: pName || String(p.sku || p.id), sku: String(p.sku || ""), reason, score });
-  }
-  return out.sort((a, b) => b.score - a.score).slice(0, limit).map(({ score: _s, ...rest }) => { void _s; return rest; });
+  const input = { ...form, name: norm(form.name).length >= 3 ? form.name : "" };
+  return findDuplicateCandidates(input, products, { companyId, limit, synonyms }).map((c) => ({ id: c.id, name: c.name, sku: c.sku, reason: c.reason }));
 }
 
 export type MarginLevel = "none" | "loss" | "low" | "ok";

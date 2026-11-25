@@ -1,3 +1,4 @@
+import { normalizePackOf } from "@/lib/repack";
 import { NextResponse } from "next/server";
 import { normalizeRecipe } from "@/lib/service-recipe";
 import { normalizeRealModels } from "@/lib/bom-quote";
@@ -346,6 +347,8 @@ export async function POST(request: Request) {
       if (entity !== "products" || !bag || typeof bag !== "object") continue;
       // realModelIds = ดัชนีค้นสินค้ากลางจากรุ่นจริง (รับสินค้ารุ่นจริง → ขยับราคากลางของสินค้ากลาง)
       if ("realModels" in bag) { bag.realModels = normalizeRealModels(bag.realModels, str(body.id, 120)); bag.realModelIds = bag.realModels.map((m: any) => m.productId); }
+      // ห่อเล็กที่แบ่งบรรจุจากสินค้าต้นทาง (สกรูถุงละ 50 ตัว ← กล่อง 1,000 ตัว)
+      if ("packOf" in bag) { const po = normalizePackOf(bag.packOf); if (po) bag.packOf = po; else delete bag.packOf; }
       if ("laborCode" in bag) bag.laborCode = /^[\w\-./"]{1,60}$/.test(String(bag.laborCode ?? "").trim()) ? String(bag.laborCode).trim() : "";
     }
     if (entity === "products" && action === "create" && body.data && typeof body.data === "object" && "serviceRecipe" in body.data) {

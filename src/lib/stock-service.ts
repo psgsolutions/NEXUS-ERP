@@ -40,7 +40,12 @@ export interface StockMovement {
   /** OUT: Lot ที่เลือกเอง (ที่เหลือระบบเติมแบบ FIFO) */
   lots?: LotPick[];
   /** IN: ข้อมูลของ Lot ที่สร้าง (ผู้ขาย เอกสารต้นทาง โปรเจกต์) — ผู้เรียกเติม grNo ในช่วงอ่านของทรานแซกชันได้ */
-  lotInfo?: { supplierId?: string; supplierName?: string; poRef?: string; grNo?: string; projectId?: string; projectName?: string; receivedDate?: string; source?: "GR" | "OPENING" | "RETURN" | "ADJUST" };
+  lotInfo?: { supplierId?: string; supplierName?: string; poRef?: string; grNo?: string; projectId?: string; projectName?: string; receivedDate?: string; source?: "GR" | "OPENING" | "RETURN" | "ADJUST" | "REPACK" };
+  /**
+   * IN: ต้นทุนมาจากรายการตัดออกก่อนหน้าในชุดเดียวกัน (แบ่งบรรจุ: ต้นทุนจริงของกล่องที่แกะ → ห่อเล็ก)
+   * มูลค่ารับเข้า = มูลค่าของรายการที่ index × share · ใช้แทน unitCost
+   */
+  costFrom?: { index: number; share: number };
 }
 
 const bangkokToday = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
@@ -79,9 +84,12 @@ export async function processStockMovement(movement: StockMovement) {
  * IN movements do not post to the GL here: the caller that owns the source document
  * (e.g. Goods Receipt) posts the Inventory/AP entry, so it is never booked twice.
  */
+/** ผลของแต่ละรายการในชุด (ลำดับเดียวกับ movements) — ให้ผู้เรียกบันทึกเอกสารต้นทางพร้อมต้นทุนจริงในทรานแซกชันเดียวกัน */
+export interface AppliedMovements { transactionIds: string[]; lotNos: string[]; unitCosts: number[]; totalValues: number[] }
+
 export async function processStockMovements(
   movements: StockMovement[],
-  extraWrites?: (transaction: Transaction) => void | Promise<void>,
+  extraWrites?: (transaction: Transaction, applied: AppliedMovements) => void | Promise<void>,
   extraReads?: (transaction: Transaction) => Promise<void>
 ): Promise<string[]> {
   if (movements.length === 0) return [];
@@ -173,6 +181,8 @@ export async function processStockMovements(
     }
 
     // 3. Apply movements in order against the in-memory state
+    const movedValue: number[] = [];
+    const movedUnit: number[] = [];
     movements.forEach((movement, index) => {
       const { productId, type, quantity, unitCost, fromLocation, toLocation, snList, userId } = movement;
       const transactionId = transactionIds[index];
@@ -189,8 +199,12 @@ export async function processStockMovements(
         for (const a of allocations) { const l = product.lots.find((x) => x.lotNo === a.lotNo)!; l.remaining = Math.round((l.remaining - a.qty) * 10000) / 10000; l.dirty = true; }
         if (costMethod === "FIFO") lotCostUnit = (allocationCost(allocations) + r.short * previousWAC) / quantity;
       }
-      const currentUnitCost = unitCost !== undefined ? unitCost : lotCostUnit ?? previousWAC;
+      const cf = type === "IN" && movement.costFrom && movement.costFrom.index < index ? movement.costFrom : null;
+      const derivedCost = cf ? Number((((movedValue[cf.index] || 0) * Math.max(0, Math.min(1, Number(cf.share) || 0))) / quantity).toFixed(4)) : undefined;
+      const currentUnitCost = derivedCost !== undefined ? derivedCost : unitCost !== undefined ? unitCost : lotCostUnit ?? previousWAC;
       const totalValue = currentUnitCost * quantity;
+      movedValue[index] = totalValue;
+      movedUnit[index] = currentUnitCost;
 
       // 3.1 Source / Destination Location Balance
       if (fromLocation) {
@@ -347,7 +361,7 @@ export async function processStockMovements(
       }
     }
 
-    await extraWrites?.(transaction);
+    await extraWrites?.(transaction, { transactionIds, lotNos, unitCosts: movedUnit, totalValues: movedValue });
   });
 
   // 5. Audit Log Activity (Tenant Scoped & Strict Action Logging)

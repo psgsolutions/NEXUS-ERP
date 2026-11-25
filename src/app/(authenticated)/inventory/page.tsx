@@ -40,6 +40,7 @@ import {
   Copy,
   Layers,
   Edit3,
+  PackageOpen,
 } from "lucide-react";
 import { can } from "@/lib/permissions";
 import { 
@@ -641,6 +642,14 @@ export default function InventoryPage() {
               onClick={() => router.push("/inventory/products/labels")}
             >
               <Printer size={14} /> ฉลากสินค้า
+            </PillButton>
+            <PillButton
+              variant="glass"
+              className="gap-1.5"
+              onClick={() => router.push("/inventory/repack")}
+              title="แกะสินค้าหน่วยใหญ่แบ่งเป็นห่อเล็กเข้าคลัง พร้อมพิมพ์ฉลากบาร์โค้ด"
+            >
+              <PackageOpen size={14} /> แบ่งบรรจุ
             </PillButton>
             {activeTab === "kits" ? (
               <PillButton 

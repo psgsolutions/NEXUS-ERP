@@ -111,6 +111,22 @@ export function normalizeAliases(raw: any): { name: string; supplierId: string }
   return Array.from(out.values());
 }
 
+const UNIT_ALIAS: Record<string, string> = { "ม": "เมตร", "m": "เมตร", "meter": "เมตร", "pcs": "ชิ้น", "pc": "ชิ้น", "ea": "ชิ้น", "box": "กล่อง", "set": "ชุด", "roll": "ม้วน" };
+const nu = (v: unknown) => { const x = String(v ?? "").trim().toLowerCase().replace(/[.\s]/g, ""); return UNIT_ALIAS[x] || x; };
+/**
+ * หน่วยราคาในไฟล์เทียบกับสินค้า → ราคาต่อหน่วยหลักของสินค้า
+ *  ไม่ระบุหน่วย / ตรงหน่วยหลัก = ใช้ราคาเดิม · ตรงหน่วยซื้อ/แพ็ค (มีจำนวนต่อแพ็ค) = หารเป็นราคาต่อหน่วยหลัก
+ *  ไม่ตรง (เช่น ไฟล์คิดต่อเมตร แต่สินค้าขายเป็นกล่อง) = null — ไม่นำเข้า กันราคาต่อหน่วยย่อยทับราคากล่อง
+ */
+export function priceInProductUnit(price: number, rowUnit: string, product: Record<string, any>): number | null {
+  const u = nu(rowUnit);
+  if (!u) return price;
+  if ([product.unit, product.baseUnit].some((x) => x && nu(x) === u)) return price;
+  const rate = Number(product.conversionRate) || 0;
+  if (product.packageUnit && nu(product.packageUnit) === u && rate > 0) return r4(price / rate);
+  return null;
+}
+
 const r4 = (n: number) => Math.round(n * 10000) / 10000;
 /** รวมราคาเข้า supplierConfig ของสินค้า (คืนรายการใหม่ ไม่แก้ของเดิม) */
 export function mergeSupplierPrice(list: any[], it: SupplierPriceItem): any[] {

@@ -17,11 +17,11 @@ import { useProducts } from "@/hooks/useProducts";
 import { useSuppliers } from "@/hooks/useCustomers";
 import { apiFetch } from "@/lib/api-client";
 import { can } from "@/lib/permissions";
-import { matchSupplierId, parseSupplierPriceSheet, type SupplierPriceRow } from "@/lib/supplier-prices";
+import { matchSupplierId, parseSupplierPriceSheet, priceInProductUnit, type SupplierPriceRow } from "@/lib/supplier-prices";
 
-type Status = "ready" | "noSupplier" | "noProduct" | "invalid";
+type Status = "ready" | "noSupplier" | "noProduct" | "unitMismatch" | "invalid";
 const STATUS: Record<Status, [string, string]> = {
-  ready: ["พร้อม", "text-nexus-teal"], noSupplier: ["ไม่พบผู้ขาย", "text-warning"], noProduct: ["ไม่พบ SKU", "text-warning"], invalid: ["ข้อมูลไม่ครบ", "text-danger"],
+  ready: ["พร้อม", "text-nexus-teal"], noSupplier: ["ไม่พบผู้ขาย", "text-warning"], noProduct: ["ไม่พบ SKU", "text-warning"], unitMismatch: ["หน่วยไม่ตรง", "text-warning"], invalid: ["ข้อมูลไม่ครบ", "text-danger"],
 };
 const money = (n: number) => Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 const normSku = (v: unknown) => String(v ?? "").trim().toUpperCase();
@@ -48,8 +48,10 @@ export default function SupplierPricesImportPage() {
   const view = useMemo(() => rows.map((r) => {
     const supplierId = r.supplierName ? supplierOf(r.supplierName) : "";
     const product = bySku.get(normSku(r.sku));
-    const status: Status = r.errors.length ? "invalid" : !supplierId ? "noSupplier" : !product ? "noProduct" : "ready";
-    return { ...r, supplierId, product, status };
+    // ราคาต่อหน่วยหลักของสินค้า (หน่วยซื้อ/แพ็ค = แปลงให้ · หน่วยไม่ตรง = ไม่นำเข้า)
+    const unitPrice = product ? priceInProductUnit(r.price, r.unit, product) : r.price;
+    const status: Status = r.errors.length ? "invalid" : !supplierId ? "noSupplier" : !product ? "noProduct" : unitPrice === null ? "unitMismatch" : "ready";
+    return { ...r, price: unitPrice ?? r.price, supplierId, product, status, unitNote: unitPrice === null ? `ไฟล์คิดต่อ ${r.unit} แต่สินค้าใช้หน่วย ${product?.unit || "-"}` : unitPrice !== r.price ? `แปลงจาก ${money(r.price)}/${r.unit}` : "" };
   }), [rows, map, suppliers, bySku]); // eslint-disable-line react-hooks/exhaustive-deps
   const count = (s: Status) => view.filter((v) => v.status === s).length;
   const unmatchedNames = useMemo(() => Array.from(new Set(rows.filter((r) => r.supplierName && !matchSupplierId(r.supplierName, suppliers)).map((r) => r.supplierName))), [rows, suppliers]);
@@ -168,7 +170,7 @@ export default function SupplierPricesImportPage() {
                   <NexusTableCell><span className={v.kind === "LIST" ? "text-white/60" : "text-nexus-teal"}>{v.kind === "LIST" ? "ราคา List" : "ราคาที่ได้จริง"}</span></NexusTableCell>
                   <NexusTableCell align="right" mono>{money(v.price)}</NexusTableCell>
                   <NexusTableCell mono>{v.priceDate || "-"}</NexusTableCell>
-                  <NexusTableCell title={v.errors.join(" · ")}><span className={cn("text-[12px] font-bold", STATUS[v.status][1])}>{STATUS[v.status][0]}{v.errors.length ? `: ${v.errors.join(", ")}` : ""}</span></NexusTableCell>
+                  <NexusTableCell title={[...v.errors, v.unitNote].filter(Boolean).join(" · ")}><span className={cn("text-[12px] font-bold", STATUS[v.status][1])}>{STATUS[v.status][0]}{v.errors.length ? `: ${v.errors.join(", ")}` : v.unitNote ? `: ${v.unitNote}` : ""}</span></NexusTableCell>
                 </NexusTableRow>
               ))}
             </NexusTable>

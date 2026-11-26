@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchSupplierId, mergeSupplierPrice, normalizeAliases, normalizeSupplierPriceItem, parsePriceDate, parseSupplierPriceSheet, priceKindOf } from "@/lib/supplier-prices";
+import { matchSupplierId, mergeSupplierPrice, normalizeAliases, normalizeSupplierPriceItem, parsePriceDate, priceInProductUnit, parseSupplierPriceSheet, priceKindOf } from "@/lib/supplier-prices";
 
 const HEAD = ["ผู้ขาย (ชื่อใน NEXUS)", "รหัสสินค้า NEXUS (SKU)", "รหัสสินค้าของผู้ขาย", "รายการ", "ยี่ห้อ", "รุ่น", "หน่วย", "ต้นทุน/หน่วย (ก่อน VAT)", "ประเภทราคา", "วันที่ราคา", "งาน/โครงการ", "ไฟล์/หน้าอ้างอิง", "หมายเหตุ"];
 
@@ -64,6 +64,15 @@ describe("รวมราคาเข้าผู้ขายของสิน�
     expect(older[0]).toMatchObject({ quotedCost: 80, latestCost: 80 });
     const second = mergeSupplierPrice(b, { productId: "P", supplierId: "S3", kind: "LIST", price: 99 });
     expect(second.map((c) => [c.supplierId, c.isPrimary])).toEqual([["S2", true], ["S3", false]]);
+  });
+  it("หน่วยราคาเทียบหน่วยสินค้า: ต่อเมตร ≠ กล่อง (ไม่นำเข้า) · หน่วยแพ็คแปลงให้", () => {
+    const box = { unit: "กล่อง" };
+    expect(priceInProductUnit(6450, "กล่อง", box)).toBe(6450);
+    expect(priceInProductUnit(21.15, "ม.", box)).toBeNull();
+    expect(priceInProductUnit(100, "", box)).toBe(100);
+    expect(priceInProductUnit(21.15, "เมตร", { unit: "ม." })).toBe(21.15);
+    expect(priceInProductUnit(20, "แพ็ค", { unit: "ชิ้น", packageUnit: "แพ็ค", conversionRate: 12 })).toBe(1.6667);
+    expect(priceInProductUnit(20, "แพ็ค", { unit: "ชิ้น" })).toBeNull();
   });
   it("ตรวจข้อมูลที่ส่งมา", () => {
     expect(normalizeSupplierPriceItem({ productId: "P", supplierId: "S", price: "12.5", kind: "LIST", priceDate: "x" })).toMatchObject({ price: 12.5, kind: "LIST", priceDate: "" });

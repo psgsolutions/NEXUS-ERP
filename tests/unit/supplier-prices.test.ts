@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchSupplierId, mergeSupplierPrice, normalizeSupplierPriceItem, parsePriceDate, parseSupplierPriceSheet, priceKindOf } from "@/lib/supplier-prices";
+import { matchSupplierId, mergeSupplierPrice, normalizeAliases, normalizeSupplierPriceItem, parsePriceDate, parseSupplierPriceSheet, priceKindOf } from "@/lib/supplier-prices";
 
 const HEAD = ["ผู้ขาย (ชื่อใน NEXUS)", "รหัสสินค้า NEXUS (SKU)", "รหัสสินค้าของผู้ขาย", "รายการ", "ยี่ห้อ", "รุ่น", "หน่วย", "ต้นทุน/หน่วย (ก่อน VAT)", "ประเภทราคา", "วันที่ราคา", "งาน/โครงการ", "ไฟล์/หน้าอ้างอิง", "หมายเหตุ"];
 
@@ -40,6 +40,12 @@ describe("จับคู่ผู้ขาย", () => {
     expect(matchSupplierId("dk design", sup)).toBe("S2");
     expect(matchSupplierId("SiS", sup)).toBe("S3");
     expect(matchSupplierId("9D", sup)).toBe("");
+  });
+  it("ชื่อที่เคยจับคู่เอง (nameAliases) — ไฟล์ใช้ชื่ออังกฤษ ระบบใช้ชื่อไทย", () => {
+    const th = [{ id: "S9", name: "บริษัท อินเตอร์ลิ้งค์ คอมมิวนิเคชั่น จำกัด (มหาชน)", nameAliases: ["Interlink"] }];
+    expect(matchSupplierId("InterLink", th)).toBe("S9");
+    expect(normalizeAliases([{ name: " Interlink ", supplierId: "S9" }, { name: "interlink", supplierId: "S9" }, { name: "x", supplierId: "a/b" }, { name: "", supplierId: "S1" }]))
+      .toEqual([{ name: "Interlink", supplierId: "S9" }]);
   });
 });
 

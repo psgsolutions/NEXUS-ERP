@@ -4,11 +4,12 @@ import { requireApiUser, authErrorResponse, ApiAuthError } from "@/lib/api-auth"
 import { adminDb } from "@/lib/firebase-admin";
 import { can } from "@/lib/permissions";
 import { auditServer } from "@/services/audit.server";
-import { mergeSupplierPrice, normalizeSupplierPriceItem, type SupplierPriceItem } from "@/lib/supplier-prices";
+import { mergeSupplierPrice, normalizeAliases, normalizeSupplierPriceItem, type SupplierPriceItem } from "@/lib/supplier-prices";
 
 /**
  * นำเข้าราคาผู้ขาย — POST /api/procurement/supplier-prices { companyId, action: "apply", items: [...] } (ครั้งละไม่เกิน 500 แถว)
  *  item: { productId, supplierId, supplierSku?, kind: LIST|QUOTE, price, priceDate?, ref?, note?, project? }
+ *  aliases?: [{ name, supplierId }]  ชื่อในไฟล์ที่ผู้ใช้จับคู่เอง → เก็บที่ companies/{id}/suppliers/{sid}.nameAliases (ครั้งหน้าจับคู่ให้เอง)
  *  รวมเข้า companies/{id}/products/{productId}.supplierConfig (ข้อมูลของบริษัท) — ราคาที่ใหม่กว่าไม่ถูกทับ
  *  สินค้า/ผู้ขายที่ไม่อยู่ในบริษัท = ข้าม (แจ้งกลับ)
  * ต้องมีสิทธิ์ procurement:edit หรือ inventory:edit
@@ -24,9 +25,10 @@ export async function POST(request: Request) {
     const raw: any[] = Array.isArray(body.items) ? body.items : [];
     if (raw.length > 500) throw new ApiAuthError(400, "ส่งได้ครั้งละไม่เกิน 500 แถว");
     const items = raw.map(normalizeSupplierPriceItem).filter((x): x is SupplierPriceItem => !!x);
+    const aliases = normalizeAliases(body.aliases);
 
     const prodIds = Array.from(new Set(items.map((i) => i.productId)));
-    const supIds = Array.from(new Set(items.map((i) => i.supplierId)));
+    const supIds = Array.from(new Set([...items.map((i) => i.supplierId), ...aliases.map((a) => a.supplierId)]));
     const pRefs = prodIds.map((id) => adminDb.doc(`companies/${companyId}/products/${id}`));
     const sRefs = supIds.map((id) => adminDb.doc(`companies/${companyId}/suppliers/${id}`));
     const [pSnaps, sSnaps] = await Promise.all([pRefs.length ? adminDb.getAll(...pRefs) : Promise.resolve([]), sRefs.length ? adminDb.getAll(...sRefs) : Promise.resolve([])]);
@@ -44,6 +46,12 @@ export async function POST(request: Request) {
     let batch = adminDb.batch(), n = 0;
     for (const [pid, cfg] of next) {
       batch.set(adminDb.doc(`companies/${companyId}/products/${pid}`), { supplierConfig: cfg, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      if (++n >= 400) { await batch.commit(); batch = adminDb.batch(); n = 0; }
+    }
+    // ชื่อในไฟล์ที่ผู้ใช้จับคู่เอง → ชื่อเรียกของผู้ขาย (ของบริษัท) ครั้งหน้าจับคู่ให้เอง
+    for (const a of aliases) {
+      if (!supOk.has(a.supplierId)) continue;
+      batch.set(adminDb.doc(`companies/${companyId}/suppliers/${a.supplierId}`), { nameAliases: admin.firestore.FieldValue.arrayUnion(a.name) }, { merge: true });
       if (++n >= 400) { await batch.commit(); batch = adminDb.batch(); n = 0; }
     }
     if (n) await batch.commit();

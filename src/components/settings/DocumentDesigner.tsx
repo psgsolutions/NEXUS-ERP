@@ -714,7 +714,7 @@ export function DocumentDesigner() {
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {!isLetter && !realId && (
               <div className="flex items-center gap-2" data-sample-rows title="จำนวนแถวรายการในตัวอย่าง — ดูตาราง ยอดรวม และการขึ้นหน้าใหม่ตามจำนวนแถวจริงขณะจัดผัง (ไม่บันทึกลงเอกสาร)">
-                <div className="w-[150px]">
+                <div className="w-[200px]">
                   <PillSelect value={String(sampleRows)} onChange={(e) => setRows(Number(e.target.value), sampleStyle)} className="h-8 w-full text-[12px]" aria-label="จำนวนแถวตัวอย่าง">
                     <option value="0">แถวรายการ: ตามตัวอย่าง</option>
                     {SAMPLE_ROW_COUNTS.map((n) => <option key={n} value={String(n)}>แถวรายการ: {n} แถว</option>)}

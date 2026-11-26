@@ -89,12 +89,26 @@ export function parseSupplierPriceSheet(aoa: unknown[][]): { rows: SupplierPrice
 }
 
 const nn = (v: unknown) => String(v ?? "").toLowerCase().replace(/บริษัท|จำกัด|\(มหาชน\)|ห้างหุ้นส่วน|หจก\.?|บจก\.?|co\.?,?\s*ltd\.?|company|limited|[\s.,()\-&]/g, "");
-/** ผู้ขายจากชื่อในไฟล์: ชื่อ / ชื่อบนใบกำกับ / ชื่อนิติบุคคล ตรงกันแบบไม่สนคำนำหน้า (บริษัท จำกัด ฯลฯ) */
+/**
+ * ผู้ขายจากชื่อในไฟล์: ชื่อ / ชื่อบนใบกำกับ / ชื่อนิติบุคคล / ชื่อย่อ / ชื่อที่เคยจับคู่ไว้ (nameAliases)
+ * ตรงกันแบบไม่สนคำนำหน้า (บริษัท จำกัด ฯลฯ) และตัวพิมพ์
+ */
 export function matchSupplierId(name: string, suppliers: Array<Record<string, any>>): string {
   const n = nn(name);
   if (!n) return "";
-  const hit = (suppliers || []).find((s) => !s.isDeleted && [s.name, s.supplierName, s.legalName, s.taxInvoiceName, s.shortName].some((x) => x && nn(x) === n));
+  const names = (s: Record<string, any>) => [s.name, s.supplierName, s.legalName, s.taxInvoiceName, s.shortName, ...(Array.isArray(s.nameAliases) ? s.nameAliases : [])];
+  const hit = (suppliers || []).find((s) => !s.isDeleted && names(s).some((x) => x && nn(x) === n));
   return hit ? String(hit.id) : "";
+}
+
+/** ชื่อในไฟล์ → ผู้ขายที่เลือกเอง: เก็บเป็นชื่อเรียกของผู้ขาย (ครั้งหน้าจับคู่ให้เอง) */
+export function normalizeAliases(raw: any): { name: string; supplierId: string }[] {
+  const out = new Map<string, { name: string; supplierId: string }>();
+  for (const a of Array.isArray(raw) ? raw.slice(0, 100) : []) {
+    const name = String(a?.name ?? "").trim().slice(0, 120), supplierId = String(a?.supplierId ?? "").trim().slice(0, 120);
+    if (name && nn(name) && supplierId && !supplierId.includes("/") && !out.has(`${supplierId}|${nn(name)}`)) out.set(`${supplierId}|${nn(name)}`, { name, supplierId });
+  }
+  return Array.from(out.values());
 }
 
 const r4 = (n: number) => Math.round(n * 10000) / 10000;

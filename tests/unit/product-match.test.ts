@@ -58,6 +58,8 @@ describe("หาสินค้าเดิมที่อาจซ้ำ", () =
     expect(findDuplicateCandidates({ name: "ไวร์เวย์ 4x4", category: "ราง" }, ww)).toEqual([]);
     const syn = normalizeSynonyms(["wireway, รางวายเวย์, ไวร์เวย์", ["x"]]);
     expect(syn).toEqual([["wireway", "รางวายเวย์", "ไวร์เวย์"]]);
+    // บันทึกกลุ่มเดิมซ้ำ (ลำดับ/ตัวพิมพ์ต่างกัน) = เก็บครั้งเดียว
+    expect(normalizeSynonyms(["a, b", "B, A", "a, b", "a, c"])).toEqual([["a", "b"], ["a", "c"]]);
     expect(findDuplicateCandidates({ name: "ไวร์เวย์ 4x4", category: "ราง" }, ww, { synonyms: syn })[0]?.id).toBe("ww");
   });
 });

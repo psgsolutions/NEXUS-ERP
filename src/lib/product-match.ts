@@ -203,5 +203,7 @@ export function findDuplicateCandidates(input: MatchInput, products: Array<Recor
 export function normalizeSynonyms(raw: any): string[][] {
   return (Array.isArray(raw) ? raw : []).slice(0, 200)
     .map((g: any) => (Array.isArray(g) ? g : String(g || "").split(/[,=|]/)).map((w: any) => String(w ?? "").trim().slice(0, 40)).filter(Boolean).slice(0, 12))
-    .filter((g: string[]) => g.length >= 2);
+    .filter((g: string[]) => g.length >= 2)
+    // กลุ่มเดียวกัน (ไม่สนตัวพิมพ์/ลำดับ) เก็บครั้งเดียว
+    .filter((g: string[], i: number, all: string[][]) => { const k = (x: string[]) => x.map((w) => w.toLowerCase()).sort().join("|"); return all.findIndex((o) => k(o) === k(g)) === i; });
 }

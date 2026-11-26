@@ -83,7 +83,9 @@ export default function SupplierPricesImportPage() {
       for (let i = 0; i < ready.length; i += 300) {
         setProgress(`กำลังบันทึก ${Math.min(i + 300, ready.length).toLocaleString("th-TH")} / ${ready.length.toLocaleString("th-TH")}`);
         const chunk = ready.slice(i, i + 300).map((v) => ({ productId: v.product.id, supplierId: v.supplierId, supplierSku: v.supplierSku, kind: v.kind, price: v.price, priceDate: v.priceDate, ref: v.ref, note: v.note, project: v.project }));
-        const r = await apiFetch("/api/procurement/supplier-prices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "apply", items: chunk }) });
+        // ชื่อที่จับคู่เอง ส่งไปกับชุดแรก → ครั้งหน้าระบบจับคู่ให้เอง
+        const aliases = i === 0 ? Object.entries(map).filter(([, sid]) => sid).map(([name, supplierId]) => ({ name, supplierId })) : [];
+        const r = await apiFetch("/api/procurement/supplier-prices", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId, action: "apply", items: chunk, aliases }) });
         const d = await r.json().catch(() => ({}));
         if (!r.ok || !d.success) throw new Error(`${d.error || "บันทึกไม่สำเร็จ"} (บันทึกแล้ว ${applied} แถว)`);
         applied += d.applied; skipped += d.skipped.length; chunk.forEach((c) => prods.add(c.productId));
@@ -129,7 +131,7 @@ export default function SupplierPricesImportPage() {
             {result && <p className="text-[12px] text-nexus-teal flex items-center gap-1" data-sp-result><CheckCircle2 size={13} /> บันทึกราคาแล้ว {result.applied.toLocaleString("th-TH")} แถว · สินค้า {result.products.toLocaleString("th-TH")} รายการ{result.skipped ? ` · ข้าม ${result.skipped} แถว (สินค้า/ผู้ขายไม่อยู่ในบริษัท)` : ""}</p>}
             {unmatchedNames.length > 0 && (
               <div className="space-y-2 rounded-xl border border-warning/30 bg-warning/5 p-3" data-sp-map>
-                <p className="text-[12px] text-warning">ชื่อผู้ขายในไฟล์ที่ไม่ตรงกับในระบบ — เลือกผู้ขายที่ใช่ (ครั้งเดียวต่อชื่อ) หรือเพิ่มผู้ขายในระบบก่อน</p>
+                <p className="text-[12px] text-warning">ชื่อผู้ขายในไฟล์ที่ไม่ตรงกับในระบบ — เลือกผู้ขายที่ใช่ (ครั้งเดียวต่อชื่อ ระบบจำไว้ ครั้งหน้าจับคู่ให้เอง) หรือเพิ่มผู้ขายในระบบก่อน</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
                   {unmatchedNames.map((n) => (
                     <label key={n} className="flex items-center gap-2 text-[12px] text-white/80">

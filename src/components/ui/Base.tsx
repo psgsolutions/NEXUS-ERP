@@ -349,13 +349,17 @@ export function GlassCard({
   id,
   className, 
   children,
-  accentColor
-}: { 
+  accentColor,
+  ...rest
+}: {
   id?: string;
-  className?: string; 
+  className?: string;
   children: React.ReactNode;
   accentColor?: "teal" | "blue" | "purple" | "emerald" | "amber" | "rose";
+  /** data-* (ตัวชี้สำหรับเลื่อนหน้า/ทดสอบ) ส่งต่อไปที่การ์ด */
+  [data: `data-${string}`]: string | number | boolean | undefined;
 }) {
+  const dataAttrs = Object.fromEntries(Object.entries(rest).filter(([k]) => k.startsWith("data-")));
   const accentBorders = {
     teal: "border-l-4 border-l-nexus-teal",
     blue: "border-l-4 border-l-nexus-blue",
@@ -368,6 +372,7 @@ export function GlassCard({
   return (
     <div
       id={id}
+      {...dataAttrs}
       className={cn(
         "bg-neutral-900/90 backdrop-blur-3xl border border-white/15 rounded-3xl shadow-2xl overflow-hidden relative group/card",
         "before:absolute before:inset-0 before:bg-gradient-to-br before:from-white/[0.05] before:to-transparent before:pointer-events-none",
